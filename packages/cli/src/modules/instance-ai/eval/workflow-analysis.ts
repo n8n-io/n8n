@@ -61,6 +61,12 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
+/** Sub-nodes the HTTP mock never sees: only a credential URL rewrite intercepts them. */
+export function isVendorSdkSubNode(nodeType: string | undefined): boolean {
+	if (!nodeType) return false;
+	return isVendorLlmSubNode(nodeType) || nodeType.startsWith('@n8n/n8n-nodes-langchain.embeddings');
+}
+
 /** MCP registry nodes talk via the MCP SDK's own transport, not n8n's HTTP helper — the mock can't reach them, so their root must stay pinned. */
 function isMcpRegistryNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/mcp-registry.');

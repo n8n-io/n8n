@@ -601,6 +601,11 @@ function buildScenarioContextBlock(
 		`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
 		`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
 		`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
+		// Verifiers read a sub-node's absence from the mocked/pinned lists as "the
+		// harness skipped mocking this model" and charged the root's own crash to
+		// the mock layer (TRUST-508/510).
+		'',
+		'> An AI sub-node (language model, memory, tool, embeddings) only produces execution data when its root node reaches it, and is served through that root — it never appears under mocked or pinned. Listed above it means the root was pinned or the root failed before invoking it, NOT that the harness declined to mock it. A vendor call the harness could not intercept is always a FRAMEWORK ISSUE flag in Pre-analysis.',
 		'',
 	);
 
