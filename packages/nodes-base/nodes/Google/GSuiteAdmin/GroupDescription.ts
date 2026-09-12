@@ -37,6 +37,12 @@ export const groupOperations: INodeProperties[] = [
 				action: 'Get many groups',
 			},
 			{
+				name: 'Get Many Members',
+				value: 'getMembers',
+				description: 'Get many members of a group',
+				action: 'Get many members of a group',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
@@ -61,7 +67,7 @@ export const groupFields: INodeProperties[] = [
 		description: 'Select the group to perform the operation on',
 		displayOptions: {
 			show: {
-				operation: ['delete', 'get', 'update'],
+				operation: ['delete', 'get', 'getMembers', 'update'],
 				resource: ['group'],
 			},
 		},
@@ -273,6 +279,85 @@ export const groupFields: INodeProperties[] = [
 						description: 'Sort order direction',
 					},
 				],
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 group:getMembers                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['getMembers'],
+				resource: ['group'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: ['getMembers'],
+				resource: ['group'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 200,
+		},
+		default: 100,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getMembers'],
+				resource: ['group'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Derived Membership',
+				name: 'includeDerivedMembership',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to list indirect group memberships. When true, members of nested groups are also returned.',
+			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Manager',
+						value: 'MANAGER',
+					},
+					{
+						name: 'Member',
+						value: 'MEMBER',
+					},
+					{
+						name: 'Owner',
+						value: 'OWNER',
+					},
+				],
+				default: [],
+				description: 'Filter results to members with these roles. Leave empty to return all roles.',
 			},
 		],
 	},
