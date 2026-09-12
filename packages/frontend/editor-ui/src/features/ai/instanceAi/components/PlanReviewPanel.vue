@@ -12,20 +12,11 @@ import {
  * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
  * "Ask for edits" hands off feedback collection to the main chat input.
  */
+import type { PlannedTaskArg } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import ConfirmationFooter from './ConfirmationFooter.vue';
-
-export interface PlannedTaskArg {
-	id: string;
-	title: string;
-	kind: string;
-	spec: string;
-	deps: string[];
-	tools?: string[];
-	workflowId?: string;
-}
 
 export type PlanReviewStatus = 'pending' | 'approved' | 'changes-requested' | 'denied';
 

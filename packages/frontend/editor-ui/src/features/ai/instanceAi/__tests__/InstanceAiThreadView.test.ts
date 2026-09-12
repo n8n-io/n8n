@@ -9,7 +9,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
@@ -164,11 +163,11 @@ const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
-		isPlanEditMode: { type: Boolean, required: false },
+		isAwaitingPlanReview: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
 	},
-	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
+	emits: ['submit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
@@ -187,7 +186,7 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isPlanEditMode ? 'plan-edit' : 'normal',
+					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
 				),
 				h(
 					'span',
@@ -233,7 +232,7 @@ const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							const message = props.isPlanEditMode
+							const message = props.isAwaitingPlanReview
 								? planEditSubmitState.message
 								: inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
@@ -261,16 +260,6 @@ const InstanceAiInputStub = defineComponent({
 								onClick: () => emit('dismiss-context-chip'),
 							},
 							'Dismiss context',
-						)
-					: null,
-				props.isPlanEditMode
-					? h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-input-cancel-plan-edit',
-								onClick: () => emit('cancel-plan-edit'),
-							},
-							'Cancel',
 						)
 					: null,
 			]);
@@ -543,7 +532,7 @@ describe('InstanceAiThreadView', () => {
 			isAwaitingConfirmation: false,
 			isHydratingThread: false,
 			amendContext: null,
-			activePlanEdit: null,
+			pendingPlanReview: null,
 			updatingPlanRequestIds: new Set<string>(),
 			contextualSuggestion: null,
 			currentTasks: null,
@@ -568,14 +557,7 @@ describe('InstanceAiThreadView', () => {
 			copyFullTrace: vi.fn(),
 			submitFeedback: vi.fn(),
 		}) as unknown as ThreadRuntime;
-		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
-		// chat-input submission path can read activePlanEdit back out.
-		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
-			thread.activePlanEdit = context;
-		});
-		thread.cancelPlanEdit = vi.fn(() => {
-			thread.activePlanEdit = null;
-		});
+		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
@@ -2515,8 +2497,29 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('focuses the main composer when asking for plan edits', async () => {
+	/** Put the thread in the suspended-on-plan-review state the runtime derives. */
+	function seedPendingPlanReview() {
 		thread.messages = [makePlanReviewMessage()];
+		thread.isStreaming = true;
+		thread.pendingPlanReview = {
+			requestId: 'req-plan',
+			inputThreadId: 'input-thread-1',
+			taskCount: 1,
+		};
+	}
+
+	it('hands the composer a live plan-review state while the run is suspended', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-review');
+		});
+	});
+
+	it('focuses the composer when asking for plan edits, without entering a mode', async () => {
+		seedPendingPlanReview();
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2527,21 +2530,33 @@ describe('InstanceAiThreadView', () => {
 		await getByTestId('instance-ai-plan-ask-for-edits').click();
 
 		await vi.waitFor(() => {
-			expect(inputFocusSpy).toHaveBeenCalled();
-			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-edit');
+			expect(store.requestComposerFocus).toHaveBeenCalled();
 		});
 	});
 
-	it('scrubs credential patterns from plan-edit feedback before sending to telemetry, but keeps the raw text in the backend confirmation', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	it('routes a typed message to the plan without any prior click', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith('req-plan', 'Make the plan simpler');
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('scrubs credential patterns from plan feedback telemetry but sends the raw text on', async () => {
+		seedPendingPlanReview();
 		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
@@ -2549,55 +2564,30 @@ describe('InstanceAiThreadView', () => {
 			expect.objectContaining({
 				feedback: 'use [REDACTED] to call the API',
 				plan_feedback_type: 'changes_requested',
+				num_tasks: 1,
+				input_thread_id: 'input-thread-1',
 			}),
 		);
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'use sk-proj-abcdef1234567890XYZ to call the API',
-		});
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith(
+			'req-plan',
+			'use sk-proj-abcdef1234567890XYZ to call the API',
+		);
 	});
 
-	it('submits plan edit feedback through confirmation instead of a new chat message', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	it('restores the draft when the plan change request fails', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
-		await getByTestId('instance-ai-input-submit').click();
-
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'Make the plan simpler',
-		});
-		// resolveConfirmation only fires after the backend call succeeds, so it
-		// happens on the next tick once the confirmAction promise resolves.
-		await vi.waitFor(() => {
-			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
-		});
-		expect(thread.sendMessage).not.toHaveBeenCalled();
-	});
-
-	it('does not resolve the plan when the backend confirmAction fails', async () => {
-		thread.messages = [makePlanReviewMessage()];
-		vi.mocked(thread.confirmAction).mockResolvedValueOnce(false);
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
-		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		await vi.waitFor(() => {
-			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
-		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
 	});
 
 	describe('runtime disposal on unmount', () => {
