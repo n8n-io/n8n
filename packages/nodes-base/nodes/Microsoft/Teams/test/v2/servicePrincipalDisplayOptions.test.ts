@@ -67,54 +67,24 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		},
 	);
 
-	describe('onlineMeeting — un-gated under SP one operation at a time', () => {
-		const spOperations = ['create', 'get', 'createOrGet', 'deleteMeeting'];
-		const allOperations = ['create', 'createOrGet', 'deleteMeeting', 'get', 'update'];
+	describe('onlineMeeting — available under SP with an organizer picker', () => {
 		const fields = actionProps.filter((p) =>
 			p.displayOptions?.show?.resource?.includes('onlineMeeting'),
 		);
-		const selectors = fields.filter((p) => p.name === 'operation');
-		const optionValues = (selector?: INodeProperties) =>
-			(selector?.options ?? []).map((option) => ('value' in option ? option.value : undefined));
-		const fieldsFor = (operation: string) =>
-			fields.filter(
-				(p) =>
-					p.type !== 'notice' &&
-					p.name !== 'operation' &&
-					p.displayOptions?.show?.operation?.includes(operation),
-			);
 
-		it('keeps the full operation selector for OAuth2 and hides it under SP', () => {
-			const oauth = selectors.find((p) => isSpHidden(p));
-			expect(optionValues(oauth)).toEqual(allOperations);
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
 		});
 
-		it('offers only the un-gated operations under SP', () => {
-			const sp = selectors.find((p) => isSpShown(p));
-			expect(optionValues(sp)).toEqual(
-				allOperations.filter((operation) => spOperations.includes(operation)),
-			);
-			expect(sp?.displayOptions?.hide).toBeUndefined();
-		});
-
-		it.each(spOperations)('%s fields are shown under SP', (operation) => {
-			const operationFields = fieldsFor(operation);
-			expect(operationFields.length).toBeGreaterThan(0);
-			for (const field of operationFields) {
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.length).toBeGreaterThan(0);
+			for (const field of gated) {
 				expect(isSpHidden(field)).toBe(false);
 			}
 		});
-
-		it.each(allOperations.filter((operation) => !spOperations.includes(operation)))(
-			'%s fields stay hidden under SP',
-			(operation) => {
-				const operationFields = fieldsFor(operation);
-				expect(operationFields.length).toBeGreaterThan(0);
-				for (const field of operationFields) {
-					expect(isSpHidden(field)).toBe(true);
-				}
-			},
-		);
 
 		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
 			const organizer = fields.find((p) => p.name === 'organizerId');
@@ -135,6 +105,17 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
 			);
 			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+
+		it('the Service Principal authentication option no longer lists online meetings as unavailable', () => {
+			const authentication = actionProps.find((p) => p.name === 'authentication');
+			const spOption = (authentication?.options ?? []).find(
+				(option) => 'value' in option && option.value === SERVICE_PRINCIPAL_AUTH,
+			);
+			expect(spOption).toBeDefined();
+			expect(
+				'description' in (spOption ?? {}) ? (spOption as { description?: string }).description : '',
+			).not.toContain('online meetings are unavailable');
 		});
 	});
 
