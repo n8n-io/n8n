@@ -1,7 +1,12 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
-import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
+import {
+	deleteThread as deleteThreadApi,
+	fetchThreadHistory,
+	fetchThread,
+	renameThread as renameThreadApi,
+} from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 
@@ -47,7 +52,8 @@ vi.mock('../instanceAi.api', () => ({
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
-	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
+	fetchThread: vi.fn(),
+	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
@@ -91,6 +97,44 @@ describe('useInstanceAiStore - runtime registry', () => {
 		vi.clearAllMocks();
 	});
 
+	it('merges history pages without replacing recent chats or duplicating threads', async () => {
+		const store = useInstanceAiStore();
+		store.threads = [
+			{ id: 'recent', title: 'Recent', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
+		];
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [
+				{
+					id: 'older',
+					title: 'Older',
+					resourceId: 'user',
+					createdAt: '2026-01-01',
+					updatedAt: '2026-01-01',
+				},
+			],
+			nextCursor: null,
+			hasMore: false,
+		});
+		await store.loadThreadPage({ cursor: 'older-cursor', limit: 30, search: 'Older' });
+		expect(store.threads.map((thread) => thread.id)).toEqual(['recent', 'older']);
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [
+				{
+					id: 'recent',
+					title: 'Renamed',
+					resourceId: 'user',
+					createdAt: '2026-02-01',
+					updatedAt: '2026-02-01',
+				},
+			],
+			nextCursor: null,
+			hasMore: true,
+		});
+		await store.loadThreads();
+		expect(store.threads.map((thread) => thread.id)).toEqual(['recent', 'older']);
+		expect(store.threads[0].title).toBe('Renamed');
+	});
+
 	it('returns the same runtime for the same thread id', () => {
 		const store = useInstanceAiStore();
 
@@ -101,6 +145,61 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(second).toBe(first);
 		expect(other).not.toBe(first);
 	});
+
+	it.each(['history', 'recent', 'thread', 'rename'] as const)(
+		'does not restore a deleted thread from a late %s response',
+		async (request) => {
+			const store = useInstanceAiStore();
+			const thread = {
+				id: 'thread-1',
+				title: 'Saved chat',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01',
+				updatedAt: '2026-01-01',
+			};
+			vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+				threads: [thread],
+				nextCursor: null,
+				hasMore: false,
+			});
+			await store.loadThreads();
+			const pending = Promise.withResolvers<void>();
+			vi.mocked(fetchThreadHistory).mockImplementationOnce(async () => {
+				await pending.promise;
+				return { threads: [thread], nextCursor: null, hasMore: false };
+			});
+			vi.mocked(fetchThread).mockImplementationOnce(async () => {
+				await pending.promise;
+				return { thread };
+			});
+			vi.mocked(renameThreadApi).mockImplementationOnce(async () => {
+				await pending.promise;
+				return { thread: { ...thread, title: 'Renamed' } };
+			});
+			const response =
+				request === 'history'
+					? store.loadThreadPage({ limit: 30 })
+					: request === 'recent'
+						? store.loadThreads()
+						: request === 'thread'
+							? store.loadThread(thread.id)
+							: store.renameThread(thread.id, 'Renamed');
+			await store.deleteThread(thread.id);
+			pending.resolve();
+			await response;
+			expect(store.threads).toEqual([]);
+			mockDeleteThread.mockClear();
+			await store.deleteThread(thread.id);
+			expect(mockDeleteThread).not.toHaveBeenCalled();
+			vi.mocked(fetchThreadHistory).mockReset().mockResolvedValue({
+				threads: [],
+				nextCursor: null,
+				hasMore: false,
+			});
+			vi.mocked(fetchThread).mockReset();
+			vi.mocked(renameThreadApi).mockReset().mockResolvedValue({ thread });
+		},
+	);
 
 	it('disposes and removes a single runtime', () => {
 		const store = useInstanceAiStore();

@@ -62,6 +62,39 @@ function getToolInputs(message: AgentDbMessage | undefined): unknown[] {
 }
 
 describe('TypeORMAgentMemory', () => {
+	it('pages history with stable ordering', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findAndCount.mockResolvedValue([[], 75]);
+		const { memory } = createMemory({ threadRepo });
+		const result = await memory.listThreads({
+			filter: { resourceId: 'user-1' },
+			page: 1,
+			perPage: 30,
+		});
+		expect(threadRepo.findAndCount).toHaveBeenCalledWith({
+			where: { resourceId: 'user-1' },
+			order: { updatedAt: 'DESC', id: 'DESC' },
+			take: 30,
+			skip: 30,
+		});
+		expect(result).toMatchObject({ total: 75, page: 1, hasMore: true });
+	});
+
+	it('searches only the requested user history and detects the final page', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.searchHistory.mockResolvedValue([[], 32]);
+		const { memory } = createMemory({ threadRepo });
+		const result = await memory.listThreads({
+			filter: { resourceId: 'user-1' },
+			search: 'invoice',
+			page: 1,
+			perPage: 30,
+		});
+		expect(threadRepo.searchHistory).toHaveBeenCalledWith('user-1', 'invoice', 1, 30);
+		expect(threadRepo.findAndCount).not.toHaveBeenCalled();
+		expect(result.hasMore).toBe(false);
+	});
+
 	it('persists active skills without replacing other thread metadata or another agent state', async () => {
 		const thread = mock<InstanceAiThread>({
 			id: 'thread-1',
