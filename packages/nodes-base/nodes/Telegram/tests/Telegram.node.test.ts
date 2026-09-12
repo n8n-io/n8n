@@ -1139,6 +1139,47 @@ describe('Telegram node', () => {
 		});
 	});
 
+	describe('message:editMessageText', () => {
+		it('should work correctly even when protect_content is set in additionalFields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'editMessageText';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'messageId':
+						return '456';
+					case 'text':
+						return 'Updated text';
+					case 'additionalFields':
+						return { protect_content: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 456 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'editMessageText',
+				expect.objectContaining({
+					chat_id: '123',
+					message_id: '456',
+					text: 'Updated text',
+				}),
+				{},
+			);
+		});
+	});
+
 	describe('message:sendRichMessageDraft', () => {
 		it('should stream the rich message with chat_id and draft_id', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
