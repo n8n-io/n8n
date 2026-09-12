@@ -25,6 +25,20 @@ export class Metabase implements INodeType {
 			{
 				name: 'metabaseApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'metabaseApiKeyApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -33,6 +47,22 @@ export class Metabase implements INodeType {
 			headers: {},
 		},
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'Username & Password',
+						value: 'password',
+					},
+				],
+				default: 'password',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
