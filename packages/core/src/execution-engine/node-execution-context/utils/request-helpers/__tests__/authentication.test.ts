@@ -118,7 +118,7 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).toHaveBeenCalledTimes(2);
 		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
 			{ helpers: mockThis.helpers },
-			expect.objectContaining({ sessionToken: 'fresh' }),
+			expect.anything(),
 			'testSessionAuth',
 			mockNode,
 			true,
@@ -270,7 +270,7 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).toHaveBeenCalledTimes(2);
 		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
 			{ helpers: mockThis.helpers },
-			expect.objectContaining({ sessionToken: 'fresh' }),
+			expect.anything(),
 			'testSessionAuth',
 			mockNode,
 			true,
@@ -411,9 +411,17 @@ describe('httpRequestWithAuthentication', () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
 		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
-		mockAdditionalData.credentialsHelper.preAuthentication
-			.mockResolvedValueOnce(undefined)
-			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		const preAuthSnapshots: Array<{ sessionToken: unknown; expired: boolean }> = [];
+		// Snapshot at call time. Object.assign later mutates the same credentials object.
+		mockAdditionalData.credentialsHelper.preAuthentication.mockImplementation(
+			async (_helpers, credentials, _type, _node, expired) => {
+				preAuthSnapshots.push({
+					sessionToken: (credentials as { sessionToken?: unknown }).sessionToken,
+					expired,
+				});
+				return expired ? { sessionToken: 'fresh' } : undefined;
+			},
+		);
 		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
 
 		const error401 = Object.assign(new Error('401 - still expired'), {
@@ -442,15 +450,10 @@ describe('httpRequestWithAuthentication', () => {
 		).rejects.toBeInstanceOf(NodeApiError);
 
 		expect(request).toHaveBeenCalledTimes(2);
-		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(2);
-		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenNthCalledWith(
-			2,
-			{ helpers: mockThis.helpers },
-			expect.objectContaining({ sessionToken: 'fresh' }),
-			'testSessionAuth',
-			mockNode,
-			true,
-		);
+		expect(preAuthSnapshots).toEqual([
+			{ sessionToken: 'stale', expired: false },
+			{ sessionToken: 'stale', expired: true },
+		]);
 	});
 
 	test('still retries a form-data body when the 401 happened before any send', async () => {

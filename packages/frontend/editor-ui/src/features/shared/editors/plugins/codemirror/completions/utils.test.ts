@@ -30,6 +30,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		getNodeByName: vi.fn().mockReturnValue(null),
 		allNodes: [],
 		name: '',
 		settings: {},
@@ -272,52 +273,86 @@ describe('completion utils', () => {
 	describe('isInHttpNodePagination', () => {
 		beforeEach(() => {
 			mockNdvStore.activeNode = { type: HTTP_REQUEST_NODE_TYPE } as NDVStore['activeNode'];
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(null);
 		});
 
 		it('returns true for pagination option paths', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.pagination.pagination.completeExpression';
-			expect(isInHttpNodePagination('test-id')).toBe(true);
+			expect(isInHttpNodePagination('test@latest')).toBe(true);
 		});
 
 		it('returns false for Credential Expired When', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen';
-			expect(isInHttpNodePagination('test-id')).toBe(false);
+			expect(isInHttpNodePagination('test@latest')).toBe(false);
 		});
 
 		it('returns false for other HTTP Request options', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.timeout';
-			expect(isInHttpNodePagination('test-id')).toBe(false);
+			expect(isInHttpNodePagination('test@latest')).toBe(false);
+		});
+
+		it('uses the target node type when the editor provides a parameter context', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.timeout';
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(
+				createTestNode({ name: 'My HTTP Request', type: HTTP_REQUEST_NODE_TYPE }),
+			);
+
+			expect(
+				isInHttpNodePagination('test@latest', {
+					nodeName: 'My HTTP Request',
+					parameterPath: 'parameters.options.pagination.pagination.completeExpression',
+				}),
+			).toBe(true);
 		});
 	});
 
 	describe('isInHttpNodeCredentialExpiredWhen', () => {
 		beforeEach(() => {
 			mockNdvStore.activeNode = { type: HTTP_REQUEST_NODE_TYPE } as NDVStore['activeNode'];
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(null);
 		});
 
 		it('returns true for Credential Expired When', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen';
-			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(true);
+			expect(isInHttpNodeCredentialExpiredWhen('test@latest')).toBe(true);
 		});
 
 		it('returns true for nested Credential Expired When paths', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen.';
-			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(true);
+			expect(isInHttpNodeCredentialExpiredWhen('test@latest')).toBe(true);
 		});
 
 		it('returns false for pagination option paths', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.pagination.pagination.completeExpression';
-			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(false);
+			expect(isInHttpNodeCredentialExpiredWhen('test@latest')).toBe(false);
 		});
 
-		it('uses the target parameter path when NDV focus is on another field', () => {
+		it('uses the target node type when the editor provides a parameter context', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.timeout';
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(
+				createTestNode({ name: 'My HTTP Request', type: HTTP_REQUEST_NODE_TYPE }),
+			);
+
 			expect(
-				isInHttpNodeCredentialExpiredWhen('test-id', {
-					nodeName: HTTP_REQUEST_NODE_TYPE,
+				isInHttpNodeCredentialExpiredWhen('test@latest', {
+					nodeName: 'My HTTP Request',
 					parameterPath: 'parameters.options.credentialExpiredWhen',
 				}),
 			).toBe(true);
+			expect(mockWorkflowDocumentStore.getNodeByName).toHaveBeenCalledWith('My HTTP Request');
+		});
+
+		it('returns false when the target node is not an HTTP Request', () => {
+			vi.mocked(mockWorkflowDocumentStore.getNodeByName).mockReturnValue(
+				createTestNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+			);
+
+			expect(
+				isInHttpNodeCredentialExpiredWhen('test@latest', {
+					nodeName: 'Set',
+					parameterPath: 'parameters.options.credentialExpiredWhen',
+				}),
+			).toBe(false);
 		});
 	});
 });

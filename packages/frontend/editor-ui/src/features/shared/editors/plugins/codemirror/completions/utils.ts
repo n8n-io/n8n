@@ -235,18 +235,22 @@ const getHttpNodeFocusedPath = (
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
-	let nodeType: string | undefined;
-	let path: string;
 	if (targetNodeParameterContext) {
-		nodeType = targetNodeParameterContext.nodeName;
-		path = targetNodeParameterContext.parameterPath;
-	} else {
-		const ndvStore = useNDVStore(workflowDocumentId);
-		nodeType = ndvStore.activeNode?.type;
-		path = ndvStore.focusedInputPath;
+		// Target context stores the node name. Read the node type so a custom name still matches.
+		const node = useWorkflowDocumentStore(workflowDocumentId).getNodeByName(
+			targetNodeParameterContext.nodeName,
+		);
+		return {
+			nodeType: node?.type,
+			path: targetNodeParameterContext.parameterPath,
+		};
 	}
 
-	return { nodeType, path };
+	const ndvStore = useNDVStore(workflowDocumentId);
+	return {
+		nodeType: ndvStore.activeNode?.type,
+		path: ndvStore.focusedInputPath,
+	};
 };
 
 export const isInHttpNodePagination = (
