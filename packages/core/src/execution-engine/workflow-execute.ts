@@ -2354,6 +2354,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										this.mode,
 										this.abortController.signal,
+										subNodeExecutionResults,
 									);
 
 									nodeFailed = checkFailure(runNodeData);
