@@ -13,6 +13,13 @@
  * declaration, so the two cannot drift. Backend resolution sites call
  * {@link resolveWebhookDescriptionField} first and only fall back to the engine
  * when the user's parameters actually contain expressions.
+ *
+ * TODO(simple-path rollout): this whole module is transitional. Once lazy
+ * isolate acquisition and the simple-expression fast path are the defaults,
+ * a plain inline template in the simple grammar costs a cached parse plus a
+ * host-side interpretation — no isolate, no prediction. Delete this module
+ * (with the `webhookPhaseNeedsIsolate` gate and its flag) and revert the
+ * descriptions to plain inline template strings.
  */
 
 import type {
@@ -33,6 +40,9 @@ export type WebhookDescriptionField = NativeParameterResolvers[string];
  * the same truthiness fallback. Nested reads take a path array. Walking into a
  * missing parent yields `undefined`, matching what the engine returns for the
  * same reference.
+ *
+ * TODO(simple-path rollout): remove — the template alone suffices (see module
+ * doc).
  */
 export function fromParameter(path: string | string[], fallback?: string): WebhookDescriptionField {
 	const segments = Array.isArray(path) ? path : [path];
@@ -63,6 +73,10 @@ export function fromParameter(path: string | string[], fallback?: string): Webho
  * import, a module constant) produces a template the expression sandbox cannot
  * evaluate. The parity test in the Webhook node's description.test.ts catches
  * this; add one for any node that declares `fromFunction` fields.
+ *
+ * TODO(simple-path rollout): remove — its inlined-function templates are never
+ * simple, so rewrite any remaining use as a plain simple-grammar template (see
+ * module doc).
  */
 export function fromFunction<P extends INodeParameters>(
 	fn: (parameters: P) => NodeParameterValueType | undefined,
@@ -71,6 +85,28 @@ export function fromFunction<P extends INodeParameters>(
 		template: `={{(${String(fn)})($parameter)}}`,
 		resolve: fn as WebhookDescriptionField['resolve'],
 	};
+}
+
+/**
+ * A field whose template is hand-written in the simple-expression grammar
+ * (path traversal, `?.`, ternary, `||`) instead of inlining a function like
+ * {@link fromFunction}. Such a template stays evaluatable by the host-side
+ * fast path, so it never forces the engine (an isolate) even when the node's
+ * parameters hold expressions and the native resolver declines.
+ *
+ * Template and resolver are two representations of the same logic. Drift is
+ * caught by executing both: the node's description parity tests must cover
+ * every branch (see the Webhook node's description.test.ts), and a test must
+ * assert the template classifies as simple (`isSimpleExpression`).
+ *
+ * TODO(simple-path rollout): remove — drop the resolver and inline the
+ * template string directly in the description (see module doc).
+ */
+export function fromExpression<P extends INodeParameters>(
+	template: string,
+	resolve: (parameters: P) => NodeParameterValueType | undefined,
+): WebhookDescriptionField {
+	return { template, resolve: resolve as WebhookDescriptionField['resolve'] };
 }
 
 /**
