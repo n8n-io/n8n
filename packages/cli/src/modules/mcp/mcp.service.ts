@@ -55,9 +55,9 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -504,6 +504,9 @@ export class McpService {
 		);
 		registerIfAllowed(getExecutionTool);
 
+		// TODO(CAT-4510): the search lists engine 2.0 executions, but
+		// `get_workflow_execution` above still reads only the control plane, so an
+		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,

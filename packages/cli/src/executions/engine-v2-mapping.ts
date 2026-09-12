@@ -23,3 +23,16 @@ export function toV1Status(status: ExecutionStatus): ExecutionStatusV1 {
 export function toV1Mode(mode: ExecutionMode): WorkflowExecuteMode {
 	return V1_MODE_BY_V2_MODE.get(mode) ?? 'trigger';
 }
+
+/**
+ * The v2 status codes that map onto one of `v1Statuses`, or `undefined` when no
+ * filter is given. An unfiltered list must not be narrowed to the mapped
+ * statuses, or a status the data plane adds later never shows up.
+ */
+export function resolveV2Statuses(v1Statuses?: ExecutionStatusV1[]): ExecutionStatus[] | undefined {
+	if (!v1Statuses?.length) return undefined;
+
+	return [...V1_STATUS_BY_V2_STATUS.entries()]
+		.filter(([, v1]) => v1Statuses.includes(v1))
+		.map(([v2]) => v2);
+}

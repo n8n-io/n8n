@@ -1,13 +1,54 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot } from '@n8n/engine';
-import type { IRunExecutionData } from 'n8n-workflow';
+import type {
+	ExecutionListItem,
+	ExecutionSnapshot,
+	ExecutionStatus,
+	SearchExecutionsRequest,
+} from '@n8n/engine';
+import type {
+	ExecutionStatus as ExecutionStatusV1,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+	ExecutionSummary,
+	Workflow,
+} from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
-import { toV1Mode, toV1Status } from './engine-v2-mapping';
+import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
+import type { ExecutionPosition } from './execution-cursor';
 import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
+
+/**
+ * Workflow visibility scope for engine v2. Marks which workflows can be
+ * returned by the search.
+ */
+export type V2Scope = 'all' | ReadonlyArray<Workflow['id']>;
+
+/** The subset of a range query the data plane search actually understands. */
+export interface EngineV2SearchQuery {
+	/** A v1 status filter; resolved internally to the v2 statuses that map onto it. */
+	status?: ExecutionStatusV1[];
+	mode?: WorkflowExecuteMode;
+	startedAfter?: string;
+	startedBefore?: string;
+	/** The DP source position to resume from, independent of the control plane's own cursor. */
+	before?: ExecutionPosition;
+	limit: number;
+	order?: {
+		top?: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+		startedAt?: 'DESC';
+	};
+}
+
+/**
+ * The most workflow IDs one data plane search takes. A wider scope throws for
+ * now; splitting it across several searches can come later.
+ */
+const MAX_SCOPE_SIZE = 10_000;
 
 /**
  * Reads an engine 2.0 execution for display. The data plane is its only store:
@@ -17,6 +58,84 @@ import type { ExecutionIdV2 } from './execution-id';
 @Service()
 export class EngineV2ExecutionReader {
 	constructor(private readonly dataPlane: EngineDataPlaneProxyService) {}
+
+	async findMany(
+		query: EngineV2SearchQuery,
+		scope: V2Scope,
+		options: { includeTotal?: boolean } = {},
+	) {
+		const { includeTotal = false } = options;
+		if (scope !== 'all' && !scope.length) return this.empty();
+
+		const status = resolveV2Statuses(query.status);
+		// A filter that matches no v2 status can only return nothing.
+		if (status?.length === 0) return this.empty();
+
+		const request = this.buildSearchRequest(
+			query,
+			this.searchableScope(scope),
+			status,
+			includeTotal,
+		);
+		const page = await this.dataPlane.searchExecutions(request);
+
+		return {
+			items: page.items.map((item) => this.toExecutionSummary(item)),
+			total: page.total ?? 0,
+			hasMore: page.nextCursor !== null,
+		};
+	}
+
+	private empty() {
+		return { items: [], hasMore: false, total: 0 };
+	}
+
+	/** The deduplicated scope, or a user-facing error when one search cannot hold it. */
+	private searchableScope(scope: V2Scope): V2Scope {
+		if (scope === 'all') return scope;
+
+		const ids = [...new Set(scope)];
+		if (ids.length > MAX_SCOPE_SIZE) {
+			throw new UserError(
+				`Cannot search executions across more than ${MAX_SCOPE_SIZE} workflows. Filter by project or workflow.`,
+			);
+		}
+
+		return ids;
+	}
+
+	private buildSearchRequest(
+		query: EngineV2SearchQuery,
+		scope: V2Scope,
+		status: ExecutionStatus[] | undefined,
+		includeTotal: boolean,
+	): SearchExecutionsRequest {
+		return {
+			workflowIds: scope,
+			status,
+			mode: query.mode,
+			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
+			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
+			before: query.before ? { createdAt: query.before.timestamp, id: query.before.id } : undefined,
+			limit: query.limit,
+			includeTotal,
+			order: query.order,
+		};
+	}
+
+	private toExecutionSummary(item: ExecutionListItem): ExecutionSummary {
+		return {
+			id: item.id,
+			workflowId: item.workflowId,
+			status: toV1Status(item.status),
+			mode: toV1Mode(item.mode),
+			finished: item.status === 'completed',
+			createdAt: new Date(item.createdAt),
+			startedAt: new Date(item.createdAt),
+			stoppedAt: item.finishedAt ? new Date(item.finishedAt) : undefined,
+			annotation: { tags: [] },
+		};
+	}
 
 	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */
 	async findOne(

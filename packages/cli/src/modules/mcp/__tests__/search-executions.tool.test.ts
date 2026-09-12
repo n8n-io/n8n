@@ -26,22 +26,24 @@ const createExecution = (overrides: Partial<ExecutionSummary> = {}): ExecutionSu
 
 describe('search-executions MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
+	const uuid = '01992380-0000-7000-8000-000000000001';
+	const time = '2026-09-07T12:00:00.000Z';
 	let executionListService: ExecutionListService;
 	let workflowFinderService: WorkflowFinderService;
 	let telemetry: Telemetry;
 
 	beforeEach(() => {
 		executionListService = mockInstance(ExecutionListService, {
+			buildSharingOptions: vi.fn().mockResolvedValue({
+				scopes: ['workflow:read'],
+				projectRoles: ['project:editor'],
+				workflowRoles: ['workflow:editor'],
+			}),
 			findPageWithCount: vi.fn().mockResolvedValue({
 				results: [],
 				count: 0,
 				estimated: false,
 				nextCursor: null,
-			}),
-			buildSharingOptions: vi.fn().mockResolvedValue({
-				scopes: ['workflow:read'],
-				projectRoles: ['project:editor'],
-				workflowRoles: ['workflow:editor'],
 			}),
 		});
 		workflowFinderService = mockInstance(WorkflowFinderService, {
@@ -164,13 +166,23 @@ describe('search-executions MCP tool', () => {
 		expect(query.range.limit).toBe(200);
 	});
 
-	test('pages from the execution ID the cursor encodes', async () => {
-		const cursor = encodeExecutionCursor('50');
+	// The tool does not bound the page itself. It hands the decoded cursor over,
+	// and the list service applies each store's position to that store.
+	test('forwards the decoded cursor instead of bounding the range', async () => {
+		const position = {
+			version: 1 as const,
+			v1: { id: '50', timestamp: time },
+			v2: { id: uuid, timestamp: time },
+		};
 
-		await createTool().handler({ cursor } as never, {} as never);
+		await createTool().handler({ cursor: encodeExecutionCursor(position) } as never, {} as never);
 
+		expect(executionListService.findPageWithCount).toHaveBeenCalledWith(
+			expect.anything(),
+			position,
+		);
 		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
-		expect(query.range.beforeId).toBe('50');
+		expect(query.range).toEqual({ limit: 200 });
 	});
 
 	test('returns an error for an invalid cursor', async () => {
@@ -191,7 +203,7 @@ describe('search-executions MCP tool', () => {
 		});
 	});
 
-	test('delegates sharing options to executionListService.buildSharingOptions', async () => {
+	test('delegates sharing options to the list service', async () => {
 		await createTool().handler({} as never, {} as never);
 
 		expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('workflow:read');

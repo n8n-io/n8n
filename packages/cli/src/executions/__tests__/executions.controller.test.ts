@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
-import type { License } from '@/license';
+import type { ExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
@@ -18,14 +18,13 @@ describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
 	const executionListService = mock<ExecutionListService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
-	const license = mock<License>();
 
 	const executionsController = new ExecutionsController(
 		executionService,
-		executionListService,
 		mock(),
 		workflowSharingService,
-		license,
+		mock(),
+		executionListService,
 	);
 
 	beforeEach(() => {
@@ -96,55 +95,46 @@ describe('ExecutionsController', () => {
 	});
 
 	describe('getMany', () => {
-		const NO_EXECUTIONS = {
-			count: 0,
-			estimated: false,
-			results: [],
-			nextCursor: null,
-		};
+		it.each([undefined, [], ['success']] as const)(
+			'passes filters and cursor to the editor list for %s',
+			async (status) => {
+				const rangeQuery: ExecutionSummaries.RangeQuery = {
+					kind: 'range',
+					range: { limit: 20 },
+					status: status ? [...status] : undefined,
+				};
+				const user = mock<User>({ id: 'member' });
+				const sharingOptions = {
+					scopes: ['workflow:read' as const],
+					workflowRoles: ['workflow:editor'],
+					projectRoles: ['project:viewer'],
+				};
+				executionListService.buildSharingOptions.mockResolvedValue(sharingOptions);
+				executionListService.listExecutionsForUI.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+					nextCursor: null,
+				});
+				// The middleware decodes the cursor, so the controller forwards the
+				// decoded object rather than the query param.
+				const cursor: ExecutionCursor = {
+					version: 1,
+					v1: { id: '10', timestamp: '2026-09-07T12:00:00.000Z' },
+				};
+				const req = mock<ExecutionRequest.GetMany>({ rangeQuery, user, cursor });
 
-		it('should list executions for the UI and add scopes', async () => {
-			const rangeQuery: ExecutionSummaries.RangeQuery = {
-				kind: 'range',
-				workflowId: undefined,
-				status: undefined,
-				range: { limit: 20, beforeId: undefined },
-			};
-			const sharingOptions = {
-				scopes: ['workflow:read' as const],
-				workflowRoles: [],
-				projectRoles: [],
-			};
-			executionListService.buildSharingOptions.mockResolvedValue(sharingOptions);
-			executionListService.listExecutionsForUI.mockResolvedValue(NO_EXECUTIONS);
-			executionService.getConcurrentExecutionsCount.mockResolvedValue(-1);
-
-			const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
-
-			const result = await executionsController.getMany(req);
-
-			expect(rangeQuery.sharingOptions).toEqual(sharingOptions);
-			expect(executionListService.listExecutionsForUI).toHaveBeenCalledWith(rangeQuery);
-			expect(executionListService.addScopes).toHaveBeenCalledWith(req.user, NO_EXECUTIONS.results);
-			expect(executionService.getConcurrentExecutionsCount).toHaveBeenCalled();
-			expect(result).toEqual({ ...NO_EXECUTIONS, concurrentExecutionsCount: -1 });
-		});
-
-		it('should drop the advanced filters without the license', async () => {
-			const rangeQuery: ExecutionSummaries.RangeQuery = {
-				kind: 'range',
-				range: { limit: 20 },
-				metadata: [{ key: 'k', value: 'v' }],
-				annotationTags: ['tag-1'],
-			};
-			license.isAdvancedExecutionFiltersEnabled.mockReturnValue(false);
-			executionListService.listExecutionsForUI.mockResolvedValue(NO_EXECUTIONS);
-
-			await executionsController.getMany(mock<ExecutionRequest.GetMany>({ rangeQuery }));
-
-			expect(rangeQuery.metadata).toBeUndefined();
-			expect(rangeQuery.annotationTags).toBeUndefined();
-		});
+				await expect(executionsController.getMany(req)).resolves.toMatchObject({
+					results: [],
+					nextCursor: null,
+				});
+				expect(executionListService.listExecutionsForUI).toHaveBeenCalledWith(
+					expect.objectContaining({ user, sharingOptions, status: rangeQuery.status }),
+					cursor,
+				);
+				expect(executionListService.addScopes).toHaveBeenCalledWith(user, []);
+			},
+		);
 	});
 
 	describe('stop', () => {

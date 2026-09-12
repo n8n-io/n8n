@@ -5027,7 +5027,11 @@ describe('POST /workflows/:workflowId/run', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {
