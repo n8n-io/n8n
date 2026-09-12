@@ -35,10 +35,10 @@ const CONFIG_FILENAMES = [
 	'eslint.config.ts',
 ];
 
-/** `nodeConfig` composes `encryptionBoundaryConfig`, so either import brings the rules in. */
+/** `backendConfig` composes the boundary, and `nodesConfig` composes `backendConfig`. */
 const BOUNDARY_IMPORT =
-	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/eslint-config\/(?:node|encryption-boundary)['"]/;
-const BOUNDARY_EXPORTS = /^(nodeConfig|encryptionBoundaryConfig)(?:\s+as\s+(\w+))?$/;
+	/import\s*\{([^}]*)\}\s*from\s+['"]@n8n\/eslint-config\/(?:backend|nodes)['"]/;
+const BOUNDARY_EXPORTS = /^(backendConfig|nodesConfig)(?:\s+as\s+(\w+))?$/;
 
 /** A guarded rule configured to anything weaker than "error" in an ESLint config. */
 const DOWNGRADE =
@@ -134,7 +134,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} depends on ${trigger} but has no ESLint config, so the encryption boundary is not linted there.`,
-					'Add an eslint.config.mjs that composes `encryptionBoundaryConfig` from @n8n/eslint-config/encryption-boundary (or `nodeConfig`).',
+					'Add an eslint.config.mjs that extends `backendConfig` from @n8n/eslint-config/backend (or `nodesConfig`).',
 				),
 			];
 		}
@@ -149,7 +149,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} depends on ${trigger} but its ESLint config does not compose the encryption boundary.`,
-					"Import `encryptionBoundaryConfig` from '@n8n/eslint-config/encryption-boundary' (or use `nodeConfig`) and add it to the exported config.",
+					"Extend `backendConfig` from '@n8n/eslint-config/backend' (or `nodesConfig`) and add it to the exported config.",
 				),
 			);
 		}

@@ -18,7 +18,7 @@ parameters:
       type: string
     required: true
     description: The ID of the workflow version.
-    name: versionId
+    name: workflowVersionId
     in: path
 responses:
   '200':

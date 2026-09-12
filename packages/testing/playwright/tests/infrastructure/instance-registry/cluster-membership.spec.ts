@@ -24,7 +24,7 @@ test.use({
 });
 
 test.describe(
-	'Instance Registry cluster membership @mode:multi-main @capability:instance-registry',
+	'Instance Registry cluster membership @mode:multi-main',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

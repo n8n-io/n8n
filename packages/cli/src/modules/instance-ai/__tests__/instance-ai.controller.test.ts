@@ -207,6 +207,8 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
+				payload.mode,
+				payload.promptVersion,
 			);
 		});
 
@@ -241,6 +243,35 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+				payloadWithPushRef.mode,
+				payloadWithPushRef.promptVersion,
+			);
+		});
+
+		it('should forward the build mode and prompt version to startRun', async () => {
+			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				message: 'build me a workflow',
+				timeZone: 'UTC',
+				attachments: undefined,
+				mode: 'progressive',
+				promptVersion: 'progressive@1',
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-5');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithMode.message,
+				payloadWithMode.attachments,
+				payloadWithMode.context,
+				payloadWithMode.timeZone,
+				payloadWithMode.pushRef,
+				'progressive',
+				'progressive@1',
 			);
 		});
 
@@ -273,6 +304,8 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
+				payloadWithContext.mode,
+				payloadWithContext.promptVersion,
 			);
 		});
 
@@ -371,6 +404,8 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
+				nodesPayload.mode,
+				nodesPayload.promptVersion,
 			);
 		});
 
@@ -778,6 +813,9 @@ describe('InstanceAiController', () => {
 
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
+			// The allowlist service is real and shared: drop what the allowlist tests pinned.
+			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
 
 		it('should require instanceAi:eval scope', () => {
@@ -796,6 +834,7 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				expect.any(Map),
+				undefined,
 			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
@@ -836,8 +875,26 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				idMap,
+				undefined,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should hand the pinned credential allowlist to the workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalCredentialAllowlists.set(THREAD_ID, ['cred-1', 'cred-2']);
+
+			await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+				new Set(['cred-1', 'cred-2']),
+			);
 		});
 
 		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
@@ -864,6 +921,40 @@ describe('InstanceAiController', () => {
 			// No messages to restore — the message write is skipped.
 			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
+		});
+
+		it('publishes the flagged seeds before the messages, so a refused publish strands nothing', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.publishSeedWorkflows.mockRejectedValueOnce(
+				new Error('Workflow has no trigger'),
+			);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				'Workflow has no trigger',
+			);
+
+			// The messages cannot be rolled back, so they are not written yet.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+		});
+
+		it('unpublishes a re-applied published seed when a later step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			// The seed id already existed in the project, so the restore created nothing.
+			evalThreadRestore.restoreWorkflows.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.restoreAgents.mockRejectedValueOnce(new Error('agents down'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('agents down');
+
+			// Not in the created list, so the delete never sees it: the unpublish must.
+			expect(evalThreadRestore.unpublishWorkflows).toHaveBeenCalledWith(['wf-1']);
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith([]);
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {
@@ -1430,7 +1521,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.deleteThread(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
 			expect(memoryService.deleteThread).toHaveBeenCalledWith(THREAD_ID);
 		});
 

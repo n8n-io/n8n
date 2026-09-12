@@ -36,6 +36,14 @@ type GitOperation = {
 	configId: string;
 };
 
+const BASE_GIT_OPTIONS = {
+	binary: 'git',
+	maxConcurrentProcesses: 1,
+	trimmed: false,
+	timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
+	config: ['core.autocrlf=false'],
+} satisfies Partial<SimpleGitOptions>;
+
 /**
  * Plain-Git transport. Takes plain values, so it never sees an ORM entity and can
  * be given a snapshot taken before the operation started.
@@ -82,7 +90,7 @@ export class PromotionsGitService {
 	// Accept only SSH remotes; Git transport helpers and local paths can execute or expose host data.
 	private validateSshRemoteUrl(remoteUrl: string) {
 		const error = new BadRequestError(
-			'SSH key providers require an ssh:// or user@host:path remote URL',
+			'SSH key providers require an ssh:// or [user@]host:path remote URL',
 		);
 
 		if (remoteUrl.startsWith('-') || remoteUrl.includes('::')) throw error;
@@ -104,6 +112,7 @@ export class PromotionsGitService {
 		// On Windows, Git interprets drive-letter prefixes as local paths.
 		if (process.platform === 'win32' && /^[a-zA-Z]:/.test(remoteUrl)) throw error;
 
+		// Git uses the default SSH user when the remote omits one.
 		const isScpLike = /^(?:[a-zA-Z0-9_.-]+@)?[a-zA-Z0-9._][a-zA-Z0-9._-]*:[^\s]+$/.test(remoteUrl);
 		if (!isScpLike) throw error;
 	}
@@ -183,16 +192,22 @@ export class PromotionsGitService {
 		credentials,
 		paths,
 		branchName,
+		targetBranchName,
 		configId,
 		author,
 		commitMessage,
 		force,
 		stagePathspec,
+		onCheckoutRestored,
 	}: GitOperation & {
+		/** Push to this new branch instead of the configured base branch. */
+		targetBranchName?: string;
 		author: { name: string; email: string };
 		commitMessage: string;
 		force: boolean;
 		stagePathspec: string;
+		/** Called only after the checkout returns to its base commit. */
+		onCheckoutRestored: () => Promise<void>;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.withGit(
@@ -205,9 +220,20 @@ export class PromotionsGitService {
 					config: [`user.name=${author.name}`, `user.email=${author.email}`],
 				},
 				async (git) => {
+					if (targetBranchName) {
+						return await this.commitAndPushToTargetBranch(git, {
+							branchName,
+							targetBranchName,
+							commitMessage,
+							stagePathspec,
+							onCheckoutRestored,
+						});
+					}
+
 					// Scope staging to the package while including removed entities.
 					await git.add(['--all', '--', stagePathspec]);
 					await git.commit(commitMessage);
+					const commitSha = (await git.revparse(['HEAD'])).trim();
 
 					if (force) {
 						await git.push('origin', branchName, ['-f']);
@@ -215,7 +241,34 @@ export class PromotionsGitService {
 						await git.push('origin', branchName);
 					}
 
-					return { commitSha: (await git.revparse(['HEAD'])).trim() };
+					return { commitSha };
+				},
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName: targetBranchName ?? branchName });
+		}
+	}
+
+	/** Reset the checkout to the latest base branch before one branched promotion. */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		try {
+			await this.withGit(
+				{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+				async (git) => {
+					const branchRefs = await git.listRemote([
+						'--heads',
+						'origin',
+						`refs/heads/${branchName}`,
+					]);
+					if (!branchRefs.trim()) {
+						throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+					}
+
+					await git.fetch('origin', `+refs/heads/${branchName}:refs/remotes/origin/${branchName}`, [
+						'--progress',
+					]);
+					await git.raw(['reset', '--hard', `origin/${branchName}`]);
 				},
 			);
 		} catch (error) {
@@ -223,23 +276,138 @@ export class PromotionsGitService {
 		}
 	}
 
-	async refreshCheckout({
+	/** Push one commit to a new branch and restore the local base branch. */
+	private async commitAndPushToTargetBranch(
+		git: SimpleGit,
+		{
+			branchName,
+			targetBranchName,
+			commitMessage,
+			stagePathspec,
+			onCheckoutRestored,
+		}: {
+			branchName: string;
+			targetBranchName: string;
+			commitMessage: string;
+			stagePathspec: string;
+			onCheckoutRestored: () => Promise<void>;
+		},
+	): Promise<{ commitSha: string }> {
+		const preCommitHead = (
+			await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
+		).trim();
+		if (!preCommitHead) {
+			throw new BadRequestError(`Local branch does not exist: ${branchName}`);
+		}
+
+		try {
+			await git.add(['--all', '--', stagePathspec]);
+			await git.commit(commitMessage);
+			const commitSha = (await git.revparse(['HEAD'])).trim();
+			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
+			return { commitSha };
+		} finally {
+			await this.restorePromotionBase(git, {
+				branchName,
+				targetBranchName,
+				preCommitHead,
+				onCheckoutRestored,
+			});
+		}
+	}
+
+	private async restorePromotionBase(
+		git: SimpleGit,
+		{
+			branchName,
+			targetBranchName,
+			preCommitHead,
+			onCheckoutRestored,
+		}: {
+			branchName: string;
+			targetBranchName: string;
+			preCommitHead: string;
+			onCheckoutRestored: () => Promise<void>;
+		},
+	): Promise<void> {
+		try {
+			await git.raw(['reset', '--hard', preCommitHead]);
+		} catch {
+			this.logger.warn('Failed to restore Git checkout after promotion', {
+				branchName,
+				targetBranchName,
+			});
+			return;
+		}
+
+		try {
+			await onCheckoutRestored();
+		} catch {
+			// The checkout is usable, but it stays untrusted until the next clone.
+			this.logger.warn('Failed to trust the Git checkout after promotion', {
+				branchName,
+				targetBranchName,
+			});
+		}
+	}
+
+	private async fetchBranch({
 		remoteUrl,
 		credentials,
 		paths,
 		branchName,
-		configId,
-	}: GitOperation): Promise<{ commitSha: string }> {
+	}: GitOperation): Promise<void> {
+		await this.withGit(
+			{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+			async (git) => {
+				// --progress keeps the stall-timeout timer fed during a healthy transfer.
+				await git.fetch('origin', `+refs/heads/${branchName}:refs/remotes/origin/${branchName}`, [
+					'--progress',
+				]);
+			},
+		);
+	}
+
+	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { paths, branchName, configId } = operation;
 		try {
-			return await this.withGit(
-				{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
-				async (git) => {
-					// --progress keeps the stall-timeout timer fed during a healthy transfer.
-					await git.fetch('origin', branchName, ['--progress']);
-					await git.raw(['reset', '--hard', `origin/${branchName}`]);
-					return { commitSha: (await git.revparse(['HEAD'])).trim() };
-				},
-			);
+			await this.fetchBranch(operation);
+			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+			await git.raw(['reset', '--hard', `origin/${branchName}`]);
+			return { commitSha: (await git.revparse(['HEAD'])).trim() };
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	async listBranchTree({
+		pathspecs,
+		...operation
+	}: GitOperation & { pathspecs: string[] }): Promise<string> {
+		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		try {
+			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+			try {
+				await this.fetchBranch(operation);
+			} catch (error) {
+				const cached = await git.branch(['--remotes', '--list', `origin/${branchName}`]);
+				if (cached.all.length > 0) throw error;
+
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['origin']),
+				);
+				if (!refs.trim()) return '';
+				throw error;
+			}
+			return await git.raw([
+				'ls-tree',
+				'-r',
+				'-z',
+				`refs/remotes/origin/${branchName}`,
+				'--',
+				...pathspecs,
+			]);
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
 		}
@@ -263,19 +431,17 @@ export class PromotionsGitService {
 		operation: (git: SimpleGit) => Promise<T>,
 	) {
 		await mkdir(repoDir, { recursive: true });
-		const options: Partial<SimpleGitOptions> = {
+		const options = {
+			...BASE_GIT_OPTIONS,
 			baseDir: repoDir,
-			binary: 'git',
-			maxConcurrentProcesses: 1,
-			trimmed: false,
-			timeout: { block: GIT_COMMAND_STALL_TIMEOUT_MS },
+			config: [...BASE_GIT_OPTIONS.config, ...extraConfig],
 		};
 		let temporaryFolder: string | undefined;
 
 		try {
 			let git: SimpleGit;
 			if (credentials.authType === 'token') {
-				const config = [...buildHttpsGitConfig({ repositoryUrl: remoteUrl }), ...extraConfig];
+				const config = [...options.config, ...buildHttpsGitConfig({ repositoryUrl: remoteUrl })];
 
 				git = simpleGit({
 					...options,
@@ -298,7 +464,6 @@ export class PromotionsGitService {
 				});
 				git = simpleGit({
 					...options,
-					config: extraConfig,
 					unsafe: { allowUnsafeSshCommand: true },
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)

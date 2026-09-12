@@ -1,4 +1,8 @@
-import type { AgentSessionQueryFilters, AgentSessionStatus } from '@n8n/api-types';
+import type {
+	AgentMessageAuthor,
+	AgentSessionQueryFilters,
+	AgentSessionStatus,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
@@ -36,6 +40,8 @@ export interface RecordMessageParams {
 	agentName: string;
 	projectId: string;
 	userMessage: string | null;
+	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
+	author?: AgentMessageAuthor;
 	/** Attachments included on the user turn; persisted on the run for the sessions view. */
 	attachments?: StoredAttachmentRef[];
 	record: MessageRecord;
@@ -123,6 +129,7 @@ export class AgentExecutionService {
 				stoppedAt: null,
 				duration: 0,
 				userMessage,
+				author: params.author ?? null,
 				model: null,
 				promptTokens: null,
 				completionTokens: null,

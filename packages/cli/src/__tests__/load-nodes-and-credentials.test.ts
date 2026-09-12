@@ -175,6 +175,33 @@ describe('LoadNodesAndCredentials', () => {
 		});
 	});
 
+	describe('resolveNodeSourcePath', () => {
+		let instance: LoadNodesAndCredentials;
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			const loader = mock<DirectoryLoader>({ directory: '/nodes/package1' } as never);
+			Object.setPrototypeOf(loader, DirectoryLoader.prototype);
+			instance.loaders.package1 = loader;
+		});
+
+		it('should resolve a package-relative source path against the loader directory', () => {
+			const result = instance.resolveNodeSourcePath(
+				'package1.test',
+				'dist/nodes/Test/Test.node.js',
+			);
+			expect(result).toBe('/nodes/package1/dist/nodes/Test/Test.node.js');
+		});
+
+		it('should return the source path unchanged if the loader for the package is not found', () => {
+			const result = instance.resolveNodeSourcePath(
+				'unknownPackage.test',
+				'dist/nodes/Test/Test.node.js',
+			);
+			expect(result).toBe('dist/nodes/Test/Test.node.js');
+		});
+	});
+
 	describe('resolveSchema', () => {
 		let instance: LoadNodesAndCredentials;
 

@@ -12,6 +12,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
 export type * from './worker-pools';
+export type * from './node-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -121,6 +122,7 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+export { CONTEXT_PREFERENCES_FLAG } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
@@ -135,6 +137,8 @@ export {
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
+	userIdParamSchema,
+	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
@@ -380,8 +384,11 @@ export {
 	CANVAS_NODE_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -449,10 +456,14 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	instanceAiBuildModeSchema,
+	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,

@@ -896,6 +896,26 @@ describe('InstanceAiThreadView', () => {
 		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
 	});
 
+	// Leaving it open puts the agent chat beside the Assistant composer that now
+	// holds the same request — two places to ask the same thing.
+	it('closes the preview dock once the request is staged in the composer', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-open',
+			'true',
+		);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-open',
+			'false',
+		);
+	});
+
 	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const error = new Error('Save failed');
@@ -920,6 +940,7 @@ describe('InstanceAiThreadView', () => {
 			inputState.hasAttachments = hasAttachments;
 			const { getByTestId, user } = await renderAgentArtifact();
 
+			await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 			await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
 
 			expect(showMessageSpy).toHaveBeenCalledWith({
@@ -929,6 +950,10 @@ describe('InstanceAiThreadView', () => {
 			});
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent(initialDraft);
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+				'data-preview-open',
+				'true',
+			);
 		},
 	);
 
@@ -945,7 +970,7 @@ describe('InstanceAiThreadView', () => {
 
 			renderView({ props: { threadId: 'thread-1' } });
 
-			expect(document.title).toBe('AI Assistant - n8n');
+			expect(document.title).toBe('n8n Assistant - n8n');
 		});
 
 		it('renames the tab when the thread gets a title', async () => {

@@ -950,6 +950,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		}
 	});
 
+	it.each([
+		['closes the preview once the assistant has it', true, 'false'],
+		['leaves the preview open when the assistant did not open', false, 'true'],
+	])('%s', async (_label, opened, expectedStored) => {
+		sendPreviewSessionToInstanceAiMock.mockResolvedValueOnce(opened);
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe(expectedStored);
+	});
+
 	it('keeps an artifact on the selected preview session and stages the handoff in its Assistant thread', async () => {
 		fetchedSessionThreads.push(
 			{
@@ -1920,11 +1936,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
 
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		channels.vm.$emit('agent-changed');
+		triggers.vm.$emit('agent-changed');
 		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');

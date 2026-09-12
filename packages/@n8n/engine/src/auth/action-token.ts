@@ -48,5 +48,5 @@ export function mintActionToken(secret: string, scope: ActionScope): string {
  */
 export function verifyActionToken(secret: string, token: string, requiredScope: ActionScope): void {
 	const claims = verifySharedSecretToken(ACTION_TOKEN, secret, token, actionClaimsSchema);
-	if (!claims || claims.scope !== requiredScope) throw new InvalidActionTokenError();
+	if (claims?.scope !== requiredScope) throw new InvalidActionTokenError();
 }

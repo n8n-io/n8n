@@ -1,0 +1,92 @@
+operationId: putInstancePolicy
+tags:
+  - NodeTypePolicy
+summary: Replace the instance node type policy
+description: Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.
+x-required-scope: nodeTypePolicy:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          rules:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                action:
+                  type: string
+                  enum:
+                    - allow
+                    - deny
+                    - delegate
+                selector:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - name
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - package
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+              required:
+                - id
+                - action
+                - selector
+          defaultAction:
+            type: string
+            enum:
+              - allow
+              - deny
+              - delegate
+          version:
+            type: integer
+            minimum: 0
+        required:
+          - rules
+          - defaultAction
+          - version
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/nodeTypePolicyEffectiveWriteResultPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

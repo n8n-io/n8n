@@ -36,7 +36,7 @@ function pathFor(doc: Text, id: SyntaxNode) {
 
 function parentsFor(doc: Text, node: SyntaxNode | null) {
 	for (let path: string[] = []; ; ) {
-		if (!node || node.name !== '.') return path;
+		if (node?.name !== '.') return path;
 		const name = tokenBefore(node);
 		if (!plainID(name)) return path;
 		path.unshift(idName(doc, name));
@@ -129,7 +129,7 @@ class CompletionLevel {
 		return this.children
 			? Object.keys(this.children)
 					.filter((x) => x)
-					.map((name) => ({ label: name, type }) as Completion)
+					.map((name) => ({ label: name, type }))
 			: [];
 	}
 }

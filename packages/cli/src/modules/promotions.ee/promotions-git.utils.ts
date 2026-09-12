@@ -5,11 +5,17 @@ import { generateKeyPairSync } from 'node:crypto';
 import {
 	HTTP_LOW_SPEED_LIMIT_BYTES,
 	HTTP_LOW_SPEED_TIME_SECONDS,
+	PROMOTION_BRANCH_PREFIX,
 	SSH_CONNECT_TIMEOUT_SECONDS,
 	SSH_SERVER_ALIVE_COUNT_MAX,
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
+
+/** Build a valid Git branch name for one promotion. */
+export function buildPromotionBranchName(now: Date): string {
+	return `${PROMOTION_BRANCH_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}`;
+}
 
 /** Quote a value for use as one POSIX shell argument. */
 const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
@@ -33,6 +39,10 @@ export function buildHttpsGitConfig({ repositoryUrl }: { repositoryUrl: string }
 	// Git uses http.proxy for both HTTP and HTTPS URLs.
 	const proxyUrl = resolveProxyUrl(repositoryUrl);
 	if (proxyUrl) config.push(`http.proxy=${proxyUrl}`);
+	// Git runs with a replaced environment, so carry the CA settings over as config.
+	const { GIT_SSL_CAINFO, GIT_SSL_CAPATH } = process.env;
+	if (GIT_SSL_CAINFO) config.push(`http.sslCAInfo=${GIT_SSL_CAINFO}`);
+	if (GIT_SSL_CAPATH) config.push(`http.sslCAPath=${GIT_SSL_CAPATH}`);
 	return config;
 }
 

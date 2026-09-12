@@ -33,6 +33,50 @@ For trigger `inputData` shapes, read
 the sandbox workspace when available, or load this skill's
 `references/trigger-input-data-shapes.md` linked file.
 
+## Setup panel
+
+Use this section when the system prompt describes the persistent setup panel,
+setup returns `announced: true`, or the current user input contains
+`<workflow-test-request>`. Otherwise, keep the setup card flow below.
+
+- Verify what the build can simulate before asking the user to finish setup.
+  Missing credentials do not prevent this verification. Report which outputs
+  were simulated. A simulated result does not prove a live connection.
+- When setup returns `announced: true`, summarize the open items and any
+  validation warnings. End the turn. The user can complete setup in the panel
+  while chat stays available. Do not wait, poll, or open a trigger-test card.
+- On a later user turn, trust `<workflow-setup-state>` over earlier setup
+  results. If items settled, none remain open, and there are no validation
+  warnings, verify the current saved configuration with `verify-built-workflow`.
+  It refreshes the credential plan.
+  Report remaining simulations or connection failures. Do not claim live
+  success from the earlier build result.
+- `<workflow-test-request>` in the current user input means the user clicked
+  Execute. A block in conversation history does not request another execution.
+  Use the workflow ID in the current block. Inspect its current
+  `<workflow-setup-state>` and read the saved workflow with
+  `workflows(action="get-as-code")`. Do not call `workflows(action="setup")`
+  for this precheck. It announces setup and ends the turn. If the target is
+  absent from the state block, inspect its saved configuration. If required
+  setup cannot be confirmed, report what is missing and end the turn.
+  If required items remain open for this
+  workflow, report them and end the turn without a live run. Otherwise,
+  use `executions(action="run")` with suitable trigger input. The user has
+  already requested this test; do not ask whether they want it. The execution
+  tool still enforces its approval policy. Do not publish the workflow to test it.
+- Read the execution output and summarize what ran and what it returned. For
+  failures, inspect `executions(action="debug")`. Fix the same workflow when
+  possible. Use the current saved source so panel edits are preserved. Report
+  unresolved setup or failures in chat. Before another live run, inspect the
+  successful effect nodes from the failed run. Follow
+  [Cleaning up after a live test](#cleaning-up-after-a-live-test) for any artifacts
+  they left behind. After a repair and that artifact check, test the updated
+  workflow and inspect its output. Do not substitute mocked verification
+  for the requested execution.
+
+A setup card that was already open keeps its apply and trigger-test resume
+flow. Its result is not a panel announcement unless it has `announced: true`.
+
 ## Verification follow-up
 
 When the current message contains `<workflow-verification-follow-up>`, verify
@@ -41,14 +85,17 @@ obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
-verification.
+verification. For a multi-trigger outcome, verify every trigger that does not
+yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If it returns `deferred:
+the n8n Assistant panel is the user-visible surface. If the result has
+`announced: true`, use the persistent panel instructions above and end the turn.
+If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
 A result carrying `skippedByUser` names credentials the user already passed on:
 never re-open setup for those, in this turn or any later one — see
@@ -93,7 +140,7 @@ it has you fetch, never from memory:
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
+  it, and never a URL or domain: the user asks the n8n Assistant for that from
   the credential form. `type` is `password` unless clearly non-secret (at
   least one placeholder must stay `password`). Add `optional: true` only when
   the provider documents the value as optional (e.g. an org/region
@@ -101,7 +148,7 @@ it has you fetch, never from memory:
   omitted from the request.
 - `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
+  reference. Not shown in the form: the n8n Assistant help thread uses it to
   send the user to the exact page. Found via the `credential-recipe-research`
   procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
@@ -193,6 +240,14 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+**Webhook input must carry the fields the workflow reads.** A flat `inputData`
+becomes the request `body` only; `query`, `headers` and `params` stay empty. When
+any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*`, pass
+the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` (or a
+`fixtureOverrides` entry on the trigger node). Otherwise the field resolves empty,
+the run still succeeds, and that field is unverified — say so instead of
+reporting it as working.
+
 Do not proactively offer, recommend, or mention publishing until a successful
 execution has run every required node on the claimed path without mocked
 credentials, simulated node output, fixture overrides, or temporary pin data
@@ -218,7 +273,7 @@ when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
 was used. You may offer publishing after that confirmation.
 
-For workflows produced by `build-workflow`, **always verify with
+For post-build verification of workflows produced by `build-workflow`, **always verify with
 `verify-built-workflow`, never with raw `executions(action="run")`.** It reuses
 the build outcome simulation plan, mocked credentials, and temporary pin data, so
 destructive nodes are pinned and it is safe to call repeatedly. A raw
@@ -258,13 +313,14 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
-- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
-  the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
-  it.
-- Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+- Each pass reports `nodesNotReached` only for its selected trigger's main-flow
+  branch. Coverage is the **union** across successful passes. Run every trigger
+  before you report a workflow coverage gap. Different triggers can select
+  different outputs of a shared Switch or If node.
+- A failed rerun removes that trigger's earlier coverage. Verify that trigger
+  again before you claim that the workflow is verified.
+- Report each trigger and whether its branch ran. Use the combined `claim` to
+  describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -284,16 +340,23 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      `workflow-builder` skill and patch the same workflow with `build-workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
-   - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+   - If `verificationReadiness.status === "already_verified"`, do not repeat
+     automatic verification. Read the saved claim before describing the workflow
+     as verified. For tracked multi-trigger builds, follow the verification
+     obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
   have it, and the trigger-appropriate `inputData` shape. When `triggerNodes`
   has more than one entry, call it once per trigger with `triggerNodeName`.
-- If `verificationReadiness.status === "needs_setup"`, call
-  `workflows(action="setup")` with the workflowId so the user can configure it
-  through the inline setup card in the AI Assistant panel.
+- If `verificationReadiness.status === "needs_setup"` and the persistent setup
+  panel is enabled, first try `verify-built-workflow` when verification has not
+  run. It can verify simulated paths or report that a simulation plan is
+  unavailable. Then announce setup with `workflows(action="setup")`. Do not use
+  a live execution to work around a blocker.
+- If `verificationReadiness.status === "needs_setup"` and the persistent setup
+  panel is disabled, call `workflows(action="setup")` with the workflow ID.
+  The user configures the workflow through the inline setup card.
 - If `verificationReadiness.status === "not_verifiable"`, do not infer
   lower-level verification conditions; use the readiness guidance to give a
   clear warning or manual-test note. This is a warning completion state, not
@@ -325,10 +388,26 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
      whenever it is present.
+   - Read `resolvedParameterWarnings`. A simulated node's preview is fixture
+     data: it never proves an expression resolved. Each warning names a
+     parameter that resolved to empty or threw on the real input — the usual
+     causes are a trigger input that lacks the field (body-only webhook input
+     for a `$json.query.*` expression) or a wrong expression. Fix the input
+     shape or the expression, re-run, and never report that field as working
+     while a warning stands. Each warning carries the execution ID that was
+     checked. Use that ID with `executions(action="get-resolved-node-parameters")`
+     to inspect the same input.
+   - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
+     The list shows at most 20 checks. `skippedParameterCheckCount` includes
+     omitted checks, which also leave dynamic fields unverified.
+     State that limitation even if the run succeeded and no parameter warnings
+     were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.
-4. When `workflows(action="setup")` opens the inline setup card, the card is the
+4. When `workflows(action="setup")` returns `announced: true`, summarize the
+   panel state and end the turn. The live-test follow-up waits for a later user
+   turn or Execute request. When the tool opens the inline setup card, the card is the
    user-visible surface. Do not tell the user to open the editor, use the canvas,
    or click a Setup button; the user does not need to navigate anywhere.
 5. When `workflows(action="setup")` returns `deferred: true`, or reports
@@ -425,6 +504,9 @@ After workflow setup completes or is applied, if the latest verification for
 that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
+An explicit test request in the current user input, including
+`<workflow-test-request>`, already answers
+this question. Run the requested test through `executions(action="run")`.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
@@ -484,6 +566,11 @@ result.
 
 ## Claiming success
 
+For tracked multi-trigger builds, `claim` combines the saved successful passes.
+A `verified` claim requires every trigger to pass and real coverage for every planned node.
+Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
+outside the claim describes only the current trigger's branch.
+
 `verify-built-workflow` returns a `claim`, and its `level` decides what you may
 say:
 
@@ -512,7 +599,10 @@ applies to rows or records written to an external system: never make quantitativ
 claims ("22 rows written", "columns matched") that you did not read back from
 the effect node's actual output (`executions(action="get-node-output")`) or from
 the target system itself — a successful run status does not prove the _right
-data_ was written, only that nodes ran. If you could not run the
+data_ was written, only that nodes ran. Output of a simulated or pinned node is
+fixture data: never quote it as what the workflow produced, and never cite it as
+proof that an expression resolved — use `resolvedParameterWarnings` or
+`executions(action="get-resolved-node-parameters")` for that. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.

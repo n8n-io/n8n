@@ -5,6 +5,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	type AgentIntegrationConfig,
+	type AgentMessageAuthor,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -42,12 +43,15 @@ import {
 import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
+import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
 import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
+
+import { rateLimitMessageFromError } from './channel-rate-limit';
 
 const RESET_SESSION_COMMAND = '/new';
 
@@ -56,6 +60,11 @@ const SESSION_GENERATION_KEY_PREFIX = 'agents:chat-session-generation';
 const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
 /** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
 const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
+
+function toMessageAuthor(author: Author): AgentMessageAuthor {
+	const name = (author.userName || author.fullName || author.userId).replace(/[\[\]\r\n]/g, '');
+	return { id: author.userId, name: name || author.userId };
+}
 
 interface SessionGenerationState {
 	/** Current rotation counter for a base thread id; 0 means the original, unsuffixed thread. */
@@ -86,6 +95,8 @@ interface AgentExecutor {
 		agentId: string;
 		projectId: string;
 		message: string;
+		modelMessage?: string;
+		author?: AgentMessageAuthor;
 		attachments?: StoredAttachmentRef[];
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
@@ -242,6 +253,8 @@ export class AgentChatBridge {
 				memory,
 				agentId: aid,
 				message,
+				modelMessage,
+				author,
 				attachments,
 				integrationType,
 				sandboxPrincipalHash,
@@ -250,6 +263,8 @@ export class AgentChatBridge {
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
+					modelMessage,
+					author,
 					attachments,
 					memory: {
 						threadId: memory.threadId.id,
@@ -598,7 +613,10 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
-		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
+		const text = this.prepareInboundText(
+			await this.getInboundText(message),
+			platformAgentContext,
+		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
@@ -676,18 +694,23 @@ export class AgentChatBridge {
 					latestContextOptions,
 				);
 			}
-			// threadId.id is agent-prefixed for observation storage; resourceId keeps
-			// the platform user identity so episodic recall works across threads for
-			// the same user while staying isolated between users.
+			// threadId.id is agent-prefixed for shared conversation history;
+			// resourceId keeps the author identity so episodic recall follows them.
 			// Always run the published snapshot — integrations are production traffic.
+			// The model gets the author label and thread history; the transcript
+			// records the plain text and carries the author as structured data.
+			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
-			const agentInput = bridgeExecutionContext.historyContext
-				? `${bridgeExecutionContext.historyContext}\n\n${textWithNotes}`
-				: textWithNotes;
+			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
+			const modelMessage = bridgeExecutionContext.historyContext
+				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
+				: labelledText;
 			const stream = this.agentService.executeForChatPublished({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
-				message: agentInput,
+				message: textWithNotes,
+				modelMessage,
+				author,
 				attachments: attachments.length > 0 ? attachments : undefined,
 				memory: {
 					threadId: memoryThreadId,
@@ -695,10 +718,10 @@ export class AgentChatBridge {
 				},
 				integrationType: this.integration.type,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({
-					type: 'integration-user',
+					type: 'integration-thread',
 					connectionId: this.integration.credentialId,
 					platform: this.integration.type,
-					platformUserId: message.author.userId,
+					platformThreadId: this.resolvePlatformThreadId(thread),
 				}),
 			});
 
@@ -963,6 +986,22 @@ export class AgentChatBridge {
 		return this.integrationImpl?.getPlatformAgentContext?.(this.chat) ?? {};
 	}
 
+	/** Keep labelled-link URLs because the Chat SDK plain-text projection removes them. */
+	private async getInboundText(message: Message): Promise<string> {
+		if (!message.formatted) return message.text;
+		const { isLinkNode, text, toPlainText, walkAst } = await loadChatSdk();
+		// Keep raw platform markdown when the adapter does not use the SDK projection.
+		if (toPlainText(message.formatted) !== message.text) return message.text;
+		const formatted = walkAst(structuredClone(message.formatted), (node) => {
+			if (!isLinkNode(node)) return node;
+			const label = toPlainText({ type: 'root', children: [node] });
+			// Keep GFM autolinks because their labels already contain the URL.
+			if ([label, `http://${label}`, `mailto:${label}`].includes(node.url)) return node;
+			return text(`[${label}](${node.url})`);
+		});
+		return toPlainText(formatted);
+	}
+
 	private prepareInboundText(text: string | undefined, context: PlatformAgentContext): string {
 		const trimmed = text?.trim() ?? '';
 		return this.integrationImpl?.prepareInboundText?.(trimmed, context) ?? trimmed;
@@ -978,7 +1017,8 @@ export class AgentChatBridge {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-
+		// Resolve a rate-limit message if the error is a rate-limit error, otherwise undefined.
+		const rateLimitMessage = rateLimitMessageFromError(error);
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
 			threadId: thread?.id,
@@ -999,9 +1039,11 @@ export class AgentChatBridge {
 			// A `UserError` is written for people and names the misconfiguration,
 			// which lets an agent owner fix it without reading server logs.
 			const text =
-				error instanceof UserError
-					? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-					: '⚠️ Something went wrong while processing your request. Please try again.';
+				rateLimitMessage !== undefined
+					? `⚠️ ${rateLimitMessage}`
+					: error instanceof UserError
+						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+						: '⚠️ Something went wrong while processing your request. Please try again.';
 			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

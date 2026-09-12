@@ -26,6 +26,7 @@ requestBody:
           providerId:
             type: string
             minLength: 1
+            maxLength: 36
           target:
             type: object
             properties:
