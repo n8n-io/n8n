@@ -24,6 +24,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltMemory,
 	BuiltTelemetry,
+	EpisodicMemoryScope,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
@@ -136,7 +137,8 @@ function hasObservationLogObserverMemory(
 export class MemoryOrchestrator {
 	private memoryTasks: ScopedMemoryTaskRunner | undefined;
 
-	private episodicMemoryTasksByResource = new Map<string, Promise<unknown>>();
+	/** Keyed by resource and thread because backends can lock on either scope. */
+	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
 
 	/**
 	 * Per-message model-facing token estimates, cached by message id so
@@ -759,7 +761,7 @@ export class MemoryOrchestrator {
 		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
 		if (!capture) return;
 
-		this.scheduleEpisodicMemoryTask(capture.memory, capture.scope.resourceId, async () => {
+		this.scheduleEpisodicMemoryTask(capture.memory, capture.scope, async () => {
 			let result;
 			do {
 				result = await runEpisodicMemoryCandidateProcessor({
@@ -774,26 +776,33 @@ export class MemoryOrchestrator {
 
 	private scheduleEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
-		const done = previous
-			.catch(() => undefined)
-			.then(async () => await this.runEpisodicMemoryTask(memory, resourceId, id, task));
+		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const previous: Array<Promise<unknown>> = [];
+		for (const key of keys) {
+			const running = this.episodicMemoryTasks.get(key);
+			if (running) previous.push(running);
+		}
+		const done = Promise.allSettled(previous).then(
+			async () => await this.runEpisodicMemoryTask(memory, scope, id, task),
+		);
 		const queued = done.finally(() => {
-			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
-				this.episodicMemoryTasksByResource.delete(resourceId);
+			for (const key of keys) {
+				if (this.episodicMemoryTasks.get(key) === queued) {
+					this.episodicMemoryTasks.delete(key);
+				}
 			}
 		});
-		this.episodicMemoryTasksByResource.set(resourceId, queued);
+		for (const key of keys) this.episodicMemoryTasks.set(key, queued);
 		this.backgroundTasks.track(queued);
 	}
 
 	private async runEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		holderId: string,
 		task: () => Promise<void>,
 	): Promise<void> {
@@ -801,7 +810,7 @@ export class MemoryOrchestrator {
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
 			if (taskLock) {
-				lock = await taskLock.acquire(resourceId, {
+				lock = await taskLock.acquire(scope, {
 					holderId,
 					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
 				});
@@ -810,11 +819,11 @@ export class MemoryOrchestrator {
 			await task();
 		} catch (error) {
 			const message = 'Episodic memory processing task failed';
-			logger.warn(message, { error, resourceId });
+			logger.warn(message, { error, ...scope });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
 		} finally {
 			if (lock) {
-				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, resourceId);
+				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, scope);
 			}
 		}
 	}
@@ -822,12 +831,12 @@ export class MemoryOrchestrator {
 	private async releaseEpisodicMemoryTaskLock(
 		taskLock: EpisodicMemoryTaskLockMethods | undefined,
 		lock: EpisodicMemoryTaskLockHandle,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 	): Promise<void> {
 		try {
 			await taskLock?.release(lock);
 		} catch (error) {
-			logger.warn('Episodic memory processing lock release failed', { error, resourceId });
+			logger.warn('Episodic memory processing lock release failed', { error, ...scope });
 		}
 	}
 
