@@ -205,10 +205,11 @@ interface AgentConfigSnapshot {
 	configHash: string | null;
 }
 
-/** Builder-session context threaded through telemetry so it's joinable to `instance_ai_agent_build_route`. */
-interface BuilderTelemetryContext {
+/** Builder-session options from the Instance AI host. */
+interface BuilderToolsOptions {
 	threadId?: string;
 	runId?: string;
+	useEvalModelCatalog?: boolean;
 }
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
@@ -338,7 +339,7 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		user: User,
-		telemetryContext?: BuilderTelemetryContext,
+		options?: BuilderToolsOptions,
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(
@@ -347,7 +348,7 @@ export class AgentsBuilderToolsService {
 				credentialProvider,
 				credentialService,
 				user,
-				telemetryContext,
+				options,
 			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
@@ -359,14 +360,14 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 		credentialService: InstanceAiCredentialService,
 		user: User,
-		telemetryContext?: BuilderTelemetryContext,
+		options?: BuilderToolsOptions,
 	): BuiltTool[] {
 		const track: BuilderTrackFn = (entry, properties) =>
 			this.telemetry.track(entry, {
 				agent_id: agentId,
 				user_id: user.id,
-				...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
-				...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
+				...(options?.threadId ? { thread_id: options.threadId } : {}),
+				...(options?.runId ? { run_id: options.runId } : {}),
 				...properties,
 			});
 		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
@@ -854,6 +855,7 @@ export class AgentsBuilderToolsService {
 					credentialId,
 					credentialType,
 					provider,
+					{ useEvalModelCatalog: options?.useEvalModelCatalog === true },
 				),
 		};
 

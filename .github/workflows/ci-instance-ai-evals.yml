@@ -1,7 +1,7 @@
 name: 'Instance AI Evals: PR Gate'
-run-name: "${{ github.event_name == 'workflow_dispatch' && format('Instance AI Evals: PR #{0} (tier={1})', inputs.pr, inputs.tier || 'pr') || '' }}"
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Instance AI Evals: PR #{0} (tier={1})', inputs.pr, inputs.tier || 'auto') || '' }}"
 
-# The PR gate for Instance AI workflow evals. Auto-runs on PR open/reopen/ready
+# The PR gate for Instance AI workflow and Agent evals. Auto-runs on PR open/reopen/ready
 # (non-draft, non-fork, path-filtered); manual dispatch re-runs a specific PR
 # and posts results back. Pushes don't re-trigger (no `synchronize`).
 #
@@ -19,6 +19,7 @@ on:
       - 'packages/@n8n/instance-ai/knowledge-base/**'
       - 'packages/@n8n/instance-ai/evaluations/**'
       - 'packages/cli/src/modules/instance-ai/**'
+      - 'packages/cli/src/modules/agents/**'
       - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
       - 'packages/@n8n/agents/src/**'
   workflow_dispatch:
@@ -27,7 +28,7 @@ on:
         description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back. For branch/experiment runs use "Instance AI Evals: Experiments" instead.'
         required: true
       tier:
-        description: 'Test-case dataset for the re-run (e.g. `full` for broader coverage). Empty = `pr`.'
+        description: 'Test-case dataset for the re-run. Empty = `agents` for Agent Builder changes or `pr` otherwise.'
         required: false
         default: ''
 
@@ -59,6 +60,7 @@ jobs:
       revision_sha: ${{ steps.resolve.outputs.revision_sha }}
       head_ref: ${{ steps.resolve.outputs.head_ref }}
       pr_number: ${{ steps.resolve.outputs.pr_number }}
+      suite: ${{ steps.resolve.outputs.suite }}
       tier: ${{ steps.resolve.outputs.tier }}
     steps:
       - name: Resolve target ref
@@ -113,12 +115,23 @@ jobs:
             echo "::error::manual dispatch requires the pr input"
             exit 1
           fi
+
+          changed_files=$(gh api --paginate "repos/$REPO/pulls/$pr_number/files" --jq '.[].filename')
+          suite=baseline
+          if grep -q '^packages/cli/src/modules/agents/' <<< "$changed_files"; then
+            suite=agents
+            if [ -n "$INPUT_TIER" ] && [ "$INPUT_TIER" != "agents" ]; then
+              echo "::notice::Agent Builder changes always run the agents tier. Ignoring tier '$INPUT_TIER'."
+            fi
+            tier=agents
+          fi
           {
             echo "branch=$branch"
             echo "cache_sha=$cache_sha"
             echo "revision_sha=$revision_sha"
             echo "head_ref=$head_ref"
             echo "pr_number=$pr_number"
+            echo "suite=$suite"
             echo "tier=$tier"
           } >> "$GITHUB_OUTPUT"
 
@@ -128,6 +141,7 @@ jobs:
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
       branch: ${{ needs.resolve.outputs.branch }}
+      suite: ${{ needs.resolve.outputs.suite }}
       tier: ${{ needs.resolve.outputs.tier }}
       pr-number: ${{ needs.resolve.outputs.pr_number }}
       cache-sha: ${{ needs.resolve.outputs.cache_sha }}

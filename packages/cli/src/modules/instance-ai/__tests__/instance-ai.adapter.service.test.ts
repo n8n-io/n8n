@@ -5902,7 +5902,28 @@ describe('createContext — builder delegate wiring', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
+		return builderDelegateAdapter;
 	}
+
+	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
+
+		service.createContext(mockUser, {
+			threadId: 'thread-1',
+			projectId: 'proj-1',
+			credentialIdAllowlist: [],
+		});
+
+		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			expect.anything(),
+			expect.anything(),
+			{ useEvalModelCatalog: true },
+		);
+	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
 		const mockTelemetry = { track: vi.fn() };

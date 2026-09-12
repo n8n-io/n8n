@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import { abortedWorkflowTestCaseResult } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
+import { aggregateResults } from '../run/aggregator';
 import { runEvalAndPersist } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
@@ -189,5 +190,27 @@ describe('runEvalAndPersist write-on-abort', () => {
 			readFileSync(join(__dirname, 'fixtures', 'eval-results.partial-abort.json'), 'utf8'),
 		);
 		expect(parsed).toEqual(golden);
+	});
+
+	it('labels the persisted comment as an Agent eval for the agents tier', async () => {
+		const iteration = partialIteration();
+		const persisted = await runEvalAndPersist(
+			{
+				logger: silentLogger,
+				outputDir,
+				startTime: Date.now(),
+				iterations: 1,
+				tier: 'agents',
+				commitSha: undefined,
+				rerun: undefined,
+				mcpBuildSpend: [],
+			},
+			async () => {
+				await Promise.resolve();
+				return { evaluation: aggregateResults([iteration], 1) };
+			},
+		);
+
+		expect(readFileSync(persisted.prCommentPath, 'utf8')).toMatch(/^### Instance AI Agent Eval/);
 	});
 });

@@ -15,7 +15,11 @@ import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
-import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
+import {
+	formatComparisonMarkdown,
+	type EvaluationSubject,
+	type RerunHint,
+} from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import {
@@ -306,6 +310,7 @@ export async function runEvalAndPersist(
 			gate,
 			config.mcpBuildSpend,
 			out.experimentUrl,
+			config.tier === 'agents' ? 'agent' : 'workflow',
 		);
 		persisted = true;
 		return { ...out, gate, jsonPath, prCommentPath };
@@ -339,6 +344,7 @@ export async function runEvalAndPersist(
 					undefined,
 					config.mcpBuildSpend,
 					undefined,
+					config.tier === 'agents' ? 'agent' : 'workflow',
 				);
 				config.logger.error(
 					`Eval run did not finish cleanly — wrote partial results (${String(runResults.length)} iteration(s)) to ${jsonPath}`,
@@ -416,6 +422,7 @@ export function writeEvalResults(
 	gate: GateResult | undefined,
 	mcpBuildSpend?: McpBuildSpend[],
 	experimentUrl?: string,
+	subject: EvaluationSubject = 'workflow',
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -544,6 +551,7 @@ export function writeEvalResults(
 	writeFileSync(
 		prCommentPath,
 		formatComparisonMarkdown(evaluation, outcome, {
+			subject,
 			commitSha,
 			slugByTestCase,
 			rerun,

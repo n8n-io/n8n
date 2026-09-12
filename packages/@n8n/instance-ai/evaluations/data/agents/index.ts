@@ -1,11 +1,9 @@
 // ---------------------------------------------------------------------------
-// Authoring dir for intent-resolution eval cases (`--tier agents`): user-voiced
-// build requests asked plan-first and graded on the approach the assistant
-// PROPOSES, via ordinary processExpectations. Builds are never exercised, and
-// expectations name no build tools — the agent-build surface is being
-// redesigned. The corpus lives in the LangTracer `agents` suite (pushed via
-// eval:langtracer-push); author a case here, calibrate, push, delete the file.
-// README.md has the authoring contract. Requires the agents module.
+// Author Agent-focused cases here and run them with `--tier agents`.
+// Process expectations grade the conversation. Outcome expectations grade the
+// built Agent. Execution scenarios can run the Agent with mocked tools. The
+// corpus lives in the LangTracer `agents` suite. Author a case here, calibrate
+// it, push it, and delete the local file. Requires the agents module.
 // ---------------------------------------------------------------------------
 
 import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
