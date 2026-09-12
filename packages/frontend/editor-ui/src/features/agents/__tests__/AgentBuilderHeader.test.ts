@@ -34,6 +34,7 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon"></i>', props: ['size'] },
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
@@ -42,9 +43,8 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['click'],
 	},
 	N8nToggle: {
-		name: 'N8nToggle',
 		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+			'<button v-bind="$attrs" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
 		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
 		emits: ['click'],
 	},
@@ -135,6 +135,7 @@ function mountHeader(
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
 		isPreviewOpen: boolean;
+		instanceAiAvailable: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -143,7 +144,7 @@ function mountHeader(
 ) {
 	return mount(AgentBuilderHeader, {
 		props: {
-			agent: overrides.agent ?? baseAgent,
+			agent: 'agent' in overrides ? (overrides.agent ?? null) : baseAgent,
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
@@ -151,6 +152,7 @@ function mountHeader(
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
 			isPreviewOpen: overrides.isPreviewOpen,
+			instanceAiAvailable: overrides.instanceAiAvailable,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -166,6 +168,38 @@ describe('AgentBuilderHeader', () => {
 		routerPush.mockReset();
 		routerResolve.mockClear();
 		agentsListRef.value = null;
+	});
+
+	it('shows the Instance AI action when it is available', async () => {
+		const wrapper = mountHeader({ instanceAiAvailable: true });
+		const button = wrapper.get('[data-testid="agent-builder-instance-ai-btn"]');
+
+		expect(button.attributes('aria-label')).toBe('agents.builder.header.editWithAi');
+		expect(wrapper.get('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
+			'agents.builder.header.editWithAi',
+		);
+
+		await button.trigger('click');
+
+		expect(wrapper.emitted('open-instance-ai')).toEqual([[]]);
+	});
+
+	it.each([
+		{ label: 'Instance AI is unavailable', instanceAiAvailable: false },
+		{ label: 'preview is open', instanceAiAvailable: true, isPreviewOpen: true },
+		{ label: 'artifact mode is active', instanceAiAvailable: true, artifactMode: true },
+	])('hides the Instance AI action when $label', (overrides) => {
+		const wrapper = mountHeader(overrides);
+
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('disables the Instance AI action when no agent is loaded', () => {
+		const wrapper = mountHeader({ agent: null, instanceAiAvailable: true });
+
+		expect(
+			wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').attributes('disabled'),
+		).toBeDefined();
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {
