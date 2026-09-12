@@ -17,6 +17,7 @@ type EndpointGroup =
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
+	| 'changeEmail'
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'

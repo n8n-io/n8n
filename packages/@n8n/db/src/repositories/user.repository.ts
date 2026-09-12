@@ -10,6 +10,7 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -89,6 +90,38 @@ export class UserRepository extends Repository<User> {
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
+	}
+
+	/**
+	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
+	 * when the email changed concurrently and `'email-taken'` when another user
+	 * already owns `newEmail`, so the caller can reject the request.
+	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
+	 */
+	async changeEmail(
+		userId: string,
+		oldEmail: string,
+		newEmail: string,
+	): Promise<'changed' | 'stale' | 'email-taken'> {
+		return await this.manager.transaction(async (trx) => {
+			const user = await trx.findOne(User, {
+				where: { id: userId },
+				// Serialize concurrent changes on Postgres; SQLite serializes writes.
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (!user || user.email !== oldEmail) return 'stale';
+			user.email = newEmail;
+			try {
+				await trx.save(User, user);
+			} catch (error) {
+				// Another user took `newEmail` between the caller's check and this save.
+				if (isUniqueConstraintError(error)) return 'email-taken';
+				throw error;
+			}
+			return 'changed';
+		});
 	}
 
 	async deleteAllExcept(user: User) {

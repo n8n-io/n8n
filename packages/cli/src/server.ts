@@ -35,6 +35,7 @@ import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
+import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/instance-ai-examples.controller';

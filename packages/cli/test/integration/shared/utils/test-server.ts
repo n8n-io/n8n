@@ -312,6 +312,10 @@ export const setupTestServer = ({
 						await import('@/controllers/password-reset.controller.js');
 						break;
 
+					case 'changeEmail':
+						await import('@/controllers/change-email.controller.js');
+						break;
+
 					case 'owner':
 						await import('@/controllers/owner.controller.js');
 						break;
