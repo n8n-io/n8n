@@ -242,6 +242,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-1',
 				kind: KIND,
 				policyId: created.id,
+				origin: 'document-api',
 				after: { rules: created.rules, version: created.version },
 			});
 		});
@@ -358,6 +359,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-2',
 				kind: KIND,
 				policyId: before.id,
+				origin: 'document-api',
 				before: { rules: [], version: 1 },
 				after: { rules: [RULE], version: 2 },
 			});
@@ -796,15 +798,26 @@ describe('TypeAvailabilityPolicyService', () => {
 				[{ policyId: createdPolicy.id, priority: 0, isFloor: false }],
 				ROOT,
 			);
-			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-scope-updated',
 				expect.objectContaining({ before: null }),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-created',
-				expect.objectContaining({ policyId: createdPolicy.id }),
+				expect.objectContaining({ policyId: createdPolicy.id, origin: 'composed-save' }),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-saved', {
+				updatedBy: 'user-1',
+				kind: KIND,
+				projectId: null,
+				scopeId: createdScope.id,
+				before: null,
+				after: { defaultAction: 'deny', version: 2 },
+				rulesBefore: null,
+				rulesAfter: [RULE],
+				warningCount: 0,
+			});
 		});
 
 		it('updates the existing scope and document, emitting both facets', async () => {
@@ -835,14 +848,26 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
-			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
 				expect.objectContaining({
+					origin: 'composed-save',
 					before: { rules: [], version: 1 },
 					after: { rules: [RULE], version: 2 },
 				}),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-saved', {
+				updatedBy: 'user-2',
+				kind: KIND,
+				projectId: null,
+				scopeId: scope.id,
+				before: { defaultAction: 'allow', version: 1 },
+				after: { defaultAction: 'deny', version: 3 },
+				rulesBefore: [],
+				rulesAfter: [RULE],
+				warningCount: 0,
+			});
 		});
 
 		it('throws NotFoundError when the document update unexpectedly finds no row', async () => {
