@@ -97,6 +97,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
+  varchar_128_ activeThreadId
   json attachments
   json author
   integer completionTokens

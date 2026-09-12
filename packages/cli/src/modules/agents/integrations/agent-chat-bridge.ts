@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -22,6 +22,11 @@ import {
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionService } from '../agent-execution.service';
+import {
+	AgentThreadQueueFullError,
+	AgentThreadTurnCoordinator,
+	type AgentThreadTurnPermit,
+} from '../agent-thread-turn-coordinator';
 import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
@@ -101,6 +106,7 @@ interface AgentExecutor {
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
 		sandboxPrincipalHash: AgentSandboxPrincipalHash;
+		permit: AgentThreadTurnPermit;
 	}): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(config: {
@@ -110,6 +116,7 @@ interface AgentExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		beforeResume?: () => Promise<void>;
 	}): AsyncGenerator<StreamChunk>;
 
 	/**
@@ -258,6 +265,7 @@ export class AgentChatBridge {
 				attachments,
 				integrationType,
 				sandboxPrincipalHash,
+				permit,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -275,6 +283,7 @@ export class AgentChatBridge {
 					},
 					integrationType,
 					sandboxPrincipalHash,
+					permit,
 				});
 			},
 			async *resumeForChat(config) {
@@ -426,7 +435,7 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			false,
+			{ notifyOnDuplicate: false },
 		);
 	}
 
@@ -507,11 +516,31 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
-			await this.messageContextBridge.unbindSession(baseId);
-			await this.computeGeneration(baseId, true, null);
+		await this.withSessionLock(baseId, async (signal) => {
+			// The reset takes its place in the thread's turn queue like a message,
+			// so every earlier message still runs in the old session and every
+			// later one (held at the session lock meanwhile) starts in the new one.
+			const activeId =
+				(await this.messageContextBridge.resolveSession(baseId))?.threadId ??
+				(await this.computeGeneration(baseId, false, null));
+			try {
+				await this.turnCoordinator.run(activeId, signal, async () => {
+					signal.throwIfAborted();
+					await this.messageContextBridge.unbindSession(baseId);
+					await this.computeGeneration(baseId, true, null);
+				});
+			} catch (error) {
+				if (signal.aborted) {
+					throw new OperationalError('Session lock was lost while waiting to start a new session');
+				}
+				throw error;
+			}
 		});
 		await thread.post('🔄 Started a new session.');
+	}
+
+	private get turnCoordinator(): AgentThreadTurnCoordinator {
+		return Container.get(AgentThreadTurnCoordinator);
 	}
 
 	/**
@@ -521,7 +550,10 @@ export class AgentChatBridge {
 	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
 	 * instead of racing on stale reads.
 	 */
-	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+	private async withSessionLock<T>(
+		baseId: string,
+		fn: (signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
 			this.sessionGenerationCacheKey(baseId),
@@ -635,6 +667,50 @@ export class AgentChatBridge {
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
+		// One turn per execution session at a time. Everything that stores state
+		// for this turn waits until it is the thread's turn, so a queued message
+		// never redirects the running turn or races its suspension.
+		await this.turnCoordinator.run(
+			memoryThreadId.id,
+			undefined,
+			async (permit) =>
+				await this.runAdmittedTurn(thread, message, {
+					isNewMention,
+					platformAgentContext,
+					text,
+					inboundAttachments,
+					threadId,
+					memoryThreadId,
+					memoryResourceId,
+					permit,
+				}),
+		);
+	}
+
+	private async runAdmittedTurn(
+		thread: Thread,
+		message: Message,
+		turn: {
+			isNewMention: boolean;
+			platformAgentContext: PlatformAgentContext;
+			text: string;
+			inboundAttachments: Attachment[];
+			threadId: InternalThread;
+			memoryThreadId: InternalThread;
+			memoryResourceId: string;
+			permit: AgentThreadTurnPermit;
+		},
+	): Promise<void> {
+		const {
+			isNewMention,
+			platformAgentContext,
+			text,
+			inboundAttachments,
+			threadId,
+			memoryThreadId,
+			memoryResourceId,
+			permit,
+		} = turn;
 		// The run parks against the session it executes in, which for a bound reply
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
@@ -723,6 +799,7 @@ export class AgentChatBridge {
 					platform: this.integration.type,
 					platformThreadId: this.resolvePlatformThreadId(thread),
 				}),
+				permit,
 			});
 
 			consumeStarted = true;
@@ -1041,9 +1118,11 @@ export class AgentChatBridge {
 			const text =
 				rateLimitMessage !== undefined
 					? `⚠️ ${rateLimitMessage}`
-					: error instanceof UserError
-						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-						: '⚠️ Something went wrong while processing your request. Please try again.';
+					: error instanceof AgentThreadQueueFullError
+						? `⚠️ ${error.message}`
+						: error instanceof UserError
+							? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+							: '⚠️ Something went wrong while processing your request. Please try again.';
 			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

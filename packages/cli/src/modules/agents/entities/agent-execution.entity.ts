@@ -28,6 +28,10 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
+@Index(['activeThreadId'], {
+	unique: true,
+	where: '"activeThreadId" IS NOT NULL AND "status" = \'running\'',
+})
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
@@ -41,6 +45,14 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
+
+	/**
+	 * Thread this running top-level turn holds. The partial unique index keeps
+	 * one claimed running row per thread. Null once the run ends, and always
+	 * null for runs outside the turn queue (workflow-node and delegated runs).
+	 */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	activeThreadId: string | null;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;

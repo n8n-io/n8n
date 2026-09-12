@@ -98,6 +98,7 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
+  varchar_128_ activeThreadId
   TEXT attachments
   TEXT author
   INTEGER completionTokens

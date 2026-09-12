@@ -33,6 +33,7 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentThreadTurnCoordinator } from '../agent-thread-turn-coordinator';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
@@ -283,6 +284,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSandboxRuntimeService,
 			agentRepository,
 			mock<AiConfig>(),
+			mock<AgentThreadTurnCoordinator>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

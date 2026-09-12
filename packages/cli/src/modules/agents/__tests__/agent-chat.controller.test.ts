@@ -13,6 +13,10 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
+import {
+	AgentThreadQueueFullError,
+	MAX_AGENT_THREAD_WAITERS,
+} from '../agent-thread-turn-coordinator';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
@@ -321,6 +325,37 @@ describe('AgentChatController HITL cancellation', () => {
 			runId: 'run-1',
 			resourceId: 'draft-chat:user-1',
 		});
+	});
+});
+
+describe('AgentChatController full thread queue', () => {
+	it('sends one coded error event and no done event when the thread queue is full', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		// eslint-disable-next-line @typescript-eslint/require-await
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield* [];
+			throw new AgentThreadQueueFullError();
+		});
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message: `This thread already has ${MAX_AGENT_THREAD_WAITERS} messages waiting. Try again after the agent processes a message.`,
+				errorCode: 'agent_turn_queue_full',
+			},
+		]);
 	});
 });
 

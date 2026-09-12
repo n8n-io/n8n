@@ -5,6 +5,8 @@ import type { Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { createTestTurnCoordinator } from '../../../__tests__/test-utils/turn-coordinator';
+import { AgentThreadTurnCoordinator } from '../../../agent-thread-turn-coordinator';
 import { AgentChatBridge } from '../../agent-chat-bridge';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
@@ -196,6 +198,8 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	/** Real coordinator over mocked lock and repository. */
+	turnCoordinator: ReturnType<typeof createTestTurnCoordinator>;
 	nextStream: (chunks: StreamChunk[]) => void;
 	shutdown: () => Promise<void>;
 }
@@ -210,6 +214,8 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
 	Container.set(ChatIntegrationRegistry, registry);
+	const turnCoordinator = createTestTurnCoordinator();
+	Container.set(AgentThreadTurnCoordinator, turnCoordinator.coordinator);
 
 	let stream = params.stream ?? [
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
@@ -217,7 +223,13 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	];
 	const agentExecutor = {
 		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		// Models the orchestrator: `beforeResume` runs once the resume owns the thread turn.
+		resumeForChat: vi.fn((config?: { beforeResume?: () => Promise<void> }) =>
+			(async function* resume() {
+				await config?.beforeResume?.();
+				yield* toStream(stream);
+			})(),
+		),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 
@@ -248,6 +260,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		turnCoordinator,
 		nextStream: (chunks: StreamChunk[]) => {
 			stream = chunks;
 		},

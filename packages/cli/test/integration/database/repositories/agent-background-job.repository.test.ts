@@ -15,7 +15,6 @@ import { AgentBackgroundJobService } from '@/modules/agents/background/agent-bac
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -175,9 +174,6 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 
 			const executionRepository = mock<AgentExecutionRepository>();
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			const checkpointStorage = mock<N8NCheckpointStorage>();
-			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 			const orchestrator = mock<AgentExecutionOrchestratorService>();
 			let firstWakeStarted!: () => void;
 			const firstWake = new Promise<void>((resolve) => (firstWakeStarted = resolve));
@@ -202,10 +198,8 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 			const wakeService = new AgentWakeService(
 				repository,
-				executionRepository,
 				agentRepository,
 				userRepository,
-				checkpointStorage,
 				mock<ChatIntegrationRegistry>(),
 				orchestrator,
 				lockService,
@@ -231,7 +225,10 @@ describe('AgentBackgroundJobRepository', () => {
 
 			let secondWakeStarted!: () => void;
 			const secondWake = new Promise<void>((resolve) => (secondWakeStarted = resolve));
-			orchestrator.executeForWake.mockImplementationOnce(async () => secondWakeStarted());
+			orchestrator.executeForWake.mockImplementationOnce(async () => {
+				secondWakeStarted();
+				return 'ran';
+			});
 			await wakeService.requestWake('thread-1');
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			await secondWake;

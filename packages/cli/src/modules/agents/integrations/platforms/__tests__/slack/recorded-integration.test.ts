@@ -172,4 +172,80 @@ describe('Slack recorded integration replay', () => {
 			await ctx.shutdown();
 		}
 	});
+
+	it('answers thread replies that arrive during a running turn, one after the other in arrival order', async () => {
+		const fixtures = recordedSlackFixtures();
+		const threadReply = (eventId: string, user: string, text: string, ts: string) => ({
+			...fixtures.mention,
+			event_id: eventId,
+			event: {
+				...fixtures.mention.event,
+				type: 'message',
+				user,
+				text,
+				ts,
+				thread_ts: fixtures.mention.event.ts,
+				channel_type: 'channel',
+			},
+		});
+		const ctx = await createSlackReplayContext(fixtures, {
+			stream: [
+				{ type: 'text-delta', id: 'reply', delta: 'Answered' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		let releaseFirstTurn!: () => void;
+		const firstTurnGate = new Promise<void>((resolve) => (releaseFirstTurn = resolve));
+		ctx.agentExecutor.executeForChatPublished.mockImplementationOnce(() =>
+			(async function* () {
+				yield { type: 'text-delta', id: 'first', delta: 'Still thinking' };
+				await firstTurnGate;
+				yield { type: 'finish', finishReason: 'stop' };
+			})(),
+		);
+		try {
+			const mention = ctx.sendWebhook(fixtures.mention);
+			await vi.waitFor(() =>
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1),
+			);
+
+			// Each reply is a separate webhook; wait until it has joined the queue before the next
+			// arrives. A turn is queued as soon as the bridge hands it to the coordinator.
+			const admissions = vi.spyOn(ctx.turnCoordinator.coordinator, 'run');
+			const secondUser = ctx.sendWebhook(
+				threadReply('Ev_REPLY_USER_TWO', 'U_USER_TWO', 'me too', '1782378391.000001'),
+			);
+			await vi.waitFor(() => expect(admissions).toHaveBeenCalledTimes(1));
+			const firstUserAgain = ctx.sendWebhook(
+				threadReply('Ev_REPLY_USER_ONE', 'U_USER', 'and me again', '1782378392.000002'),
+			);
+			await vi.waitFor(() => expect(admissions).toHaveBeenCalledTimes(2));
+			// Both replies wait for the running turn instead of being dropped or run alongside it.
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.apiCalls.filter((call) => call.method === 'chat.postMessage')).toHaveLength(0);
+
+			releaseFirstTurn();
+			await Promise.all([mention, secondUser, firstUserAgain]);
+
+			expect(
+				ctx.agentExecutor.executeForChatPublished.mock.calls.map(
+					([config]: [{ message: string; author: { id: string } }]) => [
+						config.author.id,
+						config.message,
+					],
+				),
+			).toEqual([
+				['U_USER', 'hey'],
+				['U_USER_TWO', 'me too'],
+				['U_USER', 'and me again'],
+			]);
+			expect(
+				ctx.apiCalls
+					.filter((call) => call.method === 'chat.postMessage')
+					.map((call) => call.body.markdown_text),
+			).toEqual(['Still thinking', 'Answered', 'Answered']);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
 });

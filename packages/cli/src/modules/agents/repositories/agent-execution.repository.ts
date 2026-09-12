@@ -1,6 +1,8 @@
+import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { OperationalError } from 'n8n-workflow';
 
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
@@ -8,6 +10,18 @@ import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 export type RunningAgentExecution = Pick<
 	AgentExecution,
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+/** Another running turn already claims this thread. The caller waits and retries. */
+export class AgentThreadClaimConflictError extends OperationalError {
+	constructor() {
+		super('Another agent turn already holds this thread', { level: 'info' });
+	}
+}
+
+type NewRunningAgentExecution = Omit<
+	AgentExecution,
+	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'generateId' | 'setUpdateDate'
 >;
 
 type AgentExecutionFinalizationValues = Pick<
@@ -43,8 +57,32 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.existsBy({ threadId, status: 'running' });
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	/**
+	 * Insert a running row. With `activeThreadId` set, the partial unique index
+	 * turns a second claim on the same thread into {@link AgentThreadClaimConflictError}.
+	 */
+	async insertRunning(values: NewRunningAgentExecution): Promise<AgentExecution> {
+		try {
+			return await this.save(this.create(values));
+		} catch (error) {
+			if (values.activeThreadId !== null && isUniqueConstraintError(error)) {
+				throw new AgentThreadClaimConflictError();
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Refresh the liveness timestamp. With `activeThreadId`, the update matches
+	 * only while the row still holds that claim, so `false` means the claim
+	 * is gone.
+	 */
+	async touchRunning(executionId: string, activeThreadId?: string): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running', ...(activeThreadId ? { activeThreadId } : {}) },
+			{ updatedAt: new Date() },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -58,13 +96,26 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
+	/**
+	 * Move a running row to a terminal status. This also releases its thread
+	 * claim. With `staleBefore`, only a row without a heartbeat since then
+	 * matches, so a run that is alive again keeps its claim.
+	 */
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ id: executionId, status: 'running' },
-			values as QueryDeepPartialEntity<AgentExecution>,
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThan(staleBefore) } : {}),
+			},
+			{
+				...values,
+				activeThreadId: null,
+			} as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
 	}

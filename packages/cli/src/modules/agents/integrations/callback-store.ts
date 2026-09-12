@@ -58,9 +58,14 @@ export class CallbackStore {
 		return key;
 	}
 
+	/** Read a short key without consuming it. */
+	async peek(key: string): Promise<CallbackPayload | undefined> {
+		return await this.cache.get<CallbackPayload>(this.entryCacheKey(key));
+	}
+
 	/** Resolve a short key and delete it. Returns undefined if missing/expired. */
 	async resolve(key: string): Promise<CallbackPayload | undefined> {
-		const peek = await this.cache.get<CallbackPayload>(this.entryCacheKey(key));
+		const peek = await this.peek(key);
 		if (!peek) return undefined;
 
 		const lockId = peek.groupId
@@ -68,7 +73,7 @@ export class CallbackStore {
 			: `${this.scope}:entry:${key}`;
 
 		return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, lockId, async () => {
-			const entry = await this.cache.get<CallbackPayload>(this.entryCacheKey(key));
+			const entry = await this.peek(key);
 			if (!entry) return undefined;
 
 			if (entry.groupId) {
