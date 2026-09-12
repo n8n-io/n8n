@@ -455,6 +455,33 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('should fetch credentials scoped to the workflow passed by a standalone host', () => {
+		// Legacy setup wizard: the conversation lives in the personal project while
+		// the workflow lives in a team project. The picker has to follow the workflow.
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {};
+
+		renderComponent(
+			{
+				props: {
+					node: httpNode,
+					overrideCredType: 'openAiApi',
+					standalone: true,
+					workflowId: 'wf-team',
+					projectId: 'personal-project',
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf-team',
+		});
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalledWith({
+			projectId: 'personal-project',
+		});
+	});
+
 	it('should ignore managed credentials in the dropdown if active node is the HTTP node', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {

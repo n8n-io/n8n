@@ -2783,6 +2783,28 @@ describe('workflows tool', () => {
 			);
 		});
 
+		it('returns a failed result when the save fails so nothing counts as applied', async () => {
+			// The save is where a credential the workflow's project cannot use is
+			// rejected. Reporting it as a partial success would hide the reason.
+			(applyNodeChanges as Mock).mockResolvedValue({
+				applied: [],
+				failed: [{ nodeName: 'HTTP Request', error: 'Failed to save workflow: no access' }],
+				saveError: 'Failed to save workflow: no access',
+			});
+
+			const tool = createWorkflowsTool(createMockContext());
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { 'HTTP Request': { httpHeaderAuth: 'cred-1' } },
+				},
+			} as never);
+
+			expect(result).toEqual({ success: false, error: 'Failed to save workflow: no access' });
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('reports a just-applied credential whose test failed as a failed node', async () => {
 			// A bound credential is settled (needsAction=false) even when its test
 			// fails, so the apply path must re-analyze with includeSettled to keep

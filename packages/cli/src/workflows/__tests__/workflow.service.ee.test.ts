@@ -310,6 +310,109 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('validateWorkflowCredentialUsage() - credential added to an existing node', () => {
+		const httpNode = (
+			credentials?: INode['credentials'],
+			parameters: Record<string, unknown> = { url: '' },
+		) =>
+			({
+				id: 'existing-1',
+				name: 'Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters,
+				...(credentials ? { credentials } : {}),
+			}) as unknown as INode;
+		const accessible = [{ id: 'team-cred' }];
+
+		it('rejects a credential the user cannot use when the node did not have it before', () => {
+			const previousVersion = { nodes: [httpNode()] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [
+					httpNode(
+						{ httpHeaderAuth: { id: 'personal-cred', name: 'Mine' } },
+						{ url: 'https://x.test' },
+					),
+				],
+			} as unknown as IWorkflowBase;
+
+			expect(() =>
+				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
+			).toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('saves a credential the user can use together with the other edits', () => {
+			const previousVersion = { nodes: [httpNode()] } as unknown as IWorkflowBase;
+			const edited = httpNode(
+				{ httpHeaderAuth: { id: 'team-cred', name: 'Team' } },
+				{ url: 'https://x.test', query: { key: 'value' } },
+			);
+			const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(edited);
+		});
+
+		it('still restores a node whose credential the user could not use before', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [{ ...previous, parameters: { url: 'https://changed.test' } }],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0].parameters).toEqual({ url: '' });
+		});
+
+		it('restores a read-only node whose credential is swapped for another the user cannot use', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [
+					httpNode(
+						{ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } },
+						{ url: 'https://changed.test' },
+					),
+				],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(previous);
+		});
+
+		it('restores a read-only node whose unresolved credential is replaced', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: null, name: 'Old' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } }, { url: 'https://x.test' })],
+			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(previous);
+		});
+	});
+
 	describe('attemptWorkflowReactivation', () => {
 		// Workflow and folder transfers deactivate, transfer, then re-add. A failed
 		// re-add may have partially registered triggers, in memory and as durable
