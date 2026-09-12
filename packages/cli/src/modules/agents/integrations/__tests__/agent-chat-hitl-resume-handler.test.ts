@@ -55,6 +55,7 @@ function makeHandler(callback: {
 		updateLatest,
 		resumeForChat,
 		resolve,
+		consume,
 	};
 }
 
@@ -120,3 +121,26 @@ it.each([
 		);
 	},
 );
+
+it('answers a click whose callback an earlier click already consumed', async () => {
+	const { handler, event, resumeForChat, resolve, consume, settleActionMessage } = makeHandler({
+		actionId: 'resume:run-1:tool-1:0',
+		value: JSON.stringify({ approved: true }),
+		kind: 'approval',
+	});
+	resolve.mockResolvedValue(false);
+	resumeForChat.mockImplementation((config) =>
+		// eslint-disable-next-line require-yield
+		(async function* () {
+			await config.beforeResume?.();
+		})(),
+	);
+	consume.mockImplementation(async (stream: AsyncGenerator) => {
+		await stream.next();
+	});
+
+	await handler.handleAction(event as never);
+
+	expect(event.thread.post).toHaveBeenCalledWith('This action has already been handled');
+	expect(settleActionMessage).not.toHaveBeenCalled();
+});

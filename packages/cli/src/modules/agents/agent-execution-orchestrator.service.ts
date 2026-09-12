@@ -18,6 +18,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { AgentActionAlreadyHandledError } from './agent-action-already-handled.error';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -483,7 +484,7 @@ export class AgentExecutionOrchestratorService {
 			checkpointStatus.status !== 'active' ||
 			checkpointStatus.checkpoint.status !== 'suspended'
 		) {
-			throw new UserError('This action has already been handled');
+			throw new AgentActionAlreadyHandledError();
 		}
 
 		const runtime = await this.runtimeCacheService.getRuntime({

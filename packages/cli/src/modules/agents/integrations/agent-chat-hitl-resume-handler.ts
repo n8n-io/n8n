@@ -1,8 +1,9 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
 
+import { AgentActionAlreadyHandledError } from '../agent-action-already-handled.error';
 import type {
 	ActionDecisionMessageFormatter,
 	BridgeResumeExecutionContext,
@@ -85,7 +86,7 @@ export class AgentChatHitlResumeHandler {
 					this.options.callbackStore &&
 					!(await this.options.callbackStore.resolve(event.actionId))
 				) {
-					throw new UserError('This action has already been handled');
+					throw new AgentActionAlreadyHandledError();
 				}
 
 				// Persist the interacting user / messageId into the thread's message
@@ -288,6 +289,9 @@ export class AgentChatHitlResumeHandler {
 				// once-wrapped handle makes it a no-op await when that already ran.
 				await statusHandle?.clearBeforeResponse();
 			}
+		} catch (error) {
+			if (!(error instanceof AgentActionAlreadyHandledError)) throw error;
+			if (notifyOnDuplicate) await thread.post(error.message);
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}
