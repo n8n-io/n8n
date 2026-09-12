@@ -10,7 +10,8 @@ import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionSummaryWithScopes } from '../../executions.types';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import type { ExecutionSummaryWithScopes, IExecutionResponse } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -42,6 +43,11 @@ const routes = [
 	{
 		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
+		component: { template: '<div></div>' },
+	},
+	{
+		path: '/workflow/:workflowId/executions/:executionId',
+		name: VIEWS.EXECUTION_PREVIEW,
 		component: { template: '<div></div>' },
 	},
 	{
@@ -95,6 +101,17 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 		stubs: {
 			// UN STUB router-link
 			RouterLink,
+			// The preview canvas loads and evicts per-execution data stores on mount,
+			// which would clobber the state these tests seed.
+			ExecutionPreviewHost: true,
+			// Reka UI tooltips don't open in jsdom, so expose the props the component
+			// passes and assert the wiring instead of driving the popup.
+			N8nTooltip: {
+				name: 'N8nTooltip',
+				props: ['disabled', 'content'],
+				template:
+					'<div :data-tooltip-disabled="disabled" :data-tooltip-content="content"><slot /></div>',
+			},
 		},
 		plugins: [router],
 		provide: {
@@ -544,6 +561,94 @@ describe('WorkflowExecutionsPreview.vue', () => {
 				versionId,
 			);
 			expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('redacted execution data', () => {
+		const previewPath = `/workflow/${executionData.workflowId}/executions/${executionData.id}`;
+		const debugPath = `/workflow/${executionData.workflowId}/debug/${executionData.id}`;
+
+		// The store exposes `execution` as readonly, so state seeding does not work.
+		// Run the real actions instead and fill it the way the preview does.
+		const seedExecution = (redactionInfo?: {
+			isRedacted: boolean;
+			reason: string;
+			canReveal: boolean;
+		}) => {
+			useExecutionDataStore(createExecutionDataId(executionData.id)).setExecution({
+				id: executionData.id,
+				data: { resultData: { runData: {} }, redactionInfo },
+			} as unknown as IExecutionResponse);
+		};
+
+		beforeEach(async () => {
+			createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+								[EnterpriseEditionFeature.DebugInEditor]: true,
+							},
+						},
+					},
+				},
+				stubActions: false,
+			});
+
+			// Keyed by the workflow id the renderer injects, so the real
+			// getWorkflowById grants the update permission the button needs.
+			useWorkflowsListStore().workflowsById['test-workflow-id'] = {
+				scopes: ['workflow:update'],
+			} as IWorkflowDb;
+
+			await router.push(previewPath);
+		});
+
+		// The copy never names the reason: end-user credential data is unrevealable to
+		// everyone but the executing user, so a permissions claim would be wrong there.
+		test.each(['workflow_redaction_policy', 'dynamic_credentials'])(
+			'should block the debug button and explain why for reason %s',
+			async (reason) => {
+				seedExecution({ isRedacted: true, reason, canReveal: false });
+
+				const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+				await userEvent.click(getByTestId('execution-debug-button'));
+				expect(router.currentRoute.value.path).toBe(previewPath);
+
+				const tooltip = getByTestId('execution-debug-button').closest('[data-tooltip-content]');
+				expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
+				expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
+					'This execution data is redacted and cannot be revealed, so it cannot be pinned in the editor.',
+				);
+			},
+		);
+
+		it('should allow debugging when the data can be revealed', async () => {
+			seedExecution({ isRedacted: true, reason: 'policy', canReveal: true });
+
+			const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+			expect(
+				getByTestId('execution-debug-button')
+					.closest('[data-tooltip-content]')
+					?.getAttribute('data-tooltip-disabled'),
+			).toBe('true');
+
+			await userEvent.click(getByTestId('execution-debug-button'));
+
+			expect(router.currentRoute.value.path).toBe(debugPath);
+		});
+
+		it('should allow debugging when the data is not redacted', async () => {
+			seedExecution();
+
+			const { getByTestId } = renderComponent({ props: { execution: executionData } });
+
+			await userEvent.click(getByTestId('execution-debug-button'));
+
+			expect(router.currentRoute.value.path).toBe(debugPath);
 		});
 	});
 });
