@@ -137,6 +137,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		undefined,
 		undefined,
 		undefined,
+		undefined,
 		options.dependencyQueryService,
 	);
 }
