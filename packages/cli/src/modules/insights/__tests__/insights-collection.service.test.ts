@@ -263,3 +263,75 @@ describe('calculateTimeSaved', () => {
 		expect(timeSaved).toBe(20);
 	});
 });
+
+describe('flushEvents with an insight that has no shared workflow', () => {
+	let insightsRawRepository: ReturnType<typeof mock<InsightsRawRepository>>;
+	let insightsMetadataRepository: ReturnType<typeof mock<InsightsMetadataRepository>>;
+	let sharedWorkflowRepository: ReturnType<typeof mock<SharedWorkflowRepository>>;
+	let service: InsightsCollectionService;
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		insightsRawRepository = mock<InsightsRawRepository>();
+		insightsMetadataRepository = mock<InsightsMetadataRepository>();
+		sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		service = new InsightsCollectionService(
+			sharedWorkflowRepository,
+			insightsRawRepository,
+			insightsMetadataRepository,
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+		service.init();
+
+		// Only "known-workflow" has an owner row, so "gone-workflow" gets no metadata.
+		sharedWorkflowRepository.find.mockResolvedValue([
+			mock<SharedWorkflow>({
+				workflowId: 'known-workflow',
+				projectId: 'project-id',
+				project: mock<Project>({ name: 'Project' }),
+				role: 'workflow:owner',
+			}),
+		]);
+		insightsMetadataRepository.findBy.mockResolvedValue([
+			mock<InsightsMetadata>({ workflowId: 'known-workflow', metaId: 1 }),
+		]);
+	});
+
+	afterEach(async () => {
+		await service.shutdown();
+		vi.useRealTimers();
+	});
+
+	const bufferEvent = (workflowId: string) =>
+		service['bufferedInsights'].add({
+			workflowId,
+			workflowName: workflowId,
+			timestamp: DateTime.utc().toJSDate(),
+			type: 'success',
+			value: 1,
+		});
+
+	test('saves the rest of the batch and empties the buffer', async () => {
+		bufferEvent('known-workflow');
+		bufferEvent('gone-workflow');
+
+		await service.flushEvents();
+
+		expect(insightsRawRepository.insert).toHaveBeenCalledTimes(1);
+		expect(insightsRawRepository.insert).toHaveBeenCalledWith([
+			expect.objectContaining({ metaId: 1 }),
+		]);
+		expect(service['bufferedInsights'].size).toBe(0);
+	});
+
+	test('does not re-buffer the event on the next flush', async () => {
+		bufferEvent('gone-workflow');
+
+		await service.flushEvents();
+		await service.flushEvents();
+
+		expect(service['bufferedInsights'].size).toBe(0);
+		expect(insightsRawRepository.insert).not.toHaveBeenCalled();
+	});
+});
