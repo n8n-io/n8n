@@ -468,6 +468,33 @@ describe('OutboundHttp.requests requestLegacy', () => {
 		);
 
 		it(
+			'preserves the original HTTP status when error-body drain times out',
+			{ timeout: 5000 },
+			async () => {
+				// When binaryToString fails on a stalled error body, the catch block
+				// in legacy-request.ts should return an empty string and still surface
+				// the original 403 status, not a drain timeout error.
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const error = (await client
+					.requestLegacy({
+						url: `http://127.0.0.1:${port}/stall`,
+						useStream: true,
+						timeout: 30_000,
+					})
+					.catch((e: Error & { statusCode?: number; status?: number }) => e)) as Error & {
+					statusCode: number;
+					status: number;
+					message: string;
+				};
+
+				expect(error.statusCode).toBe(403);
+				expect(error.status).toBe(403);
+				expect(error.message).toContain('403');
+			},
+		);
+
+		it(
 			'guards a stalled success-response (2xx) body that the caller drains',
 			{ timeout: 5000 },
 			async () => {
@@ -548,6 +575,40 @@ describe('OutboundHttp.requests requestLegacy', () => {
 						}),
 					).rejects.toMatchObject({ statusCode: 403 });
 					expect(Date.now() - start).toBeLessThan(3000);
+				} finally {
+					Container.set(HttpRequestConfig, new HttpRequestConfig());
+				}
+			},
+		);
+
+		it(
+			'includes partial error body when CONNECT is denied with already-closed stream',
+			{ timeout: 5000 },
+			async () => {
+				// Verifies that when the proxy error body is buffered but the stream
+				// is already closed, we still surface the partial body in the error
+				Container.set(
+					HttpRequestConfig,
+					Object.assign(new HttpRequestConfig(), { responseBodyReadTimeout: 60_000 }),
+				);
+				try {
+					const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+					const error = (await client
+						.requestLegacy({
+							url: 'https://denied.example/',
+							proxy: `http://127.0.0.1:${proxyPort}`,
+							useStream: true,
+							timeout: 30_000,
+						})
+						.catch((e: Error & { statusCode?: number }) => e)) as Error & {
+						statusCode: number;
+						message: string;
+					};
+
+					expect(error.statusCode).toBe(403);
+					expect(error.message).toContain('403');
+					expect(error.message).toContain('Access Denied');
 				} finally {
 					Container.set(HttpRequestConfig, new HttpRequestConfig());
 				}

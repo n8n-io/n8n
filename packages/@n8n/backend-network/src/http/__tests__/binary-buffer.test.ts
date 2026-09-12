@@ -129,4 +129,34 @@ describe('streamToBuffer inactivity timeout', () => {
 
 		await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from(''));
 	});
+
+	it(
+		'returns empty buffer immediately when the stream has readableEnded set',
+		{ timeout: 1000 },
+		async () => {
+			// After fully consuming a stream, readableEnded becomes true and future
+			// streamToBuffer calls must return immediately rather than waiting for events.
+			const stream = Readable.from(Buffer.from('consumed'));
+			const first = await streamToBuffer(stream, 60_000);
+			expect(first.toString()).toBe('consumed');
+
+			// Now the stream has readableEnded === true. This should return immediately.
+			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from(''));
+		},
+	);
+
+	it(
+		'flushes mixed chunk types (Buffer, string, Uint8Array) from an already-destroyed stream',
+		{ timeout: 1000 },
+		async () => {
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('buf'));
+			stream.push('str');
+			stream.push(new Uint8Array([0x61, 0x72, 0x72])); // 'arr' in bytes
+			stream.destroy();
+
+			const result = await streamToBuffer(stream, 60_000);
+			expect(result.toString()).toBe('bufstrarr');
+		},
+	);
 });
