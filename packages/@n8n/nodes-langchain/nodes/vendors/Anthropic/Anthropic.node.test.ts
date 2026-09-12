@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData, IDataObject } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -276,6 +276,166 @@ describe('Anthropic Node', () => {
 					tools: [],
 				},
 				enableAnthropicBetas: {},
+			});
+		});
+	});
+
+	describe('Text -> Message prompt caching', () => {
+		const mockNodeParameters = (options: IDataObject) => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return false;
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+		};
+
+		it('should send a top-level cache breakpoint when prompt caching is enabled', async () => {
+			mockNodeParameters({ enablePromptCaching: true, system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should not send a cache breakpoint when prompt caching is disabled', async () => {
+			mockNodeParameters({ system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// An exact body match, so an unconditional cache_control would fail here.
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should keep the cache breakpoint on follow-up requests in the tool call loop', async () => {
+			mockNodeParameters({ enablePromptCaching: true });
+
+			// Every call receives the same mutable body object, so the recorded arguments
+			// all point at its final state. Snapshot each payload as it is sent, otherwise
+			// the first request would be asserted against the grown conversation.
+			const responses = [
+				{
+					content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					stop_reason: 'tool_use',
+				},
+				{ content: [{ type: 'text', text: 'Done.' }], stop_reason: 'end_turn' },
+			];
+			const sentBodies: IDataObject[] = [];
+			apiRequestMock.mockImplementation(
+				async (_method: string, _endpoint: string, parameters: { body: IDataObject }) => {
+					sentBodies.push(structuredClone(parameters.body));
+					return responses[sentBodies.length - 1];
+				},
+			);
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(sentBodies).toHaveLength(2);
+
+			// First request: only the original prompt, breakpoint already in place.
+			expect(sentBodies[0]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [{ role: 'user', content: 'Hello, world!' }],
+				tools: [],
+				cache_control: { type: 'ephemeral' },
+			});
+
+			// Follow-up request: the conversation has grown by the tool exchange, and the
+			// breakpoint has to survive it -- this is where caching actually pays off.
+			expect(sentBodies[1]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [
+					{ role: 'user', content: 'Hello, world!' },
+					{
+						role: 'assistant',
+						content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					},
+					{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '' }] },
+				],
+				tools: [],
+				cache_control: { type: 'ephemeral' },
+			});
+		});
+
+		it('should count cached tokens towards the reported token usage', async () => {
+			mockNodeParameters({ enablePromptCaching: true });
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: {
+					input_tokens: 12,
+					output_tokens: 34,
+					cache_creation_input_tokens: 500,
+					cache_read_input_tokens: 1000,
+				},
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// Anthropic reports cached tokens outside input_tokens, so all three add up.
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 1512, outputTokens: 34 },
+			});
+		});
+
+		it('should report token usage unchanged when the response has no cache fields', async () => {
+			mockNodeParameters({});
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: { input_tokens: 12, output_tokens: 34 },
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 12, outputTokens: 34 },
 			});
 		});
 	});

@@ -79,9 +79,19 @@ export type Tool =
 			name: 'code_execution';
 	  };
 
+export interface Usage {
+	input_tokens: number;
+	output_tokens: number;
+	/** Tokens written to the cache. Billed separately from `input_tokens`. */
+	cache_creation_input_tokens?: number;
+	/** Tokens served from the cache. Billed separately from `input_tokens`. */
+	cache_read_input_tokens?: number;
+}
+
 export interface MessagesResponse {
 	content: Content[];
 	stop_reason: string | null;
+	usage?: Usage;
 }
 
 export interface PromptResponse {
