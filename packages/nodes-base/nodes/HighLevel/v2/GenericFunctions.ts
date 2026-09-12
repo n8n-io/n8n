@@ -378,42 +378,78 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	return options;
 }
 
+type CustomFieldLocator = {
+	value?: unknown;
+	id?: unknown;
+};
+
+type RawCustomField = {
+	fieldId?: CustomFieldLocator | string;
+	id?: unknown;
+	fieldValue?: unknown;
+	field_value?: unknown;
+};
+
+function resolveCustomFieldId(field: RawCustomField): string | undefined {
+	const locator = field.fieldId;
+
+	if (typeof locator === 'string' && locator !== '') {
+		return locator;
+	}
+
+	if (typeof locator === 'object' && locator !== null) {
+		if (typeof locator.value === 'string' && locator.value !== '') {
+			return locator.value;
+		}
+		if (typeof locator.id === 'string' && locator.id !== '') {
+			return locator.id;
+		}
+	}
+
+	if (typeof field.id === 'string' && field.id !== '') {
+		return field.id;
+	}
+
+	return undefined;
+}
+
+/**
+ * HighLevel expects `{ id, fieldValue }`. The UI stores a resource locator plus
+ * `fieldValue`; older routing also emitted `{ fieldId: { id }, field_value }`.
+ */
 export async function addCustomFieldsPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const requestBody = requestOptions.body as IDataObject;
 
-	if (requestBody && requestBody.customFields) {
-		const rawCustomFields = requestBody.customFields as IDataObject;
-
-		// Define the structure of fieldId
-		interface FieldIdType {
-			value: unknown;
-			cachedResultName?: string;
-		}
-
-		// Ensure rawCustomFields.values is an array of objects with fieldId and fieldValue
-		if (rawCustomFields && Array.isArray(rawCustomFields.values)) {
-			const formattedCustomFields = rawCustomFields.values.map((field: unknown) => {
-				// Assert that field is of the expected shape
-				const typedField = field as { fieldId: FieldIdType; fieldValue: unknown };
-
-				const fieldId = typedField.fieldId;
-
-				if (typeof fieldId === 'object' && fieldId !== null && 'value' in fieldId) {
-					return {
-						id: fieldId.value,
-						key: fieldId.cachedResultName ?? 'default_key',
-						field_value: typedField.fieldValue,
-					};
-				} else {
-					throw new NodeOperationError(this.getNode(), 'Error processing custom fields.');
-				}
-			});
-			requestBody.customFields = formattedCustomFields;
-		}
+	if (!requestBody?.customFields) {
+		return requestOptions;
 	}
+
+	const rawCustomFields = requestBody.customFields as IDataObject | RawCustomField[];
+	const values = Array.isArray(rawCustomFields)
+		? rawCustomFields
+		: Array.isArray(rawCustomFields.values)
+			? (rawCustomFields.values as RawCustomField[])
+			: undefined;
+
+	if (!values) {
+		return requestOptions;
+	}
+
+	requestBody.customFields = values.map((field) => {
+		const id = resolveCustomFieldId(field);
+
+		if (id === undefined) {
+			throw new NodeOperationError(this.getNode(), 'Error processing custom fields.');
+		}
+
+		return {
+			id,
+			fieldValue: field.fieldValue ?? field.field_value,
+		};
+	});
 
 	return requestOptions;
 }
