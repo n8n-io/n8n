@@ -29,12 +29,30 @@ jobs:
 
       - name: Fail on error-level findings
         run: |
-          # Check SARIF for error-level findings
-          if jq -e '.runs[].results[] | select(.level == "error")' results.sarif > /dev/null 2>&1; then
+          # The scan must leave a report behind. A missing or empty file means the scan
+          # did not finish, which is not the same as a clean result, so fail the job.
+          if [ ! -s results.sarif ]; then
+            echo "::error::Poutine wrote no results.sarif, so the scan result cannot be trusted"
+            exit 1
+          fi
+
+          # Check SARIF for error-level findings.
+          # jq -e exits 0 when it printed a result and 4 when the filter matched nothing.
+          # Any other code means jq could not read or parse the file.
+          status=0
+          jq -e '.runs[].results[] | select(.level == "error")' results.sarif > /dev/null 2>&1 || status=$?
+
+          if [ "$status" -eq 0 ]; then
             echo "::error::Poutine found error-level security findings:"
             jq -r '.runs[].results[] | select(.level == "error") | "  - \(.ruleId): \(.message.text)"' results.sarif
             exit 1
           fi
+
+          if [ "$status" -ne 4 ]; then
+            echo "::error::Could not read results.sarif (jq exited with $status)"
+            exit 1
+          fi
+
           echo "No error-level findings detected"
 
       - name: Upload SARIF results
