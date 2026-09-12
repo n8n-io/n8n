@@ -20,7 +20,7 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-import { raindropApiRequest } from './GenericFunctions';
+import { raindropApiRequest, raindropApiRequestAllItems } from './GenericFunctions';
 
 export class Raindrop implements INodeType {
 	description: INodeTypeDescription = {
@@ -165,13 +165,17 @@ export class Raindrop implements INodeType {
 
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/raindrops/${collectionId}`;
-						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-						responseData = responseData.items;
-
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.slice(0, limit);
-						}
+						// The endpoint answers one page at a time, so a single request returned
+						// only the first page however many bookmarks the collection held.
+						const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
+						responseData = await raindropApiRequestAllItems.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							{},
+							limit,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         bookmark: update

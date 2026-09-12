@@ -51,3 +51,45 @@ export async function raindropApiRequest(
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
+
+/** Raindrop caps a page of raindrops at 50 items. */
+const RAINDROPS_PER_PAGE = 50;
+
+/**
+ * Page through a paginated Raindrop collection. `limit` stops the paging early;
+ * omit it to read every page.
+ */
+export async function raindropApiRequestAllItems(
+	this: IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	qs: IDataObject,
+	body: IDataObject,
+	limit?: number,
+): Promise<IDataObject[]> {
+	const returnData: IDataObject[] = [];
+	const perpage = limit === undefined ? RAINDROPS_PER_PAGE : Math.min(limit, RAINDROPS_PER_PAGE);
+	let page = 0;
+	let pageLength = 0;
+
+	do {
+		const responseData = await raindropApiRequest.call(
+			this,
+			method,
+			endpoint,
+			{
+				...qs,
+				perpage,
+				page,
+			},
+			body,
+		);
+
+		const items = (responseData.items ?? []) as IDataObject[];
+		pageLength = items.length;
+		returnData.push(...items);
+		page++;
+	} while (pageLength === perpage && (limit === undefined || returnData.length < limit));
+
+	return limit === undefined ? returnData : returnData.slice(0, limit);
+}
