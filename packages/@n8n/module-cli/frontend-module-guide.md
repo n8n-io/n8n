@@ -168,21 +168,21 @@ shell imports.
 
 ## The descriptor contract
 
-`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares twelve
+`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares thirteen
 extension surfaces. The shell connects them at three different levels. Read the difference before
 you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function              | Reader                                   |
-| ----------------------- | ------------------------------ | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`         | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`    | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`      | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`         | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`         | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
+| Field                   | Register function               | Reader                                               |
+| ----------------------- | ------------------------------- | ---------------------------------------------------- |
+| `routes`                | `registerModuleRoutes`          | vue-router                                           |
+| `projectTabs`           | `registerModuleProjectTabs`     | `uiStore.moduleTabs`, in `ProjectHeader`             |
+| `modals`                | `registerModuleModals`          | `modalRegistry`, in `DynamicModalLoader`             |
+| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry.isAdHocKey`, in `ui.store`            |
+| `settingsPages`         | `registerModuleSettingsPages`   | `uiStore.settingsSidebarItems`, in `SettingsSidebar` |
+| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`              |
+| `parameterInputs`       | `registerModuleParameterInputs` | `useParameterInputContribution`, in `ParameterInput` |
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
@@ -192,11 +192,30 @@ after the login.
 handler also stops the built-in handler of the shell for that push type. A handler from an
 inactive module would stop the built-in handler and give no message.
 
-### The shell registers this one, but nothing shows it
+`parameterInputs` has the opposite rule, on purpose. `registerModuleParameterInputs` does **not**
+gate on `isModuleActive`. A parameter input is a render primitive, and not a feature. A gated
+renderer would leave the parameter with nothing to draw it, which is a broken field and not a
+hidden feature. The backend enforces availability. One module owns one `parameter.type`, and a
+type that no module claims keeps the built-in branch of the shell.
 
-`registerModuleCommands` puts `commands` into `commandRegistry`. No command-bar host reads that
-registry. `features/shared/commandBar` still makes its list from its own `use*Commands`
-composables. The registry keeps your `commands` array, but the command bar never shows it.
+### The shell registers these two, but nothing shows them
+
+**`commands`.** `registerModuleCommands` puts your entries into `commandRegistry`. No command-bar
+host reads that registry. `features/shared/commandBar` still makes its list from its own
+`use*Commands` composables. The registry keeps your `commands` array, but the command bar never
+shows it.
+
+**`resources`.** `registerModuleResources` puts your metadata into `resourceRegistry`. No file
+reads it back: nothing in the repo calls `getResource`, `hasResource` or `getAllResourceKeys`.
+`ResourcesListLayout` does **not** import the SDK, so it never sees a module resource. (The
+`getResourceText` helper in that component is i18n, and is not the registry.)
+
+`ResourcesListLayout` renders the `resources` and `resourceKey` **props** that its caller gives
+it. A shell feature adds its resource to the `Resource` union with a type-level augmentation of
+`ModuleResources` in `@/Interface`; `features/core/dataTable/types.ts` and
+`features/agents/types.ts` do this. A module package cannot do the same, because the module
+tsconfig base gives no `@/*` path. So a packaged module has no supported route to that layout
+today. Render your own list until **CAT-3685** lands.
 
 ### Types-only — these do nothing at all
 
@@ -205,25 +224,35 @@ composables. The registry keeps your `commands` array, but the command bar never
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
 
-Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
-The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
+Do not use `commands`, `resources` or the four types-only fields yet. **CAT-3685** tracks the
+remaining work. The descriptor that the CLI writes repeats this split in a comment, so you see it
+as you write.
 
 **Note:** this is the most common cause of lost time for a new module author. The type accepts
-your `commands` array, and no component draws it.
+your `commands` or `resources` array, the shell puts it in a registry, and no component draws it.
 
 ### Route names are yours, and a check guards them
 
 A route name is global to the router. `router.addRoute` replaces a duplicate name and gives no
 warning. The route that loses then does not resolve.
 
-The central `VIEWS` enum of the shell made every name unique. A module cannot import `VIEWS`,
-because `VIEWS` is in `@/app/constants` — the shell. Declare your own constant, and export it from
-your `constants.ts` file:
+The central `VIEWS` enum made every name unique. A module **can** import it: `VIEWS` is in
+`@n8n/frontend-constants/views`, an L2 package, and not in `@/app/constants`. Declare
+`@n8n/frontend-constants` as a dependency and import the name you need:
+
+```ts
+import { VIEWS } from '@n8n/frontend-constants/views';
+```
+
+`packages/modules/insights/frontend/src/insights.module.ts` does this. A module may also declare
+its own route names instead, and export them from its `constants.ts` file:
 
 ```ts
 // src/my-feature.constants.ts
 export const MY_FEATURE_VIEW = 'my-feature';
 ```
+
+Either way works. `assertUniqueRouteNames` catches a collision in both.
 
 `assertUniqueRouteNames` (`@n8n/frontend-module-sdk`) gives that check back. `registerModuleRoutes`
 calls it before it adds a module route. It throws an error if a name is the same as a shell name
@@ -625,10 +654,10 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
 
 ## Future work
 
-1. **Five descriptor surfaces do not work yet.** `commands` goes into `commandRegistry`, but no
-   command-bar host reads that registry. `locales`, `shortcuts`, `banners` and `setup` are types,
-   and no file reads them (**CAT-3685**). Until that work lands, cross-feature code stays in the
-   shell.
+1. **Six descriptor surfaces do not work yet.** `commands` goes into `commandRegistry` and
+   `resources` goes into `resourceRegistry`, but no host reads either registry. `locales`,
+   `shortcuts`, `banners` and `setup` are types, and no file reads them (**CAT-3685**). Until that
+   work lands, cross-feature code stays in the shell.
 2. **No tool stops a deliberate cross-module import.** The ESLint `no-restricted-imports` rule is
    **CAT-3692**. The alias split stops an accident in a test run. The tsconfig base stops one at
    typecheck. `turbo boundaries` reports only an *undeclared* dependency. A declared dependency
