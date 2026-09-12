@@ -27,6 +27,35 @@ const DB_PATH =
 	process.env.DB_SQLITE_DATABASE ??
 	path.join(process.env.N8N_USER_FOLDER ?? os.homedir(), '.n8n', 'database.sqlite');
 
+/**
+ * This script writes SQLite on the local filesystem and never makes a request, so a
+ * remote `N8N_BASE_URL` cannot reach the instance it names. Left unchecked it silently
+ * rewrites the developer's own history instead, which is what `pnpm seed:preference`
+ * does when pointed at a preview environment: the estate lands remotely and the
+ * history lands here.
+ *
+ * An explicit `DB_SQLITE_DATABASE` means the target was chosen deliberately, so it
+ * overrides the check.
+ */
+function assertLocalTarget() {
+	if (process.env.DB_SQLITE_DATABASE) return;
+	const raw = process.env.N8N_BASE_URL;
+	if (!raw) return;
+	let host;
+	try {
+		host = new URL(raw).hostname.toLowerCase();
+	} catch {
+		return; // Unparseable, so nothing to conclude from it.
+	}
+	if (['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0'].includes(host)) return;
+	console.error(`N8N_BASE_URL points at ${host}, but this script only writes local SQLite.`);
+	console.error('Executions, assistant threads and activity have no public-API create route,');
+	console.error(`so a remote instance cannot be seeded from here. It would have written to:`);
+	console.error(`  ${DB_PATH}`);
+	console.error('Set DB_SQLITE_DATABASE explicitly if that is genuinely what you want.');
+	process.exit(1);
+}
+
 const SEED_PREFIX = '[seed] ';
 // Threads have no name to prefix, so they carry this in `metadata` instead. It is how
 // the clear step tells its own rows from a developer's real assistant threads.
@@ -151,6 +180,7 @@ function runData(wf, failure) {
 }
 
 function main() {
+	assertLocalTarget();
 	const db = new DatabaseSync(DB_PATH);
 	db.exec('PRAGMA foreign_keys = ON');
 
