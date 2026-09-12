@@ -267,7 +267,7 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
 
 ### ESLint configuration layers
 
-Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
+Rule policy lives in five shared configs in `@n8n/eslint-config`, and a package
 config picks exactly one:
 
 | layer | subpath | for |
@@ -275,6 +275,7 @@ config picks exactly one:
 | `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
 | `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
 | `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `frontendModuleConfig` | `@n8n/eslint-config/frontend-module` | `packages/modules/*/frontend`; adds `frontendConfig` plus the module boundary (no sibling module, no `@/` shell import) |
 | `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
 
 A package config may add `ignores`, an additive plugin config, a block that
