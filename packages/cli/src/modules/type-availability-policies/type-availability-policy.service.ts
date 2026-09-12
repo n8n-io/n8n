@@ -1,3 +1,4 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -46,8 +47,29 @@ export type EffectivePolicy = {
 	readonly attachments: readonly PolicyAttachment[];
 };
 
+/** The allow-all state of a scope with no row, for a composition with no project to read. */
+const UNCONFIGURED_PROJECT: Omit<EffectivePolicy, 'kind'> = {
+	scopeId: null,
+	projectId: null,
+	defaultAction: 'allow',
+	version: UNCONFIGURED_VERSION,
+	rules: [],
+	attachments: [],
+};
+
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+/**
+ * Composed verdicts plus the version of every scope that was read.
+ *
+ * `versions` is structurally a `PolicyVersionRef[]`, so a policy check passes it straight
+ * through without this service importing the check contract.
+ */
+export type ComposedTypeEvaluation = {
+	readonly verdicts: ComposedTypeVerdict[];
+	readonly versions: Array<{ scope: NodeTypeAvailabilityScope; version: number }>;
+};
 
 type PolicyDocumentWrite = {
 	readonly policy: TypeAvailabilityPolicy;
@@ -706,22 +728,57 @@ export class TypeAvailabilityPolicyService {
 		projectId: string,
 		typeNames: readonly string[],
 	): Promise<ComposedTypeVerdict[]> {
+		const { verdicts } = await this.evaluateComposedTypesFor(kind, projectId, typeNames);
+
+		return verdicts;
+	}
+
+	/**
+	 * Same composition as `evaluateComposedTypes`, plus the versions of the scopes it read, for
+	 * a caller that has to report which policy decided — a policy check writing
+	 * `policyVersions` on its result.
+	 *
+	 * `projectId: null` means no project scope applies. The instance scope still decides, so an
+	 * instance `deny` denies and an unsatisfied instance `delegate` denies: a context with no
+	 * project has nowhere to opt in.
+	 */
+	async evaluateComposedTypesFor(
+		kind: string,
+		projectId: string | null,
+		typeNames: readonly string[],
+	): Promise<ComposedTypeEvaluation> {
 		const { instance, project } = await this.readComposedScopes(kind, projectId);
 
-		return typeNames.map((name) => ({
-			name,
-			...evaluateComposedType(instance, project, name),
-		}));
+		return {
+			verdicts: typeNames.map((name) => ({
+				name,
+				...evaluateComposedType(instance, project, name),
+			})),
+			versions: [
+				{ scope: 'instance', version: instance.version },
+				...(projectId === null ? [] : [{ scope: 'project' as const, version: project.version }]),
+			],
+		};
 	}
 
 	/**
 	 * Reads both scopes in parallel — point-in-time snapshots, not one transaction, which is
 	 * fine for an evaluation path (unlike a write).
+	 *
+	 * With no project, nothing is read for it: `UNCONFIGURED_PROJECT` is what
+	 * `getEffectivePolicy` would return for a scope that has no row.
 	 */
 	private async readComposedScopes(
 		kind: string,
-		projectId: string,
+		projectId: string | null,
 	): Promise<{ instance: EffectivePolicy; project: EffectivePolicy }> {
+		if (projectId === null) {
+			return {
+				instance: await this.getEffectivePolicy(kind, null),
+				project: { ...UNCONFIGURED_PROJECT, kind },
+			};
+		}
+
 		const [instance, project] = await Promise.all([
 			this.getEffectivePolicy(kind, null),
 			this.getEffectivePolicy(kind, projectId),
