@@ -89,6 +89,7 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
+			`/${restEndpoint}/openai-oauth2-credential/device-auth`,
 
 			// The dynamic-credential authorize link is a top-level browser navigation
 			// (link click / redirect), so it can't carry the browser-id header. The
