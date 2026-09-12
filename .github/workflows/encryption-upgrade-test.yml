@@ -1,0 +1,91 @@
+name: Encryption Upgrade Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      db:
+        description: 'Database backends to run'
+        type: choice
+        options:
+          - both
+          - sqlite
+          - postgres
+        default: both
+      from-image:
+        description: 'Old release image to seed on (empty = pinned script default)'
+        type: string
+        default: ''
+  schedule:
+    - cron: '30 4 * * 1-5'
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-cycle:
+    name: Upgrade cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WORK_ROOT: ${{ github.workspace }}/.upgrade-test
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm exec turbo run build --filter=n8n
+
+      - name: Run the upgrade cycle
+        env:
+          DB: ${{ inputs.db || 'both' }}
+          FROM_IMAGE_INPUT: ${{ inputs.from-image }}
+        run: |
+          mkdir -p "$WORK_ROOT"
+          if [ -n "$FROM_IMAGE_INPUT" ]; then export FROM_IMAGE="$FROM_IMAGE_INPUT"; fi
+          set -o pipefail
+          ./scripts/encryption-upgrade-test/upgrade-cycle.sh 2>&1 | tee "$WORK_ROOT/run.log"
+
+      - name: Write run summary
+        if: always()
+        run: |
+          LOG="$WORK_ROOT/run.log"
+          [ -f "$LOG" ] || { echo "## Encryption upgrade test" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          {
+            echo "## Encryption upgrade test"
+            echo
+            if grep -q "all requested backends green" "$LOG"; then
+              echo "**Result: PASS** :white_check_mark:"
+            else
+              echo "**Result: FAIL** :x:"
+            fi
+            echo
+            echo '```'
+            grep -E "PASS \[|PASS:|FAIL:" "$LOG" || true
+            echo '```'
+            echo
+            echo '```'
+            awk '/=== metrics \[/{f=1} f{print} f && /^total/{f=0; print ""}' "$LOG"
+            echo '```'
+            if ! grep -q "all requested backends green" "$LOG"; then
+              echo
+              echo '<details><summary>Last 80 log lines</summary>'
+              echo
+              echo '```'
+              tail -n 80 "$LOG"
+              echo '```'
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: encryption-upgrade-test-${{ github.run_id }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ github.workspace }}/.upgrade-test/run.log
+            ${{ github.workspace }}/.upgrade-test/*/metrics.csv
+            ${{ github.workspace }}/.upgrade-test/*/n8n.log
