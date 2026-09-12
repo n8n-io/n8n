@@ -9,6 +9,11 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { createTestTurnCoordinator } from '../../__tests__/test-utils/turn-coordinator';
+import {
+	AgentThreadTurnCoordinator,
+	MAX_AGENT_THREAD_WAITERS,
+} from '../../agent-thread-turn-coordinator';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -108,6 +113,16 @@ async function* toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	for (const c of chunks) yield c;
 }
 
+/** Models the orchestrator's resume contract: `beforeResume` runs once the resume owns the thread turn. */
+function resumeStream(chunks: StreamChunk[]) {
+	return vi.fn((config?: { beforeResume?: () => Promise<void> }) =>
+		(async function* (): AsyncGenerator<StreamChunk> {
+			await config?.beforeResume?.();
+			yield* chunks;
+		})(),
+	);
+}
+
 function makeAgentExecutor(chunks: StreamChunk[]) {
 	const captured: { message: string; modelMessage: string }[] = [];
 	const executeForChatPublished = vi.fn((config: { message: string; modelMessage: string }) => {
@@ -116,7 +131,7 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 	});
 	return {
 		executeForChatPublished,
-		resumeForChat: vi.fn(() => toStream(chunks)),
+		resumeForChat: resumeStream(chunks),
 		captured,
 	};
 }
@@ -268,6 +283,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentThreadTurnCoordinator, createTestTurnCoordinator().coordinator);
 	});
 
 	afterEach(() => {
@@ -1363,6 +1379,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 			await vi.waitFor(() => expect(unbindStarted).toBe(true));
+			// The reset itself looks the binding up once to find the session it queues on.
+			const lookupsByReset = messageContextStore.resolveSession.mock.calls.length;
 
 			// Started while the reset is still gated inside its lock, with the
 			// binding still (correctly) in place. If the reset's two steps
@@ -1381,7 +1399,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			// message, and it would already have called resolveSession — while
 			// the binding is still in place — by this point.
 			for (let i = 0; i < 20; i++) await Promise.resolve();
-			expect(messageContextStore.resolveSession).not.toHaveBeenCalled();
+			expect(messageContextStore.resolveSession).toHaveBeenCalledTimes(lookupsByReset);
 
 			releaseUnbind();
 			await Promise.all([resetPromise, messagePromise]);
@@ -1397,6 +1415,147 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('per-thread turn queue', () => {
+		const integration = {
+			type: 'test-streaming',
+			credentialId: 'cred-1',
+			settings: { sessionIdleTimeoutMinutes: null },
+		} as unknown as AgentIntegrationConfig;
+		const author = { userId: 'u1', userName: 'user1' };
+
+		/** A turn whose stream stays open until the test releases it. */
+		function heldTurn() {
+			let release!: () => void;
+			const gate = new Promise<void>((resolve) => (release = resolve));
+			const stream = (async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: 'text-start', id: 't' };
+				yield { type: 'text-delta', id: 't', delta: 'working' };
+				await gate;
+				yield { type: 'text-end', id: 't' };
+				yield finishChunk;
+			})();
+			return { stream, release };
+		}
+
+		function makeQueuedBridge(messageContextStore?: IntegrationMessageContextService) {
+			const store = new Map<string, unknown>();
+			Container.set(CacheService, {
+				get: vi.fn(async (key: string) => store.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					store.set(key, value);
+				}),
+			} as never);
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const first = heldTurn();
+			const executeForChatPublished = vi
+				.fn()
+				.mockImplementationOnce(() => first.stream)
+				.mockImplementation(() => toStream([finishChunk]));
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				{ executeForChatPublished, resumeForChat: vi.fn() } as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+				messageContextStore,
+			);
+			const send = async (text: string) => await handlers.mention!(thread, { text, author });
+			const threadIdsOfTurns = () =>
+				executeForChatPublished.mock.calls.map(
+					([config]: [{ memory: { threadId: { id: string } } }]) => config.memory.threadId.id,
+				);
+			return { handlers, thread, send, releaseFirst: first.release, threadIdsOfTurns };
+		}
+
+		const settle = async () => {
+			for (let i = 0; i < 50; i++) await Promise.resolve();
+		};
+
+		it.each([
+			{
+				path: 'plain-text',
+				reset: async (b: ReturnType<typeof makeQueuedBridge>) => await b.send('/new'),
+			},
+			{
+				path: 'slash-command',
+				reset: async (b: ReturnType<typeof makeQueuedBridge>) =>
+					await b.handlers.slashCommand!({ channel: { id: 'thread-1' }, user: author }),
+			},
+		])(
+			'a $path /new waits for the running turn and rotates before the next message runs',
+			async ({ reset }) => {
+				const bridge = makeQueuedBridge();
+				const first = bridge.send('first');
+				await settle();
+				const resetting = reset(bridge);
+				await settle();
+				const second = bridge.send('second');
+				await settle();
+
+				// The reset and the later message both wait behind the running turn.
+				expect(bridge.thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+				expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1']);
+
+				bridge.releaseFirst();
+				await Promise.all([first, resetting, second]);
+
+				expect(bridge.thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+				expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1#1']);
+			},
+		);
+
+		it('writes message context only when a message becomes the active turn', async () => {
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const bridge = makeQueuedBridge(messageContextStore);
+
+			const first = bridge.send('first');
+			await settle();
+			const second = bridge.send('second');
+			await settle();
+
+			// The waiting message has not redirected the running turn's replies.
+			expect(messageContextStore.setLatest).toHaveBeenCalledTimes(1);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ interactingUserId: 'u1' }),
+			);
+
+			bridge.releaseFirst();
+			await Promise.all([first, second]);
+			expect(messageContextStore.setLatest).toHaveBeenCalledTimes(2);
+			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1']);
+		});
+
+		it('tells the sender when the thread already has the maximum number of waiting messages', async () => {
+			const bridge = makeQueuedBridge();
+			const first = bridge.send('first');
+			await settle();
+			const waiting = Array.from(
+				{ length: MAX_AGENT_THREAD_WAITERS },
+				async (_, i) => await bridge.send(`queued ${i}`),
+			);
+			await settle();
+
+			await bridge.send('one too many');
+
+			expect(bridge.thread.post).toHaveBeenCalledWith(
+				`⚠️ This thread already has ${MAX_AGENT_THREAD_WAITERS} messages waiting. Try again after the agent processes a message.`,
+			);
+			expect(bridge.threadIdsOfTurns()).toHaveLength(1);
+
+			bridge.releaseFirst();
+			await Promise.all([first, ...waiting]);
+			expect(bridge.threadIdsOfTurns()).toHaveLength(MAX_AGENT_THREAD_WAITERS + 1);
 		});
 	});
 
@@ -2437,16 +2596,14 @@ describe('AgentChatBridge — consumeStream', () => {
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() =>
-					toStream([
-						{ type: 'reasoning-start', id: 'reasoning-1' },
-						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
-						{ type: 'reasoning-end', id: 'reasoning-1' },
-						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
-						{ type: 'text-delta', id: 't1', delta: 'response' },
-						{ type: 'finish', finishReason: 'stop' },
-					]),
-				),
+				resumeForChat: resumeStream([
+					{ type: 'reasoning-start', id: 'reasoning-1' },
+					{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+					{ type: 'reasoning-end', id: 'reasoning-1' },
+					{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+					{ type: 'text-delta', id: 't1', delta: 'response' },
+					{ type: 'finish', finishReason: 'stop' },
+				]),
 			};
 
 			new AgentChatBridge(
@@ -3208,6 +3365,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentThreadTurnCoordinator, createTestTurnCoordinator().coordinator);
 	});
 
 	afterEach(() => {

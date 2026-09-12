@@ -14,6 +14,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentThreadQueueFullError } from '../agent-thread-turn-coordinator';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -165,13 +166,13 @@ export class AgentWakeService {
 			return;
 		}
 
-		// Execution records keep their suspended status after a resume.
-		// Check the checkpoint store to determine whether the thread is still suspended.
+		// A running parent is no reason to skip: the wake queues behind it as a
+		// thread turn. A suspended parent is, because the resume owns the thread.
+		// Execution records keep their suspended status after a resume, so check
+		// the checkpoint store to determine whether the thread is still suspended.
 		if (
-			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
+			(await this.executionRepository.hasSuspendedRun(threadId)) &&
+			(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !== null
 		) {
 			return;
 		}
@@ -222,8 +223,11 @@ export class AgentWakeService {
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
+		} catch (error) {
 			if (signal.aborted) return;
+			// A full thread queue is not a failed wake: the results stay pending and
+			// the next finished turn on the thread requests the wake again.
+			if (error instanceof AgentThreadQueueFullError) return;
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation, 'Wake run failed');

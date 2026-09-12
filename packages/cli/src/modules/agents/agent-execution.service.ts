@@ -8,7 +8,7 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -65,6 +65,12 @@ export interface RecordMessageParams {
 
 export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'>;
 
+export interface ClaimedExecutionRecording {
+	executionId: string;
+	/** Aborts when this run no longer holds its thread claim. */
+	claimLost: AbortSignal;
+}
+
 interface TimelineSnapshotParams {
 	executionId: string;
 	projectId: string;
@@ -95,6 +101,9 @@ export class AgentExecutionService {
 
 	private static readonly heartbeatIntervalMs = 30_000;
 
+	/** A running row without a heartbeat for this long counts as abandoned. */
+	static readonly livenessGraceMs = 2 * 60 * 1000;
+
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
 
 	private readonly pendingTimelineSnapshots = new Map<
@@ -119,33 +128,61 @@ export class AgentExecutionService {
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 	) {}
 
+	/** Record a running run that does not take part in the per-thread turn queue. */
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
+		const executionId = await this.insertRunningExecution(params, startedAt, null);
+		this.startHeartbeat(executionId);
+		return executionId;
+	}
+
+	/**
+	 * Record a running top-level turn that claims its thread. Throws
+	 * {@link AgentThreadClaimConflictError} while another claimed run holds the
+	 * thread. `claimLost` aborts when a heartbeat can no longer confirm the
+	 * claim, so the caller stops the runtime instead of overlapping a new turn.
+	 */
+	async startClaimedExecutionRecording(
+		params: StartExecutionParams,
+		startedAt: Date,
+	): Promise<ClaimedExecutionRecording> {
+		const executionId = await this.insertRunningExecution(params, startedAt, params.threadId);
+		const claim = new AbortController();
+		this.startHeartbeat(executionId, {
+			threadId: params.threadId,
+			onLost: (reason) => claim.abort(new OperationalError(reason)),
+		});
+		return { executionId, claimLost: claim.signal };
+	}
+
+	private async insertRunningExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		activeThreadId: string | null,
+	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
-				threadId: params.threadId,
-				status: 'running',
-				startedAt,
-				stoppedAt: null,
-				duration: 0,
-				userMessage,
-				author: params.author ?? null,
-				model: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
-				cost: null,
-				timeline: null,
-				storedAt: 'db',
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: params.source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			}),
-		);
+		const inserted = await this.agentExecutionRepository.insertRunning({
+			threadId: params.threadId,
+			activeThreadId,
+			status: 'running',
+			startedAt,
+			stoppedAt: null,
+			duration: 0,
+			userMessage,
+			author: params.author ?? null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db',
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: params.source ?? null,
+			attachments: params.attachments?.length ? params.attachments : null,
+		});
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		this.startHeartbeat(inserted.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -267,14 +304,37 @@ export class AgentExecutionService {
 		}
 	}
 
-	private startHeartbeat(executionId: string): void {
+	/**
+	 * With `claim`, each heartbeat also confirms the thread claim. The claim is
+	 * lost when the row no longer matches, or when the database has not
+	 * confirmed it for longer than the sweeper's liveness grace: after that
+	 * window the sweeper may have released the row to another turn.
+	 */
+	private startHeartbeat(
+		executionId: string,
+		claim?: { threadId: string; onLost: (reason: string) => void },
+	): void {
+		let lastConfirmedAt = Date.now();
+		const loseClaim = (reason: string) => {
+			this.stopHeartbeat(executionId);
+			claim?.onLost(reason);
+		};
 		const timer = setInterval(() => {
-			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
-				this.logger.warn('Failed to heartbeat a running agent execution', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
+			void this.agentExecutionRepository
+				.touchRunning(executionId, claim?.threadId)
+				.then((touched) => {
+					if (touched) lastConfirmedAt = Date.now();
+					else if (claim) loseClaim('Agent execution lost its thread claim');
+				})
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to heartbeat a running agent execution', {
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					if (claim && Date.now() - lastConfirmedAt >= AgentExecutionService.livenessGraceMs) {
+						loseClaim('Agent execution could not confirm its thread claim');
+					}
 				});
-			});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);

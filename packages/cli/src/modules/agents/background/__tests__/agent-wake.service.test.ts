@@ -10,6 +10,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import { AgentThreadQueueFullError } from '../../agent-thread-turn-coordinator';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -79,8 +80,16 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
 	integrationRegistry.get.mockReturnValue({} as never);
-	lockService.withLease.mockImplementation(async (_namespace, _key, callback) => {
-		return await callback(new AbortController().signal);
+	// Like the real lease with the wake's short wait timeout: a held key rejects.
+	const heldLeases = new Set<string>();
+	lockService.withLease.mockImplementation(async (_namespace, key, callback) => {
+		if (heldLeases.has(key)) throw new Error('lock unavailable');
+		heldLeases.add(key);
+		try {
+			return await callback(new AbortController().signal);
+		} finally {
+			heldLeases.delete(key);
+		}
 	});
 
 	const service = new AgentWakeService(
@@ -286,7 +295,7 @@ describe('AgentWakeService', () => {
 	it('delivers results that arrive during a wake and stops after the queue is empty', async () => {
 		vi.useFakeTimers();
 		try {
-			const { service, orchestrator, jobRepository, executionRepository } = setup();
+			const { service, orchestrator, jobRepository } = setup();
 			const firstWake = createDeferredPromise();
 			const laterJob = makeJob({ id: 'job-2', result: 'Later result' });
 			orchestrator.executeForWake.mockReturnValueOnce(firstWake.promise);
@@ -294,12 +303,11 @@ describe('AgentWakeService', () => {
 			await vi.waitFor(() => expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1));
 
 			jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([laterJob]);
-			executionRepository.existsRunningByThread.mockResolvedValue(true);
 			await service.requestWake('thread-1');
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
+			// The first wake still holds the wake lease, so the request is not delivered yet.
 			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
 
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			firstWake.resolve();
 			await waking;
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
@@ -347,17 +355,33 @@ describe('AgentWakeService', () => {
 		}
 	});
 
-	it('does not wake a running or suspended parent', async () => {
+	it('wakes behind a running parent turn but not a suspended one', async () => {
+		// The orchestrator queues the wake behind the running turn; the service no longer skips it.
 		const running = setup();
 		running.executionRepository.existsRunningByThread.mockResolvedValue(true);
 		await running.service.attemptWake('thread-1');
-		expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(running.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+		expect(running.jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 
 		const suspended = setup();
 		suspended.executionRepository.hasSuspendedRun.mockResolvedValue(true);
 		suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
 		await suspended.service.attemptWake('thread-1');
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it('leaves results pending without counting a failure when the thread queue is full', async () => {
+		const { service, orchestrator, jobRepository, logger } = setup();
+		orchestrator.executeForWake.mockRejectedValue(new AgentThreadQueueFullError());
+
+		for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES + 1; attempt++) {
+			await service.attemptWake('thread-1');
+		}
+
+		// Every attempt still reaches the orchestrator: a full queue is not a failed wake.
+		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_WAKES + 1);
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('checks checkpoints only for threads with a recorded suspension', async () => {

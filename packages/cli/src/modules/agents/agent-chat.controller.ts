@@ -3,6 +3,7 @@ import {
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
+	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -26,6 +27,7 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { messagesToDto } from './agent-message-mapper';
+import { AgentThreadQueueFullError } from './agent-thread-turn-coordinator';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
@@ -34,6 +36,14 @@ import { AgentsBuilderService } from './builder/agents-builder.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
+
+/** A full thread queue carries its code so the client can tell it from a failed turn. */
+function toSseError(error: unknown, fallback: string): AgentSseEvent {
+	const message = error instanceof Error ? error.message : fallback;
+	return error instanceof AgentThreadQueueFullError
+		? { type: 'error', message, errorCode: error.errorCode }
+		: { type: 'error', message };
+}
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -181,8 +191,7 @@ export class AgentChatController {
 					.catch(() => {});
 			}
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Chat failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);
@@ -230,8 +239,7 @@ export class AgentChatController {
 			}
 		} catch (error) {
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Resume failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);

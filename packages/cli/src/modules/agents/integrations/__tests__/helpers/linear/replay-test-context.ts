@@ -263,6 +263,7 @@ export async function createLinearReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { linear: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration: AgentIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };

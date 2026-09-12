@@ -23,6 +23,11 @@ import {
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionService } from '../agent-execution.service';
 import {
+	AgentThreadQueueFullError,
+	AgentThreadTurnCoordinator,
+	type AgentThreadTurnPermit,
+} from '../agent-thread-turn-coordinator';
+import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
@@ -101,6 +106,7 @@ interface AgentExecutor {
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
 		sandboxPrincipalHash: AgentSandboxPrincipalHash;
+		permit: AgentThreadTurnPermit;
 	}): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(config: {
@@ -110,6 +116,7 @@ interface AgentExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		beforeResume?: () => Promise<void>;
 	}): AsyncGenerator<StreamChunk>;
 
 	/**
@@ -258,6 +265,7 @@ export class AgentChatBridge {
 				attachments,
 				integrationType,
 				sandboxPrincipalHash,
+				permit,
 			}) {
 				yield* agentService.executeForChatPublished({
 					agentId: aid,
@@ -275,6 +283,7 @@ export class AgentChatBridge {
 					},
 					integrationType,
 					sandboxPrincipalHash,
+					permit,
 				});
 			},
 			async *resumeForChat(config) {
@@ -426,7 +435,7 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			false,
+			{ notifyOnDuplicate: false },
 		);
 	}
 
@@ -508,10 +517,22 @@ export class AgentChatBridge {
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
 		await this.withSessionLock(baseId, async () => {
-			await this.messageContextBridge.unbindSession(baseId);
-			await this.computeGeneration(baseId, true, null);
+			// The reset takes its place in the thread's turn queue like a message,
+			// so every earlier message still runs in the old session and every
+			// later one (held at the session lock meanwhile) starts in the new one.
+			const activeId =
+				(await this.messageContextBridge.resolveSession(baseId))?.threadId ??
+				(await this.computeGeneration(baseId, false, null));
+			await this.turnCoordinator.run(activeId, undefined, async () => {
+				await this.messageContextBridge.unbindSession(baseId);
+				await this.computeGeneration(baseId, true, null);
+			});
 		});
 		await thread.post('🔄 Started a new session.');
+	}
+
+	private get turnCoordinator(): AgentThreadTurnCoordinator {
+		return Container.get(AgentThreadTurnCoordinator);
 	}
 
 	/**
@@ -635,6 +656,50 @@ export class AgentChatBridge {
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
+		// One turn per execution session at a time. Everything that stores state
+		// for this turn waits until it is the thread's turn, so a queued message
+		// never redirects the running turn or races its suspension.
+		await this.turnCoordinator.run(
+			memoryThreadId.id,
+			undefined,
+			async (permit) =>
+				await this.runAdmittedTurn(thread, message, {
+					isNewMention,
+					platformAgentContext,
+					text,
+					inboundAttachments,
+					threadId,
+					memoryThreadId,
+					memoryResourceId,
+					permit,
+				}),
+		);
+	}
+
+	private async runAdmittedTurn(
+		thread: Thread,
+		message: Message,
+		turn: {
+			isNewMention: boolean;
+			platformAgentContext: PlatformAgentContext;
+			text: string;
+			inboundAttachments: Attachment[];
+			threadId: InternalThread;
+			memoryThreadId: InternalThread;
+			memoryResourceId: string;
+			permit: AgentThreadTurnPermit;
+		},
+	): Promise<void> {
+		const {
+			isNewMention,
+			platformAgentContext,
+			text,
+			inboundAttachments,
+			threadId,
+			memoryThreadId,
+			memoryResourceId,
+			permit,
+		} = turn;
 		// The run parks against the session it executes in, which for a bound reply
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
@@ -723,6 +788,7 @@ export class AgentChatBridge {
 					platform: this.integration.type,
 					platformThreadId: this.resolvePlatformThreadId(thread),
 				}),
+				permit,
 			});
 
 			consumeStarted = true;
@@ -1041,9 +1107,11 @@ export class AgentChatBridge {
 			const text =
 				rateLimitMessage !== undefined
 					? `⚠️ ${rateLimitMessage}`
-					: error instanceof UserError
-						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-						: '⚠️ Something went wrong while processing your request. Please try again.';
+					: error instanceof AgentThreadQueueFullError
+						? `⚠️ ${error.message}`
+						: error instanceof UserError
+							? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+							: '⚠️ Something went wrong while processing your request. Please try again.';
 			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

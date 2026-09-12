@@ -11,7 +11,10 @@ import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execu
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	AgentThreadClaimConflictError,
+} from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentExecutionRepository', () => {
@@ -213,6 +216,65 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findFirstSourceByThreadIds([thread.id]);
 
 			expect(result.has(thread.id)).toBe(false);
+		});
+	});
+
+	describe('thread claims', () => {
+		const runningValues = (threadId: string, activeThreadId: string | null) => ({
+			threadId,
+			activeThreadId,
+			status: 'running' as const,
+			startedAt: new Date(),
+			stoppedAt: null,
+			duration: 0,
+			userMessage: 'run',
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: null,
+			attachments: null,
+		});
+
+		it('allows one claimed running row per thread and releases the claim when the row ends', async () => {
+			const thread = await createThread();
+			const other = await createThread({ sessionNumber: 2 });
+
+			const first = await repository.insertRunning(runningValues(thread.id, thread.id));
+			await expect(
+				repository.insertRunning(runningValues(thread.id, thread.id)),
+			).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
+			// Rows from mains without the claim, and other threads, are not blocked.
+			await repository.insertRunning(runningValues(thread.id, null));
+			await repository.insertRunning(runningValues(other.id, other.id));
+
+			expect(await repository.touchRunning(first.id, thread.id)).toBe(true);
+			expect(await repository.touchRunning(first.id, other.id)).toBe(false);
+
+			expect(
+				await repository.updateIfRunning(first.id, {
+					status: 'success',
+					stoppedAt: new Date(),
+					duration: 1,
+					timeline: null,
+					storedAt: 'db',
+					error: null,
+					failureSummary: null,
+				}),
+			).toBe(true);
+			expect(await repository.touchRunning(first.id, thread.id)).toBe(false);
+			const ended = await repository.findOneByOrFail({ id: first.id });
+			expect(ended.activeThreadId).toBeNull();
+
+			const next = await repository.insertRunning(runningValues(thread.id, thread.id));
+			expect(next.activeThreadId).toBe(thread.id);
 		});
 	});
 

@@ -23,6 +23,7 @@ interface ResumeExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		beforeResume?: () => Promise<void>;
 	}): AsyncGenerator<StreamChunk>;
 }
 
@@ -73,22 +74,32 @@ export class AgentChatHitlResumeHandler {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
-		// Persist the interacting user / messageId into the thread's message
-		// context so tools running on resume can read it via the message
-		// context store — no need to bolt a duplicate copy onto resumeData.
 		const platformThreadId = this.options.resolvePlatformThreadId(thread);
 		const threadId = this.options.toAgentThreadId(platformThreadId);
-		await this.options.messageContextBridge.updateLatest(threadId.id, event.user.userId, thread, {
-			messageId: event.messageId,
-			interactingUserId: event.user.userId,
-			...this.options.getPlatformAgentContext(),
-			// The resume response streams back to this thread like any chat turn,
-			// so the same reply-delivery rules apply.
-			replyExpectation: 'required',
+		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
+			// Runs once the resume owns the thread turn: a click that waits behind
+			// a running turn, or is rejected, must not settle the card or redirect
+			// the running turn's replies.
+			beforeResume: async () => {
+				// Persist the interacting user / messageId into the thread's message
+				// context so tools running on resume can read it via the message
+				// context store — no need to bolt a duplicate copy onto resumeData.
+				await this.options.messageContextBridge.updateLatest(
+					threadId.id,
+					event.user.userId,
+					thread,
+					{
+						messageId: event.messageId,
+						interactingUserId: event.user.userId,
+						...this.options.getPlatformAgentContext(),
+						// The resume response streams back to this thread like any chat turn,
+						// so the same reply-delivery rules apply.
+						replyExpectation: 'required',
+					},
+				);
+				await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
+			},
 		});
-
-		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
 	/** Parsed result from an action ID. */
@@ -230,8 +241,15 @@ export class AgentChatHitlResumeHandler {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
-		/** Tell the user the action was already handled. Only for their own clicks. */
-		notifyOnDuplicate = true,
+		{
+			notifyOnDuplicate = true,
+			beforeResume,
+		}: {
+			/** Tell the user the action was already handled. Only for their own clicks. */
+			notifyOnDuplicate?: boolean;
+			/** Side effects that belong to the admitted resume; see `ResumeForChatConfig`. */
+			beforeResume?: () => Promise<void>;
+		} = {},
 	): Promise<void> {
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
@@ -251,6 +269,7 @@ export class AgentChatHitlResumeHandler {
 					toolCallId,
 					resumeData,
 					integrationType: this.options.integration.type,
+					beforeResume,
 				});
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,
