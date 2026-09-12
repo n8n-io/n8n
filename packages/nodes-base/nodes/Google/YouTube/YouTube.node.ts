@@ -498,12 +498,14 @@ export class YouTube implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						qs.part = 'snippet';
+						// The API reads privacyStatus from the status resource, so `part` must name it.
+						qs.part = 'snippet,status';
 
 						const body: IDataObject = {
 							snippet: {
 								title,
 							},
+							status: {},
 						};
 
 						if (options.tags) {
@@ -513,7 +515,12 @@ export class YouTube implements INodeType {
 
 						if (options.description) {
 							//@ts-ignore
-							body.snippet.privacyStatus = options.privacyStatus as string;
+							body.snippet.description = options.description as string;
+						}
+
+						if (options.privacyStatus) {
+							//@ts-ignore
+							body.status.privacyStatus = options.privacyStatus as string;
 						}
 
 						if (options.defaultLanguage) {
