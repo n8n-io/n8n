@@ -32,11 +32,13 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 
 import { BaseCommand } from '../base-command';
 import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
+mockInstance(RegexEngineService);
 const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
@@ -264,4 +266,5 @@ test('exitWithCrash logs the crash message to the console', async () => {
 
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
+	expect(new Execute().needsRegexEngine).toBe(true);
 });

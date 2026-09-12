@@ -46,6 +46,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -79,6 +80,8 @@ export abstract class BaseCommand<F = never> {
 
 	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
+	protected readonly regexEngineService = Container.get(RegexEngineService);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -93,6 +96,9 @@ export abstract class BaseCommand<F = never> {
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
+
+	/** Whether to init the regex engine. Only commands that evaluate a user's regexes need it. */
+	protected needsRegexEngine = false;
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -281,6 +287,17 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+
+		if (this.needsRegexEngine) {
+			try {
+				await this.regexEngineService.init();
+			} catch (error) {
+				await this.exitWithCrash(
+					'Could not initialize the regular expression engine (see errors above for details).',
+					error,
+				);
+			}
+		}
 	}
 
 	/**
@@ -315,6 +332,7 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
+			this.regexEngineService.shutdown();
 			await Promise.all([
 				CrashJournal.cleanup(),
 				this.dbConnection.close(),
