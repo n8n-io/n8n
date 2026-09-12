@@ -15,6 +15,7 @@ import {
 	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
 	isSubNodeLog,
+	liveSubExecutionKey,
 	mergeStartData,
 	restoreChatHistory,
 	processFiles,
@@ -1124,6 +1125,62 @@ describe(createLogTree, () => {
 		expect(logs[1].children[1].execution).toBe(subExecutionData);
 		expect(logs[1].children[1].executionId).toBe('sub-exec-id');
 		expect(logs[1].children[1].children).toHaveLength(0);
+	});
+
+	it('should nest a sub execution that is still running under the node run that started it', () => {
+		const workflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ name: 'A' }), createTestNode({ name: 'B' })],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ name: 'C' })],
+		});
+		// Mid-flight: the calling node has not returned, so its task carries no
+		// `subExecution` metadata yet — the live registry is the only link.
+		const rootExecutionData = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: createRunExecutionData({
+				resultData: { runData: { A: [createTestTaskData()], B: [createTestTaskData()] } },
+			}),
+		});
+		const subExecutionData = createRunExecutionData({
+			resultData: { runData: { C: [createTestTaskData()] } },
+		});
+
+		const logs = createLogTree(
+			workflow,
+			rootExecutionData,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'live-exec-id': subExecutionData },
+			undefined,
+			[],
+			{},
+			{
+				[liveSubExecutionKey('root-exec-id', 'B', 0)]: {
+					workflowId: 'sub-workflow-id',
+					executionId: 'live-exec-id',
+				},
+			},
+		);
+		assertNodeTree(logs);
+
+		expect(logs).toHaveLength(2);
+		expect(logs[0].node.name).toBe('A');
+		expect(logs[0].children).toHaveLength(0);
+
+		// Nested under B rather than surfacing at the top level.
+		expect(logs[1].node.name).toBe('B');
+		expect(logs[1].children).toHaveLength(1);
+		expect(logs[1].children[0].node.name).toBe('C');
+		expect(logs[1].children[0].workflow).toBe(subWorkflow);
+		expect(logs[1].children[0].executionId).toBe('live-exec-id');
+
+		// And shown expanded, so its nodes populate in place as they run.
+		expect(getDefaultCollapsedEntries(logs)[logs[1].id]).toBeUndefined();
 	});
 
 	it('should include all runs of sub nodes in sub execution under correct parent run', () => {
