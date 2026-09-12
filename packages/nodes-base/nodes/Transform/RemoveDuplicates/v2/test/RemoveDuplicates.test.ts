@@ -139,7 +139,7 @@ describe('RemoveDuplicatesV2', () => {
 		expect(result[0][1].json).toEqual({ id: 102, name: 'Item 2' });
 	});
 
-	it('should throw NodeOperationError if input batch size exceeds history size', async () => {
+	it('should throw NodeOperationError if distinct dedupe keys in input exceed history size', async () => {
 		const items: INodeExecutionData[] = [
 			{ json: { id: 1 } },
 			{ json: { id: 2 } },
@@ -147,16 +147,54 @@ describe('RemoveDuplicatesV2', () => {
 		];
 
 		(executeFunctions.getInputData as Mock).mockReturnValue(items);
-		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
-			if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
-			if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
-			if (paramName === 'options.scope') return 'node';
-			if (paramName === 'options.historySize') return 2;
-		});
+		(executeFunctions.getNodeParameter as Mock).mockImplementation(
+			(paramName: string, itemIndex: number) => {
+				if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
+				if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
+				if (paramName === 'dedupeValue') return items[itemIndex].json.id;
+				if (paramName === 'options.scope') return 'node';
+				if (paramName === 'options.historySize') return 2;
+			},
+		);
 
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 			'The number of items to be processed exceeds the maximum history size. Please increase the history size or reduce the number of items to be processed.',
+		);
+	});
+
+	it('should process batch when total items exceed history size but distinct dedupe keys do not', async () => {
+		const items: INodeExecutionData[] = [
+			{ json: { id: 1, type: 'A' } },
+			{ json: { id: 2, type: 'A' } },
+			{ json: { id: 3, type: 'B' } },
+			{ json: { id: 4, type: 'B' } },
+		];
+
+		(executeFunctions.getInputData as Mock).mockReturnValue(items);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation(
+			(paramName: string, itemIndex: number) => {
+				if (paramName === 'operation') return 'removeItemsSeenInPreviousExecutions';
+				if (paramName === 'logic') return 'removeItemsWithAlreadySeenKeyValues';
+				if (paramName === 'dedupeValue') return items[itemIndex].json.type;
+				if (paramName === 'options.scope') return 'node';
+				if (paramName === 'options.historySize') return 2;
+			},
+		);
+		executeFunctions.helpers.getProcessedDataCount = vi.fn().mockReturnValue(2);
+		(executeFunctions.helpers.checkProcessedAndRecord as Mock).mockReturnValue({
+			new: ['A', 'B'],
+			processed: [],
+		});
+
+		const result = await node.execute.call(executeFunctions);
+		expect(result).toHaveLength(2);
+		expect(result[0]).toHaveLength(4);
+		expect(result[1]).toHaveLength(0);
+		expect(executeFunctions.helpers.checkProcessedAndRecord).toHaveBeenCalledWith(
+			['A', 'B'],
+			'node',
+			{ mode: 'entries', maxEntries: 2 },
 		);
 	});
 

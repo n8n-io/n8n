@@ -89,17 +89,17 @@ export class RemoveDuplicatesV2 implements INodeType {
 						) as number;
 						const maxEntriesNum = Number(maxEntries);
 
-						if (items.length > maxEntriesNum) {
+						const distinctKeys = Object.keys(itemMapping);
+						if (distinctKeys.length > maxEntriesNum) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'The number of items to be processed exceeds the maximum history size. Please increase the history size or reduce the number of items to be processed.',
 							);
 						}
-						const itemsProcessed = await this.helpers.checkProcessedAndRecord(
-							Object.keys(itemMapping),
-							scope,
-							{ mode: 'entries', maxEntries },
-						);
+						const itemsProcessed = await this.helpers.checkProcessedAndRecord(distinctKeys, scope, {
+							mode: 'entries',
+							maxEntries,
+						});
 						const processedDataCount = await this.helpers.getProcessedDataCount(scope, {
 							mode: 'entries',
 							maxEntries,
