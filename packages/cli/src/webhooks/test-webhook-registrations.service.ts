@@ -28,6 +28,8 @@ export type TestWebhookRegistration = {
 	 * so the identity has to travel on the registration instead.
 	 */
 	encryptedRunnerIdentity?: string;
+	/** Epoch ms at which the registration's own timeout fires. Set by `register()`. */
+	expiresAt?: number;
 };
 
 // Type guard for TestWebhookRegistration.
@@ -51,10 +53,15 @@ export class TestWebhookRegistrationsService {
 
 	private readonly cacheKey = 'test-webhooks';
 
-	async register(registration: TestWebhookRegistration) {
+	async register(
+		registration: TestWebhookRegistration,
+		ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+	) {
 		const hashKey = this.toKey(registration.webhook);
 
-		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+		await this.cacheService.setHash(this.cacheKey, {
+			[hashKey]: { ...registration, expiresAt: Date.now() + ttl },
+		});
 
 		const isCached = await this.cacheService.exists(this.cacheKey);
 
@@ -74,10 +81,15 @@ export class TestWebhookRegistrationsService {
 		 * We set a TTL on the key so that it is cleared even on creator process crash,
 		 * with an additional buffer to ensure this safeguard expiration will not delete
 		 * the key before the regular test webhook timeout fetches the key to delete it.
+		 *
+		 * The TTL covers the whole hash, so it must outlive the longest-lived registration:
+		 * a short editor test must not expire a long assistant listener.
 		 */
-		const ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER;
-
-		await this.cacheService.expire(this.cacheKey, ttl);
+		const now = Date.now();
+		const remaining = (await this.getAllRegistrations()).map((r) => (r.expiresAt ?? 0) - now);
+		// Redis EXPIRE takes whole seconds; `remaining` carries arbitrary milliseconds.
+		const ttlMs = Math.ceil(Math.max(ttl, ...remaining) / 1000) * 1000;
+		await this.cacheService.expire(this.cacheKey, ttlMs);
 	}
 
 	async deregister(arg: IWebhookData | string) {

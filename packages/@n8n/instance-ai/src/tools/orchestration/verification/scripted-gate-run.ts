@@ -8,6 +8,7 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	injectedTriggerSimulations,
 	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
@@ -182,6 +183,11 @@ function mergeAnalyses(
 			nodeName: name,
 			reason: WORKFLOW_PIN_SIMULATION_REASON,
 		})),
+		...injectedTriggerSimulations(
+			passes.find((pass) => pass.result.injectedTriggerNodeName)?.result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodeNames]),
+		),
 	];
 
 	return {

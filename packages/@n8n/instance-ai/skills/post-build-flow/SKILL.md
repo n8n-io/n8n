@@ -61,7 +61,9 @@ setup returns `announced: true`, or the current user input contains
   setup cannot be confirmed, report what is missing and end the turn.
   If required items remain open for this
   workflow, report them and end the turn without a live run. Otherwise,
-  use `executions(action="run")` with suitable trigger input. The user has
+  run the live test: `executions(action="listen")` for a Webhook or Form
+  Trigger, `executions(action="run")` with suitable trigger input for other
+  triggers. The user has
   already requested this test; do not ask whether they want it. The execution
   tool still enforces its approval policy. Do not publish the workflow to test it.
 - Read the execution output and summarize what ran and what it returned. For
@@ -239,6 +241,19 @@ re-offering, the user already asked.
 workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
+
+**Injected trigger output is a simulation of the trigger.** A run that starts
+from `inputData` proves the nodes after the trigger, not the trigger itself:
+its auth, query parameters, response mode, and form fields never ran. Such a
+run is reported with the trigger as simulated, and it does not satisfy the
+publish gate on its own. For Webhook and Form Triggers, offer a live test
+instead of publishing: `executions(action="listen", workflowId)` arms the test
+URL (`/webhook-test/...` or `/form-test/...`), shows it to the user with the
+deadline, and waits for one real request. Offer it when the user wants to send
+a real request, when the trigger uses header auth, or when a form must be
+filled in a browser. Never tell the user to publish so they can hit the
+production URL for a test. When the listener returns `received`, read the
+execution back; `timed_out` or `cancelled` means no evidence was gathered.
 
 **Webhook input must carry the fields the workflow reads.** A flat `inputData`
 becomes the request `body` only; `query`, `headers` and `params` stay empty. When
@@ -506,7 +521,8 @@ temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
 An explicit test request in the current user input, including
 `<workflow-test-request>`, already answers
-this question. Run the requested test through `executions(action="run")`.
+this question. Run the requested test through `executions(action="listen")`
+for a Webhook or Form Trigger and through `executions(action="run")` otherwise.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
@@ -514,8 +530,9 @@ If `credentialResolutionNote` says Gateway credits are depleted, that
 note wins over this live-test offer: do not offer a live test. Tell the user
 they must top up Gateway credits or add their own key on the node first.
 
-If the user agrees, use the explicit live execution path (`executions(action="run")`
-for a direct live run) and report the result separately from the earlier mocked
+If the user agrees, use the explicit live execution path (`executions(action="listen")`
+for a Webhook or Form Trigger, `executions(action="run")` for a direct live run of
+other triggers) and report the result separately from the earlier mocked
 verification. If the live test fails, treat the workflow as unresolved and do
 not offer publishing. If the user declines or defers, state what remains
 untested, do not claim live end-to-end verification, and do not offer

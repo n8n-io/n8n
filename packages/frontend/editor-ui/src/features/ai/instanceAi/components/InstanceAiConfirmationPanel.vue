@@ -4,9 +4,10 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
@@ -42,6 +43,7 @@ const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
+	if (conf.testListener) return 'test-listener';
 	if (conf.credentialDestination) return 'credential-destination';
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
@@ -386,6 +388,55 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
+function settleTestListener(
+	conf: InstanceAiConfirmation,
+	outcome: { approved: boolean; executionId?: string; fromPush?: boolean },
+) {
+	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	const { approved, executionId } = outcome;
+	// A push event settles the card without a user choice, so it records no input.
+	if (!outcome.fromPush) {
+		trackInputCompleted(
+			conf,
+			[
+				{
+					label: conf.message,
+					options: ['sent', 'cancel'],
+					option_chosen: approved ? 'sent' : 'cancel',
+				},
+			],
+			[],
+		);
+	}
+	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	void thread.confirmAction(conf.requestId, {
+		kind: 'approval',
+		approved,
+		...(executionId ? { userInput: executionId } : {}),
+	});
+}
+
+// The backend pushes `testWebhookReceived` / `testWebhookDeleted` for the armed
+// workflow. Settle the card from them so the assistant reads the outcome
+// without a click; the tool derives received / timed out from durable state.
+const removePushListener = usePushConnectionStore().addEventListener((event) => {
+	if (event.type !== 'testWebhookReceived' && event.type !== 'testWebhookDeleted') return;
+	for (const item of thread.pendingConfirmations) {
+		const conf = item.toolCall.confirmation;
+		if (conf?.testListener?.workflowId !== event.data.workflowId) continue;
+		settleTestListener(conf, {
+			approved: true,
+			executionId: event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
+			fromPush: true,
+		});
+	}
+});
+onBeforeUnmount(removePushListener);
+
+function formatDeadline(iso: string): string {
+	return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
 	trackInputCompleted(
@@ -600,6 +651,53 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						</div>
 					</N8nCard>
 				</div>
+				<!-- Test listener: the trigger's test URL is armed; settles on the push event or a click -->
+				<div
+					v-else-if="chunk.item.toolCall.confirmation.testListener"
+					:key="'test-listener-' + chunk.item.toolCall.confirmation.requestId"
+					data-test-id="instance-ai-test-listener"
+				>
+					<N8nCard :class="$style.textCard">
+						<N8nText tag="div">{{ chunk.item.toolCall.confirmation.message }}</N8nText>
+						<div
+							v-for="trigger in chunk.item.toolCall.confirmation.testListener.triggers"
+							:key="trigger.nodeName"
+							:class="$style.testListenerUrl"
+						>
+							<N8nText tag="span" size="small" bold>{{ trigger.method }}</N8nText>
+							<N8nText tag="code" size="small" data-test-id="instance-ai-test-listener-url">
+								{{ trigger.url }}
+							</N8nText>
+						</div>
+						<N8nText tag="div" size="small" color="text-light">
+							{{
+								i18n.baseText('instanceAi.testListener.deadline', {
+									interpolate: {
+										time: formatDeadline(chunk.item.toolCall.confirmation.testListener.deadlineAt),
+									},
+								})
+							}}
+						</N8nText>
+						<div :class="$style.continueRow">
+							<N8nButton
+								data-test-id="instance-ai-test-listener-cancel"
+								size="medium"
+								variant="outline"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: false })"
+							>
+								{{ i18n.baseText('instanceAi.testListener.cancel') }}
+							</N8nButton>
+							<N8nButton
+								data-test-id="instance-ai-test-listener-sent"
+								size="medium"
+								variant="solid"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: true })"
+							>
+								{{ i18n.baseText('instanceAi.testListener.sent') }}
+							</N8nButton>
+						</div>
+					</N8nCard>
+				</div>
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
 					v-else-if="
@@ -734,7 +832,17 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 .continueRow {
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+}
+
+.testListenerUrl {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+	word-break: break-all;
+	user-select: all;
 }
 
 .textCard {

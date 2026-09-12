@@ -165,6 +165,12 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Set when the trigger did not fire from a real event: its output came from
+	 * injected `inputData` or verification pin data. Such a run proves nothing
+	 * about the trigger's ingress (auth, payload shape, response mode).
+	 */
+	injectedTriggerNodeName?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -532,6 +538,28 @@ export interface ExecutionSummary {
 	mode: string;
 }
 
+export interface TestListenerTrigger {
+	nodeName: string;
+	url: string;
+	method: string;
+}
+
+export interface TestListenerArmed {
+	state: 'armed';
+	workflowId: string;
+	triggers: TestListenerTrigger[];
+	/** ISO timestamp. Executions started at or after it belong to this listener. */
+	armedAt: string;
+	/** ISO timestamp at which the listener deregisters itself. */
+	deadlineAt: string;
+}
+
+export type TestListenerOutcome =
+	| { state: 'armed' }
+	| { state: 'received'; executionId: string; result: ExecutionResult }
+	| { state: 'timed_out' }
+	| { state: 'cancelled' };
+
 export interface InstanceAiExecutionService {
 	list(options?: {
 		workflowId?: string;
@@ -582,6 +610,23 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { itemIndex?: number; runIndex?: number },
 	): Promise<ResolvedNodeParametersResult>;
+	/**
+	 * Arm the test URL of a Webhook or Form Trigger so one real request starts a
+	 * manual execution. Returns the URL and method of every armed trigger.
+	 * Optional: absent on hosts without test webhook support.
+	 */
+	armTestListener?(
+		workflowId: string,
+		options?: { triggerNodeName?: string },
+	): Promise<TestListenerArmed>;
+	/**
+	 * Settle a listener armed at `armedAt`: cancel it, or report whether a request
+	 * arrived. `executionId` is the execution the push event named, when known.
+	 */
+	resolveTestListener?(
+		workflowId: string,
+		options: { armedAt: string; executionId?: string; cancel?: boolean },
+	): Promise<TestListenerOutcome>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -2008,6 +2053,10 @@ export interface OrchestrationContext {
 	webhookBaseUrl?: string;
 	/** Form base URL for the n8n instance (e.g. http://localhost:5678/form) — distinct from webhookBaseUrl since Form Triggers serve at /form/, not /webhook/ */
 	formBaseUrl?: string;
+	/** Test webhook base URL (e.g. http://localhost:5678/webhook-test). Only answers while a test listener is armed. */
+	webhookTestBaseUrl?: string;
+	/** Test form base URL (e.g. http://localhost:5678/form-test). Only answers while a test listener is armed. */
+	formTestBaseUrl?: string;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
