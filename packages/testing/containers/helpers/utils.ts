@@ -82,22 +82,24 @@ export async function pollContainerHttpEndpoint(
 	container: StartedTestContainer,
 	endpoint: string,
 	timeoutMs: number = 60000,
+	signal?: AbortSignal,
 ): Promise<void> {
 	const startTime = Date.now();
 	const url = `http://${container.getHost()}:${container.getFirstMappedPort()}${endpoint}`;
 	const retryIntervalMs = 1000;
 
 	while (Date.now() - startTime < timeoutMs) {
+		signal?.throwIfAborted();
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { signal });
 			if (response.status === 200) {
 				return;
 			}
 		} catch {
-			// Don't log errors, just retry
+			if (signal?.aborted) signal.throwIfAborted();
 		}
 
-		await wait(retryIntervalMs);
+		await wait(retryIntervalMs, { signal });
 	}
 
 	console.error(`HTTP endpoint at ${url} did not return 200 within ${timeoutMs / 1000} seconds.`);
@@ -121,10 +123,32 @@ export async function pollContainerHttpEndpoint(
 export async function waitForContainerLogMessages(
 	container: StartedTestContainer,
 	patterns: RegExp[],
-	options: { since?: number; timeoutMs?: number } = {},
+	options: { since?: number; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<void> {
-	const { since = 0, timeoutMs = 60000 } = options;
-	const stream = await container.logs({ since });
+	const { since = 0, timeoutMs = 60000, signal } = options;
+	signal?.throwIfAborted();
+	const logsPromise = container.logs({ since });
+	let removeAbortListener: (() => void) | undefined;
+	const abortPromise = new Promise<never>((_, reject) => {
+		const abort = () =>
+			reject(signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'));
+		if (signal?.aborted) abort();
+		else if (signal) {
+			signal.addEventListener('abort', abort, { once: true });
+			removeAbortListener = () => signal.removeEventListener('abort', abort);
+		}
+	});
+	void logsPromise
+		.then((lateStream) => {
+			if (signal?.aborted) lateStream.destroy();
+		})
+		.catch(() => undefined);
+	let stream: Awaited<typeof logsPromise>;
+	try {
+		stream = await Promise.race([logsPromise, abortPromise]);
+	} finally {
+		removeAbortListener?.();
+	}
 	const pending = new Set(patterns);
 
 	try {
@@ -138,11 +162,17 @@ export async function waitForContainerLogMessages(
 				);
 			}, timeoutMs);
 
+			const abort = () =>
+				finish(
+					signal?.reason instanceof Error ? signal.reason : new Error('Startup was cancelled'),
+				);
 			const finish = (error?: Error) => {
 				clearTimeout(timer);
+				signal?.removeEventListener('abort', abort);
 				if (error) reject(error);
 				else resolve();
 			};
+			signal?.addEventListener('abort', abort, { once: true });
 
 			let partialLine = '';
 			stream.on('data', (chunk: Buffer | string) => {

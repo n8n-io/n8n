@@ -70,6 +70,8 @@ export interface StartContext {
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
+	/** Overall startup deadline in milliseconds. */
+	startupTimeoutMs?: number;
 	mains?: number;
 	workers?: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
