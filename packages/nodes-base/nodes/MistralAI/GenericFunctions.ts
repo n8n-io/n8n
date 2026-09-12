@@ -53,10 +53,10 @@ export async function encodeBinaryData(
 }
 
 export function processResponseData(response: IDataObject): IDataObject {
-	const pages = response.pages as Page[];
+	const pages = response.pages as Page[] | undefined;
 	return {
 		...response,
-		extractedText: pages.map((page) => page.markdown).join('\n\n'),
-		pageCount: pages.length,
+		extractedText: pages?.map((page) => page.markdown).join('\n\n') || '',
+		pageCount: pages?.length || 0,
 	};
 }
