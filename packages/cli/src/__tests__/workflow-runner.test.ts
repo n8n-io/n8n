@@ -3,11 +3,14 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	type User,
 	type ExecutionEntity,
+	type IExecutionBase,
+	type IExecutionResponse,
 	GLOBAL_OWNER_ROLE,
 	Project,
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -16,6 +19,7 @@ import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
+	type IExecuteResponsePromiseData,
 	type INode,
 	type IRun,
 	type IRunExecutionData,
@@ -39,6 +43,7 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	WorkflowPreExecute,
@@ -48,6 +53,7 @@ import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -112,14 +118,42 @@ describe('processError', () => {
 	});
 
 	test('processError should return early in Bull stalled edge case', async () => {
-		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution(
-			{
-				status: 'success',
-				finished: true,
-			},
-			workflow,
+		const workflow = await createWorkflow({ settings: { saveDataSuccessExecution: 'all' } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		const persistenceSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+			.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status: 'success',
+					finished: true,
+					mode: 'webhook',
+					data: successData,
+					workflowId: workflow.id,
+					workflowData: workflow,
+				}),
+			);
+		const deleteInFlightSpy = vi.spyOn(
+			Container.get(ExecutionPersistence),
+			'deleteInFlightExecution',
+		);
+
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
 			new Error('test') as ExecutionError,
@@ -128,6 +162,244 @@ describe('processError', () => {
 			execution.id,
 			hooks,
 		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(persistenceSpy).toHaveBeenCalledWith(execution.id, {
+			includeData: true,
+			unflattenData: true,
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		expect(deleteInFlightSpy).not.toHaveBeenCalled();
+	});
+
+	test('processError deletes the false-positive success when the workflow does not save successful executions', async () => {
+		const workflow = await createWorkflow(
+			{ settings: { saveDataSuccessExecution: 'none' } },
+			owner,
+		);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: successData,
+				workflowId: workflow.id,
+				workflowData: workflow,
+				storedAt: 'db',
+			}),
+		);
+		const deleteInFlightSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+			.mockResolvedValue();
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(deleteInFlightSpy).toHaveBeenCalledWith({
+			workflowId: workflow.id,
+			executionId: execution.id,
+			storedAt: 'db',
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError soft-deletes a false-positive success for a manual execution that is not saved', async () => {
+		const workflow = await createWorkflow({ settings: { saveManualExecutions: false } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'manual', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'manual',
+				data: successData,
+				workflowId: workflow.id,
+				workflowData: workflow,
+			}),
+		);
+		const deleteInFlightSpy = vi.spyOn(
+			Container.get(ExecutionPersistence),
+			'deleteInFlightExecution',
+		);
+		const softDeleteSpy = vi
+			.spyOn(Container.get(ExecutionRepository), 'softDelete')
+			.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'manual',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(softDeleteSpy).toHaveBeenCalledWith(execution.id);
+		expect(deleteInFlightSpy).not.toHaveBeenCalled();
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError prunes a false-positive success even when the stored execution carries no run data', async () => {
+		const workflow = await createWorkflow(
+			{ settings: { saveDataSuccessExecution: 'none' } },
+			owner,
+		);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: undefined,
+				workflowId: workflow.id,
+				workflowData: workflow,
+				storedAt: 'db',
+			}),
+		);
+		const deleteInFlightSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+			.mockResolvedValue();
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		// The run data was still unreadable, so the waiters see the usual fallback error...
+		const run = await postExecutePromise;
+		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
+		// ...but the retention decision ran anyway, off the row that was found.
+		expect(deleteInFlightSpy).toHaveBeenCalledWith({
+			workflowId: workflow.id,
+			executionId: execution.id,
+			storedAt: 'db',
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+	});
+
+	test.each([
+		[
+			'the stored execution cannot be found',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockResolvedValue(undefined),
+		],
+		[
+			'reading the stored execution fails',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockRejectedValue(new Error('storage unavailable')),
+		],
+	])('processError finalizes the execution as failed when %s', async (_case, mockReadback) => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		mockReadback();
+
+		const startedAt = new Date();
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			startedAt,
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		const run = await postExecutePromise;
+		expect(run).toEqual(
+			expect.objectContaining({ status: 'error', finished: false, mode: 'webhook', startedAt }),
+		);
+		expect(run?.data.resultData.error?.message).toBe(
+			`Execution ${execution.id} succeeded, but its result could not be read`,
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
