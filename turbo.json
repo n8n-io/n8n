@@ -26,6 +26,22 @@
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},
+		// A type check reads declarations, not bundles. Every frontend sibling of editor-ui is
+		// mapped to its `src` by the `paths` of `editor-ui/tsconfig.json`, so a build of those
+		// packages is not something this task waits for. The three below have no `paths` entry:
+		// their imports resolve through `exports`, which points into `dist`. That is the whole
+		// remaining set, measured on a tree with no `dist` (N8N-385).
+		//
+		// WARNING: Do not add a package here without a cold run that proves the `dist` read.
+		// `editor-ui/vite/aliases.test.ts` guards the other direction: a sibling that loses its
+		// `paths` pair fails there instead of silently typechecking against `dist`.
+		"n8n-editor-ui#typecheck": {
+			"dependsOn": [
+				"@n8n/codemirror-lang-html#build",
+				"@n8n/permissions#build",
+				"n8n-workflow#build"
+			]
+		},
 		// Both emit declarations only under `RELEASE`, so `RELEASE` has to be part of the cache
 		// key. Without it a cached non-release `dist`, which has no `.d.ts`, would be restored
 		// onto a release build and ship a package with no types.

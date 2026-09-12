@@ -14,7 +14,8 @@
 		"types": ["vitest/globals", "vitest/browser", "@testing-library/vue"],
 		"paths": {
 			"@n8n/chat/*": ["./src/*"],
-			"@n8n/design-system*": ["../design-system/src*"]
+			"@n8n/design-system": ["../design-system/src/index.ts"],
+			"@n8n/design-system/*": ["../design-system/src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
