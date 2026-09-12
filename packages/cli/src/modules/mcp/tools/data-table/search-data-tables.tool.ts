@@ -74,8 +74,8 @@ export const createSearchDataTablesTool = (
 				id: table.id,
 				name: table.name,
 				projectId: table.projectId,
-				createdAt: table.createdAt.toISOString(),
-				updatedAt: table.updatedAt.toISOString(),
+				createdAt: new Date(table.createdAt).toISOString(),
+				updatedAt: new Date(table.updatedAt).toISOString(),
 				columns: (table.columns ?? []).map((col) => ({
 					id: col.id,
 					name: col.name,
