@@ -111,5 +111,15 @@ describe('GoogleApi Credential', () => {
 			expect(signOptions.header).toEqual({ typ: 'JWT', alg: 'RS256' });
 			expect(signOptions.header).not.toHaveProperty('kid');
 		});
+
+		it('throws a UserError when httpNode is enabled but no scopes are configured', async () => {
+			await expect(
+				credential.authenticate({ ...baseCredentials, scopes: '' }, requestOptions),
+			).rejects.toThrow(
+				'Add at least one scope in the "Scope(s)" field to use this credential with the HTTP Request node.',
+			);
+
+			expect(requestMock).not.toHaveBeenCalled();
+		});
 	});
 });
