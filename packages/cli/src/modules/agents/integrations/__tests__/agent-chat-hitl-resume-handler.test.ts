@@ -1,3 +1,4 @@
+import { AgentThreadQueueFullError } from '../../agent-thread-turn-coordinator';
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
 function makeHandler(callback: {
@@ -9,10 +10,14 @@ function makeHandler(callback: {
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const updateLatest = vi.fn().mockResolvedValue(undefined);
-	const consume = vi.fn().mockResolvedValue(undefined);
+	const consume = vi.fn(async (stream: AsyncGenerator<unknown>) => {
+		await stream.next();
+	});
 	const resumeForChat = vi.fn((_config: { beforeResume?: () => Promise<void> }) =>
 		(async function* () {})(),
 	);
+	const peek = vi.fn().mockResolvedValue(callback);
+	const resolve = vi.fn().mockResolvedValue(callback);
 	const handler = new AgentChatHitlResumeHandler({
 		agentId: 'agent-1',
 		projectId: 'project-1',
@@ -20,7 +25,8 @@ function makeHandler(callback: {
 		agentService: { resumeForChat },
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
-			resolve: vi.fn().mockResolvedValue(callback),
+			peek,
+			resolve,
 		} as never,
 		deleteActionMessageBeforeResume: false,
 		formatActionDecisionMessage: ({ approved, selectedLabel, user }) =>
@@ -53,6 +59,8 @@ function makeHandler(callback: {
 		updateLatest,
 		consume,
 		resumeForChat,
+		peek,
+		resolve,
 	};
 }
 
@@ -78,8 +86,15 @@ it.each([
 ])(
 	'settles a $name card and writes message context only once the resume is admitted',
 	async ({ callback, content }) => {
-		const { handler, event, settleActionMessage, deleteMessage, updateLatest, resumeForChat } =
-			makeHandler(callback);
+		const {
+			handler,
+			event,
+			settleActionMessage,
+			deleteMessage,
+			updateLatest,
+			resumeForChat,
+			resolve,
+		} = makeHandler(callback);
 
 		await handler.handleAction(event as never);
 
@@ -87,10 +102,12 @@ it.each([
 		expect(deleteMessage).not.toHaveBeenCalled();
 		expect(settleActionMessage).not.toHaveBeenCalled();
 		expect(updateLatest).not.toHaveBeenCalled();
+		expect(resolve).not.toHaveBeenCalled();
 		const { beforeResume } = resumeForChat.mock.calls[0][0];
 
 		await beforeResume?.();
 
+		expect(resolve).toHaveBeenCalledWith('callback-key');
 		expect(updateLatest).toHaveBeenCalledWith(
 			'agent-thread-1',
 			'user-1',
@@ -109,3 +126,25 @@ it.each([
 		);
 	},
 );
+
+it('preserves the callback and card when the thread queue is full', async () => {
+	const { handler, event, settleActionMessage, resumeForChat, peek, resolve } = makeHandler({
+		actionId: 'resume:run-1:tool-1:0',
+		value: JSON.stringify({ approved: true }),
+		kind: 'approval',
+	});
+	resumeForChat.mockImplementation(() =>
+		// eslint-disable-next-line require-yield
+		(async function* () {
+			throw new AgentThreadQueueFullError();
+		})(),
+	);
+
+	await expect(handler.handleAction(event as never)).rejects.toBeInstanceOf(
+		AgentThreadQueueFullError,
+	);
+
+	expect(peek).toHaveBeenCalledWith('callback-key');
+	expect(resolve).not.toHaveBeenCalled();
+	expect(settleActionMessage).not.toHaveBeenCalled();
+});

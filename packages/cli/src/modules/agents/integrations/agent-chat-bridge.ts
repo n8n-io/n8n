@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -516,17 +516,25 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
+		await this.withSessionLock(baseId, async (signal) => {
 			// The reset takes its place in the thread's turn queue like a message,
 			// so every earlier message still runs in the old session and every
 			// later one (held at the session lock meanwhile) starts in the new one.
 			const activeId =
 				(await this.messageContextBridge.resolveSession(baseId))?.threadId ??
 				(await this.computeGeneration(baseId, false, null));
-			await this.turnCoordinator.run(activeId, undefined, async () => {
-				await this.messageContextBridge.unbindSession(baseId);
-				await this.computeGeneration(baseId, true, null);
-			});
+			try {
+				await this.turnCoordinator.run(activeId, signal, async () => {
+					signal.throwIfAborted();
+					await this.messageContextBridge.unbindSession(baseId);
+					await this.computeGeneration(baseId, true, null);
+				});
+			} catch (error) {
+				if (signal.aborted) {
+					throw new OperationalError('Session lock was lost while waiting to start a new session');
+				}
+				throw error;
+			}
 		});
 		await thread.post('🔄 Started a new session.');
 	}
@@ -542,7 +550,10 @@ export class AgentChatBridge {
 	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
 	 * instead of racing on stale reads.
 	 */
-	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+	private async withSessionLock<T>(
+		baseId: string,
+		fn: (signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
 			this.sessionGenerationCacheKey(baseId),

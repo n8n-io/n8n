@@ -80,6 +80,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
 	integrationRegistry.get.mockReturnValue({} as never);
+	orchestrator.executeForWake.mockResolvedValue('ran');
 	// Like the real lease with the wake's short wait timeout: a held key rejects.
 	const heldLeases = new Set<string>();
 	lockService.withLease.mockImplementation(async (_namespace, key, callback) => {
@@ -267,6 +268,7 @@ describe('AgentWakeService', () => {
 			let hintDuringWake: string | undefined = 'unset';
 			orchestrator.executeForWake.mockImplementation(async () => {
 				hintDuringWake = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
+				return 'ran';
 			});
 
 			await service.attemptWake('thread-1');
@@ -296,7 +298,7 @@ describe('AgentWakeService', () => {
 		vi.useFakeTimers();
 		try {
 			const { service, orchestrator, jobRepository } = setup();
-			const firstWake = createDeferredPromise();
+			const firstWake = createDeferredPromise<'ran' | 'skipped'>();
 			const laterJob = makeJob({ id: 'job-2', result: 'Later result' });
 			orchestrator.executeForWake.mockReturnValueOnce(firstWake.promise);
 			const waking = service.attemptWake('thread-1');
@@ -308,7 +310,7 @@ describe('AgentWakeService', () => {
 			// The first wake still holds the wake lease, so the request is not delivered yet.
 			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
 
-			firstWake.resolve();
+			firstWake.resolve('ran');
 			await waking;
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
@@ -370,6 +372,16 @@ describe('AgentWakeService', () => {
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 
+	it('leaves results pending without recording a failure when the admitted wake is skipped', async () => {
+		const { service, orchestrator, jobRepository, logger } = setup();
+		orchestrator.executeForWake.mockResolvedValue('skipped');
+
+		await service.attemptWake('thread-1');
+
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('leaves results pending without counting a failure when the thread queue is full', async () => {
 		const { service, orchestrator, jobRepository, logger } = setup();
 		orchestrator.executeForWake.mockRejectedValue(new AgentThreadQueueFullError());
@@ -409,6 +421,7 @@ describe('AgentWakeService', () => {
 		});
 		orchestrator.executeForWake.mockImplementation(async () => {
 			controller.abort();
+			return 'ran';
 		});
 
 		await service.attemptWake('thread-1');
@@ -580,7 +593,7 @@ describe('AgentWakeService', () => {
 			for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES; attempt++) {
 				await service.attemptWake('thread-1');
 			}
-			orchestrator.executeForWake.mockResolvedValue(undefined);
+			orchestrator.executeForWake.mockResolvedValue('ran');
 
 			await service.onParentTurnFinished('thread-1');
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);

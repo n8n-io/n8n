@@ -202,7 +202,7 @@ export class AgentWakeService {
 		try {
 			this.activeWakes.add(threadId);
 			try {
-				await this.orchestrator.executeForWake({
+				const outcome = await this.orchestrator.executeForWake({
 					agentId: agent.id,
 					projectId: agent.projectId,
 					message: formatWakeMessage(jobs),
@@ -210,6 +210,7 @@ export class AgentWakeService {
 					identity,
 					abortSignal: signal,
 				});
+				if (outcome === 'skipped') return;
 			} finally {
 				this.activeWakes.delete(threadId);
 			}

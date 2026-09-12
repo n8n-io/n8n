@@ -477,6 +477,15 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 		} = config;
 
+		// The pre-admission check can go stale while this resume waits in the thread queue.
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
+		if (
+			checkpointStatus.status !== 'active' ||
+			checkpointStatus.checkpoint.status !== 'suspended'
+		) {
+			throw new UserError('This action has already been handled');
+		}
+
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -645,16 +654,25 @@ export class AgentExecutionOrchestratorService {
 					sandboxPrincipalHash,
 					previewChat,
 				});
-				// Message context is written by the admitted turn only, so a
-				// waiting message never redirects the running turn's replies.
-				await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
-					integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
-					platform: N8N_CHAT_INTEGRATION_TYPE,
-					target: { type: 'dm', userId: user.id, threadId: memory.threadId },
-					interactingUserId: user.id,
-					updatedAt: new Date().toISOString(),
-				});
-				return runtime;
+				try {
+					// Message context is written by the admitted turn only, so a
+					// waiting message never redirects the running turn's replies.
+					await this.integrationMessageContextService.setLatest(
+						memory.threadId,
+						memory.resourceId,
+						{
+							integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+							platform: N8N_CHAT_INTEGRATION_TYPE,
+							target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+							interactingUserId: user.id,
+							updatedAt: new Date().toISOString(),
+						},
+					);
+					return runtime;
+				} catch (error) {
+					this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+					throw error;
+				}
 			},
 			(runtime, permit) => ({
 				agentInstance: runtime.agent,
@@ -873,8 +891,9 @@ export class AgentExecutionOrchestratorService {
 	 * running user turn on the thread; rejects with
 	 * `AgentThreadQueueFullError` when the thread's queue is full so the caller
 	 * can leave the results pending.
+	 * Returns `skipped` if the admitted thread is suspended.
 	 */
-	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
+	async executeForWake(config: ExecuteForWakeConfig): Promise<'ran' | 'skipped'> {
 		const { agentId, projectId, message, memory, identity, abortSignal } = config;
 		const isDraft = identity.type === 'draft';
 
@@ -882,7 +901,14 @@ export class AgentExecutionOrchestratorService {
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
-		await this.turnCoordinator.run(memory.threadId, abortSignal, async (permit) => {
+		return await this.turnCoordinator.run(memory.threadId, abortSignal, async (permit) => {
+			if (
+				(await this.agentExecutionService.hasSuspendedRun(memory.threadId)) &&
+				(await this.n8nCheckpointStorage.findSuspendedForThread(agentId, memory.threadId)) !== null
+			) {
+				return 'skipped';
+			}
+
 			const delivery = isDraft
 				? undefined
 				: await this.getWakeDelivery(agentId, integrationType, memory.threadId);
@@ -935,6 +961,7 @@ export class AgentExecutionOrchestratorService {
 			}
 			abortSignal.throwIfAborted();
 			if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
+			return 'ran';
 		});
 	}
 
@@ -1209,7 +1236,15 @@ export class AgentExecutionOrchestratorService {
 		permit: AgentThreadTurnPermit,
 		abortSignal?: AbortSignal,
 	): Promise<{ executionId: string; abortSignal: AbortSignal }> {
+		// The lock service aborts `leaseLost` without a reason; name the cause here.
+		const leaseLostError = () =>
+			new OperationalError('Agent thread lease was lost before the turn could claim its thread');
+		const waitSignal = AbortSignal.any(
+			[abortSignal, permit.leaseLost].filter((s) => s !== undefined),
+		);
 		for (;;) {
+			if (permit.leaseLost.aborted) throw leaseLostError();
+			waitSignal.throwIfAborted();
 			try {
 				const { executionId, claimLost } =
 					await this.agentExecutionService.startClaimedExecutionRecording(params, startedAt);
@@ -1225,7 +1260,11 @@ export class AgentExecutionOrchestratorService {
 					agentId: params.agentId,
 					threadId: params.threadId,
 				});
-				await this.turnCoordinator.waitUntilThreadIdle(params.threadId, abortSignal);
+				try {
+					await this.turnCoordinator.waitUntilThreadIdle(params.threadId, waitSignal);
+				} catch (waitError) {
+					throw permit.leaseLost.aborted ? leaseLostError() : waitError;
+				}
 			}
 		}
 	}

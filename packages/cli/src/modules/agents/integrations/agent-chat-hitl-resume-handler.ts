@@ -1,7 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type {
 	ActionDecisionMessageFormatter,
@@ -81,6 +81,13 @@ export class AgentChatHitlResumeHandler {
 			// a running turn, or is rejected, must not settle the card or redirect
 			// the running turn's replies.
 			beforeResume: async () => {
+				if (
+					this.options.callbackStore &&
+					!(await this.options.callbackStore.resolve(event.actionId))
+				) {
+					throw new UserError('This action has already been handled');
+				}
+
 				// Persist the interacting user / messageId into the thread's message
 				// context so tools running on resume can read it via the message
 				// context store — no need to bolt a duplicate copy onto resumeData.
@@ -154,7 +161,7 @@ export class AgentChatHitlResumeHandler {
 	} | null> {
 		if (!this.options.callbackStore) return { actionId, value };
 
-		const resolved = await this.options.callbackStore.resolve(actionId);
+		const resolved = await this.options.callbackStore.peek(actionId);
 		if (!resolved) {
 			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
 			await thread.post(

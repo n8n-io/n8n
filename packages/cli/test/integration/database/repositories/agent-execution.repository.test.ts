@@ -276,6 +276,47 @@ describe('AgentExecutionRepository', () => {
 			const next = await repository.insertRunning(runningValues(thread.id, thread.id));
 			expect(next.activeThreadId).toBe(thread.id);
 		});
+
+		it('releases only a stale claim during abandoned finalization', async () => {
+			const thread = await createThread();
+			const execution = await repository.insertRunning(runningValues(thread.id, thread.id));
+			const staleBefore = new Date('2026-01-02T00:00:00Z');
+			const finalizationValues = {
+				status: 'interrupted' as const,
+				stoppedAt: new Date('2026-01-02T00:01:00Z'),
+				duration: 1,
+				timeline: null,
+				storedAt: 'db' as const,
+				error: 'interrupted',
+				failureSummary: null,
+			};
+
+			await repository.update(
+				{ id: execution.id },
+				{ updatedAt: new Date('2026-01-02T00:00:01Z') },
+			);
+			expect(
+				await repository.updateIfAbandoned(execution.id, staleBefore, finalizationValues),
+			).toBe(false);
+			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+				status: 'running',
+				activeThreadId: thread.id,
+				stoppedAt: null,
+			});
+
+			await repository.update(
+				{ id: execution.id },
+				{ updatedAt: new Date('2026-01-01T23:59:59Z') },
+			);
+			expect(
+				await repository.updateIfAbandoned(execution.id, staleBefore, finalizationValues),
+			).toBe(true);
+			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+				status: 'interrupted',
+				activeThreadId: null,
+				stoppedAt: finalizationValues.stoppedAt,
+			});
+		});
 	});
 
 	describe('failure summaries', () => {

@@ -265,20 +265,25 @@ export class AgentExecutionService {
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
+		const staleBefore = new Date(Date.now() - AgentExecutionService.livenessGraceMs);
+		const finalized = await this.agentExecutionRepository.updateIfAbandoned(
+			execution.id,
+			staleBefore,
+			{
 				status: 'interrupted',
+				stoppedAt,
+				duration,
+				timeline: timeline.length > 0 ? timeline : null,
+				storedAt: 'db',
 				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
-		});
+				failureSummary: computeExecutionFailureSummary({
+					timeline,
+					status: 'interrupted',
+					error,
+					stoppedAt: stoppedAt.getTime(),
+				}),
+			},
+		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
 	}

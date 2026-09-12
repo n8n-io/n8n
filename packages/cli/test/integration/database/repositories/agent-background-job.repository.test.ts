@@ -231,7 +231,10 @@ describe('AgentBackgroundJobRepository', () => {
 
 			let secondWakeStarted!: () => void;
 			const secondWake = new Promise<void>((resolve) => (secondWakeStarted = resolve));
-			orchestrator.executeForWake.mockImplementationOnce(async () => secondWakeStarted());
+			orchestrator.executeForWake.mockImplementationOnce(async () => {
+				secondWakeStarted();
+				return 'ran';
+			});
 			await wakeService.requestWake('thread-1');
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			await secondWake;

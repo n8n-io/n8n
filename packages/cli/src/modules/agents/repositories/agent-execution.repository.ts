@@ -1,6 +1,6 @@
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { OperationalError } from 'n8n-workflow';
 
@@ -101,10 +101,34 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
 	): Promise<boolean> {
-		const result = await this.update({ id: executionId, status: 'running' }, {
-			...values,
-			activeThreadId: null,
-		} as QueryDeepPartialEntity<AgentExecution>);
+		return await this.finalizeRunning(executionId, values);
+	}
+
+	/** Finalize a running row only while its liveness timestamp remains stale. */
+	async updateIfAbandoned(
+		executionId: string,
+		staleBefore: Date,
+		values: AgentExecutionFinalizationValues,
+	): Promise<boolean> {
+		return await this.finalizeRunning(executionId, values, staleBefore);
+	}
+
+	private async finalizeRunning(
+		executionId: string,
+		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
+	): Promise<boolean> {
+		const result = await this.update(
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThan(staleBefore) } : {}),
+			},
+			{
+				...values,
+				activeThreadId: null,
+			} as QueryDeepPartialEntity<AgentExecution>,
+		);
 		return result.affected === 1;
 	}
 

@@ -120,6 +120,21 @@ describe('AgentThreadTurnCoordinator', () => {
 		}
 	});
 
+	it('does not start a turn after losing the lease while waiting for a running row', async () => {
+		const { coordinator, executionRepository, leases } = createTestTurnCoordinator();
+		executionRepository.existsRunningByThread.mockResolvedValue(true);
+		const body = vi.fn(async () => {});
+		const run = coordinator.run('t1', undefined, body);
+		await flush();
+
+		leases[0].abort(new Error('lock lost'));
+		await expect(run).rejects.toThrow('lock lost');
+		expect(body).not.toHaveBeenCalled();
+
+		executionRepository.existsRunningByThread.mockResolvedValue(false);
+		await expect(coordinator.run('t1', undefined, async () => 'next')).resolves.toBe('next');
+	});
+
 	it('releases the local turn and the lease when the running-row wait is aborted', async () => {
 		const { coordinator, executionRepository, leases } = createTestTurnCoordinator();
 		executionRepository.existsRunningByThread.mockResolvedValue(true);

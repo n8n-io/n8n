@@ -107,8 +107,12 @@ export class AgentThreadTurnCoordinator {
 		let lease: Awaited<ReturnType<typeof this.acquireLease>> | undefined;
 		try {
 			lease = await this.acquireLease(threadId);
-			await this.waitUntilThreadIdle(threadId, signal);
+			const idleWaitSignal = AbortSignal.any(
+				[signal, lease.leaseLost].filter((s) => s !== undefined),
+			);
+			await this.waitUntilThreadIdle(threadId, idleWaitSignal);
 			signal?.throwIfAborted();
+			lease.leaseLost.throwIfAborted();
 		} catch (error) {
 			await lease?.release();
 			this.releaseLocally(threadId);

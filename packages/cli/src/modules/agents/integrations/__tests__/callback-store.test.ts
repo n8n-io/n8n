@@ -59,7 +59,7 @@ describe('CallbackStore', () => {
 		});
 	});
 
-	it('invalidates sibling callbacks when one group member is resolved', async () => {
+	it('peeks without consuming and invalidates sibling callbacks on resolve', async () => {
 		const cache = await createCache();
 		const lockService = createLockService();
 		const store = new CallbackStore(cache, lockService, 'agent-1:discord:cred-1');
@@ -71,6 +71,10 @@ describe('CallbackStore', () => {
 			groupId: 'card-1',
 		});
 
+		await expect(store.peek(approveKey)).resolves.toMatchObject({
+			value: '{"approved":true}',
+			groupId: 'card-1',
+		});
 		await expect(store.resolve(approveKey)).resolves.toMatchObject({
 			value: '{"approved":true}',
 			groupId: 'card-1',

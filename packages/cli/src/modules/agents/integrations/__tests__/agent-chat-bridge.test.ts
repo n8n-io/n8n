@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
@@ -1510,6 +1511,38 @@ describe('AgentChatBridge — consumeStream', () => {
 				expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1#1']);
 			},
 		);
+
+		it('abandons /new without rotating when its session lease is lost while waiting', async () => {
+			const resetLease = new AbortController();
+			const lockService = mock<LockService>();
+			lockService.withLease
+				.mockImplementationOnce(
+					async (_namespace, _key, fn) => await fn(new AbortController().signal),
+				)
+				.mockImplementationOnce(async (_namespace, _key, fn) => await fn(resetLease.signal))
+				.mockImplementation(async (_namespace, _key, fn) => await fn(new AbortController().signal));
+			Container.set(LockService, lockService);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const bridge = makeQueuedBridge(messageContextStore);
+			const cache = Container.get(CacheService);
+
+			const first = bridge.send('first');
+			await settle();
+			const resetting = bridge.send('/new');
+			await settle();
+
+			resetLease.abort();
+			const second = bridge.send('second');
+			await settle();
+			bridge.releaseFirst();
+			await Promise.all([first, resetting, second]);
+
+			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
+			expect(cache.set).not.toHaveBeenCalled();
+			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1']);
+		});
 
 		it('writes message context only when a message becomes the active turn', async () => {
 			const messageContextStore = mock<IntegrationMessageContextService>();
