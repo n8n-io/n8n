@@ -1,4 +1,6 @@
-import { OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type {
 	FilterValue,
 	GeoRangeFilter,
@@ -19,6 +21,119 @@ export type WeaviateCredential = {
 	custom_connection_grpc_secure: boolean;
 };
 
+/**
+ * Integration identifier reported to Weaviate telemetry, so Weaviate can track
+ * usage originating from the n8n LangChain nodes.
+ */
+const INTEGRATION_NAME = 'n8n-langchain';
+
+/**
+ * Telemetry header that tags the connection so Weaviate can track integration
+ * usage across both the HTTP and gRPC transports.
+ */
+const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
+
+/** Errors that mean "nothing here", so the walk should continue upwards. */
+const MISSING_PATH_CODES = new Set(['ENOENT', 'ENOTDIR']);
+
+/**
+ * Filesystem errors worth retrying. Everything else — a missing or malformed
+ * `package.json` — is a permanent property of the installation, so its failure
+ * is cached rather than re-walked on every client creation.
+ */
+const TRANSIENT_FS_CODES = new Set(['EMFILE', 'ENFILE', 'EAGAIN', 'EBUSY', 'EIO']);
+
+/**
+ * Resolves the `@n8n/n8n-nodes-langchain` package version by walking up from
+ * this module to the nearest `package.json`. The walk keeps this robust to the
+ * differing directory depth between the compiled (`dist/nodes/...`) and
+ * source/test (`nodes/...`) layouts.
+ *
+ * A direct `package.json` import is not an option: the build config
+ * (`@n8n/typescript-config/modern/tsconfig.cjs.go.json`) sets
+ * `resolveJsonModule: false`.
+ *
+ * Only "path does not exist" errors continue the walk — a `package.json` that
+ * exists but cannot be read or parsed is a real problem, and must not silently
+ * resolve some other package's version further up the tree.
+ */
+async function resolveIntegrationVersion(): Promise<string> {
+	let dir = __dirname;
+	while (true) {
+		try {
+			const contents = await readFile(join(dir, 'package.json'), 'utf8');
+			const { version } = jsonParse<{ version?: string }>(contents);
+			// A package.json without a version is not the one we are looking for;
+			// returning it would tag requests with `n8n-langchain/undefined`.
+			if (version) return version;
+		} catch (error) {
+			const code = (error as NodeJS.ErrnoException).code;
+			if (code === undefined || !MISSING_PATH_CODES.has(code)) throw error;
+		}
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	throw new OperationalError('Could not resolve the n8n-nodes-langchain package version');
+}
+
+let cachedIntegrationVersion: Promise<string> | undefined;
+
+/**
+ * The version reported alongside {@link INTEGRATION_NAME} to Weaviate
+ * telemetry. This is the version of the integration itself — the
+ * nodes-langchain package — which is the value the `n8n-langchain/<version>`
+ * header is meant to carry.
+ *
+ * The in-flight promise is memoized rather than the resolved value, so that
+ * concurrent first calls share a single filesystem read.
+ *
+ * A rejection is cached too, since a missing or malformed `package.json` is a
+ * permanent property of the installation and re-walking it on every client
+ * creation would just repeat the same failure. Only transient filesystem
+ * errors evict the cache, so a passing resource blip does not disable
+ * telemetry for the lifetime of the process.
+ */
+export async function getIntegrationVersion(): Promise<string> {
+	cachedIntegrationVersion ??= resolveIntegrationVersion();
+	const pending = cachedIntegrationVersion;
+	try {
+		return await pending;
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		// Identity-guarded, so a retry already started by another caller is kept.
+		if (code !== undefined && TRANSIENT_FS_CODES.has(code) && cachedIntegrationVersion === pending) {
+			cachedIntegrationVersion = undefined;
+		}
+		throw error;
+	}
+}
+
+/**
+ * Best-effort registration of the {@link INTEGRATION_HEADER} on a Weaviate
+ * client. Never throws.
+ *
+ * The JS `weaviate-client` exposes no public `integrations.configure(...)` API
+ * (unlike the Python client). However, `getConnectionDetails()` returns the
+ * client's live `headers` object by reference, and the client spreads that same
+ * object into every HTTP and gRPC request. Mutating it therefore tags all
+ * subsequent requests with `X-Weaviate-Client-Integration: n8n-langchain/<version>`
+ * without depending on any private internals. If a future client version
+ * changes shape, registration is silently skipped instead of breaking the node.
+ */
+export async function registerIntegrationHeader(client: WeaviateClient): Promise<void> {
+	try {
+		const { headers } = await client.getConnectionDetails();
+		// The client only spreads object-form headers into requests, so only the
+		// `Record<string, string>` form can be augmented in place.
+		if (headers && !Array.isArray(headers)) {
+			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${await getIntegrationVersion()}`;
+		}
+	} catch {
+		// Best-effort telemetry: never let header registration break the node.
+	}
+}
+
 export async function createWeaviateClient(
 	credentials: WeaviateCredential,
 	timeout?: TimeoutParams,
@@ -34,6 +149,7 @@ export async function createWeaviateClient(
 				skipInitChecks,
 			},
 		);
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	} else {
 		const weaviateClient: WeaviateClient = await weaviate.connectToCustom({
@@ -50,6 +166,7 @@ export async function createWeaviateClient(
 			proxies,
 			skipInitChecks,
 		});
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	}
 }
