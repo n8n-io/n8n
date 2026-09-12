@@ -21,6 +21,7 @@ export type PubSubEventName =
 	| 'reload-license'
 	| 'reload-oidc-config'
 	| 'reload-saml-config'
+	| 'reload-sso-login-redirect'
 	| 'reload-overwrite-credentials'
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'

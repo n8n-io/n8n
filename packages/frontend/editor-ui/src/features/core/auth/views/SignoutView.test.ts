@@ -6,8 +6,13 @@ import { useRouter } from 'vue-router';
 import SignoutView from './SignoutView.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { suppressNextSsoLoginRedirect } from '@/features/core/auth/ssoLoginRedirectSuppression';
 
 const SIGNIN_HREF = '/signin';
+
+vi.mock('@/features/core/auth/ssoLoginRedirectSuppression', () => ({
+	suppressNextSsoLoginRedirect: vi.fn(),
+}));
 
 vi.mock('vue-router', () => {
 	const resolve = vi.fn(() => ({ href: SIGNIN_HREF }));
@@ -63,7 +68,7 @@ describe('SignoutView', () => {
 		await flushPromises();
 
 		expect(usersStore.logout).toHaveBeenCalledWith({ viaOidc: false });
-		expect(router.resolve).toHaveBeenCalled();
+		expect(suppressNextSsoLoginRedirect).toHaveBeenCalled();
 		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);
 	});
 
@@ -77,6 +82,8 @@ describe('SignoutView', () => {
 		await flushPromises();
 
 		expect(usersStore.logout).toHaveBeenCalledWith({ viaOidc: true });
+		// The redirect must be suppressed even for the OIDC round-trip back to /signin.
+		expect(suppressNextSsoLoginRedirect).toHaveBeenCalled();
 		expect(hrefSpy).toHaveBeenCalledWith(redirectUrl);
 		// Should redirect to the IdP, not resolve the local signin route.
 		expect(router.resolve).not.toHaveBeenCalled();
@@ -91,6 +98,7 @@ describe('SignoutView', () => {
 		await flushPromises();
 
 		expect(usersStore.logout).toHaveBeenCalledWith({ viaOidc: true });
+		expect(suppressNextSsoLoginRedirect).toHaveBeenCalled();
 		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);
 	});
 

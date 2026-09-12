@@ -27,7 +27,11 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
-import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import {
+	getSamlLoginLabel,
+	getCurrentAuthenticationMethod,
+	doRedirectUsersFromLoginToSsoFlow,
+} from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
@@ -81,6 +85,8 @@ export type PublicFrontendSettings = {
 	};
 
 	sso: {
+		/** Controls whether the login page auto-redirects to the SSO provider */
+		redirectLoginToSso: FrontendSettings['sso']['redirectLoginToSso'];
 		saml: {
 			/** Config flag for SSO button*/
 			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
@@ -268,6 +274,7 @@ export class FrontendService {
 			},
 			sso: {
 				managedByEnv: this.globalConfig.instanceSettingsLoader.ssoManagedByEnv,
+				redirectLoginToSso: doRedirectUsersFromLoginToSsoFlow(),
 				saml: {
 					loginEnabled: false,
 					loginLabel: '',
@@ -480,6 +487,9 @@ export class FrontendService {
 			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
 
+		// refresh the admin-configurable "redirect login page to SSO" setting
+		this.settings.sso.redirectLoginToSso = doRedirectUsersFromLoginToSsoFlow();
+
 		let dismissedBanners: string[] = [];
 
 		try {
@@ -673,7 +683,7 @@ export class FrontendService {
 		const {
 			defaultLocale,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
-			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc, redirectLoginToSso },
 			authCookie,
 			previewMode,
 			enterprise: { saml, ldap, oidc },
@@ -690,6 +700,7 @@ export class FrontendService {
 				passwordMinLength,
 			},
 			sso: {
+				redirectLoginToSso,
 				saml: {
 					loginEnabled: ssoSaml.loginEnabled,
 				},

@@ -28,6 +28,7 @@ export type PubSubCommandMap = {
 
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
+	'reload-sso-login-redirect': never;
 
 	// # sso provisioning
 	'reload-sso-provisioning-configuration': never;

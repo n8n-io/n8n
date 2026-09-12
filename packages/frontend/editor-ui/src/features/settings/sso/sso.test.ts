@@ -236,4 +236,68 @@ describe('SSO store', () => {
 			expect(ssoStore.isOidcLoginEnabled).toBe(false);
 		});
 	});
+
+	describe('redirectLoginToSso', () => {
+		it('defaults to false and reflects the initialized value', () => {
+			expect(ssoStore.redirectLoginToSso).toBe(false);
+
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				redirectLoginToSso: true,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			expect(ssoStore.redirectLoginToSso).toBe(true);
+		});
+
+		it('persists the toggle via the API and updates local state', async () => {
+			vi.mocked(ssoApi.setSsoLoginRedirect).mockResolvedValue();
+
+			await ssoStore.toggleRedirectLoginToSso(false);
+
+			expect(ssoApi.setSsoLoginRedirect).toHaveBeenCalledWith(expect.anything(), false);
+			expect(ssoStore.redirectLoginToSso).toBe(false);
+		});
+	});
+
+	describe('resolveActiveSsoRedirectUrl', () => {
+		it('uses the SAML init endpoint when SAML is the active protocol', async () => {
+			vi.mocked(ssoApi.initSSO).mockResolvedValue('https://idp.example/saml');
+			ssoStore.initialize({
+				authenticationMethod: 'saml' as AuthenticationMethod,
+				config: { saml: { loginEnabled: true } },
+				features: { saml: true, ldap: false, oidc: false },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl('/home')).resolves.toBe(
+				'https://idp.example/saml',
+			);
+			expect(ssoApi.initSSO).toHaveBeenCalledWith(expect.anything(), '/home');
+		});
+
+		it('uses the OIDC login URL when OIDC is the active protocol', async () => {
+			vi.mocked(ssoApi.initSSO).mockClear();
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: 'https://idp.example/oidc' } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl()).resolves.toBe(
+				'https://idp.example/oidc',
+			);
+			expect(ssoApi.initSSO).not.toHaveBeenCalled();
+		});
+
+		it('throws when OIDC is active but no login URL is configured', async () => {
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as AuthenticationMethod,
+				config: { oidc: { loginEnabled: true, loginUrl: '' } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+
+			await expect(ssoStore.resolveActiveSsoRedirectUrl()).rejects.toThrow();
+		});
+	});
 });

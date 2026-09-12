@@ -151,6 +151,8 @@ export interface FrontendSettings {
 	userManagement: IUserManagementSettings;
 	sso: {
 		managedByEnv: boolean;
+		/** Whether the login page auto-redirects to the SSO provider instead of showing the email/password form. */
+		redirectLoginToSso: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;

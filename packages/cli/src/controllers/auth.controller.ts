@@ -99,6 +99,12 @@ export class AuthController {
 			authenticationMethod: usedAuthenticationMethod,
 		});
 
+		// Surface use of the internal-auth fallback: an email/password login while SSO
+		// is the active authentication method (owner or `allowSSOManualLogin` users).
+		if (usedAuthenticationMethod === 'email' && isSsoCurrentAuthenticationMethod()) {
+			this.eventService.emit('user-logged-in-with-sso-fallback', { user });
+		}
+
 		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,

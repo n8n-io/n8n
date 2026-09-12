@@ -90,6 +90,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'externalSecretsProvider:list', // External Secrets
 			'externalSecretsProvider:update',
 			'saml:manage', // Single Sign-On
+			'sso:manage', // Single Sign-On (shared settings, e.g. login redirect)
 			'logStreaming:manage', // Log Streaming
 			'ldap:manage', // LDAP
 			'otel:manage', // OpenTelemetry

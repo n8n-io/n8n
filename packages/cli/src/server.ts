@@ -58,6 +58,7 @@ import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
+import '@/sso.ee/sso.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
