@@ -471,6 +471,73 @@ describe('McpClient', () => {
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 
+		it('should label results with the tool title and match the filter against it', async () => {
+			client.listTools.mockResolvedValue({
+				tools: [
+					{
+						name: 'list_limetypes',
+						title: 'List object types',
+						description: 'A tool',
+						inputSchema: { type: 'object' },
+					},
+					{
+						name: 'query_limeobjects',
+						annotations: { title: 'Query CRM data' },
+						description: 'Another tool',
+						inputSchema: { type: 'object' },
+					},
+					{
+						name: 'search',
+						description: 'Untitled tool',
+						inputSchema: { type: 'object' },
+					},
+				],
+			});
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			const all = await getTools.call(loadOptionsFunctions);
+			expect(all.results.map((option) => option.name)).toEqual([
+				'List object types',
+				'Query CRM data',
+				'search',
+			]);
+			expect(all.results.map((option) => option.value)).toEqual([
+				'list_limetypes',
+				'query_limeobjects',
+				'search',
+			]);
+
+			const byTitle = await getTools.call(loadOptionsFunctions, 'crm');
+			expect(byTitle.results.map(({ value }) => value)).toEqual(['query_limeobjects']);
+
+			const byName = await getTools.call(loadOptionsFunctions, 'limeobjects');
+			expect(byName.results.map(({ value }) => value)).toEqual(['query_limeobjects']);
+
+			const byEither = await getTools.call(loadOptionsFunctions, 'object');
+			expect(byEither.results.map(({ value }) => value)).toEqual([
+				'list_limetypes',
+				'query_limeobjects',
+			]);
+		});
+
 		it('should close client when listTools throws', async () => {
 			client.listTools.mockRejectedValue(new Error('listTools failed'));
 
