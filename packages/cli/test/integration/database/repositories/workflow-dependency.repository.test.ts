@@ -10,6 +10,7 @@ import {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
 	WorkflowRepository,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -73,7 +74,7 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyType: 'credentialId',
 				dependencyKey: 'cred-123',
 				dependencyInfo: { name: 'Test Credential' },
-				indexVersionId: 1,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 			});
 			expect(savedDependencies[1]).toMatchObject({
 				workflowId: workflow.id,
@@ -81,7 +82,7 @@ describe('WorkflowDependencyRepository', () => {
 				dependencyType: 'nodeType',
 				dependencyKey: 'n8n-nodes-base.httpRequest',
 				dependencyInfo: null,
-				indexVersionId: 1,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 			});
 		});
 
@@ -177,6 +178,100 @@ describe('WorkflowDependencyRepository', () => {
 			expect(savedDependencies).toHaveLength(1);
 			expect(savedDependencies[0].dependencyKey).toBe('cred-new');
 			expect(savedDependencies[0].workflowVersionId).toBe(2);
+		});
+
+		it('should replace rows an older indexer version wrote for the same workflow version', async () => {
+			//
+			// ARRANGE
+			//
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+
+			// Seed rows directly, as an older indexer version would have written them.
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 1,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-old',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			const sameVersionDeps = new WorkflowDependencies(workflow.id, 1);
+			sameVersionDeps.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-new',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				sameVersionDeps,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(true);
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0]).toMatchObject({
+				dependencyKey: 'cred-new',
+				workflowVersionId: 1,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+			});
+		});
+
+		it('should not let a stale request replace rows a newer workflow version wrote', async () => {
+			//
+			// ARRANGE
+			//
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+
+			// Rows an older indexer version wrote for a newer workflow version.
+			await workflowDependencyRepository.insert({
+				workflowId: workflow.id,
+				workflowVersionId: 5,
+				publishedVersionId: null,
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-newer',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			const staleDeps = new WorkflowDependencies(workflow.id, 3);
+			staleDeps.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred-stale',
+				dependencyInfo: null,
+			});
+
+			//
+			// ACT
+			//
+			const result = await workflowDependencyRepository.updateDependenciesForWorkflow(
+				workflow.id,
+				staleDeps,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(false);
+			const savedDependencies = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id },
+			});
+			expect(savedDependencies).toHaveLength(1);
+			expect(savedDependencies[0]).toMatchObject({
+				dependencyKey: 'cred-newer',
+				workflowVersionId: 5,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
 		});
 
 		it('should prevent races between concurrent updates', async () => {
@@ -594,7 +689,7 @@ describe('WorkflowDependencyRepository node usage', () => {
 					dependencyType: 'nodeType' as const,
 					dependencyKey: index < anthropicCount ? ANTHROPIC : OPENAI,
 					dependencyInfo: null,
-					indexVersionId: 1,
+					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 				})),
 				async (chunk) => await repository.insert(chunk),
 			);
