@@ -52,6 +52,188 @@ function noSuspendCtx() {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('data-tables tool', () => {
+	it.each([true, false])(
+		'resumes a saved row deletion without display names when approved=%s',
+		async (approved) => {
+			const context = createMockContext();
+			const resolveTableReference = vi.fn().mockRejectedValue(new Error('Lookup unavailable'));
+			context.dataTableService.resolveTableReference = resolveTableReference;
+			const tool = createDataTablesTool(context);
+			const savedInput = {
+				action: 'delete-rows',
+				dataTableId: 'dt-1',
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'status', condition: 'eq', value: 'inactive' }],
+				},
+			};
+			const input: unknown = (tool.inputSchema as z.ZodType).parse(savedInput);
+			const suspend = vi.fn();
+			const result = await executeTool(tool, input, { resumeData: { approved }, suspend });
+
+			expect(input).toEqual(savedInput);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(resolveTableReference).not.toHaveBeenCalled();
+			if (approved) {
+				expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
+					'dt-1',
+					savedInput.filter,
+					{ projectId: undefined },
+				);
+			} else {
+				expect(result).toMatchObject({ denied: true });
+				expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it.each([
+		{ condition: 'like', value: 'Alice', description: 'contains "Alice" (matching case)' },
+		{ condition: 'ilike', value: 'Alice', description: 'contains "Alice" (ignoring case)' },
+		{ condition: 'like', value: 'Alice%', description: 'matches the text pattern "Alice%"' },
+		{
+			condition: 'ilike',
+			value: '%Alice',
+			description: 'matches the text pattern (ignoring case) "%Alice"',
+		},
+	])(
+		'describes $condition filters with value=$value',
+		async ({ condition, value, description }) => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTablesTool(context),
+				{
+					action: 'delete-rows',
+					dataTableId: 'dt-1',
+					filter: { type: 'and', filters: [{ columnName: 'name', condition, value }] },
+				},
+				{ suspend },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: `Delete rows where "name" ${description}` }),
+			);
+			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+		},
+	);
+
+	it('builds the approval card from the input without a table lookup', async () => {
+		const context = createMockContext();
+		context.dataTableService.resolveTableReference = vi.fn();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTablesTool(context),
+			{ action: 'delete', dataTableId: 'dt-legacy' },
+			{ suspend },
+		);
+		expect(context.dataTableService.resolveTableReference).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Permanently delete the table and all its rows',
+				resourceName: 'dt-legacy',
+				severity: 'destructive',
+			}),
+		);
+		expect(context.dataTableService.delete).not.toHaveBeenCalled();
+	});
+
+	it('shows the column name passed by the agent in a column deletion', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTablesTool(context),
+			{
+				action: 'delete-column',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				columnId: 'col-1',
+				currentColumnName: 'email',
+			},
+			{ suspend },
+		);
+		expect(context.dataTableService.getSchema).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Delete column "email" and its values',
+				resourceName: 'Contacts',
+			}),
+		);
+	});
+
+	it('describes cleared values and caps the listed columns in a row update', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTablesTool(context),
+			{
+				action: 'update-rows',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				filter: { type: 'and', filters: [] },
+				data: { a: null, b: 1, c: 2, d: 3, e: 4, f: 5, g: 6 },
+			},
+			{ suspend },
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					'Set "a" to no value, "b" to 1, "c" to 2, "d" to 3, "e" to 4, 2 more columns in all rows',
+				resourceName: 'Contacts',
+			}),
+		);
+	});
+
+	it('states when a saved row update affects all rows', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTablesTool(context),
+			{
+				action: 'update-rows',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				filter: { type: 'and', filters: [] },
+				data: { status: 'archived' },
+			},
+			{ suspend },
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Set "status" to "archived" in all rows',
+				resourceName: 'Contacts',
+			}),
+		);
+		expect(context.dataTableService.updateRows).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ condition: 'eq', value: null, description: '"status" has no value' },
+		{ condition: 'neq', value: null, description: '"status" has a value' },
+		{ condition: 'eq', value: 'null', description: '"status" is "null"' },
+	])(
+		'distinguishes missing values from text in $condition filters',
+		async ({ condition, value, description }) => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTablesTool(context),
+				{
+					action: 'delete-rows',
+					dataTableId: 'dt-1',
+					dataTableName: 'Contacts',
+					filter: { type: 'and', filters: [{ columnName: 'status', condition, value }] },
+				},
+				{ suspend },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: `Delete rows where ${description}`,
+					resourceName: 'Contacts',
+				}),
+			);
+		},
+	);
+
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {
@@ -466,7 +648,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Create Contacts',
+					message: 'Create the table with 1 column: "email"',
+					resourceName: 'Contacts',
 					severity: 'info',
 				}),
 			);
@@ -497,7 +680,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Create Contacts in project My Project',
+					message: 'Create the table with 1 column: "email" in project "My Project"',
+					resourceName: 'Contacts',
 				}),
 			);
 		});
@@ -641,7 +825,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete dt-1',
+					message: 'Permanently delete the table and all its rows',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -661,7 +846,8 @@ describe('data-tables tool', () => {
 
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete Customer data (ID: dt-1)',
+					message: 'Permanently delete the table and all its rows',
+					resourceName: 'Customer data',
 				}),
 			);
 		});
@@ -731,7 +917,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Add age (number) to dt-1',
+					message: 'Add column "age" (number)',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -806,7 +993,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete col-1 from dt-1',
+					message: 'Delete column "col-1" and its values',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -878,7 +1066,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Rename col-1 to full_name in dt-1',
+					message: 'Rename column "col-1" to "full_name"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -955,12 +1144,91 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Insert 2 row(s) into dt-1',
+					message:
+						'Add 2 rows\n\nRow 1: set "email" to "a@b.com"\n\nRow 2: set "email" to "c@d.com"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
 		});
+
+		it('describes the values in a single inserted row', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTablesTool(context),
+				{
+					action: 'insert-rows',
+					dataTableId: 'dt-1',
+					dataTableName: 'Contacts',
+					rows: [{ email: 'a@b.com', age: 42, active: false, notes: null }],
+				},
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Add 1 row\n\nRow 1: set "email" to "a@b.com", "age" to 42, "active" to false, "notes" to no value',
+					resourceName: 'Contacts',
+				}),
+			);
+			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it.each([4, 5])(
+			'bounds a preview of %s rows and inserts all values after approval',
+			async (rowCount) => {
+				const context = createMockContext();
+				const suspend = vi.fn();
+				const rows = Array.from({ length: rowCount }, (_, index) => ({
+					email: `contact-${index}@example.com`,
+					notes: 'x'.repeat(200),
+					age: 42,
+					active: true,
+					company: 'Acme',
+					extra: 'Keep this value',
+				}));
+				const input = { ...insertRowsInput, rows };
+				const tool = createDataTablesTool(context);
+				await executeTool(tool, input, suspendCtx(suspend));
+
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: expect.stringContaining(`Add ${rowCount} rows\n\n`),
+						approvalDetails: {
+							action: 'insert-rows',
+							count: rowCount,
+							rows: rows.slice(0, 3).map((row) => ({
+								values: [
+									{ column: 'email', value: JSON.stringify(row.email) },
+									{ column: 'notes', value: '"' + 'x'.repeat(99) + '…' },
+									{ column: 'age', value: '42' },
+									{ column: 'active', value: 'true' },
+									{ column: 'company', value: '"Acme"' },
+								],
+								remainingColumns: 1,
+							})),
+						},
+					}),
+				);
+				const message: unknown = suspend.mock.calls[0][0].message;
+				expect(message).toContain('\n\nRow 3:');
+				expect(message).not.toContain('Row 4:');
+				expect(message).toContain(rowCount === 4 ? '\n\n1 more row' : '\n\n2 more rows');
+				expect(message).toContain('1 more column');
+				expect(message).not.toContain('Keep this value');
+				expect(message).toContain('x'.repeat(99) + '…');
+				expect(message).not.toContain('x'.repeat(100));
+				expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+
+				await executeTool(tool, input, resumeCtx(true));
+				expect(context.dataTableService.insertRows).toHaveBeenCalledWith('dt-1', rows, {
+					projectId: undefined,
+				});
+			},
+		);
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
@@ -1056,7 +1324,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Update rows in dt-1',
+					message: 'Set "status" to "archived" in rows where "status" is "active"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -1138,7 +1407,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive',
+					message: 'Delete rows where "status" is "inactive"',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -1167,7 +1437,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive or age lt 18',
+					message: 'Delete rows where "status" is "inactive" or "age" is less than 18',
+					resourceName: 'dt-1',
 				}),
 			);
 		});

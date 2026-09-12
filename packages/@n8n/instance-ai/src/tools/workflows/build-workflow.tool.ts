@@ -1,8 +1,9 @@
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -96,6 +97,7 @@ import {
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
 import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
@@ -106,6 +108,9 @@ const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	/** Workflow name shown in the approval card title. */
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
 	workflowId: z.string(),
@@ -173,6 +178,7 @@ export const buildWorkflowInputSchema = z
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		approvalSummary: approvalSummarySchema,
 		workItemId: z
 			.string()
 			.optional()
@@ -740,7 +746,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
+						message: formatApprovalMessage(
+							'Save the changes to this workflow',
+							input.approvalSummary,
+						),
+						resourceName: workflowName,
+						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
 						severity: 'warning',
 						workflowId: targetWorkflowId,
 					});

@@ -779,3 +779,8 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	instanceAiApprovalDetailsSchema,
+	type InstanceAiApprovalDetails,
+} from './schemas/instance-ai-approval.schema';

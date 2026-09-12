@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
+import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -122,6 +123,52 @@ const chunks = computed((): ConfirmationChunk[] => {
 	return [];
 });
 
+const approvalTitleKeys = new Map<string, BaseTextKey>(
+	(
+		[
+			'instanceAi.tools.workflows.delete.imperative',
+			'instanceAi.tools.workflows.delete.imperativeWithResource',
+			'instanceAi.tools.workflows.unarchive.imperative',
+			'instanceAi.tools.workflows.unarchive.imperativeWithResource',
+			'instanceAi.tools.workflows.publish.imperative',
+			'instanceAi.tools.workflows.publish.imperativeWithResource',
+			'instanceAi.tools.workflows.unpublish.imperative',
+			'instanceAi.tools.workflows.unpublish.imperativeWithResource',
+			'instanceAi.tools.workflows.update-version.imperative',
+			'instanceAi.tools.workflows.update-version.imperativeWithResource',
+			'instanceAi.tools.workflows.restore-version.imperative',
+			'instanceAi.tools.workflows.restore-version.imperativeWithResource',
+			'instanceAi.tools.executions.run.imperative',
+			'instanceAi.tools.executions.run.imperativeWithResource',
+			'instanceAi.tools.credentials.delete.imperative',
+			'instanceAi.tools.data-tables.create.imperative',
+			'instanceAi.tools.data-tables.create.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete.imperative',
+			'instanceAi.tools.data-tables.delete.imperativeWithResource',
+			'instanceAi.tools.data-tables.add-column.imperative',
+			'instanceAi.tools.data-tables.add-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete-column.imperative',
+			'instanceAi.tools.data-tables.delete-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.rename-column.imperative',
+			'instanceAi.tools.data-tables.rename-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.insert-rows.imperative',
+			'instanceAi.tools.data-tables.insert-rows.imperativeWithResource',
+			'instanceAi.tools.data-tables.update-rows.imperative',
+			'instanceAi.tools.data-tables.update-rows.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete-rows.imperative',
+			'instanceAi.tools.data-tables.delete-rows.imperativeWithResource',
+			'instanceAi.tools.workspace.tag-workflow.imperative',
+			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
+			'instanceAi.tools.workspace.create-folder.imperative',
+			'instanceAi.tools.workspace.delete-folder.imperative',
+			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
+			'instanceAi.tools.build-workflow.imperative',
+			'instanceAi.tools.build-workflow.imperativeWithResource',
+			'instanceAi.tools.build-workflow-with-agent.imperative',
+		] satisfies BaseTextKey[]
+	).map((key) => [key, key]),
+);
+
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
 }
@@ -134,6 +181,10 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * otherwise we fall back to the tool's display label. Doing the lookup on
  * the frontend keeps the action phrase translatable without sending
  * English strings over the wire.
+ *
+ * When the tool names the resource it acts on, the title carries that name
+ * ("Assistant wants to edit CRM Lead enrichment") and the phrase comes from
+ * the `.imperativeWithResource` key, which is written to precede a name.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
 	const credentialDestination = item.toolCall.confirmation.credentialDestination;
@@ -147,13 +198,22 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
-	const imperativeKey = (
-		action
-			? `instanceAi.tools.${toolName}.${action}.imperative`
-			: `instanceAi.tools.${toolName}.imperative`
-	) as BaseTextKey;
-	const phrase = i18n.baseText(imperativeKey);
-	if (phrase !== imperativeKey) {
+	const keyBase = action
+		? `instanceAi.tools.${toolName}.${action}`
+		: `instanceAi.tools.${toolName}`;
+	const resourceName = item.toolCall.confirmation.resourceName;
+	if (resourceName) {
+		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
+		if (namedKey) {
+			const namedPhrase = i18n.baseText(namedKey);
+			return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
+				interpolate: { action: namedPhrase, name: resourceName },
+			});
+		}
+	}
+	const imperativeKey = approvalTitleKeys.get(`${keyBase}.imperative`);
+	if (imperativeKey) {
+		const phrase = i18n.baseText(imperativeKey);
 		return i18n.baseText('instanceAi.confirmation.allowPrompt', {
 			interpolate: { action: phrase },
 		});
@@ -161,11 +221,7 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	return getToolLabel(toolName, args);
 }
 
-/**
- * Subtitle for the floating approval. Tools send a short resource line;
- * we still defensively trim at the first `?` so any legacy tool whose
- * message includes a trailing explanation doesn't bloat the card.
- */
+/** Show the full change summary. Resource names and values can contain question marks, so never trim at one. */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 	const credentialDestination = item.toolCall.confirmation.credentialDestination;
 	if (credentialDestination) {
@@ -185,9 +241,8 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
 		});
 	}
-	const message = item.toolCall.confirmation.message ?? '';
-	const idx = message.indexOf('?');
-	return idx === -1 ? message : message.slice(0, idx + 1);
+	const details = item.toolCall.confirmation.approvalDetails;
+	return details ? formatApprovalDetails(details) : (item.toolCall.confirmation.message ?? '');
 }
 
 /**
@@ -658,7 +713,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 									<N8nText size="large" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
-									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<ConfirmationPreview
+										:class="$style.approvalDescription"
+										role="region"
+										:aria-label="i18n.baseText('instanceAi.confirmation.details')"
+										tabindex="0"
+									>
+										{{ buildApprovalSubtitle(chunk.item) }}
+									</ConfirmationPreview>
 									<ConfirmationPreview
 										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
 										:class="$style.targetApprovalArgs"
@@ -709,6 +771,15 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 .targetApprovalArgs {
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+/* Keep all action details accessible without pushing the approval options off screen. */
+.approvalRowBody .approvalDescription {
+	white-space: pre-wrap;
+	max-height: var(--height--5xl);
+	overflow-y: auto;
+	word-break: normal;
+	overflow-wrap: anywhere;
 }
 
 .approvalRow {

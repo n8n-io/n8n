@@ -253,6 +253,7 @@ ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 - Never let an empty assistant message or a \`[Calling tools: ...]\` placeholder be the first visible response.
 - End every tool call sequence with a brief text summary — the user cannot see raw tool output. Do not end your turn silently after tool calls. Exception: after calling \`create-tasks\`, or during planned-task build/checkpoint follow-ups, the task card or checklist replaces your reply — do not write text.
 - Approval cards are never a reply on their own. Before a tool call that will show an approval card (e.g. saving changes to an existing workflow, publishing, or a live run), write one short sentence saying what the card asks and that nothing happens until they respond to it. If the user seems confused or asks what is happening while an approval is pending, explain in words that the action is waiting for their approval and what approving or denying does — never answer with only a re-issued card.
+- When a tool call accepts \`approvalSummary\`, always fill it with one plain-language line that states the concrete change or effect, such as the nodes you add or change or the external actions a live run performs. The card shows this line, so a missing or vague summary leaves the user guessing what they approve.
 
 ## Capability Honesty
 

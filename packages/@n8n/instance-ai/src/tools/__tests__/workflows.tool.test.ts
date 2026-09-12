@@ -180,6 +180,38 @@ describe('workflows tool', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([
+		{ action: 'publish', workflowId: 'wf-1' },
+		{ action: 'publish', workflowId: 'wf-1', versionId: 'version-1' },
+	])('preserves saved $action arguments without an approval summary', (savedInput) => {
+		const tool = createWorkflowsTool(createMockContext());
+		expect(parseInput(tool, savedInput)).toEqual(savedInput);
+		const approvalSummary = 'Add a Slack notification after the check';
+		expect(parseInput(tool, { ...savedInput, approvalSummary })).toEqual({
+			...savedInput,
+			approvalSummary,
+		});
+	});
+
+	it.each([
+		{ action: 'delete', workflowId: 'wf1' },
+		{ action: 'unarchive', workflowId: 'wf1' },
+		{ action: 'unpublish', workflowId: 'wf1' },
+		{ action: 'restore-version', workflowId: 'wf1', versionId: 'v1' },
+		{ action: 'update-version', workflowId: 'wf1', versionId: 'v1', name: 'Release' },
+	] as const)('includes the workflow name in $action approvals', async (input) => {
+		const context = createMockContext();
+		context.workflowService.getVersion = vi.fn().mockResolvedValue(undefined);
+		context.workflowService.restoreVersion = vi.fn();
+		context.workflowService.updateVersion = vi.fn();
+		const suspend = vi.fn();
+		await executeTool(createWorkflowsTool(context, 'full'), input, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ resourceName: 'Test WF' }));
+	});
+
 	it('exports the resume schema without unsupported URI formats', () => {
 		expect(JSON.stringify(zodToJsonSchema(workflowsResumeSchema))).not.toContain('"format":"uri"');
 	});
@@ -1850,23 +1882,46 @@ describe('workflows tool', () => {
 			expect(result).toMatchObject({ success: true });
 		});
 
-		it('should disclose the coverage in the approval prompt once acknowledged', async () => {
-			const context = contextWithClaim(partialClaim);
-			const suspend = vi.fn();
+		it.each([undefined, 'Start the daily digest.'])(
+			'preserves the verification disclosure with summary=%s',
+			async (approvalSummary) => {
+				const context = contextWithClaim(partialClaim);
+				const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(
-				tool,
-				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
-				{ suspend, resumeData: undefined } as never,
-			);
+				const tool = createWorkflowsTool(context, 'full');
+				await executeTool(
+					tool,
+					{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true, approvalSummary },
+					{ suspend, resumeData: undefined } as never,
+				);
 
-			expect(suspend).toHaveBeenCalledTimes(1);
-			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
-			expect(message).toContain('Publish');
-			expect(message).toContain('NOT fully verified');
-			expect(message).toContain('Send Email, Log Row');
-		});
+				expect(suspend).toHaveBeenCalledTimes(1);
+				const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+				expect(message).toContain(approvalSummary ?? 'Make the latest draft live');
+				expect(message).toContain('\n\n');
+				expect(message).toContain('NOT fully verified');
+				expect(message).toContain('Send Email, Log Row');
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						approvalDetails: {
+							action: 'publish-workflow',
+							summary: approvalSummary,
+							selectedVersion: false,
+							supportingCount: 0,
+							verification: {
+								level: partialClaim.level,
+								unprovenTargets: partialClaim.unprovenTargets,
+								pendingTriggers: [],
+								nodesNotReached: partialClaim.nodesNotReached,
+								plannedNodeCount: partialClaim.plannedNodeCount,
+								simulatedNodes: partialClaim.simulatedNodes.map((node) => node.nodeName),
+								pinnedNodes: partialClaim.pinnedNodes,
+							},
+						},
+					}),
+				);
+			},
+		);
 
 		it('should publish once acknowledged and approved', async () => {
 			const context = contextWithClaim(partialClaim);
@@ -2149,41 +2204,91 @@ describe('workflows tool', () => {
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish My WF (ID: wf1)',
+				message: 'Make the latest draft live',
+				resourceName: 'My WF',
 				severity: 'warning',
 			});
 		});
 
-		it('should include direct Execute Workflow dependencies in publish confirmation', async () => {
+		it('describes a version publish without a version lookup', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as Mock).mockResolvedValue({
-				id: 'wf1',
-				name: 'My WF',
-			});
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
-				name: 'Parent',
-				nodes: [
-					{
-						name: 'Call A',
-						type: 'n8n-nodes-base.executeWorkflow',
-						parameters: { source: 'database', workflowId: 'sub-a' },
-					},
-				],
-				connections: {},
-			});
+			(context.workflowService.get as Mock).mockResolvedValue({ id: 'wf1', name: 'My WF' });
+			context.workflowService.getVersion = vi.fn();
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context);
-			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1', versionId: 'v1' }, {
 				suspend,
 				resumeData: undefined,
 			} as never);
 
+			expect(context.workflowService.getVersion).not.toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: 'Publish My WF (ID: wf1) and 1 referenced supporting workflow(s)',
-				severity: 'warning',
+				message: 'Make the selected version live',
+				resourceName: 'My WF',
 			});
 		});
+
+		it('shows the agent summary as the publish description', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue({ id: 'wf1', name: 'My WF' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'publish',
+					workflowId: 'wf1',
+					approvalSummary: 'Start sending the daily digest to the sales channel',
+				},
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Start sending the daily digest to the sales channel',
+				resourceName: 'My WF',
+			});
+		});
+
+		it.each([
+			{ approvalSummary: undefined, description: 'Make the latest draft live' },
+			{ approvalSummary: 'Send the daily digest', description: 'Send the daily digest' },
+			{ approvalSummary: 'Send the daily digest.', description: 'Send the daily digest.' },
+		])(
+			'includes supporting workflows with summary=$approvalSummary',
+			async ({ approvalSummary, description }) => {
+				const context = createMockContext();
+				(context.workflowService.get as Mock).mockResolvedValue({
+					id: 'wf1',
+					name: 'My WF',
+				});
+				(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+					name: 'Parent',
+					nodes: [
+						{
+							name: 'Call A',
+							type: 'n8n-nodes-base.executeWorkflow',
+							parameters: { source: 'database', workflowId: 'sub-a' },
+						},
+					],
+					connections: {},
+				});
+				const suspend = vi.fn();
+
+				const tool = createWorkflowsTool(context);
+				await executeTool(tool, { action: 'publish', workflowId: 'wf1', approvalSummary }, {
+					suspend,
+					resumeData: undefined,
+				} as never);
+
+				expect(suspend.mock.calls[0][0]).toMatchObject({
+					message: `${description}\n\nAlso publish 1 supporting workflow.`,
+					resourceName: 'My WF',
+					severity: 'warning',
+				});
+			},
+		);
 	});
 
 	describe('setup action', () => {

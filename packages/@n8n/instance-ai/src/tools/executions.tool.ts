@@ -2,17 +2,20 @@
  * Consolidated executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -43,6 +46,7 @@ const getAction = z.object({
 
 const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
+	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
 	inputData: z
 		.record(z.unknown())
@@ -155,6 +159,8 @@ type Input = z.infer<typeof inputSchema>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -282,7 +288,16 @@ async function handleRun(
 		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
+			message: formatApprovalMessage(
+				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}`,
+				input.approvalSummary,
+			),
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'run-workflow',
+				summary: input.approvalSummary,
+				trigger: input.triggerNodeName,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
