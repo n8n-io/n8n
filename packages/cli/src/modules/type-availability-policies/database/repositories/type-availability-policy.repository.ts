@@ -88,6 +88,27 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { kind });
 	}
 
+	/**
+	 * One page of policy documents of one kind, for the public API's cursor pagination. Ordered
+	 * by `createdAt` then `id` so a cursor walks a stable sequence when two rows share a
+	 * timestamp.
+	 */
+	async findPageByKind(
+		kind: string,
+		offset: number,
+		limit: number,
+		ctx: OperationContext,
+	): Promise<{ items: TypeAvailabilityPolicy[]; count: number }> {
+		const [items, count] = await this.managerFor(ctx).findAndCount(TypeAvailabilityPolicy, {
+			where: { kind },
+			order: { createdAt: 'ASC', id: 'ASC' },
+			skip: offset,
+			take: limit,
+		});
+
+		return { items, count };
+	}
+
 	async createPolicy(input: NewPolicy, ctx: OperationContext): Promise<TypeAvailabilityPolicy> {
 		const policy = this.create({
 			kind: input.kind,

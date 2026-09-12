@@ -400,6 +400,15 @@ export class TypeAvailabilityPolicyService {
 		return await this.policyRepository.findByKind(kind, {});
 	}
 
+	/** One page of policy documents, for the public API's cursor-paginated listing. */
+	async listPolicyDocumentsPage(
+		kind: string,
+		offset: number,
+		limit: number,
+	): Promise<{ items: TypeAvailabilityPolicy[]; count: number }> {
+		return await this.policyRepository.findPageByKind(kind, offset, limit, {});
+	}
+
 	/**
 	 * Replaces every attachment on one scope, keyed by `scopeId` rather than `(kind,
 	 * projectId)` — a caller replacing attachments already holds a scope id from a prior

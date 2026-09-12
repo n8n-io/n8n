@@ -41,6 +41,21 @@ paths:
       $ref: ./handlers/node-type-policies/spec/paths/getProjectPolicy.generated.yml
     put:
       $ref: ./handlers/node-type-policies/spec/paths/putProjectPolicy.generated.yml
+  /node-type-policies/policies:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/listPolicyDocuments.generated.yml
+    post:
+      $ref: ./handlers/node-type-policies/spec/paths/createPolicyDocument.generated.yml
+  /node-type-policies/policies/{policyId}:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getPolicyDocument.generated.yml
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/updatePolicyDocument.generated.yml
+    delete:
+      $ref: ./handlers/node-type-policies/spec/paths/deletePolicyDocument.generated.yml
+  /node-type-policies/scopes/{scopeId}/attachments:
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/replaceAttachments.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
