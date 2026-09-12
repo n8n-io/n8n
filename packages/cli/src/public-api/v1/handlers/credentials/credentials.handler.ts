@@ -3,12 +3,10 @@ import type { CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -23,7 +21,7 @@ import {
 	validCredentialTypeForUpdate,
 	validCredentialsPropertiesForUpdate,
 } from './credentials.middleware';
-import { sanitizeCredentials, toJsonSchema } from './credentials.utils';
+import { toJsonSchema } from './credentials.utils';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope, projectScope } from '../../shared/middlewares/global.middleware';
@@ -103,8 +101,6 @@ type CredentialsHandlers = {
 	testCredential: PublicAPIEndpoint<CredentialRequest.Test>;
 	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
 	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
-	transferCredential: PublicAPIEndpoint<CredentialRequest.Transfer>;
-	deleteCredential: PublicAPIEndpoint<CredentialRequest.Delete>;
 	getCredentialType: PublicAPIEndpoint<CredentialTypeRequest.Get>;
 };
 
@@ -255,42 +251,6 @@ const credentialsHandlers: CredentialsHandlers = {
 			return res.json(toPublicApiCredentialResponse(updatedCredential));
 		},
 	],
-	transferCredential: [
-		publicApiScope('credential:move'),
-		projectScope('credential:move', 'credential'),
-		async (req, res) => {
-			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
-			await Container.get(EnterpriseCredentialsService).transferOne(
-				req.user,
-				req.params.id,
-				body.destinationProjectId,
-			);
-
-			return res.status(204).send();
-		},
-	],
-	deleteCredential: [
-		publicApiScope('credential:delete'),
-		projectScope('credential:delete', 'credential'),
-		async (req, res) => {
-			const { id: credentialId } = req.params;
-
-			const credential = await Container.get(CredentialsFinderService).findCredentialForUser(
-				credentialId,
-				req.user,
-				['credential:delete'],
-			);
-
-			if (!credential) {
-				throw new NotFoundError('Not Found');
-			}
-
-			await Container.get(CredentialsService).delete(req.user, credentialId);
-			return res.json(sanitizeCredentials(credential));
-		},
-	],
-
 	getCredentialType: [
 		async (req, res) => {
 			const { credentialTypeName } = req.params;
