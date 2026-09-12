@@ -10,6 +10,7 @@ type ProviderOpts = {
 	headers?: Record<string, string>;
 	includeUsage?: boolean;
 	supportsStructuredOutputs?: boolean;
+	extraBody?: Record<string, unknown>;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -180,6 +181,7 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 		apiKey: opts?.apiKey,
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
+		extraBody: opts?.extraBody,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -553,6 +555,16 @@ describe('createModel', () => {
 			expect(model.provider).toBe('openrouter');
 			expect(model.modelId).toBe('openai/gpt-4o');
 			expect(model.apiKey).toBe('or-test');
+		});
+
+		it('forwards OpenRouter extraBody to the provider client', () => {
+			const extraBody = { provider: { only: ['together'], allow_fallbacks: false } };
+			const model = createModel({
+				id: 'openrouter/z-ai/glm-5.3-flash:nitro',
+				apiKey: 'or-test',
+				extraBody,
+			}) as unknown as Record<string, unknown>;
+			expect(model.extraBody).toEqual(extraBody);
 		});
 
 		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {

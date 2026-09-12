@@ -3,8 +3,9 @@
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 
-import { parseModelHeadersJson } from './parse-model-headers';
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
+import { withOpenRouterProviderPin } from './openrouter-provider-pin';
+import { parseModelHeadersJson } from './parse-model-headers';
 
 export { Tool };
 
@@ -142,14 +143,14 @@ const CACHE_PROVIDER_OPTS = {
 function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
 	try {
 		const { modelId, apiKey, url, headers } = resolveEvalModelConfig(model);
-		return {
-			id: modelId,
+		return withOpenRouterProviderPin({
+			id: modelId as `${string}/${string}`,
 			apiKey,
-			url,
+			url: url ?? '',
 			...(headers ? { headers } : {}),
-		};
+		});
 	} catch (error) {
-		if (fallbackModelConfig) return fallbackModelConfig;
+		if (fallbackModelConfig) return withOpenRouterProviderPin(fallbackModelConfig);
 		throw error;
 	}
 }

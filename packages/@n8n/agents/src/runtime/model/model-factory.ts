@@ -316,7 +316,12 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
-			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+			return createOpenRouter({
+				apiKey: creds.apiKey,
+				baseURL: creds.baseURL,
+				fetch,
+				...(creds.extraBody ? { extraBody: creds.extraBody } : {}),
+			})(model);
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),

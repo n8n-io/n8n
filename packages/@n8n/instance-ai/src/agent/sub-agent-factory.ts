@@ -20,6 +20,7 @@ import type {
 	InstanceAiTraceRun,
 	ModelConfig,
 } from '../types';
+import { withOpenRouterProviderPin } from '../utils/openrouter-provider-pin';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -84,7 +85,8 @@ ${instructions}`;
 }
 
 export function createSubAgent(options: SubAgentOptions): Agent {
-	const { role, instructions, tools, modelId, traceRun, timeZone } = options;
+	const { role, instructions, tools, traceRun, timeZone } = options;
+	const modelId = withOpenRouterProviderPin(options.modelId);
 
 	const systemPrompt = buildSubAgentPrompt(role, instructions, timeZone);
 

@@ -1094,6 +1094,12 @@ When unset, the runtime looks up
 `packages/@n8n/instance-ai/src/utils/custom-model-defaults.ts` (substring match on the model id).
 If still unresolved, the field is omitted from the request (no blanket custom default).
 
+For `openrouter/*`, optional dispatch input `openrouter-provider` sets
+`N8N_INSTANCE_AI_OPENROUTER_PROVIDER` to one OpenRouter host slug
+(e.g. `together`, `fireworks`). The runtime sends `provider.only` with
+`allow_fallbacks: false`. Unset = OpenRouter default routing, including
+model suffixes such as `:nitro`.
+
 ## Architecture
 
 ```

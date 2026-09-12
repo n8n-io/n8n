@@ -100,6 +100,22 @@ describe('openrouter reasoning effort on the wire', () => {
 		expect(glmBody).not.toHaveProperty('verbosity');
 	});
 
+	it('sends extraBody.provider on the request body', async () => {
+		const fetch = fakeFetch();
+		const model = createModel(
+			{
+				id: MODEL_ID,
+				apiKey: 'or-test',
+				extraBody: { provider: { only: ['together'], allow_fallbacks: false } },
+			},
+			fetch as unknown as typeof globalThis.fetch,
+		);
+
+		await generateText({ model, prompt: 'hi' });
+
+		expect(sentBody(fetch).provider).toEqual({ only: ['together'], allow_fallbacks: false });
+	});
+
 	it('sends no reasoning parameter when effort is unset', async () => {
 		const fetch = fakeFetch();
 		const model = createModel(

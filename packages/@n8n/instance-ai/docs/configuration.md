@@ -19,6 +19,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON` | string | `''` | Service-account JSON for Vertex Claude. Omit to use ADC (`gcloud auth application-default login`). |
 | `N8N_INSTANCE_AI_REASONING_EFFORT` | string | unset | Optional reasoning effort for `custom/*`, `moonshotai/*`, and `openrouter/*` (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`). Unset = known-model map in `src/utils/custom-model-defaults.ts`; still unresolved = omit. |
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
+| `N8N_INSTANCE_AI_OPENROUTER_PROVIDER` | string | unset | Optional OpenRouter host pin for `openrouter/*` (one slug, e.g. `together`, `fireworks`, `z-ai`). Sends `provider.only` with `allow_fallbacks: false`. Unset = OpenRouter default routing. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 | `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Allow Instance AI to receive workflow and node parameter values. When `false`, the adapter replaces values with structure or placeholders before it sends context to the agent. This is a global n8n AI setting. |

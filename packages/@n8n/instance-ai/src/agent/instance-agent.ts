@@ -36,6 +36,7 @@ import type {
 	ModelConfig,
 } from '../types';
 import { withModalSession } from '../utils/modal-session';
+import { withOpenRouterProviderPin } from '../utils/openrouter-provider-pin';
 
 function resolveModalSessionModelId(
 	modelId: ModelConfig,
@@ -93,6 +94,7 @@ export async function createInstanceAgent(
 	if (orchestrationContext && orchestrationContext.modelId !== modelId) {
 		orchestrationContext.modelId = modelId;
 	}
+	const agentModel = withOpenRouterProviderPin(modelId);
 
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
@@ -235,7 +237,7 @@ export async function createInstanceAgent(
 		executionMode: 'foreground',
 	});
 	const agent = new Agent('n8n-instance-agent')
-		.model(modelId)
+		.model(agentModel)
 		.instructions(systemPrompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

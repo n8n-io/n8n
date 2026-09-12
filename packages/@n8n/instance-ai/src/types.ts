@@ -1785,7 +1785,14 @@ export type VertexAnthropicModelConfig = {
  *  The LanguageModel variant exists for proxy routes that need a provider-native transport. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| {
+			id: `${string}/${string}`;
+			url: string;
+			apiKey?: string;
+			headers?: Record<string, string>;
+			/** Copied onto OpenRouter request bodies (`provider.only`, etc.). */
+			extraBody?: Record<string, unknown>;
+	  }
 	| VertexAnthropicModelConfig
 	| NativeLanguageModelConfig;
 

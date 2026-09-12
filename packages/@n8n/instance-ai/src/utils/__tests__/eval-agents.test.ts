@@ -19,6 +19,7 @@ vi.mock('@n8n/agents', () => ({
 }));
 
 import { createEvalAgent, resolveEvalModelConfig } from '../eval-agents';
+import { openRouterProviderPinExtraBody } from '../openrouter-provider-pin';
 
 const ORIGINAL_ENV = { ...process.env };
 const MODEL_ENV_KEYS = [
@@ -26,6 +27,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_OPENROUTER_PROVIDER',
 	'EVAL_MODAL_LLM_HEADERS',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
@@ -120,7 +122,7 @@ describe('eval agent model config', () => {
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-6',
 			apiKey: 'env-key',
-			url: undefined,
+			url: '',
 		});
 	});
 
@@ -195,6 +197,21 @@ describe('eval agent model config', () => {
 			apiKey: 'anthropic-eval-key',
 			url: undefined,
 			headers: undefined,
+		});
+	});
+
+	it('pins OpenRouter eval models to the env provider slug', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'openrouter/z-ai/glm-5.3-flash:nitro';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'or-key';
+		process.env.N8N_INSTANCE_AI_OPENROUTER_PROVIDER = 'together';
+
+		createEvalAgent('test-agent', { instructions: 'Do the task.' });
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
+			id: 'openrouter/z-ai/glm-5.3-flash:nitro',
+			apiKey: 'or-key',
+			url: '',
+			extraBody: openRouterProviderPinExtraBody('together'),
 		});
 	});
 

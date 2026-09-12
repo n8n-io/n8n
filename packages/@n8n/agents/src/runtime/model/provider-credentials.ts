@@ -45,7 +45,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	alibaba: apiKeyCreds,
 	minimax: apiKeyCreds,
 	vercel: apiKeyCreds,
-	openrouter: apiKeyCreds,
+	openrouter: apiKeyCreds.extend({
+		/** Copied onto every OpenRouter request body (e.g. `provider.only`). */
+		extraBody: z.record(z.string(), z.unknown()).optional(),
+	}),
 	nvidia: apiKeyCreds,
 
 	'azure-openai': z
