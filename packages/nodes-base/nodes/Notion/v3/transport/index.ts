@@ -9,6 +9,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import {
+	applyFormulaTypeInferenceGuidance,
+	isFormulaTypeInferenceError,
+} from '../../shared/GenericFunctions';
+
 type NotionFunctions = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
 const NOTION_VERSION_HEADER = 'Notion-Version';
@@ -47,6 +52,10 @@ export async function notionApiRequestV3(
 			options,
 		)) as IDataObject;
 	} catch (error) {
+		if (isFormulaTypeInferenceError(error)) {
+			applyFormulaTypeInferenceGuidance(error);
+			throw error;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
