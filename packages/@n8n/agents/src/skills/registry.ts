@@ -29,6 +29,11 @@ export class InvalidRuntimeSkillError extends Error {
 
 export interface LoadRuntimeSkillSourceFromDirectoryOptions {
 	exclude?: string[];
+	/**
+	 * Transforms the received instructions, for example replacing placeholders, before
+	 * the skill is registered and served through `load_skill`.
+	 */
+	transformInstructions?: (instructions: string) => string;
 }
 
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
@@ -91,9 +96,17 @@ export function loadRuntimeSkillSourceFromDirectory(
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
 ): RuntimeSkillSource {
 	const excludedSkillIds = new Set(options.exclude ?? []);
-	const skills = loadRuntimeSkillsFromDirectory(rootDir).filter(
-		(skill) => !excludedSkillIds.has(skill.id),
-	);
+	const { transformInstructions = (instructions) => instructions } = options;
+
+	const skills = loadRuntimeSkillsFromDirectory(rootDir)
+		.filter((skill) => !excludedSkillIds.has(skill.id))
+		.map((skill) => {
+			return {
+				...skill,
+				instructions: transformInstructions(skill.instructions),
+			};
+		});
+
 	const source = createRuntimeSkillSource(skills);
 	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
 

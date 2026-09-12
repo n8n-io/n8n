@@ -921,6 +921,38 @@ describe('verify-built-workflow tool', () => {
 		).toBe(14);
 	});
 
+	it('reports per-output counts for a multi-output node', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-outputs',
+			status: 'success',
+			data: {
+				Filter: wrapExecutionOutput({
+					outputs: [
+						{ index: 0, name: 'Kept', items: [{ id: 1 }] },
+						{ index: 1, name: 'Discarded', items: [{ id: 2 }, { id: 3 }] },
+					],
+					totalItems: 3,
+				}),
+			},
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.nodePreviews).toEqual([
+			expect.objectContaining({
+				nodeName: 'Filter',
+				itemCount: 3,
+				outputs: [
+					{ index: 0, name: 'Kept', itemCount: 1 },
+					{ index: 1, name: 'Discarded', itemCount: 2 },
+				],
+			}),
+		]);
+		expect(
+			updateBuildOutcome.mock.calls.at(-1)![1].verification?.evidence?.producedOutputRows,
+		).toBe(3);
+	});
+
 	it('treats a waiting status with output as a successful run (e.g. Form Trigger response page)', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-form-1',

@@ -2328,6 +2328,14 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
 
 /**
+ * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
+ * variant string, not a boolean. The flag names its on-arm `test` rather than
+ * the `variant` the other Instance AI experiments use, so this constant tracks
+ * the flag's own spelling.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
+
+/**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;
  * empty when the kill-switch is off or every root was auto-/explicit-pinned.

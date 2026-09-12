@@ -77,8 +77,13 @@ export interface BuiltMemory {
 
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
+/**
+ * Who asked and where. Stores decide the storage scope from both: a host can
+ * key shared conversations by thread and still resolve recall per resource.
+ */
 export interface EpisodicMemoryScope {
 	resourceId: string;
+	threadId: string;
 }
 
 export type EpisodicMemoryCaptureKind =
@@ -174,6 +179,8 @@ export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -184,7 +191,7 @@ export interface EpisodicMemoryTaskLockHandle {
 
 export interface EpisodicMemoryTaskLockMethods {
 	acquire(
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null>;
 	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;

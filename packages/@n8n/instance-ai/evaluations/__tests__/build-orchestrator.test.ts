@@ -29,7 +29,7 @@ vi.mock('../harness/agent-execution', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../harness/agent-execution')>();
 	return {
 		...actual,
-		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue({ rendered: 'AGENT CONTEXT' }),
 	};
 });
 

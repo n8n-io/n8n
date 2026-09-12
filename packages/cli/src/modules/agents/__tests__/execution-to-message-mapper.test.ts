@@ -30,6 +30,16 @@ describe('execution-to-message-mapper', () => {
 		});
 	});
 
+	it('carries the integration author on the user message and omits it when absent', () => {
+		const author = { id: 'U1', name: 'alice' };
+
+		expect(executionToMessagesDto(execution({ author }))[0]).toMatchObject({
+			role: 'user',
+			author,
+		});
+		expect(executionToMessagesDto(execution({ author: null }))[0]).not.toHaveProperty('author');
+	});
+
 	it('keeps an assistant message for an errored turn that produced no output at all', () => {
 		const result = executionsToMessagesDto([
 			execution({ status: 'error', error: 'fetch failed', timeline: [] }),

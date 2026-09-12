@@ -2,7 +2,7 @@ import type { INode } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
 import { OAuth2SessionExpiredError } from '../../../../utils/oauth2-token-provider';
-import { makeDatabricksFailedAttemptHandler } from '../error-handling';
+import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from '../error-handling';
 
 const mockNode: INode = {
 	id: '1',
@@ -64,5 +64,47 @@ describe('makeDatabricksFailedAttemptHandler', () => {
 		const handleWithoutRefresh = makeDatabricksFailedAttemptHandler(undefined);
 
 		expect(() => handleWithoutRefresh(apiError(403, '403 Invalid Token'))).not.toThrow();
+	});
+});
+
+describe('wrapDatabricksErrorFetch', () => {
+	const url = 'https://example.databricks.net/ai-gateway/openai/v1/chat/completions';
+
+	it('should reshape a Databricks error body into the OpenAI error shape', async () => {
+		const message =
+			'PERMISSION_DENIED: The endpoint is temporarily disabled due to a Databricks-set rate limit of 0.';
+		const wrapped = wrapDatabricksErrorFetch(
+			async () =>
+				new Response(JSON.stringify({ error_code: 'PERMISSION_DENIED', message }), {
+					status: 403,
+				}),
+		);
+
+		const response = await wrapped(url);
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error: { message, code: 'PERMISSION_DENIED' },
+		});
+	});
+
+	it('should pass a success response through untouched', async () => {
+		const body = JSON.stringify({ choices: [] });
+		const wrapped = wrapDatabricksErrorFetch(async () => new Response(body, { status: 200 }));
+
+		const response = await wrapped(url);
+
+		expect(await response.text()).toBe(body);
+	});
+
+	it('should leave an already OpenAI-shaped error and a non-JSON body alone', async () => {
+		const openAiBody = JSON.stringify({ error: { message: 'Rate limit reached' } });
+		const shaped = wrapDatabricksErrorFetch(async () => new Response(openAiBody, { status: 429 }));
+		expect(await (await shaped(url)).text()).toBe(openAiBody);
+
+		const html = wrapDatabricksErrorFetch(
+			async () => new Response('<html>gateway timeout</html>', { status: 504 }),
+		);
+		expect(await (await html(url)).text()).toBe('<html>gateway timeout</html>');
 	});
 });

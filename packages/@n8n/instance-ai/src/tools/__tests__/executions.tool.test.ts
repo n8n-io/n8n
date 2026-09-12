@@ -741,7 +741,7 @@ describe('executions tool', () => {
 		it('should call executionService.getNodeOutput with parameters', async () => {
 			const nodeOutput = {
 				nodeName: 'Set',
-				items: [{ key: 'value' }],
+				outputs: [{ index: 0, totalItems: 1, items: [{ key: 'value' }] }],
 				totalItems: 1,
 				returned: { from: 0, to: 0 },
 			};
@@ -772,7 +772,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getNodeOutput as Mock).mockResolvedValue({
 				nodeName: 'Set',
-				items: [],
+				outputs: [],
 				totalItems: 0,
 				returned: { from: 0, to: 0 },
 			});

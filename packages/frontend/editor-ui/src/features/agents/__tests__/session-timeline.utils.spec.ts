@@ -229,6 +229,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		stoppedAt: null,
 		duration: 0,
 		userMessage: null,
+		author: null,
 		attachments: null,
 		model: null,
 		promptTokens: null,
@@ -599,6 +600,14 @@ describe('flattenExecutionsToTimelineItems', () => {
 			content: 'hello',
 			timestamp: new Date('2026-04-24T10:00:00Z').getTime(),
 		});
+		expect(items[0]).not.toHaveProperty('authorName');
+	});
+
+	it('carries the integration author name on the user item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({ userMessage: 'hello', author: { id: 'U1', name: 'alice' } }),
+		]);
+		expect(items[0]).toMatchObject({ kind: 'user', authorName: 'alice' });
 	});
 
 	it('maps a text timeline event to an agent item', () => {

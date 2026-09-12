@@ -10,19 +10,10 @@ import uniqWith from 'lodash/uniqWith';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { compact as oCompact } from './object-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 import { randomInt } from '../utils';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
 
 // Report whether a field resolves on the object itself and not through its prototype chain.
 function hasReadableField(value: object, field: string): boolean {

@@ -5,6 +5,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	type AgentIntegrationConfig,
+	type AgentMessageAuthor,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -60,6 +61,11 @@ const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
 /** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
 const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
 
+function toMessageAuthor(author: Author): AgentMessageAuthor {
+	const name = (author.userName || author.fullName || author.userId).replace(/[\[\]\r\n]/g, '');
+	return { id: author.userId, name: name || author.userId };
+}
+
 interface SessionGenerationState {
 	/** Current rotation counter for a base thread id; 0 means the original, unsuffixed thread. */
 	generation: number;
@@ -89,6 +95,8 @@ interface AgentExecutor {
 		agentId: string;
 		projectId: string;
 		message: string;
+		modelMessage?: string;
+		author?: AgentMessageAuthor;
 		attachments?: StoredAttachmentRef[];
 		memory: { threadId: InternalThread; resourceId: string };
 		integrationType?: string;
@@ -245,6 +253,8 @@ export class AgentChatBridge {
 				memory,
 				agentId: aid,
 				message,
+				modelMessage,
+				author,
 				attachments,
 				integrationType,
 				sandboxPrincipalHash,
@@ -253,6 +263,8 @@ export class AgentChatBridge {
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
+					modelMessage,
+					author,
 					attachments,
 					memory: {
 						threadId: memory.threadId.id,
@@ -682,18 +694,23 @@ export class AgentChatBridge {
 					latestContextOptions,
 				);
 			}
-			// threadId.id is agent-prefixed for observation storage; resourceId keeps
-			// the platform user identity so episodic recall works across threads for
-			// the same user while staying isolated between users.
+			// threadId.id is agent-prefixed for shared conversation history;
+			// resourceId keeps the author identity so episodic recall follows them.
 			// Always run the published snapshot — integrations are production traffic.
+			// The model gets the author label and thread history; the transcript
+			// records the plain text and carries the author as structured data.
+			const author = toMessageAuthor(message.author);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
-			const agentInput = bridgeExecutionContext.historyContext
-				? `${bridgeExecutionContext.historyContext}\n\n${textWithNotes}`
-				: textWithNotes;
+			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
+			const modelMessage = bridgeExecutionContext.historyContext
+				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
+				: labelledText;
 			const stream = this.agentService.executeForChatPublished({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
-				message: agentInput,
+				message: textWithNotes,
+				modelMessage,
+				author,
 				attachments: attachments.length > 0 ? attachments : undefined,
 				memory: {
 					threadId: memoryThreadId,
@@ -701,10 +718,10 @@ export class AgentChatBridge {
 				},
 				integrationType: this.integration.type,
 				sandboxPrincipalHash: hashAgentSandboxPrincipal({
-					type: 'integration-user',
+					type: 'integration-thread',
 					connectionId: this.integration.credentialId,
 					platform: this.integration.type,
-					platformUserId: message.author.userId,
+					platformThreadId: this.resolvePlatformThreadId(thread),
 				}),
 			});
 

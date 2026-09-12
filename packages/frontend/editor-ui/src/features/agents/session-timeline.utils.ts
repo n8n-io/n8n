@@ -580,6 +580,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				executionId: exec.id,
 				content: exec.userMessage ?? '',
 				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+				...(exec.author && { authorName: exec.author.name }),
 				...(exec.attachments?.length && { attachments: exec.attachments }),
 			});
 		}

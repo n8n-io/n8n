@@ -10,6 +10,7 @@ import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -44,7 +45,11 @@ import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
-import { checkoutBranchName, repositoryUrl } from './promotions-git.utils';
+import {
+	buildPromotionBranchName,
+	checkoutBranchName,
+	repositoryUrl,
+} from './promotions-git.utils';
 import type { PromotionCacheDescriptor, PromotionOperationInput } from './promotions.types';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
@@ -133,10 +138,27 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
+		if (input.config.direction !== 'promote') {
+			throw new UnexpectedError('Resolved an invalid promotion direction');
+		}
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		const targetBranchName = input.config.settings.createBranchOnPromotion
+			? buildPromotionBranchName(new Date())
+			: undefined;
+		const credentials = await this.credentialsFor(input);
+		if (targetBranchName) {
+			await this.gitService.validateBranchName(targetBranchName);
+			await this.gitService.prepareCheckoutForPromotion({
+				remoteUrl: repositoryUrl(input),
+				credentials,
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+			});
+		}
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
@@ -175,24 +197,33 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			if (targetBranchName) {
+				// The commit moves the local base branch. Remove trust before it moves, and
+				// restore trust only after the base branch is back on its own commit.
+				await this.workingDirectory.invalidateDescriptor(input.configId);
+			}
+
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
-				credentials: await this.credentialsFor(input),
+				credentials,
 				paths: this.workingDirectory.paths(input.configId),
 				branchName,
+				targetBranchName,
 				configId: input.configId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
-				force: request.force ?? false,
+				// A promotion branch must be new, so force does not apply.
+				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
+				onCheckoutRestored: async () =>
+					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
 
 			return {
 				connectionId: input.connectionId,
 				configId: input.configId,
 				counts: exportResult.counts,
-				// The branch we really pushed to. LIGO-1030 adds the branch-per-promotion case.
-				git: { commitSha, branchName },
+				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
