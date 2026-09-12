@@ -63,6 +63,8 @@ export interface StartContext {
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
+	registerContainer?(container: StartedTestContainer): void;
+	registerPath?(path: string): void;
 }
 
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';

@@ -82,6 +82,7 @@ export interface N8NInstancesOptions {
 	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
+	registerContainer?: (container: StartedTestContainer) => void;
 }
 
 export interface N8NInstancesResult {
@@ -152,6 +153,7 @@ interface SharedConfig {
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
+	registerContainer?: (container: StartedTestContainer) => void;
 }
 
 interface ContainerStartResult {
@@ -172,8 +174,15 @@ async function createContainer(
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
 	const { name, role, instanceNumber, networkAlias, hostPort } = instance;
-	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
-		shared;
+	const {
+		projectName,
+		environment,
+		network,
+		resourceQuota,
+		filesToMount,
+		coverageHostDir,
+		registerContainer,
+	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
@@ -242,6 +251,7 @@ async function createContainer(
 
 	try {
 		const started = await container.start();
+		registerContainer?.(started);
 		return { container: started, getLogs, getLastReadinessBody };
 	} catch (error: unknown) {
 		diagnostics.logs[name] = getLogs();
@@ -274,6 +284,7 @@ export async function createN8NInstances(
 		webhookResourceQuota,
 		filesToMount,
 		coverageHostDir,
+		registerContainer,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -288,6 +299,7 @@ export async function createN8NInstances(
 		resourceQuota,
 		filesToMount,
 		coverageHostDir,
+		registerContainer,
 	};
 
 	const workerShared: SharedConfig = {
@@ -297,6 +309,7 @@ export async function createN8NInstances(
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
 		coverageHostDir,
+		registerContainer,
 	};
 
 	const webhookShared: SharedConfig = {
@@ -305,6 +318,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
+		registerContainer,
 	};
 
 	const sharedByRole: Record<InstanceRole, SharedConfig> = {
@@ -376,21 +390,23 @@ export async function createN8NInstances(
 
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
-		try {
-			const parallelResults = await Promise.all(
-				remaining.map(async (instance) => {
-					log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
-					const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
-					log(`${instance.role} ${instance.instanceNumber} ready`);
-					return { instance, result };
-				}),
-			);
-			for (const { instance, result } of parallelResults) {
-				recordSuccess(instance, result);
-				containers.push(result.container);
+		const parallelResults = await Promise.allSettled(
+			remaining.map(async (instance) => {
+				log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
+				const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
+				log(`${instance.role} ${instance.instanceNumber} ready`);
+				return { instance, result };
+			}),
+		);
+		const rejected = parallelResults.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (rejected) return rethrowWithDiagnostics(rejected.reason);
+		for (const result of parallelResults) {
+			if (result.status === 'fulfilled') {
+				recordSuccess(result.value.instance, result.value.result);
+				containers.push(result.value.result.container);
 			}
-		} catch (error) {
-			return rethrowWithDiagnostics(error);
 		}
 	}
 

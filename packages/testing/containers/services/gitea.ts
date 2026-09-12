@@ -3,7 +3,7 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'gitea';
 const HTTP_PORT = 3000;
@@ -26,7 +26,12 @@ export type GiteaResult = ServiceResult<GiteaMeta>;
 export const gitea: Service<GiteaResult> = {
 	description: 'Git server (Gitea)',
 
-	async start(network: StartedNetwork, projectName: string): Promise<GiteaResult> {
+	async start(
+		network: StartedNetwork,
+		projectName: string,
+		_options?: unknown,
+		ctx?: StartContext,
+	): Promise<GiteaResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		try {
@@ -52,6 +57,7 @@ export const gitea: Service<GiteaResult> = {
 				.withReuse()
 				.withLogConsumer(consumer)
 				.start();
+			ctx?.registerContainer?.(container);
 
 			// Setup admin user and default repo
 			await addUser(container, DEFAULT_ADMIN, DEFAULT_PASSWORD, DEFAULT_EMAIL, true);
