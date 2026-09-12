@@ -33,12 +33,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+      - name: Setup workflow scripts
+        uses: ./.github/actions/setup-workflow-scripts
 
       - name: Send release notification
         env:
