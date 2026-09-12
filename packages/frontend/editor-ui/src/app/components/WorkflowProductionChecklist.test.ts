@@ -560,6 +560,109 @@ describe('WorkflowProductionChecklist', () => {
 
 			expect(mockN8nSuggestedActionsProps.open).toBe(false);
 		});
+
+		// ADO-4969: with the publication service, activeVersionId is set as soon as
+		// the publish request returns, but trigger registration can still fail. The
+		// checklist must only auto-open once the lifecycle confirms the publication.
+		describe('with the publication service enabled', () => {
+			function renderWithPublicationService() {
+				const pinia = createTestingPinia();
+				settingsStore = useSettingsStore(pinia);
+				vi.spyOn(settingsStore, 'isWorkflowPublicationServiceEnabled', 'get').mockReturnValue(true);
+
+				workflowsCache.getWorkflowSettings = vi.fn().mockResolvedValue({
+					suggestedActions: {},
+					firstActivatedAt: undefined,
+				});
+
+				workflowDocumentStoreRef.value?.setActiveState({
+					activeVersionId: null,
+					activeVersion: null,
+				});
+				workflowDocumentStoreRef.value?.setPublicationStatus({ status: 'idle' });
+
+				return renderComponent({ pinia });
+			}
+
+			function publishOptimistically() {
+				// What publishWorkflow does when the publish request returns, before
+				// the real outcome is known.
+				workflowDocumentStoreRef.value?.setActiveState({
+					activeVersionId: 'v1',
+					activeVersion: null,
+				});
+				workflowDocumentStoreRef.value?.setPublicationStatus({ status: 'publishing' });
+			}
+
+			it('should not open popover or record first activation while still publishing', async () => {
+				renderWithPublicationService();
+				await flushPromises();
+
+				publishOptimistically();
+				await flushPromises();
+
+				expect(mockN8nSuggestedActionsProps.open).toBe(false);
+				expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+			});
+
+			it('should not open popover or record first activation when the publication fails', async () => {
+				renderWithPublicationService();
+				await flushPromises();
+
+				publishOptimistically();
+				await flushPromises();
+
+				workflowDocumentStoreRef.value?.setPublicationStatus({
+					status: 'failed',
+					failures: [{ nodeId: 'n1', nodeName: 'Github Trigger', errorMessage: 'boom' }],
+				});
+				await flushPromises();
+
+				expect(mockN8nSuggestedActionsProps.open).toBe(false);
+				expect(workflowsCache.updateFirstActivatedAt).not.toHaveBeenCalled();
+			});
+
+			it('should open popover once the publication is confirmed', async () => {
+				renderWithPublicationService();
+				await flushPromises();
+
+				publishOptimistically();
+				await flushPromises();
+				expect(mockN8nSuggestedActionsProps.open).toBe(false);
+
+				workflowDocumentStoreRef.value?.setPublicationStatus({ status: 'published' });
+
+				await vi.waitFor(() => {
+					expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+				});
+				await vi.waitFor(() => {
+					expect(mockN8nSuggestedActionsProps.open).toBe(true);
+				});
+			});
+
+			it('should open popover on the first publication that succeeds after a failed one', async () => {
+				renderWithPublicationService();
+				await flushPromises();
+
+				publishOptimistically();
+				workflowDocumentStoreRef.value?.setPublicationStatus({
+					status: 'failed',
+					failures: [],
+				});
+				await flushPromises();
+				expect(mockN8nSuggestedActionsProps.open).toBe(false);
+
+				// User retries and this time registration succeeds
+				workflowDocumentStoreRef.value?.setPublicationStatus({ status: 'publishing' });
+				await flushPromises();
+				workflowDocumentStoreRef.value?.setPublicationStatus({ status: 'published' });
+
+				await vi.waitFor(() => {
+					expect(mockN8nSuggestedActionsProps.open).toBe(true);
+				});
+				expect(workflowsCache.updateFirstActivatedAt).toHaveBeenCalledWith(mockWorkflow.id);
+			});
+		});
 	});
 
 	describe('Completion states', () => {

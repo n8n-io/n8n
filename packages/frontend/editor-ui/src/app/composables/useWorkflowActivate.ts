@@ -23,6 +23,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	registerPendingActivationModal,
+	clearPendingActivationModal,
+} from '@/app/composables/workflowPublicationConfirmation';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -107,6 +111,22 @@ export function useWorkflowActivate() {
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
+		// With the publication service (and in multi-main setups on the legacy
+		// path), trigger registration completes asynchronously after the publish
+		// request: the real outcome arrives as a workflowActivated /
+		// workflowFailedToActivate push. Showing the success modal on the API
+		// response would contradict a failure push that arrives moments later
+		// (ADO-4969), so defer it until the confirming push.
+		const settingsStore = useSettingsStore();
+		const activationIsConfirmedByPush =
+			settingsStore.isWorkflowPublicationServiceEnabled || settingsStore.isMultiMain;
+		const shouldShowActivationModal =
+			!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true';
+
+		if (activationIsConfirmedByPush && shouldShowActivationModal) {
+			registerPendingActivationModal(workflowId, versionId);
+		}
+
 		try {
 			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
 			// The route id is empty on the assistant page and the publish modal is global, so
@@ -132,7 +152,7 @@ export function useWorkflowActivate() {
 				activeVersion: updatedWorkflow.activeVersion,
 			});
 
-			if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+			if (settingsStore.isWorkflowPublicationServiceEnabled) {
 				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 			}
 
@@ -152,11 +172,13 @@ export function useWorkflowActivate() {
 				versionId: updatedWorkflow.activeVersion.versionId,
 			});
 
-			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+			if (shouldShowActivationModal && !activationIsConfirmedByPush) {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
 			return { success: true };
 		} catch (error) {
+			clearPendingActivationModal(workflowId);
+
 			if (isWebhookConflictError(error)) {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };

@@ -245,34 +245,49 @@ function handlePopoverOpenChange(open: boolean) {
 	}
 }
 
-// Watch for workflow activation
-watch(
-	() => !!workflowDocumentStore?.value?.activeVersionId,
-	async (isActive, wasActive) => {
-		if (isActive && !wasActive) {
-			// Check if this is the first activation
-			if (!cachedSettings.value?.firstActivatedAt) {
-				if (isAnyModalOpen.value) {
-					// Defer opening until any open modal closes so the popover
-					// doesn't paint over it.
-					const stop = watch(isAnyModalOpen, (isOpen) => {
-						if (!isOpen) {
-							stop();
-							openSuggestedActions();
-						}
-					});
-				} else {
-					setTimeout(() => {
-						openSuggestedActions();
-					}, 0); // Ensure UI is ready and availableActions.length > 0
-				}
-			}
+// With the publication service, activeVersionId flips optimistically when the
+// publish request returns; whether the triggers actually registered arrives
+// later as a lifecycle push. Only count the workflow as activated once the
+// lifecycle confirms it, so a failed publish never auto-opens the checklist
+// (ADO-4969). Without the service, activation is synchronous and
+// activeVersionId is already authoritative (the lifecycle stays 'idle' there).
+const isConfirmedActive = computed(() => {
+	if (!workflowDocumentStore?.value?.activeVersionId) {
+		return false;
+	}
 
-			// Update firstActivatedAt after opening popover
-			await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
+	if (settingsStore.isWorkflowPublicationServiceEnabled) {
+		return workflowDocumentStore.value.publicationStatus === 'published';
+	}
+
+	return true;
+});
+
+// Watch for workflow activation
+watch(isConfirmedActive, async (isActive, wasActive) => {
+	if (isActive && !wasActive) {
+		// Check if this is the first activation
+		if (!cachedSettings.value?.firstActivatedAt) {
+			if (isAnyModalOpen.value) {
+				// Defer opening until any open modal closes so the popover
+				// doesn't paint over it.
+				const stop = watch(isAnyModalOpen, (isOpen) => {
+					if (!isOpen) {
+						stop();
+						openSuggestedActions();
+					}
+				});
+			} else {
+				setTimeout(() => {
+					openSuggestedActions();
+				}, 0); // Ensure UI is ready and availableActions.length > 0
+			}
 		}
-	},
-);
+
+		// Update firstActivatedAt after opening popover
+		await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
+	}
+});
 
 onMounted(async () => {
 	await loadWorkflowSettings();
