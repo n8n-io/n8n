@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
 	EngineResponse,
+	EngineRequest,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
 	IPairedItemData,
@@ -787,10 +788,8 @@ describe('processRunExecutionData', () => {
 			expect(executionIndexes).toEqual([...executionIndexes].sort((a, b) => a - b));
 		});
 
-		test('skips waiting tools processing when parent node cannot be found', async () => {
+		test('runs the requested tools and resumes the requesting node when it has no source data', async () => {
 			// ARRANGE
-			// This test simulates the scenario where executionData.source.main[0].previousNode
-			// is null/undefined (line 2037-2044 in workflow-execute.ts)
 			let response: EngineResponse | undefined;
 
 			const tool1Node = createNodeData({ name: 'tool1', type: types.passThrough });
@@ -836,7 +835,6 @@ describe('processRunExecutionData', () => {
 						{
 							data: taskDataConnection,
 							node: nodeWithRequests,
-							// Setting source to null triggers the "Cannot find parent node" condition
 							source: null,
 						},
 					],
@@ -851,13 +849,14 @@ describe('processRunExecutionData', () => {
 			// ASSERT
 			const runData = result.data.resultData.runData;
 
-			// When parent node cannot be found (line 2038-2044), the execution loop continues
-			// which means the waiting tools processing is skipped entirely:
+			expect(runData[nodeWithRequests.name]).toHaveLength(1);
+			expect(runData[nodeWithRequests.name][0].executionStatus).toBe('success');
+			expect(runData[nodeWithRequests.name][0].data?.main?.[0]?.[0]?.json).toMatchObject({
+				finalResult: 'Agent completed with tool results',
+			});
+			expect(runData[nodeWithRequests.name][0].source).toEqual([]);
+			expect(runData[nodeWithRequests.name][0].metadata?.subNodeExecutionData).toBeDefined();
 
-			// 1. The agent node never gets re-executed with the Response callback
-			expect(runData[nodeWithRequests.name]).toBeUndefined();
-
-			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
 			expect(runData[tool1Node.name]).toHaveLength(1);
 			expect(runData[tool1Node.name][0].inputOverride).toEqual({
 				ai_tool: [
@@ -877,12 +876,170 @@ describe('processRunExecutionData', () => {
 					],
 				],
 			});
-			// The tool node should not have execution data since it was never run
-			expect(runData[tool1Node.name][0].data).toBeUndefined();
-			expect(runData[tool1Node.name][0].executionStatus).toBeUndefined();
+			expect(runData[tool1Node.name][0].data).toBeDefined();
+			expect(runData[tool1Node.name][0].executionStatus).toBe('success');
 
-			// 3. The response callback is never called since the agent's second execution is skipped
-			expect(response).toBeUndefined();
+			expect(response).toBeDefined();
+			expect(response?.metadata).toEqual({ requestId: 'test_request' });
+			expect(response?.actionResponses).toHaveLength(1);
+			expect(response?.actionResponses[0].action.id).toBe('action_1');
+			expect(response?.actionResponses[0].data.data?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
+			});
+		});
+
+		test('never records the requesting node as its own previous node when it is the start node', async () => {
+			// ARRANGE
+			const toolNode = createNodeData({ name: 'tool1', type: types.passThrough });
+			const nodeTypeWithRequests = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'first' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'second' },
+							type: 'ai_tool',
+							id: 'action_2',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return(() => [[{ json: { done: true } }]])
+				.done();
+
+			const nodeWithRequests = createNodeData({
+				name: 'nodeWithRequests',
+				type: 'nodeWithRequests',
+			});
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeWithRequests: { type: nodeTypeWithRequests, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(nodeWithRequests, toolNode)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: nodeWithRequests,
+							source: null,
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+
+			expect(runData[nodeWithRequests.name][0].executionStatus).toBe('success');
+			expect(runData[toolNode.name]).toHaveLength(2);
+
+			const selfReferences = Object.entries(runData).flatMap(([nodeName, taskData]) =>
+				taskData.flatMap((task) =>
+					(task.source ?? [])
+						.filter((source) => source?.previousNode === nodeName)
+						.map(() => nodeName),
+				),
+			);
+			expect(selfReferences).toEqual([]);
+		});
+
+		test('runs a follow-up tool request after the requesting node resumed without source data', async () => {
+			const toolNode = createNodeData({ name: 'tool1', type: types.passThrough });
+
+			const requestFor = (id: string, query: string): EngineRequest => ({
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: toolNode.name,
+						input: { query },
+						type: 'ai_tool',
+						id,
+						metadata: {},
+					},
+				],
+				metadata: {},
+			});
+
+			const responses: Array<EngineResponse | undefined> = [];
+			const nodeTypeWithRequests = modifyNode(passThroughNode)
+				.return(requestFor('action_1', 'first'))
+				.return((r) => {
+					responses.push(r);
+					return requestFor('action_2', 'second');
+				})
+				.return((r) => {
+					responses.push(r);
+					return [[{ json: { done: true } }]];
+				})
+				.done();
+
+			const nodeWithRequests = createNodeData({
+				name: 'nodeWithRequests',
+				type: 'nodeWithRequests',
+			});
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeWithRequests: { type: nodeTypeWithRequests, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(nodeWithRequests, toolNode)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: nodeWithRequests,
+							source: null,
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			const runData = result.data.resultData.runData;
+
+			expect(
+				runData[toolNode.name].map((task) => task.inputOverride?.ai_tool?.[0]?.[0]?.json.query),
+			).toEqual(['first', 'second']);
+			expect(responses.map((r) => r?.actionResponses[0].action.id)).toEqual([
+				'action_1',
+				'action_2',
+			]);
+
+			const agentRuns = runData[nodeWithRequests.name];
+			expect(agentRuns.at(-1)?.executionStatus).toBe('success');
+			expect(agentRuns.at(-1)?.data?.main?.[0]?.[0]?.json).toEqual({ done: true });
+			expect(agentRuns.flatMap((run) => run.source)).toEqual([]);
 		});
 
 		test('resets responses between different node executions', async () => {
