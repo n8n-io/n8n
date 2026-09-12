@@ -4,6 +4,7 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -54,9 +55,9 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -79,10 +80,15 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import {
+	createExpandInstanceActivityTool,
+	createGetInstanceActivityTool,
+} from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -130,6 +136,8 @@ export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
 	/** Canvas node-group support in the workflow-builder tools. */
 	canvasGroupsEnabled: boolean;
+	/** The instance-context read surface: the activity tools and node-usage. */
+	instanceContextEnabled: boolean;
 	/** Saved AI preferences in the server instructions. */
 	aiPreferencesEnabled: boolean;
 };
@@ -245,7 +253,8 @@ export class McpService {
 	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled, mcpCanvasGroupsEnabled, mcpInstanceContextEnabled } =
+			this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
@@ -255,6 +264,8 @@ export class McpService {
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
+			instanceContextEnabled:
+				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === true,
 		};
 	}
@@ -608,6 +619,42 @@ export class McpService {
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
 			registerIfAllowed(listTagsTool);
+		}
+
+		if (featureFlags.instanceContextEnabled) {
+			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a
+			// permission, so the reader treats it as one half of the credential gate and resolves the
+			// caller's real access for the other half.
+			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+
+			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
+			// only when that module is active — an instance with the surface off never builds it.
+			if (this.moduleRegistry.isActive('instance-ai')) {
+				const { InstanceContextService } = await import(
+					'@/modules/instance-ai/instance-context.service.js'
+				);
+				const instanceContext = Container.get(InstanceContextService);
+
+				registerIfAllowed(
+					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+				registerIfAllowed(
+					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+			}
+
+			// Node usage reads the dependency index, which is not part of any module and is always
+			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			const { WorkflowDependencyQueryService } = await import(
+				'@/modules/workflow-index/workflow-dependency-query.service.js'
+			);
+			registerIfAllowed(
+				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+			);
 		}
 
 		// Data table tools

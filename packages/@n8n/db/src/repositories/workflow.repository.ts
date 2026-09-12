@@ -155,6 +155,36 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		};
 	}
 
+	/**
+	 * Whether each of the given workflows is readable over MCP. An id absent from the map names a
+	 * workflow that no longer exists, which a caller must tell apart from one that is merely
+	 * withheld: a deleted workflow cannot be withheld from anything.
+	 *
+	 * Archived counts as not readable, matching every other MCP read — `validateMcpWorkflow` and
+	 * the execution search both refuse an archived workflow before they look at the setting.
+	 *
+	 * Reads the rows and tests in memory rather than filtering in SQL, because the caller needs the
+	 * withheld ids too, not only the visible ones.
+	 */
+	async findMcpAvailabilityByIds(workflowIds: string[]): Promise<Map<string, boolean>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const availability = new Map<string, boolean>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				where: { id: In(chunk) },
+				select: ['id', 'settings', 'isArchived'],
+			});
+
+			for (const row of rows) {
+				availability.set(row.id, row.settings?.availableInMCP === true && !row.isArchived);
+			}
+		}
+
+		return availability;
+	}
+
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },

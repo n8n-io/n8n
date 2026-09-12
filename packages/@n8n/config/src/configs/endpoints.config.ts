@@ -206,6 +206,20 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
 	mcpCanvasGroupsEnabled: boolean = false;
 
+	/**
+	 * Force-enable the instance-context read surface on the MCP server: the
+	 * activity tools and the node-usage tool.
+	 *
+	 * Acts as an operator-level override of the PostHog rollout flag. Cannot
+	 * force-disable: setting this to `false` falls back to PostHog.
+	 *
+	 * The activity tools read what `N8N_ACTIVITY_LOG_ENABLED` writes, so with
+	 * only this flag on they answer from an empty log. The node-usage tool has
+	 * its own index and works either way.
+	 */
+	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
+	mcpInstanceContextEnabled: boolean = false;
+
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;
