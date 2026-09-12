@@ -20,6 +20,7 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
@@ -50,6 +51,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -76,21 +78,30 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign({
-			sub: userId,
-			aud: audience,
-			client_id: clientId,
-			jti: randomUUID(),
-			iat: Math.floor(Date.now() / 1000),
-			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
-			// RFC 9068 space-delimited scope claim. Always present on new tokens
-			// (empty string for scope-less grants), so an absent claim
-			// unambiguously identifies a token minted before scoping shipped.
-			scope: scopes.join(' '),
-			meta: {
-				isOAuth: true,
+		const accessToken = this.jwtService.sign(
+			{
+				iss: this.urlService.getInstanceBaseUrl(),
+				sub: userId,
+				aud: audience,
+				client_id: clientId,
+				jti: randomUUID(),
+				iat: Math.floor(Date.now() / 1000),
+				exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+				// RFC 9068 space-delimited scope claim. Always present on new tokens
+				// (empty string for scope-less grants), so an absent claim
+				// unambiguously identifies a token minted before scoping shipped.
+				scope: scopes.join(' '),
+				meta: {
+					isOAuth: true,
+				},
 			},
-		});
+			{
+				header: {
+					typ: 'at+jwt',
+					alg: 'HS256',
+				},
+			},
+		);
 
 		const refreshToken = randomBytes(32).toString('hex');
 

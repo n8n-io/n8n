@@ -1,5 +1,6 @@
 import { InvalidTargetError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { Mocked } from 'vitest';
+import jwt from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -29,6 +30,7 @@ let logger: Mocked<Logger>;
 let userRepository: Mocked<UserRepository>;
 let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
+let urlService: MockProxy<UrlService>;
 let service: OAuthTokenService;
 let txRunner: MockProxy<TransactionRunner>;
 const workflowFinderService = mock<WorkflowFinderService>();
@@ -54,6 +56,8 @@ describe('OAuthTokenService', () => {
 		userRepository = mockInstance(UserRepository);
 		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
 		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
+		urlService = mock<UrlService>();
+		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 
 		// The runner just invokes the work with the (root) context — repositories are mocked,
 		// so no real transaction is opened.
@@ -71,6 +75,7 @@ describe('OAuthTokenService', () => {
 			registry,
 			txRunner,
 			workflowFinderService,
+			urlService,
 		);
 	});
 
@@ -93,6 +98,7 @@ describe('OAuthTokenService', () => {
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
 			const decoded = jwtService.decode(accessToken);
+			expect(decoded.iss).toBe(TEST_BASE_URL);
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
@@ -100,6 +106,10 @@ describe('OAuthTokenService', () => {
 			expect(decoded.jti).toBeDefined();
 			expect(decoded.iat).toBeDefined();
 			expect(decoded.exp).toBeDefined();
+
+			const fullToken = jwt.decode(accessToken, { complete: true });
+			expect(fullToken?.header.typ).toBe('at+jwt');
+			expect(fullToken?.header.alg).toBe('HS256');
 
 			expect(refreshToken).toHaveLength(64); // 32 bytes hex = 64 characters
 			expect(refreshToken).toMatch(/^[a-f0-9]{64}$/);
@@ -354,6 +364,7 @@ describe('OAuthTokenService', () => {
 				boundRegistry,
 				txRunner,
 				workflowFinderService,
+				urlService,
 			);
 		});
 
@@ -777,6 +788,7 @@ describe('OAuthTokenService', () => {
 				multiResourceRegistry,
 				txRunner,
 				workflowFinderService,
+				urlService,
 			);
 		});
 
@@ -860,6 +872,7 @@ describe('OAuthTokenService', () => {
 				scopedRegistry,
 				txRunner,
 				workflowFinderService,
+				urlService,
 			);
 		});
 
@@ -979,6 +992,7 @@ describe('OAuthTokenService', () => {
 				configuredRegistry,
 				txRunner,
 				workflowFinderService,
+				urlService,
 			);
 		});
 
