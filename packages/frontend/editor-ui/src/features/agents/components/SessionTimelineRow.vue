@@ -4,8 +4,10 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { VIEWS } from '@/app/constants/navigation';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { TimelineItem } from '../session-timeline.types';
 import {
 	executionErrorLabel,
@@ -28,6 +30,12 @@ const emit = defineEmits<{ select: [] }>();
 
 const router = useRouter();
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
+
+const nodeType = computed(() => {
+	if (props.item.kind !== 'node' || !props.item.nodeType) return null;
+	return nodeTypesStore.getNodeType(props.item.nodeType, props.item.nodeTypeVersion) ?? null;
+});
 
 // A delegate_subagent call renders as a sub-agent (bot icon + "Sub-agent · name")
 // to match the chat, rather than as a plain tool.
@@ -51,6 +59,8 @@ const infoText = computed((): string => {
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 500);
+		case 'skill':
+			return it.skillName ?? resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
 		case 'tool': {
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			return resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
@@ -88,6 +98,8 @@ const label = computed((): string => {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -109,7 +121,10 @@ const label = computed((): string => {
 <template>
 	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
 		<N8nTooltip :content="label" placement="top">
-			<SessionTimelinePill :kind="pillKind" />
+			<span v-if="nodeType" :class="$style.nodeIcon">
+				<NodeIcon :node-type="nodeType" :size="20" />
+			</span>
+			<SessionTimelinePill v-else :kind="pillKind" />
 		</N8nTooltip>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">
@@ -170,6 +185,16 @@ const label = computed((): string => {
 
 .selected {
 	background-color: var(--background--active);
+}
+
+.nodeIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
+	flex-shrink: 0;
+	border-radius: var(--radius);
 }
 
 .info {

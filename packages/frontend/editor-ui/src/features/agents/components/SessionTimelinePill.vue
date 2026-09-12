@@ -23,6 +23,8 @@ const icon = computed((): IconName => {
 		case 'agent':
 		case 'subagent':
 			return 'bot';
+		case 'skill':
+			return 'book-open';
 		case 'tool':
 			return 'wrench';
 		case 'workflow':
@@ -46,7 +48,7 @@ const iconStyle = computed(() => pillColors(props.kind));
 
 <template>
 	<span :class="[$style.pill, showLabel && $style.withLabel]" :style="iconStyle">
-		<N8nIcon :icon="icon" size="small" />
+		<N8nIcon :icon="icon" size="medium" />
 		<span v-if="showLabel && label" :class="$style.label">{{ label }}</span>
 	</span>
 </template>
@@ -58,7 +60,7 @@ const iconStyle = computed(() => pillColors(props.kind));
 	justify-content: center;
 	width: var(--height--2xs);
 	height: var(--height--2xs);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	flex-shrink: 0;
 }
 

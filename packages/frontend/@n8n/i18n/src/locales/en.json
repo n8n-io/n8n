@@ -1504,6 +1504,7 @@
 	"agentSessions.timeline.backToAgent": "Back to agent",
 	"agentSessions.timeline.user": "User",
 	"agentSessions.timeline.assistant": "Assistant",
+	"agentSessions.timeline.skill": "Skill",
 	"agentSessions.timeline.tool": "Tool",
 	"agentSessions.timeline.memory": "Memory",
 	"agentSessions.timeline.suspension": "Tool call suspended",

@@ -127,6 +127,7 @@ const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
 		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'skill' &&
 			props.item.kind !== 'suspension' &&
 			props.item.kind !== 'hitl-response')
 	) {
@@ -199,6 +200,7 @@ const headerTitle = computed((): string => {
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'skill') return item.skillName ?? toolDisplayName.value;
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
@@ -219,6 +221,7 @@ const headerIcon = computed((): IconName => {
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
@@ -399,7 +402,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</div>
 					</template>
 
-					<template v-else-if="item.kind === 'tool'">
+					<template v-else-if="item.kind === 'tool' || item.kind === 'skill'">
 						<N8nCallout
 							v-if="isFailed"
 							theme="danger"

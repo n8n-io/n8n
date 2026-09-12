@@ -1,6 +1,7 @@
 export type EventKind =
 	| 'user'
 	| 'agent'
+	| 'skill'
 	| 'tool'
 	| 'node'
 	| 'workflow'
@@ -28,6 +29,8 @@ export interface TimelineItem {
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
+	/** Display name of the skill loaded by a `load_skill` call. */
+	skillName?: string;
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;

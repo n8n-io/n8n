@@ -621,7 +621,7 @@ function openExistingSubAgentModal(subAgent: {
 				>
 					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
 						<AgentChipButton
-							icon="sparkles"
+							icon="book-open"
 							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
 							:invalid-reasons="skillIssueMessages.get(id) ?? []"
 							:disabled="props.disabled"
