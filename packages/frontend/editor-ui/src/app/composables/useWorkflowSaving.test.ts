@@ -66,7 +66,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => ({
 		workflow: { update: true },
 	}),

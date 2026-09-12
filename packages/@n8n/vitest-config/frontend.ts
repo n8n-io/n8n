@@ -18,7 +18,15 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// Scoped to `nodes/` because those icons never appear in component
 			// snapshots (unlike the eagerly-imported `custom/` icons), and to
 			// `test.alias` so it never leaks into production/dev builds. See svg-stub.ts.
-			alias: [{ find: /^.*\/nodes\/[^/]+\.svg(\?.*)?$/, replacement: svgStub }],
+			alias: [
+				{ find: /^.*\/nodes\/[^/]+\.svg(\?.*)?$/, replacement: svgStub },
+				// Load `element-plus` from its single-file bundle. Its `es/` entry makes Node evaluate
+				// ~980 files in every test file (about 0.25 s each); the bundle has the same 432 exports.
+				// A bare replacement resolves from the importer, so a package without `element-plus`
+				// is not affected. `vue` stays external to the bundle, so there is one Vue instance.
+				// `patches/element-plus@2.4.3.patch` applies the same lockscreen guard to this bundle.
+				{ find: /^element-plus$/, replacement: 'element-plus/dist/index.full.mjs' },
+			],
 			silent: true,
 			globals: true,
 			// Restore `vi.spyOn` spies to their original implementation before each test, so
