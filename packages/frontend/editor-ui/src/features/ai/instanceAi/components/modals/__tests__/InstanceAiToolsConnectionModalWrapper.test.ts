@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { defineComponent, nextTick, reactive } from 'vue';
+import { fireEvent } from '@testing-library/vue';
+import { defineComponent, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
@@ -42,12 +43,24 @@ vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	}),
 }));
 
-const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
+const {
+	mockConnect,
+	mockConnectServer,
+	mockConnectWithCredential,
+	mockIgnorePendingConnectResult,
+	mockUpdateConnection,
+	mockIsConnectLocked,
+	mcpStoreMock,
+} = vi.hoisted(() => {
 	const mockConnect = vi.fn();
 	const mockUpdateConnection = vi.fn();
 	return {
 		mockConnect,
+		mockConnectServer: vi.fn(),
+		mockConnectWithCredential: vi.fn(),
+		mockIgnorePendingConnectResult: vi.fn(),
 		mockUpdateConnection,
+		mockIsConnectLocked: vi.fn(),
 		mcpStoreMock: {
 			connections: [] as Array<{
 				id: string;
@@ -89,8 +102,10 @@ vi.mock('../../../instanceAiMcp.store', () => ({
 
 vi.mock('../../../composables/useMcpServerConnect', () => ({
 	useMcpServerConnect: () => ({
-		connectServer: vi.fn().mockResolvedValue(null),
-		connectWithCredential: vi.fn().mockResolvedValue(null),
+		connectServer: mockConnectServer,
+		connectWithCredential: mockConnectWithCredential,
+		ignorePendingConnectResult: mockIgnorePendingConnectResult,
+		isConnectLocked: mockIsConnectLocked,
 		createCredentialAdapter: (
 			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
 		) => ({
@@ -289,7 +304,10 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
 		delete uiStoreMock.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		mockConnect.mockResolvedValue(null);
+		mockConnectServer.mockResolvedValue(null);
+		mockConnectWithCredential.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
+		mockIsConnectLocked.mockReturnValue(false);
 	});
 
 	it('configures the suggestion footer copy', () => {
@@ -356,6 +374,57 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		});
 		expect(modalProps.detailMode).toBe('settings');
 		expect(mcpStoreMock.fetchConnectionToolsLazy).toHaveBeenCalledWith('conn-1');
+	});
+
+	it('keeps unsaved settings while the connection is locked', async () => {
+		const isLocked = ref(false);
+		mockIsConnectLocked.mockImplementation(() => isLocked.value);
+		const connection = {
+			id: 'conn-1',
+			serverSlug: 'linear',
+			credentialId: 'cred-1',
+			status: 'connected' as const,
+			toolFilter: null,
+		};
+		mcpStoreMock.connections = [connection];
+		mcpStoreMock.connectionsByServerSlug = new Map([['linear', [connection]]]);
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+
+		const { getByTestId, getByText } = renderComponent({
+			global: {
+				stubs: {
+					ToolsConnectionModal: false,
+					N8nDialog: { template: '<div><slot /></div>' },
+				},
+			},
+		});
+		await flushPromises();
+		const inclusionInput = () =>
+			getByTestId('tools-connection-settings-inclusion').querySelector('input')!;
+		await fireEvent.click(inclusionInput());
+		await fireEvent.click(getByText('All Except'));
+
+		isLocked.value = true;
+		await nextTick();
+
+		expect(getByTestId('tool-credential-picker-trigger-connecting')).toBeVisible();
+		expect(inclusionInput()).toHaveValue('All Except');
+
+		isLocked.value = false;
+		await nextTick();
+
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeVisible();
+		expect(inclusionInput()).toHaveValue('All Except');
+	});
+
+	it('keeps a new connection in the detail view while the connection is locked', () => {
+		mockIsConnectLocked.mockReturnValue(true);
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'linear' };
+
+		renderComponent();
+
+		expect(modalProps.detailItem).toMatchObject({ id: 'linear', status: 'connecting' });
+		expect(modalProps.detailMode).toBe('detail');
 	});
 
 	it('hides and restores the selected connection while editing a credential', async () => {
@@ -425,6 +494,11 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		expect(telemetryMock.trackExistingCredentialSelected).toHaveBeenCalledWith('linear');
+		expect(mockIgnorePendingConnectResult).toHaveBeenCalledWith('linear');
+		expect(mockConnectWithCredential).toHaveBeenCalledWith('linear', 'cred-1');
+		expect(mockIgnorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
+			mockConnectWithCredential.mock.invocationCallOrder[0] ?? 0,
+		);
 	});
 
 	it('tracks new credential connection start', () => {
