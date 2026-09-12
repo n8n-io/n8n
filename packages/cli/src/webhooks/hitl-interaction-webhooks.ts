@@ -37,6 +37,11 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 	/**
 	 * The platform node this route may resume, e.g. `n8n-nodes-base.slack`.
 	 * The matching HITL tool variant (`${platformNodeType}HitlTool`) is also allowed.
+	 *
+	 * HITL tool nodes (e.g. `n8n-nodes-base.slackHitlTool`) are AI Agent tool wrappers
+	 * that add human-in-the-loop approval gates with platform-specific Send and Wait
+	 * capabilities. They share the same interaction webhook endpoint as their base
+	 * platform node and must be accepted here to allow the approval flow to resume.
 	 */
 	protected abstract readonly platformNodeType: string;
 
@@ -71,6 +76,9 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const node = workflow.getNode(lastNodeExecuted);
 		if (!node) return { ok: false, status: 404 };
 
+		// Accept both the base platform node and its HITL tool variant (e.g. slack + slackHitlTool).
+		// This allows Send and Wait approval flows initiated by HITL tool nodes to resume through
+		// this platform's interaction webhook, while rejecting other platforms and unrelated tools.
 		if (node.type !== this.platformNodeType && node.type !== `${this.platformNodeType}HitlTool`) {
 			return { ok: false, status: 404 };
 		}
