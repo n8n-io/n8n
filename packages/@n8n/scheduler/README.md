@@ -270,6 +270,21 @@ while an unpublish deprovisions the workflow's jobs immediately before removing 
 `workflow_published_version` mapping that made it an owner
 (`WorkflowPublicationApplier`).
 
+n8n's `system-task` owner type shows an owner that is never deleted, only no longer
+wanted by the code: a task removed, flipped back to its in-process timer, or gated off
+by a flag. Each task owns one job, stamped with the n8n version that last provisioned
+it. At startup, once it has provisioned the tasks it runs durably, an instance deletes
+every system-task job it does not run durably, unless the stamp is newer than its own
+version: a newer version added that task, and an older instance in a rolling deploy
+must leave it alone (`SystemTaskRunner`). Each delete is pinned to the row as listed,
+so a job another instance restamps in between survives. The resolver answers by the
+same rule, so the sweep only retires what a failed startup cleanup left behind. Two
+cases are deploy constraints, not code: rolling back to a version without a task
+leaves that task's job in place, unclaimed, until a version that runs it boots again or
+a newer version that does not run it deletes it at startup; and every instance must
+share the same system-task configuration, since an instance that does not run a task
+durably deletes its job at startup.
+
 **2. Register a liveness resolver.**
 
 The scheduler cannot tell whether one of your owners still exists, so you answer that

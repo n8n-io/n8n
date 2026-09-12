@@ -4,10 +4,14 @@ import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import { UnregisteredOwnerTypeError } from '@n8n/scheduler';
+import { inc } from 'semver';
 
+import { N8N_VERSION } from '@/constants';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { systemTaskProvisionRequest } from '@/scheduling/system-tasks/system-task-job';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
+
+import { selfOwned } from './shared/job-factory';
 
 /**
  * System task provisioning against real rows, on both dialects. The unit tests
@@ -63,7 +67,7 @@ describe('system task provisioning', () => {
 			ownerId: TASK_NAME,
 			ownerMemberId: null,
 			taskType: JOB_NAME,
-			payload: {},
+			payload: { n8nVersion: N8N_VERSION },
 			kind: 'interval',
 			intervalSeconds: 60,
 			maxAttempts: 3,
@@ -124,6 +128,77 @@ describe('system task provisioning', () => {
 		expect(row.id).toBe(inserted.id);
 		expect(row.maxAttempts).toBe(1);
 		expect(row.intervalSeconds).toBe(60);
+	});
+
+	it('restamps a row another version provisioned, keeping the row and its cadence', async () => {
+		await provision();
+		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		await jobRepo.update({ id: inserted.id }, { payload: { n8nVersion: '0.0.1' } });
+
+		const summary = await provision();
+
+		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.payload).toEqual({ n8nVersion: N8N_VERSION });
+		expect(row.intervalSeconds).toBe(60);
+	});
+
+	const store = async (name: string, n8nVersion: string) =>
+		await jobRepo.save(
+			jobRepo.create({
+				name: `system:${name}`,
+				...selfOwned(name),
+				taskType: `system:${name}`,
+				payload: { n8nVersion },
+				kind: 'interval',
+				intervalSeconds: 60,
+				nextRunAt: new Date(),
+			}),
+		);
+
+	it('lists a stored task as stale unless provisioned here or stamped by a newer version', async () => {
+		const booting = new SystemTaskScheduledJobOwner(jobRepo);
+		booting.declareDurable(TASK_NAME);
+		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
+		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
+		const older = await store('from-an-older-version', '0.0.1');
+
+		await expect(booting.findStale()).resolves.toEqual([
+			{ id: older.id, ownerId: 'from-an-older-version', payload: { n8nVersion: '0.0.1' } },
+		]);
+	});
+
+	it('removes a stale job as it was listed, with its occurrences', async () => {
+		const stale = await store('gone', '0.0.1');
+		const now = new Date();
+		await taskRepo.save(
+			taskRepo.create({
+				jobId: stale.id,
+				taskType: 'system:gone',
+				payload: {},
+				scheduledFor: now,
+				runAt: now,
+				status: 'pending',
+			}),
+		);
+		const [listed] = await owner.findStale();
+
+		await expect(provisioner.deprovisionUnchangedJob(listed)).resolves.toEqual({ removed: 1 });
+
+		expect(await jobRepo.countBy({ id: stale.id })).toBe(0);
+		expect(await taskRepo.countBy({ jobId: stale.id })).toBe(0);
+	});
+
+	it('keeps a listed job another version restamped before the delete ran', async () => {
+		const stale = await store('taken-over', '0.0.1');
+		const [listed] = await owner.findStale();
+		const newer = inc(N8N_VERSION, 'minor') as string;
+		await jobRepo.update({ id: stale.id }, { payload: { n8nVersion: newer } });
+
+		await expect(provisioner.deprovisionUnchangedJob(listed)).resolves.toEqual({ removed: 0 });
+
+		const row = await jobRepo.findOneByOrFail({ id: stale.id });
+		expect(row.payload).toEqual({ n8nVersion: newer });
 	});
 
 	it('converges on one row when two mains provision the same task at once', async () => {

@@ -4,6 +4,7 @@ import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
+import { isDeepStrictEqual } from 'node:util';
 
 import { ScheduledJob } from '../entities/scheduled-job';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
@@ -135,6 +136,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
+	/** The owner id and payload of every job these owners of one kind hold. */
+	async findPayloadsByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'payload'>>> {
+		if (ownerIds.length === 0) return [];
+		return await this.find({
+			where: { ownerType, ownerId: In(ownerIds) },
+			select: ['ownerId', 'payload'],
+		});
+	}
+
+	/** The id, owner id and payload of every job owners of one kind hold. */
+	async findPayloadsByOwnerType(
+		ownerType: string,
+	): Promise<Array<Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>>> {
+		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
+	}
+
 	/**
 	 * The member ids under which an owner holds jobs of one task type, each once.
 	 * A caller uses them to tell which of its parts still provision a job.
@@ -248,6 +268,17 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, ids, update);
 	}
 
+	/** Rewrites the payload only, leaving schedule and clock untouched. */
+	async updatePayload(
+		manager: EntityManager,
+		ids: number[],
+		payload: ScheduledJob['payload'],
+	): Promise<void> {
+		if (ids.length === 0) return;
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express.
+		await manager.update(ScheduledJob, ids, { payload } as QueryDeepPartialEntity<ScheduledJob>);
+	}
+
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
 		if (ids.length > 0) {
 			await manager.delete(ScheduledJob, ids);
@@ -260,6 +291,31 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 */
 	async deleteByOwnerMember(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
 		const result = await manager.delete(ScheduledJob, ownerCriteria(owner));
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete one job while its payload still equals what the caller read. Postgres
+	 * locks the row first; SQLite serializes writing transactions, so the plain
+	 * re-read suffices.
+	 */
+	async deleteIfPayloadUnchanged(
+		manager: EntityManager,
+		id: number,
+		payload: ScheduledJob['payload'],
+	): Promise<number> {
+		if (manager.queryRunner === undefined) {
+			throw new UnexpectedError('deleteIfPayloadUnchanged must run within a transaction');
+		}
+		const query = manager.createQueryBuilder(ScheduledJob, 'job').where('job.id = :id', { id });
+		if (this.isPostgres) {
+			query.setLock('pessimistic_write');
+		}
+		const row = await query.getOne();
+		if (row === null || !isDeepStrictEqual(row.payload, payload)) {
+			return 0;
+		}
+		const result = await manager.delete(ScheduledJob, { id });
 		return result.affected ?? 0;
 	}
 
