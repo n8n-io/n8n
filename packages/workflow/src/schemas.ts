@@ -24,6 +24,7 @@ import type {
 	DisplayCondition,
 	INode,
 	IN8nRequestOperations,
+	IN8nRequestOperationPaginationCursor,
 	IN8nRequestOperationPaginationGeneric,
 	IDataObject,
 	IN8nRequestOperationPaginationOffset,
@@ -152,9 +153,22 @@ export const IN8nRequestOperationPaginationOffsetSchema: z.ZodType<IN8nRequestOp
 		}),
 	});
 
+export const IN8nRequestOperationPaginationCursorSchema: z.ZodType<IN8nRequestOperationPaginationCursor> =
+	IN8nRequestOperationPaginationBaseSchema.extend({
+		type: z.literal('cursor'),
+		properties: z.object({
+			cursorParameter: z.string(),
+			nextCursor: z.string(),
+			continue: z.union([z.boolean(), z.string()]).optional(),
+			rootProperty: z.string().optional(),
+			type: z.enum(['body', 'query']),
+		}),
+	});
+
 export const IN8nRequestOperationsSchema: z.ZodType<IN8nRequestOperations> = z.object({
 	pagination: z
 		.union([
+			IN8nRequestOperationPaginationCursorSchema,
 			IN8nRequestOperationPaginationGenericSchema,
 			IN8nRequestOperationPaginationOffsetSchema,
 			// TODO: Validating the function shape is skipped at runtime, any function is accepted

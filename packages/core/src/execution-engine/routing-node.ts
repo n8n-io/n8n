@@ -19,6 +19,7 @@ import type {
 	ICredentialsDecrypted,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
+	IN8nRequestOperationPaginationCursor,
 	INodeExecutionData,
 	INodeParameters,
 	INodePropertyOptions,
@@ -722,26 +723,26 @@ export class RoutingNode {
 							] as number) + properties.pageSize;
 
 						if (properties.rootProperty) {
-							const tempResponseValue = get(tempResponseData[0].json, properties.rootProperty) as
-								| IDataObject[]
-								| undefined;
-							if (tempResponseValue === undefined) {
-								throw new NodeOperationError(
-									node,
-									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
-									{ runIndex, itemIndex },
-								);
-							}
-
-							tempResponseData = tempResponseValue.map((item) => {
-								return {
-									json: item,
-								};
-							});
+							tempResponseData = this.getRootPropertyItems(
+								tempResponseData,
+								properties.rootProperty,
+								runIndex,
+								itemIndex,
+							);
 						}
 
 						responseData.push(...tempResponseData);
 					} while (tempResponseData.length && tempResponseData.length === properties.pageSize);
+				} else if (requestOperations.pagination.type === 'cursor') {
+					responseData = await this.paginateByCursor(
+						requestData,
+						executeSingleFunctions,
+						itemIndex,
+						runIndex,
+						requestOperations.pagination.properties,
+						credentialType,
+						credentialsDecrypted,
+					);
 				}
 			}
 		} else {
@@ -763,6 +764,110 @@ export class RoutingNode {
 			);
 		}
 		return responseData;
+	}
+
+	/**
+	 * Requests pages until the API stops returning a cursor. The cursor is set on
+	 * the existing query string or body, so the other request parameters stay.
+	 */
+	private async paginateByCursor(
+		requestData: DeclarativeRestApiSettings.ResultOptions,
+		executeSingleFunctions: IExecuteSingleFunctions,
+		itemIndex: number,
+		runIndex: number,
+		properties: IN8nRequestOperationPaginationCursor['properties'],
+		credentialType?: string,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	): Promise<INodeExecutionData[]> {
+		const responseData: INodeExecutionData[] = [];
+
+		const optionsType = properties.type === 'body' ? 'body' : 'qs';
+
+		const additionalKeys = {
+			$request: requestData.options,
+			$response: {} as IN8nHttpFullResponse,
+			$version: this.context.node.typeVersion,
+		};
+		const resolve = (value: NodeParameterValueType) =>
+			this.getParameterValue(
+				value,
+				itemIndex,
+				runIndex,
+				executeSingleFunctions.getExecuteData(),
+				additionalKeys,
+				false,
+			);
+
+		let cursor: string | number | undefined;
+		let makeAdditionalRequest: boolean;
+		do {
+			if (requestData.maxResults && responseData.length >= Number(requestData.maxResults)) {
+				// Enough results collected, the remaining pages are not needed
+				break;
+			}
+
+			const response = await this.rawRoutingRequest(
+				executeSingleFunctions,
+				requestData,
+				credentialType,
+				credentialsDecrypted,
+			);
+			additionalKeys.$response = response;
+
+			let items = await this.postProcessResponseData(
+				executeSingleFunctions,
+				response,
+				requestData,
+				itemIndex,
+				runIndex,
+			);
+			if (properties.rootProperty) {
+				items = this.getRootPropertyItems(items, properties.rootProperty, runIndex, itemIndex);
+			}
+			responseData.push(...items);
+
+			const nextCursorValue = resolve(properties.nextCursor);
+			const nextCursor =
+				typeof nextCursorValue === 'string' || typeof nextCursorValue === 'number'
+					? nextCursorValue
+					: undefined;
+
+			makeAdditionalRequest =
+				properties.continue === undefined
+					? nextCursor !== undefined && nextCursor !== ''
+					: Boolean(resolve(properties.continue));
+
+			if (nextCursor === undefined || nextCursor === '' || nextCursor === cursor) {
+				// A missing or repeated cursor would request the same page again and again
+				makeAdditionalRequest = false;
+			}
+
+			if (makeAdditionalRequest) {
+				cursor = nextCursor;
+				set(requestData.options, [optionsType, properties.cursorParameter], nextCursor);
+			}
+		} while (makeAdditionalRequest);
+
+		return responseData;
+	}
+
+	/** Replaces the items of a page with the array found at `rootProperty` on the first item. */
+	private getRootPropertyItems(
+		items: INodeExecutionData[],
+		rootProperty: string,
+		runIndex: number,
+		itemIndex: number,
+	): INodeExecutionData[] {
+		const value: unknown = get(items[0]?.json, rootProperty);
+		if (!Array.isArray(value)) {
+			throw new NodeOperationError(
+				this.context.node,
+				`The rootProperty "${rootProperty}" could not be found on item.`,
+				{ runIndex, itemIndex },
+			);
+		}
+
+		return value.map((item: IDataObject) => ({ json: item }));
 	}
 
 	private getParameterValue(

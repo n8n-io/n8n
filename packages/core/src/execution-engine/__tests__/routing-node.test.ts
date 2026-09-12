@@ -1,13 +1,15 @@
 import get from 'lodash/get';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData, deepCopy } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
+	IN8nRequestOperationPaginationCursor,
 	IN8nRequestOperations,
 	INode,
 	INodeCredentialDescription,
@@ -2707,6 +2709,224 @@ describe('RoutingNode', () => {
 			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
 				.requestOptions;
 			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+	});
+
+	describe('cursor pagination', () => {
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
+
+		const baseNode: INode = {
+			parameters: { returnAll: true },
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		type Page = {
+			items?: Array<{ id: number; key?: string }>;
+			next_cursor?: string | null;
+			has_more?: boolean;
+		};
+
+		// Key of the page the first request returns, since that request carries no cursor
+		const FIRST_PAGE = 'start';
+
+		const cursorPagination = (
+			overrides: Partial<IN8nRequestOperationPaginationCursor['properties']> = {},
+		): IN8nRequestOperationPaginationCursor => ({
+			type: 'cursor',
+			properties: {
+				cursorParameter: 'cursor',
+				nextCursor: '={{ $response.body.next_cursor }}',
+				rootProperty: 'items',
+				type: 'query',
+				...overrides,
+			},
+		});
+
+		/**
+		 * Runs a node whose only parameter paginates over `pages`. Pages are keyed
+		 * by the cursor the request carries, the first request has no cursor.
+		 */
+		const runWithPages = async (
+			pages: Record<string, Page>,
+			pagination: IN8nRequestOperationPaginationCursor,
+			options: { maxResults?: number; qs?: IDataObject; body?: IDataObject } = {},
+		) => {
+			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+			routingNodeType.description = {
+				requestDefaults: { baseURL: 'https://api.example.com' },
+				properties: [
+					{
+						displayName: 'Return All',
+						name: 'returnAll',
+						type: 'boolean',
+						default: true,
+						routing: {
+							request: { url: '/items', qs: options.qs, body: options.body },
+							send: { paginate: true },
+							operations: { pagination },
+							output: { maxResults: options.maxResults },
+						},
+					},
+				],
+			} as unknown as INodeTypeDescription;
+
+			const workflow = new Workflow({
+				nodes: [baseNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node: baseNode, source: null } as IExecuteData,
+				inputData: { main: [[{ json: {} }]] } as ITaskDataConnections,
+				runIndex,
+				additionalData,
+				workflow,
+				node: baseNode,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const executeSingleFunctions = getExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				baseNode,
+				itemIndex,
+			);
+			const originalGetNodeParameter = executeSingleFunctions.getNodeParameter;
+			// @ts-expect-error overwriting a method
+			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+				originalGetNodeParameter(parameterName) ?? {};
+
+			const requests: IHttpRequestOptions[] = [];
+			executeSingleFunctions.helpers.httpRequest = async (requestOptions: IHttpRequestOptions) => {
+				// The routing node mutates the options in place, so keep a copy per request
+				requests.push(deepCopy(requestOptions));
+				const body = requestOptions.body as IDataObject | undefined;
+				const cursor = requestOptions.qs?.cursor ?? body?.cursor ?? FIRST_PAGE;
+				const response: IN8nHttpFullResponse = {
+					statusCode: 200,
+					headers: {},
+					body: pages[String(cursor)],
+				};
+				return response;
+			};
+
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
+
+			const routingNode = new RoutingNode(executeFunctions, routingNodeType);
+			const result = await routingNode.runNode();
+			const ids = (result?.[0] ?? []).map((item) => item.json.id);
+			return { ids, requests };
+		};
+
+		const threePages: Record<string, Page> = {
+			[FIRST_PAGE]: { items: [{ id: 1 }, { id: 2 }], next_cursor: 'c2' },
+			c2: { items: [{ id: 3 }, { id: 4 }], next_cursor: 'c3' },
+			c3: { items: [{ id: 5 }], next_cursor: null },
+		};
+
+		test('follows the cursor until none is returned and keeps the other query parameters', async () => {
+			const { ids, requests } = await runWithPages(threePages, cursorPagination(), {
+				qs: { limit: 2 },
+			});
+
+			expect(ids).toEqual([1, 2, 3, 4, 5]);
+			expect(requests.map((request) => request.qs)).toEqual([
+				{ limit: 2 },
+				{ limit: 2, cursor: 'c2' },
+				{ limit: 2, cursor: 'c3' },
+			]);
+		});
+
+		test('stops requesting pages once maxResults is reached', async () => {
+			const { ids, requests } = await runWithPages(threePages, cursorPagination(), {
+				maxResults: 3,
+			});
+
+			expect(requests).toHaveLength(2);
+			expect(ids).toEqual([1, 2, 3]);
+		});
+
+		test('sends the cursor in the body when type is body', async () => {
+			const { ids, requests } = await runWithPages(threePages, cursorPagination({ type: 'body' }), {
+				body: { filter: 'active' },
+			});
+
+			expect(ids).toEqual([1, 2, 3, 4, 5]);
+			expect(requests[1].body).toEqual({ filter: 'active', cursor: 'c2' });
+			expect(requests[1].qs).toEqual({});
+		});
+
+		test('uses the continue expression when the API has no explicit next cursor', async () => {
+			const pages: Record<string, Page> = {
+				[FIRST_PAGE]: {
+					items: [
+						{ id: 1, key: 'a' },
+						{ id: 2, key: 'b' },
+					],
+					has_more: true,
+				},
+				b: { items: [{ id: 3, key: 'c' }], has_more: false },
+			};
+			const { ids, requests } = await runWithPages(
+				pages,
+				cursorPagination({
+					nextCursor: '={{ $response.body.items[$response.body.items.length - 1].key }}',
+					continue: '={{ $response.body.has_more }}',
+				}),
+			);
+
+			expect(ids).toEqual([1, 2, 3]);
+			expect(requests.map((request) => request.qs?.cursor)).toEqual([undefined, 'b']);
+		});
+
+		test('stops when the API repeats the same cursor', async () => {
+			const pages: Record<string, Page> = {
+				[FIRST_PAGE]: { items: [{ id: 1 }], next_cursor: 'c2' },
+				c2: { items: [{ id: 2 }], next_cursor: 'c2' },
+			};
+			const { ids, requests } = await runWithPages(pages, cursorPagination());
+
+			expect(ids).toEqual([1, 2]);
+			expect(requests).toHaveLength(2);
+		});
+
+		test('returns whole pages when no rootProperty is set', async () => {
+			const pages: Record<string, Page> = {
+				[FIRST_PAGE]: { items: [{ id: 1 }], next_cursor: 'c2' },
+				c2: { items: [{ id: 2 }], next_cursor: null },
+			};
+			const { requests } = await runWithPages(pages, cursorPagination({ rootProperty: undefined }));
+
+			expect(requests).toHaveLength(2);
+		});
+
+		test('throws when the rootProperty is missing from a page', async () => {
+			const pages: Record<string, Page> = {
+				[FIRST_PAGE]: { next_cursor: null },
+			};
+
+			await expect(runWithPages(pages, cursorPagination())).rejects.toThrow(
+				'The rootProperty "items" could not be found on item.',
+			);
 		});
 	});
 });
