@@ -18,6 +18,7 @@ import {
 	execute,
 	getConnectionOptions,
 	prepareQueryResults,
+	toErrorItem,
 	type SnowflakeCredential,
 } from './GenericFunctions';
 
@@ -286,38 +287,43 @@ export class Snowflake implements INodeType {
 				// ----------------------------------
 
 				for (let i = 0; i < items.length; i++) {
-					let query = this.getNodeParameter('query', i) as string;
+					try {
+						let query = this.getNodeParameter('query', i) as string;
 
-					for (const resolvable of getResolvables(query)) {
-						query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-					}
-
-					const options = this.getNodeParameter('options', i, {});
-					const rawReplacement = options.queryReplacement;
-					let binds: snowflake.Bind[] = [];
-
-					if (rawReplacement !== undefined && rawReplacement !== '') {
-						if (typeof rawReplacement === 'string') {
-							binds = rawReplacement.split(',').map((entry) => entry.trim());
-						} else if (Array.isArray(rawReplacement)) {
-							binds = rawReplacement as snowflake.Bind[];
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Query Parameters must be a string of comma-separated values, or an array of values',
-								{ itemIndex: i },
-							);
+						for (const resolvable of getResolvables(query)) {
+							query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 						}
-					}
 
-					const responseData = await execute(connection, query, binds, this.getNode());
-					const executionData = await prepareQueryResults.call(
-						this,
-						responseData as IDataObject[] | undefined,
-						i,
-						nodeVersion,
-					);
-					returnData = returnData.concat(executionData);
+						const options = this.getNodeParameter('options', i, {});
+						const rawReplacement = options.queryReplacement;
+						let binds: snowflake.Bind[] = [];
+
+						if (rawReplacement !== undefined && rawReplacement !== '') {
+							if (typeof rawReplacement === 'string') {
+								binds = rawReplacement.split(',').map((entry) => entry.trim());
+							} else if (Array.isArray(rawReplacement)) {
+								binds = rawReplacement as snowflake.Bind[];
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Query Parameters must be a string of comma-separated values, or an array of values',
+									{ itemIndex: i },
+								);
+							}
+						}
+
+						const responseData = await execute(connection, query, binds, this.getNode());
+						const executionData = await prepareQueryResults.call(
+							this,
+							responseData as IDataObject[] | undefined,
+							i,
+							nodeVersion,
+						);
+						returnData = returnData.concat(executionData);
+					} catch (error) {
+						if (!this.continueOnFail()) throw error;
+						returnData.push(toErrorItem(error, i));
+					}
 				}
 			}
 
@@ -334,14 +340,21 @@ export class Snowflake implements INodeType {
 				const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 				const data = this.helpers.copyInputItems(items, columns);
 				const binds = data.map((element) => [...Object.values(element)]);
-				await execute(connection, query, binds as snowflake.Binds, this.getNode());
-				data.forEach((d, i) => {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(d),
-						{ itemData: { item: i } },
-					);
-					returnData = returnData.concat(executionData);
-				});
+
+				try {
+					await execute(connection, query, binds as snowflake.Binds, this.getNode());
+					data.forEach((d, i) => {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(d),
+							{ itemData: { item: i } },
+						);
+						returnData = returnData.concat(executionData);
+					});
+				} catch (error) {
+					if (!this.continueOnFail()) throw error;
+					// One statement inserts every item, so a failure applies to all of them.
+					returnData = returnData.concat(data.map((_d, i) => toErrorItem(error, i)));
+				}
 			}
 
 			if (operation === 'update') {
@@ -373,15 +386,18 @@ export class Snowflake implements INodeType {
 					return rowBinds;
 				});
 				for (let i = 0; i < binds.length; i++) {
-					await execute(connection, query, binds[i] as snowflake.Binds, this.getNode());
+					try {
+						await execute(connection, query, binds[i] as snowflake.Binds, this.getNode());
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(data[i]),
+							{ itemData: { item: i } },
+						);
+						returnData = returnData.concat(executionData);
+					} catch (error) {
+						if (!this.continueOnFail()) throw error;
+						returnData.push(toErrorItem(error, i));
+					}
 				}
-				data.forEach((d, i) => {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(d),
-						{ itemData: { item: i } },
-					);
-					returnData = returnData.concat(executionData);
-				});
 			}
 
 			return [returnData];
