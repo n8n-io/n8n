@@ -1,5 +1,5 @@
 import { BreakingChangeRule } from '@n8n/decorators';
-import { BinaryDataConfig } from 'n8n-core';
+import { isInMemoryModeConfigured } from 'n8n-core';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -10,8 +10,6 @@ import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly binaryDataConfig: BinaryDataConfig) {}
-
 	id: string = 'in-memory-binary-data-v3';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -26,7 +24,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if (this.binaryDataConfig.mode !== 'default') {
+		if (!isInMemoryModeConfigured()) {
 			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 

@@ -32,8 +32,8 @@ describe('withDeterministicRouting', () => {
 		expect(outcome.verificationReadiness).toEqual({ status: 'ready' });
 	});
 
-	it('marks suffix-less trigger types (webhook, cron) as ready', () => {
-		for (const nodeType of ['n8n-nodes-base.webhook', 'n8n-nodes-base.cron']) {
+	it('marks trigger types as ready', () => {
+		for (const nodeType of ['n8n-nodes-base.webhook', 'n8n-nodes-base.scheduleTrigger']) {
 			const outcome = withDeterministicRouting(
 				makeOutcome({ triggerNodes: [{ nodeName: 'Entry', nodeType }] }),
 			);

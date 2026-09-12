@@ -8,7 +8,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_ENCODING, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -42,8 +42,8 @@ const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
 describe('test binary data helper methods', () => {
 	const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 	const binaryDataConfig = mock<BinaryDataConfig>({
-		mode: 'default',
-		availableModes: ['default', 'filesystem'],
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
 		localStoragePath: temporaryDir,
 	});
 	const errorReporter = mock<ErrorReporter>();
@@ -54,53 +54,6 @@ describe('test binary data helper methods', () => {
 		vi.resetAllMocks();
 		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter, logger);
 		Container.set(BinaryDataService, binaryDataService);
-	});
-
-	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
-		// Setup a 'default' binary data manager instance
-		binaryDataConfig.mode = 'default';
-		await binaryDataService.init();
-
-		// Set our binary data buffer
-		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
-		const setBinaryDataBufferResponse: IBinaryData = await setBinaryDataBuffer(
-			{
-				mimeType: 'txt',
-				data: 'This should be overwritten by the actual payload in the response',
-			},
-			inputData,
-			'workflowId',
-			'executionId',
-		);
-
-		// Expect our return object to contain the base64 encoding of the input data, as it should be stored in memory.
-		expect(setBinaryDataBufferResponse.data).toEqual(inputData.toString('base64'));
-
-		// Now, re-fetch our data.
-		// An ITaskDataConnections object is used to share data between nodes. The top level property, 'main', represents the successful output object from a previous node.
-		const taskDataConnectionsInput: ITaskDataConnections = {
-			main: [],
-		};
-
-		// We add an input set, with one item at index 0, to this input. It contains an empty json payload and our binary data.
-		taskDataConnectionsInput.main.push([
-			{
-				json: {},
-				binary: {
-					data: setBinaryDataBufferResponse,
-				},
-			},
-		]);
-
-		// Now, lets fetch our data! The item will be item index 0.
-		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
-			taskDataConnectionsInput,
-			0,
-			'data',
-			0,
-		);
-
-		expect(getBinaryDataBufferResponse).toEqual(inputData);
 	});
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
@@ -157,26 +110,32 @@ describe('test binary data helper methods', () => {
 		expect(getBinaryDataBufferResponse).toEqual(inputData);
 	});
 
+	test('getBinaryDataBuffer(...) should read inline base64 data when binary data has no id', async () => {
+		await binaryDataService.init();
+
+		// Pinned data and executions stored under the removed in-memory mode
+		// carry inline base64 in `data` with no id - they must stay readable.
+		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
+		const inlineBinaryData: IBinaryData = {
+			mimeType: 'txt',
+			data: inputData.toString(BINARY_ENCODING),
+		};
+
+		const taskDataConnectionsInput: ITaskDataConnections = {
+			main: [[{ json: {}, binary: { data: inlineBinaryData } }]],
+		};
+
+		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
+			taskDataConnectionsInput,
+			0,
+			'data',
+			0,
+		);
+
+		expect(getBinaryDataBufferResponse).toEqual(inputData);
+	});
+
 	describe('getBinaryDataBuffer with IBinaryData parameter', () => {
-		it('should return buffer when passed IBinaryData directly in default mode', async () => {
-			binaryDataConfig.mode = 'default';
-			await binaryDataService.init();
-
-			const inputBuffer = Buffer.from('direct binary data', 'utf8');
-			const binaryData = await setBinaryDataBuffer(
-				{ mimeType: 'application/octet-stream', data: '' },
-				inputBuffer,
-				workflowId,
-				executionId,
-			);
-
-			// Empty input data since we're passing binary data directly
-			const inputData: ITaskDataConnections = { main: [] };
-
-			const result = await getBinaryDataBuffer(inputData, 0, binaryData, 0);
-			expect(result).toEqual(inputBuffer);
-		});
-
 		it('should return buffer when passed IBinaryData directly in filesystem mode', async () => {
 			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
@@ -196,7 +155,7 @@ describe('test binary data helper methods', () => {
 		});
 
 		it('should handle IBinaryData with different mime types', async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 
 			const jsonBuffer = Buffer.from('{"test": "json"}', 'utf8');
@@ -214,7 +173,7 @@ describe('test binary data helper methods', () => {
 		});
 
 		it('should handle IBinaryData with all properties', async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 
 			const inputBuffer = Buffer.from('comprehensive test data', 'utf8');
@@ -239,7 +198,7 @@ describe('test binary data helper methods', () => {
 		});
 
 		it('should handle empty buffer with IBinaryData', async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 
 			const emptyBuffer = Buffer.alloc(0);
@@ -258,7 +217,7 @@ describe('test binary data helper methods', () => {
 		});
 
 		it('should handle large binary data with IBinaryData', async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 
 			// Create a 1MB buffer
@@ -280,7 +239,7 @@ describe('test binary data helper methods', () => {
 		}, 20000);
 
 		it('should handle binary data with special characters using IBinaryData', async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 
 			const specialBuffer = Buffer.from('Hello 世界! 🚀 Special chars: àáâãäå', 'utf8');
@@ -334,7 +293,7 @@ describe('test binary data helper methods', () => {
 
 	describe('getBinaryDataBuffer with combined binary mode', () => {
 		beforeEach(async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 		});
 
@@ -544,7 +503,7 @@ describe('test binary data helper methods', () => {
 
 	describe('getBinaryDataBuffer with separate binary mode', () => {
 		beforeEach(async () => {
-			binaryDataConfig.mode = 'default';
+			binaryDataConfig.mode = 'filesystem';
 			await binaryDataService.init();
 		});
 
@@ -1320,17 +1279,12 @@ describe('getBinaryHelperFunctions', () => {
 			'binaryToString',
 			'prepareBinaryData',
 			'setBinaryDataBuffer',
-			'copyBinaryFile',
 		] as const;
 
 		expectedMethods.forEach((method) => {
 			expect(helperFunctions).toHaveProperty(method);
 			expect(typeof helperFunctions[method]).toBe('function');
 		});
-
-		await expect(async () => await helperFunctions.copyBinaryFile()).rejects.toThrow(
-			'`copyBinaryFile` has been removed',
-		);
 	});
 });
 

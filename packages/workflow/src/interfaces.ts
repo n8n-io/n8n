@@ -905,8 +905,6 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-	/** @deprecated */
-	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
@@ -1752,8 +1750,14 @@ export interface IPairedItemData {
 }
 
 export const ChatNodeMessageType = {
+	MESSAGE: 'message',
 	WITH_BUTTONS: 'with-buttons',
 } as const;
+
+export type ChatNodeMessageRegular = {
+	type: typeof ChatNodeMessageType.MESSAGE;
+	text: string;
+};
 
 export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
@@ -1920,8 +1924,6 @@ export type NodePropertyTypes =
 	| 'workflowSelector'
 	| 'agentSelector';
 
-export type CodeAutocompleteTypes = 'function' | 'functionItem';
-
 export type EditorType = 'codeNodeEditor' | 'jsEditor' | 'htmlEditor' | 'sqlEditor' | 'cssEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
@@ -1974,7 +1976,6 @@ export interface INodePropertyTypeOptions {
 	containerClass?: string; // Supported by: notice
 	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
-	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
 	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
@@ -2979,10 +2980,6 @@ export interface INodeOutputConfiguration {
 export type ExpressionString = `={{${string}}}`;
 
 export type NodeDefaults = Partial<{
-	/**
-	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
-	 */
-	color: string;
 	name: string;
 }>;
 
@@ -3234,11 +3231,6 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
-	$getPairedItem: (
-		destinationNodeName: string,
-		incomingSourceData: ISourceData | null,
-		pairedItem: IPairedItemData,
-	) => INodeExecutionData | null;
 	constructor: any;
 }
 

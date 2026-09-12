@@ -31,7 +31,7 @@ const MOCK_BASE_SETTINGS: RecursivePartial<ReturnType<typeof useSettingsStoreTyp
 	saveDataErrorExecution: 'none',
 	saveDataProgressExecution: true,
 	saveManualExecutions: true,
-	binaryDataMode: 'default',
+	binaryDataMode: 'filesystem',
 	pruning: {
 		isEnabled: true,
 		maxAge: 24,

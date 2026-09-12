@@ -15,13 +15,15 @@ import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credentials';
 import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
-import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
 import type { INodeProperties, INodeType, INodeTypeData, INode } from 'n8n-workflow';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -117,10 +119,6 @@ function buildDefaultNodes(): INodeTypeData {
 			type: new ManualTrigger(),
 			sourcePath: '',
 		},
-		'n8n-nodes-base.cron': {
-			type: new Cron(),
-			sourcePath: '',
-		},
 		'n8n-nodes-base.set': {
 			type: new Set(),
 			sourcePath: '',
@@ -181,11 +179,11 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 /**
  * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+export async function initBinaryDataService() {
 	const config = mock<BinaryDataConfig>({
-		mode,
-		availableModes: [mode],
-		localStoragePath: '',
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
+		localStoragePath: mkdtempSync(join(tmpdir(), 'n8n-binary-data-')),
 	});
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
@@ -232,9 +230,9 @@ export function makeWorkflow(options?: {
 
 	const node: INode = {
 		id: uuid(),
-		name: 'Cron',
-		type: 'n8n-nodes-base.cron',
-		parameters: {},
+		name: 'Schedule Trigger',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		parameters: SCHEDULE_TRIGGER_PARAMETERS,
 		typeVersion: 1,
 		position: [740, 240],
 	};
@@ -259,3 +257,9 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export const SCHEDULE_TRIGGER_PARAMETERS = {
+	rule: {
+		interval: [{ field: 'days' }],
+	},
+};
