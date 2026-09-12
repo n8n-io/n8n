@@ -9,6 +9,35 @@ import type {
 } from './execution.types';
 
 /**
+ * Timestamps come back however the store's driver reports them: the only
+ * consumer serializes them to JSON, where `Date` and an ISO string are the
+ * same value, so there is no point parsing or formatting them in between.
+ */
+export interface ExecutionListItemView {
+	id: string;
+	workflowId: string;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	createdAt: Date;
+	updatedAt: Date;
+	finishedAt: Date | null;
+}
+
+export interface ExecutionListQuery {
+	workflowIds: string[] | 'all';
+	status?: ExecutionStatus[];
+	mode?: string;
+	createdAfter?: string;
+	createdBefore?: string;
+	before?: { createdAt: string; id: string };
+	/** Required at this layer; the API's default lives on the request schema. */
+	limit: number;
+	includeTotal?: boolean;
+	/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+	order?: { top?: ExecutionStatus; startedAt?: 'DESC' };
+}
+
+/**
  * Read view of an execution: what a caller is shown, which is not what running
  * one needs. It carries the timing the execution path never reads, and omits
  * `triggerOutputs`, which only the start handler consumes.
@@ -66,6 +95,8 @@ export interface ExecutionWithStepsView extends ExecutionView {
  * columns in the query.
  */
 export interface ExecutionViewStore {
+	listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]>;
+	countExecutionViews(query: ExecutionListQuery): Promise<number>;
 	/** Read view of one execution. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionView(id: string): Promise<ExecutionView>;
 
