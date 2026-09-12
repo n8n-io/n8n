@@ -1,5 +1,5 @@
 import {
-	getModulePath,
+	getStaticStringValue,
 	isDirectRequireCall,
 	isRequireMemberCall,
 	createRule,
@@ -62,7 +62,7 @@ export const NoRestrictedImportsRule = createRule({
 
 		return {
 			ImportDeclaration(node) {
-				const modulePath = getModulePath(node.source);
+				const modulePath = getStaticStringValue(node.source);
 				if (modulePath && !isModuleAllowed(modulePath, devDependencies)) {
 					context.report({
 						node,
@@ -75,7 +75,7 @@ export const NoRestrictedImportsRule = createRule({
 			},
 
 			ImportExpression(node) {
-				const modulePath = getModulePath(node.source);
+				const modulePath = getStaticStringValue(node.source);
 				if (modulePath && !isModuleAllowed(modulePath, devDependencies)) {
 					context.report({
 						node,
@@ -89,7 +89,7 @@ export const NoRestrictedImportsRule = createRule({
 
 			CallExpression(node) {
 				if (isDirectRequireCall(node) || isRequireMemberCall(node)) {
-					const modulePath = getModulePath(node.arguments[0] ?? null);
+					const modulePath = getStaticStringValue(node.arguments[0] ?? null);
 					if (modulePath && !isModuleAllowed(modulePath, devDependencies)) {
 						context.report({
 							node,
