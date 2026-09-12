@@ -30,19 +30,16 @@ jobs:
       issues: write
       pull-requests: read
     steps:
+      # The script reads nothing outside `.github/`.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+          sparse-checkout: .github
 
       - name: Re-request PR Size Limit check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/quality/handle-size-override.mjs
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/handle-size-override.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   check-pr-size:
     name: PR Size Limit
@@ -66,19 +63,16 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      # The script reads nothing outside `.github/`.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+          sparse-checkout: .github
 
       - name: Check PR size
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/quality/check-pr-size.mjs
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/check-pr-size.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   changes:
     name: Detect Changes
