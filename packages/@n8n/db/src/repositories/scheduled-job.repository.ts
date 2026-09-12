@@ -174,6 +174,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await this.count({ where: ownerCriteria(owner) });
 	}
 
+	/** Whether the owner holds a job the sweep has not quarantined. */
+	async existsUnquarantinedByOwner(owner: ScheduledJobOwner): Promise<boolean> {
+		return await this.exists({ where: { ...ownerCriteria(owner), orphanedAt: IsNull() } });
+	}
+
 	async backdateNextRunAt(owner: ScheduledJobOwner, secondsInPast: number): Promise<void> {
 		const memberClause =
 			owner.ownerMemberId === null ? '"ownerMemberId" IS NULL' : '"ownerMemberId" = :ownerMemberId';

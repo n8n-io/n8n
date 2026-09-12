@@ -318,7 +318,10 @@ export class SchedulerConfig {
 	 * instance that does not run a job on the durable scheduler deletes that
 	 * job's schedule at startup, and the instances that do run it re-create it
 	 * only at their own startup. So one instance with a different setting stops
-	 * the job until one of the others restarts.
+	 * the job until one of the others restarts. Do not turn this off in the same
+	 * step as a rollback to an older version: the older version leaves a schedule
+	 * a newer version wrote in place and skips its own timer runs of that job
+	 * while the schedule stays.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;

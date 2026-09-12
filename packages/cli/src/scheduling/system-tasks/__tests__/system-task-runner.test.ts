@@ -49,6 +49,7 @@ describe('SystemTaskRunner', () => {
 		const jobs = mock<ScheduledJobRepository>();
 		jobs.findPayloadsByOwnerIds.mockResolvedValue([]);
 		jobs.findPayloadsByOwnerType.mockResolvedValue([]);
+		jobs.existsUnquarantinedByOwner.mockResolvedValue(false);
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 		const runner = new SystemTaskRunner(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
@@ -384,6 +385,104 @@ describe('SystemTaskRunner', () => {
 				expect.any(Error),
 				expect.objectContaining({ extra: { systemTask: 'dummy' } }),
 			);
+		});
+	});
+
+	describe('in-memory runs of a task provisioned elsewhere', () => {
+		it('skips the run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobs, logger } = setup();
+			dummy.durable = true;
+			dummy.retryDelaySeconds = 1;
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(0);
+			expect(jobs.existsUnquarantinedByOwner).toHaveBeenCalledTimes(2);
+			expect(jobs.existsUnquarantinedByOwner).toHaveBeenCalledWith({
+				ownerType: 'system-task',
+				ownerId: 'dummy',
+				ownerMemberId: null,
+			});
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipped'), {
+				name: 'dummy',
+			});
+		});
+
+		it('skips a takeover run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobs } = setup();
+			dummy.durable = true;
+			dummy.runOnTakeover = true;
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('runs when no durable job is stored for the task', async () => {
+			const { runner, metadata, jobs } = setup();
+			dummy.durable = true;
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(false);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('does not run a task whose store check settles after stepdown', async () => {
+			const { runner, metadata, jobs } = setup();
+			dummy.durable = true;
+			let settleCheck!: (exists: boolean) => void;
+			jobs.existsUnquarantinedByOwner.mockReturnValue(
+				new Promise<boolean>((resolve) => {
+					settleCheck = resolve;
+				}),
+			);
+			metadata.register(DummySystemTask);
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			const stepdown = runner.stopTimers();
+			settleCheck(false);
+			await stepdown;
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('runs when the store cannot be read', async () => {
+			const { runner, metadata, jobs, logger, errorReporter } = setup();
+			dummy.durable = true;
+			const error = new Error('connection lost');
+			jobs.existsUnquarantinedByOwner.mockRejectedValue(error);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('durable job'), {
+				name: 'dummy',
+				error,
+			});
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('does not read the store for a task that never runs durably', async () => {
+			const { runner, metadata, jobs } = setup();
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+			expect(jobs.existsUnquarantinedByOwner).not.toHaveBeenCalled();
 		});
 	});
 

@@ -146,4 +146,21 @@ describe('SystemTaskScheduledJobOwner', () => {
 			await expect(owner.findStale()).rejects.toBe(error);
 		});
 	});
+
+	describe('isProvisioned', () => {
+		it('reports a task with a stored job as provisioned', async () => {
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
+
+			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(true);
+			expect(jobs.existsUnquarantinedByOwner).toHaveBeenCalledExactlyOnceWith(
+				owner.owner('prune-executions'),
+			);
+		});
+
+		it('reports a task without a stored job or with only a quarantined one as not provisioned', async () => {
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(false);
+
+			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(false);
+		});
+	});
 });

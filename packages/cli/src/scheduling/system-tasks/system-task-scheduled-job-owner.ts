@@ -45,7 +45,7 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		if (undeclared.length > 0) {
 			const rows = await this.jobs.findPayloadsByOwnerIds(this.ownerType, undeclared);
 			for (const { ownerId, payload } of rows) {
-				if (stampedByNewerVersion(payload)) {
+				if (this.isAlive(ownerId, payload)) {
 					existing.add(ownerId);
 				}
 			}
@@ -53,13 +53,19 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return existing;
 	}
 
+	/** Whether any instance stored a durable job for the task that the sweep has not quarantined. */
+	async isProvisioned(taskName: string): Promise<boolean> {
+		return await this.jobs.existsUnquarantinedByOwner(this.owner(taskName));
+	}
+
 	/** The stored jobs this instance does not run durably and no newer version stamped, as read. */
 	async findStale(): Promise<StaleSystemTaskJob[]> {
 		const rows = await this.jobs.findPayloadsByOwnerType(this.ownerType);
-		return rows.filter(
-			({ ownerId, payload }) =>
-				!this.durableTaskNames.has(ownerId) && !stampedByNewerVersion(payload),
-		);
+		return rows.filter(({ ownerId, payload }) => !this.isAlive(ownerId, payload));
+	}
+
+	private isAlive(ownerId: string, payload: Record<string, unknown>): boolean {
+		return this.durableTaskNames.has(ownerId) || stampedByNewerVersion(payload);
 	}
 }
 
