@@ -13,6 +13,8 @@ export default {
 	'nds.userSelect.noMatchingUsers': 'No matching users',
 	'nds.inputNumber.increase': 'Increase',
 	'nds.inputNumber.decrease': 'Decrease',
+	'resizeWrapper.resize': 'Resize',
+	'resizeWrapper.drag': 'Drag',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',

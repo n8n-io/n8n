@@ -50,6 +50,7 @@ const props = defineProps<{
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	preventScroll?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -96,7 +97,7 @@ const i18n = useI18n();
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="$style.panelArea">
+		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<AgentIdentityHeader
 					:config="localConfig"
@@ -287,6 +288,8 @@ const i18n = useI18n();
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
@@ -305,9 +308,12 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
 	scrollbar-gutter: stable;
+	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+.preventScroll {
+	overflow: hidden;
 }
 
 .panelAreaContainer {

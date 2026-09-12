@@ -2,7 +2,7 @@
 import LogsViewExecutionSummary from '@/features/execution/logs/components/LogsViewExecutionSummary.vue';
 import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeader.vue';
 import LogsViewRunData from '@/features/execution/logs/components/LogsViewRunData.vue';
-import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { useResizablePanel } from '@n8n/design-system';
 import {
 	type LatestNodeInfo,
 	type LogEntry,
@@ -103,13 +103,21 @@ const consumedTokens = computed(() => getSubtreeTotalConsumedTokens(logEntry, fa
 const isTriggerNode = computed(() => type.value?.group.includes('trigger'));
 const { link: messageAgentSessionLink } = useMessageAgentSessionLink(computed(() => logEntry));
 const container = useTemplateRef<HTMLElement>('container');
-const resizer = useResizablePanel('N8N_LOGS_INPUT_PANEL_WIDTH', {
+const resizer = useResizablePanel({
 	container,
-	defaultSize: (size) => size / 2,
-	minSize: MIN_IO_PANEL_WIDTH,
-	maxSize: (size) => size - MIN_IO_PANEL_WIDTH,
-	allowCollapse: true,
-	allowFullSize: true,
+	width: {
+		localStorageKey: 'N8N_LOGS_INPUT_PANEL_WIDTH',
+		defaultSize: function getDefaultWidth(size) {
+			return size / 2;
+		},
+		minSize: MIN_IO_PANEL_WIDTH,
+		maxSize: function getMaxWidth(size) {
+			return size - MIN_IO_PANEL_WIDTH;
+		},
+		allowCollapse: true,
+		allowFullSize: true,
+		snap: true,
+	},
 });
 const shouldResize = computed(() => panels === LOG_DETAILS_PANEL_STATE.BOTH);
 const searchShortcutPriorityPanel = computed(() =>
@@ -128,8 +136,6 @@ function handleResizeEnd() {
 	if (resizer.isFullSize.value) {
 		emit('toggleOutputOpen', false);
 	}
-
-	resizer.onResizeEnd();
 }
 </script>
 
@@ -210,12 +216,11 @@ function handleResizeEnd() {
 						[$style.collapsed]: resizer.isCollapsed.value,
 						[$style.full]: resizer.isFullSize.value,
 					}"
-					:width="resizer.size.value"
-					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:resizer="resizer"
+					:style="shouldResize ? { width: `${resizer.width.value ?? 0}px` } : undefined"
 					:supported-directions="['right']"
 					:is-resizing-enabled="shouldResize"
 					:window="window"
-					@resize="resizer.onResize"
 					@resizeend="handleResizeEnd"
 				>
 					<LogsViewRunData
@@ -263,12 +268,11 @@ function handleResizeEnd() {
 						[$style.collapsed]: resizer.isCollapsed.value,
 						[$style.full]: resizer.isFullSize.value,
 					}"
-					:width="resizer.size.value"
-					:style="shouldResize ? { width: `${resizer.size.value ?? 0}px` } : undefined"
+					:resizer="resizer"
+					:style="shouldResize ? { width: `${resizer.width.value ?? 0}px` } : undefined"
 					:supported-directions="['right']"
 					:is-resizing-enabled="shouldResize"
 					:window="window"
-					@resize="resizer.onResize"
 					@resizeend="handleResizeEnd"
 				>
 					<div :class="$style.groupPane">

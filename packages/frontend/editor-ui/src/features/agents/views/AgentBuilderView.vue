@@ -2,7 +2,14 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	type ActionDropdownItem,
+	type ResizeData,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -198,6 +205,8 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
+const previewDockWidth = ref(480);
+const isPreviewDockResizing = ref(false);
 const isPreviewDockOpen = computed(function isPreviewDockOpen() {
 	return !isStandalonePreview.value && persistedPreviewOpen.value;
 });
@@ -677,6 +686,10 @@ function returnToBuilderFromPreview() {
 function closePreviewDock() {
 	persistedPreviewOpen.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
+}
+
+function onPreviewDockResize({ width }: ResizeData) {
+	previewDockWidth.value = width;
 }
 
 function onPublished(updated: AgentResource) {
@@ -2070,8 +2083,10 @@ function onSwitchAgent(nextAgentId: string) {
 				$style.builder,
 				{
 					[$style.previewOpen]: isPreviewDockOpen,
+					[$style.previewResizing]: isPreviewDockResizing,
 				},
 			]"
+			:style="{ '--agent-preview-chat-column-width': `${previewDockWidth}px` }"
 		>
 			<div
 				v-if="!isPreviewActive && !isArtifactMode && instanceAiAvailable"
@@ -2140,6 +2155,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
+					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
@@ -2178,34 +2194,47 @@ function onSwitchAgent(nextAgentId: string) {
 					@unpublished="onUnpublished"
 				/>
 
-				<AgentPreviewDock
+				<N8nResizeWrapper
 					v-if="!isStandalonePreview"
-					:is-open="isPreviewDockOpen"
-					:session-title="currentSessionTitle"
-					:session-options="sessionMenu"
-					:has-session="currentSessionHasMessages"
-					:initialized="initialized"
-					:project-id="projectId"
-					:agent-id="agentId"
-					:agent="agent"
-					:local-config="localConfig"
-					:connected-triggers="connectedTriggers"
-					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
-					:before-send="beforePreviewSend"
-					@view-trace="viewPreviewTrace"
-					@new-session="startNewPreviewSession"
-					@session-select="onSessionPick"
-					@close="closePreviewDock"
-					@continue-loaded="onContinueLoaded"
-					@send-to-assistant="onSendPreviewToAssistant"
-				/>
+					:class="[$style.previewResizeWrapper, { [$style.previewResizeOpen]: isPreviewDockOpen }]"
+					:width="previewDockWidth"
+					:min-width="320"
+					:supported-directions="['left']"
+					:grid-size="8"
+					@resizestart="isPreviewDockResizing = true"
+					@resize="onPreviewDockResize"
+					@resizeend="isPreviewDockResizing = false"
+				>
+					<AgentPreviewDock
+						:is-open="isPreviewDockOpen"
+						:session-title="currentSessionTitle"
+						:session-options="sessionMenu"
+						:has-session="currentSessionHasMessages"
+						:initialized="initialized"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:effective-session-id="effectiveSessionId"
+						:can-send-to-assistant="canSendPreviewToInstanceAi"
+						:before-send="beforePreviewSend"
+						@view-trace="viewPreviewTrace"
+						@new-session="startNewPreviewSession"
+						@session-select="onSessionPick"
+						@close="closePreviewDock"
+						@continue-loaded="onContinueLoaded"
+						@send-to-assistant="onSendPreviewToAssistant"
+					/>
+				</N8nResizeWrapper>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
 	display: flex;
 	flex-direction: column;
@@ -2220,17 +2249,34 @@ function onSwitchAgent(nextAgentId: string) {
 	min-height: 0;
 	overflow: hidden;
 	padding-right: 0;
+	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
-		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
+	&.previewResizing {
 		transition: none;
 	}
+
+	@include motion.reduced-motion;
+}
+
+.previewResizeWrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: var(--agent-preview-chat-column-width);
+	max-width: 100%;
+	z-index: 1;
+	pointer-events: none;
+}
+
+.previewResizeOpen {
+	pointer-events: auto;
 }
 
 .loading {

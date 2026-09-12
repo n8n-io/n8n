@@ -6,6 +6,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -1834,10 +1835,10 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
@@ -1901,8 +1902,8 @@ describe('InstanceAiThreadView', () => {
 		mockThreadAreaSizeState.width.value = 1200;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 720 });
 		await fireEvent.mouseUp(window);
 		expect(previewPanel.style.width).toBe('480px');
 
@@ -1919,8 +1920,8 @@ describe('InstanceAiThreadView', () => {
 
 		expect(previewPanel.style.width).toBe('400px');
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 920 });
 		await fireEvent.mouseUp(window);
 
 		mockThreadAreaSizeState.width.value = 1600;
