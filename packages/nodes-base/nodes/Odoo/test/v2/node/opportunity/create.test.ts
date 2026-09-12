@@ -48,7 +48,7 @@ describe('OdooV2 — opportunity:create', () => {
 
 	it('creates an opportunity using defineBelow mapping and returns its id', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_OPP_ID]);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue([MOCK_OPP_ID]);
 
 		const result = await node.execute.call(exec);
 
@@ -61,7 +61,7 @@ describe('OdooV2 — opportunity:create', () => {
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { name: 'Auto Deal', expected_revenue: 5000 } }]);
-		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_OPP_ID]);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue([MOCK_OPP_ID]);
 
 		await node.execute.call(exec);
 
@@ -72,7 +72,7 @@ describe('OdooV2 — opportunity:create', () => {
 
 	it('extracts scalar id when Odoo returns a plain number', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_OPP_ID);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(MOCK_OPP_ID);
 
 		const result = await node.execute.call(exec);
 
@@ -82,7 +82,9 @@ describe('OdooV2 — opportunity:create', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Odoo error'));
 
 		const result = await node.execute.call(exec);
 
@@ -92,7 +94,9 @@ describe('OdooV2 — opportunity:create', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Odoo error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Odoo error');
 	});
