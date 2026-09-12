@@ -136,6 +136,8 @@ profiles, tokens, determinism, and the other commands.
 ### Code Quality
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
+- `pnpm knip` - Report declared dependencies that no file in the package uses.
+  Ignores and per-package entries live in `knip.ts`
 
 Always run lint and typecheck before committing code to ensure quality.
 Execute these commands from within the specific package directory you're
