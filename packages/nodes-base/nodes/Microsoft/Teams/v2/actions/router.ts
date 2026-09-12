@@ -15,6 +15,7 @@ import type { MicrosoftTeamsType } from './node.type';
 import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
 import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
+import { stampItemIndexOnError } from '../../../GenericFunctions';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -106,7 +107,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 	return [returnData];

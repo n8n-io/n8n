@@ -280,6 +280,23 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		);
 	});
 
+	// MCP and AI Assistant test runs are `n8n_chat` too. They must resume on the
+	// runtime they started on, without the preview chat's extra instructions.
+	it.each([
+		['the preview chat', { ...previewRun, previewChat: true }, true],
+		['another draft surface', previewRun, undefined],
+	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
+		const { service, userRepository, agentTestRunService } = setup();
+		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
+
+		await service.resume(run, 'success');
+
+		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ previewChat: expected }),
+		);
+	});
+
 	it.each([
 		['a completed turn', completed],
 		[

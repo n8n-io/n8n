@@ -4,7 +4,7 @@ export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 // Utils
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
-export { redactSecrets } from './utils/redact-secrets';
+export { redactSecrets, sanitizeCredentialShapedValues } from './utils/redact-secrets';
 export { parseSSEStream } from './utils/sse';
 export {
 	validateEmbedQueryInput,
@@ -91,6 +91,7 @@ export {
 	processDocument,
 } from './utils/vector-store/processDocuments';
 export type { ServerSentEventMessage } from './utils/sse';
+export { stripNonXHeaders } from './utils/strip-non-x-headers';
 
 // Converters
 export { getParametersJsonSchema } from './converters/tool';

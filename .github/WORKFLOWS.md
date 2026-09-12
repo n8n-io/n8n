@@ -262,6 +262,29 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
+#### Running it by hand
+
+A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
+private again at each start. So a preview that slept reaches nobody until
+something shares port 5678 again, and its backend is gone with the container.
+**Actions → Util: Codespace Preview → Run workflow** does both without a commit
+and without a label toggle:
+
+| Input | Meaning |
+|---|---|
+| `pr_number` | The pull request to act on. |
+| `operation` | `up` (default) creates the box if it is gone, starts it if it sleeps, serves the head and shares the port again. `refresh` re-serves the head in a box that already exists. `down` deletes the box. |
+
+Prefer `up` unless you mean to delete: it covers create, wake and re-share.
+
+The button needs write access, and it appears only once the trigger is on
+`master` — GitHub lists dispatchable workflows from the default branch. A manual
+run takes the branch picked in the dropdown, which is the branch GitHub read the
+workflow from, so a branch can test a change to the preview scripts. A fork head
+is still refused, by `preview.mjs` rather than by the job's `if`. There is no
+`ls` operation: it needs no PR and posts no comment — run `pnpm preview ls`
+locally.
+
 #### Preview toggles
 
 A `preview:*` label configures an instance that already exists, so adding or
@@ -334,12 +357,14 @@ better than a person's account for quota attribution, though the token is scoped
 to one repository either way.
 
 The job checks out the base branch, never the PR head, so a PR cannot supply the
-script that reads that token.
+script that reads that token. A manual run checks out the branch chosen in the
+Run-workflow dropdown, which only a user with write access can pick.
 
 ### Other Manual Workflows
 
 | Workflow                    | Purpose                                                 |
 |-----------------------------|---------------------------------------------------------|
+| `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
@@ -369,6 +394,9 @@ release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
+
+test-sbom-nightly.yml
+    └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
@@ -522,6 +550,7 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -643,6 +672,7 @@ Workflows with `workflow_call` trigger:
 | `sec-sync-retarget-prs.yml`        | none                                          | Move bundle PRs back onto `bundle/*` |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
+| `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
@@ -670,6 +700,7 @@ Scripts in `.github/scripts/`:
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
+| `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts
 
@@ -678,6 +709,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
@@ -686,7 +718,7 @@ Scripts in `.github/scripts/`:
 
 | Script                          | Purpose                                                                 | Called By                      |
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
-| `codespace-preview.mjs`         | Map a `pull_request` event onto a preview operation, comment the result  | `util-codespace-preview.yml`   |
+| `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
@@ -909,6 +941,13 @@ a missing version.
 Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
+
+`test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
+Docker build to complete. It builds the production deployment closure at that run's SHA and
+validates the release SBOM. It also resolves the four immutable SHA image tags from that
+build and validates each image SBOM. The validation uses the same enrichment and SPDX gates
+as a release. It does not publish, attest, or upload an artifact. A failure reports to the
+Developer Platform Slack channel.
 
 ### SLSA L3 Provenance
 

@@ -1,3 +1,4 @@
+import type { InsightsByTime } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	HttpRequestClient,
@@ -10,6 +11,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -48,15 +50,22 @@ const LICENSE_METRICS_MOCK = {
 	evaluations: 0,
 };
 
-/** One `getInsightsByTime` row: the reported day held 42 executions. */
-const BY_TIME_MOCK = [{ date: `${REPORT_DATE}T00:00:00.000Z`, values: { total: 42 } }];
-
-function byTime(totalsByDay: Record<string, number>) {
+function byTime(totalsByDay: Record<string, number>): InsightsByTime[] {
 	return Object.entries(totalsByDay).map(([date, total]) => ({
 		date: `${date}T00:00:00.000Z`,
-		values: { total },
+		values: {
+			total,
+			succeeded: 0,
+			failed: 0,
+			failureRate: 0,
+			averageRunTime: 0,
+			timeSaved: 0,
+		},
 	}));
 }
+
+/** One `getInsightsByTime` row: the reported day held 42 executions. */
+const BY_TIME_MOCK = byTime({ [REPORT_DATE]: 42 });
 
 function makeConfig(overrides: Partial<InstanceReportingConfig> = {}): InstanceReportingConfig {
 	const config = new InstanceReportingConfig();
@@ -83,6 +92,7 @@ interface Harness {
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
 	http: HttpRequestClient;
+	eventService: Mocked<EventService>;
 	clientOptions: HttpRequestClientOptions | undefined;
 }
 
@@ -116,6 +126,8 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		}),
 	});
 
+	const eventService = mock<EventService>();
+
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
@@ -124,10 +136,11 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		ownershipService,
 		licenseMetricsRepository,
 		mockLogger(),
+		eventService,
 		outboundHttp,
 	);
 
-	return { service, reportRepository, insightsService, http, clientOptions };
+	return { service, reportRepository, insightsService, http, eventService, clientOptions };
 }
 
 describe('InstanceReportingService', () => {
@@ -315,6 +328,25 @@ describe('InstanceReportingService', () => {
 			await expect(service.sendReport()).rejects.toThrow('301');
 
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
+		});
+
+		test('emits a delivered event once the report is delivered', async () => {
+			const { service, eventService } = makeHarness();
+
+			await service.sendReport();
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-report-delivered');
+			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-failed');
+		});
+
+		test('emits a failed event when a delivery attempt fails', async () => {
+			const { service, eventService, http } = makeHarness();
+			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
+
+			await expect(service.sendReport()).rejects.toThrow('Network error');
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-report-failed');
+			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-delivered');
 		});
 
 		test('marks a report the receiver already holds as delivered, without retrying', async () => {

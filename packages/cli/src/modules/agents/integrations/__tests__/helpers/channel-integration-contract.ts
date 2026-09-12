@@ -1,3 +1,4 @@
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import type { ChatIntegrationActionExecutor } from '../../integration-action-executor';
@@ -17,6 +18,7 @@ export interface ChannelIntegrationReplayScenario {
 	};
 	expected: {
 		message: string;
+		author: AgentMessageAuthor;
 		followUpMessage: string;
 		integrationType: string;
 		context: Partial<IntegrationMessageContext>;
@@ -62,6 +64,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 					agentId: 'agent-1',
 					projectId: 'project-1',
 					message: scenario.expected.message,
+					author: scenario.expected.author,
 					integrationType: scenario.expected.integrationType,
 				}),
 			);

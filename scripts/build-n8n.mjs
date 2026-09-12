@@ -563,13 +563,14 @@ try {
 	// scripts, so we don't carry a second isolated install.
 	//
 	// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
-	// is only needed for the release SBOM job. The release-publish workflow opts in by
-	// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+	// is only needed for release and nightly SBOM validation. Those workflows opt in
+	// with N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
 	if (generateLicenses) {
 		echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 		try {
 			const toolingDir = path.join(config.rootDir, '.github', 'scripts');
-			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir . --ignore-workspace`;
+			// pnpm resolves a relative --lockfile-dir against --dir, so pass an absolute path.
+			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir ${toolingDir} --ignore-workspace`;
 			const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
 			generateProcess.pipe(process.stdout);
 			await generateProcess;

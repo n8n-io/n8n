@@ -1,4 +1,3 @@
-import { redactText } from '@n8n/agents';
 import {
 	createFilesystem,
 	createSandbox,
@@ -14,6 +13,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -48,7 +48,8 @@ const KNOWLEDGE_AUTO_STOP_INTERVAL_MINUTES = 15;
 const KNOWLEDGE_AUTO_ARCHIVE_INTERVAL_MINUTES = 60;
 const KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES = 7 * 24 * 60;
 
-type DaytonaSandboxLifecycle = Pick<
+/** `ephemeral` applies to every provider; the intervals are Daytona-only. */
+type SandboxLifecycle = Pick<
 	DaytonaSandboxConfig,
 	'ephemeral' | 'autoStopInterval' | 'autoArchiveInterval' | 'autoDeleteInterval'
 >;
@@ -247,7 +248,7 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
-		daytonaLifecycle: DaytonaSandboxLifecycle,
+		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
@@ -261,7 +262,7 @@ export class AgentSandboxRuntimeService {
 				n8nSandboxId,
 				labels,
 				cacheKey,
-				daytonaLifecycle,
+				lifecycle,
 				startOptions,
 			).finally(() => {
 				this.pendingSandboxAcquisitions.delete(cacheKey);
@@ -349,7 +350,7 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
-		daytonaLifecycle: DaytonaSandboxLifecycle,
+		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -359,8 +360,8 @@ export class AgentSandboxRuntimeService {
 
 		const config =
 			provider === 'daytona'
-				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, daytonaLifecycle)
-				: await this.resolveN8nSandboxConfig(n8nSandboxId);
+				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
+				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
@@ -404,7 +405,7 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		sandboxId: string,
 		labels: Record<string, string>,
-		lifecycle: DaytonaSandboxLifecycle = {},
+		lifecycle: SandboxLifecycle = {},
 	): Promise<DaytonaSandboxConfig> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
 		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
@@ -453,7 +454,10 @@ export class AgentSandboxRuntimeService {
 		};
 	}
 
-	private async resolveN8nSandboxConfig(sandboxId: string): Promise<N8nSandboxConfig> {
+	private async resolveN8nSandboxConfig(
+		sandboxId: string,
+		lifecycle: Pick<SandboxLifecycle, 'ephemeral'> = {},
+	): Promise<N8nSandboxConfig> {
 		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
 		const normalizedServiceUrl = serviceUrl?.trim();
 		if (!normalizedServiceUrl) {
@@ -469,6 +473,7 @@ export class AgentSandboxRuntimeService {
 			serviceUrl: normalizedServiceUrl,
 			apiKey,
 			timeout: this.agentsConfig.sandboxTimeout,
+			ephemeral: lifecycle.ephemeral,
 		};
 	}
 

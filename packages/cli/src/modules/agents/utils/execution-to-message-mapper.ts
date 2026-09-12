@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status' | 'error'
+	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -162,22 +162,29 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			id: `${execution.id}:user`,
 			role: 'user',
 			content: userContent,
+			...(execution.author ? { author: execution.author } : {}),
 			executionId: execution.id,
 		});
 	}
 
 	const assistantContent = assistantContentFromExecution(execution);
-	if (execution.status === 'error' && execution.error) {
-		const error = textPart(execution.error);
-		if (error) assistantContent.push(error);
-	}
-	if (assistantContent.length > 0) {
+	// The recorded run error travels with the transcript so history renders the
+	// same error bubble the live stream showed — also when the turn failed
+	// before producing any output at all (otherwise the run fails invisibly).
+	// It stays a separate field, not a text part, so the client does not show it
+	// as model output.
+	const executionError =
+		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
+			? execution.error
+			: undefined;
+	if (assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
+			...(executionError !== undefined ? { executionError } : {}),
 		});
 	}
 
@@ -223,5 +230,7 @@ export function executionsToMessagesDto(
 		message.content = message.content.filter((_, index) => !duplicateIndexes.has(index));
 	}
 
-	return messages.filter((message) => message.content.length > 0);
+	return messages.filter(
+		(message) => message.content.length > 0 || message.executionError !== undefined,
+	);
 }

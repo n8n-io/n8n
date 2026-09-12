@@ -135,7 +135,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
 			);
 		}
 	}
@@ -226,6 +226,8 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			payload.mode,
+			payload.promptVersion,
 		);
 		return { runId };
 	}
@@ -853,7 +855,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
@@ -1046,8 +1048,9 @@ export class InstanceAiController {
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
-	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
-	 * write the native message log verbatim. The thread then continues as if the
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1092,18 +1095,27 @@ export class InstanceAiController {
 		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1152,6 +1164,9 @@ export class InstanceAiController {
 				}
 			}
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;
