@@ -1,0 +1,42 @@
+packages/nodes-base/credentials/SlackSigningSecretApi.credentials.ts
+  s_8c555e7a05b282::t_8f93dc1b377eea 1-11,13-14,16-30
+  s_8c555e7a05b282::t_e8f500037b64ba 12,15
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  s_8c555e7a05b282::t_1d3b1a31cbfc95 355
+  s_8c555e7a05b282::t_0caa7efafd6321 46-49,60
+  s_8c555e7a05b282::t_8535525eac4bed 349-354
+packages/nodes-base/nodes/Slack/test/SlackTrigger.test.ts
+  s_8c555e7a05b282::t_8535525eac4bed 735,746-749
+  s_8c555e7a05b282::t_a48fbe60fc09b2 5,24
+  s_8c555e7a05b282::t_676febfe55460c 712
+  s_8c555e7a05b282::t_f6232cb7c084c4 713-734,750-754
+  s_8c555e7a05b282::t_35ed829be1b76c 736-745
+packages/nodes-base/credentials/SlackApi.credentials.ts
+  s_8c555e7a05b282::t_8535525eac4bed 25-27,30
+packages/nodes-base/package.json
+  s_8c555e7a05b282::t_03ef12cdf31e4d 364
+packages/nodes-base/nodes/Slack/test/SlackTriggerHelpers.test.ts
+  s_8c555e7a05b282::t_12f92b17a77693 204-279
+  s_8c555e7a05b282::t_8535525eac4bed 280-355
+  s_8c555e7a05b282::t_5e74bc41cf7b01 36-42
+packages/nodes-base/nodes/Slack/SlackTriggerHelpers.ts
+  s_8c555e7a05b282::t_8535525eac4bed 90-111,117-119,121,136
+  s_8c555e7a05b282::t_72fbc8ba3f1696 154
+  s_8c555e7a05b282::t_ed4446f2b069fc 84-89,115,120,122-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "25ae367356793d23d7cb3d694f586318eafecdd7",
+  "prompts": {},
+  "sessions": {
+    "s_8c555e7a05b282": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2b98f05-ad8b-449c-9cd5-c2b0e526862d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
