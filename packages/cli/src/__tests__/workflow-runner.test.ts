@@ -42,6 +42,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
@@ -402,6 +403,204 @@ describe('processError', () => {
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
+
+	test('processError does not fail the execution when a stalled-count error precedes the success write', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		vi.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValueOnce(mock<IExecutionBase>({ status: 'running' }))
+			.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: createRunExecutionData({ resultData: { runData: { Start: [] } } }),
+			}),
+		);
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+		expect(finalizeExecution).not.toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+	});
+
+	test('processError stops rechecking a stalled-count error once the grace window elapses', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockImplementation(async () => {
+				vi.setSystemTime(Date.now() + 10_000);
+				return mock<IExecutionBase>({ status: 'running' });
+			});
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.runAllTimersAsync();
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution.mock.calls.length).toBeLessThan(10);
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		const waitTill = new Date(Date.now() + 60_000);
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockResolvedValue(mock<IExecutionBase>({ status: 'waiting', waitTill }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				mode: 'webhook',
+				waitTill,
+				data: createRunExecutionData({ resultData: { runData: { Start: [] } } }),
+			}),
+		);
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		try {
+			// no timer runs here, so the call can only settle if it never waits
+			await runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'waiting' }),
+		);
+		expect(finalizeExecution).not.toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('waiting');
+	});
+
+	test('processError keeps a paused execution intact when its stored data cannot be read', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		vi.spyOn(executionRepository, 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'waiting', waitTill: new Date(Date.now() + 60_000) }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValue(
+			new Error('data bundle is gone'),
+		);
+
+		globalConfig.executions.mode = 'queue';
+
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'waiting' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test.each(['error', 'crashed', 'canceled'] as const)(
+		'processError fails a stalled-count error without rechecking when the execution is already %s',
+		async (status) => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running', finished: false }, workflow);
+			const executionRepository = Container.get(ExecutionRepository);
+			const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+			const findSingleExecution = vi
+				.spyOn(executionRepository, 'findSingleExecution')
+				.mockResolvedValue(mock<IExecutionBase>({ status }));
+
+			globalConfig.executions.mode = 'queue';
+			vi.useFakeTimers();
+
+			try {
+				// no timer runs here, so the call can only settle if it never waits
+				await runner.processError(
+					new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+					new Date(),
+					'webhook',
+					execution.id,
+					hooks,
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+
+			expect(findSingleExecution).toHaveBeenCalledTimes(1);
+			expect(finalizeExecution).toHaveBeenCalledWith(
+				execution.id,
+				expect.objectContaining({ status: 'error' }),
+			);
+			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	test('processError should return early if the error is `ExecutionNotFoundError`', async () => {
 		const workflow = await createWorkflow({}, owner);
