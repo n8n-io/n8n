@@ -1,0 +1,85 @@
+{
+	"name": "Brevo send email v1 receipients",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1f6e6f8a-3f38-4c1e-9f1f-df8b5a2d0001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-660, 560]
+		},
+		{
+			"parameters": {
+				"resource": "email",
+				"operation": "send",
+				"sendHTML": false,
+				"subject": "Hello",
+				"textContent": "Hello from n8n",
+				"sender": "sender@example.com",
+				"receipients": "recipient@example.com",
+				"additionalFields": {}
+			},
+			"id": "1f6e6f8a-3f38-4c1e-9f1f-df8b5a2d0002",
+			"name": "Brevo",
+			"type": "n8n-nodes-base.sendInBlue",
+			"typeVersion": 1,
+			"position": [-420, 560],
+			"credentials": {
+				"sendInBlueApi": {
+					"id": "1",
+					"name": "Brevo account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "1f6e6f8a-3f38-4c1e-9f1f-df8b5a2d0003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-200, 560]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"messageId": "<202601010000.1234567890@smtp-relay.mailin.fr>"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Brevo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Brevo": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "2a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+	"id": "brevoSendEmailV1Receipients",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}
