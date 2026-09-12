@@ -56,6 +56,7 @@ const MAX_CONSECUTIVE_ABSENT_CONFLICTS = 3;
 /** Floor for a single wait on a sandbox state transition, regardless of remaining budget. */
 const MIN_STATE_WAIT_SECONDS = 30;
 const TRANSIENT_HTTP_STATUS_CODES = new Set([408, 429]);
+const SNAPSHOT_ACTIVATION_POLL_MS = 5_000;
 
 /**
  * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
@@ -191,6 +192,16 @@ function isTransientAcquisitionError(error: unknown): boolean {
 		error.statusCode !== undefined &&
 		(error.statusCode >= 500 || TRANSIENT_HTTP_STATUS_CODES.has(error.statusCode))
 	);
+}
+
+/**
+ * Daytona auto-deactivates snapshots after a period of non-use and rejects creates
+ * that reference them with a validation error. The message is the only signal —
+ * there is no dedicated error class or code.
+ */
+function isInactiveSnapshotError(error: unknown): boolean {
+	const { DaytonaError } = loadDaytona();
+	return error instanceof DaytonaError && /snapshot .+ is inactive/i.test(error.message);
 }
 
 function acquisitionFailureClass(error: unknown): string {
@@ -719,36 +730,103 @@ export class DaytonaSandbox extends BaseSandbox {
 		let lastError: unknown;
 
 		for (const candidate of candidates) {
-			try {
-				return await this.withTransientRetry(
-					'create',
-					deadline,
-					async () =>
-						await client.create(candidate.params, {
-							timeout: this.createTimeoutSeconds(deadline),
-						}),
-				);
-			} catch (error) {
-				// A name conflict is strategy-independent; let the caller reattach by name.
-				if (isSandboxNameConflictError(error)) throw error;
-				lastError = error;
-				this.reportCreateError(error, candidate.strategy);
-				if (
-					candidate.strategy === 'snapshot' &&
-					candidates.some(({ strategy }) => strategy === 'image')
-				) {
-					this.options.logger?.warn('Sandbox create from snapshot failed; falling back to image', {
-						snapshotName: this.options.snapshot,
-						mode: this.options.createStrategyMode,
-						error: error instanceof Error ? error.message : String(error),
-					});
-					continue;
+			let activatedSnapshot = false;
+			for (;;) {
+				try {
+					return await this.withTransientRetry(
+						'create',
+						deadline,
+						async () =>
+							await client.create(candidate.params, {
+								timeout: this.createTimeoutSeconds(deadline),
+							}),
+					);
+				} catch (error) {
+					// A name conflict is strategy-independent; let the caller reattach by name.
+					if (isSandboxNameConflictError(error)) throw error;
+					// Daytona deactivated the referenced snapshot while it sat idle. It still
+					// exists, so reactivate it and retry — otherwise every run pinned to this
+					// version stays down until someone reactivates it manually.
+					if (
+						candidate.strategy === 'snapshot' &&
+						!activatedSnapshot &&
+						isInactiveSnapshotError(error) &&
+						(await this.activateSnapshotAndWait(client, deadline))
+					) {
+						activatedSnapshot = true;
+						continue;
+					}
+					lastError = error;
+					this.reportCreateError(error, candidate.strategy);
+					if (
+						candidate.strategy === 'snapshot' &&
+						candidates.some(({ strategy }) => strategy === 'image')
+					) {
+						this.options.logger?.warn(
+							'Sandbox create from snapshot failed; falling back to image',
+							{
+								snapshotName: this.options.snapshot,
+								mode: this.options.createStrategyMode,
+								error: error instanceof Error ? error.message : String(error),
+							},
+						);
+						break;
+					}
+					throw error;
 				}
-				throw error;
 			}
 		}
 
 		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
+	}
+
+	/**
+	 * Reactivate this sandbox's inactive snapshot and wait — bounded by the acquisition
+	 * deadline — for it to become active again. Best-effort: in proxy mode the snapshot
+	 * endpoints may not be allowed through, so any failure returns false and the original
+	 * create error propagates unchanged.
+	 */
+	private async activateSnapshotAndWait(client: Daytona, deadline: number): Promise<boolean> {
+		const snapshotName = this.options.snapshot;
+		if (!snapshotName) return false;
+		this.options.logger?.warn('Daytona snapshot is inactive; requesting activation', {
+			snapshotName,
+		});
+		try {
+			const snapshot = await client.snapshot.get(snapshotName);
+			if (snapshot.state === 'inactive') await client.snapshot.activate(snapshot);
+			for (;;) {
+				const current = await client.snapshot.get(snapshotName);
+				if (current.state === 'active') {
+					this.options.logger?.info('Daytona snapshot reactivated', { snapshotName });
+					return true;
+				}
+				if (current.state === 'error' || current.state === 'build_failed') {
+					this.options.logger?.warn('Daytona snapshot is unusable after activation request', {
+						snapshotName,
+						state: current.state,
+					});
+					return false;
+				}
+				if (Date.now() + SNAPSHOT_ACTIVATION_POLL_MS >= deadline) {
+					this.options.logger?.warn('Timed out waiting for Daytona snapshot activation', {
+						snapshotName,
+						state: current.state,
+					});
+					return false;
+				}
+				await new Promise((resolve) => setTimeout(resolve, SNAPSHOT_ACTIVATION_POLL_MS));
+			}
+		} catch (error) {
+			this.options.logger?.warn(
+				'Daytona snapshot activation failed; surfacing the original create error',
+				{
+					snapshotName,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+			return false;
+		}
 	}
 
 	private async waitBeforeAcquisitionRetry(attempt: number, deadline: number): Promise<void> {
