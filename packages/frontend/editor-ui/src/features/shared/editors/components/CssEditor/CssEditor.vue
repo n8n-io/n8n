@@ -81,6 +81,9 @@ const {
 	editorRef: cssEditor,
 	editorValue,
 	extensions,
+	// Pass as a getter so the read-only compartment reconfigures when the prop
+	// toggles at runtime (e.g. when a collaboration write lock is released)
+	isReadOnly: () => props.isReadOnly,
 	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());

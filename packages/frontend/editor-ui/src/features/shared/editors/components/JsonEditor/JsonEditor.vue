@@ -4,7 +4,7 @@ import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { linter as createLinter, lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
-import { EditorState, Prec } from '@codemirror/state';
+import { EditorState, Prec, StateEffect } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
 	EditorView,
@@ -43,6 +43,9 @@ const editorState = ref<EditorState | null>(null);
 const extensions = computed(() => {
 	const extensionsToApply: Extension[] = [
 		json(),
+		// Keep history in both configurations so the undo stack survives a
+		// read-only toggle. `undo`/`redo` are no-ops while the state is read-only.
+		history(),
 		lineNumbers(),
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
@@ -55,7 +58,6 @@ const extensions = computed(() => {
 	];
 	if (!props.isReadOnly) {
 		extensionsToApply.push(
-			history(),
 			Prec.highest(keymap.of(editorKeymap)),
 			createLinter(jsonParseLinter()),
 			lintGutter(),
@@ -98,6 +100,14 @@ watch(
 		}
 	},
 );
+
+// Read-only lives in the extensions, so reconfigure the editor in place when it
+// toggles at runtime (e.g. when a collaboration write lock is taken or released).
+// Reconfiguring keeps the live doc, which a destroy/recreate would reset to the
+// debounced `modelValue` and roll back the last keystrokes.
+watch(extensions, (newExtensions) => {
+	editor.value?.dispatch({ effects: StateEffect.reconfigure.of(newExtensions) });
+});
 
 function createEditor() {
 	const state = EditorState.create({ doc: props.modelValue, extensions: extensions.value });
