@@ -247,5 +247,31 @@ describe('PendingCallsManager', () => {
 		it('should handle removing non-existent call', () => {
 			expect(() => manager.remove('non-existent')).not.toThrow();
 		});
+
+		it('should clear the timer when removing a pending call', async () => {
+			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+			const promise = manager.waitForResult('call-1', 'tool', {}, 1000);
+			manager.remove('call-1');
+
+			expect(clearTimeoutSpy).toHaveBeenCalled();
+
+			clearTimeoutSpy.mockRestore();
+			// Drain the hanging promise to avoid open handles
+			await Promise.race([promise.catch(() => {}), Promise.resolve()]);
+		});
+
+		it('should not reject the promise when the timeout fires after removal', async () => {
+			const settled = { value: false };
+			const promise = manager.waitForResult('call-1', 'tool', {}, 500);
+			promise.then(() => (settled.value = true)).catch(() => (settled.value = true));
+
+			manager.remove('call-1');
+			jest.advanceTimersByTime(600);
+
+			await Promise.resolve();
+
+			expect(settled.value).toBe(false);
+		});
 	});
 });
