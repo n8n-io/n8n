@@ -5,8 +5,13 @@ import type { DiscoveredSpec } from './types.js';
 
 const DEFAULT_CONFIG = { defaultDuration: 60_000, maxGroupDuration: 300_000 };
 
-function spec(path: string, capabilities: string[] = []): DiscoveredSpec {
-	return { path, capabilities };
+function spec(
+	path: string,
+	capabilities: string[] = [],
+	fixturePools?: string[],
+	services: string[] = [],
+): DiscoveredSpec {
+	return { path, capabilities, services, fixturePools };
 }
 
 describe('distributeShards', () => {
@@ -54,10 +59,10 @@ describe('distributeShards', () => {
 		expect(result.totalTestTime).toBe(120_000);
 	});
 
-	it('groups specs with the same capability on the same shard', () => {
+	it('groups specs with the same fixture-pool digest on the same shard', () => {
 		const specs = [
-			spec('email1.spec.ts', ['email']),
-			spec('email2.spec.ts', ['email']),
+			spec('email1.spec.ts', ['email'], ['pool-a']),
+			spec('email2.spec.ts', ['email'], ['pool-a']),
 			spec('standard.spec.ts'),
 		];
 		const result = distributeShards(specs, 3, {}, DEFAULT_CONFIG);
@@ -68,29 +73,47 @@ describe('distributeShards', () => {
 		expect(emailShard!.specs).toContain('email2.spec.ts');
 	});
 
-	it('places different capabilities on separate shards when space allows', () => {
-		const specs = [spec('email.spec.ts', ['email']), spec('proxy.spec.ts', ['proxy'])];
+	it('places different fixture-pool digests on separate shards when space allows', () => {
+		const specs = [
+			spec('email1.spec.ts', ['email'], ['pool-a']),
+			spec('email2.spec.ts', ['email'], ['pool-b']),
+		];
 		const result = distributeShards(specs, 2, {}, DEFAULT_CONFIG);
 
-		const emailShard = result.shards.find((s) => s.capabilities.includes('email'));
-		const proxyShard = result.shards.find((s) => s.capabilities.includes('proxy'));
-		expect(emailShard).toBeDefined();
-		expect(proxyShard).toBeDefined();
-		expect(emailShard!.shard).not.toBe(proxyShard!.shard);
+		expect(result.shards).toHaveLength(2);
+		expect(result.shards.every((shard) => shard.specs.length === 1)).toBe(true);
 	});
 
-	it('splits capability groups exceeding maxGroupDuration', () => {
+	it('keeps specs with the same composite fixture-pool group together', () => {
+		const specs = [
+			spec('mixed1.spec.ts', ['email'], ['pool-a', 'pool-b']),
+			spec('mixed2.spec.ts', ['proxy'], ['pool-a', 'pool-b']),
+			spec('standard.spec.ts'),
+		];
+
+		const result = distributeShards(specs, 3, {}, DEFAULT_CONFIG);
+		const mixedShard = result.shards.find((shard) => shard.specs.includes('mixed1.spec.ts'));
+
+		expect(mixedShard?.specs).toContain('mixed2.spec.ts');
+		expect(mixedShard?.capabilities).toEqual(['email', 'proxy']);
+		expect(mixedShard?.fixtureCount).toBe(2);
+	});
+
+	it('keeps worker requirements scoped when splitting fixture groups', () => {
 		const metrics = {
 			'email1.spec.ts': 200_000,
-			'email2.spec.ts': 200_000,
+			'proxy.spec.ts': 200_000,
 		};
 		const config = { defaultDuration: 60_000, maxGroupDuration: 200_000 };
-		const specs = [spec('email1.spec.ts', ['email']), spec('email2.spec.ts', ['email'])];
+		const specs = [
+			spec('email1.spec.ts', ['email'], ['pool-email'], ['mailpit']),
+			spec('proxy.spec.ts', ['proxy'], ['pool-email'], ['proxy']),
+		];
 
 		const result = distributeShards(specs, 2, metrics, config);
 
-		const shardsWithEmail = result.shards.filter((s) => s.capabilities.includes('email'));
-		expect(shardsWithEmail.length).toBeGreaterThanOrEqual(2);
+		expect(result.shards.map((shard) => shard.capabilities)).toEqual([['email'], ['proxy']]);
+		expect(result.shards.map((shard) => shard.services)).toEqual([['mailpit'], ['proxy']]);
 	});
 
 	it('balances shards with greedy bin-packing', () => {
@@ -116,15 +139,14 @@ describe('distributeShards', () => {
 
 	it('calculates fixtureCount correctly', () => {
 		const specs = [
-			spec('email.spec.ts', ['email']),
-			spec('proxy.spec.ts', ['proxy']),
+			spec('email.spec.ts', ['email'], ['pool-email']),
+			spec('proxy.spec.ts', ['proxy'], ['pool-proxy']),
 			spec('standard.spec.ts'),
 		];
 
 		const result = distributeShards(specs, 1, {}, DEFAULT_CONFIG);
 		const shard = result.shards[0];
 
-		// 2 capabilities + standard specs = 3
 		expect(shard.fixtureCount).toBe(3);
 	});
 
@@ -135,8 +157,8 @@ describe('distributeShards', () => {
 		expect(result.shards[0].fixtureCount).toBe(1);
 	});
 
-	it('fixtureCount is 1 for shard with only one capability and no standard specs', () => {
-		const specs = [spec('email.spec.ts', ['email'])];
+	it('fixtureCount is 1 for a shard with one fixture group', () => {
+		const specs = [spec('email.spec.ts', ['email'], ['pool-email'])];
 		const result = distributeShards(specs, 1, {}, DEFAULT_CONFIG);
 
 		expect(result.shards[0].fixtureCount).toBe(1);
@@ -228,7 +250,6 @@ describe('distributeShards', () => {
 			const { specs, metrics } = evenSpecs(9, 5 * 60_000);
 			const config = { ...DEFAULT_CONFIG, targetShardDuration: MIN, minShardSpecs: 3 };
 
-			// by time: ceil(45/5) = 9 shards. by specs: floor(9/3) = 3 shards
 			expect(distributeShards(specs, 16, metrics, config).shards).toHaveLength(3);
 		});
 
@@ -247,29 +268,31 @@ describe('distributeShards', () => {
 				5 * 60_000,
 			]);
 		});
-		it('never merges capability groups onto one shard', () => {
+		it('never merges fixture groups onto one shard', () => {
 			const specs = [
-				spec('proxy.spec.ts', ['proxy']),
-				spec('email.spec.ts', ['email']),
-				spec('oidc.spec.ts', ['oidc']),
-				spec('kafka.spec.ts', ['kafka']),
+				spec('proxy.spec.ts', ['proxy'], ['pool-proxy']),
+				spec('email.spec.ts', ['email'], ['pool-email']),
+				spec('oidc.spec.ts', ['oidc'], ['pool-oidc']),
+				spec('kafka.spec.ts', ['kafka'], ['pool-kafka']),
 			];
 			const metrics = Object.fromEntries(specs.map((s) => [s.path, 45_000]));
 
-			// 3 min total is far below the limit, but 4 capability groups need 4 shards
+			// Four fixture groups require four shards.
 			const result = distributeShards(specs, 16, metrics, withLimit);
 
 			expect(result.shards).toHaveLength(4);
 			expect(result.shards.every((s) => s.fixtureCount === 1)).toBe(true);
 		});
 
-		it('never merges capability groups when a large group is split', () => {
-			// 'proxy' totals 12 min and splits into 3 items, so the 5 capability items
-			// need 5 shards even though there are only 3 distinct capabilities.
+		it('never merges fixture groups when a large group is split', () => {
+			// Splitting pool-proxy creates three items.
+			// The other pools create two items.
 			const specs = [
-				...Array.from({ length: 12 }, (_, i) => spec(`proxy${i}.spec.ts`, ['proxy'])),
-				spec('email.spec.ts', ['email']),
-				spec('oidc.spec.ts', ['oidc']),
+				...Array.from({ length: 12 }, (_, i) =>
+					spec(`proxy${i}.spec.ts`, ['proxy'], ['pool-proxy']),
+				),
+				spec('email.spec.ts', ['email'], ['pool-email']),
+				spec('oidc.spec.ts', ['oidc'], ['pool-oidc']),
 			];
 			const metrics = Object.fromEntries(specs.map((s) => [s.path, 60_000]));
 
@@ -278,16 +301,20 @@ describe('distributeShards', () => {
 			expect(result.shards.every((s) => s.fixtureCount === 1)).toBe(true);
 		});
 
-		it('still collapses specs that share one capability group', () => {
-			const specs = Array.from({ length: 4 }, (_, i) => spec(`p${i}.spec.ts`, ['proxy']));
+		it('still collapses specs that share one fixture group', () => {
+			const specs = Array.from({ length: 4 }, (_, i) =>
+				spec(`p${i}.spec.ts`, ['proxy'], ['pool-proxy']),
+			);
 			const metrics = Object.fromEntries(specs.map((s) => [s.path, 45_000]));
 			const result = distributeShards(specs, 16, metrics, withLimit);
 
 			expect(result.shards).toHaveLength(1);
 		});
 
-		it('never exceeds numShards when capability groups outnumber the shards', () => {
-			const specs = Array.from({ length: 6 }, (_, i) => spec(`c${i}.spec.ts`, [`cap${i}`]));
+		it('never exceeds numShards when fixture groups outnumber the shards', () => {
+			const specs = Array.from({ length: 6 }, (_, i) =>
+				spec(`c${i}.spec.ts`, [`cap${i}`], [`pool-${i}`]),
+			);
 			const metrics = Object.fromEntries(specs.map((s) => [s.path, 10_000]));
 			const result = distributeShards(specs, 2, metrics, withLimit);
 
@@ -298,8 +325,7 @@ describe('distributeShards', () => {
 			const { specs, metrics } = evenSpecs(12, 60_000);
 			const result = distributeShards(specs, 16, metrics, withLimit);
 
-			// ceil(12/5) = 3 shards of 4 min each — below MIN, and deliberately so:
-			// floor() would give 2 shards of 6 min and add 2 min of wall-clock.
+			// Three shards minimize wall time. Two shards would add two minutes.
 			expect(result.shards).toHaveLength(3);
 			expect(Math.min(...result.shards.map((s) => s.testTime))).toBeLessThan(MIN);
 		});

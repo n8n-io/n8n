@@ -28,15 +28,25 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
-		template:
-			'<button :data-test-id="$attrs[\'data-test-id\']" @click="$emit(\'click\')">{{ icon }}</button>',
-		props: ['icon'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
+		props: ['icon', 'variant', 'size'],
 		emits: ['click'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 	N8nText: {
 		template: '<span v-bind="$attrs"><slot /></span>',
 		props: ['size', 'color', 'tag'],
+	},
+	N8nCallout: {
+		template:
+			'<div v-bind="$attrs"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
+		props: ['theme', 'icon', 'iconless', 'slim'],
+	},
+	N8nButton: {
+		template:
+			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+		emits: ['click'],
+		props: ['variant', 'size'],
 	},
 }));
 
@@ -111,6 +121,95 @@ vi.mock('@n8n/i18n', () => ({
 describe('AgentChatMessageList', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('agent change requests', () => {
+		beforeEach(() => {
+			sessionStorage.clear();
+		});
+
+		const changeRequest = {
+			id: 'user-1',
+			role: 'user',
+			content: 'Please update your instructions to always answer in German',
+			status: 'success',
+		} satisfies ChatMessage;
+
+		it('offers the assistant hand-off for a change request in the preview', async () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [changeRequest],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(true);
+			await wrapper.find('[data-testid="agent-preview-change-request-link"]').trigger('click');
+			expect(wrapper.emitted('sendToAssistant')?.[0]).toEqual([
+				{ changeRequest: changeRequest.content },
+			]);
+		});
+
+		it('stays dismissed for the rest of the chat session, but asks again in a new one', async () => {
+			const props = {
+				messages: [changeRequest],
+				messagingState: 'idle' as const,
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			};
+			const wrapper = mount(AgentChatMessageList, { props });
+
+			await wrapper.find('[data-testid="agent-preview-change-request-dismiss"]').trigger('click');
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+
+			// Resuming the same session — the chat panel remounts on navigation, so
+			// the dismissal has to outlive the component.
+			const resumed = mount(AgentChatMessageList, {
+				props: {
+					...props,
+					messages: [{ ...changeRequest, id: 'user-2', content: 'add a slack channel' }],
+				},
+			});
+			expect(resumed.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+
+			// A new chat starts over.
+			const newSession = mount(AgentChatMessageList, {
+				props: { ...props, sessionId: 'thread-2' },
+			});
+			expect(newSession.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				true,
+			);
+		});
+
+		it('stays hidden outside the preview and for ordinary messages', () => {
+			const outsidePreview = mount(AgentChatMessageList, {
+				props: { messages: [changeRequest], messagingState: 'idle' },
+			});
+			expect(
+				outsidePreview.find('[data-testid="agent-preview-change-request-note"]').exists(),
+			).toBe(false);
+
+			const ordinary = mount(AgentChatMessageList, {
+				props: {
+					messages: [{ ...changeRequest, content: 'What is the weather in Berlin?' }],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			expect(ordinary.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+		});
 	});
 
 	it('renders streamed reasoning with the shared thinking components', () => {

@@ -52,12 +52,14 @@ import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
-import { Expression } from 'n8n-workflow';
+import { Expression, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeParameters,
+	INodeTypeDescription,
 	IPinData,
 	IRunExecutionData,
 	ITaskData,
@@ -74,6 +76,7 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -142,6 +145,9 @@ function createMockExecutionRepository(
 	};
 }
 
+/** The subset of a workflow node the adapter helpers read. */
+type WorkflowNode = { name: string; type: string; onError?: string };
+
 /** Build a minimal execution object that satisfies the shape read by the adapter helpers. */
 function makeExecution(
 	overrides: {
@@ -151,7 +157,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
+		workflowNodes?: WorkflowNode[];
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -162,6 +168,7 @@ function makeExecution(
 		stoppedAt: overrides.stoppedAt ?? new Date('2026-01-01T00:01:00Z'),
 		workflowData: {
 			nodes: overrides.workflowNodes ?? [],
+			connections: {},
 		},
 		data: {
 			resultData: {
@@ -194,6 +201,41 @@ function makeTaskData(
 		...(opts?.error ? { error: opts.error } : {}),
 		...(opts?.executionStatus ? { executionStatus: opts.executionStatus } : {}),
 	} as unknown as ITaskData;
+}
+
+const FILTER_NODE: WorkflowNode = { name: 'Filter', type: 'n8n-nodes-base.filter' };
+
+/**
+ * Mock an execution where `node` ran once and emitted `outputs`, one item list
+ * per output. `null` marks an output that never received data.
+ */
+function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_NODE) {
+	const main = outputs.map((items) => items?.map((json) => ({ json })) ?? null);
+	createMockExecutionRepository(
+		makeExecution({
+			workflowNodes: [node],
+			runData: { [node.name]: [{ ...makeTaskData([]), data: { main } }] },
+		}),
+	);
+}
+
+/** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
+function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
+	const nodeTypes = mock<NodeTypes>();
+	nodeTypes.getByNameAndVersion.mockReturnValue({
+		description: { properties: [], ...description },
+	} as never);
+	return nodeTypes;
+}
+
+/** Node types that resolve every node to a Filter: one declared output, two output names. */
+function filterNodeTypes(): NodeTypes {
+	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
+}
+
+/** Parse the JSON the adapter wrapped in untrusted-data boundary tags. */
+function unwrapJson(wrapped: unknown): unknown {
+	return JSON.parse(String(wrapped).split('\n').slice(1, -1).join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +371,34 @@ describe('extractExecutionResult', () => {
 		expect(result.data!['Set Node']).toContain('<untrusted_data');
 		expect(result.data!['Set Node']).toContain('"id": 1');
 		expect(result.data!['Set Node']).toContain('"name": "Alice"');
+	});
+
+	it('groups the output data of a multi-output node per output', async () => {
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+
+		const result = await extractExecutionResult('exec-1', true, filterNodeTypes());
+
+		expect(unwrapJson(result.data!.Filter)).toEqual({
+			outputs: [
+				{ index: 0, name: 'Kept', items: [{ text: '$TSLA' }] },
+				{ index: 1, name: 'Discarded', items: [{ text: 'plain' }] },
+			],
+			totalItems: 2,
+		});
+	});
+
+	it('reports a null output as empty', async () => {
+		mockMultiOutputRun([null, [{ id: 1 }]]);
+
+		const result = await extractExecutionResult('exec-1', true);
+
+		expect(unwrapJson(result.data!.Filter)).toEqual({
+			outputs: [
+				{ index: 0, items: [] },
+				{ index: 1, items: [{ id: 1 }] },
+			],
+			totalItems: 1,
+		});
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
@@ -714,6 +784,33 @@ describe('truncateResultData', () => {
 		const result = truncateResultData(data);
 
 		expect(result['Empty Node']).toEqual([]);
+	});
+
+	it('collapses the item arrays of each output for a multi-output node', () => {
+		const bigItems = Array.from({ length: 200 }, (_, i) => ({ id: i, data: 'x'.repeat(300) }));
+		const data: Record<string, unknown> = {
+			Filter: {
+				outputs: [
+					{ index: 0, name: 'Kept', items: bigItems },
+					{ index: 1, name: 'Discarded', items: [] },
+				],
+				totalItems: 200,
+			},
+		};
+
+		const result = truncateResultData(data);
+
+		expect(result.Filter).toEqual({
+			outputs: [
+				{
+					index: 0,
+					name: 'Kept',
+					items: { _itemCount: 200, _truncated: true, _firstItemPreview: bigItems[0] },
+				},
+				{ index: 1, name: 'Discarded', items: [] },
+			],
+			totalItems: 200,
+		});
 	});
 });
 
@@ -1147,7 +1244,7 @@ describe('extractNodeOutput', () => {
 
 		expect(result.nodeName).toBe('Set Node');
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(10); // default maxItems
+		expect(result.outputs[0].items).toHaveLength(10); // default maxItems
 		expect(result.returned).toEqual({ from: 0, to: 10 });
 	});
 
@@ -1163,11 +1260,11 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Set Node', { startIndex: 10, maxItems: 5 });
 
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(5);
+		expect(result.outputs[0].items).toHaveLength(5);
 		expect(result.returned).toEqual({ from: 10, to: 15 });
 		// Items are wrapped in untrusted-data boundary tags
-		expect(result.items[0]).toContain('<untrusted_data');
-		expect(result.items[0]).toContain('"id": 10');
+		expect(result.outputs[0].items[0]).toContain('<untrusted_data');
+		expect(result.outputs[0].items[0]).toContain('"id": 10');
 	});
 
 	it('caps maxItems at 50', async () => {
@@ -1181,7 +1278,7 @@ describe('extractNodeOutput', () => {
 
 		const result = await extractNodeOutput('exec-1', 'Set Node', { maxItems: 100 });
 
-		expect(result.items).toHaveLength(50);
+		expect(result.outputs[0].items).toHaveLength(50);
 		expect(result.returned).toEqual({ from: 0, to: 50 });
 	});
 
@@ -1197,9 +1294,9 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Big Node');
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(1);
+		expect(result.outputs[0].items).toHaveLength(1);
 		// Items are wrapped in untrusted-data boundary tags after truncation
-		const wrapped = result.items[0] as string;
+		const wrapped = result.outputs[0].items[0] as string;
 		expect(wrapped).toContain('<untrusted_data');
 		expect(wrapped).toContain('_truncatedItem');
 		expect(wrapped).toContain('"originalLength"');
@@ -1237,8 +1334,122 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Node', { startIndex: 100 });
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(0);
+		expect(result.outputs[0].items).toHaveLength(0);
 		expect(result.returned).toEqual({ from: 100, to: 100 });
+	});
+
+	it('reports each output of a multi-output node separately, with the node type labels', async () => {
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', undefined, filterNodeTypes());
+
+		expect(result.totalItems).toBe(2);
+		expect(result.returned).toEqual({ from: 0, to: 2 });
+		expect(result.outputs).toEqual([
+			{
+				index: 0,
+				name: 'Kept',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "$TSLA"')],
+			},
+			{
+				index: 1,
+				name: 'Discarded',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "plain"')],
+			},
+		]);
+	});
+
+	it('lists empty and null outputs as empty, and omits names without node types', async () => {
+		mockMultiOutputRun([[], null, [{ id: 1 }, { id: 2 }]]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter');
+
+		expect(result.totalItems).toBe(2);
+		expect(result.outputs).toEqual([
+			{ index: 0, totalItems: 0, items: [] },
+			{ index: 1, totalItems: 0, items: [] },
+			{
+				index: 2,
+				totalItems: 2,
+				items: [expect.stringContaining('"id": 1'), expect.stringContaining('"id": 2')],
+			},
+		]);
+	});
+
+	it('paginates across outputs as one sequence', async () => {
+		mockMultiOutputRun([
+			[{ id: 0 }, { id: 1 }],
+			[{ id: 2 }, { id: 3 }],
+		]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', { startIndex: 1, maxItems: 2 });
+
+		expect(result.returned).toEqual({ from: 1, to: 3 });
+		expect(result.outputs[0].items).toEqual([expect.stringContaining('"id": 1')]);
+		expect(result.outputs[1].items).toEqual([expect.stringContaining('"id": 2')]);
+	});
+
+	it.each<{
+		name: string;
+		node?: Partial<WorkflowNode>;
+		description: Partial<INodeTypeDescription>;
+		names: string[];
+	}>([
+		{
+			name: 'prefers the displayName of a declared output over outputNames',
+			description: {
+				outputs: [
+					{ type: NodeConnectionTypes.Main, displayName: 'Premium' },
+					{ type: NodeConnectionTypes.Main, displayName: 'Fallback' },
+				],
+				outputNames: ['a', 'b'],
+			},
+			names: ['Premium', 'Fallback'],
+		},
+		{
+			name: 'resolves an outputs expression to its display names',
+			description: {
+				outputs: "={{ [{ type: 'main', displayName: 'A' }, { type: 'main', displayName: 'B' }] }}",
+			},
+			names: ['A', 'B'],
+		},
+		{
+			name: 'labels the outputs Success and Error when the node routes errors to an extra output',
+			node: { onError: 'continueErrorOutput' },
+			description: { outputs: [NodeConnectionTypes.Main] },
+			names: ['Success', 'Error'],
+		},
+	])('$name', async ({ node, description, names }) => {
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], { ...FILTER_NODE, ...node });
+
+		const result = await extractNodeOutput(
+			'exec-1',
+			'Filter',
+			undefined,
+			nodeTypesWith(description),
+		);
+
+		expect(result.outputs.map((output) => output.name)).toEqual(names);
+	});
+
+	it('returns index-only outputs when the node type is unknown', async () => {
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], {
+			name: 'Filter',
+			type: 'n8n-nodes-community.missing',
+		});
+		const nodeTypes = mock<NodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('Unrecognized node type');
+		});
+
+		const result = await extractNodeOutput('exec-1', 'Filter', undefined, nodeTypes);
+
+		expect(result.outputs).toEqual([
+			{ index: 0, totalItems: 1, items: [expect.stringContaining('"id": 1')] },
+			{ index: 1, totalItems: 1, items: [expect.stringContaining('"id": 2')] },
+		]);
 	});
 });
 
@@ -5266,7 +5477,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
-		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
+		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5291,7 +5502,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
-			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
+			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5300,6 +5511,17 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
+		});
+	});
+
+	// Regression guard for the shipped bug: the flag is multivariate, so a
+	// boolean `true` is not a value PostHog can return for it. Reading it as one
+	// left the gate shut at every rollout percentage.
+	it('does not open the folder-exploration gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			folderExplorationEnabled: false,
 		});
 	});

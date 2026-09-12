@@ -501,7 +501,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:push')
 	@ApiSummary('Promote all team projects')
 	@ApiDescription(
-		'Exports every team project, commits it, and pushes to the configured branch. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.',
+		'Exports every team project, commits it, and pushes to the configured base branch or a new timestamped branch. The response reports the target branch in `git.branchName`. Personal projects are ignored. Requires the Promote direction to be cloned first, and is available on the instance connection only. The API key also needs variable:list when the workflows reference variables.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotePackageResultDto)

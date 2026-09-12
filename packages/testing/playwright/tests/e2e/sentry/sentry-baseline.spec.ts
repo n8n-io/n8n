@@ -7,7 +7,7 @@ test.beforeEach(async ({ n8nContainer }) => {
 });
 
 test.describe(
-	'Sentry baseline @capability:kent',
+	'Sentry baseline',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

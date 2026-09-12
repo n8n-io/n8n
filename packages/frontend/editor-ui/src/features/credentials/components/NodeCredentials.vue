@@ -131,6 +131,13 @@ type Props = {
 	 *  document's nonexistent workflow id and replace the credential store
 	 *  with the empty result. */
 	skipCredentialsFetch?: boolean;
+	/** Host-supplied credential list to render in the dropdown instead of the
+	 *  shared usable-credentials slice. Used by hosts that already hold the
+	 *  exact, project-scoped, type-matched list (e.g. the Instance AI setup
+	 *  card, which receives it in the suspend payload) so the dropdown does
+	 *  not depend on a slice that may be empty or cleared by a competing
+	 *  scoped fetch. Items must carry the credential `type`. */
+	credentials?: ICredentialsResponse[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -254,6 +261,7 @@ const {
 	nodeType,
 	() => props.overrideCredType,
 	() => props.showAll,
+	() => props.credentials,
 );
 
 const credentialTypeNames = computed(() => {
@@ -270,6 +278,24 @@ const credentialTypeNames = computed(() => {
 const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
+
+/**
+ * Resolve a picked credential from the rows the dropdown is showing before
+ * consulting the store. A host-supplied `credentials` list can hold ids the
+ * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
+ */
+function findDisplayedCredential(
+	credentialType: string,
+	credentialId: string,
+): ICredentialsResponse | undefined {
+	const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+		({ type }) => type.name === credentialType,
+	);
+	return (
+		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getCredentialById(credentialId)
+	);
+}
 
 function isCredentialResolvable(credentialType: string): boolean {
 	if (!isPrivateCredentialsEnabled.value) return false;
@@ -403,8 +429,9 @@ watch(
 		if (types.length === 0) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The
-		// watcher re-fires once the fetch populates the slice.
-		if (!credentialsStore.hasFetchedUsableCredentials) return;
+		// watcher re-fires once the fetch populates the slice. A host-supplied list
+		// is complete on its own, so it does not wait for the fetch.
+		if (!props.credentials && !credentialsStore.hasFetchedUsableCredentials) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
@@ -423,7 +450,11 @@ watch(
 
 		if (!isEmpty(selected.value)) return;
 
-		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		const autoSelected = getAutoSelectedCredential(
+			node.value,
+			props.overrideCredType,
+			props.credentials,
+		);
 		if (autoSelected) {
 			onCredentialSelected(
 				autoSelected.credentialType,
@@ -704,7 +735,8 @@ function onCredentialSelected(
 		});
 	}
 
-	const selectedCredentials = credentialsStore.getCredentialById(credentialId);
+	const selectedCredentials = findDisplayedCredential(credentialType, credentialId);
+	if (!selectedCredentials) return;
 	const selectedCredentialsType = props.showAll ? selectedCredentials.type : credentialType;
 	const oldCredentials = props.node.credentials?.[selectedCredentialsType] ?? null;
 
@@ -902,11 +934,12 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		);
 
 		if (typeEntry && typeEntry.options.length > 0) {
+			// The option row already carries id and name — no store round-trip, so a
+			// host-supplied credential not yet in the flat map restores too.
 			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
-			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
-			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+			credentials[credentialType] = { id: mostRecent.id, name: mostRecent.name };
 			assignedKind = 'own';
-			assignedCredentialId = restoredCredential.id;
+			assignedCredentialId = mostRecent.id;
 		} else {
 			delete credentials[credentialType];
 		}

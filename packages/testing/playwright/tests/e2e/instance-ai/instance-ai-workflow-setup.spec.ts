@@ -452,7 +452,7 @@ function expectNodeParameter(
 }
 
 test.describe(
-	'Instance AI workflow setup @capability:proxy @db:reset',
+	'Instance AI workflow setup @db:reset',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
