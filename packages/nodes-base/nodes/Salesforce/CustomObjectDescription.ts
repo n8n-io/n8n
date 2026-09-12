@@ -61,6 +61,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
@@ -135,6 +136,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
+						allowArbitraryValues: true, // Allows users to specify fields using expressions for any given object without showing an error
 						typeOptions: {
 							loadOptionsMethod: 'getCustomObjectFields',
 							loadOptionsDependsOn: ['customObject'],
@@ -162,6 +164,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
@@ -215,6 +218,7 @@ export const customObjectFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
+						allowArbitraryValues: true, // Allows users to specify fields using expressions for any given object without showing an error
 						typeOptions: {
 							loadOptionsMethod: 'getCustomObjectFields',
 							loadOptionsDependsOn: ['customObject'],
@@ -242,6 +246,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
@@ -278,6 +283,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
@@ -314,6 +320,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayName: 'Custom Object Name or ID',
 		name: 'customObject',
 		type: 'options',
+		allowArbitraryValues: true, // Allows users to specify objects using expressions for custom objects without showing an error
 		typeOptions: {
 			loadOptionsMethod: 'getCustomObjects',
 		},
