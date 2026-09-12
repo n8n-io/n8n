@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
 
+import { EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
 import type { ExternalSecretsConfig } from '../external-secrets.config';
@@ -1444,6 +1445,80 @@ describe('ExternalSecretsManager', () => {
 				} finally {
 					manager.shutdown();
 				}
+			});
+
+			describe('unreachable provider on startup', () => {
+				// A vault that silently drops packets, as a dead endpoint inside a VPC does: the
+				// connect never settles and never errors. Module init awaits this connect, so
+				// everything behind external secrets in the boot sequence waits with it, and
+				// /healthz/readiness stays 503 for as long as the OS lets the socket dangle.
+				const connectionsFor = (...providerKeys: string[]) =>
+					providerKeys.map((providerKey) => ({
+						providerKey,
+						type: 'dummy',
+						encryptedSettings: 'encrypted-data',
+						isEnabled: true,
+					}));
+
+				it('should finish initialization when a provider connect never answers', async () => {
+					class BlackholeConnectProvider extends DummyProvider {
+						protected override async doConnect(): Promise<void> {
+							await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: BlackholeConnectProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+
+					try {
+						await initPromise;
+
+						expect(manager.initialized).toBe(true);
+						// Left errored rather than absent, so the retry the timeout schedules has a
+						// registry slot to heal.
+						expect(providerRegistry.get('my-vault')?.state).toBe('error');
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+					} finally {
+						manager.shutdown();
+					}
+				});
+
+				it('should connect the providers behind one whose connect never answers', async () => {
+					let instances = 0;
+
+					class FirstConnectBlackholeProvider extends DummyProvider {
+						// Providers are connected one at a time, so the first instance stands for the
+						// dead vault and the second for a healthy one queued behind it.
+						private readonly blackholes = instances++ === 0;
+
+						protected override async doConnect(): Promise<void> {
+							if (this.blackholes) await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: FirstConnectBlackholeProvider,
+						connections: connectionsFor('dead-vault', 'live-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+
+					try {
+						await initPromise;
+
+						expect(providerRegistry.get('dead-vault')?.state).toBe('error');
+						expect(providerRegistry.get('live-vault')?.state).toBe('connected');
+						expect(manager.getSecret('live-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
 			});
 		});
 
