@@ -47,6 +47,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,
+	volcengine: apiKeyCreds,
 
 	'azure-openai': z
 		.object({

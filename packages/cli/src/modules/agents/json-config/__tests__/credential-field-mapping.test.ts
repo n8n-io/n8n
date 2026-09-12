@@ -9,6 +9,7 @@ describe('mapCredentialForProvider', () => {
 		['moonshotai', 'https://api.moonshot.cn/v1'],
 		['minimax', 'https://api.minimaxi.com/v1'],
 		['alibaba', 'https://cn-hongkong.dashscope.aliyuncs.com'],
+		['volcengine', 'https://ark.cn-beijing.volces.com/api/v3'],
 	])('%s', (provider, url) => {
 		it("maps the credential's region-derived url onto baseURL", () => {
 			expect(mapCredentialForProvider(provider, { apiKey: 'key', url })).toEqual({
