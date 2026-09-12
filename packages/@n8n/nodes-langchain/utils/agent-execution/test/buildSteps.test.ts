@@ -8,6 +8,47 @@ describe('buildSteps', () => {
 	const itemIndex = 0;
 
 	describe('Basic functionality', () => {
+		it('should set content to an empty string instead of an empty array for standard tool calls', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'DocumentTool',
+							input: {
+								id: 'call_doc_1',
+								input: { documentId: '123' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_doc_1',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { status: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.content).toBe('');
+			expect(typeof message.content).toBe('string');
+			expect(message.tool_calls).toHaveLength(1);
+			expect(message.tool_calls?.[0].id).toBe('call_doc_1');
+		});
+
 		it('should return empty array when response is undefined', () => {
 			const result = buildSteps(undefined, itemIndex);
 
@@ -410,7 +451,7 @@ describe('buildSteps', () => {
 				expect(result[0].action.messageLog).toHaveLength(1);
 
 				const message = result[0].action.messageLog![0];
-				expect(message.content).toEqual([]);
+				expect(message.content).toEqual('');
 				expect(result[0].action.log).toBe('Calling Calculator Node');
 				expect(message).toHaveProperty('tool_calls');
 				expect(message.tool_calls).toHaveLength(1);
@@ -972,7 +1013,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog).toHaveLength(1);
 
 			const message = result[0].action.messageLog![0];
-			expect(message.content).toEqual([]);
+			expect(message.content).toEqual('');
 			expect(message).toHaveProperty('tool_calls');
 			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
@@ -1017,7 +1058,7 @@ describe('buildSteps', () => {
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
 			// Should fall back to default tool_calls format when thinkingType is missing
-			expect(message.content).toEqual([]);
+			expect(message.content).toEqual('');
 			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
@@ -1292,7 +1333,7 @@ describe('buildSteps', () => {
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
-			expect(message.content).toEqual([]);
+			expect(message.content).toEqual('');
 			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
 		});
 
@@ -1574,7 +1615,7 @@ describe('buildSteps', () => {
 			});
 			// Content is empty, so the function call is the only Gemini request part; the
 			// signatures array must align with the parts or google-common drops it entirely
-			expect(message.content).toEqual([]);
+			expect(message.content).toEqual('');
 			expect(message.additional_kwargs.signatures).toEqual(['gemini_thought_sig_abc123']);
 		});
 
