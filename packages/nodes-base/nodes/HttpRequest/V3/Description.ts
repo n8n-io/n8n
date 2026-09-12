@@ -1252,6 +1252,30 @@ For what a template cannot express, use the matching type for new and existing c
 					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
 			},
 			{
+				displayName: 'Credential Expired When',
+				name: 'credentialExpiredWhen',
+				type: 'string',
+				default: '',
+				description:
+					'When this expression is true, n8n refreshes the credential and retries the request once. A 401 response still refreshes. This option applies to OAuth2 and to predefined credentials that can refresh.',
+				hint: 'Use expression mode and $response to read the first response. Example: {{ $response.body.errcode === 40001 }}',
+				displayOptions: {
+					hide: {
+						'/authentication': ['none'],
+						'/genericAuthType': [
+							'httpBasicAuth',
+							'httpBearerAuth',
+							'httpDigestAuth',
+							'httpHeaderAuth',
+							'httpQueryAuth',
+							'httpCustomAuth',
+							'httpTemplatedCustomAuth',
+							'oAuth1Api',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Enable WebDAV Methods',
 				name: 'webdavMethods',
 				type: 'boolean',

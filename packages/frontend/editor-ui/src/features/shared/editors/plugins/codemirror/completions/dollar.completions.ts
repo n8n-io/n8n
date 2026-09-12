@@ -8,6 +8,7 @@ import {
 	hasActiveNode,
 	isCredentialsModalOpen,
 	applyCompletion,
+	isInHttpNodeCredentialExpiredWhen,
 	isInHttpNodePagination,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
@@ -65,7 +66,20 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
 	if (!workflowDocumentId) return [];
 
-	if (isInHttpNodePagination(workflowDocumentId)) {
+	const responseCompletion: Completion = {
+		label: '$response',
+		section: RECOMMENDED_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$response',
+			returnType: 'HTTPResponse',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response'),
+		}),
+	};
+
+	if (isInHttpNodeCredentialExpiredWhen(workflowDocumentId)) {
+		recommendedCompletions = [responseCompletion];
+	} else if (isInHttpNodePagination(workflowDocumentId)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',
@@ -77,16 +91,7 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 					description: i18n.baseText('codeNodeEditor.completer.$pageCount'),
 				}),
 			},
-			{
-				label: '$response',
-				section: RECOMMENDED_SECTION,
-				info: createInfoBoxRenderer({
-					name: '$response',
-					returnType: 'HTTPResponse',
-					docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
-					description: i18n.baseText('codeNodeEditor.completer.$response'),
-				}),
-			},
+			responseCompletion,
 			{
 				label: '$request',
 				section: RECOMMENDED_SECTION,

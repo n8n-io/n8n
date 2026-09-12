@@ -927,6 +927,350 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 		).not.toHaveBeenCalled();
 	});
+
+	test('does not refresh a 200 when no custom callback is set (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		const response = { statusCode: 200, body: { code: 10001 } };
+		mockThis.helpers.request.mockResolvedValueOnce(response);
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data`, resolveWithFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toBe(response);
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
+	test('refreshes on HTTP 200 when the custom callback matches a body code (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		mockThis.helpers.request
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data`, resolveWithFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+			false,
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+	});
+
+	test('refreshes on a streamed JSON body when the custom callback matches (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		mockThis.helpers.request
+			.mockResolvedValueOnce({
+				statusCode: 200,
+				body: Readable.from([Buffer.from(JSON.stringify({ code: 10001 }))]),
+				headers: {},
+			})
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data`, resolveWithFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+			false,
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not consume a non-JSON stream when a custom callback is set (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		const body = Readable.from([Buffer.from('binary-file')]);
+		const response = {
+			statusCode: 200,
+			body,
+			headers: { 'content-type': 'application/octet-stream' },
+		};
+		mockThis.helpers.request.mockResolvedValueOnce(response);
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data`, resolveWithFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+			false,
+		);
+
+		expect(result).toBe(response);
+		expect(result.body).toBe(body);
+		expect(body.readable).toBe(true);
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+	});
+
+	test('does not consume a stream body when no custom callback is set (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		const body = Readable.from([Buffer.from(JSON.stringify({ code: 10001 }))]);
+		const response = { statusCode: 200, body, headers: {} };
+		mockThis.helpers.request.mockResolvedValueOnce(response);
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data`, resolveWithFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toBe(response);
+		expect(result.body).toBe(body);
+		expect(body.readable).toBe(true);
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(1);
+	});
+
+	test('still refreshes on 401 when the custom callback is false (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		const error401 = Object.assign(new Error('401'), { statusCode: 401 });
+		mockThis.helpers.request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', uri: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: () => false,
+			},
+			false,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+	});
+
+	test('refreshes on a never-error full response when the custom callback matches (legacy path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		mockThis.helpers.request
+			.mockResolvedValueOnce({
+				statusCode: 400,
+				body: { error: 'token_expired' },
+			})
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{
+				method: 'GET',
+				uri: `${baseUrl}/data`,
+				simple: false,
+				resolveWithFullResponse: true,
+			},
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'error' in response.body &&
+					response.body.error === 'token_expired',
+			},
+			false,
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not refresh a 200 when no custom callback is set (isN8nRequest path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		const response = { statusCode: 200, body: { code: 10001 } };
+		mockThis.helpers.httpRequest.mockResolvedValueOnce(response);
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data`, returnFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true,
+		);
+
+		expect(result).toBe(response);
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
+	test('refreshes on HTTP 200 when the custom callback matches a body code (isN8nRequest path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		mockThis.helpers.httpRequest
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data`, returnFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+			true,
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
+
+	test('still refreshes on 401 when the custom callback is false (isN8nRequest path)', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest
+			.mockRejectedValueOnce(error401)
+			.mockResolvedValueOnce({ ok: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: () => false,
+			},
+			true,
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not refresh when skipTokenRefresh is true even if the custom callback matches', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		const error401 = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(error401);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				{
+					skipTokenRefresh: true,
+					shouldRefreshCredentials: () => true,
+				},
+				true,
+			),
+		).rejects.toThrow('401');
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(1);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
+	test('refreshes when the custom callback matches even if skipRefreshWhileTokenIsFresh would skip', async () => {
+		mockThis.getCredentials.mockResolvedValue(
+			makeCredentialData({
+				oauthTokenData: {
+					access_token: 'live-token',
+					token_type: 'bearer',
+					n8n_expires_at: String(Date.now() + 10 * 60 * 1000),
+				},
+			}),
+		);
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		mockThis.helpers.httpRequest
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data`, returnFullResponse: true },
+			mockNode,
+			mockAdditionalData,
+			{
+				tokenExpiredStatusCode: [401, 403, 404],
+				skipRefreshWhileTokenIsFresh: true,
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+			true,
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
 });
 
 describe('requestOAuth2 - client credentials initial token fetch', () => {

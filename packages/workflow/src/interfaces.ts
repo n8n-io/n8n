@@ -55,6 +55,18 @@ export interface IAdditionalCredentialOptions {
 	 * override when a gateway signals an expired token with a different status.
 	 */
 	preAuthenticationRetryStatusCode?: number | number[];
+	/**
+	 * Raw HTTP Request Credential Expired When value.
+	 * Leave this empty to keep the default 401 and token-expired status rules.
+	 * n8n resolves a boolean or expression against `$response` after the first attempt.
+	 */
+	credentialExpiredWhen?: string | boolean;
+	/**
+	 * Refresh the credential and retry once when this returns true.
+	 * n8n combines this result with the default token-expired status rules.
+	 * Request helpers compile `credentialExpiredWhen` into this callback.
+	 */
+	shouldRefreshCredentials?: (response: IN8nHttpFullResponse) => boolean;
 }
 
 export type IAllExecuteFunctions =
@@ -996,6 +1008,7 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		itemIndex?: number,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,

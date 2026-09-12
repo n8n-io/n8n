@@ -65,7 +65,14 @@ describe('HttpRequestV3', () => {
 							body: Buffer.from(JSON.stringify({ success: true })),
 						}),
 				),
-				requestWithAuthentication: vi.fn(),
+				requestWithAuthentication: vi.fn(
+					async () =>
+						await Promise.resolve({
+							statusCode: 200,
+							headers: { 'content-type': 'application/json' },
+							body: Buffer.from(JSON.stringify({ success: true })),
+						}),
+				),
 				requestWithAuthenticationPaginated: vi.fn(),
 				assertBinaryData: vi.fn(),
 				getBinaryStream: vi.fn(),
@@ -79,6 +86,9 @@ describe('HttpRequestV3', () => {
 			sendMessageToUI: vi.fn(),
 			continueOnFail: vi.fn(),
 			getMode: vi.fn(),
+			logger: {
+				warn: vi.fn(),
+			},
 		} as unknown as IExecuteFunctions;
 	});
 
@@ -139,6 +149,38 @@ describe('HttpRequestV3', () => {
 			for (const method of webdavMethods) {
 				expect(visible.filter((value) => value === method)).toEqual([method]);
 			}
+		});
+	});
+
+	it('should add a "Credential Expired When" option to Options, hidden when authentication is none', () => {
+		const optionsProperty = node.description.properties.find((p) => p.name === 'options');
+		expect(optionsProperty).toBeDefined();
+
+		const expiredWhenOption = (optionsProperty?.options ?? []).find(
+			(o) => o.name === 'credentialExpiredWhen',
+		);
+		expect(expiredWhenOption).toMatchObject({
+			displayName: 'Credential Expired When',
+			type: 'string',
+			default: '',
+			hint: 'Use expression mode and $response to read the first response. Example: {{ $response.body.errcode === 40001 }}',
+			description:
+				'When this expression is true, n8n refreshes the credential and retries the request once. A 401 response still refreshes. This option applies to OAuth2 and to predefined credentials that can refresh.',
+			displayOptions: {
+				hide: {
+					'/authentication': ['none'],
+					'/genericAuthType': [
+						'httpBasicAuth',
+						'httpBearerAuth',
+						'httpDigestAuth',
+						'httpHeaderAuth',
+						'httpQueryAuth',
+						'httpCustomAuth',
+						'httpTemplatedCustomAuth',
+						'oAuth1Api',
+					],
+				},
+			},
 		});
 	});
 
@@ -502,7 +544,7 @@ describe('HttpRequestV3', () => {
 				if (genericCredentialType === 'oAuth1Api') {
 					expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
 				} else if (genericCredentialType === 'oAuth2Api') {
-					expect(executeFunctions.helpers.requestOAuth2).toHaveBeenCalled();
+					expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
 				} else {
 					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
 						expect.objectContaining({
@@ -1163,6 +1205,271 @@ describe('HttpRequestV3', () => {
 				expect.objectContaining({
 					sendCredentialsOnCrossOriginRedirect: true,
 				}),
+			);
+		});
+	});
+
+	describe('Credential Expired When', () => {
+		const expiredExpression = '={{ $response.body.code === 10001 }}';
+
+		it('passes the raw expression to requestWithAuthentication for generic OAuth2', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'oAuth2Api';
+					case 'options':
+						return options;
+					case 'options.credentialExpiredWhen':
+						return expiredExpression;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ access_token: 'accessToken' });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'oAuth2Api',
+				expect.any(Object),
+				{
+					oauth2: { tokenType: 'Bearer' },
+					credentialExpiredWhen: expiredExpression,
+				},
+				0,
+			);
+			expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'options.credentialExpiredWhen',
+				0,
+				null,
+				{ rawExpressions: true },
+			);
+		});
+
+		it('passes the raw expression to requestWithAuthentication for predefined credentials', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'slackOAuth2Api';
+					case 'options':
+						return options;
+					case 'options.credentialExpiredWhen':
+						return expiredExpression;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ access_token: 'accessToken' });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'slackOAuth2Api',
+				expect.any(Object),
+				{
+					oauth2: {
+						tokenType: 'Bearer',
+						property: 'authed_user.access_token',
+					},
+					credentialExpiredWhen: expiredExpression,
+				},
+				0,
+			);
+		});
+
+		it('does not resolve the Credential Expired When expression before the request', async () => {
+			const liveOptions: Record<string, unknown> = {
+				...options,
+				credentialExpiredWhen: expiredExpression,
+			};
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(
+					paramName: string,
+					_itemIndex: number,
+					defaultValue: unknown,
+					parameterOptions?: { rawExpressions?: boolean },
+				) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'oAuth2Api';
+						case 'options':
+							if (!parameterOptions?.rawExpressions) {
+								throw new Error('Resolved $response before the request');
+							}
+							return liveOptions;
+						case 'options.credentialExpiredWhen':
+							if (!parameterOptions?.rawExpressions) {
+								throw new Error('Resolved $response before the request');
+							}
+							return expiredExpression;
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ access_token: 'accessToken' });
+
+			await node.execute.call(executeFunctions);
+
+			expect(liveOptions.credentialExpiredWhen).toBe(expiredExpression);
+			expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'oAuth2Api',
+				expect.any(Object),
+				{
+					oauth2: { tokenType: 'Bearer' },
+					credentialExpiredWhen: expiredExpression,
+				},
+				0,
+			);
+		});
+
+		it('does not pass credentialExpiredWhen for generic header auth', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'httpHeaderAuth';
+						case 'options':
+							return options;
+						case 'options.credentialExpiredWhen':
+							return expiredExpression;
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: 'Authorization',
+				value: 'secret',
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalled();
+			expect(executeFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(executeFunctions.logger.warn).toHaveBeenCalledWith(
+				'HTTP Request ignored Credential Expired When. This authentication type cannot refresh the credential.',
+			);
+		});
+
+		it('does not pass credentialExpiredWhen when the option is unset', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'oAuth2Api';
+						case 'options':
+							return options;
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ access_token: 'accessToken' });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'oAuth2Api',
+				expect.any(Object),
+				{ oauth2: { tokenType: 'Bearer' } },
+				0,
+			);
+		});
+
+		it('passes the raw expression to the paginated helper', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'oAuth2Api';
+						case 'options':
+							return options;
+						case 'options.credentialExpiredWhen':
+							return expiredExpression;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseIsEmpty',
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ access_token: 'accessToken' });
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+					statusCode: 200,
+				},
+			]);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledWith(
+				expect.any(Object),
+				0,
+				expect.any(Object),
+				'oAuth2Api',
+				{
+					oauth2: { tokenType: 'Bearer' },
+					credentialExpiredWhen: expiredExpression,
+				},
+				expect.any(Object),
 			);
 		});
 	});

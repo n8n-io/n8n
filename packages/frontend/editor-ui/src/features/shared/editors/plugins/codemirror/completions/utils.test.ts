@@ -3,9 +3,12 @@ import { CompletionContext, insertCompletionText } from '@codemirror/autocomplet
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { HTTP_REQUEST_NODE_TYPE } from '@/app/constants';
 import {
 	autocompletableNodeNames,
 	expressionWithFirstItem,
+	isInHttpNodeCredentialExpiredWhen,
+	isInHttpNodePagination,
 	splitBaseTail,
 	stripExcessParens,
 	isAllowedInDotNotation,
@@ -36,7 +39,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 }));
 
 const { mockNdvStore } = vi.hoisted(() => ({
-	mockNdvStore: { activeNode: null } as unknown as NDVStore,
+	mockNdvStore: { activeNode: null, focusedInputPath: '' } as unknown as NDVStore,
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -263,6 +266,48 @@ describe('completion utils', () => {
 		it('should return false for keys starting with numbers', () => {
 			expect(isAllowedInDotNotation('123key')).toBe(false);
 			expect(isAllowedInDotNotation('0invalid')).toBe(false);
+		});
+	});
+
+	describe('isInHttpNodePagination', () => {
+		beforeEach(() => {
+			mockNdvStore.activeNode = { type: HTTP_REQUEST_NODE_TYPE } as NDVStore['activeNode'];
+		});
+
+		it('returns true for pagination option paths', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.pagination.pagination.completeExpression';
+			expect(isInHttpNodePagination('test-id')).toBe(true);
+		});
+
+		it('returns false for Credential Expired When', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen';
+			expect(isInHttpNodePagination('test-id')).toBe(false);
+		});
+
+		it('returns false for other HTTP Request options', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.timeout';
+			expect(isInHttpNodePagination('test-id')).toBe(false);
+		});
+	});
+
+	describe('isInHttpNodeCredentialExpiredWhen', () => {
+		beforeEach(() => {
+			mockNdvStore.activeNode = { type: HTTP_REQUEST_NODE_TYPE } as NDVStore['activeNode'];
+		});
+
+		it('returns true for Credential Expired When', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen';
+			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(true);
+		});
+
+		it('returns true for nested Credential Expired When paths', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.credentialExpiredWhen.';
+			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(true);
+		});
+
+		it('returns false for pagination option paths', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.pagination.pagination.completeExpression';
+			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(false);
 		});
 	});
 });

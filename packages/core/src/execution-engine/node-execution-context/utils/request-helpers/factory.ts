@@ -21,6 +21,7 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
+import { withShouldRefreshCredentials } from './credential-expired-when';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
@@ -106,7 +107,12 @@ export const getRequestHelperFunctions = (
 				getResolvedValue,
 				node,
 				credentialsType,
-				additionalCredentialOptions,
+				withShouldRefreshCredentials(
+					additionalCredentialOptions,
+					getResolvedValue,
+					node,
+					itemIndex,
+				),
 				sanitizedRequest,
 			);
 		},
@@ -115,6 +121,7 @@ export const getRequestHelperFunctions = (
 			credentialsType,
 			requestOptions,
 			additionalCredentialOptions,
+			itemIndex,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
 			return await httpRequestWithAuthentication.call(
@@ -124,7 +131,12 @@ export const getRequestHelperFunctions = (
 				workflow,
 				node,
 				additionalData,
-				additionalCredentialOptions,
+				withShouldRefreshCredentials(
+					additionalCredentialOptions,
+					getResolvedValue,
+					node,
+					itemIndex,
+				),
 			);
 		},
 		async refreshOAuth2Token(
@@ -181,7 +193,12 @@ export const getRequestHelperFunctions = (
 				workflow,
 				node,
 				additionalData,
-				additionalCredentialOptions,
+				withShouldRefreshCredentials(
+					additionalCredentialOptions,
+					getResolvedValue,
+					node,
+					itemIndex,
+				),
 				itemIndex,
 			);
 		},

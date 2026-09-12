@@ -1,5 +1,6 @@
 import set from 'lodash/set';
 import type {
+	IAdditionalCredentialOptions,
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
@@ -8,6 +9,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IOAuth2Options,
 	IRequestOptionsSimplified,
 	PaginationOptions,
 	JsonObject,
@@ -19,6 +21,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import {
 	BINARY_ENCODING,
+	isCredentialExpiredWhenSet,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -65,6 +68,21 @@ function isEmptyResponseBody(body: unknown): body is string {
 
 function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
 	return value === 'body' || value === 'headers' || value === 'qs';
+}
+
+function buildAdditionalCredentialOptions(
+	oauth2?: IOAuth2Options,
+	credentialExpiredWhen?: unknown,
+): IAdditionalCredentialOptions | undefined {
+	const hasExpiredWhen = isCredentialExpiredWhenSet(credentialExpiredWhen);
+	if (!oauth2 && !hasExpiredWhen) {
+		return undefined;
+	}
+
+	return {
+		...(oauth2 ? { oauth2 } : {}),
+		...(hasExpiredWhen ? { credentialExpiredWhen } : {}),
+	};
 }
 
 const methodsWithoutBody = ['HEAD', 'OPTIONS', 'TRACE'];
@@ -301,34 +319,70 @@ export class HttpRequestV3 implements INodeType {
 
 				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
-				const {
-					redirect,
-					batching,
-					proxy,
-					timeout,
-					allowUnauthorizedCerts,
-					queryParameterArrays,
-					response,
-					lowercaseHeaders,
-					sendCredentialsOnCrossOriginRedirect,
-				} = this.getNodeParameter('options', itemIndex, {}) as {
-					batching: { batch: { batchSize: number; batchInterval: number } };
-					proxy: string;
-					timeout: number;
-					allowUnauthorizedCerts: boolean;
-					queryParameterArrays: 'indices' | 'brackets' | 'repeat';
-					response: {
-						response: {
-							neverError: boolean;
-							responseFormat: string;
-							fullResponse: boolean;
-							outputPropertyName: string;
-						};
-					};
-					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
-					lowercaseHeaders: boolean;
-					sendCredentialsOnCrossOriginRedirect?: boolean;
+				// Read the raw expression. Do not resolve the whole `options` object.
+				// A full resolve would evaluate `$response` before the request.
+				const rawOptions = this.getNodeParameter(
+					'options',
+					itemIndex,
+					{},
+					{
+						rawExpressions: true,
+					},
+				) as IDataObject;
+				const credentialExpiredWhen =
+					rawOptions.credentialExpiredWhen ??
+					this.getNodeParameter('options.credentialExpiredWhen', itemIndex, null, {
+						rawExpressions: true,
+					});
+
+				const resolveOption = <T>(key: string, fallback: T): T => {
+					const raw = rawOptions[key];
+					if (raw === undefined || raw === null) {
+						return fallback;
+					}
+					if (typeof raw === 'string' && raw.charAt(0) !== '=') {
+						return raw as T;
+					}
+					if (typeof raw !== 'string' && typeof raw !== 'object') {
+						return raw as T;
+					}
+					const resolved = this.getNodeParameter(`options.${key}`, itemIndex, raw);
+					return ((resolved as T) ?? raw) as T;
 				};
+
+				const redirect = resolveOption('redirect', undefined) as
+					| { redirect: { maxRedirects: number; followRedirects: boolean } }
+					| undefined;
+				const batching = resolveOption('batching', undefined) as
+					| { batch: { batchSize: number; batchInterval: number } }
+					| undefined;
+				const proxy = resolveOption('proxy', undefined) as string | undefined;
+				const timeout = resolveOption('timeout', undefined) as number | undefined;
+				const allowUnauthorizedCerts = resolveOption('allowUnauthorizedCerts', undefined) as
+					| boolean
+					| undefined;
+				const queryParameterArrays = resolveOption('queryParameterArrays', undefined) as
+					| 'indices'
+					| 'brackets'
+					| 'repeat'
+					| undefined;
+				const response = resolveOption('response', undefined) as
+					| {
+							response: {
+								neverError: boolean;
+								responseFormat: string;
+								fullResponse: boolean;
+								outputPropertyName: string;
+							};
+					  }
+					| undefined;
+				const lowercaseHeaders = resolveOption('lowercaseHeaders', undefined) as
+					| boolean
+					| undefined;
+				const sendCredentialsOnCrossOriginRedirect = resolveOption(
+					'sendCredentialsOnCrossOriginRedirect',
+					undefined,
+				) as boolean | undefined;
 
 				responseFileName = response?.response?.outputPropertyName;
 
@@ -339,8 +393,9 @@ export class HttpRequestV3 implements INodeType {
 				autoDetectResponseFormat = responseFormat === 'autodetect';
 
 				// defaults batch size to 1 of it's set to 0
-				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
-				const batchInterval = batching?.batch.batchInterval;
+				const rawBatchSize = batching?.batch?.batchSize ?? 0;
+				const batchSize = rawBatchSize > 0 ? rawBatchSize : 1;
+				const batchInterval = batching?.batch?.batchInterval ?? 0;
 
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
@@ -742,14 +797,21 @@ export class HttpRequestV3 implements INodeType {
 
 					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
 
+					const paginatedCredentialType = nodeCredentialType ?? genericCredentialType;
+					const paginatedOauth2 = nodeCredentialType
+						? getOAuth2AdditionalParameters(nodeCredentialType)
+						: oAuth2Api
+							? { tokenType: 'Bearer' as const }
+							: undefined;
+
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
 							this,
 							requestOptions,
 							itemIndex,
 							paginationData,
-							nodeCredentialType ?? genericCredentialType,
-							undefined,
+							paginatedCredentialType,
+							buildAdditionalCredentialOptions(paginatedOauth2, credentialExpiredWhen),
 							sanitizedRequest,
 						)
 						.catch((error) => {
@@ -766,6 +828,11 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestPromise);
 				} else if (authentication === 'genericCredentialType' || authentication === 'none') {
 					if (oAuth1Api) {
+						if (isCredentialExpiredWhenSet(credentialExpiredWhen)) {
+							this.logger.warn(
+								'HTTP Request ignored Credential Expired When. OAuth1 cannot refresh the credential with this option.',
+							);
+						}
 						const requestOAuth1 = this.helpers.requestOAuth1.call(
 							this,
 							'oAuth1Api',
@@ -774,18 +841,22 @@ export class HttpRequestV3 implements INodeType {
 						requestOAuth1.catch(() => {});
 						requestPromises.push(requestOAuth1);
 					} else if (oAuth2Api) {
-						const requestOAuth2 = this.helpers.requestOAuth2.call(
+						const requestOAuth2 = this.helpers.requestWithAuthentication.call(
 							this,
 							'oAuth2Api',
 							requestOptions,
-							{
-								tokenType: 'Bearer',
-							},
+							buildAdditionalCredentialOptions({ tokenType: 'Bearer' }, credentialExpiredWhen),
+							itemIndex,
 						);
 						requestOAuth2.catch(() => {});
 						requestPromises.push(requestOAuth2);
 					} else {
 						// bearerAuth, queryAuth, headerAuth, digestAuth, none
+						if (isCredentialExpiredWhenSet(credentialExpiredWhen)) {
+							this.logger.warn(
+								'HTTP Request ignored Credential Expired When. This authentication type cannot refresh the credential.',
+							);
+						}
 						const request = this.helpers.request(requestOptions);
 						request.catch(() => {});
 						requestPromises.push(request);
@@ -799,7 +870,7 @@ export class HttpRequestV3 implements INodeType {
 						this,
 						nodeCredentialType,
 						requestOptions,
-						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+						buildAdditionalCredentialOptions(additionalOAuth2Options, credentialExpiredWhen),
 						itemIndex,
 					);
 					requestWithAuthentication.catch(() => {});

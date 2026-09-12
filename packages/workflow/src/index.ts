@@ -16,6 +16,7 @@ export * from './dynamic-credentials-helpers';
 export * from './safe-regex';
 export * from './global-state';
 export * from './interfaces';
+export * from './credential-expired-when';
 export {
 	fromFunction,
 	fromParameter,

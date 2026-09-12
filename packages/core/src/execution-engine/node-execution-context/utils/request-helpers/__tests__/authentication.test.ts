@@ -237,6 +237,176 @@ describe('httpRequestWithAuthentication', () => {
 		);
 	});
 
+	test('refreshes on HTTP 200 when the custom callback matches a body code', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		request
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+			{ helpers: mockThis.helpers },
+			expect.objectContaining({ sessionToken: 'fresh' }),
+			'testSessionAuth',
+			mockNode,
+			true,
+		);
+	});
+
+	test('refreshes on a streamed JSON body when the custom callback matches', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		request
+			.mockResolvedValueOnce({
+				statusCode: 200,
+				body: Readable.from([Buffer.from(JSON.stringify({ code: 10001 }))]),
+				headers: {},
+			})
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(request).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not refresh a 200 when no custom callback is set', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+		const response = { statusCode: 200, body: { code: 10001 } };
+		request.mockResolvedValueOnce(response);
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual(response);
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			true,
+		);
+	});
+
+	test('still refreshes on 401 when the custom callback is false', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{ shouldRefreshCredentials: () => false },
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(request).toHaveBeenCalledTimes(2);
+	});
+
+	test('refreshes on a never-error full response when the custom callback matches', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		request
+			.mockResolvedValueOnce({
+				statusCode: 400,
+				body: { error: 'token_expired' },
+			})
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'error' in response.body &&
+					response.body.error === 'token_expired',
+			},
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(request).toHaveBeenCalledTimes(2);
+	});
+
 	test('still retries a form-data body when the 401 happened before any send', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
@@ -288,6 +458,76 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
 			async (_credentials, _type, requestOptions) => requestOptions as IHttpRequestOptions,
 		);
+	});
+
+	test('refreshes on HTTP 200 when the custom callback matches a body code', async () => {
+		proxyRequestToAxiosMock
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockResolvedValueOnce({ statusCode: 200, body: { ok: true } });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'GET', uri: 'https://api.example.com/items' },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{
+				shouldRefreshCredentials: (response) =>
+					typeof response.body === 'object' &&
+					response.body !== null &&
+					'code' in response.body &&
+					response.body.code === 10001,
+			},
+		);
+
+		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not refresh a 200 when no custom callback is set', async () => {
+		const response = { statusCode: 200, body: { code: 10001 } };
+		proxyRequestToAxiosMock.mockResolvedValueOnce(response);
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'GET', uri: 'https://api.example.com/items' },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual(response);
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			true,
+		);
+	});
+
+	test('still refreshes on 401 when the custom callback is false', async () => {
+		const requestError = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(requestError).mockResolvedValueOnce({ ok: true });
+
+		const result = await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'GET', uri: 'https://api.example.com/items' },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{ shouldRefreshCredentials: () => false },
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
 	});
 
 	test('refreshes and resends a replayable request after a failure', async () => {

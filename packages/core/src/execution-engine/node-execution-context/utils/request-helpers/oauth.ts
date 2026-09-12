@@ -24,6 +24,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
+	IN8nHttpFullResponse,
 	INode,
 	IOAuth2Options,
 	IRequestOptions,
@@ -43,6 +44,12 @@ import clientOAuth1 from 'oauth-1.0a';
 import { Stream } from 'stream';
 
 import type { IResponseError } from '@/interfaces';
+
+import {
+	getHttpStatusCode,
+	materializeHttpResponseBody,
+	toHttpFullResponseOrBody,
+} from './http-full-response';
 
 function createOAuth2Client(
 	credentials: OAuth2CredentialData,
@@ -383,6 +390,10 @@ export function hasSingleUseBody(requestOptions: {
 	return hasMultipartContentType(headers) && descriptorContainsSingleUseValue(body);
 }
 
+export type OAuth2RequestOptions = IOAuth2Options & {
+	shouldRefreshCredentials?: (response: IN8nHttpFullResponse) => boolean;
+};
+
 /** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
@@ -390,7 +401,7 @@ export async function requestOAuth2(
 	requestOptions: IHttpRequestOptions | IRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
-	oAuth2Options?: IOAuth2Options,
+	oAuth2Options?: OAuth2RequestOptions,
 	isN8nRequest = false,
 ) {
 	removeEmptyBody(requestOptions);
@@ -485,18 +496,34 @@ export async function requestOAuth2(
 	}
 	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
 	const shouldSkipTokenRefresh = oAuth2Options?.skipTokenRefresh === true;
+	const shouldRefreshCredentials = oAuth2Options?.shouldRefreshCredentials;
 
 	/**
 	 * A 401 means the server rejected the token, so it always earns a refresh. Any other
 	 * configured status can be ambiguous (a gateway that answers 404 for both an expired token
 	 * and a missing page), so `skipRefreshWhileTokenIsFresh` lets a caller ask for the stored
 	 * expiry to be checked first, instead of paying a refresh per missing item.
+	 * A custom `shouldRefreshCredentials` callback also triggers a refresh.
+	 * It combines with the status rules and overrides `skipRefreshWhileTokenIsFresh`.
 	 */
-	const shouldRefreshToken = (status: unknown): boolean => {
-		if (shouldSkipTokenRefresh) return false;
-		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
-		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
-		return !isStoredTokenUnexpired(credentials);
+	const shouldRefresh = async (value: unknown): Promise<{ refresh: boolean; value: unknown }> => {
+		if (shouldSkipTokenRefresh) return { refresh: false, value };
+		let current = value;
+		if (shouldRefreshCredentials) {
+			// Autodetect responses arrive as a stream. Read it before `$response.body`.
+			current = await materializeHttpResponseBody(value);
+			if (shouldRefreshCredentials(toHttpFullResponseOrBody(current))) {
+				return { refresh: true, value: current };
+			}
+		}
+		const status = getHttpStatusCode(current);
+		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) {
+			return { refresh: false, value: current };
+		}
+		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) {
+			return { refresh: true, value: current };
+		}
+		return { refresh: !isStoredTokenUnexpired(credentials), value: current };
 	};
 
 	const refreshCtx: RefreshOAuth2TokenContext = {
@@ -536,8 +563,19 @@ export async function requestOAuth2(
 	};
 
 	if (isN8nRequest) {
-		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (shouldRefreshToken(error.response?.status)) {
+		try {
+			const response = await this.helpers.httpRequest(newRequestOptions);
+			const decision = await shouldRefresh(response);
+			if (decision.refresh) {
+				return await retryWithNewToken(
+					async (opts) => await this.helpers.httpRequest(opts),
+					() => decision.value,
+				);
+			}
+			return decision.value;
+		} catch (error) {
+			const decision = await shouldRefresh(error as AxiosError);
+			if (decision.refresh) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.httpRequest(opts),
 					() => {
@@ -546,24 +584,21 @@ export async function requestOAuth2(
 				);
 			}
 			throw error;
-		});
+		}
 	}
 
 	return await this.helpers
 		.request(newRequestOptions as IRequestOptions)
-		.then((response) => {
-			const requestOptions = newRequestOptions as any;
-			if (
-				requestOptions.resolveWithFullResponse === true &&
-				requestOptions.simple === false &&
-				shouldRefreshToken(response.statusCode)
-			) {
-				throw response;
+		.then(async (response) => {
+			const decision = await shouldRefresh(response);
+			if (decision.refresh) {
+				throw decision.value;
 			}
-			return response;
+			return decision.value;
 		})
 		.catch(async (error: IResponseError) => {
-			if (shouldRefreshToken(error.statusCode)) {
+			const decision = await shouldRefresh(error);
+			if (decision.refresh) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.request(opts),
 					() => {
@@ -574,7 +609,7 @@ export async function requestOAuth2(
 							requestOptions.simple === false &&
 							requestOptions.resolveWithFullResponse === true
 						) {
-							return error;
+							return decision.value;
 						}
 						throw error;
 					},

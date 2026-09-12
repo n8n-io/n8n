@@ -17,8 +17,72 @@ import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workfl
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
+import {
+	materializeHttpResponseBody,
+	toHttpFullResponse,
+	toHttpFullResponseOrBody,
+} from './http-full-response';
 import { proxyRequestToAxios } from './legacy-request-adapter';
-import { hasSingleUseBody, isTokenExpiredStatusCode, requestOAuth1, requestOAuth2 } from './oauth';
+import {
+	hasSingleUseBody,
+	isTokenExpiredStatusCode,
+	requestOAuth1,
+	requestOAuth2,
+	type OAuth2RequestOptions,
+} from './oauth';
+
+function withOAuth2RefreshPredicate(
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+): OAuth2RequestOptions | undefined {
+	if (!additionalCredentialOptions?.shouldRefreshCredentials) {
+		return additionalCredentialOptions?.oauth2;
+	}
+
+	return {
+		...additionalCredentialOptions.oauth2,
+		shouldRefreshCredentials: additionalCredentialOptions.shouldRefreshCredentials,
+	};
+}
+
+function isCustomRefreshRequested(
+	additionalCredentialOptions: IAdditionalCredentialOptions | undefined,
+	response: unknown,
+): boolean {
+	const shouldRefresh = additionalCredentialOptions?.shouldRefreshCredentials;
+	if (!shouldRefresh) {
+		return false;
+	}
+	return shouldRefresh(toHttpFullResponseOrBody(response));
+}
+
+async function materializeForRefreshEvaluation(
+	additionalCredentialOptions: IAdditionalCredentialOptions | undefined,
+	value: unknown,
+): Promise<unknown> {
+	if (!additionalCredentialOptions?.shouldRefreshCredentials) {
+		return value;
+	}
+	return await materializeHttpResponseBody(value);
+}
+
+function canUsePreAuthentication(
+	additionalData: IWorkflowExecuteAdditionalData,
+	credentialsDecrypted: ICredentialDataDecryptedObject | undefined,
+): credentialsDecrypted is ICredentialDataDecryptedObject {
+	return (
+		additionalData.credentialsHelper.preAuthentication !== undefined &&
+		credentialsDecrypted !== undefined
+	);
+}
+
+function warnConsumedBodyNotRetried(
+	executeFunctions: IAllExecuteFunctions,
+	credentialsType: string,
+) {
+	executeFunctions.logger.warn(
+		`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
+	);
+}
 
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
@@ -63,7 +127,7 @@ export async function httpRequestWithAuthentication(
 				requestOptions,
 				node,
 				additionalData,
-				additionalCredentialOptions?.oauth2,
+				withOAuth2RefreshPredicate(additionalCredentialOptions),
 				true,
 			);
 		}
@@ -105,21 +169,60 @@ export async function httpRequestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		const response = await Container.get(OutboundHttp).requests().request(requestOptions);
+		const materializedResponse = await materializeForRefreshEvaluation(
+			additionalCredentialOptions,
+			response,
+		);
+		if (
+			isCustomRefreshRequested(additionalCredentialOptions, materializedResponse) &&
+			canUsePreAuthentication(additionalData, credentialsDecrypted)
+		) {
+			const refreshed = await additionalData.credentialsHelper.preAuthentication(
+				{ helpers: this.helpers },
+				credentialsDecrypted,
+				credentialsType,
+				node,
+				true,
+			);
+
+			if (refreshed) {
+				Object.assign(credentialsDecrypted, refreshed);
+			}
+
+			if (requestSent && hasSingleUseBody(requestOptions)) {
+				warnConsumedBodyNotRetried(this, credentialsType);
+				return materializedResponse;
+			}
+
+			requestOptions = await additionalData.credentialsHelper.authenticate(
+				credentialsDecrypted,
+				credentialsType,
+				requestOptions,
+				workflow,
+				node,
+			);
+			return await Container.get(OutboundHttp).requests().request(requestOptions);
+		}
+		return materializedResponse;
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
+		const materializedError = await materializeForRefreshEvaluation(
+			additionalCredentialOptions,
+			error,
+		);
+		const customExpired = isCustomRefreshRequested(additionalCredentialOptions, materializedError);
 		if (
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			isTokenExpiredStatusCode(
-				error.response?.status,
-				additionalCredentialOptions?.preAuthenticationRetryStatusCode ?? 401,
-			) &&
-			additionalData.credentialsHelper.preAuthentication !== undefined &&
+			(customExpired ||
+				isTokenExpiredStatusCode(
+					toHttpFullResponse(error)?.statusCode,
+					additionalCredentialOptions?.preAuthenticationRetryStatusCode ?? 401,
+				)) &&
 			// OAuth 401s are already retried inside requestOAuth1/2 and leave
 			// credentialsDecrypted unset; with nothing refreshed, resending the same
 			// request (possibly with a consumed single-use body) could only fail again
-			credentialsDecrypted !== undefined
+			canUsePreAuthentication(additionalData, credentialsDecrypted)
 		) {
 			try {
 				// try to refresh the credentials
@@ -138,9 +241,7 @@ export async function httpRequestWithAuthentication(
 				}
 
 				if (requestSent && hasSingleUseBody(requestOptions)) {
-					this.logger.warn(
-						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
-					);
+					warnConsumedBodyNotRetried(this, credentialsType);
 					throw new NodeApiError(this.getNode(), error);
 				}
 
@@ -202,7 +303,7 @@ export async function requestWithAuthentication(
 				requestOptions,
 				node,
 				additionalData,
-				additionalCredentialOptions?.oauth2,
+				withOAuth2RefreshPredicate(additionalCredentialOptions),
 				false,
 			);
 		}
@@ -246,7 +347,45 @@ export async function requestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const response = await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const materializedResponse = await materializeForRefreshEvaluation(
+			additionalCredentialOptions,
+			response,
+		);
+		if (
+			isCustomRefreshRequested(additionalCredentialOptions, materializedResponse) &&
+			credentialsDecrypted !== undefined
+		) {
+			try {
+				const data = await additionalData.credentialsHelper.preAuthentication(
+					{ helpers: this.helpers },
+					credentialsDecrypted,
+					credentialsType,
+					node,
+					true,
+				);
+
+				if (data) {
+					Object.assign(credentialsDecrypted, data);
+					if (requestSent && hasSingleUseBody(requestOptions)) {
+						warnConsumedBodyNotRetried(this, credentialsType);
+						return materializedResponse;
+					}
+					requestOptions = await additionalData.credentialsHelper.authenticate(
+						credentialsDecrypted,
+						credentialsType,
+						requestOptions as IHttpRequestOptions,
+						workflow,
+						node,
+					);
+					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+				}
+			} catch (refreshError) {
+				if (refreshError instanceof ExecutionBaseError) throw refreshError;
+				throw new NodeApiError(this.getNode(), refreshError);
+			}
+		}
+		return materializedResponse;
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -264,9 +403,7 @@ export async function requestWithAuthentication(
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
 					if (requestSent && hasSingleUseBody(requestOptions)) {
-						this.logger.warn(
-							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
-						);
+						warnConsumedBodyNotRetried(this, credentialsType);
 						throw error;
 					}
 					requestOptions = await additionalData.credentialsHelper.authenticate(

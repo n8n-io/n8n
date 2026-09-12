@@ -231,7 +231,7 @@ export async function resolveAutocompleteExpression(
 
 export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
-export const isInHttpNodePagination = (
+const getHttpNodeFocusedPath = (
 	workflowDocumentId: WorkflowDocumentId,
 	targetNodeParameterContext?: TargetNodeParameterContext,
 ) => {
@@ -246,7 +246,27 @@ export const isInHttpNodePagination = (
 		path = ndvStore.focusedInputPath;
 	}
 
+	return { nodeType, path };
+};
+
+export const isInHttpNodePagination = (
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
+	const { nodeType, path } = getHttpNodeFocusedPath(workflowDocumentId, targetNodeParameterContext);
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
+};
+
+export const isInHttpNodeCredentialExpiredWhen = (
+	workflowDocumentId: WorkflowDocumentId,
+	targetNodeParameterContext?: TargetNodeParameterContext,
+) => {
+	const { nodeType, path } = getHttpNodeFocusedPath(workflowDocumentId, targetNodeParameterContext);
+	return (
+		nodeType === HTTP_REQUEST_NODE_TYPE &&
+		(path === 'parameters.options.credentialExpiredWhen' ||
+			path.startsWith('parameters.options.credentialExpiredWhen.'))
+	);
 };
 
 export const hasActiveNode = (
