@@ -31,6 +31,7 @@ import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
@@ -55,6 +56,8 @@ export interface ProvisionRequest {
 	 * scheduler's own floor and ceiling; omit to inherit the instance default.
 	 */
 	misfireGraceSeconds?: number;
+	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
+	maxAttempts?: number;
 }
 
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
@@ -124,13 +127,14 @@ export class DurableJobProvisioner {
 		private readonly globalConfig: GlobalConfig,
 		workflowOwner: WorkflowScheduledJobOwner,
 		agentOwner: AgentScheduledJobOwner,
+		systemTaskOwner: SystemTaskScheduledJobOwner,
 		tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 		this.provisioner = createJobProvisioner<ProvisionScope, DeprovisionScope>({
 			provisionTransaction: (scope) => this.provisionTransaction(scope),
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
-			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner),
+			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 			tracer: createSchedulerTracer(tracing),
 		});
 		this.materializerOptions = {
@@ -214,11 +218,13 @@ export class DurableJobProvisioner {
 		payload,
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
+		maxAttempts: requestedMaxAttempts,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			owner,
 		);
+		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -234,7 +240,7 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				const outdatedPolicyJobIds: number[] = [];
+				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
@@ -244,8 +250,12 @@ export class DurableJobProvisioner {
 							if (graceChanged) {
 								outdatedGraceJobIds.push(row.id);
 							}
-							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
-								outdatedPolicyJobIds.push(row.id);
+							if (
+								graceChanged ||
+								row.misfirePolicy !== misfirePolicy ||
+								row.maxAttempts !== maxAttempts
+							) {
+								outdatedRunOptionJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -266,7 +276,7 @@ export class DurableJobProvisioner {
 								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
-								maxAttempts: this.globalConfig.scheduler.maxAttempts,
+								maxAttempts,
 								misfirePolicy,
 								misfireGraceSeconds,
 							}),
@@ -279,6 +289,7 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
+							maxAttempts,
 							misfirePolicy,
 							misfireGraceSeconds,
 						});
@@ -288,9 +299,10 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
-				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
-				// schedule needs this to pick up a policy/grace change on its own.
-				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
+				// Only `redefine` touches a job's run options, so an unchanged schedule
+				// needs this to pick up a change to them on its own.
+				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
+					maxAttempts,
 					misfirePolicy,
 					misfireGraceSeconds,
 				});

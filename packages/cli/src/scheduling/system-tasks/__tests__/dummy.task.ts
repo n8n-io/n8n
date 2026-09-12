@@ -15,6 +15,10 @@ export class DummySystemTask implements SystemTask {
 
 	retryDelaySeconds?: number;
 
+	maxAttempts?: number;
+
+	misfireGraceSeconds?: number;
+
 	runCount = 0;
 
 	/** How a run settles. Replace it to make a run fail or to hold it open. */

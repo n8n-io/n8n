@@ -3,18 +3,27 @@ import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ClaimedTask } from '@n8n/scheduler';
+import type { ClaimedTask, ProvisionSummary } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import type { DurableScheduler } from '../../durable-scheduler';
 import { SystemTaskHandler } from '../system-task-handler';
 import { SystemTaskRunner } from '../system-task-runner';
+import { SystemTaskScheduledJobOwner } from '../system-task-scheduled-job-owner';
 import { DummySystemTask, OtherDummySystemTask } from './dummy.task';
 
 const START = new Date('2026-01-01T00:00:00.000Z');
 const ONE_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
+const emptySummary: ProvisionSummary = {
+	inserted: [],
+	redefined: [],
+	unchanged: [],
+	removed: [],
+};
 
 describe('SystemTaskRunner', () => {
 	let dummy: DummySystemTask;
@@ -30,10 +39,14 @@ describe('SystemTaskRunner', () => {
 		const durableScheduler = mock<DurableScheduler>();
 		durableScheduler.isActive.mockReturnValue(schedulerActive);
 		const errorReporter = mock<ErrorReporter>();
+		const durableJobProvisioner = mock<DurableJobProvisioner>();
+		durableJobProvisioner.provision.mockResolvedValue(emptySummary);
 		const runner = new SystemTaskRunner(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			metadata,
 			durableScheduler,
+			durableJobProvisioner,
+			new SystemTaskScheduledJobOwner(),
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				scheduler: { enabledForSystemTasks },
@@ -42,7 +55,7 @@ describe('SystemTaskRunner', () => {
 			errorReporter,
 		);
 
-		return { runner, metadata, durableScheduler, errorReporter, logger };
+		return { runner, metadata, durableScheduler, durableJobProvisioner, errorReporter, logger };
 	}
 
 	beforeEach(() => {
@@ -62,7 +75,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata } = setup({ isLeader: true });
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(1);
@@ -73,7 +86,7 @@ describe('SystemTaskRunner', () => {
 			dummy.schedule = { kind: 'interval', intervalSeconds: 59.99999999999999 };
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(logger.error).not.toHaveBeenCalled();
@@ -86,7 +99,7 @@ describe('SystemTaskRunner', () => {
 
 		it('fires a task registered after it took over the registry', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
-			runner.init();
+			await runner.init();
 
 			metadata.register(DummySystemTask);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
@@ -98,7 +111,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata } = setup({ isLeader: false });
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
@@ -107,7 +120,7 @@ describe('SystemTaskRunner', () => {
 		it('starts firing on leader takeover', async () => {
 			const { runner, metadata } = setup({ isLeader: false });
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			runner.startTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
@@ -118,7 +131,7 @@ describe('SystemTaskRunner', () => {
 		it('leaves a running timer alone when leadership is announced again', async () => {
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS / 2);
 			runner.startTimers();
@@ -132,17 +145,17 @@ describe('SystemTaskRunner', () => {
 			dummy.runOnTakeover = true;
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			expect(dummy.runCount).toBe(1);
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(dummy.runCount).toBe(2);
 		});
 
-		it('runs a takeover task registered after takeover at once', () => {
+		it('runs a takeover task registered after takeover at once', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
 			dummy.runOnTakeover = true;
-			runner.init();
+			await runner.init();
 
 			metadata.register(DummySystemTask);
 
@@ -154,7 +167,7 @@ describe('SystemTaskRunner', () => {
 			dummy.runOnTakeover = true;
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
@@ -164,7 +177,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata } = setup({ isLeader: true });
 			dummy.runOnTakeover = true;
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await runner.stopTimers();
 			runner.startTimers();
@@ -176,7 +189,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, logger } = setup();
 			dummy.onRun = async () => await new Promise<void>(() => {});
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
 
@@ -190,7 +203,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, logger } = setup();
 			dummy.onRun = async () => await new Promise<void>(() => {});
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
@@ -208,7 +221,7 @@ describe('SystemTaskRunner', () => {
 					releaseRun = resolve;
 				});
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
 			releaseRun();
@@ -227,7 +240,7 @@ describe('SystemTaskRunner', () => {
 				throw error;
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
 
@@ -248,7 +261,7 @@ describe('SystemTaskRunner', () => {
 				}
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(dummy.runCount).toBe(1);
@@ -267,7 +280,7 @@ describe('SystemTaskRunner', () => {
 				throw new Error('failed');
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 10 * Time.seconds.toMilliseconds);
 
@@ -278,7 +291,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata } = setup();
 			dummy.retryDelaySeconds = 5;
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 30 * Time.seconds.toMilliseconds);
 
@@ -294,7 +307,7 @@ describe('SystemTaskRunner', () => {
 				}
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(dummy.runCount).toBe(1);
@@ -314,7 +327,7 @@ describe('SystemTaskRunner', () => {
 				throw new Error('failed');
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS + 30 * Time.seconds.toMilliseconds);
 
@@ -328,7 +341,7 @@ describe('SystemTaskRunner', () => {
 				throw error;
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
@@ -343,7 +356,7 @@ describe('SystemTaskRunner', () => {
 			dummy.schedule = { kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' };
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 
 			expect(logger.error).toHaveBeenCalledWith(
 				expect.stringContaining('will not run'),
@@ -357,11 +370,11 @@ describe('SystemTaskRunner', () => {
 	});
 
 	describe('leadership and shutdown', () => {
-		it('refuses to init before the instance role is resolved', () => {
+		it('refuses to init before the instance role is resolved', async () => {
 			const { runner, metadata } = setup({ instanceRole: 'unset' });
 			metadata.register(DummySystemTask);
 
-			expect(() => runner.init()).toThrow('Instance role is not set');
+			await expect(runner.init()).rejects.toThrow('Instance role is not set');
 		});
 
 		it('stops the timers on stepdown, awaiting the run in flight', async () => {
@@ -372,7 +385,7 @@ describe('SystemTaskRunner', () => {
 					releaseRun = resolve;
 				});
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			const stopping = runner.stopTimers();
@@ -402,7 +415,7 @@ describe('SystemTaskRunner', () => {
 				});
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 			expect(runSignal?.aborted).toBe(false);
 
@@ -420,7 +433,7 @@ describe('SystemTaskRunner', () => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			await runner.stopTimers();
@@ -436,7 +449,7 @@ describe('SystemTaskRunner', () => {
 				runSignals.push(signal);
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			await runner.stopTimers();
@@ -455,7 +468,7 @@ describe('SystemTaskRunner', () => {
 				throw new Error('failed');
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			await runner.stopTimers();
@@ -467,7 +480,7 @@ describe('SystemTaskRunner', () => {
 		it('starts the timers again on a later takeover', async () => {
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await runner.stopTimers();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
@@ -482,13 +495,139 @@ describe('SystemTaskRunner', () => {
 		it('does not start the timers again after shutdown', async () => {
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			await runner.shutdown();
 			runner.startTimers();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
+		});
+	});
+
+	describe('provisioning durable jobs', () => {
+		const durably = { schedulerActive: true, enabledForSystemTasks: true };
+
+		it('provisions one job per durable task, owned by the task', async () => {
+			dummy.durable = true;
+			const { runner, metadata, durableJobProvisioner } = setup(durably);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(1);
+			expect(durableJobProvisioner.provision).toHaveBeenCalledWith({
+				owner: { ownerType: 'system-task', ownerId: 'dummy', ownerMemberId: null },
+				taskType: 'system:dummy',
+				payload: {},
+				desired: [
+					{
+						name: 'system:dummy',
+						schedule: { kind: 'interval', intervalSeconds: 60 },
+						firstRunAt: new Date(START.getTime() + ONE_INTERVAL_MS),
+					},
+				],
+				misfirePolicy: 'coalesce',
+				misfireGraceSeconds: 60,
+				maxAttempts: 3,
+			});
+		});
+
+		it('provisions each durable task separately', async () => {
+			dummy.durable = true;
+			const other = new OtherDummySystemTask();
+			other.durable = true;
+			Container.set(OtherDummySystemTask, other);
+			const { runner, metadata, durableJobProvisioner } = setup(durably);
+			metadata.register(DummySystemTask);
+			metadata.register(OtherDummySystemTask);
+
+			await runner.init();
+
+			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(2);
+			expect(durableJobProvisioner.provision.mock.calls.map(([request]) => request.owner)).toEqual([
+				{ ownerType: 'system-task', ownerId: 'dummy', ownerMemberId: null },
+				{ ownerType: 'system-task', ownerId: 'other-dummy', ownerMemberId: null },
+			]);
+		});
+
+		it('leaves a task on an in-memory timer unprovisioned', async () => {
+			const { runner, metadata, durableJobProvisioner } = setup(durably);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(durableJobProvisioner.provision).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{
+				case: 'the durable scheduler is inactive',
+				schedulerActive: false,
+				enabledForSystemTasks: true,
+			},
+			{ case: 'the system-task flag is off', schedulerActive: true, enabledForSystemTasks: false },
+		])(
+			'leaves a durable task unprovisioned while $case',
+			async ({ schedulerActive, enabledForSystemTasks }) => {
+				dummy.durable = true;
+				const { runner, metadata, durableJobProvisioner } = setup({
+					schedulerActive,
+					enabledForSystemTasks,
+				});
+				metadata.register(DummySystemTask);
+
+				await runner.init();
+
+				expect(durableJobProvisioner.provision).not.toHaveBeenCalled();
+			},
+		);
+
+		it('reports a task it cannot provision and provisions the rest', async () => {
+			dummy.durable = true;
+			const other = new OtherDummySystemTask();
+			other.durable = true;
+			Container.set(OtherDummySystemTask, other);
+			const error = new Error('insert failed');
+			const { runner, metadata, durableJobProvisioner, errorReporter, logger } = setup(durably);
+			durableJobProvisioner.provision.mockRejectedValueOnce(error);
+			metadata.register(DummySystemTask);
+			metadata.register(OtherDummySystemTask);
+
+			await expect(runner.init()).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(error, {
+				extra: { systemTask: 'dummy' },
+				shouldBeLogged: false,
+				shouldIsolate: true,
+			});
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('will not run'), {
+				name: 'dummy',
+				error,
+			});
+			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(2);
+		});
+
+		it('logs what the provisioning pass changed for each task', async () => {
+			dummy.durable = true;
+			const { runner, metadata, durableJobProvisioner, logger } = setup(durably);
+			durableJobProvisioner.provision.mockResolvedValue({
+				inserted: [{ id: 1, name: 'system:dummy' }],
+				redefined: [],
+				unchanged: [],
+				removed: [],
+			});
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(logger.debug).toHaveBeenCalledWith('Provisioned the durable job of a system task', {
+				name: 'dummy',
+				inserted: 1,
+				redefined: 0,
+				unchanged: 0,
+				removed: 0,
+			});
 		});
 	});
 
@@ -500,7 +639,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, durableScheduler } = setup(durably);
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
 
 			expect(durableScheduler.registerTaskHandler).toHaveBeenCalledWith(
@@ -513,7 +652,7 @@ describe('SystemTaskRunner', () => {
 		it('hands a durable task registered after it took over the registry to the scheduler', async () => {
 			dummy.durable = true;
 			const { runner, metadata, durableScheduler } = setup(durably);
-			runner.init();
+			await runner.init();
 
 			metadata.register(DummySystemTask);
 			await vi.advanceTimersByTimeAsync(10 * ONE_INTERVAL_MS);
@@ -525,18 +664,6 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(0);
 		});
 
-		it('warns that a task handed to the scheduler has no occurrences yet', () => {
-			dummy.durable = true;
-			const { runner, metadata, logger } = setup(durably);
-			metadata.register(DummySystemTask);
-
-			runner.init();
-
-			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('will not run'), {
-				name: 'dummy',
-			});
-		});
-
 		it('reports a failing durable run, which the executor would not', async () => {
 			dummy.durable = true;
 			const error = new Error('failed');
@@ -545,7 +672,7 @@ describe('SystemTaskRunner', () => {
 			};
 			const { runner, metadata, durableScheduler, errorReporter } = setup(durably);
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			await expect(
@@ -571,7 +698,7 @@ describe('SystemTaskRunner', () => {
 				});
 			};
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
@@ -601,7 +728,7 @@ describe('SystemTaskRunner', () => {
 				});
 				metadata.register(DummySystemTask);
 
-				runner.init();
+				await runner.init();
 				await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 				expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
@@ -613,7 +740,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, durableScheduler } = setup(durably);
 			metadata.register(DummySystemTask);
 
-			runner.init();
+			await runner.init();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
@@ -622,12 +749,12 @@ describe('SystemTaskRunner', () => {
 
 		it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 			'rejects a task declaring a retry delay of %s',
-			(retryDelaySeconds) => {
+			async (retryDelaySeconds) => {
 				dummy.retryDelaySeconds = retryDelaySeconds;
 				const { runner, metadata } = setup();
 				metadata.register(DummySystemTask);
 
-				expect(() => runner.init()).toThrow(
+				await expect(runner.init()).rejects.toThrow(
 					expect.objectContaining({
 						cause: expect.objectContaining({
 							message: expect.stringContaining('out-of-range retry delay'),
@@ -637,21 +764,36 @@ describe('SystemTaskRunner', () => {
 			},
 		);
 
-		it('accepts the longest retry delay a timeout honors', () => {
+		it('accepts the longest retry delay a timeout honors', async () => {
 			dummy.retryDelaySeconds = 2_147_483;
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
 
-			expect(() => runner.init()).not.toThrow();
+			await expect(runner.init()).resolves.toBeUndefined();
 		});
 
-		it('rejects two tasks registered under the same name', () => {
+		it.each([
+			{ field: 'maxAttempts', value: 0 },
+			{ field: 'misfireGraceSeconds', value: 0 },
+		])('rejects a task declaring $field as $value', async ({ field, value }) => {
+			Object.assign(dummy, { [field]: value });
+			const { runner, metadata } = setup();
+			metadata.register(DummySystemTask);
+
+			await expect(runner.init()).rejects.toThrow(
+				expect.objectContaining({
+					cause: expect.objectContaining({ message: expect.stringContaining(field) }),
+				}),
+			);
+		});
+
+		it('rejects two tasks registered under the same name', async () => {
 			const other = new OtherDummySystemTask();
 			other.name = dummy.name;
 			Container.set(OtherDummySystemTask, other);
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
-			runner.init();
+			await runner.init();
 
 			expect(() => metadata.register(OtherDummySystemTask)).toThrow(
 				expect.objectContaining({
