@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import type { IMenuItem } from '../../types';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
@@ -19,11 +19,42 @@ const props = defineProps<{
 	level?: number;
 	open?: boolean;
 	ariaLabel?: string;
+	scrollLabelOnOverflow?: boolean;
 }>();
 
 const emit = defineEmits<{
 	click: [];
 }>();
+
+const menuItemTextViewport = ref<HTMLElement | null>(null);
+const isLabelOverflowing = ref(false);
+
+const updateLabelOverflow = () => {
+	const viewport = menuItemTextViewport.value;
+	isLabelOverflowing.value =
+		Boolean(props.scrollLabelOnOverflow) &&
+		viewport !== null &&
+		viewport.scrollWidth > viewport.clientWidth;
+};
+
+watch(
+	[menuItemTextViewport, () => props.scrollLabelOnOverflow],
+	([viewport, enabled], _previous, onCleanup) => {
+		updateLabelOverflow();
+
+		if (enabled && viewport && typeof ResizeObserver !== 'undefined') {
+			const observer = new ResizeObserver(updateLabelOverflow);
+			observer.observe(viewport);
+			onCleanup(() => observer.disconnect());
+		}
+	},
+	{ flush: 'post' },
+);
+
+watch(
+	() => [props.item.label, props.scrollLabelOnOverflow],
+	async () => await nextTick(updateLabelOverflow),
+);
 
 const to = computed(() => {
 	if (props.item.disabled) {
@@ -107,6 +138,7 @@ const tooltipPlacement = computed(() => {
 						[$style.active]: active,
 						[$style.compact]: compact,
 						[$style.disabled]: item.disabled,
+						[$style.clipOverflowLabel]: props.scrollLabelOnOverflow,
 					},
 				]"
 				:aria-label="props.ariaLabel ?? props.item.label"
@@ -126,13 +158,24 @@ const tooltipPlacement = computed(() => {
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
 				<div :class="$style.menuItemLabel">
-					<N8nText
+					<div
 						v-if="!compact"
-						:class="$style.menuItemText"
-						:color="item.disabled ? 'text-light' : 'text-dark'"
+						ref="menuItemTextViewport"
+						:class="[
+							$style.menuItemTextViewport,
+							{
+								[$style.scrollLabelOnOverflow]: props.scrollLabelOnOverflow,
+								[$style.labelOverflowing]: isLabelOverflowing,
+							},
+						]"
 					>
-						{{ item.label }}
-					</N8nText>
+						<N8nText
+							:class="$style.menuItemText"
+							:color="item.disabled ? 'text-light' : 'text-dark'"
+						>
+							{{ item.label }}
+						</N8nText>
+					</div>
 					<PreviewTag v-if="!compact && item.preview" />
 					<N8nTag
 						v-if="!compact && item.new"
@@ -149,6 +192,9 @@ const tooltipPlacement = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins' as scroll-mask;
+@use '../../css/mixins/motion' as motion;
+
 .menuItemWrapper {
 	position: relative;
 	width: 100%;
@@ -201,12 +247,73 @@ const tooltipPlacement = computed(() => {
 	cursor: not-allowed;
 }
 
-.menuItemText {
+.clipOverflowLabel {
+	overflow: hidden;
+}
+
+.menuItemTextViewport {
+	flex: 1;
+	min-width: 0;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.menuItemText {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	line-height: var(--font-size--lg);
 	min-width: 0;
+}
+
+.scrollLabelOnOverflow {
+	container-type: inline-size;
+	margin-inline-end: calc(var(--spacing--4xs) * -1);
+
+	.menuItemText {
+		display: inline-block;
+		overflow: visible;
+		max-width: none;
+		transition: transform 0s linear;
+		@include motion.reduced-motion;
+	}
+}
+
+.labelOverflowing {
+	@include scroll-mask.scroll-mask(right);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.menuItem:hover .scrollLabelOnOverflow.labelOverflowing {
+		text-overflow: clip;
+		animation: revealLeftOverflowFade 0s var(--duration--base) forwards;
+		@include motion.reduced-motion;
+
+		.menuItemText {
+			transform: translateX(min(0px, calc(-100% + 100cqi)));
+			transition-duration: calc(var(--duration--slowest) + var(--duration--slowest));
+			transition-delay: var(--duration--base);
+			transition-timing-function: linear;
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.menuItem:hover .scrollLabelOnOverflow.labelOverflowing {
+		@include scroll-mask.scroll-mask(right);
+
+		.menuItemText {
+			transform: none;
+		}
+	}
+}
+
+@keyframes revealLeftOverflowFade {
+	to {
+		@include scroll-mask.scroll-mask(x);
+	}
 }
 
 .menuItemText * {

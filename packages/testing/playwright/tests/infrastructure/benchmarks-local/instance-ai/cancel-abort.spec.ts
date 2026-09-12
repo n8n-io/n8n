@@ -39,13 +39,10 @@ test.describe(
 						await page.goto('/assistant');
 						await ai.getContainer().waitFor({ state: 'visible', timeout: 15_000 });
 						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
-						await ai.sidebar.getNewThreadButton().click();
-						await page.waitForURL(/\/assistant\/[0-9a-f-]+/, { timeout: 10_000 });
-
-						const threadId = page.url().match(/\/assistant\/([0-9a-f-]+)/)?.[1];
-
 						await ai.getChatInput().fill(BENCHMARK_PROMPTS[i % BENCHMARK_PROMPTS.length]);
 						await ai.getSendButton().click();
+						await page.waitForURL(/\/assistant\/[0-9a-f-]+/, { timeout: 10_000 });
+						const threadId = ai.getCurrentThreadId();
 
 						// Wait for run to start, then cancel
 						await ai.getStopButton().waitFor({ state: 'visible', timeout: 30_000 });

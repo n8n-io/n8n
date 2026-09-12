@@ -10,7 +10,6 @@ import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -406,9 +405,6 @@ const InstanceAiFreeNudgeStub = defineComponent({
 
 const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	global: {
-		provide: {
-			[SidebarStateKey as symbol]: { collapsed: ref(false), toggle: vi.fn() },
-		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiFreeNudge: InstanceAiFreeNudgeStub,
