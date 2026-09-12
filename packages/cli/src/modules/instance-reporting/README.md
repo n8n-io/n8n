@@ -85,7 +85,7 @@ there.
 
 | Env var | Default | Notes |
 |---|---|---|
-| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends. |
+| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it starts no scheduler and claims no report time. |
 | `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
 | `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. |
 
@@ -98,6 +98,43 @@ instance calling at the same minute. The time is always UTC and never before
 03:00, so the day being reported has had time to be compacted by `insights`
 first; it shifts itself later, logging a warning, if
 `N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES` is raised enough to require it.
+
+## Client settings
+
+`GET /rest/module-settings` carries an `instance-reporting` key when the module
+is enabled on this instance:
+
+```json
+{
+  "instance-reporting": {
+    "enabled": true,
+    "reportTime": "07:42"
+  }
+}
+```
+
+`enabled` says whether a receiver is configured. Without one the key reads
+`{ "enabled": false }` and carries no `reportTime`, since no time is claimed. A
+missing key means the module is not enabled at all.
+
+These settings are built once, during module init, and served from a cache
+afterwards, so they carry only values that stay the same for the lifetime of
+the process.
+
+## Reporting status
+
+`GET /rest/instance-reporting/status` answers with the UTC instant the receiver
+last accepted a report, or `null` when it never did:
+
+```json
+{ "lastSuccessfulReport": "2026-03-25T07:42:13.000Z" }
+```
+
+Each request reads the database, which is what the client settings above cannot
+do: they are cached, and in multi-main only the leader delivers, so every other
+main would serve a value it never sees change. The route exists whenever the
+module is loaded, including without a receiver — the client decides whether to
+ask by reading `enabled` from the client settings.
 
 See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
 for the full design.
