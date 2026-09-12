@@ -59,7 +59,7 @@ function remoteCommand(args) {
 }
 
 test('starts a named OpenCode session in a worktree', () => {
-	const command = remoteCommand(['--opencode', 'fix-flaky', '--model', 'test']);
+	const command = remoteCommand(['--opencode', 'fix-flaky', '--legacy', '--model', 'test']);
 
 	assert.match(command, /tmux new -As fix-flaky-opencode/);
 	assert.match(command, /unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN/);
@@ -68,6 +68,15 @@ test('starts a named OpenCode session in a worktree', () => {
 	assert.match(command, /cd "\/workspaces\/wt-fix-flaky" && opencode --auto --model test/);
 	assert.doesNotMatch(command, /unset OPENROUTER_API_KEY/);
 	assert.doesNotMatch(command, /claude plugin/);
+});
+
+test('forwards legacy flags without a workspace name to the main checkout', () => {
+	for (const flags of [['--help'], ['--model', 'test']]) {
+		const command = remoteCommand(['--opencode', '--legacy', ...flags]);
+		assert.match(command, /tmux new -As agent-opencode/);
+		assert.ok(command.includes(`cd /workspaces/n8n && opencode --auto ${flags.join(' ')}`));
+		assert.doesNotMatch(command, /git .*worktree add/);
+	}
 });
 
 test('keeps removed credentials out of the login shell', () => {

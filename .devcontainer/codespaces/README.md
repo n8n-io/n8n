@@ -26,8 +26,10 @@ Playwright system deps, and Docker-in-Docker (for testcontainers and
 ```bash
 pnpm session                       # attach Claude Code (creates everything on first run)
 pnpm session:shell                 # open a shell in the default checkout
-pnpm session:opencode              # attach OpenCode in auto mode
-pnpm session:opencode fix-flaky    # OpenCode in a separate worktree
+pnpm session:opencode              # connect the local OpenCode TUI
+pnpm session:opencode fix-flaky    # use a separate remote worktree
+pnpm session:opencode --web        # open OpenCode in the local browser
+pnpm session:opencode --legacy     # use the remote TUI in tmux
 pnpm session fix-flaky             # Claude Code in a separate worktree
 pnpm session ls                    # what's running
 pnpm session tunnel                # forward n8n ports (default 5678, 8080); Ctrl-C to stop
@@ -38,8 +40,9 @@ pnpm session rm                    # delete the codespace
 The dev container supports Codespaces with 2, 4, or 8 cores. The session commands
 create an 8-core Codespace by default.
 
-- **Detach** with `Ctrl-b d` — the agent keeps working without you.
-- **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
+- **Detach from tmux** with `Ctrl-b d` — the agent keeps working without you.
+  Local OpenCode connections use the exit controls described below.
+- **Scroll in tmux** with the mouse wheel (tmux mouse mode is on). To use the
   terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same session command from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
@@ -47,6 +50,101 @@ create an 8-core Codespace by default.
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+
+## Local OpenCode clients
+
+Run these commands from a local checkout. The TUI runs on your laptop. The
+OpenCode server, repository, tools, and builds run in the Codespace. Browser
+mode opens the remote web interface through a local connection.
+
+```bash
+pnpm session:opencode fix-flaky              # resume the saved conversation
+pnpm session:opencode fix-flaky --web        # open that conversation in a browser
+pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
+pnpm session:opencode --web --port 4100      # override the default browser port
+pnpm session:opencode --help
+```
+
+For the TUI, install the same OpenCode version as the remote server. The
+`OPENCODE_VERSION` argument in the [Dockerfile](Dockerfile) pins the version
+for new images:
+
+```bash
+pnpm add --global opencode-ai@<version>
+```
+
+The launcher checks both versions. It reports a mismatch with both version
+numbers before it opens the TUI. An existing Codespace can have a different
+version. Install that version locally, or use `--web`. Browser mode does not
+need a local OpenCode install.
+The launcher sends its bootstrap code over SSH, so an existing Codespace does
+not need a rebuild to use this connection method.
+
+The command prepares the worktree, starts or reuses one server, opens an SSH
+tunnel, and connects the client. Each workspace name has a saved conversation
+ID on the Codespace. TUI and browser modes open the same saved conversation.
+`--new` replaces that saved ID. It preserves the worktree and the old conversation.
+If you switch conversations inside a client, the next launcher run still opens
+the ID saved for that workspace name.
+
+- **Exit the TUI** with `/exit` or its quit shortcut. The launcher closes its
+  tunnel. The remote server stays running.
+- **Disconnect browser mode** with `Ctrl-C` in the launcher terminal. Closing
+  the browser tab does not close the tunnel. Keep the launcher running while
+  you use the browser.
+- **Reconnect** with the same command after a network interruption. After a
+  Codespace stop, the command restarts the server and opens the saved conversation.
+  A stop terminates running tools. It does not resume interrupted commands.
+- **Browser mode uses local port 4096 by default.** Use `--port` to override it.
+  TUI mode selects an available port unless you specify one.
+  A fixed browser port preserves the browser origin across runs.
+  An occupied fixed port causes an error. It does not stop the existing listener.
+- **Use model and permission controls in the client.** The new connection uses
+  the remote OpenCode configuration. It does not force the legacy `--auto` mode.
+  For the old CLI flags, use `pnpm session:opencode fix-flaky --legacy --model <model>`.
+
+Both server and tunnel bind to `127.0.0.1`. The server uses a generated password.
+The TUI receives it through its environment. Browser mode uses a local proxy
+that adds authentication and rejects requests from other browser origins. The
+proxy supports streamed responses, attachments, and terminal WebSockets. The
+password does not appear in the URL or terminal output. Other processes on
+your laptop can access the local browser proxy while it runs. Do not forward
+this proxy or the OpenCode server port to other machines.
+
+The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
+Browser mode opens the selected conversation directly.
+The web UI stores opened projects in browser storage. If a new-session page
+shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
+port when you reconnect to preserve this selection.
+
+The server runs in the detached tmux session `n8n-opencode-server`. Its log is
+`/workspaces/.n8n-opencode/server.log`. That directory also holds the server
+credentials and saved conversation IDs. It is readable only by its owner.
+An unhealthy server produces an error without stopping active work. Inspect
+the log through `pnpm session:shell`. To restart it after checking active work,
+run `tmux kill-session -t '=n8n-opencode-server'` in that shell. Then reconnect.
+Restart the server after changing provider secrets or server configuration.
+
+### Limits
+
+- The launcher supports macOS and Linux. On Windows, run it in WSL. If the
+  browser does not open automatically, open the printed URL yourself.
+- Local clipboard and attachment controls depend on the client, terminal,
+  file type, and model. A laptop file path does not copy a file to the Codespace.
+  Use a supported attachment control or copy the file with `gh codespace cp`.
+- Tools and local MCP processes run on the Codespace. Laptop configuration,
+  browser sessions, and files do not sync automatically.
+- Workspace names identify worktrees. Two agents that use the same name share
+  files. Separate conversations alone do not isolate edits.
+- The server survives a client disconnect while the Codespace stays running.
+  Codespaces idle timeouts still apply. An open tunnel is not a guarantee that
+  the Codespace will stay awake. Use `pnpm session stop` to stop compute billing.
+- Existing tmux OpenCode conversations are not migrated automatically. Use
+  `--legacy` to return to them.
+
+For upstream behavior, see the [OpenCode CLI](https://opencode.ai/docs/cli/),
+[server](https://opencode.ai/docs/server/), and [web](https://opencode.ai/docs/web/)
+documentation.
 
 ## PR previews (a running instance of someone else's PR)
 
