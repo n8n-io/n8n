@@ -69,6 +69,18 @@ type ImportableCredentialProperty = Exclude<
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
 	typeof data === 'object' && data !== null && !Array.isArray(data);
 
+/**
+ * A credential export always carries a `type` and a `data` field. The import
+ * directory usually also holds the workflow files that `export:workflow --backup`
+ * writes, and those must be skipped rather than inserted as credentials.
+ */
+const isExportedCredential = (content: unknown): content is Partial<CredentialsEntity> =>
+	typeof content === 'object' &&
+	content !== null &&
+	!Array.isArray(content) &&
+	typeof (content as { type?: unknown }).type === 'string' &&
+	(content as { data?: unknown }).data !== undefined;
+
 @Command({
 	name: 'import:credentials',
 	description: 'Import credentials',
@@ -353,9 +365,18 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				absolute: true,
 			});
 
-			credentials = files.map((file) =>
-				jsonParse<Partial<CredentialsEntity>>(fs.readFileSync(file, { encoding: 'utf8' })),
-			);
+			credentials = [];
+
+			for (const file of files) {
+				const content = jsonParse<unknown>(fs.readFileSync(file, { encoding: 'utf8' }));
+
+				if (!isExportedCredential(content)) {
+					this.logger.warn(`Skipping invalid credential file: ${file}`);
+					continue;
+				}
+
+				credentials.push(content);
+			}
 		} else {
 			const credentialsUnchecked = jsonParse<Array<Partial<CredentialsEntity>>>(
 				fs.readFileSync(inputPath, { encoding: 'utf8' }),
