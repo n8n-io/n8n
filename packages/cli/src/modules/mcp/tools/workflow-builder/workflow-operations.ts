@@ -114,6 +114,12 @@ export const workflowSettingsObjectSchema = z.object({
 			'Comma-separated workflow IDs allowed to call this workflow (only used with callerPolicy "workflowsFromAList").',
 		)
 		.optional(),
+	availableInMCP: z
+		.boolean()
+		.describe(
+			'Whether this workflow is reachable over the Model Context Protocol. The workflow must be active and must hold at least one active Webhook node.',
+		)
+		.optional(),
 });
 
 export const workflowSettingsInputSchema = workflowSettingsObjectSchema.refine(
