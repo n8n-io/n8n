@@ -1,0 +1,76 @@
+type: object
+properties:
+  scopeId:
+    type: string
+    nullable: true
+  rules:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          enum:
+            - allow
+            - deny
+            - delegate
+        selector:
+          oneOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - name
+                value:
+                  type: string
+                  minLength: 1
+              required:
+                - kind
+                - value
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - package
+                value:
+                  type: string
+                  minLength: 1
+              required:
+                - kind
+                - value
+      required:
+        - id
+        - action
+        - selector
+  defaultAction:
+    type: string
+    enum:
+      - allow
+      - deny
+      - delegate
+  version:
+    type: integer
+    minimum: 0
+  warnings:
+    type: array
+    items:
+      type: object
+      properties:
+        ruleId:
+          type: string
+        shadowedByRuleId:
+          type: string
+      required:
+        - ruleId
+        - shadowedByRuleId
+required:
+  - scopeId
+  - rules
+  - defaultAction
+  - version
+  - warnings
