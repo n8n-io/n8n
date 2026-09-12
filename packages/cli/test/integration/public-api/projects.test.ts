@@ -7,6 +7,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
@@ -18,6 +19,7 @@ import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 	createMember,
+	createUserShell,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -615,7 +617,7 @@ describe('Projects in Public API', () => {
 			const owner = await createOwnerWithApiKey();
 			const project = await createTeamProject('shared-project', owner);
 			const member1 = await createMember();
-			const member2 = await createMember();
+			const member2 = await createUserShell(GLOBAL_MEMBER_ROLE);
 			await linkUserToProject(member1, project, 'project:viewer');
 			await linkUserToProject(member2, project, 'project:editor');
 
@@ -630,25 +632,23 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('data');
 			expect(response.body).toHaveProperty('nextCursor');
-			expect(Array.isArray(response.body.data)).toBe(true);
-			expect(response.body.data.length).toBe(3); // owner (admin) + member1 + member2
+			expect(response.body.data).toHaveLength(3); // owner (admin) + member1 + member2
 
 			const memberIds = new Set(response.body.data.map((m: { id: string }) => m.id));
 			expect(memberIds).toContain(owner.id);
 			expect(memberIds).toContain(member1.id);
-			expect(memberIds).toContain(member2.id);
 
-			for (const row of response.body.data) {
-				expect(row).toHaveProperty('id');
-				expect(row).toHaveProperty('email');
-				expect(row).toHaveProperty('firstName');
-				expect(row).toHaveProperty('lastName');
-				expect(row).toHaveProperty('createdAt');
-				expect(row).toHaveProperty('updatedAt');
-				expect(row).toHaveProperty('role');
-			}
+			// A shell user has no names yet, so this row shows every field, null columns included
+			expect(response.body.data).toContainEqual({
+				id: member2.id,
+				email: member2.email,
+				firstName: null,
+				lastName: null,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+				role: 'project:editor',
+			});
 
 			const adminRow = response.body.data.find((m: { id: string }) => m.id === owner.id);
 			expect(adminRow.role).toBe('project:admin');
@@ -716,7 +716,7 @@ describe('Projects in Public API', () => {
 				.get(`/projects/${project.id}/users`);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject', async () => {
@@ -762,6 +762,34 @@ describe('Projects in Public API', () => {
 				`Could not find project with ID "${project.id}"`,
 			);
 		});
+
+		it('if missing scope, should reject', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey({ scopes: ['project:list'] });
+			const project = await createTeamProject('shared-project', owner);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/projects/${project.id}/users`);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
+
+		it('should reject an invalid cursor', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('shared-project', owner);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/projects/${project.id}/users?cursor=not-a-cursor`);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+		});
 	});
 
 	describe('POST /projects/:id/users', () => {
@@ -773,7 +801,7 @@ describe('Projects in Public API', () => {
 				.post(`/projects/${project.id}/users`);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject with a 403', async () => {
@@ -861,6 +889,22 @@ describe('Projects in Public API', () => {
 				);
 			});
 
+			it('should reject with 400 if the body is empty', async () => {
+				const owner = await createOwnerWithApiKey();
+				const project = await createTeamProject('shared-project', owner);
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post(`/projects/${project.id}/users`)
+					.send({});
+
+				expect(response.status).toBe(400);
+				expect(response.body).toHaveProperty(
+					'message',
+					"request/body must have required property 'relations'",
+				);
+			});
+
 			it('should reject if the relations have a role that do not exist', async () => {
 				const owner = await createOwnerWithApiKey();
 				const member = await createMember();
@@ -940,6 +984,8 @@ describe('Projects in Public API', () => {
 				});
 
 				expect(response.status).toBe(201);
+				expect(response.text).toBe('');
+				expect(response.headers['content-type']).toBeUndefined();
 				expect(projectBefore.length).toEqual(1);
 				expect(projectBefore[0].userId).toEqual(owner.id);
 
@@ -1027,7 +1073,7 @@ describe('Projects in Public API', () => {
 				.send({ role: 'project:viewer' });
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject with a 403', async () => {
@@ -1179,7 +1225,7 @@ describe('Projects in Public API', () => {
 				.delete(`/projects/${project.id}/users/${member.id}`);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject with a 403', async () => {

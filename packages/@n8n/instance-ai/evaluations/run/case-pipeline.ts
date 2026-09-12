@@ -15,7 +15,7 @@ import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { BuildOrchestrator } from './build-orchestrator';
 import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
-import { findAgentArtifactRef } from '../harness/agent-execution';
+import { findAgentArtifactRef, type AgentScenarioContext } from '../harness/agent-execution';
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
@@ -45,7 +45,7 @@ export interface CasePipelineDeps {
 	orchestrator: BuildOrchestrator;
 	// Side-band state written at build time (by the orchestrator), read per row.
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
-	agentContextByKey: Map<string, Promise<string>>;
+	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
 }
 
@@ -208,8 +208,12 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
 		// otherwise be scored as an agent failure on a premise that never existed.
 		if (build.priorRunFailed) {
+			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return await attachExpectations({
 				buildSuccess: build.success,
+				...(agentRef ? { agentId: agentRef.id } : {}),
+				...(capturedAgent ? { agentContext: capturedAgent.rendered } : {}),
+				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
 				passed: false,
 				// Not graded rather than failed — the same treatment an ungraded expectation
 				// gets, so this stays out of the pass rate instead of landing in the
@@ -239,11 +243,13 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && (build.success || agentRunnable)) {
 			const verdicts = await verdictsPromise;
 			const outcome = sentinelOutcomeFromVerdicts(verdicts);
+			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return {
 				buildSuccess: true,
 				workflowId: build.workflowId,
 				...(agentRef ? { agentId: agentRef.id } : {}),
-				...(agentRef ? { agentContext: await agentContextByKey.get(cacheKey) } : {}),
+				...(capturedAgent ? { agentContext: capturedAgent.rendered } : {}),
+				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
 				passed: outcome.passed,
 				score: outcome.score,
 				reasoning: outcome.reasoning,
@@ -306,8 +312,11 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables,
 			);
 			const agentExecStart = Date.now();
-			const agentContext =
-				(await agentContextByKey.get(cacheKey)) ?? '(agent configuration could not be fetched)';
+			const capturedAgent = await agentContextByKey.get(cacheKey);
+			const agentContext = capturedAgent?.rendered ?? '(agent configuration could not be fetched)';
+			const agentArtifactFields = capturedAgent?.artifact
+				? { agentArtifact: capturedAgent.artifact }
+				: {};
 			let agentResult;
 			for (let attempt = 1; ; attempt++) {
 				try {
@@ -337,6 +346,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 						buildSuccess: true,
 						agentId: agentRef.id,
 						agentContext,
+						...agentArtifactFields,
 						passed: false,
 						score: 0,
 						reasoning: `Agent scenario execution error: ${errorMessage}`,
@@ -361,6 +371,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				buildSuccess: true,
 				agentId: agentRef.id,
 				agentContext,
+				...agentArtifactFields,
 				agentEvalResult: agentResult.agentEvalResult,
 				passed: agentResult.success,
 				score: agentResult.score,

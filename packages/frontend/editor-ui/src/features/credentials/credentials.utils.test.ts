@@ -117,6 +117,22 @@ describe('getAutoSelectedCredential', () => {
 		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
 	});
 
+	it('picks from the host-supplied list when one is given, even with an empty slice', () => {
+		// Must agree with the dropdown, which renders the same list — otherwise
+		// "nothing to auto-select" would fire while rows are visibly listed.
+		credentialsStore.usableCredentials = {};
+
+		expect(
+			getAutoSelectedCredential(createNode(), 'openAiApi', [
+				createCredential({ id: 'older', name: 'Older', updatedAt: '2024-01-01T00:00:00.000Z' }),
+				createCredential({ id: 'newer', name: 'Newer', updatedAt: '2024-06-01T00:00:00.000Z' }),
+			]),
+		).toEqual({
+			credentialType: 'openAiApi',
+			credential: { id: 'newer', name: 'Newer' },
+		});
+	});
+
 	it('returns undefined for a node type without credentials', () => {
 		nodeTypesStore.setNodeTypes([
 			{ ...openAiNodeType, name: 'n8n-nodes-base.noOp', credentials: undefined },

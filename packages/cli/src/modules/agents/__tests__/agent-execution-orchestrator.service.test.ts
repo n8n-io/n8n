@@ -45,10 +45,10 @@ const userId = 'user-1';
 const user = mock<User>({ id: userId });
 const userPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId });
 const integrationPrincipalHash = hashAgentSandboxPrincipal({
-	type: 'integration-user',
+	type: 'integration-thread',
 	connectionId: 'credential-1',
 	platform: 'slack',
-	platformUserId: 'platform-user-1',
+	platformThreadId: 'thread-1',
 });
 const taskPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId: 'task-1' });
 
@@ -534,6 +534,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				agentId,
 				projectId,
 				message: 'from slack',
+				modelMessage: '[alice (platform-user-1)]: from slack',
+				author: { id: 'platform-user-1', name: 'alice' },
 				memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
 				integrationType: 'slack',
 				sandboxPrincipalHash: integrationPrincipalHash,
@@ -547,6 +549,18 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 			sandboxPrincipalHash: integrationPrincipalHash,
 		});
+		// The model sees the labelled text; the transcript keeps the plain text and the author.
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'[alice (platform-user-1)]: from slack',
+			expect.anything(),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'from slack',
+				author: { id: 'platform-user-1', name: 'alice' },
+			}),
+			expect.any(Date),
+		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(

@@ -987,7 +987,7 @@ patchedDependencies:
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
   axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
   bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
-  element-plus@2.4.3: fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee
+  element-plus@2.4.3: 9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   lodash@4.18.1: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
   minifaker: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
@@ -1293,9 +1293,6 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1411,9 +1408,6 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../config
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
@@ -1496,9 +1490,6 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(supports-color@8.1.1)(typescript@7.0.2)
-      n8n-core:
-        specifier: workspace:*
-        version: link:../../core
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1533,9 +1524,6 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
     devDependencies:
-      '@n8n/config':
-        specifier: workspace:*
-        version: link:../config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2020,9 +2008,6 @@ importers:
       '@lezer/generator':
         specifier: 'catalog:'
         version: 1.8.0
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -2510,6 +2495,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
     devDependencies:
       '@eslint/js':
         specifier: ^9.29.0
@@ -3269,9 +3257,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@n8n/vitest-config':
-        specifier: workspace:*
-        version: link:../vitest-config
       '@oclif/test':
         specifier: ^4.1.13
         version: 4.1.13(@oclif/core@4.5.2)(supports-color@8.1.1)
@@ -3468,9 +3453,6 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
-      '@n8n/errors':
-        specifier: workspace:*
-        version: link:../errors
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
         version: link:../json-schema-to-zod
@@ -3673,9 +3655,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
-      eslint-plugin-n8n-nodes-base:
-        specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -3821,9 +3800,6 @@ importers:
         specifier: ^6.12.1
         version: 6.12.1(stylelint@16.23.0(supports-color@8.1.1)(typescript@7.0.2))
     devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -3885,9 +3861,6 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
-      '@n8n/errors':
-        specifier: workspace:*
-        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -5352,7 +5325,7 @@ importers:
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -5442,7 +5415,7 @@ importers:
         version: 2.1.1
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
       highlight.js:
         specifier: catalog:frontend
         version: 11.12.0
@@ -6077,7 +6050,7 @@ importers:
         version: link:../../../@n8n/utils
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6471,7 +6444,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -6708,7 +6681,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
         version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
@@ -6815,18 +6788,12 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/rest-api-client
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -7358,9 +7325,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
-      eslint-plugin-n8n-nodes-base:
-        specifier: 'catalog:'
-        version: 1.16.7(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -7547,9 +7511,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
-      '@n8n/instance-ai':
-        specifier: workspace:*
-        version: link:../../@n8n/instance-ai
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
@@ -34151,6 +34112,7 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   '@typescript-eslint/project-service@8.35.0(supports-color@8.1.1)(typescript@5.9.3)':
     dependencies:
@@ -34158,15 +34120,6 @@ snapshots:
       '@typescript-eslint/types': 8.35.0
       debug: 4.4.3(supports-color@8.1.1)
       typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-
-  '@typescript-eslint/project-service@8.35.0(supports-color@8.1.1)(typescript@7.0.2)':
-    dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.35.0(typescript@7.0.2)
-      '@typescript-eslint/types': 8.35.0
-      debug: 4.4.3(supports-color@8.1.1)
-      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -34215,6 +34168,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.35.0
       '@typescript-eslint/visitor-keys': 8.35.0
+    optional: true
 
   '@typescript-eslint/scope-manager@8.68.0':
     dependencies:
@@ -34229,14 +34183,11 @@ snapshots:
   '@typescript-eslint/tsconfig-utils@8.35.0(@typescript/typescript6@6.0.2)':
     dependencies:
       typescript: '@typescript/typescript6@6.0.2'
+    optional: true
 
   '@typescript-eslint/tsconfig-utils@8.35.0(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
-
-  '@typescript-eslint/tsconfig-utils@8.35.0(typescript@7.0.2)':
-    dependencies:
-      typescript: 7.0.2
 
   '@typescript-eslint/tsconfig-utils@8.68.0(typescript@6.0.2)':
     dependencies:
@@ -34295,6 +34246,7 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   '@typescript-eslint/typescript-estree@8.35.0(supports-color@8.1.1)(typescript@5.9.3)':
     dependencies:
@@ -34309,22 +34261,6 @@ snapshots:
       semver: 7.7.3
       ts-api-utils: 2.1.0(typescript@5.9.3)
       typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-
-  '@typescript-eslint/typescript-estree@8.35.0(supports-color@8.1.1)(typescript@7.0.2)':
-    dependencies:
-      '@typescript-eslint/project-service': 8.35.0(supports-color@8.1.1)(typescript@7.0.2)
-      '@typescript-eslint/tsconfig-utils': 8.35.0(typescript@7.0.2)
-      '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/visitor-keys': 8.35.0
-      debug: 4.4.3(supports-color@8.1.1)
-      fast-glob: 3.3.3
-      is-glob: 4.0.3
-      minimatch: 9.0.9
-      semver: 7.7.3
-      ts-api-utils: 2.1.0(typescript@7.0.2)
-      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -34383,17 +34319,7 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
-
-  '@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
-    dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
-      '@typescript-eslint/scope-manager': 8.35.0
-      '@typescript-eslint/types': 8.35.0
-      '@typescript-eslint/typescript-estree': 8.35.0(supports-color@8.1.1)(typescript@7.0.2)
-      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
-      typescript: 7.0.2
-    transitivePeerDependencies:
-      - supports-color
+    optional: true
 
   '@typescript-eslint/utils@8.68.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)':
     dependencies:
@@ -34424,6 +34350,17 @@ snapshots:
       '@typescript-eslint/types': 8.70.0
       '@typescript-eslint/typescript-estree': 8.70.0(supports-color@8.1.1)(typescript@7.0.2)
       eslint: 8.57.1(supports-color@8.1.1)
+      typescript: 7.0.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typescript-eslint/utils@8.70.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
+    dependencies:
+      '@eslint-community/eslint-utils': 4.10.1(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      '@typescript-eslint/scope-manager': 8.70.0
+      '@typescript-eslint/types': 8.70.0
+      '@typescript-eslint/typescript-estree': 8.70.0(supports-color@8.1.1)(typescript@7.0.2)
+      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
@@ -37519,7 +37456,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  element-plus@2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2)):
+  element-plus@2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.5.26(typescript@6.0.2))
@@ -37972,7 +37909,7 @@ snapshots:
 
   eslint-plugin-n8n-nodes-base@1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      '@typescript-eslint/utils': 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+      '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       camel-case: 4.1.2
       indefinite: 2.5.1
       pascal-case: 3.1.2
@@ -37986,7 +37923,7 @@ snapshots:
 
   eslint-plugin-n8n-nodes-base@1.16.7(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2):
     dependencies:
-      '@typescript-eslint/utils': 8.35.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.70.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       camel-case: 4.1.2
       indefinite: 2.5.1
       pascal-case: 3.1.2
@@ -45333,14 +45270,11 @@ snapshots:
   ts-api-utils@2.1.0(@typescript/typescript6@6.0.2):
     dependencies:
       typescript: '@typescript/typescript6@6.0.2'
+    optional: true
 
   ts-api-utils@2.1.0(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
-
-  ts-api-utils@2.1.0(typescript@7.0.2):
-    dependencies:
-      typescript: 7.0.2
 
   ts-api-utils@2.5.0(@typescript/typescript6@6.0.2):
     dependencies:

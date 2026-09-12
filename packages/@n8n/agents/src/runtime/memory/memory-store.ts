@@ -139,8 +139,8 @@ export class InMemoryMemory
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
 		taskLock: {
-			acquire: async (resourceId, opts) =>
-				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
+			acquire: async (scope, opts) =>
+				await this.acquireEpisodicMemoryTaskLock(scope.resourceId, opts),
 			release: async (handle) => await this.releaseEpisodicMemoryTaskLock(handle),
 		},
 	};

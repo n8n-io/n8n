@@ -33,6 +33,8 @@ export type ExecutionRunResult = Awaited<
 export interface VerificationNodePreview {
 	nodeName: string;
 	itemCount?: number;
+	/** Per-output counts for multi-output nodes (Filter, IF, Switch); `itemCount` sums them. */
+	outputs?: Array<{ index: number; name?: string; itemCount?: number }>;
 	preview: string;
 	truncated: boolean;
 	chars: number;

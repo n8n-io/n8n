@@ -170,10 +170,27 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+export interface NodeOutputBranch {
+	/** Position of the output on the node; 0 is the first output. */
+	index: number;
+	/** Label the node's output pane shows for the output, e.g. a Filter's "Kept" / "Discarded". */
+	name?: string;
+	/** Item count on this output, before pagination. */
+	totalItems: number;
+	items: unknown[];
+}
+
 export interface NodeOutputResult {
 	nodeName: string;
-	items: unknown[];
+	/**
+	 * One entry per output of the node's last run, in output order. Multi-output
+	 * nodes (Filter, IF, Switch) keep each output separate, so their items are
+	 * never merged into one list.
+	 */
+	outputs: NodeOutputBranch[];
+	/** Item count across all outputs. */
 	totalItems: number;
+	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
 }
 

@@ -7,16 +7,22 @@ import { v4 as uuid } from 'uuid';
 import type { ErrorReporter } from '@/errors';
 
 import type { BinaryData } from './types';
-import { FileLocation } from './utils';
+import { FileLocation, TEMP_EXECUTION_ID } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
 /** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
 
-/** Execution id encoded in a path-format fileId, or null for non-execution paths. */
-export function getExecutionIdFromFileId(fileId: string): string | null {
+/**
+ * Workflow and execution encoded in a path-format fileId, or null for
+ * non-execution paths. The execution is {@link TEMP_EXECUTION_ID} when the file
+ * was written before the execution row existed.
+ */
+export function parseExecutionFileId(
+	fileId: string,
+): { workflowId: string; executionId: string } | null {
 	const match = fileId.match(EXECUTION_PATH_MATCHER);
-	return match ? match[2] : null;
+	return match ? { workflowId: match[1], executionId: match[2] } : null;
 }
 
 /**
@@ -149,7 +155,7 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	private toRelativePath(location: BinaryData.FileLocation) {
 		switch (location.type) {
 			case 'execution': {
-				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
+				const executionId = location.executionId || TEMP_EXECUTION_ID; // missing for triggers and webhooks, see PR #7244
 				return `workflows/${location.workflowId}/executions/${executionId}`;
 			}
 			case 'custom': {
