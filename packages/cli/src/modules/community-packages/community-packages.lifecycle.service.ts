@@ -37,7 +37,7 @@ const isCommunityPackageInstallClientError = (error: Error) =>
 		(msg) => typeof error.message === 'string' && error.message.includes(msg),
 	);
 
-export type CommunityPackageInstallPresentation = 'ui' | 'publicApi';
+export type CommunityPackageInstallPresentation = 'ui' | 'publicApi' | 'mcp';
 
 export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 

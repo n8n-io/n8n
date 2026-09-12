@@ -45,8 +45,14 @@ describe('search-workflow-nodes MCP tool', () => {
 		});
 	});
 
-	const createTool = () =>
-		createSearchWorkflowNodesTool(user, nodeCatalogService, telemetry, aiGatewayService);
+	const createTool = (includeUninstalled = false) =>
+		createSearchWorkflowNodesTool(
+			user,
+			nodeCatalogService,
+			telemetry,
+			aiGatewayService,
+			includeUninstalled,
+		);
 
 	test('returns search results and tracks queries with no results', async () => {
 		nodeCatalogService.searchNodes.mockResolvedValueOnce({
@@ -57,7 +63,9 @@ describe('search-workflow-nodes MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ queries: ['gmail', 'missing-node'] }, {} as never);
 
-		expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'missing-node'], {});
+		expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'missing-node'], {
+			includeUninstalled: false,
+		});
 		expect(result.content).toEqual([{ type: 'text', text: 'search-result' }]);
 		expect(result.structuredContent).toEqual({ results: 'search-result' });
 		expect(telemetry.track).toHaveBeenCalledWith(
@@ -150,6 +158,56 @@ describe('search-workflow-nodes MCP tool', () => {
 			const result = await tool.handler({ queries: ['openai'] }, {} as never);
 			expect(result.structuredContent).toEqual({ results: 'search-result' });
 			expect((result.content[0] as { text: string }).text).toBe('search-result');
+		});
+	});
+
+	describe('community node discovery', () => {
+		test('does not ask for uninstalled nodes unless told to', async () => {
+			await createTool().handler({ queries: ['firecrawl'] }, {} as never);
+
+			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['firecrawl'], {
+				includeUninstalled: false,
+			});
+		});
+
+		test('asks for uninstalled nodes when enabled', async () => {
+			await createTool(true).handler({ queries: ['firecrawl'] }, {} as never);
+
+			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['firecrawl'], {
+				includeUninstalled: true,
+			});
+		});
+
+		test('reports how many uninstalled nodes were offered', async () => {
+			nodeCatalogService.searchNodes.mockResolvedValueOnce({
+				results: 'search-result',
+				queriesWithNoResults: [],
+				uninstalledOffered: ['@mendable/n8n-nodes-firecrawl.firecrawl'],
+			});
+
+			await createTool(true).handler({ queries: ['firecrawl'] }, {} as never);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: expect.objectContaining({
+						data: expect.objectContaining({ uninstalledOfferedCount: 1 }),
+					}),
+				}),
+			);
+		});
+
+		test('leaves the telemetry payload untouched when discovery is off', async () => {
+			await createTool().handler({ queries: ['firecrawl'] }, {} as never);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: expect.objectContaining({
+						data: expect.not.objectContaining({ uninstalledOfferedCount: expect.anything() }),
+					}),
+				}),
+			);
 		});
 	});
 });

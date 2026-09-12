@@ -54,9 +54,10 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpConfig } from './mcp.config';
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -237,6 +238,7 @@ export class McpService {
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly mcpConfig: McpConfig,
 	) {}
 
 	/**
@@ -672,6 +674,51 @@ export class McpService {
 		return server;
 	}
 
+	/**
+	 * Register the community-package install tool, when it is available at all.
+	 * See {@link isCommunityNodeInstallAvailable} for why the gate sits here
+	 * rather than in the handler.
+	 */
+	private async registerInstallCommunityNodeTool(
+		user: User,
+		registerIfAllowed: RegisterToolFn,
+	): Promise<void> {
+		if (!this.mcpConfig.communityNodeDiscoveryEnabled) return;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		if (
+			!isCommunityNodeInstallAvailable(
+				this.moduleRegistry,
+				Container.get(CommunityPackagesConfig),
+				user,
+			)
+		) {
+			return;
+		}
+
+		const [{ CommunityNodeTypesService }, { CommunityPackagesLifecycleService }] =
+			await Promise.all([
+				import('@/modules/community-packages/community-node-types.service.js'),
+				import('@/modules/community-packages/community-packages.lifecycle.service.js'),
+			]);
+
+		const { createInstallCommunityNodeTool } = await import(
+			'./tools/workflow-builder/install-community-node.tool.js'
+		);
+
+		registerIfAllowed(
+			createInstallCommunityNodeTool(
+				user,
+				Container.get(CommunityNodeTypesService),
+				Container.get(CommunityPackagesLifecycleService),
+				this.nodeTypes,
+				this.telemetry,
+			),
+		);
+	}
+
 	private async registerBuilderTools(
 		server: McpServer,
 		user: User,
@@ -684,11 +731,22 @@ export class McpService {
 	) {
 		await this.nodeCatalogService.initialize();
 
+		// Only surfaces that can follow up with an install step opt into the
+		// verified-but-uninstalled tier.
+		const communityNodeDiscovery = this.mcpConfig.communityNodeDiscoveryEnabled;
+		const uninstalledNodeOptions = communityNodeDiscovery
+			? {
+					findUninstalledNodeTypes: async (nodeTypes: string[]) =>
+						await this.nodeCatalogService.findUninstalledNodeTypes(nodeTypes),
+				}
+			: {};
+
 		const searchNodesTool = createSearchWorkflowNodesTool(
 			user,
 			this.nodeCatalogService,
 			this.telemetry,
 			this.aiGatewayService,
+			communityNodeDiscovery,
 		);
 		registerIfAllowed(searchNodesTool);
 
@@ -697,6 +755,7 @@ export class McpService {
 			this.nodeCatalogService,
 			this.telemetry,
 			this.aiGatewayService,
+			communityNodeDiscovery,
 		);
 		registerIfAllowed(getNodeTypesTool);
 
@@ -731,7 +790,7 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled, ...uninstalledNodeOptions },
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -834,7 +893,7 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled, ...uninstalledNodeOptions },
 		);
 		registerIfAllowed(updateTool);
 
@@ -847,6 +906,8 @@ export class McpService {
 			this.collaborationService,
 		);
 		registerIfAllowed(restoreVersionTool);
+
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

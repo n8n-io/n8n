@@ -110,7 +110,10 @@ export class OAuthConsentService {
 						reason: 'forbidden',
 					};
 
-				const scopes = this.grantableScopes(resource.scopes, sessionPayload.requestedScopes);
+				const scopes = this.grantableScopes(
+					await this.supportedScopesFor(resource, user),
+					sessionPayload.requestedScopes,
+				);
 
 				return {
 					ok: true,
@@ -134,7 +137,7 @@ export class OAuthConsentService {
 			}
 
 			const scopes = this.grantableScopes(
-				defaultResource?.scopes ?? [],
+				await this.supportedScopesFor(defaultResource, user),
 				sessionPayload.requestedScopes,
 			);
 
@@ -160,6 +163,18 @@ export class OAuthConsentService {
 	 * The client's requested scopes are a ceiling: the user may narrow a grant
 	 * but never widen it beyond what the client asked for.
 	 */
+	/**
+	 * Scopes the resource supports, narrowed to what this user may grant. A
+	 * resource without a per-user rule falls back to its full advertised set.
+	 */
+	private async supportedScopesFor(
+		resource: ProtectedResource | undefined,
+		user: User,
+	): Promise<string[]> {
+		if (!resource) return [];
+		return resource.getGrantableScopes ? await resource.getGrantableScopes(user) : resource.scopes;
+	}
+
 	private grantableScopes(supportedScopes: string[], requestedScopes?: string[]): string[] {
 		if (!requestedScopes || requestedScopes.length === 0) return supportedScopes;
 		return supportedScopes.filter((scope) => requestedScopes.includes(scope));
@@ -240,7 +255,7 @@ export class OAuthConsentService {
 			}
 		}
 
-		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
+		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes, user);
 
 		return await this.issueGrant(user, sessionPayload, grantedScopes);
 	}
@@ -313,12 +328,15 @@ export class OAuthConsentService {
 	private async resolveGrantedScopes(
 		sessionPayload: OAuthSessionPayload,
 		scopes: string[] | undefined,
+		user: User,
 	): Promise<string[]> {
 		const resource = sessionPayload.resource
 			? await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource)
 			: this.protectedResourceRegistry.getDefaultResource();
 
-		const supportedScopes = resource?.scopes ?? [];
+		// Narrowed per user, not just for display: this is the check that stops a
+		// hand-crafted approve request granting a scope the caller's role cannot use.
+		const supportedScopes = await this.supportedScopesFor(resource, user);
 		if (supportedScopes.length === 0) {
 			return [];
 		}
@@ -360,7 +378,10 @@ export class OAuthConsentService {
 			return null;
 		}
 
-		const grantable = this.grantableScopes(resource.scopes ?? [], sessionPayload.requestedScopes);
+		const grantable = this.grantableScopes(
+			await this.supportedScopesFor(resource, user),
+			sessionPayload.requestedScopes,
+		);
 		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
 
 		if (!(await resource.authorize(user))) {
