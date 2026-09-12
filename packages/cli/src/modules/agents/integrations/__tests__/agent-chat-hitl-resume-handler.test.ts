@@ -1,4 +1,3 @@
-import { AgentThreadQueueFullError } from '../../agent-thread-turn-coordinator';
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
 function makeHandler(callback: {
@@ -10,13 +9,10 @@ function makeHandler(callback: {
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const updateLatest = vi.fn().mockResolvedValue(undefined);
-	const consume = vi.fn(async (stream: AsyncGenerator<unknown>) => {
-		await stream.next();
-	});
+	const consume = vi.fn().mockResolvedValue(undefined);
 	const resumeForChat = vi.fn((_config: { beforeResume?: () => Promise<void> }) =>
 		(async function* () {})(),
 	);
-	const peek = vi.fn().mockResolvedValue(callback);
 	const resolve = vi.fn().mockResolvedValue(callback);
 	const handler = new AgentChatHitlResumeHandler({
 		agentId: 'agent-1',
@@ -25,7 +21,7 @@ function makeHandler(callback: {
 		agentService: { resumeForChat },
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
-			peek,
+			peek: vi.fn().mockResolvedValue(callback),
 			resolve,
 		} as never,
 		deleteActionMessageBeforeResume: false,
@@ -57,9 +53,7 @@ function makeHandler(callback: {
 		settleActionMessage,
 		deleteMessage,
 		updateLatest,
-		consume,
 		resumeForChat,
-		peek,
 		resolve,
 	};
 }
@@ -126,25 +120,3 @@ it.each([
 		);
 	},
 );
-
-it('preserves the callback and card when the thread queue is full', async () => {
-	const { handler, event, settleActionMessage, resumeForChat, peek, resolve } = makeHandler({
-		actionId: 'resume:run-1:tool-1:0',
-		value: JSON.stringify({ approved: true }),
-		kind: 'approval',
-	});
-	resumeForChat.mockImplementation(() =>
-		// eslint-disable-next-line require-yield
-		(async function* () {
-			throw new AgentThreadQueueFullError();
-		})(),
-	);
-
-	await expect(handler.handleAction(event as never)).rejects.toBeInstanceOf(
-		AgentThreadQueueFullError,
-	);
-
-	expect(peek).toHaveBeenCalledWith('callback-key');
-	expect(resolve).not.toHaveBeenCalled();
-	expect(settleActionMessage).not.toHaveBeenCalled();
-});

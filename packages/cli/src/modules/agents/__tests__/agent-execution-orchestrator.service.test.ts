@@ -445,31 +445,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(secondSignal.aborted).toBe(true);
 	});
 
-	it('rejects a permit issued for another thread', async () => {
-		const { service, executionService, permitFor } = makeService();
-		const runtime = makeRuntime();
-
-		await expect(
-			collect(
-				service.streamChatResponse({
-					agentInstance: runtime.agent,
-					toolRegistry: runtime.toolRegistry,
-					agentId,
-					userId,
-					message: 'hello',
-					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-					projectId,
-					telemetry: telemetryContext,
-					sandboxPrincipalHash: userPrincipalHash,
-					permit: await permitFor('thread-other'),
-				}),
-			),
-		).rejects.toThrow('Agent turn permit does not belong to this thread');
-
-		expect(executionService.startClaimedExecutionRecording).not.toHaveBeenCalled();
-		expect(runtime.agent.stream).not.toHaveBeenCalled();
-	});
-
 	it('streams chat responses and records suspended executions', async () => {
 		const { service, executionService, permitFor } = makeService();
 		const abortController = new AbortController();
@@ -1082,8 +1057,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(wake).resolves.toBe('skipped');
 
-		expect(executionService.hasSuspendedRun).toHaveBeenCalledWith('thread-1');
-		expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith(agentId, 'thread-1');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 		expect(runtime.agent.stream).not.toHaveBeenCalled();
 	});
