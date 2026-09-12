@@ -7380,6 +7380,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
+      confusables:
+        specifier: 1.1.1
+        version: 1.1.1
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -16668,6 +16674,10 @@ packages:
 
   config-chain@1.1.13:
     resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
+
+  confusables@1.1.1:
+    resolution: {integrity: sha512-BzFtzUrufackm00Wb2zvrZV0ItRqPdWaUprU5FXHeZiJRrOWxGmXmQl/muGTF9EQl+MdBXz+Irk99meskGZmXw==}
+    engines: {node: '>=10', npm: '>=6'}
 
   consola@3.4.2:
     resolution: {integrity: sha512-5IKcdX0nnYavi6G7TtOhwkYzyjfJlatbjMjuLSfE2kYT5pMDOilZ4OvMhi637CcDICTmz3wARPoyhqyX1Y+XvA==}
@@ -36632,6 +36642,8 @@ snapshots:
     dependencies:
       ini: 1.3.8
       proto-list: 1.2.4
+
+  confusables@1.1.1: {}
 
   consola@3.4.2: {}
 
