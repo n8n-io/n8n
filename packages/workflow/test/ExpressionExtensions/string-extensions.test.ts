@@ -318,6 +318,24 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "hi".extractUrlPath() }}')).toBeUndefined();
 		});
 
+		// The legacy engine and the editor preview read the path from the URL
+		// constructor, which resolves dot segments and percent-encodes the path.
+		// Every engine must return the same path for the same URL.
+		test.each([
+			['https://example.com/v1/../v2/users', '/v2/users'],
+			['https://example.com/a/./b', '/a/b'],
+			['https://example.com/a/b/..', '/a/'],
+			['https://de.wikipedia.org/wiki/Käse', '/wiki/K%C3%A4se'],
+			['https://example.com/my report.pdf', '/my%20report.pdf'],
+			['https://example.com/a<b>c', '/a%3Cb%3Ec'],
+			['https://example.com/a/%2e%2e/b', '/b'],
+			['https://example.com/a\\b', '/a/b'],
+			['https://example.com/a%2fb', '/a%2fb'],
+			['https://example.com/a+b;c=d', '/a+b;c=d'],
+		])('.extractUrlPath should normalize the path of %s', (url, expected) => {
+			expect(evaluate('={{ $json.url.extractUrlPath() }}', [{ url }])).toEqual(expected);
+		});
+
 		test('.parseJson should work on a string', () => {
 			expect(evaluate('={{ \'{"test1":1,"test2":"2"}\'.parseJson() }}')).toEqual({
 				test1: 1,
