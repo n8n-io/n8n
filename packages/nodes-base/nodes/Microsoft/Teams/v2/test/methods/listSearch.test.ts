@@ -4,17 +4,21 @@ import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { getChats, getUsers } from '../../methods/listSearch';
+import { versionDescription } from '../../actions/versionDescription';
+import * as rlc from '../../descriptions/rlc.description';
+import { getChatMembers, getChats, getUsers } from '../../methods/listSearch';
+import { MicrosoftTeamsV2 } from '../../MicrosoftTeamsV2.node';
 import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 
-// Real transport module except the network helper
+// Real transport module except the network helpers
 vi.mock('../../transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
+		microsoftApiRequestAllItems: vi.fn(),
 	};
 });
 
@@ -91,7 +95,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(sleepMock).not.toHaveBeenCalled();
-		// `$top: 50` (the endpoint maximum) keeps the Add picker from rendering
+		// `$top: 50` (the endpoint maximum) keeps the Add/Remove picker from rendering
 		// empty once 1:1 chats are filtered out of a default-sized page.
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
@@ -144,7 +148,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 			apiRequest.mockResolvedValue(mixedChats);
 		});
 
-		it.each(['add'])('hides oneOnOne chats for chatMember:%s', async (operation) => {
+		it.each(['add', 'remove'])('hides oneOnOne chats for chatMember:%s', async (operation) => {
 			setParams({
 				authentication: 'microsoftOAuth2Api',
 				resource: 'chatMember',
@@ -203,28 +207,31 @@ describe('Microsoft Teams v2 — getChats', () => {
 			expect(result.results.map((r) => r.value)).toEqual(['c2', 'c3', 'c1']);
 		});
 
-		it('explains the empty list without claiming the account has no group chats', async () => {
-			apiRequest.mockResolvedValue({
-				value: Array.from({ length: 50 }, (_, i) => ({
-					id: `c${i}`,
-					topic: `Person ${i}`,
-					chatType: 'oneOnOne',
-					webUrl: `https://teams/chat/c${i}`,
-				})),
-				'@odata.nextLink': 'https://graph.microsoft.com/v1.0/chats?$skiptoken=x',
-			});
-			setParams({
-				authentication: 'microsoftOAuth2Api',
-				resource: 'chatMember',
-				operation: 'add',
-			});
+		it.each(['add', 'remove'])(
+			'explains the empty list for chatMember:%s without claiming the account has no group chats',
+			async (operation) => {
+				apiRequest.mockResolvedValue({
+					value: Array.from({ length: 50 }, (_, i) => ({
+						id: `c${i}`,
+						topic: `Person ${i}`,
+						chatType: 'oneOnOne',
+						webUrl: `https://teams/chat/c${i}`,
+					})),
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/chats?$skiptoken=x',
+				});
+				setParams({
+					authentication: 'microsoftOAuth2Api',
+					resource: 'chatMember',
+					operation,
+				});
 
-			const thrown = await getChats.call(ctx).catch((error) => error);
+				const thrown = await getChats.call(ctx).catch((error) => error);
 
-			expect(thrown.message).toBe('No group chats available to select');
-			expect(thrown.description).toContain('up to 50 chats');
-			expect(thrown.description).not.toContain('account');
-		});
+				expect(thrown.message).toBe('No group chats available to select');
+				expect(thrown.description).toContain('up to 50 chats');
+				expect(thrown.description).not.toContain('account');
+			},
+		);
 
 		// The message must not fire when the tenant simply has no chats, or it would
 		// blame the 1:1 filter for an unrelated empty state.
@@ -364,5 +371,100 @@ describe('Microsoft Teams v2 - getUsers', () => {
 
 			await expect(getUsers.call(ctx)).rejects.toThrow('Forbidden');
 		});
+	});
+});
+
+describe('Microsoft Teams v2 - getChatMembers', () => {
+	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
+	const apiRequestAllItems = transport.microsoftApiRequestAllItems as Mock;
+
+	// `id` (base64 membership id) and `userId` are deliberately different values, so a
+	// mapping that returned `userId` cannot pass.
+	const membershipId =
+		'MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2U3NmY0NTZmLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjExMQ==';
+	const members = [
+		{
+			id: membershipId,
+			userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
+			displayName: 'Ann Smith',
+			email: 'ann@contoso.com',
+		},
+		{
+			id: 'MCMjMiMj',
+			userId: 'aa11bb22-5c3f-4f1e-9d5e-4d8f0f6ab222',
+			displayName: 'Bob Jones',
+			email: null,
+		},
+		// deleted user still on the roster
+		{
+			id: 'MCMjMyMj',
+			userId: 'cc33dd44-5c3f-4f1e-9d5e-4d8f0f6ab333',
+			displayName: null,
+			email: null,
+		},
+	];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
+		ctx.getCurrentNodeParameter.mockReturnValue('19:abc@thread.v2');
+		apiRequestAllItems.mockResolvedValue(members);
+	});
+
+	it('maps value to the base64 membership id, not userId', async () => {
+		const result = await getChatMembers.call(ctx);
+
+		expect(result.results[0]).toEqual({ name: 'Ann Smith (ann@contoso.com)', value: membershipId });
+		expect(apiRequestAllItems).toHaveBeenCalledWith(
+			'value',
+			'GET',
+			'/v1.0/chats/19:abc@thread.v2/members',
+		);
+	});
+
+	it('labels entries with display name and email, falling back to display name when email is missing', async () => {
+		const result = await getChatMembers.call(ctx);
+
+		expect(result.results.map((r) => r.name)).toEqual([
+			'Ann Smith (ann@contoso.com)',
+			'Bob Jones',
+			'cc33dd44-5c3f-4f1e-9d5e-4d8f0f6ab333',
+		]);
+	});
+
+	it('filters client-side on the typed filter', async () => {
+		const result = await getChatMembers.call(ctx, 'bob');
+
+		expect(result.results).toEqual([{ name: 'Bob Jones', value: 'MCMjMiMj' }]);
+	});
+
+	it('returns an empty list and issues no request when no chat is selected', async () => {
+		ctx.getCurrentNodeParameter.mockReturnValue('');
+
+		const result = await getChatMembers.call(ctx);
+
+		expect(result).toEqual({ results: [] });
+		expect(apiRequestAllItems).not.toHaveBeenCalled();
+	});
+});
+
+// `generate-metadata` only checks `loadOptionsMethod`, so a typo in a
+// `searchListMethod` passes the build and leaves the picker dead at runtime.
+describe('Microsoft Teams v2 - resource locator wiring', () => {
+	const searchListMethods = Object.values(rlc)
+		.flatMap((property) => property.modes ?? [])
+		.map((mode) => mode.typeOptions?.searchListMethod)
+		.filter((name): name is string => typeof name === 'string');
+
+	it('every searchListMethod is an exported list-search method on the node', () => {
+		const node = new MicrosoftTeamsV2(versionDescription);
+
+		expect(searchListMethods.length).toBeGreaterThan(0);
+		for (const name of searchListMethods) {
+			expect(node.methods.listSearch[name as keyof typeof node.methods.listSearch]).toBeTypeOf(
+				'function',
+			);
+		}
 	});
 });

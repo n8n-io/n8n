@@ -352,3 +352,35 @@ export const userRLC: INodeProperties = {
 		},
 	],
 };
+
+export const chatMemberRLC: INodeProperties = {
+	displayName: 'Member',
+	name: 'membershipId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the ID field, not the "userId" field)',
+	typeOptions: {
+		loadOptionsDependsOn: ['chatId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a Member...',
+			typeOptions: {
+				searchListMethod: 'getChatMembers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...',
+			// validation missing because Microsoft documents no shape for membership ids.
+		},
+	],
+};

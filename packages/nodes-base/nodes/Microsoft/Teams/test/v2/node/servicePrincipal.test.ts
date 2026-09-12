@@ -72,7 +72,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
-	it.each(['add', 'getAll'])(
+	it.each(['add', 'getAll', 'remove'])(
 		'chatMember:%s throws a static error and issues no request under SP',
 		async (operation) => {
 			selectSp({
@@ -80,6 +80,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				operation,
 				chatId: 'chatID',
 				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
+				membershipId: 'MCMjMiMj',
 				returnAll: true,
 				options: {},
 			});
