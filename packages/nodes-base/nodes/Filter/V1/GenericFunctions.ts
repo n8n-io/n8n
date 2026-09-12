@@ -1,6 +1,6 @@
 import moment from 'moment-timezone';
 import type { INode, NodeParameterValue } from 'n8n-workflow';
-import { NodeOperationError, parseRegexLiteral, safeRegex } from 'n8n-workflow';
+import { NodeOperationError, parseRegexLiteral, safeUserRegex } from 'n8n-workflow';
 
 const isDateObject = (value: NodeParameterValue) =>
 	Object.prototype.toString.call(value) === '[object Date]';
@@ -9,7 +9,7 @@ const isDateInvalid = (value: NodeParameterValue) => value?.toString() === 'Inva
 
 export function matchesRegex(value1: NodeParameterValue, value2: NodeParameterValue): boolean {
 	const { source, flags } = parseRegexLiteral((value2 || '').toString());
-	return safeRegex.test(source, (value1 || '').toString(), flags);
+	return safeUserRegex.test(source, (value1 || '').toString(), flags);
 }
 
 export const compareOperationFunctions: {
