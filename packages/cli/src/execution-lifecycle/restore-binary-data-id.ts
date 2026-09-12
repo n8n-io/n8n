@@ -1,11 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
-<<<<<<< HEAD
-import { BinaryDataService } from 'n8n-core';
-=======
-import { BinaryDataConfig, BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
->>>>>>> 072f4960f0b6cf3ab5b55b402a9799bb0f84c971
+import { BinaryDataService, TEMP_EXECUTION_ID } from 'n8n-core';
 import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 /**
