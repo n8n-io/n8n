@@ -44,6 +44,7 @@ import {
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -600,14 +601,11 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-				const project = await this.ownershipService.getWorkflowProjectCached(dbWorkflow.id);
-
-				await this.policyEnforcementService.enforceWorkflowPublish({
-					workflow: { id: dbWorkflow.id, name: dbWorkflow.name, nodes },
-					projectId: project.id,
-				});
-			}
+			await enforceWorkflowPublishPolicy(this.policyEnforcementService, this.ownershipService, {
+				id: dbWorkflow.id,
+				name: dbWorkflow.name,
+				nodes,
+			});
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,
