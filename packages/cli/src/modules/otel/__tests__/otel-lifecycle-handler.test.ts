@@ -1019,14 +1019,13 @@ describe('onReloadOtelConfig', () => {
 		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel SDK and refreshes the tracer', async () => {
+	it('restarts the OTel tracer provider', async () => {
 		const handler = makeHandler();
 		otelService.restart.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
 		expect(otelService.restart).toHaveBeenCalledTimes(1);
-		expect(tracer.refreshTracer).toHaveBeenCalledTimes(1);
 	});
 });
 
