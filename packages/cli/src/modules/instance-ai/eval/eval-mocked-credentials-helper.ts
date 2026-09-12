@@ -220,6 +220,10 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		return this.inner.getCredentialsProperties(type);
 	}
 
+	getOAuth2Options(type: string) {
+		return this.inner.getOAuth2Options(type);
+	}
+
 	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
 		return this.inner.isCredentialUsableByNode(credentialType, nodeType);
 	}

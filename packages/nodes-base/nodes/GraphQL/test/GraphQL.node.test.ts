@@ -530,15 +530,15 @@ describe('GraphQL Node', () => {
 			const mockExecuteFunctions = createMockExecuteFunctions(
 				{
 					authentication: 'predefinedCredentialType',
-					nodeCredentialType: 'slackOAuth2Api',
+					nodeCredentialType: 'shopifyOAuth2Api',
 					requestMethod: 'POST',
-					endpoint: 'https://slack.com/api/graphql',
+					endpoint: 'https://example.myshopify.com/admin/api/graphql.json',
 					requestFormat: 'json',
 					responseFormat: 'json',
 					query: '{ok}',
 				},
 				{
-					slackOAuth2Api: { accessToken: 'token123' },
+					shopifyOAuth2Api: { accessToken: 'token123' },
 				},
 			);
 
@@ -546,7 +546,10 @@ describe('GraphQL Node', () => {
 			await node.execute.call(mockExecuteFunctions);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][2]).toEqual({
-				oauth2: { tokenType: 'Bearer', property: 'authed_user.access_token' },
+				oauth2: {
+					tokenType: 'Bearer',
+					keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
+				},
 			});
 		});
 

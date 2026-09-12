@@ -58,8 +58,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return undefined;
 	}
 
-	getParentTypes(_name: string): string[] {
-		return [];
+	getParentTypes(name: string): string[] {
+		return this.credentialTypes.getParentTypes(name);
+	}
+
+	getOAuth2Options(type: string) {
+		if (!this.credentialTypes.recognizes(type)) return undefined;
+
+		for (const credentialType of [type, ...this.credentialTypes.getParentTypes(type)]) {
+			const oauth2 = this.credentialTypes.getByName(credentialType).oauth2;
+			if (oauth2 !== undefined) return oauth2;
+		}
+
+		return undefined;
 	}
 
 	async getDecrypted(

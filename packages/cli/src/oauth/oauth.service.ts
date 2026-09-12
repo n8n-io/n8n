@@ -13,8 +13,19 @@ import { isRecord } from '@n8n/utils/is-record';
 import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import type {
+	CredentialOAuth2Options,
+	ICredentialDataDecryptedObject,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import {
+	applyOAuth2RefreshToken,
+	getOAuth2AuthHeaders,
+	jsonParse,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -171,6 +182,10 @@ export class OauthService {
 	 */
 	getSsrfBridge(): SsrfBridge | undefined {
 		return this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+	}
+
+	getOAuth2Options(credentialType: string): CredentialOAuth2Options | undefined {
+		return this.credentialsHelper.getOAuth2Options(credentialType);
 	}
 
 	private oauthFlowCacheKey(token: string): string {
@@ -746,14 +761,26 @@ export class OauthService {
 			: merged;
 	}
 
-	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
-		if (!isRecord(tokenData)) return undefined;
-		const accessToken = tokenData.access_token ?? tokenData.accessToken;
-		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
+	private getOAuth2AccessToken(
+		tokenData: unknown,
+		oauth2?: CredentialOAuth2Options,
+	): string | undefined {
+		const oauthTokenData = isRecord(tokenData) ? tokenData : {};
+		const headers = getOAuth2AuthHeaders(
+			{ oauthTokenData: oauthTokenData as ICredentialDataDecryptedObject },
+			oauth2,
+		);
+		const authorization = headers.Authorization;
+		if (!authorization) return undefined;
+		const [, accessToken] = authorization.split(/\s+/, 2);
+		return accessToken || undefined;
 	}
 
-	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
-		const accessToken = this.getOAuth2AccessToken(tokenData);
+	private getOAuth2TokenRevision(
+		tokenData: unknown,
+		oauth2?: CredentialOAuth2Options,
+	): OAuth2CredentialTokenRevision {
+		const accessToken = this.getOAuth2AccessToken(tokenData, oauth2);
 		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
 		return {
 			...(accessToken ? { accessToken } : {}),
@@ -764,8 +791,9 @@ export class OauthService {
 	private oauth2TokenRevisionChanged(
 		initial: OAuth2CredentialTokenRevision,
 		current: ClientOAuth2TokenData,
+		oauth2?: CredentialOAuth2Options,
 	): boolean {
-		const currentRevision = this.getOAuth2TokenRevision(current);
+		const currentRevision = this.getOAuth2TokenRevision(current, oauth2);
 		return (
 			initial.accessToken !== currentRevision.accessToken ||
 			initial.expiresAt !== currentRevision.expiresAt
@@ -774,14 +802,16 @@ export class OauthService {
 
 	private buildOAuth2RefreshResult(
 		tokenData: ClientOAuth2TokenData,
-		accessToken = this.getOAuth2AccessToken(tokenData),
+		oauth2?: CredentialOAuth2Options,
+		accessToken = this.getOAuth2AccessToken(tokenData, oauth2),
 	): OAuth2CredentialRefreshResult | null {
-		if (!accessToken) return null;
+		const headers = getOAuth2AuthHeaders({ oauthTokenData: tokenData }, oauth2);
+		if (!accessToken || Object.keys(headers).length === 0) return null;
 
 		const expiresAt = Number(tokenData.n8n_expires_at);
 		const expiresInSeconds = Number(tokenData.expires_in);
 		return {
-			headers: { Authorization: `Bearer ${accessToken}` },
+			headers,
 			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
 			...(Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? { expiresInSeconds } : {}),
 		};
@@ -812,7 +842,8 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
-		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
+		const oauth2 = this.getOAuth2Options(credential.type);
+		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData, oauth2);
 
 		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
 			const currentCredential = await this.credentialsRepository.findOne({
@@ -829,8 +860,8 @@ export class OauthService {
 				| undefined;
 			if (!currentTokenData) return null;
 
-			if (this.oauth2TokenRevisionChanged(tokenRevision, currentTokenData)) {
-				return this.buildOAuth2RefreshResult(currentTokenData);
+			if (this.oauth2TokenRevisionChanged(tokenRevision, currentTokenData, oauth2)) {
+				return this.buildOAuth2RefreshResult(currentTokenData, oauth2);
 			}
 
 			const resource = this.resolveOAuth2Resource(currentOAuthCredentials, currentTokenData);
@@ -868,6 +899,7 @@ export class OauthService {
 				refreshed.data,
 				resource,
 			);
+			applyOAuth2RefreshToken(refreshedTokenData, refreshed.data, oauth2);
 
 			try {
 				await this.encryptAndSaveData(currentCredential, { oauthTokenData: refreshedTokenData });
@@ -879,7 +911,7 @@ export class OauthService {
 				throw new OperationalError('Could not save the refreshed OAuth2 token.', { cause: error });
 			}
 
-			return this.buildOAuth2RefreshResult(refreshedTokenData, refreshed.accessToken);
+			return this.buildOAuth2RefreshResult(refreshedTokenData, oauth2, refreshed.accessToken);
 		};
 
 		return await this.oauth2Refreshes.run(credentialId, runRefresh, {
