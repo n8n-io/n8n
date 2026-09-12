@@ -13,7 +13,7 @@ import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
-import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
 
 export class S3 implements INodeType {
@@ -481,6 +481,80 @@ export class S3 implements INodeType {
 				}
 				if (resource === 'file') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const expires = (additionalFields.expires as number) ?? 3600;
+						if (!Number.isInteger(expires) || expires < 1 || expires > 604800) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The Expires field must be number and between 1 and 604800 seconds.',
+							);
+						}
+
+						const credentials = await this.getCredentials('s3');
+
+						const endpoint = new URL(credentials.endpoint as string);
+
+						// Handle path prefix from endpoint
+						const basepath = endpoint.pathname === '/' ? '' : endpoint.pathname;
+
+						let path: string;
+
+						// Percent-encode key segments
+						const encodedFileKey = fileKey
+							.split('/')
+							.map((segment) => encodeURIComponent(segment))
+							.join('/');
+
+						const forcePathStyle =
+							(credentials.forcePathStyle as boolean) || bucketName.includes('.');
+
+						if (forcePathStyle) {
+							path = `${basepath}/${bucketName}/${encodedFileKey}`;
+						} else {
+							endpoint.host = `${bucketName}.${endpoint.host}`;
+							path = `${basepath}/${encodedFileKey}`;
+						}
+
+						const { sign } = require('aws4');
+
+						const signOpts: IDataObject = {
+							host: endpoint.host,
+							method: 'GET',
+							path: `${path}?X-Amz-Expires=${expires}`,
+							service: 's3',
+							region: credentials.region,
+							signQuery: true,
+						};
+
+						const securityHeaders = {
+							accessKeyId: `${credentials.accessKeyId}`.trim(),
+							secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+							sessionToken: credentials.temporaryCredentials
+								? `${credentials.sessionToken}`.trim()
+								: undefined,
+						};
+
+						sign(signOpts, securityHeaders);
+
+						const presignedUrl = `${endpoint.protocol}//${signOpts.host}${signOpts.path}`;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								url: presignedUrl,
+							}),
+							{
+								itemData: {
+									item: i,
+								},
+							},
+						);
+
+						returnData.push(...executionData);
+					}
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
