@@ -81,6 +81,7 @@ const nodeTypesLoaded = computed(() => Object.keys(nodeTypesStore.nodeTypes).len
 const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 const nodeTypeError = ref(false);
+const nodeTypesLoadFailed = ref(false);
 // Tracks the initialNode identity that has been hydrated to prevent background
 // re-fires (e.g. nodeTypesStore reactivity) from overwriting user edits.
 const hydratedInitialNode = ref<string | null>(null);
@@ -198,7 +199,13 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 });
 
 const isValid = computed(() => {
-	return node.value?.name && !hasParameterIssues.value && !hasCredentialIssues.value;
+	return (
+		node.value?.name &&
+		!hasParameterIssues.value &&
+		!hasCredentialIssues.value &&
+		!nodeTypeError.value &&
+		isHydrated.value
+	);
 });
 
 // Provide expression resolve context for dynamic parameter loading
@@ -290,6 +297,12 @@ watch(
 			return;
 		}
 
+		// Preserve a user-edited name when hydrating after a cold start; the name
+		// recomputation below would otherwise replace it with the default. Only
+		// for the first hydration — an identity swap brings its own name.
+		const preservedName =
+			hydratedInitialNode.value === null && userEditedName.value ? node.value?.name : null;
+
 		const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 		let nodeData =
 			uniqueName !== initialNode.name ? { ...initialNode, name: uniqueName } : { ...initialNode };
@@ -335,6 +348,13 @@ watch(
 						name: makeUniqueName(newName, existingToolNames.value),
 					};
 				}
+			}
+
+			// Re-apply a name the user edited before hydration completed, and
+			// keep it marked as edited so later auto-rename stays off.
+			if (preservedName) {
+				nodeData = { ...nodeData, name: preservedName };
+				userEditedName.value = true;
 			}
 
 			nodeTypeError.value = false;
@@ -410,9 +430,11 @@ watch(
 
 onMounted(async () => {
 	try {
+		nodeTypesLoadFailed.value = false;
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 	} catch (error) {
 		console.error('Failed to load node types', error);
+		nodeTypesLoadFailed.value = true;
 	}
 
 	// Emit initial values
@@ -511,6 +533,9 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 							})
 						"
 					/>
+				</div>
+				<div v-else-if="nodeTypesLoadFailed" :class="$style.errorNotice">
+					<N8nNotice theme="danger" :content="i18n.baseText('workflowDiff.error.loadNodeTypes')" />
 				</div>
 				<div v-else-if="node" :class="$style.loading">
 					<N8nSpinner />

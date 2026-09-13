@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, type Pinia } from 'pinia';
+import { mount } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -156,6 +158,25 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 		},
 	},
 });
+
+// @testing-library/vue's render does not expose the VTU wrapper's `vm`, so
+// tests that drive the exposed `handleChangeName` / `isValid` API mount directly.
+type Props = InstanceType<typeof NodeToolSettingsContent>['$props'];
+
+const mountComponent = (props: Props) =>
+	mount(NodeToolSettingsContent, {
+		props,
+		global: {
+			plugins: [getActivePinia() as Pinia],
+			stubs: {
+				ParameterInputList: ParameterInputListStub,
+				NodeCredentials: {
+					template: '<div data-test-id="node-credentials" />',
+					props: ['node', 'readonly', 'showAll', 'hideIssues'],
+				},
+			},
+		},
+	});
 
 function getToolWorkflowStore() {
 	return useWorkflowDocumentStore(createWorkflowDocumentId('node-tool-workflow'));
@@ -1076,6 +1097,79 @@ describe('NodeToolSettingsContent', () => {
 			});
 
 			consoleErrorSpy.mockRestore();
+		});
+
+		it('isValid is false during cold load and true after hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [
+					{
+						displayName: 'Name Field',
+						name: 'nameField',
+						type: 'string',
+						default: '',
+					},
+				],
+				credentials: undefined,
+			};
+
+			const wrapper = mountComponent({
+				initialNode: createMockNode({ parameters: { nameField: 'test' } }),
+			});
+
+			const exposed = wrapper.vm as unknown as { isValid: boolean };
+			expect(exposed.isValid).toBe(false);
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.testTool': { 1: simpleNodeType } };
+
+			await waitFor(() => {
+				expect(exposed.isValid).toBe(true);
+			});
+		});
+
+		it('node types load failure: error notice renders, spinner gone, ParameterInputList not mounted', async () => {
+			nodeTypesStore.nodeTypes = {};
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('Load failed'));
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { container, queryAllByTestId } = renderComponent({
+				props: { initialNode: NODE_WITH_ENDPOINT },
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('[role="alert"]')).toBeTruthy();
+			});
+
+			const alert = container.querySelector('[role="alert"]') as HTMLElement;
+			expect(alert.textContent).toContain('workflowDiff.error.loadNodeTypes');
+			expect(container.querySelector('.n8n-spinner')).toBeNull();
+			expect(queryAllByTestId('parameter-input-list')).toHaveLength(0);
+
+			consoleErrorSpy.mockRestore();
+		});
+
+		it('deferred hydration preserves a user-edited name', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const wrapper = mountComponent({ initialNode: NODE_WITH_ENDPOINT });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('My Edited Tool');
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('My Edited Tool');
+			});
 		});
 
 		it('regression anchor: warm load, simulated user edits update isolated store with no null fields', async () => {
