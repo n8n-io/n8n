@@ -11,10 +11,15 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { mergeCustomHeaders } from '@utils/helpers';
+import { mergeCustomHeaders, normalizePem } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	logWrapper,
+	getConnectionHintNoticeField,
+	type TlsOptions,
+} from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -258,9 +263,35 @@ export class EmbeddingsOpenAi implements INodeType {
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
 		}
+		const tlsOptions: TlsOptions | undefined =
+			credentials.sslCertificatesEnabled && (credentials.ca || credentials.cert || credentials.key)
+				? {
+						ca:
+							typeof credentials.ca === 'string' && credentials.ca
+								? normalizePem(credentials.ca)
+								: undefined,
+						cert:
+							typeof credentials.cert === 'string' && credentials.cert
+								? normalizePem(credentials.cert)
+								: undefined,
+						key:
+							typeof credentials.key === 'string' && credentials.key
+								? normalizePem(credentials.key)
+								: undefined,
+						passphrase:
+							typeof credentials.passphrase === 'string' && credentials.passphrase
+								? credentials.passphrase
+								: undefined,
+					}
+				: undefined;
 
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{},
+				undefined,
+				tlsOptions,
+			),
 		};
 
 		configuration.defaultHeaders = mergeCustomHeaders(

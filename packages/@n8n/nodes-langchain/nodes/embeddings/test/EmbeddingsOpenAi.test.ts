@@ -1,4 +1,5 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { getProxyAgent } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -21,6 +22,7 @@ vi.mock('@n8n/ai-utilities', async () => {
 });
 
 const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('EmbeddingsOpenAi', () => {
@@ -153,6 +155,34 @@ describe('EmbeddingsOpenAi', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should pass normalized TLS options to the proxy agent when configured', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: true,
+				ca: 'ca\\ncert',
+				cert: 'client\\ncert',
+				key: 'client\\nkey',
+				passphrase: 'secret',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-small';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await embeddingsOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith('https://api.openai.com/v1', {}, undefined, {
+				ca: 'ca\ncert',
+				cert: 'client\ncert',
+				key: 'client\nkey',
+				passphrase: 'secret',
+			});
 		});
 	});
 });

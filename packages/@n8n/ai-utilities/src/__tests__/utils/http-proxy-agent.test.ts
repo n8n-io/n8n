@@ -338,6 +338,52 @@ describe('getProxyAgent', () => {
 			expect(Agent).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('TLS options', () => {
+		const tlsOptions = {
+			ca: 'ca-pem',
+			cert: 'cert-pem',
+			key: 'key-pem',
+			passphrase: 'secret',
+		};
+
+		it('should include TLS options in Agent connect options', () => {
+			getProxyAgent('https://api.openai.com/v1', undefined, undefined, tlsOptions);
+
+			expect(Agent).toHaveBeenCalledWith({
+				headersTimeout: 3600000,
+				bodyTimeout: 3600000,
+				connect: {
+					lookup: dnsLookup,
+					...tlsOptions,
+				},
+			});
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should build a fresh Agent when TLS options are provided', () => {
+			const shared = getProxyAgent('https://api.openai.com/v1');
+
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, undefined, tlsOptions);
+
+			expect(agent).not.toBe(shared);
+		});
+
+		it('should pass TLS options as request TLS options when a proxy is configured', () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			getProxyAgent('https://api.openai.com/v1', undefined, undefined, tlsOptions);
+
+			expect(ProxyAgent).toHaveBeenCalledWith({
+				uri: proxyUrl,
+				headersTimeout: 3600000,
+				bodyTimeout: 3600000,
+				requestTls: tlsOptions,
+			});
+			expect(Agent).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('proxyFetch', () => {

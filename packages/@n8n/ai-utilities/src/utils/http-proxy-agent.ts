@@ -33,6 +33,13 @@ export interface AgentTimeoutOptions {
 	connectTimeout?: number;
 }
 
+export interface TlsOptions {
+	ca?: string;
+	cert?: string;
+	key?: string;
+	passphrase?: string;
+}
+
 // Default timeout for AI operations (1 hour)
 // Aligned with EXECUTIONS_TIMEOUT_MAX to ensure AI requests don't exceed workflow execution limits
 // Configurable via N8N_AI_TIMEOUT_MAX environment variable to support custom timeout requirements
@@ -71,8 +78,16 @@ export function getProxyAgent(
 	targetUrl?: string,
 	timeoutOptions?: AgentTimeoutOptions,
 	lookup: LookupFunction = defaultLookup,
+	tlsOptions?: TlsOptions,
 ) {
 	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
+	const hasTlsOptions = Object.values(tlsOptions ?? {}).some(Boolean);
+	const tlsConnectOptions = {
+		...(tlsOptions?.ca && { ca: tlsOptions.ca }),
+		...(tlsOptions?.cert && { cert: tlsOptions.cert }),
+		...(tlsOptions?.key && { key: tlsOptions.key }),
+		...(tlsOptions?.passphrase && { passphrase: tlsOptions.passphrase }),
+	};
 
 	const agentOptions = {
 		headersTimeout: timeoutOptions?.headersTimeout ?? DEFAULT_TIMEOUT,
@@ -83,18 +98,26 @@ export function getProxyAgent(
 	};
 
 	if (proxyUrl) {
-		return new ProxyAgent({ uri: proxyUrl, ...agentOptions });
+		return new ProxyAgent({
+			uri: proxyUrl,
+			...agentOptions,
+			...(hasTlsOptions && { requestTls: tlsConnectOptions }),
+		});
 	}
 
 	const isDefaultCase =
-		!timeoutOptions && !process.env.N8N_AI_TIMEOUT_MAX && lookup === defaultLookup;
+		!timeoutOptions &&
+		!process.env.N8N_AI_TIMEOUT_MAX &&
+		lookup === defaultLookup &&
+		!hasTlsOptions;
+	const connectOptions = { lookup, ...(hasTlsOptions && tlsConnectOptions) };
 
 	if (isDefaultCase) {
-		sharedAgent ??= new Agent({ ...agentOptions, connect: { lookup } });
+		sharedAgent ??= new Agent({ ...agentOptions, connect: connectOptions });
 		return sharedAgent;
 	}
 
-	return new Agent({ ...agentOptions, connect: { lookup } });
+	return new Agent({ ...agentOptions, connect: connectOptions });
 }
 
 /**

@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
-import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders, normalizePem } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -23,6 +23,7 @@ import {
 	N8nLlmTracing,
 	getProxyAgent,
 	getConnectionHintNoticeField,
+	type TlsOptions,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
@@ -778,11 +779,37 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		const timeout = options.timeout;
+		const tlsOptions: TlsOptions | undefined =
+			credentials.sslCertificatesEnabled && (credentials.ca || credentials.cert || credentials.key)
+				? {
+						ca:
+							typeof credentials.ca === 'string' && credentials.ca
+								? normalizePem(credentials.ca)
+								: undefined,
+						cert:
+							typeof credentials.cert === 'string' && credentials.cert
+								? normalizePem(credentials.cert)
+								: undefined,
+						key:
+							typeof credentials.key === 'string' && credentials.key
+								? normalizePem(credentials.key)
+								: undefined,
+						passphrase:
+							typeof credentials.passphrase === 'string' && credentials.passphrase
+								? credentials.passphrase
+								: undefined,
+					}
+				: undefined;
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				undefined,
+				tlsOptions,
+			),
 		};
 		const customHeader = getCustomCredentialHeader(credentials);
 		configuration.defaultHeaders = mergeCustomHeaders(

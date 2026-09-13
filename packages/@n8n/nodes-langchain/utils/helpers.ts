@@ -303,6 +303,24 @@ export function mergeCustomHeaders(
 	return defaultHeaders;
 }
 
+export function normalizePem(input: string): string {
+	if (!input) return input;
+
+	const normalizedNewlines = input.includes('\\n') ? input.replace(/\\n/g, '\n') : input;
+	if (normalizedNewlines.includes('\n')) return normalizedNewlines;
+
+	const match = normalizedNewlines.match(
+		/^-----BEGIN ([A-Z0-9 ]+)-----\s+(.+?)\s+-----END \1-----$/,
+	);
+	if (!match) return normalizedNewlines;
+
+	const [, label, body] = match;
+	const normalizedBody = body.replace(/\s+/g, '');
+	const wrappedBody = normalizedBody.match(/.{1,64}/g)?.join('\n') ?? '';
+
+	return `-----BEGIN ${label}-----\n${wrappedBody}\n-----END ${label}-----`;
+}
+
 /**
  * Sometimes model output is wrapped in an additional object property.
  * This function unwraps the output if it is in the format { output: { output: { ... } } }
