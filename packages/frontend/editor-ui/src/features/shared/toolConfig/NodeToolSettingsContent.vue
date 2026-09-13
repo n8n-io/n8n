@@ -85,6 +85,9 @@ const nodeTypesLoadFailed = ref(false);
 // Tracks the initialNode identity that has been hydrated to prevent background
 // re-fires (e.g. nodeTypesStore reactivity) from overwriting user edits.
 const hydratedInitialNode = ref<string | null>(null);
+// Tracks which node identity a preserved (user-edited) name belongs to, so a
+// stale name cannot leak onto a different node after an identity swap.
+const preservedNameNodeId = ref<string | null>(null);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
 // `props.projectId` can be an empty string when the agent scope id has not
@@ -274,6 +277,9 @@ provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 function handleChangeName(name: string) {
 	if (node.value) {
 		userEditedName.value = true;
+		// Tie the preserved name to the node identity being edited; read the id
+		// before mutating the name so the fallback identity is the pre-edit name.
+		preservedNameNodeId.value = node.value.id || node.value.name;
 		node.value = { ...node.value, name };
 	}
 }
@@ -296,12 +302,22 @@ watch(
 		if (hydratedInitialNode.value === initialNodeId) {
 			return;
 		}
+		// If the incoming node identity differs from the one the preserved name belongs to,
+		// drop the preserved name — it belongs to a different node.
+		if (preservedNameNodeId.value && preservedNameNodeId.value !== initialNodeId) {
+			preservedNameNodeId.value = null;
+		}
 
 		// Preserve a user-edited name when hydrating after a cold start; the name
 		// recomputation below would otherwise replace it with the default. Only
-		// for the first hydration — an identity swap brings its own name.
+		// re-apply it to the node identity it was edited on.
+		const currentNodeId = node.value?.id || node.value?.name;
 		const preservedName =
-			hydratedInitialNode.value === null && userEditedName.value ? node.value?.name : null;
+			hydratedInitialNode.value === null &&
+			userEditedName.value &&
+			preservedNameNodeId.value === currentNodeId
+				? node.value?.name
+				: null;
 
 		const uniqueName = makeUniqueName(initialNode.name, existingToolNames.value);
 		let nodeData =
@@ -352,7 +368,7 @@ watch(
 
 			// Re-apply a name the user edited before hydration completed, and
 			// keep it marked as edited so later auto-rename stays off.
-			if (preservedName) {
+			if (preservedName !== null && preservedName !== undefined) {
 				nodeData = { ...nodeData, name: preservedName };
 				userEditedName.value = true;
 			}
@@ -524,6 +540,9 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						<slot name="commonSettings" />
 					</div>
 				</ParameterInputList>
+				<div v-else-if="nodeTypesLoadFailed" :class="$style.errorNotice">
+					<N8nNotice theme="danger" :content="i18n.baseText('workflowDiff.error.loadNodeTypes')" />
+				</div>
 				<div v-else-if="nodeTypeError" :class="$style.errorNotice">
 					<N8nNotice
 						theme="warning"
@@ -533,9 +552,6 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 							})
 						"
 					/>
-				</div>
-				<div v-else-if="nodeTypesLoadFailed" :class="$style.errorNotice">
-					<N8nNotice theme="danger" :content="i18n.baseText('workflowDiff.error.loadNodeTypes')" />
 				</div>
 				<div v-else-if="node" :class="$style.loading">
 					<N8nSpinner />

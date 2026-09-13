@@ -1172,6 +1172,68 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 
+		it('identity swap before hydration does not leak the previous node name', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const firstNode = createMockNode({
+				id: 'leak-first-id',
+				name: 'First Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://first.example.com' },
+			});
+			const wrapper = mountComponent({ initialNode: firstNode });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('First Node Name');
+
+			// Swap the node identity and let node types arrive in the same flush,
+			// as a real cold-start swap resolves. The preserved name belongs to the
+			// first node and must not be re-applied to the second one.
+			const secondNode = createMockNode({
+				id: 'leak-second-id',
+				name: 'Second Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://second.example.com' },
+			});
+			const swapPromise = wrapper.setProps({ initialNode: secondNode });
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+			await swapPromise;
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('Second Node');
+			});
+		});
+
+		it('cleared name survives deferred hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const wrapper = mountComponent({ initialNode: NODE_WITH_ENDPOINT });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+				isValid: boolean;
+			};
+			exposed.handleChangeName('');
+			// The computed gates on a truthy name, so an empty name yields a falsy value.
+			expect(exposed.isValid).toBeFalsy();
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('');
+			});
+		});
+
 		it('regression anchor: warm load, simulated user edits update isolated store with no null fields', async () => {
 			// Note: The dynamic parameter options fetch surface runs inside child ParameterInput /
 			// ParameterOptions components. We assert here on the isolated document store state that
