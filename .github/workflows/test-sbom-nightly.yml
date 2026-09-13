@@ -1,0 +1,142 @@
+name: 'Test: Nightly SBOM Validation'
+
+on:
+  schedule:
+    # Run after the 00:00 UTC nightly Docker build.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-sbom-validation
+  cancel-in-progress: false
+
+jobs:
+  resolve-nightly-build:
+    name: Resolve nightly Docker build
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-slim
+    timeout-minutes: 130
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
+      source_sha: ${{ steps.source.outputs.source_sha }}
+    steps:
+      - name: Checkout workflow source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve source SHA
+        id: source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/nightly-sbom-context.mjs resolve-source
+
+      # Poutine flags all runtime-selected checkouts. This SHA comes only from
+      # GitHub's scheduled-run response or GITHUB_SHA, and the step rejects
+      # non-SHA values before fetch. This workflow has no pull_request trigger.
+      # poutine: untrusted_checkout_exec
+      - name: Checkout nightly source
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+        run: |
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::The nightly source must be a full commit SHA.'
+            exit 1
+          fi
+          git fetch --depth=1 origin "$SOURCE_SHA"
+          git checkout --detach "$SOURCE_SHA"
+
+      - name: Select nightly image tag
+        id: image-tag
+        run: node .github/scripts/nightly-sbom-context.mjs resolve-image-tag
+
+  validate-release-sbom:
+    name: Validate release SBOM
+    needs: resolve-nightly-build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sbom-validation-callable.yml
+    with:
+      sha: ${{ needs.resolve-nightly-build.outputs.source_sha }}
+
+  validate-image-sboms:
+    name: Validate nightly image SBOMs
+    needs: resolve-nightly-build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: ''
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@43a17d6e7add2b5535efe4dcae9952337c479a93 # v0.20.11
+        with:
+          syft-version: v1.38.2
+
+      - name: Resolve nightly image digests
+        id: digests
+        env:
+          N8N_TAG: ghcr.io/n8n-io/n8n:${{ needs.resolve-nightly-build.outputs.image_tag }}
+          N8N_PC_TAG: ghcr.io/n8n-io/n8n:${{ needs.resolve-nightly-build.outputs.image_tag }}-pc
+          RUNNERS_TAG: ghcr.io/n8n-io/runners:${{ needs.resolve-nightly-build.outputs.image_tag }}
+          DISTROLESS_TAG: ghcr.io/n8n-io/runners:${{ needs.resolve-nightly-build.outputs.image_tag }}-distroless
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
+      - name: Generate and validate image SBOMs
+        env:
+          N8N_IMAGE: ${{ steps.digests.outputs.n8n_image }}
+          N8N_DIGEST: ${{ steps.digests.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ steps.digests.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ steps.digests.outputs.n8n_pc_digest }}
+          RUNNERS_IMAGE: ${{ steps.digests.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ steps.digests.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ steps.digests.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ steps.digests.outputs.runners_distroless_digest }}
+        run: node .github/scripts/attest-image-sbom.mjs --validate-only
+
+  notify-on-failure:
+    name: Notify on nightly SBOM validation failure
+    needs: [resolve-nightly-build, validate-release-sbom, validate-image-sboms]
+    if: |
+      always() &&
+      github.event_name == 'schedule' &&
+      (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C0B4GC7MNF3 \
+            --text "<${RUN_URL}|Nightly SBOM license validation failed>"

@@ -2,7 +2,13 @@ import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import {
+	getMcpAuthHeaders,
+	isMcpOAuth2Authentication,
+	OperationalError,
+	shouldRefreshMcpOAuth2Token,
+} from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
 
 import {
@@ -13,6 +19,7 @@ import type { OauthService } from '@/oauth/oauth.service';
 import {
 	type AuthFetchDomainPolicy,
 	createAuthFetch,
+	getBearerTokenRevision,
 	resolveAllowedDomains,
 } from '@/utils/auth-fetch';
 
@@ -47,8 +54,8 @@ type DerivedAuth = {
  * have to depend on `@n8n/nodes-langchain`.
  *
  * For any supported OAuth2 credential type, the Bearer header is computed from
- * the already-stored `oauthTokenData.access_token`. Refresh-on-401 is handled
- * by `createAuthFetch` below; this function only computes the initial set.
+ * the already-stored `oauthTokenData.access_token`. `createAuthFetch` refreshes
+ * the token before expiry and after a 401 response.
  */
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
@@ -107,7 +114,7 @@ export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
-	 * Used to refresh OAuth2 tokens on a 401 response without an
+	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
 	 * `server.authentication` is a supported OAuth2 credential type.
 	 */
@@ -193,14 +200,36 @@ export async function buildMcpClientForServer(
 		}
 	}
 
-	const onUnauthorized =
+	const oauthTokenData = isRecord(credentialData?.oauthTokenData)
+		? { ...credentialData.oauthTokenData }
+		: undefined;
+	const grantType = credentialData?.grantType;
+	const refreshAuthHeaders =
 		isMcpOAuth2Authentication(server.authentication) && server.credential
-			? async () => {
+			? async (currentHeaders: Record<string, string>) => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;
-					return await oauthService
-						.refreshOAuth2CredentialById(credentialId, projectId)
-						.catch(() => null);
+					const result = await oauthService.refreshOAuth2CredentialById(
+						credentialId,
+						projectId,
+						getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
+					);
+					if (!result) return null;
+
+					if (oauthTokenData) {
+						if (result.expiresAt === undefined) {
+							delete oauthTokenData.n8n_expires_at;
+						} else {
+							oauthTokenData.n8n_expires_at = String(result.expiresAt);
+						}
+						if (result.expiresInSeconds === undefined) {
+							delete oauthTokenData.expires_in;
+						} else {
+							oauthTokenData.expires_in = result.expiresInSeconds;
+						}
+					}
+
+					return result.headers;
 				}
 			: undefined;
 
@@ -231,7 +260,10 @@ export async function buildMcpClientForServer(
 				fetch: createAuthFetch({
 					baseFetch: proxyFetch,
 					initialHeaders,
-					onUnauthorized,
+					onUnauthorized: refreshAuthHeaders,
+					...(refreshAuthHeaders
+						? { shouldRefresh: () => shouldRefreshMcpOAuth2Token(oauthTokenData, grantType) }
+						: {}),
 					allowedDomains,
 				}),
 			};

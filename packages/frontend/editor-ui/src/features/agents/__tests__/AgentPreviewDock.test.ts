@@ -1,27 +1,50 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, shallowMount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils';
+
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { routerResolve, useKeybindingsMock } = vi.hoisted(function createMocks() {
-	return {
-		routerResolve: vi.fn(function resolveRoute() {
-			return { href: '/resolved-preview' };
-		}),
-		useKeybindingsMock: vi.fn(),
-	};
-});
+enableAutoUnmount(afterEach);
+
+const { confirm, deleteThread, showError, showMessage, useKeybindingsMock } = vi.hoisted(
+	function createMocks() {
+		return {
+			confirm: vi.fn(),
+			deleteThread: vi.fn(),
+			showError: vi.fn(),
+			showMessage: vi.fn(),
+			useKeybindingsMock: vi.fn(),
+		};
+	},
+);
 
 vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
 	return { useKeybindings: useKeybindingsMock };
 });
 
-vi.mock('vue-router', function mockVueRouter() {
+vi.mock('@/app/composables/useMessage', function mockUseMessage() {
 	return {
-		useRouter: function useRouter() {
-			return { resolve: routerResolve };
+		useMessage: function useMessage() {
+			return { confirm };
+		},
+	};
+});
+
+vi.mock('@n8n/composables/useToast', function mockUseToast() {
+	return {
+		useToast: function useToast() {
+			return { showMessage, showError };
+		},
+	};
+});
+
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { deleteThread };
 		},
 	};
 });
@@ -36,14 +59,6 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
-vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
-	default: {
-		name: 'AgentSessionTimelinePanel',
-		props: ['projectId', 'agentId', 'threadId'],
-		template: '<div data-testid="agent-preview-session-timeline" />',
-	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -85,18 +100,27 @@ vi.mock('@n8n/design-system', () => ({
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: ['beforeSend', 'layout'],
+	props: ['beforeSend', 'visible'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
-		expose({ focusInput: vi.fn() });
+		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
 	},
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
 };
 
-const AgentSessionTimelinePanelStub = {
-	name: 'AgentSessionTimelinePanel',
-	props: ['projectId', 'agentId', 'threadId'],
-	template: '<div data-testid="agent-preview-session-timeline" />',
+const AgentPreviewMoreMenuStub = {
+	name: 'AgentPreviewMoreMenu',
+	props: [
+		'projectId',
+		'agentId',
+		'effectiveSessionId',
+		'hasSession',
+		'isFullWidth',
+		'isDeletingSession',
+		'getConversationMarkdown',
+	],
+	emits: ['toggle-full-width', 'delete-session', 'export-session'],
+	template: '<button data-testid="agent-preview-more-btn" @click="$emit(\'toggle-full-width\')" />',
 };
 
 function mountDock(
@@ -127,16 +151,17 @@ function mountDock(
 		global: {
 			stubs: {
 				AgentPreviewChatPage: AgentPreviewChatPageStub,
-				AgentSessionTimelinePanel: AgentSessionTimelinePanelStub,
+				AgentPreviewMoreMenu: AgentPreviewMoreMenuStub,
 			},
 		},
 	});
 }
 
 describe('AgentPreviewDock', () => {
-	beforeEach(() => {
-		routerResolve.mockClear();
-		useKeybindingsMock.mockClear();
+	beforeEach(function resetMocks() {
+		vi.clearAllMocks();
+		confirm.mockReset().mockResolvedValue(MODAL_CONFIRM);
+		deleteThread.mockReset().mockResolvedValue(undefined);
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
@@ -159,12 +184,12 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
-			'agent-preview-layout-btn',
+			'agent-preview-more-btn',
+			'agent-preview-close-btn',
 		]);
 	});
 
 	it('renders accessible header actions and emits their events', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const wrapper = mountDock();
 		const expectedActions = [
 			{
@@ -176,6 +201,11 @@ describe('AgentPreviewDock', () => {
 				testId: 'agent-preview-new-chat-btn',
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
+			},
+			{
+				testId: 'agent-preview-close-btn',
+				icon: 'chevrons-right',
+				label: 'agents.builder.preview.hide',
 			},
 		];
 		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
@@ -200,7 +230,7 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toBeUndefined();
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
 	it.each([
@@ -213,7 +243,18 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
 	});
 
-	it('forwards chat events and opts the chat page into dock layout', () => {
+	it('keeps the preview page mounted when the dock closes and reopens', async () => {
+		const wrapper = mountDock();
+		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		expect(chatPage.props('visible')).toBe(true);
+		await wrapper.setProps({ isOpen: false });
+		expect(chatPage.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).vm).toBe(chatPage.vm);
+		await wrapper.setProps({ isOpen: true });
+		expect(chatPage.props('visible')).toBe(true);
+	});
+
+	it('forwards chat events to the preview page', () => {
 		const beforeSend = vi.fn();
 		const fixEvent = {
 			executionId: 'execution-1',
@@ -229,7 +270,6 @@ describe('AgentPreviewDock', () => {
 		const wrapper = mountDock({ beforeSend });
 		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
 
-		expect(chatPage.props('layout')).toBe('dock');
 		expect(chatPage.props('beforeSend')).toBe(beforeSend);
 		chatPage.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 3 });
 		chatPage.vm.$emit('open-build');
@@ -246,31 +286,142 @@ describe('AgentPreviewDock', () => {
 			name: 'KeyboardShortcutTooltip',
 		});
 
-		expect(tooltips).toHaveLength(1);
+		expect(tooltips).toHaveLength(2);
 		expect(tooltips[0]?.props()).toMatchObject({
 			label: 'agents.builder.chat.newChat.label',
 			placement: 'bottom',
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
 		});
+		expect(tooltips[1]?.props()).toMatchObject({
+			label: 'agents.builder.preview.hide',
+			shortcut: { metaKey: false, shiftKey: false, keys: ['esc'] },
+		});
 	});
 
-	it('opens the active session in a new tab', () => {
-		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
-			return null;
-		});
+	it('passes the active session to the more menu', () => {
 		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
+		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
 
-		layoutMenu?.vm.$emit('select', 'open-in-new-tab');
-
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1' },
+		expect(moreMenu.props()).toMatchObject({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			effectiveSessionId: 'thread-1',
+			hasSession: true,
+			isFullWidth: false,
 		});
-		expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
-		open.mockRestore();
 	});
+
+	it('confirms deletion and starts a new session after success', async function deletesSession() {
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledExactlyOnceWith(
+			'agentSessions.deleteConfirm.message',
+			'agentSessions.deleteConfirm.headline',
+			{
+				type: 'warning',
+				confirmButtonText: 'agentSessions.deleteConfirm.confirmButtonText',
+				cancelButtonText: '',
+			},
+		);
+		expect(deleteThread).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1', 'thread-1');
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+			title: 'agentSessions.showMessage.deleted',
+			type: 'success',
+		});
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('keeps the session when deletion is cancelled', async function cancelsDeletion() {
+		confirm.mockResolvedValueOnce(MODAL_CANCEL);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(deleteThread).not.toHaveBeenCalled();
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toBeUndefined();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('reports a deletion failure and keeps the session', async function reportsDeletionError() {
+		const error = new Error('Delete failed');
+		deleteThread.mockRejectedValueOnce(error);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledExactlyOnceWith(error, 'agentSessions.showError.delete');
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toBeUndefined();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('blocks repeated deletion while confirmation or deletion is pending', async function blocksRepeatedDeletion() {
+		const confirmation = Promise.withResolvers<string>();
+		const deletion = Promise.withResolvers<void>();
+		confirm.mockReturnValueOnce(confirmation.promise);
+		deleteThread.mockReturnValueOnce(deletion.promise);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(deleteThread).not.toHaveBeenCalled();
+		expect(menu.props('isDeletingSession')).toBe(true);
+
+		confirmation.resolve(MODAL_CONFIRM);
+		await flushPromises();
+		menu.vm.$emit('delete-session');
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(deleteThread).toHaveBeenCalledTimes(1);
+
+		deletion.resolve();
+		await flushPromises();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('does not replace a session selected while deletion is pending', async function preservesSelectedSession() {
+		const deletion = Promise.withResolvers<void>();
+		deleteThread.mockReturnValueOnce(deletion.promise);
+		const wrapper = mountDock();
+
+		wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+		await flushPromises();
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		deletion.resolve();
+		await flushPromises();
+
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
+	});
+
+	it.each([{ hasSession: false }, { effectiveSessionId: undefined }])(
+		'does not confirm deletion without a saved session: %j',
+		async function skipsDeletion(overrides) {
+			const wrapper = mountDock(overrides);
+
+			wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(deleteThread).not.toHaveBeenCalled();
+		},
+	);
 
 	it('creates a new session from the registered keyboard shortcut', () => {
 		const wrapper = mountDock();
@@ -283,7 +434,7 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 	});
 
-	it('only enables Escape while focus is within the dock', () => {
+	it('only enables Escape when the dock is open and contains focus', async function checksEscapeScope() {
 		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const host = document.createElement('div');
 		const outsideButton = document.createElement('button');
@@ -304,88 +455,28 @@ describe('AgentPreviewDock', () => {
 		escapeBinding.run();
 		expect(wrapper.emitted('close')).toEqual([[]]);
 
+		await wrapper.setProps({ isOpen: false });
+		expect(escapeBinding.disabled()).toBe(true);
+
 		wrapper.unmount();
 		host.remove();
 		outsideButton.remove();
 	});
 
-	it('shows the session timeline in full-page layout without navigating', async () => {
+	it('docks the preview before opening the session view', async () => {
+		/** TODO: Remove this test when https://linear.app/n8n/issue/AGENT-808 removes preview chat from the session trace view. */
 		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
 		const wrapper = mountDock();
 
 		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
 
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-show-chat-btn"]').exists()).toBe(true);
-		expect(
-			wrapper
-				.find('[data-testid="agent-preview-show-chat-btn"]')
-				.find('[data-icon="message-circle"]')
-				.exists(),
-		).toBe(true);
-	});
-
-	it('returns to chat from the full-page timeline view', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-show-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when switching from full-page timeline to docked layout', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		layoutMenu?.vm.$emit('select', 'docked');
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when starting a new session from the full-page timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-chat-page-stub"]').isVisible()).toBe(true);
-		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('returns to chat when the dock closes while showing the timeline', async () => {
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
-
-		await wrapper.setProps({ isOpen: false });
-		await wrapper.setProps({ isOpen: true });
-
-		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(true);
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('docked');
+		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 	});
 });
 
 describe('AgentPreviewChatPage', () => {
-	function mountChatPage(layout?: 'page' | 'dock', beforeSend?: () => Promise<void> | void) {
+	function mountChatPage(beforeSend?: () => Promise<void> | void) {
 		return shallowMount(AgentPreviewChatPage, {
 			props: {
 				initialized: true,
@@ -395,29 +486,40 @@ describe('AgentPreviewChatPage', () => {
 				localConfig: null,
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
-				layout,
 				beforeSend,
 			},
 		});
 	}
 
-	it('keeps the main landmark for the standalone page layout', () => {
-		expect(mountChatPage().element.tagName).toBe('MAIN');
+	it('uses a neutral root inside the complementary dock landmark', () => {
+		expect(mountChatPage().element.tagName).toBe('DIV');
 	});
 
-	it('uses a neutral root inside the complementary dock landmark', () => {
-		expect(mountChatPage('dock').element.tagName).toBe('DIV');
+	it('keeps the standalone chat visible when no dock state is provided', () => {
+		const wrapper = mountChatPage();
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('visible')).toBe(true);
+	});
+
+	it('keeps the chat panel mounted when visibility changes', async () => {
+		const wrapper = mountChatPage();
+		const chatPanel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		await wrapper.setProps({ visible: false });
+		expect(chatPanel.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).vm).toBe(chatPanel.vm);
+		await wrapper.setProps({ visible: true });
+		expect(chatPanel.props('visible')).toBe(true);
 	});
 
 	it('forwards the pre-send guard to the chat panel', () => {
 		const beforeSend = vi.fn();
-		const wrapper = mountChatPage('dock', beforeSend);
+		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
 	});
 
 	it('forwards the session-aware history event from the chat panel', () => {
-		const wrapper = mountChatPage('dock');
+		const wrapper = mountChatPage();
 
 		wrapper
 			.findComponent({ name: 'AgentChatPanel' })
@@ -438,7 +540,7 @@ describe('AgentPreviewChatPage', () => {
 				},
 			],
 		};
-		const wrapper = mountChatPage('dock');
+		const wrapper = mountChatPage();
 
 		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('send-to-assistant', fixEvent);
 

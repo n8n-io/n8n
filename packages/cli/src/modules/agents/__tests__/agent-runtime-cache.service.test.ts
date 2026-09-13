@@ -104,6 +104,37 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
+		);
+	});
+
+	it('keeps task runtimes separate and disables their background tools', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(makeRuntime())
+			.mockResolvedValueOnce(makeRuntime());
+
+		await service.getRuntime({ agentId, projectId });
+		// An explicit `true` is the default and shares the default runtime.
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: true });
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: false });
+
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ allowBackgroundTasks: false },
 		);
 	});
 
@@ -305,6 +336,37 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('keeps the preview runtime separate and flags it for reconstruction', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const plainRuntime = makeRuntime();
+		const previewRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(plainRuntime)
+			.mockResolvedValueOnce(previewRuntime);
+
+		const plain = await service.getRuntime({ agentId, projectId });
+		const preview = await service.getRuntime({ agentId, projectId, previewChat: true });
+
+		expect(plain.agent).toBe(plainRuntime.agent);
+		expect(preview.agent).toBe(previewRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ previewChat: true },
+		);
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
@@ -336,6 +398,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 	});
 
@@ -370,6 +433,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -381,6 +445,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 	});
 
@@ -553,6 +618,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
+			{},
 		);
 	});
 

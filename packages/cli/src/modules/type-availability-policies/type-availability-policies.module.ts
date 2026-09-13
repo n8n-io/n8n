@@ -1,9 +1,23 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
-@BackendModule({ name: 'type-availability-policies' })
+/**
+ * The module-level `licenseFlag` skips `init()` on an unlicensed instance, so the controllers
+ * are never loaded there. Each route still carries `@Licensed`: modules are initialized once
+ * at startup, so only the per-route check covers a license that changes while running.
+ */
+@BackendModule({
+	name: 'type-availability-policies',
+	licenseFlag: LICENSE_FEATURES.NODE_TYPE_POLICIES,
+})
 export class TypeAvailabilityPoliciesModule implements ModuleInterface {
-	async init() {}
+	async init() {
+		// Side-effecting imports: register the controllers' routes via `@RestController`.
+		await import('./type-availability-policy-instance.controller.js');
+		await import('./type-availability-policy-project.controller.js');
+		await import('./available-types.controller.js');
+	}
 
 	async entities() {
 		const { TypeAvailabilityPolicy } = await import(

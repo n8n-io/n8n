@@ -1,6 +1,9 @@
 import FormData from 'form-data';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
+	INodeParameters,
+	INodePropertyOptions,
 	INodeTypeBaseDescription,
 	JsonObject,
 	JsonValue,
@@ -77,6 +80,167 @@ describe('HttpRequestV3', () => {
 			continueOnFail: vi.fn(),
 			getMode: vi.fn(),
 		} as unknown as IExecuteFunctions;
+	});
+
+	describe('Method dropdown', () => {
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
+
+		const visibleMethods = (nodeParameters: INodeParameters) => {
+			const methodProperty = node.description.properties.find((p) => p.name === 'method');
+			expect(methodProperty?.type).toBe('options');
+
+			return ((methodProperty?.options ?? []) as INodePropertyOptions[])
+				.filter((option) => NodeHelpers.displayParameter(nodeParameters, option, null, null))
+				.map((option) => option.value);
+		};
+
+		it('should hide WebDAV methods until the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: {} });
+
+			expect(visible).toEqual(expect.arrayContaining(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']));
+			for (const method of webdavMethods) {
+				expect(visible).not.toContain(method);
+			}
+		});
+
+		it('should show WebDAV methods once the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: { webdavMethods: true } });
+
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
+
+		it.each(webdavMethods)(
+			'should keep %s visible when it is selected but the option is disabled',
+			(method) => {
+				const visible = visibleMethods({ method, options: {} });
+
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+
+				for (const other of webdavMethods.filter((m) => m !== method)) {
+					expect(visible).not.toContain(other);
+				}
+			},
+		);
+
+		it('should not duplicate a selected WebDAV method when the option is enabled', () => {
+			const visible = visibleMethods({ method: 'PROPFIND', options: { webdavMethods: true } });
+
+			expect(visible.filter((value) => value === 'PROPFIND')).toEqual(['PROPFIND']);
+		});
+
+		it('should not duplicate WebDAV methods when Method holds an expression', () => {
+			const visible = visibleMethods({
+				method: '={{ $json.method }}',
+				options: { webdavMethods: true },
+			});
+
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
+	});
+
+	it('should add an "Enable WebDAV Methods" option to Options, disabled by default', () => {
+		const optionsProperty = node.description.properties.find((p) => p.name === 'options');
+		expect(optionsProperty).toBeDefined();
+
+		const webdavOption = (optionsProperty?.options ?? []).find((o) => o.name === 'webdavMethods');
+		expect(webdavOption).toMatchObject({
+			displayName: 'Enable WebDAV Methods',
+			type: 'boolean',
+			default: false,
+		});
+	});
+
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+		'should make a %s request',
+		async (method) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method,
+					uri: baseUrl,
+				}),
+			);
+		},
+	);
+
+	describe('Body content-type conversion per method', () => {
+		const executeFormRequest = async (method: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'form-urlencoded';
+					case 'specifyBody':
+						return 'keypair';
+					case 'bodyParameters.parameters':
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						return [{ name: 'depth', value: '1' }];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			await node.execute.call(executeFunctions);
+			return (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		};
+
+		it('should convert the body for WebDAV methods that send one', async () => {
+			const requestArgs = await executeFormRequest('PROPFIND');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should keep converting the body for GET requests', async () => {
+			const requestArgs = await executeFormRequest('GET');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should not convert the body for methods that never carry one', async () => {
+			const requestArgs = await executeFormRequest('HEAD');
+			expect(requestArgs.form).toBeUndefined();
+		});
 	});
 
 	it('should make a GET request', async () => {

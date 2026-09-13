@@ -81,6 +81,7 @@ packages/cli/src/events/                                @n8n-io/catalysts
 packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
+packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
 packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
@@ -184,11 +185,11 @@ packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
 
-packages/frontend/@n8n/design-system/                   @n8n-io/design
+packages/frontend/@n8n/design-system/                   @n8n-io/design-engineering
 packages/frontend/@n8n/stores/                          @n8n-io/frontend
 packages/frontend/@n8n/composables/                     @n8n-io/frontend
 packages/frontend/@n8n/rest-api-client/                 @n8n-io/frontend
-packages/frontend/@n8n/storybook/                       @n8n-io/design
+packages/frontend/@n8n/storybook/                       @n8n-io/design-engineering
 packages/frontend/@n8n/i18n/                            @n8n-io/frontend
 packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 

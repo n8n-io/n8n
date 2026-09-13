@@ -113,6 +113,7 @@ export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 	title: 'Databricks Genie',
 	description: 'Databricks Genie MCP server, resolved per-customer from the workspace host.',
 	tagline: 'Connect to Databricks Genie',
+	attribution: 'Powered by Genie',
 	version: '1.0.0',
 	updatedAt: '2026-08-20T10:00:00.000Z',
 	icons: [
@@ -129,6 +130,8 @@ export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 			// Trailing slash stripped in case the customer pastes the host straight
 			// from the browser, matching DatabricksOAuth2Api's own accessTokenUrl/authUrl.
 			url: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+			// Mirrors DATABRICKS_PARTNER_USER_AGENT in nodes-base, which cli does not import
+			headers: { 'User-Agent': 'n8n_DatabricksNode' },
 		},
 	],
 	tools: [],

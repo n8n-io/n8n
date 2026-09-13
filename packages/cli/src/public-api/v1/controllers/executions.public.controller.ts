@@ -3,6 +3,7 @@ import {
 	ExecutionListPublicDto,
 	ExecutionPublicDto,
 	ExecutionTagsPublicDto,
+	executionIdParamSchema,
 	GetExecutionQueryDto,
 	ListExecutionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
@@ -50,17 +51,6 @@ import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
-
-/**
- * The legacy spec typed this parameter as `number`, so the request validator rejected a non-numeric
- * id with a 400. The generated spec declares a string, so without this the value reaches the query
- * and fails against the integer column.
- */
-function assertNumericExecutionId(executionId: string): void {
-	if (!/^\d+$/.test(executionId) || Number(executionId) < 1) {
-		throw new BadRequestError('The execution ID must be a positive integer');
-	}
-}
 
 function isCursorObject(
 	value: unknown,
@@ -183,11 +173,9 @@ export class ExecutionsPublicController {
 	async getExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Query query: GetExecutionQueryDto,
 	): Promise<ExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:read'],
@@ -241,10 +229,8 @@ export class ExecutionsPublicController {
 	async deleteExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<DeletedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:delete'],
@@ -270,10 +256,8 @@ export class ExecutionsPublicController {
 	async getExecutionTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<ExecutionTagsPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:read'],
@@ -298,11 +282,9 @@ export class ExecutionsPublicController {
 	async updateExecutionTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<ExecutionTagsPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:update'],
@@ -374,10 +356,8 @@ export class ExecutionsPublicController {
 	async stopExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<StoppedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:execute'],
@@ -415,11 +395,9 @@ export class ExecutionsPublicController {
 	async retryExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: RetryExecutionPublicDto,
 	): Promise<RetriedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:execute'],

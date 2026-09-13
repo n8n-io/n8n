@@ -1,10 +1,32 @@
-import type { JsonValue } from '../common';
+import type { JsonObject, JsonValue } from '../common';
 
 /** Lifecycle status of an execution. */
 export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
+
+/**
+ * Facts about the caller, supplied by the host at start and stored with the
+ * execution. The engine never reads them: it passes them to the step executor,
+ * which needs them to act on the caller's behalf, for example to resolve a
+ * credential.
+ *
+ * This is caller-supplied, opaque data. It is distinct from any per-request
+ * context the engine builds for its own use (database handle, request id,
+ * principal), which is never persisted and never given to a step executor.
+ */
+export interface CallerContext {
+	/** The user on whose behalf the execution runs. */
+	userId?: string;
+	/** The project that owns the workflow. */
+	projectId?: string;
+	/**
+	 * The host's own execution mode, which is finer than `ExecutionMode`. Opaque
+	 * to the engine; a v1 host stores its `WorkflowExecuteMode` here.
+	 */
+	hostMode?: string;
+}
 
 /**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
@@ -48,6 +70,13 @@ export type StepSlots = JsonValue[];
  * `INodeExecutionData[]` in each slot.
  */
 export type TriggerOutputs = StepSlots;
+
+/**
+ * The full workflow the run came from, supplied by CP. Opaque: the engine
+ * never reads a field out of it. Different from WorkflowGraph, which
+ * is only the graph that is executed (e.g. without disabled nodes).
+ */
+export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];

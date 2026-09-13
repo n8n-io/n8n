@@ -6,7 +6,6 @@ import { ChatTriggerAuthorizationError } from './error';
 import {
 	clearChatOAuthToken,
 	clearChatRefreshToken,
-	isChatOAuth2Enabled,
 	readChatOAuthToken,
 	readChatRefreshToken,
 	setChatOAuthToken,
@@ -104,7 +103,7 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 			// so a token from it must never authenticate a webhook-mode call — e.g. a stale
 			// token replayed after the node's mode was switched from hostedChat to webhook.
 			const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
-			if (isChatOAuth2Enabled() && mode === 'hostedChat') {
+			if (mode === 'hostedChat') {
 				const chatToken = headers['x-auth-token'];
 				if (typeof chatToken === 'string' && chatToken) {
 					const resourceUrl = context.getWebhookResourceUrl('default');

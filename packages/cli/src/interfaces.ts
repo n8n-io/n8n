@@ -250,6 +250,7 @@ export interface IAgentConfigurationTelemetryProperties {
 
 export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProperties {
 	agent_id: string;
+	user_id?: string;
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;

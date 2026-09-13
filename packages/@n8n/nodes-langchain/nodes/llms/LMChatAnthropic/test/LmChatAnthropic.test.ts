@@ -662,6 +662,39 @@ describe('LmChatAnthropic', () => {
 			).not.toThrow();
 		});
 
+		it('should sanitize a disabled-thinking rejection only when Disabled was set explicitly', async () => {
+			// Verbatim Anthropic 400 for models that always think (Fable, Mythos)
+			const rejection = new Error(
+				'"thinking.type.disabled" is not supported for this model. Thinking defaults to adaptive mode when not specified; use "thinking.type.enabled" with "budget_tokens" for extended thinking.',
+			);
+			const captureHandler = async (options: Record<string, unknown>) => {
+				const mockContext = setupMockContext({ typeVersion: 1.6 });
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-fable-5';
+					if (paramName === 'options') return options;
+					return undefined;
+				});
+				let capturedHandler: ((error: unknown) => void) | undefined;
+				mockedMakeN8nLlmFailedAttemptHandler.mockImplementation((_ctx, handler) => {
+					capturedHandler = handler as (error: unknown) => void;
+					return vi.fn();
+				});
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+				return capturedHandler!;
+			};
+
+			const explicitlyDisabled = await captureHandler({ thinkingMode: 'disabled' });
+			expect(() => explicitlyDisabled(rejection)).toThrow(NodeOperationError);
+			expect(() => explicitlyDisabled(rejection)).toThrow(
+				/"claude-fable-5" does not support disabling thinking/,
+			);
+			expect(() => explicitlyDisabled(new Error('rate limit exceeded'))).not.toThrow();
+
+			// Unset Thinking Mode never sends `disabled`, so the rejection cannot be ours
+			const unset = await captureHandler({});
+			expect(() => unset(rejection)).not.toThrow();
+		});
+
 		it('should throw when model is empty (v1.3)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.3 });
 
@@ -800,7 +833,7 @@ describe('LmChatAnthropic', () => {
 	});
 
 	describe('thinking modes (v1.5)', () => {
-		it('should not set thinking-related invocationKwargs when thinkingMode is disabled', async () => {
+		it('should send thinking disabled and keep sampling params when thinkingMode is explicitly disabled', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
@@ -818,7 +851,7 @@ describe('LmChatAnthropic', () => {
 					temperature: 0.5,
 					topK: 10,
 					topP: 0.8,
-					invocationKwargs: {},
+					invocationKwargs: { thinking: { type: 'disabled' } },
 				}),
 			);
 		});
@@ -985,7 +1018,7 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
-		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
+		it('should send thinking disabled when thinking=false on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
@@ -997,7 +1030,7 @@ describe('LmChatAnthropic', () => {
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
-				expect.objectContaining({ invocationKwargs: {} }),
+				expect.objectContaining({ invocationKwargs: { thinking: { type: 'disabled' } } }),
 			);
 		});
 

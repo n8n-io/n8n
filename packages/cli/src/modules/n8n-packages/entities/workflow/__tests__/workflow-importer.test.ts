@@ -71,6 +71,7 @@ describe('WorkflowImporter.apply', () => {
 				decidedId: 'created-id',
 				parentFolderId: 'folder-1',
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 			{
 				action: 'update',
@@ -80,6 +81,7 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingUpdate,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 			{
 				action: 'skip',
@@ -88,6 +90,7 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingSkip,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
@@ -146,6 +149,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
@@ -215,6 +219,7 @@ describe('WorkflowImporter.apply', () => {
 					decidedId: 'created',
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			],
 			conflicts: [],
@@ -269,6 +274,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			conflicts: [],
@@ -313,6 +319,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			conflicts: [],
@@ -351,6 +358,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			],
 			conflicts: [],
@@ -392,6 +400,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
@@ -432,6 +441,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{

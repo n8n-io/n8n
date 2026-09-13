@@ -29,6 +29,19 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { MCP_JSON_NUDGE_MODAL_KEY } from '@/experiments/mcpJsonNudge/constants';
+import { nodeViewEventBus } from '@/app/event-bus';
+import { telemetry } from '@/app/plugins/telemetry';
+
+const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
+const saveAsMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
+	useMcpJsonNudgeEligibility: () => ({
+		canShow: mockMcpNudgeCanShow,
+		recordImpression: vi.fn(),
+	}),
+}));
 
 // No workflow route meta on purpose: the menu renders both on workflow-layout
 // routes and in host-embedded editors without a workflow route (e.g. the AI
@@ -89,6 +102,30 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	useWorkflowSaving: () => ({
 		saveCurrentWorkflow: mockSaveCurrentWorkflow,
 	}),
+}));
+
+let mockDependenciesResult:
+	| {
+			dependencies: Array<{ type: string; id: string; name: string; projectId?: string }>;
+			inaccessibleCount: number;
+	  }
+	| undefined;
+
+const fetchDependenciesMock = vi.fn();
+const fetchDependencyCountsMock = vi.fn();
+
+vi.mock('@/app/composables/useDependencies', () => ({
+	useDependencies: () => ({
+		getDependencies: () => mockDependenciesResult,
+		fetchDependencies: fetchDependenciesMock,
+		fetchDependencyCounts: fetchDependencyCountsMock,
+		hasDependencies: () => (mockDependenciesResult?.dependencies.length ?? 0) > 0,
+	}),
+}));
+
+vi.mock('file-saver', () => ({
+	default: saveAsMock,
+	saveAs: saveAsMock,
 }));
 
 const initialState = {
@@ -195,6 +232,7 @@ describe('WorkflowDetails', () => {
 
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
+		mockMcpNudgeCanShow.mockReturnValue(true);
 		workflowsListStore.workflowsById = {
 			'1': workflow,
 			'123': workflow,
@@ -210,6 +248,7 @@ describe('WorkflowDetails', () => {
 		message = useMessage();
 		toast = useToast();
 		router = useRouter();
+		mockDependenciesResult = undefined;
 	});
 
 	afterEach(() => {
@@ -250,6 +289,144 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
+		it('should not show a dependencies entry when the workflow has none', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(queryByTestId('workflow-menu-item-dependencies')).not.toBeInTheDocument();
+		});
+
+		it('should show a dependencies entry and refetch details when the menu opens', async () => {
+			mockDependenciesResult = {
+				dependencies: [{ type: 'workflowCall', id: 'wf-sub', name: 'Sub-Workflow A' }],
+				inaccessibleCount: 0,
+			};
+
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			// The lightweight counts load on mount, so the menu knows to show the entry
+			expect(fetchDependencyCountsMock).toHaveBeenCalledWith(['1'], 'workflow');
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			// The dependencies entry is a sub-menu; its trigger stands in for its items here
+			expect(getByTestId('workflow-menu-item-dependencies')).toBeInTheDocument();
+			expect(fetchDependenciesMock).toHaveBeenCalledWith(['1'], 'workflow');
+		});
+
+		it('shows the MCP JSON nudge and holds the export and its telemetry until the user continues', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(openModalSpy).toHaveBeenCalledWith({
+				name: MCP_JSON_NUDGE_MODAL_KEY,
+				data: { surface: 'export', onContinue: expect.any(Function) },
+			});
+			expect(saveAsMock).not.toHaveBeenCalled();
+			// Connect abandons the export, so it must not be reported as exported yet.
+			expect(trackSpy).not.toHaveBeenCalledWith('User exported workflow', expect.anything());
+
+			const { onContinue } = openModalSpy.mock.calls[0][0].data as { onContinue: () => void };
+			onContinue();
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+			expect(trackSpy).toHaveBeenCalledWith('User exported workflow', { workflow_id: '1' });
+		});
+
+		it('exports immediately when the MCP JSON nudge is not eligible', async () => {
+			mockMcpNudgeCanShow.mockReturnValue(false);
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-download'));
+
+			expect(saveAsMock).toHaveBeenCalledTimes(1);
+			expect(trackSpy).toHaveBeenCalledWith('User exported workflow', { workflow_id: '1' });
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),
+			);
+		});
+
+		it('shows the MCP JSON nudge and holds the file import until the user continues', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+			const workflowData = { nodes: [], connections: {} };
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.upload(
+				getByTestId('workflow-import-input'),
+				new File([JSON.stringify(workflowData)], 'workflow.json', { type: 'application/json' }),
+			);
+
+			await vi.waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith({
+					name: MCP_JSON_NUDGE_MODAL_KEY,
+					data: { surface: 'import_file', onContinue: expect.any(Function) },
+				}),
+			);
+			expect(emitSpy).not.toHaveBeenCalledWith('importWorkflowData', expect.anything());
+
+			const { onContinue } = openModalSpy.mock.calls.at(-1)?.[0].data as {
+				onContinue: () => void;
+			};
+			onContinue();
+
+			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData });
+		});
+
+		it('imports the file immediately when the MCP JSON nudge is not eligible', async () => {
+			mockMcpNudgeCanShow.mockReturnValue(false);
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const emitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+			const workflowData = { nodes: [], connections: {} };
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+				},
+			});
+
+			await userEvent.upload(
+				getByTestId('workflow-import-input'),
+				new File([JSON.stringify(workflowData)], 'workflow.json', { type: 'application/json' }),
+			);
+
+			await vi.waitFor(() =>
+				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData }),
+			);
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),
+			);
+		});
+
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 

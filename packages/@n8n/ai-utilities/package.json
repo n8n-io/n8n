@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.30.0",
+  "version": "0.32.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -30,6 +30,9 @@
       ],
       "json-schema": [
         "dist/esm/json-schema/index.d.ts"
+      ],
+      "llm-output": [
+        "dist/esm/llm-output/index.d.ts"
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
@@ -85,6 +88,11 @@
       "import": "./dist/esm/json-schema/index.js",
       "require": "./dist/cjs/json-schema/index.js"
     },
+    "./llm-output": {
+      "types": "./dist/esm/llm-output/index.d.ts",
+      "import": "./dist/esm/llm-output/index.js",
+      "require": "./dist/cjs/llm-output/index.js"
+    },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
       "import": "./dist/esm/web-search/index.js",
@@ -126,6 +134,7 @@
     "@types/mime-types": "catalog:",
     "@types/lodash": "catalog:",
     "@types/proxy-from-env": "catalog:",
+    "fast-check": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
@@ -144,7 +153,6 @@
     "lodash": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-network": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",

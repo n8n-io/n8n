@@ -15,6 +15,12 @@ export class InsightsModule implements ModuleInterface {
 		await Container.get(InsightsService).init();
 	}
 
+	async systemTasks() {
+		const { InsightsCompactionTask } = await import('./insights-compaction.task.js');
+		const { InsightsPruningTask } = await import('./insights-pruning.task.js');
+		return [InsightsCompactionTask, InsightsPruningTask];
+	}
+
 	async entities() {
 		const { InsightsByPeriod } = await import('./database/entities/insights-by-period.js');
 		const { InsightsMetadata } = await import('./database/entities/insights-metadata.js');

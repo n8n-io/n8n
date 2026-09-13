@@ -24,12 +24,17 @@ export class InstanceRegistryModule implements ModuleInterface {
 		);
 		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
 
-		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service.js');
-		Container.get(StaleMemberCleanupService).init();
-
 		await import('./checks/index.js');
 		const { CheckService } = await import('./checks/check.service.js');
 		Container.get(CheckService).init();
+	}
+
+	async systemTasks() {
+		const { StaleMemberCleanupTask } = await import('./stale-member-cleanup.task.js');
+		const { InstanceRegistryReconciliationTask } = await import(
+			'./checks/instance-registry-reconciliation.task.js'
+		);
+		return [StaleMemberCleanupTask, InstanceRegistryReconciliationTask];
 	}
 
 	@OnShutdown()

@@ -25,14 +25,18 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { SlackMethodsService } from './slack-methods.service';
-import { childRecord, SLACK_BOT_SCOPES, type SlackAppSetupSession } from './slack-setup.types';
+import {
+	childRecord,
+	managedSlackAppCacheKey,
+	SLACK_APP_SETUP_TTL_MS,
+	SLACK_BOT_SCOPES,
+	SLACK_CREDENTIAL_TYPE,
+	type SlackAppSetupSession,
+} from './slack-setup.types';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { stringProperty } from '../../integration-helpers';
 
-const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
-const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
-const SLACK_CREDENTIAL_TYPE = 'slackApi';
 const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
 const DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME = 'Workspace credentials';
 const REQUIRED_MANAGER_SCOPES = [
@@ -379,7 +383,7 @@ export class SlackManagedSetupService {
 			});
 			if (cleanupResponse.ok) {
 				await this.cacheService.delete(
-					this.managedAppCacheKey({ ...options, userId: options.user.id }),
+					managedSlackAppCacheKey({ ...options, userId: options.user.id }),
 				);
 			}
 		}
@@ -492,7 +496,7 @@ export class SlackManagedSetupService {
 
 		if (managerCredentialId && typeof data.teamId === 'string') {
 			await this.cacheService.delete(
-				this.managedAppCacheKey({
+				managedSlackAppCacheKey({
 					projectId: options.projectId,
 					agentId: options.agentId,
 					managerCredentialId,
@@ -725,7 +729,7 @@ export class SlackManagedSetupService {
 		manager: ManagerCredentialContext,
 		workspaceName: string,
 	): Promise<{ session: ManagedSlackAppSession; created: boolean }> {
-		const key = this.managedAppCacheKey({ ...options, userId: options.user.id });
+		const key = managedSlackAppCacheKey({ ...options, userId: options.user.id });
 		const cached = await this.cacheService.get<unknown>(key);
 		if (typeof cached === 'string') {
 			const session = await this.decryptManagedAppSession(cached);
@@ -876,16 +880,6 @@ export class SlackManagedSetupService {
 		manager.accessToken = refreshedAccessToken;
 		response = await this.methods.callSlackApi(method, paramsForToken(refreshedAccessToken));
 		return response;
-	}
-
-	private managedAppCacheKey(options: {
-		projectId: string;
-		agentId: string;
-		managerCredentialId: string;
-		workspaceId: string;
-		userId: string;
-	}): string {
-		return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
 	}
 
 	private async setManagedAppIcon(

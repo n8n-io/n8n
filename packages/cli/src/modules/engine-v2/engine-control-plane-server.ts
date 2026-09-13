@@ -9,7 +9,7 @@ import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
-import { CONTROL_PLANE_PREFIX, STATUS_CALLBACK_PATH } from './engine-v2.constants';
+import { STATUS_CALLBACK_PATH } from './engine-v2.constants';
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 
 /**
@@ -86,16 +86,18 @@ export class EngineControlPlaneServer {
 			res.status(200).json({ status: 'ok' });
 		});
 
-		// On the prefix, not the route, so a later route cannot forget either.
-		app.use(
-			CONTROL_PLANE_PREFIX,
-			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger),
-		);
+		// Auth is per route, because each route requires its own token scope. It
+		// runs before the body parser, so an unauthenticated body is never read.
 		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
-		app.use(CONTROL_PLANE_PREFIX, rawBodyReader, bodyParser);
-
 		app.post(
 			STATUS_CALLBACK_PATH,
+			createEngineControlPlaneAuthMiddleware(
+				this.engineConfig,
+				this.logger,
+				'lifecycle-events:write',
+			),
+			rawBodyReader,
+			bodyParser,
 			send(
 				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
 			),

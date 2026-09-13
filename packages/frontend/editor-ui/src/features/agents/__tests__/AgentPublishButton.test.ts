@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
@@ -106,8 +107,22 @@ interface RenderProps {
 	agentId?: string;
 	beforeRevertToPublished?: () => Promise<void> | void;
 	configValidationStatus?: 'valid' | 'invalid' | null;
+	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
 }
+
+const blockingIssue: AgentConfigValidationIssue = {
+	code: 'missing_required',
+	path: 'model',
+	capability: { kind: 'agent' },
+};
+
+const notPublishedIssue: AgentConfigValidationIssue = {
+	code: 'incompatible_reference',
+	reason: 'not_published',
+	path: 'tools.0.workflowId',
+	capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup', index: 0 },
+};
 
 function getModalCallbacks() {
 	const data = openModalWithDataMock.mock.lastCall?.[0]?.data as {
@@ -350,6 +365,7 @@ describe('AgentPublishButton', () => {
 			const invalidWrapper = await renderComponent({
 				agent: unpublishedAgent,
 				configValidationStatus: 'invalid',
+				configValidationIssues: [blockingIssue],
 			});
 			const invalidButton = invalidWrapper.find('[data-testid="publish-agent-button"]');
 			expect(invalidButton.attributes('disabled')).toBeDefined();
@@ -382,6 +398,7 @@ describe('AgentPublishButton', () => {
 			const publishedWrapper = await renderComponent({
 				agent: publishedAgent,
 				configValidationStatus: 'invalid',
+				configValidationIssues: [blockingIssue],
 			});
 			expect(
 				publishedWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
@@ -424,6 +441,26 @@ describe('AgentPublishButton', () => {
 			await flushPromises();
 
 			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
+		});
+
+		it('enables Publish when the only issues are unpublished workflow tools', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [notPublishedIssue],
+			});
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+
+			expect(button.attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('true');
+			await button.trigger('click');
+			await flushPromises();
+
 			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});

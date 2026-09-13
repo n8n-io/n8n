@@ -55,6 +55,7 @@ export class AgentTasksController {
 		return await this.agentTaskService.create(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -72,6 +73,7 @@ export class AgentTasksController {
 		return await this.agentTaskService.update(agentId, projectId, taskId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -88,6 +90,7 @@ export class AgentTasksController {
 		await this.agentTaskService.delete(agentId, projectId, taskId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { success: true };
 	}

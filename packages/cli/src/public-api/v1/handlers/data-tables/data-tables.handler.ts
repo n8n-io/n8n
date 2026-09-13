@@ -13,6 +13,7 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { stringifyQuery } from './data-tables.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -44,20 +45,6 @@ const handleError = (error: unknown) => {
 	}
 
 	throw error;
-};
-
-/**
- * Convert all query parameter values to strings for DTO validation.
- * Express/Supertest may parse some values as numbers/booleans.
- */
-const stringifyQuery = (query: Record<string, unknown>): Record<string, string | undefined> => {
-	const result: Record<string, string | undefined> = {};
-	for (const [key, value] of Object.entries(query)) {
-		if (value !== undefined && value !== null) {
-			result[key] = String(value);
-		}
-	}
-	return result;
 };
 
 function toPublicDataTable<T extends { project?: unknown }>(dataTable: T) {

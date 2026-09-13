@@ -118,9 +118,15 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 
 - `@ApiKeyScope` (what the API key is granted) and `@ProjectScope`/`@GlobalScope`
   (what the user may do) are independent. Use both when the model needs both.
-- `@ProjectScope` reads `req.params` as-is and does not remap `id` — name the path
-  param what the resolver expects (`workflowId`, `credentialId`, `projectId`,
-  `dataTableId`, …). A generic `id` often fails.
+- Name every path param `{resource}Id` (e.g. `workflowId`, `credentialId`,
+  `projectId`, …) — never a generic `:id` / `{id}`. This is the Public API's
+  naming convention: it keeps the API self-documenting and gives typed SDK
+  codegen a real argument name instead of `id`. `@ProjectScope` also reads
+  `req.params` as-is and does not remap `id` — it resolves authorization by
+  exact key name (`workflowId`, `credentialId`, `projectId`, `dataTableId`,
+  …), so a generic `id` on a `@ProjectScope` route often fails outright; a
+  `@GlobalScope` or unscoped route won't fail the same way, but still follow
+  the convention.
 - `@ApiKeyScope` takes a string, `{ anyOf: [...] }`, or `{ allOf: [...] }` — never
   a bare array. The scope must exist in the permissions registry
   (`API_KEY_RESOURCES` in `@n8n/permissions`); `scope-parity.test.ts` fails on an

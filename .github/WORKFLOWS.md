@@ -262,6 +262,29 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
+#### Running it by hand
+
+A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
+private again at each start. So a preview that slept reaches nobody until
+something shares port 5678 again, and its backend is gone with the container.
+**Actions → Util: Codespace Preview → Run workflow** does both without a commit
+and without a label toggle:
+
+| Input | Meaning |
+|---|---|
+| `pr_number` | The pull request to act on. |
+| `operation` | `up` (default) creates the box if it is gone, starts it if it sleeps, serves the head and shares the port again. `refresh` re-serves the head in a box that already exists. `down` deletes the box. |
+
+Prefer `up` unless you mean to delete: it covers create, wake and re-share.
+
+The button needs write access, and it appears only once the trigger is on
+`master` — GitHub lists dispatchable workflows from the default branch. A manual
+run takes the branch picked in the dropdown, which is the branch GitHub read the
+workflow from, so a branch can test a change to the preview scripts. A fork head
+is still refused, by `preview.mjs` rather than by the job's `if`. There is no
+`ls` operation: it needs no PR and posts no comment — run `pnpm preview ls`
+locally.
+
 #### Preview toggles
 
 A `preview:*` label configures an instance that already exists, so adding or
@@ -334,12 +357,14 @@ better than a person's account for quota attribution, though the token is scoped
 to one repository either way.
 
 The job checks out the base branch, never the PR head, so a PR cannot supply the
-script that reads that token.
+script that reads that token. A manual run checks out the branch chosen in the
+Run-workflow dropdown, which only a user with write access can pick.
 
 ### Other Manual Workflows
 
 | Workflow                    | Purpose                                                 |
 |-----------------------------|---------------------------------------------------------|
+| `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
@@ -369,6 +394,9 @@ release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
+
+test-sbom-nightly.yml
+    └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
@@ -522,6 +550,7 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -640,8 +669,10 @@ Workflows with `workflow_call` trigger:
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
+| `sec-sync-retarget-prs.yml`        | none                                          | Move bundle PRs back onto `bundle/*` |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
+| `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
@@ -669,6 +700,7 @@ Scripts in `.github/scripts/`:
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
+| `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts
 
@@ -677,6 +709,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
@@ -685,7 +718,7 @@ Scripts in `.github/scripts/`:
 
 | Script                          | Purpose                                                                 | Called By                      |
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
-| `codespace-preview.mjs`         | Map a `pull_request` event onto a preview operation, comment the result  | `util-codespace-preview.yml`   |
+| `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
@@ -702,7 +735,7 @@ rewrite safe.
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
 | `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
 | `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
-| `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
+| `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; skips while the base is unpublished; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
 
 ### Slack Scripts
 
@@ -766,7 +799,10 @@ An entry with the `required` option makes team approval mandatory: when a PR
 changes a file whose winning entry carries `required`, a member of each listed
 team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
-named **Required Reviews** on the head SHA. The ruleset for `master` must list
+named **Required Reviews** on the head SHA. A missing approval reports
+`pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
+does not show red CI; any non-success state blocks the merge equally. The
+ruleset for `master` must list
 that status as a required check for the block to take effect. Merge-queue runs
 report success on the queue head without re-evaluating: a PR cannot enter the
 queue unless the status is green on its head, and the queue does not change
@@ -906,6 +942,13 @@ Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
 
+`test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
+Docker build to complete. It builds the production deployment closure at that run's SHA and
+validates the release SBOM. It also resolves the four immutable SHA image tags from that
+build and validates each image SBOM. The validation uses the same enrichment and SPDX gates
+as a release. It does not publish, attest, or upload an artifact. A failure reports to the
+Developer Platform Slack channel.
+
 ### SLSA L3 Provenance
 
 SLSA (Supply-chain Levels for Software Artifacts) Level 3 provides cryptographic proof of build integrity.
@@ -999,6 +1042,35 @@ merged into one (and on `workflow_dispatch`). It **merges the base into** the bu
 via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without
 forcing. Every push is verified to carry exactly the tree a merge of the two sides would
 produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
+
+**A bundle branch is only ever built on published history.** Before it creates or merges
+anything, the sync fetches the same-named branch from `https://github.com/n8n-io/n8n.git`
+(anonymously — its token is scoped to the private repo) and checks that the private base tip is
+contained in it. This matters because the `chore: Bundle/*` squash on private `master` is
+*private-only*: the mirror above discards it in favour of the public cherry-pick of the same
+changes. A sync in that window would root the branch on a commit that is about to disappear,
+leaving it carrying two commits for one set of fixes — and every fix PR cut from it inherits the
+dead one. The window is real: this workflow's daily cron and the mirror's hourly cron both fire
+at `:00` with nothing ordering them, which is why the check lives in the script rather than in
+step ordering.
+
+An unpublished cut is a **skip**, not a failure: the mirror discards that commit every hour
+regardless, so the run exits green with the reason in the log and the next one proceeds. A
+missing branch also self-heals, because the mirror re-dispatches this workflow while one is
+absent. A base ahead of public for **any other reason** fails the run — the mirror is stuck and
+will not clear it on its own, so fix that first (remove the commit, or dispatch **Security: Sync
+from Public** with `force`) and re-run. To sync a bundle branch immediately, dispatch the mirror
+and then this workflow. The blocking commits are listed in the run log; the failure annotation
+carries only a count, since a subject hints at the fix.
+
+Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
+branch's own base, and re-creating the branch does not move them back. So the sync then calls
+[`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
+on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
+branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
+`chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
+own. `sec-sync-public-to-private.yml` only *dispatches* the bundle sync when it finds a branch
+missing; the retarget runs inside that dispatched run, once the branch exists.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open

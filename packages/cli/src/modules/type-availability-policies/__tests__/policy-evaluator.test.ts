@@ -1,4 +1,4 @@
-import { evaluateType } from '../policy-evaluator';
+import { evaluateComposedType, evaluateType, type ScopePolicy } from '../policy-evaluator';
 import type { PolicyAttachment } from '../policy-rule.types';
 
 const attachment = (overrides: Partial<PolicyAttachment>): PolicyAttachment => ({
@@ -6,6 +6,12 @@ const attachment = (overrides: Partial<PolicyAttachment>): PolicyAttachment => (
 	rules: [],
 	priority: 0,
 	isFloor: false,
+	...overrides,
+});
+
+const scopePolicy = (overrides: Partial<ScopePolicy> = {}): ScopePolicy => ({
+	attachments: [],
+	defaultAction: 'allow',
 	...overrides,
 });
 
@@ -203,6 +209,119 @@ describe('evaluateType', () => {
 				action: 'allow',
 				matchedRuleId: null,
 			});
+		});
+	});
+});
+
+describe('evaluateComposedType', () => {
+	const TYPE = 'n8n-nodes-base.slack';
+	const allowRule = (id: string) =>
+		attachment({ rules: [{ id, action: 'allow', selector: { kind: 'name', value: TYPE } }] });
+	const denyRule = (id: string) =>
+		attachment({ rules: [{ id, action: 'deny', selector: { kind: 'name', value: TYPE } }] });
+
+	it('an instance deny is final: a project allow never overrides it', () => {
+		const instance = scopePolicy({ attachments: [denyRule('instance-deny')] });
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: 'instance-deny',
+			optInAvailable: false,
+		});
+	});
+
+	it('an instance delegate is satisfied by an explicit project allow rule', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'project-allow',
+			optInAvailable: false,
+		});
+	});
+
+	it('an instance delegate stays denied when the project has no policy row at all', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy();
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate is not satisfied by a bare project defaultAction of allow', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ defaultAction: 'allow' });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate with an explicit project deny rule is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: 'project-deny',
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance delegate with a project defaultAction of deny is attributed to the project', () => {
+		const instance = scopePolicy({ defaultAction: 'delegate' });
+		const project = scopePolicy({ defaultAction: 'deny' });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: null,
+			optInAvailable: true,
+		});
+	});
+
+	it('an instance allow lets a project deny rule restrict further', () => {
+		const instance = scopePolicy({ attachments: [allowRule('instance-allow')] });
+		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: 'project-deny',
+			optInAvailable: false,
+		});
+	});
+
+	it('allows and attributes to the instance when neither scope is configured', () => {
+		expect(evaluateComposedType(scopePolicy(), scopePolicy(), TYPE)).toEqual({
+			action: 'allow',
+			scope: 'instance',
+			matchedRuleId: null,
+			optInAvailable: false,
+		});
+	});
+
+	it('allows and attributes to the project when the project explicitly allows on top of an instance allow', () => {
+		const instance = scopePolicy();
+		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
+
+		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'project-allow',
+			optInAvailable: false,
 		});
 	});
 });

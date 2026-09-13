@@ -4,11 +4,19 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../../admittanc
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionStore } from '../execution-store';
+import type { WorkflowDocument } from '../execution.types';
 import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
+};
+
+const sampleWorkflow: WorkflowDocument = {
+	id: 'wf-1',
+	name: 'Sample',
+	nodes: [{ name: 'Manual Trigger' }],
+	connections: {},
 };
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
@@ -37,8 +45,10 @@ describe('StartExecutionService', () => {
 		const result = await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: 'exec-id-1',
+			callerContext: {},
 		});
 
 		expect(result.executionId).toBe('exec-id-1');
@@ -49,12 +59,33 @@ describe('StartExecutionService', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			callerContext: {},
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'execution:enqueued',
 			executionId: 'exec-id-1',
 		});
+	});
+
+	it('stores the caller context as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeQueue());
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext,
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ callerContext }));
 	});
 
 	it('defaults mode to production and triggerOutputs to null', async () => {
@@ -65,7 +96,13 @@ describe('StartExecutionService', () => {
 		const queue = makeQueue();
 		const service = new StartExecutionService(admittance, store, queue);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' });
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: {},
+		});
 
 		expect(store.createExecution).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
@@ -79,7 +116,13 @@ describe('StartExecutionService', () => {
 		const validateGraph = vi.fn();
 		const service = new StartExecutionService(admittance, makeStore(), makeQueue(), validateGraph);
 
-		await service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' });
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: {},
+		});
 
 		expect(validateGraph).toHaveBeenCalledExactlyOnceWith(sampleGraph);
 	});
@@ -97,7 +140,13 @@ describe('StartExecutionService', () => {
 		const service = new StartExecutionService(admittance, store, queue, validateGraph);
 
 		await expect(
-			service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' }),
+			service.start({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId: 'exec-id-1',
+				callerContext: {},
+			}),
 		).rejects.toBe(rejection);
 
 		expect(store.createExecution).not.toHaveBeenCalled();
@@ -113,7 +162,13 @@ describe('StartExecutionService', () => {
 		const service = new StartExecutionService(admittance, store, queue);
 
 		await expect(
-			service.start({ workflowId: 'wf-1', graph: sampleGraph, executionId: 'exec-id-1' }),
+			service.start({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId: 'exec-id-1',
+				callerContext: {},
+			}),
 		).rejects.toBeInstanceOf(AdmittanceRejectedError);
 
 		expect(store.createExecution).not.toHaveBeenCalled();

@@ -12,6 +12,7 @@ import type {
 } from '@n8n/agents';
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -31,6 +32,7 @@ import { NodeCatalogService } from '@/node-catalog';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
+import { modelStreamStallOptions } from '../model-stream-stall-options';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
@@ -94,6 +96,7 @@ export class AgentsBuilderService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly aiConfig: AiConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -126,6 +129,7 @@ export class AgentsBuilderService {
 			abortSignal: session.abortSignal,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
+			...modelStreamStallOptions(this.aiConfig),
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -186,6 +190,7 @@ export class AgentsBuilderService {
 			abortSignal: session.abortSignal,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
+			...modelStreamStallOptions(this.aiConfig),
 		});
 
 		yield* this.streamFromAgent(resultStream);

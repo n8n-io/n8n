@@ -41,7 +41,6 @@ import {
 	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
-	isChatOAuth2Enabled,
 	isChatRefreshRequest,
 	isShellInnerRequest,
 } from './shell';
@@ -56,10 +55,9 @@ const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disab
  * Under `n8nUserAuth` the `user` key belongs to the server. The item's `json` starts as
  * the caller's own request body, so any `user` the caller sent is dropped — whether or
  * not a verified one replaces it, since a workflow reading `json.user` must never get an
- * attacker-controlled value in the slot the trusted one occupies. That holds even when
- * the rollout flag is off and no verified value is written: the flag can change under a
- * workflow that already trusts the key. Under the other auth modes no server identity
- * exists, `user` is ordinary body data, and the body passes through untouched.
+ * attacker-controlled value in the slot the trusted one occupies. Under the other auth
+ * modes no server identity exists, `user` is ordinary body data, and the body passes
+ * through untouched.
  *
  * Only a plain object body is merged into. A string (`text/plain`), a scalar or an array
  * body can carry no `user` key, and object rest would silently shred it into
@@ -101,9 +99,6 @@ const includeUserInOutputOption: INodeProperties = {
 	name: 'includeUserInOutput',
 	type: 'boolean',
 	default: true,
-	// Hidden until the chat OAuth2 rollout reaches GA. Display only — `webhook()`
-	// checks the same flag itself.
-	envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
 	// No `mode` gate, unlike its neighbour: `n8nUserAuth` also works in `webhook`
 	// mode through the cookie check, and that path emits an item too.
 	description: "Whether to include the logged-in user's ID, email and name in the trigger output",
@@ -978,7 +973,7 @@ export class ChatTrigger extends Node {
 			// report them under the same conditions production would. This lookup is identity,
 			// not authorization: it stays outside the `catch` below, which reads its error as
 			// an auth challenge and would answer with an undefined status code.
-			if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
+			if (authentication === 'n8nUserAuth') {
 				authedUser = await ctx.getTestWebhookUser?.();
 			}
 		} else {
@@ -1029,7 +1024,7 @@ export class ChatTrigger extends Node {
 				// success channel, `localStorage`), so nothing author-shaped may live there.
 				let frameIdentity: ChatFrameIdentity | undefined;
 
-				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
+				if (authentication === 'n8nUserAuth') {
 					const resourceUrl = ctx.getWebhookResourceUrl('default');
 					if (!resourceUrl) {
 						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
@@ -1201,17 +1196,13 @@ export class ChatTrigger extends Node {
 		const isMultipart = req.contentType === 'multipart/form-data';
 		const item = isMultipart ? await this.handleFormData(ctx) : { json: bodyData };
 
-		// Ownership of the `user` key follows the auth mode alone, never the rollout flag. A
-		// workflow built while the flag was on keeps trusting `json.user`, and it travels
-		// between instances — export/import, a rollback, drifted env on one main — while the
-		// env var does not. So a claimed `user` is dropped on every `n8nUserAuth` chat.
+		// Ownership of the `user` key follows the auth mode alone. So a claimed `user` is
+		// dropped on every `n8nUserAuth` chat, regardless of what the caller sent.
 		const serverOwnsUserKey = authentication === 'n8nUserAuth';
-		// Only writing the verified identity is gated until GA. The declared `default` drives
-		// the editor alone; an absent parameter resolves to this fallback, so it is what
-		// decides for a node that never had the key saved.
+		// The declared `default` drives the editor alone; an absent parameter resolves to
+		// this fallback, so it is what decides for a node that never had the key saved.
 		const includeUser =
 			serverOwnsUserKey &&
-			isChatOAuth2Enabled() &&
 			ctx.getNodeParameter('includeUserInOutput', ctx.getNode().typeVersion >= 1.5) !== false;
 
 		// The single merge point for all three emission paths — see `withAuthenticatedUser`.

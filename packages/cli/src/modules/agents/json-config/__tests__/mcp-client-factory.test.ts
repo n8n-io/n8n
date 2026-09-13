@@ -176,7 +176,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		const oauthService = mock<OauthService>();
 		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
-			Authorization: 'Bearer fresh-token',
+			headers: { Authorization: 'Bearer fresh-token' },
 		});
 
 		await buildMcpClientForServer(
@@ -189,12 +189,85 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 		const res = await fetchFn('https://example.test/mcp');
 
 		expect(res.status).toBe(200);
-		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1');
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1', {
+			accessToken: 'stale-token',
+		});
 		// First call uses the stale header, second uses the refreshed one.
 		const [, firstInit] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
 		const [, secondInit] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
 		expect(new Headers(firstInit.headers).get('authorization')).toBe('Bearer stale-token');
 		expect(new Headers(secondInit.headers).get('authorization')).toBe('Bearer fresh-token');
+	});
+
+	it('refreshes an expiring OAuth2 token before the first request', async () => {
+		proxyFetchMock.mockResolvedValue(makeOk());
+
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			oauthTokenData: {
+				access_token: 'stale-token',
+				refresh_token: 'refresh-token',
+				expires_in: 3600,
+				n8n_expires_at: String(Date.now() + 60_000),
+			},
+		} as never);
+
+		const oauthService = mock<OauthService>();
+		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
+			headers: { Authorization: 'Bearer fresh-token' },
+			expiresAt: Date.now() + 60_000,
+			expiresInSeconds: 60,
+		});
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('https://example.test/mcp');
+		await configs[0].fetch('https://example.test/mcp');
+
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledTimes(1);
+		expect(proxyFetchMock).toHaveBeenCalledTimes(2);
+		for (const [, init] of proxyFetchMock.mock.calls as Array<[unknown, RequestInit]>) {
+			expect(new Headers(init.headers).get('authorization')).toBe('Bearer fresh-token');
+		}
+	});
+
+	it('refreshes an expiring client credentials token before the first request', async () => {
+		proxyFetchMock.mockResolvedValue(makeOk());
+		const expiresAt = Date.now() + 60_000;
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			grantType: 'clientCredentials',
+			oauthTokenData: {
+				access_token: 'stale-token',
+				expires_in: 3600,
+				n8n_expires_at: String(expiresAt),
+			},
+		} as never);
+
+		const oauthService = mock<OauthService>();
+		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
+			headers: { Authorization: 'Bearer fresh-token' },
+			expiresAt: Date.now() + 3_600_000,
+			expiresInSeconds: 3600,
+		});
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('https://example.test/mcp');
+
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1', {
+			accessToken: 'stale-token',
+			expiresAt,
+		});
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('does NOT call refreshOAuth2CredentialById for non-OAuth2 auth schemes', async () => {
@@ -428,7 +501,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 
 		const oauthService = mock<OauthService>();
 		oauthService.refreshOAuth2CredentialById.mockResolvedValue({
-			Authorization: 'Bearer fresh',
+			headers: { Authorization: 'Bearer fresh' },
 		});
 
 		await buildMcpClientForServer(
@@ -457,7 +530,9 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 		const res = await configs[0].fetch('https://example.test/mcp');
 
 		expect(res.status).toBe(200);
-		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1');
+		expect(oauthService.refreshOAuth2CredentialById).toHaveBeenCalledWith('cred-1', 'proj-1', {
+			accessToken: 'stale',
+		});
 	});
 
 	it('does NOT wire an onUnauthorized handler when credential is absent for mcpOAuth2Api', async () => {

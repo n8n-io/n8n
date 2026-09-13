@@ -12,7 +12,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -30,7 +29,6 @@ export function useWorkflowActivate() {
 	const activationErrorNodeId = ref<string | undefined>();
 
 	const workflowsStore = useWorkflowsStore();
-	const currentWorkflowId = useWorkflowId();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -110,8 +108,13 @@ export function useWorkflowActivate() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		try {
-			const expectedChecksum =
-				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
+			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
+			// The route id is empty on the assistant page and the publish modal is global, so
+			// neither can tell whether this workflow is on screen. Re-read the flag after the
+			// request: the editor may have closed while it was in flight.
+			const expectedChecksum = workflowDocumentStore.hydrated
+				? workflowDocumentStore.checksum
+				: undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -133,7 +136,7 @@ export function useWorkflowActivate() {
 				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 			}
 
-			if (workflowId === currentWorkflowId.value) {
+			if (workflowDocumentStore.hydrated) {
 				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
 					name: workflowDocumentStore.versionData?.name ?? null,
@@ -201,8 +204,9 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		try {
-			const expectedChecksum =
-				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
+			const expectedChecksum = workflowDocumentStore.hydrated
+				? workflowDocumentStore.checksum
+				: undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({
