@@ -254,10 +254,16 @@ export function toDateTime(value: string, extraArgs: [string] = ['']): DateTime 
 
 function urlDecode(value: string, extraArgs: boolean[]): string {
 	const [entireString = false] = extraArgs;
-	if (entireString) {
-		return decodeURI(value.toString());
+	try {
+		if (entireString) {
+			return decodeURI(value.toString());
+		}
+		return decodeURIComponent(value.toString());
+	} catch (error) {
+		throw new ExpressionExtensionError(
+			`urlDecode(): malformed input — ${(error as Error).message ?? 'invalid percent-encoding'}`,
+		);
 	}
-	return decodeURIComponent(value.toString());
 }
 
 function urlEncode(value: string, extraArgs: boolean[]): string {
