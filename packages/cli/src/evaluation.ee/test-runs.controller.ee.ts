@@ -125,8 +125,9 @@ export class TestRunsController {
 		const { id, workflowId } = req.params;
 
 		try {
-			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
-			const summary = await this.testRunRepository.getTestRunSummaryById(id);
+			await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+			const summary = await this.testRunRepository.getTestRunSummaryByWorkflowId(id, workflowId);
+			if (!summary) throw new NotFoundError('Test run not found');
 			const [withScales] = await this.attachMetricScales([summary], workflowId);
 			return withScales;
 		} catch (error) {
@@ -167,7 +168,7 @@ export class TestRunsController {
 			'workflow:execute',
 		]);
 
-		if (this.testRunnerService.canBeCancelled(testRun)) {
+		if (!this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
 			throw new ConflictError(message);
 		}

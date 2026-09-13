@@ -163,8 +163,8 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			);
 			if (!testRun) throw new NotFoundError('Test run not found');
 
-			// `canBeCancelled` returns true when the run is in a terminal state.
-			if (testRunnerService.canBeCancelled(testRun)) {
+			// `canBeCancelled` returns true when the run can still be cancelled.
+			if (!testRunnerService.canBeCancelled(testRun)) {
 				throw new ConflictError(`The test run "${runId}" cannot be cancelled`);
 			}
 

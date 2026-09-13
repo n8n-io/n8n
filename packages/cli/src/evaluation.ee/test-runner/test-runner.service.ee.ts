@@ -1175,7 +1175,7 @@ export class TestRunnerService {
 
 	/** Whether the test run is in a cancellable state. */
 	canBeCancelled(testRun: TestRun) {
-		return testRun.status !== 'running' && testRun.status !== 'new';
+		return testRun.status === 'running' || testRun.status === 'new';
 	}
 
 	/**
