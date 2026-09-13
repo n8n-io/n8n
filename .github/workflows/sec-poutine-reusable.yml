@@ -38,14 +38,23 @@ jobs:
 
           # A report with no runs holds no scan, so the empty result set below would
           # read as clean. Reject it before the findings check.
-          if ! jq -e '(.runs | type) == "array" and (.runs | length) > 0' results.sarif > /dev/null 2>&1; then
+          # jq -e exits 1 when the filter is false, which here means there are no runs.
+          # Any other code means jq could not read or parse the file.
+          runs_status=0
+          jq -e '(.runs | type) == "array" and (.runs | length) > 0' results.sarif > /dev/null 2>&1 || runs_status=$?
+
+          if [ "$runs_status" -eq 1 ]; then
             echo "::error::results.sarif contains no SARIF runs, so no scan result can be read from it"
+            exit 1
+          fi
+
+          if [ "$runs_status" -ne 0 ]; then
+            echo "::error::Could not read results.sarif (jq exited with $runs_status)"
             exit 1
           fi
 
           # Check SARIF for error-level findings.
           # jq -e exits 0 when it printed a result and 4 when the filter matched nothing.
-          # Any other code means jq could not read or parse the file.
           status=0
           jq -e '.runs[].results[] | select(.level == "error")' results.sarif > /dev/null 2>&1 || status=$?
 
