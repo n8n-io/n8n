@@ -1452,6 +1452,14 @@ export class Gitlab implements INodeType {
 							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
 						}
 
+						// GitLab's Edit Issue API uses `state_event` (close/reopen),
+						// not `state` (closed/open). Map the node parameter value.
+						if (body.state !== undefined) {
+							const stateValue = body.state as string;
+							body.state_event = stateValue === 'closed' ? 'close' : 'reopen';
+							delete body.state;
+						}
+
 						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
 					} else if (operation === 'get') {
 						// ----------------------------------

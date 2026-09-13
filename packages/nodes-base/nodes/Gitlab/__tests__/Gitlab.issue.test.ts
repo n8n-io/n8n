@@ -262,4 +262,33 @@ describe('Gitlab Node - Issue Operations', () => {
 			workflowFiles: ['issue.lock.resolved.workflow.json'],
 		});
 	});
+
+	describe('issue:edit - state mapping', () => {
+		it('should send state_event=close instead of state=closed', async () => {
+			const putScope = api()
+				.put('/projects/test-owner%2Ftest-repo/issues/42', (body) => {
+					expect(body).toHaveProperty('state_event', 'close');
+					expect(body).not.toHaveProperty('state');
+					return true;
+				})
+				.reply(200, { iid: 42, state: 'closed' });
+
+			const harness = new NodeTestHarness();
+			const workflowData = harness.readWorkflowJSON('issue.edit.state.workflow.json');
+			const testData: WorkflowTestData = {
+				description: 'issue.edit.state',
+				input: { workflowData },
+				output: {
+					nodeData: {
+						GitLab: [[{ json: { iid: 42, state: 'closed' } }]],
+					},
+				},
+				credentials,
+			};
+			harness.setupTest(testData, { credentials });
+
+			await harness.run();
+			expect(putScope.isDone()).toBe(true);
+		});
+	});
 });
