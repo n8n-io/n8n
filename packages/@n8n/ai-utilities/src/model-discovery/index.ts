@@ -11,6 +11,7 @@ import { listNvidiaModels } from './providers/nvidia';
 import { listOpenAiModels } from './providers/openai';
 import { listOpenRouterModels } from './providers/openrouter';
 import { listVercelModels } from './providers/vercel';
+import { listVolcengineModels } from './providers/volcengine';
 import { listXaiModels } from './providers/xai';
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
 
@@ -39,6 +40,7 @@ export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
 	vercel: listVercelModels,
+	volcengine: listVolcengineModels,
 	xai: listXaiModels,
 };
 
@@ -79,6 +81,7 @@ export {
 } from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
 export { listVercelModels } from './providers/vercel';
+export { listVolcengineModels } from './providers/volcengine';
 export { listXaiModels } from './providers/xai';
 export { ensureUrlPathSuffix } from './request';
 export type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';

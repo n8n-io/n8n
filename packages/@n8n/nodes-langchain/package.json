@@ -75,6 +75,7 @@
       "dist/credentials/SearXngApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/VercelAiGatewayApi.credentials.js",
+      "dist/credentials/VolcengineApi.credentials.js",
       "dist/credentials/WeaviateApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",

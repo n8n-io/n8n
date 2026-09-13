@@ -166,6 +166,17 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	// Ark accepts `image_url` (data: URLs verified against the live API; images
+	// under 14px per side are rejected). `file_url` is not an accepted
+	// `messages.content.type`, and PDFs sent as `image_url` fail base64
+	// validation, so PDF and audio stay off.
+	volcengine: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: { image: true, pdf: false, audio: false },
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,
