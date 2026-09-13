@@ -6,12 +6,18 @@ const min = Math.min;
 const max = Math.max;
 
 const numberList = (start: number, end: number): number[] => {
-	const size = Math.abs(start - end) + 1;
+	if (!Number.isFinite(start) || !Number.isFinite(end)) {
+		throw new ExpressionExtensionError('numberList(): start and end must be finite numbers');
+	}
+
+	const startInt = Math.round(start);
+	const endInt = Math.round(end);
+	const size = Math.abs(startInt - endInt) + 1;
 	const arr = new Array<number>(size);
 
-	let curr = start;
+	let curr = startInt;
 	for (let i = 0; i < size; i++) {
-		if (start < end) {
+		if (startInt < endInt) {
 			arr[i] = curr++;
 		} else {
 			arr[i] = curr--;
