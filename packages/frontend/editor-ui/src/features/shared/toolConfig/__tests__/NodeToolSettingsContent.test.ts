@@ -1234,6 +1234,34 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 
+		it('id-less node with multiple edits preserves the last edit through deferred hydration', async () => {
+			nodeTypesStore.nodeTypes = {};
+
+			const toolWorkflowStore = getToolWorkflowStore();
+
+			const idlessNode = createMockNode({
+				id: '',
+				name: 'Original Name',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { endpointUrl: 'https://original.example.com' },
+			});
+			const wrapper = mountComponent({ initialNode: idlessNode });
+
+			const exposed = wrapper.vm as unknown as {
+				handleChangeName: (name: string) => void;
+			};
+			exposed.handleChangeName('First Edit');
+			exposed.handleChangeName('Second Edit');
+
+			nodeTypesStore.nodeTypes = { 'n8n-nodes-base.httpRequest': { 1: NODE_TYPE_WITH_ENDPOINT } };
+
+			await waitFor(() => {
+				const nodeInStore = toolWorkflowStore.allNodes[0];
+				expect(nodeInStore).toBeDefined();
+				expect(nodeInStore?.name).toBe('Second Edit');
+			});
+		});
+
 		it('regression anchor: warm load, simulated user edits update isolated store with no null fields', async () => {
 			// Note: The dynamic parameter options fetch surface runs inside child ParameterInput /
 			// ParameterOptions components. We assert here on the isolated document store state that

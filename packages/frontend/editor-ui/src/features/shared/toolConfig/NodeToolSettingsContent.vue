@@ -277,9 +277,12 @@ provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 function handleChangeName(name: string) {
 	if (node.value) {
 		userEditedName.value = true;
-		// Tie the preserved name to the node identity being edited; read the id
-		// before mutating the name so the fallback identity is the pre-edit name.
-		preservedNameNodeId.value = node.value.id || node.value.name;
+		// Capture the node identity being edited, but only once. Retrying the
+		// name does not change the identity, so re-reading it on a later edit
+		// would capture the edited name for id-less nodes.
+		if (preservedNameNodeId.value === null) {
+			preservedNameNodeId.value = node.value.id || node.value.name;
+		}
 		node.value = { ...node.value, name };
 	}
 }
@@ -310,12 +313,13 @@ watch(
 
 		// Preserve a user-edited name when hydrating after a cold start; the name
 		// recomputation below would otherwise replace it with the default. Only
-		// re-apply it to the node identity it was edited on.
-		const currentNodeId = node.value?.id || node.value?.name;
+		// re-apply it to the node identity it was edited on. `initialNodeId` is
+		// stable across edits to the local `node` ref, so it is the right
+		// comparison target for id-less nodes.
 		const preservedName =
 			hydratedInitialNode.value === null &&
 			userEditedName.value &&
-			preservedNameNodeId.value === currentNodeId
+			preservedNameNodeId.value === initialNodeId
 				? node.value?.name
 				: null;
 
