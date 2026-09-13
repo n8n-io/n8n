@@ -84,6 +84,7 @@ export async function convertJsonToSpreadsheetBinary(
 	return binaryData;
 }
 
+/** Converts the selected input value to binary data with the configured encoding. */
 export async function createBinaryFromJson(
 	this: IExecuteFunctions,
 	data: IDataObject | IDataObject[],
