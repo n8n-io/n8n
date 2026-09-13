@@ -20,6 +20,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedFolder,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
@@ -77,6 +78,7 @@ const RestoreThreadEnvelope = z.object({
 		workflowIds: z.array(z.string()),
 		dataTableIds: z.array(z.string()).default([]),
 		agentIds: z.array(z.string()).default([]),
+		folderIds: z.array(z.string()).default([]),
 	}),
 });
 
@@ -180,6 +182,27 @@ interface WorkflowListItem {
 	name: string;
 	active: boolean;
 	nodes: WorkflowNodeResponse[];
+	/** The folder the workflow sits in; absent or null at the project root. */
+	parentFolder?: { id: string } | null;
+}
+
+/** One page of a project's folder list, trimmed to the fields the harness reads. */
+const FolderListEnvelope = z.object({
+	count: z.number(),
+	data: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			parentFolder: z.object({ id: z.string() }).nullable().optional(),
+		}),
+	),
+});
+
+export interface FolderPlacement {
+	id: string;
+	name: string;
+	/** `null` at the project root. */
+	parentFolderId: string | null;
 }
 
 interface ExecutionListItem {
@@ -243,6 +266,8 @@ export class N8nApiError extends Error {
 
 export class N8nClient {
 	private sessionCookie?: string;
+	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
+	private personalProjectId?: Promise<string>;
 
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
@@ -717,11 +742,19 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a workflow by ID. The workflow must be archived first.
+	 * Delete a workflow by ID. The workflow must be archived first. The archive
+	 * step's only 400 is "already archived" (a folder delete archives what the
+	 * folder held), so a 400 there goes straight to the delete, which refuses a
+	 * live workflow on its own. Refusing here left every such leftover
+	 * undeletable by eviction and cleanup alike.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
-		await this.archiveWorkflow(id);
+		try {
+			await this.archiveWorkflow(id);
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && error.status === 400)) throw error;
+		}
 		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 	}
 
@@ -904,6 +937,9 @@ export class N8nClient {
 	 * EXACT declared names, so a freshly-built workflow's by-name references
 	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
 	 * seed only data tables.
+	 *
+	 * `options.folders` are created first, in the thread's project, and the
+	 * seed workflows' `parentFolderId` references resolve to them server-side.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -912,14 +948,23 @@ export class N8nClient {
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
 		agents: InstanceAiEvalSeedAgent[] = [],
-		options: { uniquifyNames?: boolean } = {},
+		options: { uniquifyNames?: boolean; folders?: InstanceAiEvalSeedFolder[] } = {},
 	): Promise<{
 		restored: number;
 		workflowIds: string[];
 		dataTableIds: string[];
 		agentIds: string[];
+		folderIds: string[];
 	}> {
-		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables, agents };
+		const folders = options.folders ?? [];
+		const body: Record<string, unknown> = {
+			threadId,
+			messages,
+			workflows,
+			dataTables,
+			agents,
+			folders,
+		};
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
@@ -933,6 +978,13 @@ export class N8nClient {
 		if (agents.length > 0 && restored.agentIds.length !== agents.length) {
 			throw new Error(
 				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
+			);
+		}
+		// Same guard for folders: a backend that ignores the field would leave the
+		// case grading the agent against a folder that does not exist.
+		if (folders.length > 0 && restored.folderIds.length !== folders.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(folders.length)} folder(s) but the response carried ${String(restored.folderIds.length)} — the backend likely predates folder seeding.`,
 			);
 		}
 		return restored;
@@ -967,13 +1019,20 @@ export class N8nClient {
 	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/projects/personal')) as {
-			data: { id: string };
-		};
-		if (!result.data?.id) {
-			throw new Error('Could not determine personal project ID');
-		}
-		return result.data.id;
+		this.personalProjectId ??= (async () => {
+			const result = (await this.fetch('/rest/projects/personal')) as {
+				data: { id: string };
+			};
+			if (!result.data?.id) {
+				throw new Error('Could not determine personal project ID');
+			}
+			return result.data.id;
+		})().catch((error: unknown) => {
+			// A failed lookup must not stick: the next caller retries.
+			this.personalProjectId = undefined;
+			throw error;
+		});
+		return await this.personalProjectId;
 	}
 
 	/**
@@ -1037,6 +1096,72 @@ export class N8nClient {
 	 */
 	async deleteProject(projectId: string): Promise<void> {
 		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
+	}
+
+	// -- Folders -------------------------------------------------------------
+
+	/**
+	 * Every folder in a project, flat, with the parent each one sits under. One
+	 * request: the pre-run snapshot, the eviction and the tree delete all derive
+	 * what they need (the root level, a subtree) from this list in memory.
+	 * GET /rest/projects/:projectId/folders
+	 */
+	async listFolders(projectId: string): Promise<FolderPlacement[]> {
+		// Paged to the end: the eviction must see every folder, and a page that
+		// stops short would let a leftover hide behind the cut. No `select`: a custom
+		// select that includes `parentFolder` 500s on the server ("column
+		// distinctAlias.folder_updatedAt does not exist"), so the default select it is.
+		const pageSize = 250;
+		const folders: FolderPlacement[] = [];
+		for (let skip = 0; ; skip += pageSize) {
+			const page = FolderListEnvelope.parse(
+				await this.fetch(
+					`/rest/projects/${projectId}/folders?take=${String(pageSize)}&skip=${String(skip)}`,
+				),
+			);
+			for (const { id, name, parentFolder } of page.data) {
+				folders.push({ id, name, parentFolderId: parentFolder?.id ?? null });
+			}
+			if (page.data.length < pageSize || folders.length >= page.count) break;
+		}
+		return folders;
+	}
+
+	/**
+	 * Delete a folder the run created. n8n archives any workflow still inside
+	 * and moves it to the root, so call it after the run's workflows are gone.
+	 * DELETE /rest/projects/:projectId/folders/:folderId
+	 */
+	async deleteFolder(projectId: string, folderId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/folders/${folderId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Delete a folder the run did NOT create, with everything in it: every
+	 * workflow anywhere in its subtree (unpublished and deleted through the
+	 * normal path, so no trigger stays registered), then the folder, whose
+	 * delete cascades to the emptied subfolders. Used to evict a crashed run's
+	 * leftover seed folder. Returns how many workflows it deleted.
+	 */
+	async deleteFolderTree(projectId: string, folderId: string): Promise<number> {
+		const folders = await this.listFolders(projectId);
+		// A Set iterates over members added during the loop, so each folder's
+		// children join the walk as it reaches them.
+		const subtree = new Set<string>([folderId]);
+		for (const parentId of subtree) {
+			for (const folder of folders) {
+				if (folder.parentFolderId === parentId) subtree.add(folder.id);
+			}
+		}
+		const inside = (await this.listWorkflows()).filter(
+			(workflow) =>
+				workflow.parentFolder?.id !== undefined && subtree.has(workflow.parentFolder.id),
+		);
+		for (const workflow of inside) {
+			await this.deleteWorkflow(workflow.id);
+		}
+		await this.deleteFolder(projectId, folderId);
+		return inside.length;
 	}
 
 	/**

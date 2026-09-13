@@ -145,6 +145,7 @@ describe('unsupportedPushReason', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					folders: [],
 					projects: [],
 				},
 			}),
@@ -166,11 +167,58 @@ describe('unsupportedPushReason', () => {
 					workflows: [],
 					dataTables: [],
 					agents: [],
+					folders: [],
 					projects: [{ name: 'Foobar' }],
 				},
 			}),
 		);
 		expect(reason).toMatch(/projects/);
+	});
+
+	// The write API's `seed` has no `folders` key and its `workflows[]` items no
+	// `parentFolderId`. Pushing anyway would land a folder case WITHOUT its folder and
+	// with every workflow at the root — it would still run, and the agent would be
+	// graded on finding a folder that does not exist.
+	it('REFUSES an inline seed that carries folders, until lang-tracer stores them', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [],
+					dataTables: [],
+					agents: [],
+					folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+					projects: [],
+				},
+			}),
+		);
+		expect(reason).toMatch(/folders/);
+	});
+
+	it('REFUSES an inline seed whose workflow is placed in a folder, even with no folder listed', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [],
+					workflows: [
+						{
+							id: 'odwSignal1Wf',
+							name: 'Odds Watch - 1',
+							nodes: [],
+							connections: {},
+							parentFolderId: 'odwFolder0001',
+						},
+					],
+					dataTables: [],
+					agents: [],
+					folders: [],
+					projects: [],
+				},
+			}),
+		);
+		expect(reason).toMatch(/parentFolderId/);
 	});
 
 	it('carries the inline seed into the create body verbatim', () => {
@@ -188,6 +236,7 @@ describe('unsupportedPushReason', () => {
 			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 			dataTables: [],
 			agents: [],
+			folders: [],
 			projects: [],
 		};
 		const body = diskCaseToLangTracerCreate(diskCase({ seed }), 'repair-it', {
@@ -195,7 +244,10 @@ describe('unsupportedPushReason', () => {
 			setKind: 'regression',
 			synthetic: true,
 		});
-		expect(body.seed).toEqual(seed);
+		// Minus the empty `folders` slot: the write API's `seed` has no such key, so
+		// even the schema default would 400 every seeded push.
+		const { folders: _empty, ...pushable } = seed;
+		expect(body.seed).toEqual(pushable);
 	});
 
 	it('omits the seed key entirely for an unseeded case', () => {
@@ -233,6 +285,7 @@ describe('attach round-trip: write → export → reparse', () => {
 				workflows: [{ id: WORKFLOW_ID, name: 'Batch loop', nodes: [], connections: {} }],
 				dataTables: [],
 				agents: [],
+				folders: [],
 				projects: [],
 			},
 		} as Partial<EvalTestCaseInput>);

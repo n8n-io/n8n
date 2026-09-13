@@ -30,6 +30,7 @@ function makeClient(overrides: Partial<Record<keyof N8nClient, Mock>> = {}): {
 		deleteDataTable: vi.fn().mockResolvedValue(undefined),
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
 		deleteProject: vi.fn().mockResolvedValue(undefined),
+		deleteFolder: vi.fn().mockResolvedValue(undefined),
 		deleteThread: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	};
@@ -170,5 +171,75 @@ describe('cleanupBuild', () => {
 		await expect(cleanupBuild(client, makeBuild(), silentLogger)).resolves.toBe(true);
 
 		expect(mocks.deleteProject).not.toHaveBeenCalled();
+	});
+});
+
+describe('cleanupBuild seeded folders', () => {
+	it('deletes the seeded root folders after the workflows', async () => {
+		const { client, mocks } = makeClient();
+		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F-root-1', 'F-root-2'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteFolder.mock.calls).toEqual([
+			['project-1', 'F-root-1'],
+			['project-1', 'F-root-2'],
+		]);
+		// A folder delete archives what it still holds, so the workflows go first.
+		expect(mocks.deleteWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.deleteFolder.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('reports not clean when a folder delete fails, and still deletes the thread', async () => {
+		const { client, mocks } = makeClient({
+			deleteFolder: vi.fn().mockRejectedValue(new Error('HTTP 404')),
+		});
+		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+	});
+
+	it('leaves the folders for the retry when a workflow delete failed', async () => {
+		// A folder delete archives the workflows still inside and moves them to the
+		// root; the retry would then 404 on the folder and never complete.
+		const { client, mocks } = makeClient({
+			deleteWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+		});
+		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteFolder).not.toHaveBeenCalled();
+		expect(mocks.deleteDataTable).toHaveBeenCalledWith('project-1', 'DT1');
+	});
+
+	it('does not report a clean folder cleanup when the project lookup failed', async () => {
+		// The retry exists for exactly this leak; a "Cleaned up" line would hide it.
+		const { client } = makeClient({
+			getPersonalProjectId: vi.fn().mockRejectedValue(new Error('HTTP 503')),
+		});
+		const lines: string[] = [];
+		const logger: EvalLogger = { ...silentLogger, verbose: (line: string) => lines.push(line) };
+		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
+
+		await expect(cleanupBuild(client, build, logger)).resolves.toBe(false);
+
+		expect(lines.some((line) => line.includes('Cleaned up') && line.includes('folder'))).toBe(
+			false,
+		);
+		expect(lines).toContainEqual(
+			expect.stringContaining('Could not clean up every one of 1 folder(s)'),
+		);
+	});
+
+	it('touches no folder API for a build without seeded folders', async () => {
+		const { client, mocks } = makeClient();
+
+		await cleanupBuild(client, makeBuild(), silentLogger);
+
+		expect(mocks.deleteFolder).not.toHaveBeenCalled();
 	});
 });
