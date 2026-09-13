@@ -140,8 +140,6 @@ export class SqliteConfig {
 const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
-const DEFAULT_PING_TIMEOUT_MS = 5_000;
-
 @Config
 export class DatabaseConfig {
 	/** Database type: `sqlite` or `postgresdb`. */
@@ -158,7 +156,7 @@ export class DatabaseConfig {
 
 	/** Timeout in milliseconds for an individual database health-check ping. */
 	@Env('DB_PING_TIMEOUT_MS')
-	pingTimeoutMs: number = DEFAULT_PING_TIMEOUT_MS;
+	pingTimeoutMs: number = 5_000;
 
 	/**
 	 * How many consecutive health-check ping failures must occur before the
