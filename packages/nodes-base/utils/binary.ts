@@ -119,7 +119,26 @@ export async function createBinaryFromJson(
 			addBOM: options.addBOM,
 		});
 	} else {
-		buffer = Buffer.from(value as unknown as string, BINARY_ENCODING);
+		let base64String = value as unknown as string;
+
+		// Handle data: URIs by stripping the prefix and extracting the base64 data
+		if (typeof base64String === 'string' && base64String.startsWith('data:')) {
+			const dataUriMatch = base64String.match(/^data:([^;]*);base64,(.+)$/);
+			if (dataUriMatch) {
+				if (!options.mimeType && dataUriMatch[1]) {
+					options.mimeType = dataUriMatch[1];
+				}
+				base64String = dataUriMatch[2];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value appears to be a data: URI but is not in the expected format (data:<mimeType>;base64,<data>)',
+					{ itemIndex: options.itemIndex || 0 },
+				);
+			}
+		}
+
+		buffer = Buffer.from(base64String, BINARY_ENCODING);
 	}
 
 	const binaryData = await this.helpers.prepareBinaryData(
