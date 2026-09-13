@@ -37,10 +37,10 @@ yet. Turbo builds them first; the bare pnpm form does not.
   `@n8n/frontend-module-*`, and never import `@/…` from the shell.
 - `@n8n/stores` and `@n8n/composables` are **subpath-only** — import
   `@n8n/stores/settings.store`, not `@n8n/stores`.
-- The no-cross-module rule is currently a convention: the shared tsconfig base
-  omits sibling modules from `paths`, which blocks an accidental import but not
-  a deliberate one (declaring the dependency makes it typecheck clean). The
-  ESLint rule that actually enforces it is CAT-3692.
+- The no-cross-module rule is enforced. `eslint.config.mjs` extends
+  `frontendModuleConfig` from `@n8n/eslint-config/frontend-module`, which bans a
+  sibling module and the `@/` shell alias at error level. Only
+  `@n8n/frontend-module-sdk` and this package's own name stay legal.
 
 ## Adding UI
 

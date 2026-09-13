@@ -1,7 +1,7 @@
-import { frontendConfig } from '@n8n/eslint-config/frontend';
+import { frontendModuleConfig } from '@n8n/eslint-config/frontend-module';
 import { defineConfig } from 'eslint/config';
 
-export default defineConfig(frontendConfig, {
+export default defineConfig(frontendModuleConfig(import.meta.dirname), {
 	/**
 	 * Suppressions inherited with the code, not granted to it.
 	 *

@@ -10,10 +10,10 @@ import { findPackageJsonFiles, relativeDir } from '../utils/package-json-scanner
 
 const CONFIG_FILENAMES = ['eslint.config.mjs', 'eslint.config.js', 'eslint.config.cjs'];
 
-const LAYERS = ['base', 'backend', 'frontend', 'nodes'];
+const LAYERS = ['base', 'backend', 'frontend', 'frontend-module', 'nodes'];
 const LAYER_IMPORT = /^@n8n\/eslint-config\/([a-z-]+)$/;
 
-/** Retired export paths, replaced by the four layers. */
+/** Retired export paths, replaced by the shared layers. */
 const REMOVED_SUBPATHS = new Set(['node', 'encryption-boundary']);
 
 /**
@@ -33,7 +33,7 @@ const WEAK_SEVERITY = new Set(['off', 'warn', '0', '1']);
  *
  * The repo used to carry a rule table in each of 72 package configs, which is
  * how it ended up with the same override written 35 times and four rules
- * silently shadowed by a duplicate key. The four shared layers hold the policy
+ * silently shadowed by a duplicate key. The shared layers hold the policy
  * now, so a package config may pick a layer and scope exceptions to paths, but
  * it may not quietly re-decide a rule for its whole tree.
  *
@@ -109,7 +109,7 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 						line,
 						column,
 						`${packageName} imports '@n8n/eslint-config/${subpath}', which no longer exists.`,
-						'Use one of the four layers: base, backend, frontend or nodes. The boundary configs are part of backendConfig.',
+						'Use one of the five layers: base, backend, frontend, frontend-module or nodes. The boundary configs are part of backendConfig.',
 					),
 				);
 				continue;
@@ -124,7 +124,7 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} does not extend a shared ESLint layer.`,
-					'Import baseConfig, backendConfig, frontendConfig or nodesConfig from @n8n/eslint-config and pass it to defineConfig.',
+					'Import baseConfig, backendConfig, frontendConfig, frontendModuleConfig or nodesConfig from @n8n/eslint-config and pass it to defineConfig.',
 				),
 			);
 		} else if (layerImports.length > 1) {
@@ -134,7 +134,7 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 					1,
 					1,
 					`${packageName} extends more than one shared layer (${layerImports.join(', ')}).`,
-					'Pick the single layer that matches the package. The backend layer already contains the base layer, and the nodes layer contains the backend layer.',
+					'Pick the single layer that matches the package. The backend layer already contains the base layer, the nodes layer contains the backend layer, and the frontend-module layer contains the frontend layer.',
 				),
 			);
 		}
