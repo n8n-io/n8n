@@ -250,7 +250,12 @@ export async function execute(
 	const endpoint = '/services/search/jobs';
 	const responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
-	const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
-	const returnData = await splunkApiJsonRequest.call(this, 'GET', getEndpoint);
-	return returnData;
+	// oneshot mode returns results inline with no sid
+	if (responseData.response?.sid) {
+		const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+		const returnData = await splunkApiJsonRequest.call(this, 'GET', getEndpoint);
+		return returnData;
+	}
+
+	return responseData;
 }
