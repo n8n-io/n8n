@@ -153,12 +153,11 @@ describe('unsupportedPushReason', () => {
 		expect(reason).toBeNull();
 	});
 
-	// The write API validates `metadata.seed` against a fixed key set, so `projects`
-	// is not stored. Pushing anyway would land a project-scope case WITHOUT its seeded
-	// project — it would still run, and the agent's refusal would be graded against a
-	// project list it never saw. Refusing the push is the only outcome that can't
-	// silently corrupt the suite.
-	it('REFUSES an inline seed that carries projects, until lang-tracer stores them', () => {
+	// The write API's `seed` key set carries `projects` now (same rules as this
+	// schema: unique, trimmed, ≤255 chars, ≤5), so a project-scope case is a durable
+	// fixture the suite can hold. The push's read-back check still catches a
+	// deployment that predates the key.
+	it('ALLOWS an inline seed that carries projects — the write API stores them', () => {
 		const reason = unsupportedPushReason(
 			diskCase({
 				seed: {
@@ -172,7 +171,7 @@ describe('unsupportedPushReason', () => {
 				},
 			}),
 		);
-		expect(reason).toMatch(/projects/);
+		expect(reason).toBeNull();
 	});
 
 	// The write API's `seed` has no `folders` key and its `workflows[]` items no
