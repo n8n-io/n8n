@@ -80,7 +80,17 @@ export function extractErrorDescription(rawError: SplunkError) {
 }
 
 export function toUnixEpoch(timestamp: string) {
-	return Date.parse(timestamp) / 1000;
+	// Splunk relative time specifiers (e.g. -15m, -24h, -1d@d, now, @d)
+	// are not valid Date.parse inputs but Splunk natively understands them.
+	// Pass them through as-is instead of converting to NaN.
+	if (/^[-+]?\d+[smhdwMy](?:@\w+)?$/.test(timestamp) || timestamp === 'now') {
+		return timestamp;
+	}
+	const parsed = Date.parse(timestamp);
+	if (Number.isNaN(parsed)) {
+		return timestamp;
+	}
+	return parsed / 1000;
 }
 
 export function formatFeed(responseData: SplunkFeedResponse) {
