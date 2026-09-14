@@ -58,8 +58,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return undefined;
 	}
 
-	getParentTypes(name: string): string[] {
-		return this.credentialTypes.getParentTypes(name);
+	getParentTypes(_name: string): string[] {
+		return [];
 	}
 
 	getOAuth2Options(type: string) {
@@ -78,20 +78,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		_nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		const credentials = this.credentialsMap[type] ?? {};
-		if (!this.isOAuth2Type(type) || credentials.oauthTokenData !== undefined) {
-			return credentials;
-		}
-
-		// requestOAuth2 signs with oauthTokenData. NodeTestHarness cases often omit
-		// it; seed the same stub token the OAuth fixtures already use.
-		return {
-			oauthTokenData: {
-				access_token: 'ACCESSTOKEN',
-				token_type: 'Bearer',
-			},
-			...credentials,
-		};
+		return this.credentialsMap[type] ?? {};
 	}
 
 	async getCredentials(
@@ -112,10 +99,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		_type: string,
 		_data: ICredentialDataDecryptedObject,
 	): Promise<void> {}
-
-	private isOAuth2Type(type: string): boolean {
-		return type === 'oAuth2Api' || this.getParentTypes(type).includes('oAuth2Api');
-	}
 
 	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
 		try {

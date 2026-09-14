@@ -94,8 +94,6 @@ export interface IOAuth2Options {
 	skipTokenRefresh?: boolean;
 	// Which key to use to get the token from stored credentials
 	property?: string;
-	// Which key to use to get the refreshed access token from stored credentials. The destination is `property` field
-	refreshProperty?: string;
 	// Type of the token, e.g. "Bearer"
 	tokenType?: string;
 	// Whether to retain the token type prefix in the Authorization header
@@ -113,7 +111,7 @@ export interface IOAuth2Options {
 
 export type CredentialOAuth2Options = Pick<
 	IOAuth2Options,
-	'property' | 'refreshProperty' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
+	'property' | 'tokenType' | 'keyToIncludeInAccessTokenHeader'
 >;
 
 export interface IConnection {

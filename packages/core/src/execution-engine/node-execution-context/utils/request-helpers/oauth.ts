@@ -32,7 +32,6 @@ import type {
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
 import {
-	applyOAuth2RefreshToken,
 	OperationalError,
 	jsonParse,
 	NodeOperationError,
@@ -240,7 +239,6 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// does not echo back on refresh (e.g. `resource`) are preserved from the
 		// original token response.
 		const newOAuthTokenData = addExpiresAt({ ...token.data, ...newToken.data });
-		applyOAuth2RefreshToken(newOAuthTokenData, newToken.data, oAuth2Options);
 
 		// If the server doesn't echo the resource back, restore it from the
 		// previous token data to ensure it's not lost on refresh.

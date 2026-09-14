@@ -19,7 +19,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
-	applyOAuth2RefreshToken,
 	getOAuth2AuthHeaders,
 	jsonParse,
 	OperationalError,
@@ -899,7 +898,6 @@ export class OauthService {
 				refreshed.data,
 				resource,
 			);
-			applyOAuth2RefreshToken(refreshedTokenData, refreshed.data, oauth2);
 
 			try {
 				await this.encryptAndSaveData(currentCredential, { oauthTokenData: refreshedTokenData });
