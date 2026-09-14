@@ -156,6 +156,7 @@ export {
 	credentialTypeNameParamSchema,
 	credentialTypePolicyIdParamSchema,
 	credentialTypePolicyScopeIdParamSchema,
+	dataTableIdParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
