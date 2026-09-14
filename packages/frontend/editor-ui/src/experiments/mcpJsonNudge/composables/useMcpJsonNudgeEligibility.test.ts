@@ -106,6 +106,33 @@ describe('useMcpJsonNudgeEligibility', () => {
 		});
 	});
 
+	// The exposed population of the experiment: everyone who would see the nudge
+	// but for their arm. The trigger reports exposure off this, so it must NOT
+	// consult the flag.
+	describe('isEligibleApartFromExperiment', () => {
+		it('ignores the experiment arm', () => {
+			mockIsVariantEnabled.mockReturnValue(false);
+			const { isEligibleApartFromExperiment } = useMcpJsonNudgeEligibility();
+
+			expect(isEligibleApartFromExperiment()).toBe(true);
+			expect(mockIsVariantEnabled).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['MCP is already enabled for the instance', () => (mockMcpStore.mcpAccessEnabled = true)],
+			[
+				'the impression cap is reached',
+				() => (mockCurrentUser.settings = { mcpJsonNudge: { impressions: 2 } }),
+			],
+			['the user opted out', () => mockIsCalloutDismissed.mockReturnValue(true)],
+		])('returns false when %s', (_label, arrange) => {
+			arrange();
+			const { isEligibleApartFromExperiment } = useMcpJsonNudgeEligibility();
+
+			expect(isEligibleApartFromExperiment()).toBe(false);
+		});
+	});
+
 	describe('recordImpression', () => {
 		it('persists 1 when there was no prior impressions count', async () => {
 			mockCurrentUser.settings = {};
