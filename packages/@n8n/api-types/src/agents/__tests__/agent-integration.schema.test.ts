@@ -10,6 +10,32 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a Teams integration with only a session idle timeout', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'teams',
+			credentialId: 'cred-123',
+			settings: { sessionIdleTimeoutMinutes: 30 },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a Teams integration with no settings', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'teams',
+			credentialId: 'cred-123',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects Teams settings it does not define', () => {
+		const result = AgentIntegrationSchema.safeParse({
+			type: 'teams',
+			credentialId: 'cred-123',
+			settings: { accessMode: 'public' },
+		});
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts an existing Slack integration without messaging settings', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'slack',
