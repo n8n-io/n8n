@@ -10,6 +10,9 @@ import { N8N_VERSION } from '@/constants';
 /** A system task's stored job as listed, pinned to the payload read at the time. */
 export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>;
 
+/** The payload of every system task job: the n8n version that last provisioned it. */
+export type SystemTaskJobPayload = { n8nVersion: string };
+
 /**
  * Marks a system task as the owner of its own durable job, one per task, so
  * `ownerId` is the task name and there is no member. For reconciliation and for
@@ -29,8 +32,7 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return { ownerType: this.ownerType, ownerId: taskName, ownerMemberId: null };
 	}
 
-	/** The payload of the job a task provisions: the version that wrote the row. */
-	jobPayload(): { n8nVersion: string } {
+	jobPayload(): SystemTaskJobPayload {
 		return { n8nVersion: N8N_VERSION };
 	}
 
