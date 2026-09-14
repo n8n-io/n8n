@@ -60,7 +60,6 @@ function onSelect(value: SelectValue | undefined) {
 			:icon="currentMode.icon"
 			variant="ghost"
 			size="medium"
-			position="popper"
 			@update:model-value="onSelect"
 		>
 			<template #default>

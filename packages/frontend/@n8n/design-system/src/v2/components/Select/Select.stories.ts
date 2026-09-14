@@ -50,12 +50,6 @@ const meta = {
 			options: ['default', 'ghost', 'flush'],
 			description: 'Visual variant of the select trigger',
 		},
-		position: {
-			control: 'select',
-			options: ['item-aligned', 'popper'],
-			description:
-				'Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default); `popper` opens below the trigger.',
-		},
 		clearable: {
 			control: 'boolean',
 			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
@@ -309,7 +303,6 @@ export const ItemWithDescription = {
 		items: modeItems,
 		modelValue: 'build',
 		size: 'medium',
-		position: 'popper',
 	},
 } satisfies Story;
 
@@ -339,41 +332,6 @@ export const Variants = {
 	args: {
 		items: plainItems,
 		modelValue: undefined,
-	},
-} satisfies Story;
-
-export const Positions = {
-	render: (args) => ({
-		components: { Select, N8nInputLabel },
-		setup() {
-			const popperValue = ref(args.modelValue);
-			const itemAlignedValue = ref(args.modelValue);
-			return { args, popperValue, itemAlignedValue };
-		},
-		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
-			<N8nInputLabel label="Popper">
-				<Select
-					v-bind="args"
-					v-model="popperValue"
-					position="popper"
-					:style="{ width: '220px' }"
-				/>
-			</N8nInputLabel>
-			<N8nInputLabel label="Item-aligned">
-				<Select
-					v-bind="args"
-					v-model="itemAlignedValue"
-					position="item-aligned"
-					:style="{ width: '220px' }"
-				/>
-			</N8nInputLabel>
-		</div>
-		`,
-	}),
-	args: {
-		items: fruitItems,
-		modelValue: 'orange',
 	},
 } satisfies Story;
 
@@ -643,7 +601,6 @@ export const MultipleWithSwatches = {
 				v-bind="args"
 				v-model="value"
 				multiple
-				position="popper"
 				:style="{ width: '280px' }"
 				@update:model-value="onUpdate"
 			>
@@ -772,7 +729,7 @@ export const MixedItemLengths = {
 		template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
-				Menu is at least as wide as the trigger (popper) or the min-width floor, and grows to fit longer labels.
+				Menu is at least as wide as the trigger or the min-width floor, and grows to fit longer labels.
 			</N8nText>
 			<N8nInputLabel label="Narrow trigger (160px)">
 				<Select
@@ -813,33 +770,21 @@ export const MixedItemLengths = {
 
 export const ShortItems = {
 	render: (args) => ({
-		components: { Select, N8nInputLabel, N8nText },
+		components: { Select, N8nText },
 		setup() {
-			const popperValue = ref(args.modelValue);
-			const itemAlignedValue = ref(args.modelValue);
-			return { args, popperValue, itemAlignedValue };
+			const value = ref(args.modelValue);
+			return { args, value };
 		},
 		template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
-				Very short labels — menus keep a min-width floor; popper also matches the trigger when wider.
+				Very short labels — menus keep a min-width floor, and match the trigger when it is wider.
 			</N8nText>
-			<N8nInputLabel label="Popper">
-				<Select
-					v-bind="args"
-					v-model="popperValue"
-					position="popper"
-					:style="{ width: '240px' }"
-				/>
-			</N8nInputLabel>
-			<N8nInputLabel label="Item-aligned">
-				<Select
-					v-bind="args"
-					v-model="itemAlignedValue"
-					position="item-aligned"
-					:style="{ width: '240px' }"
-				/>
-			</N8nInputLabel>
+			<Select
+				v-bind="args"
+				v-model="value"
+				:style="{ width: '240px' }"
+			/>
 		</div>
 		`,
 	}),

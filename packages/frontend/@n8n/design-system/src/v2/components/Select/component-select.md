@@ -86,8 +86,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Fallback leading icon on the trigger when nothing is selected, or the selected item has no leading visual. In single select, a selected item's `#item-leading` (or its `icon`) is shown on the trigger instead.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected. Hidden when `disabled` or the value is empty. Default: `false`. The button's accessible name is `t('nds.select.clear')` (`Clear selection`).
-- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default). `popper` opens below the trigger (`side` is always `bottom`) at trigger width. `side` / `align` are not exposed.
-- `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `4`.
+- `sideOffset?: number` Distance in pixels from the trigger. Default: `4`. The dropdown always opens below the trigger at trigger width (`side` / `align` are not exposed).
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
 
 
@@ -210,7 +209,6 @@ const current = computed(() => items.find((item) => item.value === value.value) 
     v-model="value"
     :items="items"
     :icon="current.icon"
-    position="popper"
   >
     <template #default>
       {{ current.label }}

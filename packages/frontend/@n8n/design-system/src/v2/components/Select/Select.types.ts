@@ -51,7 +51,7 @@ export type SelectModelValue<M extends boolean = false> = M extends true
 
 export type SelectProps<M extends boolean = false> = Omit<
 	SelectRootProps,
-	'multiple' | 'modelValue' | 'defaultValue' | 'by' | 'side' | 'align'
+	'multiple' | 'modelValue' | 'defaultValue' | 'by' | 'side' | 'align' | 'position'
 > & {
 	id?: string;
 	placeholder?: string;
@@ -67,15 +67,7 @@ export type SelectProps<M extends boolean = false> = Omit<
 	icon?: IconName;
 	clearable?: boolean;
 
-	/**
-	 * The positioning mode for the dropdown content.
-	 * `item-aligned` aligns the selected item with the trigger (default).
-	 * `popper` opens below the trigger at trigger width.
-	 * @defaultValue 'item-aligned'
-	 */
-	position?: 'item-aligned' | 'popper';
-
-	/** The distance in pixels from the trigger when position is 'popper'. @defaultValue 4 */
+	/** The distance in pixels from the trigger. @defaultValue 4 */
 	sideOffset?: number;
 
 	/** Additional CSS class(es) applied to the dropdown content container (portaled). */

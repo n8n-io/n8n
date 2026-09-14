@@ -55,7 +55,6 @@ const { t } = useI18n();
 const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
-	position: 'item-aligned',
 	sideOffset: 4,
 	clearable: false,
 });
@@ -410,7 +409,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			<SelectContent
 				data-test-id="select-content"
 				:class="[$style.selectContent, size, contentClass]"
-				:position="position"
+				position="popper"
 				side="bottom"
 				:side-offset="sideOffset"
 			>

@@ -175,7 +175,6 @@ const isUnavailableRoleItem = (item: SelectOptionBase) =>
 			size="small"
 			:variant="variant"
 			:placeholder="placeholder"
-			position="popper"
 			:disabled="loading || disabled"
 			:data-test-id="testId"
 			@update:model-value="onRoleSelect"
