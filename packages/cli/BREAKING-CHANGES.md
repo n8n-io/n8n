@@ -46,6 +46,14 @@ If you inject your own scripts into n8n's pages. Test the instance before you up
 
 ### What changed?
 
+Chat hub is off by default. `chat-hub` is no longer a default module, so the **Chat** section disappears from the navigation and the chat endpoints stop responding. Your chat sessions, agents, messages and tools stay in the database. Chat hub is deprecated and version 4.0 removes it.
+
+### When is action necessary?
+
+If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn it on again for the 3.x line. n8n then prints a deprecation warning at startup. The migration report on v2 lists this change for every instance that uses chat hub.
+
+### What changed?
+
 The "Any workflow" caller policy (`any`) was removed. Calls to a sub-workflow that still stores this value fail until you select a supported policy in the workflow settings. If you set `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION=any`, n8n logs a warning and uses the default value (`workflowsFromSameOwner`). The public API rejects `any` as a value for `settings.callerPolicy`.
 
 ### When is action necessary?
