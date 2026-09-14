@@ -205,7 +205,7 @@ onMounted(async () => {
 					<div :class="$style.usageTableActions">
 						<N8nTooltip :content="i18n.baseText('settings.n8nConnect.usage.refresh.tooltip')">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								size="small"
 								icon="refresh-cw"

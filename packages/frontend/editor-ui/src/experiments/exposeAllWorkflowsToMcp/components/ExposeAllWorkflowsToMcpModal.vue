@@ -139,7 +139,7 @@ onBeforeUnmount(() => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:label="i18n.baseText('experiments.exposeAllWorkflowsToMcp.modal.notNow')"
 					:disabled="isSaving"

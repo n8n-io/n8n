@@ -237,7 +237,7 @@ const projectLink = (agent: Agent) =>
 			>
 				<template #actions>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						data-test-id="mcp-bulk-remove-agent-access-button"
 						:label="i18n.baseText('settings.mcp.agents.table.action.removeMCPAccess')"
 						@click="onBulkRemoveMcpAccess"

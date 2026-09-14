@@ -364,7 +364,7 @@ onMounted(() => {
 								{{ i18n.baseText('settings.users.actions.generateInviteLink') }}
 							</template>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								icon="link"
 								:aria-label="i18n.baseText('settings.users.actions.generateInviteLink')"
 								data-test-id="generate-invite-link-button"

@@ -2135,7 +2135,7 @@ onBeforeUnmount(() => {
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('chat.hide')"
 						:class="$style.chatButton"
 						@click="onToggleChat"
@@ -2146,7 +2146,7 @@ onBeforeUnmount(() => {
 						:shortcut="{ keys: ['c'] }"
 					>
 						<CanvasChatButton
-							:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
+							:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
 							:label="i18n.baseText('chat.open')"
 							:class="$style.chatButton"
 							@click="onOpenChat"

@@ -110,7 +110,7 @@ function onRevoke() {
 
 			<N8nDialogFooter>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					data-test-id="mcp-client-details-close"
 					@click="emit('update:open', false)"
 				>

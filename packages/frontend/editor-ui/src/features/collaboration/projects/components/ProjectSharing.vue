@@ -315,7 +315,7 @@ watch(
 				</N8nSelect>
 				<N8nButton
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
-					variant="subtle"
+					variant="outline"
 					icon-only
 					native-type="button"
 					icon="trash-2"

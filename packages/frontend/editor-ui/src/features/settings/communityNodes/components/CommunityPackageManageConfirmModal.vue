@@ -278,7 +278,7 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footerContainer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
 					size="large"
 					data-test-id="close-button"

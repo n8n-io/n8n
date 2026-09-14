@@ -635,7 +635,7 @@ watch(
 						<template #trailingContent>
 							<N8nButton
 								size="small"
-								variant="subtle"
+								variant="outline"
 								:class="$style.changeRequestAction"
 								data-testid="agent-preview-change-request-link"
 								@click="onEditWithAssistant(group.message.content)"

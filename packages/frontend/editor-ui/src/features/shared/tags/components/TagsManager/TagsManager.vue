@@ -188,7 +188,7 @@ function onEnter() {
 		</template>
 		<template #footer="{ close }">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('tagsManager.done')"
 				style="margin-left: auto"
 				@click="close"

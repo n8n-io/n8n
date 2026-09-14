@@ -239,7 +239,7 @@ function getIssues(index: number): string[] {
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<N8nButton
 					class="n8n-button--highlightFill"
-					variant="subtle"
+					variant="outline"
 					icon="plus"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"

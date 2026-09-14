@@ -393,7 +393,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								variant="subtle"
+								variant="outline"
 								:node-name="activeNode?.name ?? ''"
 								:label="noOutputActionLabel"
 								telemetry-source="inputs"
@@ -406,7 +406,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<NodeExecuteButton
 							hide-icon
 							transparent
-							variant="subtle"
+							variant="outline"
 							:node-name="activeNode?.name ?? ''"
 							:label="noOutputActionLabel"
 							telemetry-source="inputs"

@@ -1578,7 +1578,7 @@ const { width } = useElementSize(credNameRef);
 									(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
 									!requiredPropertiesFilled
 								"
-								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'outline'"
 								:is-saving="isSaving || isTesting"
 								:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 								:saving-label="
@@ -1590,7 +1590,7 @@ const { width } = useElementSize(credNameRef);
 								@click="saveCredential"
 							/>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="
 									currentCredential &&
 									credentialPermissions.delete &&

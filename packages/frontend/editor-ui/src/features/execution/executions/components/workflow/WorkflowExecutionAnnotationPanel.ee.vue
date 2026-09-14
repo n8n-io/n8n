@@ -50,7 +50,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		@visible-change="onDropdownVisibleChange"
 	>
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
 			icon="list-checks"

@@ -127,7 +127,7 @@ const actionDisabled = computed(
 				>
 					<span>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon="plus"
 							:loading="installing"
@@ -140,7 +140,7 @@ const actionDisabled = computed(
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="plus"
 					:loading="installing"

@@ -195,7 +195,7 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
 					@click="close"

@@ -342,7 +342,7 @@ export const InlineWithButton = {
 			</div>
 			<div style="display: flex; gap: var(--spacing--2xs); align-items: center; width: 100%;">
 				<Input v-bind="args" v-model="secondaryValue" size="medium" placeholder="Invite by email" />
-				<N8nButton variant="subtle" size="medium">Invite</N8nButton>
+				<N8nButton variant="outline" size="medium">Invite</N8nButton>
 			</div>
 		</div>
 		`,

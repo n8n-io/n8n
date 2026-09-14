@@ -232,7 +232,7 @@ function onOptionChange(value: CredentialModeOption): void {
 				@select="onOptionChange"
 			>
 				<template #trigger>
-					<N8nButton variant="subtle" text data-test-id="credential-mode-dropdown-trigger">
+					<N8nButton variant="outline" text data-test-id="credential-mode-dropdown-trigger">
 						{{ selectedOption?.name }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>

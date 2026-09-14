@@ -152,7 +152,7 @@ watch(runningTestRun, (run) => {
 			<div :class="$style.headerInner">
 				<N8nButton
 					v-if="runningTestRun"
-					variant="subtle"
+					variant="outline"
 					:disabled="cancellingTestRun"
 					:class="$style.runOrStopTestButton"
 					size="small"
@@ -204,7 +204,7 @@ watch(runningTestRun, (run) => {
 								<!-- "Run workflow" option – direct run, only shown when a config exists -->
 								<template v-if="activeConfigId !== null">
 									<N8nButton
-										variant="subtle"
+										variant="outline"
 										size="small"
 										:label="locale.baseText('evaluation.runWorkflow')"
 										data-test-id="run-workflow-direct-button"

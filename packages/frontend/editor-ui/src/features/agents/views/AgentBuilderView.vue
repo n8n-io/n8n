@@ -2672,7 +2672,7 @@ function onSwitchAgent(nextAgentId: string) {
 		>
 			<N8nTooltip :content="locale.baseText('agents.builder.header.editWithAi')">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"

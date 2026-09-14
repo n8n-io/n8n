@@ -92,7 +92,7 @@ const handleSubmit = () => {
 		<td><VariablesUsageBadge v-if="formValidation.key" :name="form.key" /></td>
 		<td align="right">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				data-test-id="variable-row-cancel-button"
 				class="mr-xs"
 				@click="handleCancel"

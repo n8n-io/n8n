@@ -175,7 +175,7 @@ function openCommandBar(event: MouseEvent) {
 				placement="left"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					size="large"
 					icon="plus"
 					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
@@ -191,7 +191,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				size="large"
 				icon="search"
 				:aria-label="i18n.baseText('nodeView.openCommandBar')"
@@ -205,7 +205,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				size="large"
 				icon="sticky-note"
 				:aria-label="i18n.baseText('nodeView.addStickyHint')"
@@ -219,7 +219,7 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				size="large"
 				icon="panel-right"
 				:aria-label="sidePanelTooltip"
@@ -235,7 +235,7 @@ function openCommandBar(event: MouseEvent) {
 			v-if="
 				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
 			"
-			variant="subtle"
+			variant="outline"
 			icon-only
 			size="large"
 			:aria-label="i18n.baseText('aiAssistant.tooltip')"
@@ -256,7 +256,7 @@ function openCommandBar(event: MouseEvent) {
 		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				iconOnly
 				size="large"
 				:aria-label="i18n.baseText('aiAssistant.tooltip')"

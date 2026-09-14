@@ -100,7 +100,7 @@ async function handleClickExecute() {
 			<template v-if="!readOnly">
 				<template v-if="type === CHAT_TRIGGER_NODE_TYPE">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="isChatOpen"
 						icon="message-circle"
 						size="large"

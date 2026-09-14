@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="import-csv-cancel"

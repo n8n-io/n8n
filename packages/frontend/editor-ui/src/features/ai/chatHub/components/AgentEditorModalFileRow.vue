@@ -85,7 +85,7 @@ const warningTooltip = computed<string | undefined>(() => {
 			v-if="item.status !== 'indexing'"
 			icon="trash-2"
 			size="small"
-			variant="subtle"
+			variant="outline"
 			@click.stop="emit('remove')"
 		/>
 	</div>

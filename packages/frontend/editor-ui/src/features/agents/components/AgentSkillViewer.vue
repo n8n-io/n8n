@@ -432,7 +432,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		<template v-if="isSkillFileSelected">
 			<div :class="$style.importActions">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="mini"
 					:disabled="props.disabled"
 					data-testid="agent-skill-upload-skill-md"
@@ -442,7 +442,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					{{ i18n.baseText('agents.builder.skills.import.skillFile') }}
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="mini"
 					:disabled="props.disabled"
 					data-testid="agent-skill-upload-folder"

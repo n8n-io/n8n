@@ -505,7 +505,7 @@ async function onInstanceAiHandoffClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					icon="arrow-right"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"

@@ -191,7 +191,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 							<N8nButton
 								href="https://api.slack.com/apps"
 								target="_blank"
-								variant="subtle"
+								variant="outline"
 								size="medium"
 								icon="slack"
 								data-testid="slack-app-configuration-token-link"
@@ -245,7 +245,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 					</div>
 					<template v-else-if="step.id === 'install-app'">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							:loading="setupLoading"
 							:disabled="!canInstallApp"

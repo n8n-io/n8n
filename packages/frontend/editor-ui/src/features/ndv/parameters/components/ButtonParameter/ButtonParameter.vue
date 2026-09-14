@@ -263,7 +263,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			<N8nTooltip :disabled="isSubmitEnabled">
 				<div>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="!isSubmitEnabled"
 						size="small"
 						:loading="isLoading"

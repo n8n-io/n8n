@@ -138,7 +138,7 @@ async function onEditInBuilder() {
 						v-if="!isUnavailable && !props.isReadOnly"
 						size="small"
 						icon="external-link"
-						variant="subtle"
+						variant="outline"
 						:class="$style.editButton"
 						data-test-id="agent-ndv-edit-in-builder"
 						@click="onEditInBuilder"

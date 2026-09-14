@@ -81,7 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconsOnly: false,
 	showColorPicker: false,
 	containerClass: undefined,
-	buttonVariant: 'subtle',
+	buttonVariant: 'outline',
 	buttonClass: undefined,
 	defaultTab: 'icons',
 });
