@@ -10,6 +10,7 @@ import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import MicrosoftTeams from './custom/microsoft-teams.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
@@ -314,6 +315,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	'microsoft-teams': MicrosoftTeams,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -535,6 +537,7 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	'microsoft-teams': MicrosoftTeams,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
