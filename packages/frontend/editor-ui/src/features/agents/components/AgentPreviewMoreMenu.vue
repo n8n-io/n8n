@@ -115,6 +115,7 @@ const triggerLabel = computed(() => {
 		return i18n.baseText('agentSessions.origin.preview');
 	}
 	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
+	if (source === 'teams') return i18n.baseText('agentSessions.origin.teams');
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -128,6 +129,8 @@ const triggerIcon = computed<IconName>(() => {
 		case 'workflow':
 		case 'webhook':
 			return sessionMetadata.value.source;
+		case 'teams':
+			return 'microsoft-teams';
 		case 'instance-ai':
 			return 'sparkles';
 		default:

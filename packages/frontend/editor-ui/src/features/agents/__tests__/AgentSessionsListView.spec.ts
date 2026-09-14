@@ -51,6 +51,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.origin.subAgent': 'Sub-agent',
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
+					'agentSessions.origin.teams': 'Microsoft Teams',
 					'agentSessions.empty': 'No agent sessions',
 					'agentSessions.emptyDescription':
 						'Sessions will appear here after you preview your agent.',
@@ -424,7 +425,8 @@ describe('AgentSessionsListView', () => {
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],
 		[{ taskId: 'task-1', source: 'slack' }, 'Schedule', 'clock'],
-		[{ source: 'teams' }, 'Teams', 'plug'],
+		[{ source: 'teams' }, 'Microsoft Teams', 'microsoft-teams'],
+		[{ source: 'future-channel' }, 'Future-channel', 'plug'],
 		[{ source: ' Slack ' }, 'Slack', 'slack'],
 	] as const)(
 		'renders origin chip for %j as %s with the %s icon',
