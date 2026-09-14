@@ -171,6 +171,8 @@ describe('buildPipelineEventsFilter', () => {
 		'2026-09-01T14:20:50+02:00',
 		"2026-09-01T14:20:50Z' OR level='INFO",
 		'now',
+		'2026-02-30T14:20:50Z',
+		'2026-09-01T25:00:00Z',
 	])('rejects the cursor %s', (after) => {
 		expect(() => buildPipelineEventsFilter({ after })).toThrow(UnexpectedError);
 	});
