@@ -174,9 +174,13 @@ describe('SettingsPreferencesView', () => {
 		const rows = [preference({ id: 'a' }), preference({ id: 'b' }), preference({ id: 'c' })];
 		contextStore.preferences = rows;
 		contextStore.count = 3;
-		contextStore.deletePreferences.mockResolvedValue({
-			deleted: ['a', 'c'],
-			failed: [{ id: 'b', error: new Error('gone') }],
+		contextStore.deletePreferences.mockImplementation(async () => {
+			// The reload after the delete replaces the page with the survivor.
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = rows.filter((row) => row.id === 'b');
+				return { count: 1, data: contextStore.preferences };
+			});
+			return { deleted: ['a', 'c'], failed: [{ id: 'b', error: new Error('gone') }] };
 		});
 
 		const { getByTestId, getAllByRole } = renderView();

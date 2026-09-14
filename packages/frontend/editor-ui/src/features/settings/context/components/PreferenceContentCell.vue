@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { ref } from 'vue';
+import { useElementOverflow } from '@n8n/composables/useElementOverflow';
 import { N8nTooltip } from '@n8n/design-system';
 
 /**
@@ -13,29 +14,7 @@ const props = defineProps<{
 }>();
 
 const textEl = ref<HTMLElement | null>(null);
-const isClamped = ref(false);
-
-let observer: ResizeObserver | null = null;
-
-const update = () => {
-	const el = textEl.value;
-	if (!el) return;
-	isClamped.value = el.scrollHeight > el.clientHeight;
-};
-
-onMounted(() => {
-	update();
-	if (textEl.value) {
-		observer = new ResizeObserver(update);
-		observer.observe(textEl.value);
-	}
-});
-
-watch(() => props.content, update, { flush: 'post' });
-
-onBeforeUnmount(() => {
-	observer?.disconnect();
-});
+const { isOverflowing: isClamped } = useElementOverflow(textEl, 'y', [() => props.content]);
 </script>
 
 <template>

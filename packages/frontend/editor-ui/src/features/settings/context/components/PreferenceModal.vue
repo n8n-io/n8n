@@ -341,6 +341,7 @@ watch(
 					v-model="form.scope"
 					size="large"
 					filterable
+					:teleported="false"
 					data-test-id="preference-modal-scope-select"
 				>
 					<template #prefix>

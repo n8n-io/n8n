@@ -143,6 +143,11 @@ async function onDeleteSelected() {
 	const ids = [...selection.value];
 	if (ids.length === 0 || !(await confirmDelete(ids.length))) return;
 
+	// The reload after the delete drops the rows from the page, so their scopes are
+	// read before the call, while the rows are still here.
+	const scopeById = new Map(
+		contextStore.preferences.map((row) => [row.id, preferenceScope(row)] as const),
+	);
 	const { deleted, failed } = await contextStore.deletePreferences(ids);
 	// The rows that went are gone from the table too, so they must leave the
 	// selection, or the toolbar would count them and a retry would hit a 404.
@@ -153,10 +158,7 @@ async function onDeleteSelected() {
 	if (deleted.length > 0) {
 		trackDelete(
 			'bulk',
-			deleted.map((id) => {
-				const row = contextStore.preferences.find((candidate) => candidate.id === id);
-				return row ? preferenceScope(row) : undefined;
-			}),
+			deleted.map((id) => scopeById.get(id)),
 		);
 	}
 	if (failed.length > 0) {
