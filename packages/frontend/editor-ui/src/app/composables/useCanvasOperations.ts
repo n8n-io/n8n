@@ -42,6 +42,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -140,6 +141,7 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isEmptyGroupAnchor,
 	isHitlToolType,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
@@ -651,6 +653,41 @@ export function useCanvasOperations() {
 
 		if (uiStore.lastInteractedWithNodeId === id) {
 			uiStore.lastInteractedWithNodeId = undefined;
+		}
+
+		const group = workflowDocumentStore.value.getGroupForNode(id);
+		const shouldRestoreEmptyGroupAnchor =
+			group?.nodeIds.length === 1 && node.type !== STICKY_NODE_TYPE && !isEmptyGroupAnchor(node);
+
+		if (shouldRestoreEmptyGroupAnchor) {
+			const anchorNodeType = requireNodeTypeDescription(NO_OP_NODE_TYPE);
+			const anchor = addNode(
+				{
+					type: NO_OP_NODE_TYPE,
+					typeVersion: resolveNodeVersion(anchorNodeType),
+					position: [...node.position],
+					parameters: { emptyGroupAnchor: true },
+					placeholder: true,
+				},
+				anchorNodeType,
+				{
+					forcePosition: true,
+					isAutoAdd: true,
+					openNDV: false,
+					trackHistory,
+				},
+			);
+			const didReplace = replaceNode(id, anchor.id, { trackHistory, trackBulk: false });
+			if (didReplace) {
+				if (trackHistory && trackBulk) {
+					historyStore.stopRecordingUndo();
+				}
+				return;
+			}
+
+			// If the replacement is rejected by node-group connection policy, leave
+			// the original deletion path to remove the node and its group.
+			workflowDocumentStore.value.removeNodeById(anchor.id);
 		}
 
 		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
@@ -3650,7 +3687,7 @@ export function useCanvasOperations() {
 		const previousNode = workflowDocumentStore.value.getNodeById(previousId);
 		const newNode = workflowDocumentStore.value.getNodeById(newId);
 
-		if (!previousNode || !newNode) return;
+		if (!previousNode || !newNode) return false;
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
@@ -3670,7 +3707,7 @@ export function useCanvasOperations() {
 				if (trackHistory && trackBulk) {
 					historyStore.stopRecordingUndo();
 				}
-				return;
+				return false;
 			}
 			moveNewNodeToPreviousPosition();
 		} else {
@@ -3688,6 +3725,8 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+
+		return true;
 	}
 
 	async function addNodesAndConnections(
