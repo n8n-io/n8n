@@ -3,6 +3,7 @@ import type {
 	IDataObject,
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IRunData,
 	ITaskData,
 } from 'n8n-workflow';
@@ -245,6 +246,30 @@ export function planStepRun(args: {
 		fabricatedNodeNames: [],
 		reusedNodeNames: [],
 	};
+}
+
+/**
+ * Drops the pin data that would stop a step run from doing its job.
+ *
+ * A pinned node never executes — `isDirty` treats it as clean and
+ * `getPinnedOutput` returns the pin — so a pinned target would make "run this
+ * node" silently replay stale output instead. The same applies to a fabricated
+ * parent: `recreateNodeExecutionStack` prefers pin data over run data, so the
+ * caller's mock input would lose to a leftover pin.
+ *
+ * Only this run's copy is affected. The saved workflow keeps its pins.
+ */
+export function pinDataForStepRun(
+	workflowPinData: IPinData | undefined,
+	args: { targetName: string; fabricatedNodeNames: string[] },
+): IPinData | undefined {
+	if (!workflowPinData) return undefined;
+
+	const overridden = new Set([args.targetName, ...args.fabricatedNodeNames]);
+	const kept = Object.entries(workflowPinData).filter(([nodeName]) => !overridden.has(nodeName));
+
+	if (kept.length === Object.keys(workflowPinData).length) return workflowPinData;
+	return Object.fromEntries(kept);
 }
 
 /**

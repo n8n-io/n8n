@@ -5429,6 +5429,29 @@ describe('createExecutionAdapter runStep()', () => {
 		}
 	});
 
+	it("drops the target's pin so the step actually executes the node", async () => {
+		const { runData, result } = await runStepOn(
+			{ ...chainWorkflow, pinData: { Send: [{ json: { stale: true } }], Fetch: [{ json: {} }] } },
+			'Send',
+		);
+
+		// A pinned node never executes, so leaving the pin on would make the step
+		// replay stale output and report success.
+		expect(runData.pinData).toEqual({ Fetch: [{ json: {} }] });
+		expect(result.workflowPinnedNodeNames).toEqual(['Fetch']);
+	});
+
+	it('drops a pin that would beat the caller mock input', async () => {
+		const { runData } = await runStepOn(
+			{ ...chainWorkflow, pinData: { Fetch: [{ json: { pinned: true } }] } },
+			'Send',
+			{ mockInput: [{ text: 'hi' }] },
+		);
+
+		expect(runData.pinData).toEqual({});
+		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hi' } }]);
+	});
+
 	it('reports the step in telemetry', async () => {
 		const { mockTelemetry } = await runStepOn(
 			chainWorkflow,

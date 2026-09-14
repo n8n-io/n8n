@@ -197,7 +197,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { planStepRun, toExecutionItems } from './instance-ai-step-run';
+import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
@@ -2109,6 +2109,14 @@ export class InstanceAiAdapterService {
 					priorRunData,
 				});
 
+				// A pinned node never executes, so the target's own pin — and any pin on
+				// a node whose output we just fabricated — has to come off this run's
+				// copy. The saved workflow keeps them.
+				const stepPinData = pinDataForStepRun(workflow.pinData, {
+					targetName: nodeName,
+					fabricatedNodeNames: plan.fabricatedNodeNames,
+				});
+
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
 				// A step run is always manual. `WorkflowRunner.resolvePinData` returns pin
@@ -2131,7 +2139,7 @@ export class InstanceAiAdapterService {
 					userId: user.id,
 					pushRef,
 					destinationNode: { nodeName, mode: 'inclusive' },
-					pinData: workflow.pinData,
+					pinData: stepPinData,
 					runData: plan.runData,
 					dirtyNodeNames: plan.dirtyNodeNames,
 					source: 'instance_ai',
@@ -2155,7 +2163,7 @@ export class InstanceAiAdapterService {
 				if (offloadingManualExecutionsInQueueMode) {
 					runData.executionData = createRunExecutionData({
 						startData: { destinationNode: runData.destinationNode },
-						resultData: { pinData: runData.pinData, runData: plan.runData ?? null },
+						resultData: { pinData: stepPinData, runData: plan.runData ?? null },
 						manualData: {
 							userId: user.id,
 							dirtyNodeNames: plan.dirtyNodeNames,
@@ -2174,7 +2182,7 @@ export class InstanceAiAdapterService {
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
-						pinned_node_count: Object.keys(workflow.pinData ?? {}).length,
+						pinned_node_count: Object.keys(stepPinData ?? {}).length,
 						exec_type: 'step',
 						input_mode: plan.inputMode,
 						status,
@@ -2188,8 +2196,10 @@ export class InstanceAiAdapterService {
 					inputMode: plan.inputMode,
 					fabricatedNodeNames: plan.fabricatedNodeNames,
 					...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
-					...(Object.keys(workflow.pinData ?? {}).length > 0
-						? { workflowPinnedNodeNames: Object.keys(workflow.pinData ?? {}) }
+					// Report the pins that actually fed this run, not every pin the
+					// workflow carries: the ones this run dropped never applied.
+					...(Object.keys(stepPinData ?? {}).length > 0
+						? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
 						: {}),
 				});
 

@@ -4,6 +4,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	buildMockedStepRunData,
 	collectAncestorNames,
+	pinDataForStepRun,
 	planStepRun,
 	toExecutionItems,
 } from '../instance-ai-step-run';
@@ -250,5 +251,42 @@ describe('planStepRun', () => {
 		});
 
 		expect(plan.inputMode).toBe('mocked');
+	});
+});
+
+describe('pinDataForStepRun', () => {
+	const pins = {
+		Trigger: [{ json: { a: 1 } }],
+		Fetch: [{ json: { b: 2 } }],
+		Target: [{ json: { c: 3 } }],
+	};
+
+	it("drops the target's own pin, which would stop it from ever running", () => {
+		const result = pinDataForStepRun(pins, { targetName: 'Target', fabricatedNodeNames: [] });
+
+		expect(result).toEqual({ Trigger: pins.Trigger, Fetch: pins.Fetch });
+	});
+
+	it('drops a pin on a node whose output the plan fabricated', () => {
+		const result = pinDataForStepRun(pins, {
+			targetName: 'Target',
+			fabricatedNodeNames: ['Fetch'],
+		});
+
+		// Otherwise `recreateNodeExecutionStack` would feed the target the pin
+		// instead of the caller's mock input.
+		expect(result).toEqual({ Trigger: pins.Trigger });
+	});
+
+	it('keeps the same object when nothing needs dropping', () => {
+		const result = pinDataForStepRun(pins, { targetName: 'Elsewhere', fabricatedNodeNames: [] });
+
+		expect(result).toBe(pins);
+	});
+
+	it('passes an absent pin set through', () => {
+		expect(
+			pinDataForStepRun(undefined, { targetName: 'Target', fabricatedNodeNames: [] }),
+		).toBeUndefined();
 	});
 });

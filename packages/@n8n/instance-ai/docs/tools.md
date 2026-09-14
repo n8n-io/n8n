@@ -596,6 +596,12 @@ placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
 
+**Pin data**: the target's own pin, and any pin on a node whose output the
+mocked mode fabricated, come off this run's copy — a pinned node never
+executes, so leaving them on would make the step replay stale output. The saved
+workflow keeps its pins. `workflowPinnedNodeNames` lists only the pins that fed
+the run.
+
 **Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
 the pre-authorized workflow list, and session grants. The session grant is per
 node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
