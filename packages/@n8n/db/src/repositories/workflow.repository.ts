@@ -1410,22 +1410,30 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const callerPolicy = this.settingsTextValue('cpw.settings', 'callerPolicy');
 		const callerIds = this.settingsTextValue('cpw.settings', 'callerIds');
 
-		const conditions = [
-			`${callerPolicy} = 'any'`,
-			// The allowlist must contain parentWorkflowId as a whole ID.
-			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
-		];
-		if (defaultPolicy === 'any') {
-			conditions.push(`${callerPolicy} IS NULL`);
-		}
+		const conditions: string[] = [];
+		const params: Record<string, string> = {
+			cpParentWorkflowId: parentWorkflowId,
+			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
+		};
 
-		return this.manager
-			.createQueryBuilder()
-			.select('cpw.id')
-			.from(WorkflowEntity, 'cpw')
-			.where(`(${conditions.join(' OR ')})`, {
-				cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
-			});
+		// Branch 1: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
+		conditions.push(
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
+		);
+
+		// Branch 2: callerPolicy = 'workflowsFromSameOwner' (or the workflow stores no policy
+		// and inherits the instance default when it is 'workflowsFromSameOwner'). A stored
+		// value outside the supported policies, e.g. the removed 'any', denies every caller,
+		// so it never matches here.
+		const sameOwnerPolicyClauses = [`${callerPolicy} = 'workflowsFromSameOwner'`];
+		if (defaultPolicy === 'workflowsFromSameOwner') {
+			sameOwnerPolicyClauses.push(`${callerPolicy} IS NULL`);
+		}
+		conditions.push(
+			`((${sameOwnerPolicyClauses.join(' OR ')}) AND sw_sub.projectId = sw_par.projectId AND sw_par.projectId IS NOT NULL)`,
+		);
+
+		return { conditions, params };
 	}
 
 	private settingsTextValue(field: string, key: string): string {
