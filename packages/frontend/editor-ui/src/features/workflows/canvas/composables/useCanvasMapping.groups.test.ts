@@ -21,7 +21,7 @@ import {
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
@@ -311,6 +311,22 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].type).toBe('canvas-node-group');
 	});
 
+	it('marks a sole empty-group anchor as an empty group', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['anchor'] }],
+			getNodeById: nodeStore(anchor),
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].data?.isEmptyGroup).toBe(true);
+	});
+
 	it('left edge sits at nodesRect.x - GROUP_PADDING_X (snapped to the grid), in both states', () => {
 		const collapsed = setup(true);
 		const expanded = setup(false);
@@ -357,10 +373,36 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(expanded[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
-	it('marks the title bar selectable when collapsed and editable; never connectable', () => {
+	it('keeps a non-empty title bar selectable but not connectable', () => {
 		const out = setup(true);
 		expect(out[0].selectable).toBe(true);
 		expect(out[0].connectable).toBe(false);
+	});
+
+	it('makes only a collapsed empty-group title bar connectable', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+		const allGroups = [{ id: 'g1', name: 'G', nodeIds: [anchor.id] }];
+		const getById = nodeStore(anchor);
+
+		const collapsed = mapGroupsToVueFlowNodes({
+			allGroups,
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		const expanded = mapGroupsToVueFlowNodes({
+			allGroups,
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(collapsed[0].connectable).toBe(true);
+		expect(expanded[0].connectable).toBe(false);
 	});
 
 	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
