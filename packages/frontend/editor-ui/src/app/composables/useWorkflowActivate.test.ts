@@ -21,6 +21,7 @@ const mockDocumentStore = vi.hoisted(() => ({
 	checksum: undefined as string | undefined,
 	versionData: null,
 	hydrated: false,
+	active: false,
 }));
 
 // A second workflow's document store, to model the editor switching to another
@@ -33,6 +34,7 @@ const otherDocumentStore = vi.hoisted(() => ({
 	checksum: 'other-checksum' as string | undefined,
 	versionData: null,
 	hydrated: false,
+	active: false,
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -92,9 +94,11 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsImpl),
 }));
 
+const mockOpenModal = vi.hoisted(() => vi.fn());
+
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({
-		openModal: vi.fn(),
+		openModal: mockOpenModal,
 		openModalWithData: vi.fn(),
 	}),
 }));
@@ -105,8 +109,10 @@ vi.mock('@/features/collaboration/collaboration/collaboration.store', () => ({
 	}),
 }));
 
+const mockExternalHooksRun = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
 vi.mock('@/app/composables/useExternalHooks', () => ({
-	useExternalHooks: vi.fn().mockReturnValue({ run: vi.fn().mockResolvedValue(undefined) }),
+	useExternalHooks: vi.fn().mockReturnValue({ run: mockExternalHooksRun }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -166,6 +172,7 @@ describe('useWorkflowActivate', () => {
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
+		mockDocumentStore.active = false;
 		otherDocumentStore.hydrated = false;
 		mockGetWorkflowById.mockReturnValue({ activeVersion: null });
 		mockFetchWorkflow.mockResolvedValue(makePublishedWorkflowResponse());
@@ -270,6 +277,53 @@ describe('useWorkflowActivate', () => {
 
 			expect(result).toEqual({ success: true });
 			expect(mockPublishWorkflow).toHaveBeenCalled();
+		});
+
+		it('does NOT treat a list cache miss as a first publish when the open document is published', async () => {
+			mockGetWorkflowById.mockReturnValue(undefined);
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.active = true;
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockExternalHooksRun).not.toHaveBeenCalledWith(
+				'workflowActivate.updateWorkflowActivation',
+				expect.anything(),
+			);
+			expect(mockOpenModal).not.toHaveBeenCalled();
+		});
+
+		it('treats a list cache miss as a first publish when no open document is published', async () => {
+			mockGetWorkflowById.mockReturnValue(undefined);
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockExternalHooksRun).toHaveBeenCalledWith(
+				'workflowActivate.updateWorkflowActivation',
+				expect.objectContaining({ workflow_id: WORKFLOW_ID, previous_status: false }),
+			);
+			expect(mockOpenModal).toHaveBeenCalled();
+		});
+
+		it('prefers the list cache over the open document when both are available', async () => {
+			mockGetWorkflowById.mockReturnValue({ activeVersion: { versionId: 'av-0' } });
+			mockDocumentStore.hydrated = true;
+			mockDocumentStore.active = false;
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockExternalHooksRun).not.toHaveBeenCalledWith(
+				'workflowActivate.updateWorkflowActivation',
+				expect.anything(),
+			);
+			expect(mockOpenModal).not.toHaveBeenCalled();
 		});
 
 		it('resolves the document store by the published workflow id, not by the editor in the route', async () => {

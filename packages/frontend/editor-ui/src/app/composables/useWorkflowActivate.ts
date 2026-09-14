@@ -18,6 +18,7 @@ import { getCurrentScope, onScopeDispose, ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useActivationError } from '@/app/composables/useActivationError';
 import type { INode } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
 import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import {
@@ -92,6 +93,100 @@ export function useWorkflowActivate() {
 		return parseWebhookConflictError(error) !== null;
 	};
 
+	type PublishConfirmation = { source: 'response'; workflow: IWorkflowDb } | { source: 'push' };
+
+	/**
+	 * Race the `/activate` request against the push message that reports the new
+	 * active version. Either one confirms the publish: the response can arrive late
+	 * or never, and the push carries no payload. A retry can publish the same
+	 * version without changing the document's IDs, so match the raw message.
+	 */
+	const publishWithConfirmation = async (
+		workflowId: string,
+		versionId: string,
+		payload: { name?: string; description?: string; expectedChecksum?: string },
+	): Promise<PublishConfirmation> => {
+		let removeListener: (() => void) | undefined;
+		try {
+			const confirmedByPush = new Promise<PublishConfirmation>((resolve) => {
+				removeListener = pushConnectionStore.addEventListener((message) => {
+					if (
+						(message.type === 'workflowActivated' ||
+							message.type === 'workflowPartiallyActivated') &&
+						message.data.workflowId === workflowId &&
+						message.data.activeVersionId === versionId
+					) {
+						resolve({ source: 'push' });
+					}
+				});
+				pendingListeners.add(removeListener);
+			});
+
+			const confirmedByResponse = workflowsStore
+				.publishWorkflow(workflowId, { versionId, ...payload })
+				.then((workflow): PublishConfirmation => ({ source: 'response', workflow }));
+
+			return await Promise.race([confirmedByPush, confirmedByResponse]);
+		} finally {
+			if (removeListener) {
+				removeListener();
+				pendingListeners.delete(removeListener);
+			}
+		}
+	};
+
+	/**
+	 * Return the published workflow to apply. The push carries no workflow payload
+	 * and callers read the list cache as soon as `publishWorkflow` resolves, so
+	 * refresh the cache on that path. Best effort: the publish is already confirmed.
+	 */
+	const resolvePublishedWorkflow = async (
+		confirmation: PublishConfirmation,
+		workflowId: string,
+	): Promise<IWorkflowDb | null> => {
+		if (confirmation.source === 'push') {
+			return await workflowsListStore.fetchWorkflow(workflowId).catch(() => null);
+		}
+		if (!confirmation.workflow.activeVersion || !confirmation.workflow.checksum) {
+			throw new Error('Failed to publish workflow');
+		}
+		return confirmation.workflow;
+	};
+
+	const applyPublishedWorkflowState = (
+		workflowId: string,
+		workflow: IWorkflowDb,
+		confirmedBy: PublishConfirmation['source'],
+	) => {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		if (!workflow.activeVersion) return;
+
+		workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, true);
+		workflowDocumentStore.setActiveState({
+			activeVersionId: workflow.activeVersion.versionId,
+			activeVersion: workflow.activeVersion,
+		});
+
+		// On the push path the publication already completed and the push handler
+		// set its terminal status; writing "publishing" would regress it.
+		if (confirmedBy === 'response' && useSettingsStore().isWorkflowPublicationServiceEnabled) {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+		}
+
+		// Re-read the flag after the request: the editor may have closed while it
+		// was in flight.
+		if (workflowDocumentStore.hydrated) {
+			workflowDocumentStore.setVersionData({
+				versionId: workflow.versionId,
+				name: workflowDocumentStore.versionData?.name ?? null,
+				description: workflowDocumentStore.versionData?.description ?? null,
+			});
+			if (workflow.checksum) {
+				workflowDocumentStore.setChecksum(workflow.checksum);
+			}
+		}
+	};
+
 	const publishWorkflow = async (
 		workflowId: string,
 		versionId: string,
@@ -101,7 +196,15 @@ export function useWorkflowActivate() {
 
 		collaborationStore.requestWriteAccess();
 
-		const hadPublishedVersion = !!workflowsListStore.getWorkflowById(workflowId)?.activeVersion;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
+		// The list cache misses a workflow it never paged in, such as the one behind
+		// an embedded editor. Read the open document there, so a miss does not
+		// count as a first publish.
+		const cachedWorkflow = workflowsListStore.getWorkflowById(workflowId);
+		const hadPublishedVersion = cachedWorkflow
+			? !!cachedWorkflow.activeVersion
+			: workflowDocumentStore.hydrated && workflowDocumentStore.active;
 
 		if (!hadPublishedVersion) {
 			const telemetryPayload = {
@@ -113,83 +216,27 @@ export function useWorkflowActivate() {
 			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		let removeListener: (() => void) | undefined;
-
 		try {
 			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
 			// The route id is empty on the assistant page and the publish modal is global, so
-			// neither can tell whether this workflow is on screen. Re-read the flag after the
-			// request: the editor may have closed while it was in flight.
+			// neither can tell whether this workflow is on screen.
 			const expectedChecksum = workflowDocumentStore.hydrated
 				? workflowDocumentStore.checksum
 				: undefined;
 
-			// A retry can publish the same version without changing the document's IDs.
-			const confirmedByPush = new Promise<null>((resolve) => {
-				removeListener = pushConnectionStore.addEventListener((message) => {
-					if (
-						(message.type === 'workflowActivated' ||
-							message.type === 'workflowPartiallyActivated') &&
-						message.data.workflowId === workflowId &&
-						message.data.activeVersionId === versionId
-					) {
-						resolve(null);
-					}
-				});
-				pendingListeners.add(removeListener);
+			const confirmation = await publishWithConfirmation(workflowId, versionId, {
+				name: options?.name,
+				description: options?.description,
+				expectedChecksum,
 			});
-
-			// Race the raw request so a late response cannot change confirmed state.
-			const raced = await Promise.race([
-				confirmedByPush,
-				workflowsStore.publishWorkflow(workflowId, {
-					versionId,
-					name: options?.name,
-					description: options?.description,
-					expectedChecksum,
-				}),
-			]);
-			const confirmedByPushFirst = raced === null;
-
-			// The push carries no workflow payload and callers read the list cache as
-			// soon as this resolves, so refresh it before reporting success. Best
-			// effort: the publish is already confirmed.
-			const updatedWorkflow = confirmedByPushFirst
-				? await workflowsListStore.fetchWorkflow(workflowId).catch(() => null)
-				: raced;
-
-			if (!confirmedByPushFirst && (!updatedWorkflow?.activeVersion || !updatedWorkflow.checksum)) {
-				throw new Error('Failed to publish workflow');
-			}
-			if (updatedWorkflow?.activeVersion) {
-				workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
-				workflowDocumentStore.setActiveState({
-					activeVersionId: updatedWorkflow.activeVersion.versionId,
-					activeVersion: updatedWorkflow.activeVersion,
-				});
-
-				// On the push path the publication already completed and the push handler
-				// set its terminal status; writing "publishing" would regress it.
-				if (!confirmedByPushFirst && useSettingsStore().isWorkflowPublicationServiceEnabled) {
-					workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
-				}
-
-				if (workflowDocumentStore.hydrated) {
-					workflowDocumentStore.setVersionData({
-						versionId: updatedWorkflow.versionId,
-						name: workflowDocumentStore.versionData?.name ?? null,
-						description: workflowDocumentStore.versionData?.description ?? null,
-					});
-					if (updatedWorkflow.checksum) {
-						workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
-					}
-				}
+			const publishedWorkflow = await resolvePublishedWorkflow(confirmation, workflowId);
+			if (publishedWorkflow) {
+				applyPublishedWorkflowState(workflowId, publishedWorkflow, confirmation.source);
 			}
 
 			void useExternalHooks().run('workflow.published', {
 				workflowId,
-				versionId: updatedWorkflow?.activeVersion?.versionId ?? versionId,
+				versionId: publishedWorkflow?.activeVersion?.versionId ?? versionId,
 			});
 
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
@@ -221,10 +268,6 @@ export function useWorkflowActivate() {
 			}
 			return { success: false, errorHandled: true };
 		} finally {
-			if (removeListener) {
-				removeListener();
-				pendingListeners.delete(removeListener);
-			}
 			updatingWorkflowActivation.value = false;
 		}
 	};
