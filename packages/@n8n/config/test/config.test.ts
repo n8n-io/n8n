@@ -682,6 +682,9 @@ describe('GlobalConfig', () => {
 			lazyAcquire: false,
 			compileCache: false,
 		},
+		regexEngine: {
+			engine: 'js',
+		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
 			ownerEmail: '',
