@@ -48,6 +48,7 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
+import { createAttributionTracker } from './utils/mcp-attribution';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 export interface AgentMemoryScope {
@@ -189,6 +190,8 @@ export interface ExecuteForWakeConfig {
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** See `AgentRuntime.mcpServerAttributions`. */
+	mcpServerAttributions: Map<string, string>;
 	agentId: string;
 	userId?: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -532,9 +535,14 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
+				}
 				yield chunk;
 			}
 		} catch (error) {
@@ -622,6 +630,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -687,6 +696,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
 				modelMessage,
@@ -734,6 +744,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
 				memory,
@@ -778,6 +789,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -820,6 +832,7 @@ export class AgentExecutionOrchestratorService {
 			const stream = this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				...(isDraft ? { userId: identity.user.id } : {}),
 				message,
@@ -891,6 +904,7 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentInstance,
 			toolRegistry,
+			mcpServerAttributions,
 			agentId,
 			userId,
 			message,
@@ -966,6 +980,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);
@@ -981,6 +996,10 @@ export class AgentExecutionOrchestratorService {
 						recorder.record(chunk);
 						yield chunk;
 					}
+				}
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
 				}
 				yield chunk;
 			}
