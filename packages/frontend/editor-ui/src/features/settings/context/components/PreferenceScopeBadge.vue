@@ -35,18 +35,29 @@ const label = computed(() => {
 		:class="$style.badge"
 		data-test-id="preference-scope-badge"
 	>
-		<N8nText v-if="icon?.type === 'emoji'" :class="$style.emoji">{{ icon.value }}</N8nText>
-		<N8nIcon v-else-if="icon" :icon="icon.value" size="small" />
-		<span :class="$style.label">{{ label }}</span>
+		<!--
+			The badge wraps its slot in a text span, so the flex row that spaces the icon
+			from the label has to live inside the slot. The variables table and the project
+			card badge lay theirs out the same way.
+		-->
+		<span :class="$style.content">
+			<N8nText v-if="icon?.type === 'emoji'" :class="$style.emoji">{{ icon.value }}</N8nText>
+			<N8nIcon v-else-if="icon" :icon="icon.value" size="small" />
+			<span :class="$style.label">{{ label }}</span>
+		</span>
 	</N8nBadge>
 </template>
 
 <style lang="scss" module>
 .badge {
-	display: inline-flex;
+	max-width: 100%;
+}
+
+.content {
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	max-width: 100%;
+	min-width: 0;
 }
 
 .label {
