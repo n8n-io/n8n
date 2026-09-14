@@ -10,7 +10,12 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { AgentTurnQueueService, type AgentTurnClaim } from '../../agent-turn-queue.service';
+import {
+	AgentThreadQueueFullError,
+	AgentTurnQueueService,
+	MAX_QUEUED_TURNS_PER_THREAD,
+	type AgentTurnClaim,
+} from '../../agent-turn-queue.service';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
@@ -34,6 +39,7 @@ interface FakeThread {
 	id: string;
 	channelId?: string;
 	adapter?: { botUserId?: string };
+	currentMessage?: { toJSON(): unknown };
 	subscribe: Mock;
 	post: Mock;
 	startTyping: Mock;
@@ -51,12 +57,25 @@ function makeBot() {
 		action?: (event: unknown) => Promise<void>;
 		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
+	const serializable = (message: unknown) =>
+		typeof message === 'object' && message !== null && !('toJSON' in message)
+			? Object.assign(message, { toJSON: () => ({ ...message }) })
+			: message;
+	const withCurrentMessage = (thread: unknown, message: unknown) => {
+		const currentMessage = serializable(message);
+		if (typeof thread === 'object' && thread !== null && 'toJSON' in thread) {
+			Object.assign(thread, { currentMessage });
+		}
+		return currentMessage;
+	};
 	const bot = {
 		onNewMention: (h: typeof handlers.mention) => {
-			handlers.mention = h;
+			handlers.mention =
+				h && (async (thread, message) => await h(thread, withCurrentMessage(thread, message)));
 		},
 		onSubscribedMessage: (h: typeof handlers.subscribed) => {
-			handlers.subscribed = h;
+			handlers.subscribed =
+				h && (async (thread, message) => await h(thread, withCurrentMessage(thread, message)));
 		},
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
@@ -77,16 +96,24 @@ function makeThread(
 	adapter?: FakeThread['adapter'],
 	messages?: FakeThread['messages'],
 ): FakeThread {
-	return {
+	const thread: FakeThread = {
 		id,
 		channelId: 'channel-1',
 		adapter,
 		subscribe: vi.fn().mockResolvedValue(undefined),
 		post: vi.fn().mockResolvedValue(undefined),
 		startTyping: vi.fn().mockResolvedValue(undefined),
-		toJSON: vi.fn(() => ({ id, channelId: 'channel-1', isDM: false })),
+		toJSON: vi.fn(() => ({
+			_type: 'chat:Thread',
+			adapterName: 'test',
+			channelId: 'channel-1',
+			currentMessage: thread.currentMessage?.toJSON(),
+			id,
+			isDM: false,
+		})),
 		...(messages ? { messages } : {}),
 	};
+	return thread;
 }
 
 function asyncIterableOf<T>(values: T[]): AsyncIterable<T> {
@@ -696,7 +723,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				}),
 			};
 			Container.set(AgentTurnQueueService, {
-				tryRunNow: vi.fn().mockResolvedValue(claim),
+				submit: vi.fn().mockResolvedValue({ status: 'claimed', claim }),
 			} as never);
 			const integration = registry.get(bufferedIntegration.type);
 			if (!integration) throw new Error('Expected the buffered test integration');
@@ -1811,6 +1838,59 @@ describe('AgentChatBridge — consumeStream', () => {
 					],
 				}),
 			);
+		});
+
+		it('deletes stored attachments and reports when the channel queue is full', async () => {
+			const turnQueueService = mock<AgentTurnQueueService>();
+			turnQueueService.submit.mockRejectedValue(new AgentThreadQueueFullError());
+			Container.set(AgentTurnQueueService, turnQueueService);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(makeAgentExecutor([finishChunk]), attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+			expect(thread.post).toHaveBeenCalledWith(
+				`⚠️ This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+			);
+		});
+
+		it('retains stored attachments after the queue persists their execution', async () => {
+			const turnQueueService = mock<AgentTurnQueueService>();
+			turnQueueService.submit.mockImplementation(async (_turn, onPersisted) => {
+				onPersisted?.('exec-1');
+				throw new Error('claim failed');
+			});
+			Container.set(AgentTurnQueueService, turnQueueService);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(makeAgentExecutor([finishChunk]), attachmentService);
+
+			await handlers.mention!(makeThread(), {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
 		});
 
 		it('retains stored attachments when a claimed execution fails during setup', async () => {
@@ -3443,12 +3523,15 @@ describe('AgentChatBridge — Slack thread history', () => {
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 		Container.set(AgentTurnQueueService, {
-			tryRunNow: vi.fn(async ({ threadId }) => ({
-				executionId: 'execution-1',
-				threadId,
-				abortSignal: new AbortController().signal,
-				release: vi.fn(async () => {}),
-				fail: vi.fn(async () => {}),
+			submit: vi.fn(async ({ threadId }) => ({
+				status: 'claimed',
+				claim: {
+					executionId: 'execution-1',
+					threadId,
+					abortSignal: new AbortController().signal,
+					release: vi.fn(async () => {}),
+					fail: vi.fn(async () => {}),
+				},
 			})),
 		} as never);
 	});

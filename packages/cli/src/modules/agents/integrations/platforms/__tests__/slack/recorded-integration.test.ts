@@ -172,4 +172,87 @@ describe('Slack recorded integration replay', () => {
 			await ctx.shutdown();
 		}
 	});
+
+	it('answers thread replies that arrive during a running turn in arrival order', async () => {
+		const fixtures = recordedSlackFixtures();
+		const threadReply = (eventId: string, user: string, text: string, ts: string) => ({
+			...fixtures.mention,
+			event_id: eventId,
+			event: {
+				...fixtures.mention.event,
+				type: 'message',
+				user,
+				text,
+				ts,
+				thread_ts: fixtures.mention.event.ts,
+				channel_type: 'channel',
+			},
+		});
+		const ctx = await createSlackReplayContext(fixtures, {
+			stream: [
+				{ type: 'text-delta', id: 'reply', delta: 'Answered' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		let releaseFirstTurn!: () => void;
+		const firstTurnGate = new Promise<void>((resolve) => (releaseFirstTurn = resolve));
+		ctx.agentExecutor.executeForChatPublished.mockImplementationOnce(() =>
+			(async function* () {
+				yield { type: 'text-delta' as const, id: 'first', delta: 'Still thinking' };
+				await firstTurnGate;
+				yield { type: 'finish' as const, finishReason: 'stop' };
+			})(),
+		);
+		try {
+			const mention = ctx.sendWebhook(fixtures.mention);
+			await vi.waitFor(() =>
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1),
+			);
+
+			await ctx.sendWebhook(
+				threadReply('Ev_REPLY_USER_TWO', 'U_USER_TWO', 'me too', '1782378391.000001'),
+			);
+			await ctx.sendWebhook(
+				threadReply('Ev_REPLY_USER_ONE', 'U_USER', 'and me again', '1782378392.000002'),
+			);
+			expect(
+				ctx.turnQueue.rows.filter((row) => row.status === 'queued').map((row) => row.userMessage),
+			).toEqual(['me too', 'and me again']);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+
+			releaseFirstTurn();
+			await mention;
+			await vi.waitFor(() =>
+				expect(ctx.turnQueue.rows.map((row) => row.status)).toEqual([
+					'success',
+					'success',
+					'success',
+				]),
+			);
+
+			expect(
+				ctx.agentExecutor.executeForChatPublished.mock.calls.map(
+					([config]: [{ message: string; author: { id: string } }]) => [
+						config.author.id,
+						config.message,
+					],
+				),
+			).toEqual([
+				['U_USER', 'hey'],
+				['U_USER_TWO', 'me too'],
+				['U_USER', 'and me again'],
+			]);
+			expect(
+				ctx.apiCalls
+					.filter(
+						(call) =>
+							call.method === 'chat.postMessage' &&
+							call.body.thread_ts === fixtures.mention.event.ts,
+					)
+					.map((call) => call.body.markdown_text),
+			).toEqual(['Still thinking', 'Answered', 'Answered']);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
 });

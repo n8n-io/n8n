@@ -397,6 +397,10 @@ export class ChatIntegrationService {
 				// bot.webhooks.slack maps correctly to the handler.
 				adapters: { [integration.type]: adapter } as Record<string, never>,
 				state,
+				// The SDK default drops a message that arrives while the thread is
+				// busy. The bridge queues turns per thread itself, so every message
+				// must reach it.
+				concurrency: 'concurrent',
 			});
 
 			if (ingressEnabled) {

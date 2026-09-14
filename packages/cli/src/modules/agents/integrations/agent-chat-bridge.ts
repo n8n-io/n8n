@@ -27,9 +27,10 @@ import {
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
 import {
-	AgentThreadBusyError,
+	AgentThreadQueueFullError,
 	AgentTurnQueueService,
 	type AgentTurnClaim,
+	type AgentTurnSubmitResult,
 } from '../agent-turn-queue.service';
 import type { AgentExecution, QueuedChannelTurn } from '../entities/agent-execution.entity';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
@@ -134,7 +135,7 @@ interface OpenSuspension {
 	suspendPayload?: unknown;
 }
 
-/** A channel message after its thread and memory scope are resolved. */
+/** A channel message as its turn runs it, built at arrival or rebuilt from its queued row. */
 interface ChannelTurn {
 	isNewMention: boolean;
 	/** Inbound text with the attachment notes appended. */
@@ -695,32 +696,67 @@ export class AgentChatBridge {
 			memoryResourceId,
 			subject: await this.messageContextBridge.resolveSubject(message),
 		};
-		let claim: AgentTurnClaim | null;
+		let persisted = false;
+		let submitted: AgentTurnSubmitResult;
 		try {
-			claim = await this.turnQueueService.tryRunNow({
-				threadId: memoryThreadId.id,
-				agentId: this.agentId,
-				projectId: this.n8nProjectId,
-				userMessage: turn.text,
-				author: toMessageAuthor(message.author),
-				attachments: attachments.length > 0 ? attachments : undefined,
-				source: this.integration.type,
-				runContext: { kind: 'message' },
-			});
+			submitted = await this.turnQueueService.submit(
+				{
+					threadId: memoryThreadId.id,
+					agentId: this.agentId,
+					projectId: this.n8nProjectId,
+					userMessage: turn.text,
+					author: toMessageAuthor(message.author),
+					attachments: attachments.length > 0 ? attachments : undefined,
+					source: this.integration.type,
+					resourceId: memoryResourceId,
+					runContext: {
+						kind: 'message',
+						channel: {
+							...this.channelTurn(thread),
+							isNewMention,
+							subject: turn.subject,
+							conversationThreadId: threadId.id,
+						},
+					},
+				},
+				() => {
+					persisted = true;
+				},
+			);
 		} catch (error) {
-			// Nothing references the attachments of a rejected turn.
-			if (attachments.length > 0) {
+			if (!persisted && attachments.length > 0) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}
 			throw error;
 		}
-		if (!claim) {
-			if (attachments.length > 0) {
-				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			}
-			throw new AgentThreadBusyError();
+		if (submitted.status === 'queued') return;
+		await this.runTurn(thread, message, turn, submitted.claim);
+	}
+
+	/** Run a queued channel message headless, replying into its rebuilt thread. */
+	async runQueuedMessage(row: AgentExecution, claim: AgentTurnClaim): Promise<void> {
+		const channel = row.runContext?.kind === 'message' ? row.runContext.channel : undefined;
+		if (!channel || row.resourceId === null) {
+			throw new UnexpectedError('Queued agent turn is not a channel message');
 		}
-		await this.runTurn(thread, message, turn, claim);
+		const { thread, currentMessage } = await this.rebuildThread(channel);
+		if (!currentMessage) {
+			throw new UnexpectedError('Queued channel message has no inbound message');
+		}
+		await this.runTurn(
+			thread,
+			currentMessage,
+			{
+				isNewMention: channel.isNewMention,
+				text: row.userMessage ?? '',
+				attachments: row.attachments ?? [],
+				conversationThreadId: channel.conversationThreadId,
+				memoryThreadId: row.threadId,
+				memoryResourceId: row.resourceId,
+				subject: channel.subject,
+			},
+			claim,
+		);
 	}
 
 	/** Run a queued channel resume headless in its rebuilt thread. */
@@ -796,8 +832,9 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Run the claimed turn and stream the reply into `thread`. A failure before
-	 * the run started ends the row through the claim.
+	 * Run the claimed turn and stream the reply into `thread`. Shared by the live
+	 * path and the headless drain, which rebuilds `thread` and `message` from the
+	 * row. A failure before the run started ends the row through the claim.
 	 */
 	private async runTurn(
 		thread: Thread,
@@ -831,7 +868,8 @@ export class AgentChatBridge {
 				subject: turn.subject,
 				replyExpectation,
 			};
-			// Message context is written only after this turn claims the thread.
+			// The claimed turn writes message context. A queued message cannot
+			// redirect the running turn's replies.
 			await this.messageContextBridge.updateLatest(
 				turn.conversationThreadId,
 				message.author.userId,
@@ -1190,7 +1228,7 @@ export class AgentChatBridge {
 			const text =
 				rateLimitMessage !== undefined
 					? `⚠️ ${rateLimitMessage}`
-					: error instanceof AgentThreadBusyError
+					: error instanceof AgentThreadQueueFullError
 						? `⚠️ ${error.message}`
 						: error instanceof UserError
 							? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`

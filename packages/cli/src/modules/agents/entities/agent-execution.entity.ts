@@ -10,6 +10,7 @@ import type { SerializedThread } from 'chat';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
+import type { IntegrationMessageSubject } from '../integrations/integration-tool-types';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
 export type AgentExecutionStatus =
@@ -40,7 +41,15 @@ export interface QueuedChannelAction {
  * no column holds. Cleared when the run ends.
  */
 export type AgentTurnRunContext =
-	| { kind: 'message' }
+	| {
+			kind: 'message';
+			channel?: QueuedChannelTurn & {
+				isNewMention: boolean;
+				subject?: IntegrationMessageSubject;
+				/** Rotated conversation id at arrival; the row thread can be a bound task session. */
+				conversationThreadId: string;
+			};
+	  }
 	| {
 			kind: 'resume';
 			runId: string;

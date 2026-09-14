@@ -233,7 +233,7 @@ export class AgentTurnQueueService {
 			return 'deferred';
 		}
 
-		if (context.kind === 'resume' && context.channel) {
+		if (context.channel) {
 			const bridge = await this.getBridge(thread.agentId, context.channel);
 			if (!bridge) {
 				this.logger.debug('Queued channel turn waits for its chat connection', {
@@ -242,7 +242,9 @@ export class AgentTurnQueueService {
 				});
 				return 'deferred';
 			}
-			return async (claim) => await bridge.runQueuedResume(row, claim);
+			return context.kind === 'message'
+				? async (claim) => await bridge.runQueuedMessage(row, claim)
+				: async (claim) => await bridge.runQueuedResume(row, claim);
 		}
 
 		const user = await this.resolveSender(row.resourceId, thread.projectId);

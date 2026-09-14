@@ -773,6 +773,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		expect(outboundChat.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
 			liveChat.initialize.mock.invocationCallOrder[0],
 		);
+		expect(Chat).toHaveBeenCalledWith(expect.objectContaining({ concurrency: 'concurrent' }));
 		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(liveChat);
 		expect(internal.outboundConnections.size).toBe(0);
 	});

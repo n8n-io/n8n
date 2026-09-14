@@ -213,6 +213,7 @@ export async function createSlackReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { slack: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
