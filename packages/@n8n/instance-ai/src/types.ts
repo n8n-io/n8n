@@ -165,6 +165,12 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Set when the trigger did not fire from a real event: its output came from
+	 * injected `inputData` or verification pin data. Such a run proves nothing
+	 * about the trigger's ingress (auth, payload shape, response mode).
+	 */
+	injectedTriggerNodeName?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
