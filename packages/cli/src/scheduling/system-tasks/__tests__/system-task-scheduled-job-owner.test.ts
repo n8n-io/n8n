@@ -15,12 +15,6 @@ const row = (
 	payload: Record<string, unknown>,
 ): Pick<ScheduledJob, 'ownerId' | 'payload'> => ({ ownerId, payload });
 
-const storedRow = (
-	id: number,
-	ownerId: string,
-	payload: Record<string, unknown>,
-): Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'> => ({ id, ownerId, payload });
-
 describe('SystemTaskScheduledJobOwner', () => {
 	let jobs: ReturnType<typeof mock<ScheduledJobRepository>>;
 	let owner: SystemTaskScheduledJobOwner;
@@ -40,10 +34,6 @@ describe('SystemTaskScheduledJobOwner', () => {
 			ownerId: 'prune-executions',
 			ownerMemberId: null,
 		});
-	});
-
-	it("stamps a job's payload with this instance's version", () => {
-		expect(owner.jobPayload()).toEqual({ n8nVersion: N8N_VERSION });
 	});
 
 	describe('findExisting', () => {
@@ -110,40 +100,6 @@ describe('SystemTaskScheduledJobOwner', () => {
 			jobs.findPayloadsByOwnerIds.mockRejectedValue(error);
 
 			await expect(owner.findExisting(['prune-executions'])).rejects.toBe(error);
-		});
-	});
-
-	describe('findStale', () => {
-		it('lists the stored tasks this instance neither runs durably nor a newer version stamped, as read', async () => {
-			owner.declareDurable('prune-executions');
-			jobs.findPayloadsByOwnerType.mockResolvedValue([
-				storedRow(1, 'prune-executions', { n8nVersion: N8N_VERSION }),
-				storedRow(2, 'compact-insights', { n8nVersion: NEWER_VERSION }),
-				storedRow(3, 'renew-license', { n8nVersion: OLDER_VERSION }),
-				storedRow(4, 'clean-jtis', {}),
-			]);
-
-			await expect(owner.findStale()).resolves.toEqual([
-				storedRow(3, 'renew-license', { n8nVersion: OLDER_VERSION }),
-				storedRow(4, 'clean-jtis', {}),
-			]);
-			expect(jobs.findPayloadsByOwnerType).toHaveBeenCalledExactlyOnceWith('system-task');
-		});
-
-		it('lists nothing when every stored task is accounted for', async () => {
-			owner.declareDurable('prune-executions');
-			jobs.findPayloadsByOwnerType.mockResolvedValue([
-				storedRow(1, 'prune-executions', { n8nVersion: N8N_VERSION }),
-			]);
-
-			await expect(owner.findStale()).resolves.toEqual([]);
-		});
-
-		it('rejects when the rows cannot be read', async () => {
-			const error = new Error('connection lost');
-			jobs.findPayloadsByOwnerType.mockRejectedValue(error);
-
-			await expect(owner.findStale()).rejects.toBe(error);
 		});
 	});
 });

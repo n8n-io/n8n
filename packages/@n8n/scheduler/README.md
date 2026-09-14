@@ -276,7 +276,7 @@ by a flag. Each task owns one job, stamped with the n8n version that last provis
 it. At startup, once it has provisioned the tasks it runs durably, an instance deletes
 every system-task job it does not run durably, unless the stamp is newer than its own
 version: a newer version added that task, and an older instance in a rolling deploy
-must leave it alone (`SystemTaskRunner`). Each delete is pinned to the row as listed,
+must leave it alone (`SystemTaskJobRegistrar`). Each delete is pinned to the row as listed,
 so a job another instance restamps in between survives. The resolver answers by the
 same rule, so the sweep only retires what a failed startup cleanup left behind. Two
 cases are deploy constraints, not code: rolling back to a version without a task

@@ -16,12 +16,10 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { DurableScheduler } from '../durable-scheduler';
 import { SystemTaskHandler } from './system-task-handler';
-import { systemTaskProvisionRequest } from './system-task-job';
+import { SystemTaskJobRegistrar } from './system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
-import type { StaleSystemTaskJob } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
@@ -74,7 +72,7 @@ export class SystemTaskRunner {
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
 		private readonly durableScheduler: DurableScheduler,
-		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly jobRegistrar: SystemTaskJobRegistrar,
 		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
@@ -102,75 +100,10 @@ export class SystemTaskRunner {
 				this.startTimers();
 			}
 
-			for (const routed of this.durableTasks()) {
-				await this.provisionOne(routed);
+			for (const { task } of this.durableTasks()) {
+				await this.jobRegistrar.provision(task);
 			}
-			await this.deprovisionStale();
-		}
-	}
-
-	/**
-	 * Delete the stored jobs of the system tasks this instance does not run
-	 * durably, unless a newer version wrote them or restamped them since the
-	 * listing. Never throws: a stale row must not stop startup.
-	 */
-	private async deprovisionStale(): Promise<void> {
-		let stale: StaleSystemTaskJob[];
-		try {
-			stale = await this.systemTaskOwner.findStale();
-		} catch (error) {
-			this.logger.error('Could not list the durable system task jobs, so stale ones stay', {
-				error,
-			});
-			this.errorReporter.error(error, { shouldBeLogged: false, shouldIsolate: true });
-			return;
-		}
-
-		for (const { id, ownerId: name, payload } of stale) {
-			try {
-				const { removed } = await this.durableJobProvisioner.deprovisionUnchangedJob({
-					id,
-					payload,
-				});
-				if (removed > 0) {
-					this.logger.info('Removed the stale durable job of a system task', { name });
-				} else {
-					this.logger.debug('Found no durable job to remove for a stale system task', { name });
-				}
-			} catch (error) {
-				this.reportFailure(
-					'Could not remove the stale durable job of a system task',
-					{ name },
-					error,
-				);
-			}
-		}
-	}
-
-	/** Never throws: one task that cannot be provisioned must not stop the rest. */
-	private async provisionOne({ task }: RoutedTask): Promise<void> {
-		try {
-			const summary = await this.durableJobProvisioner.provision(
-				systemTaskProvisionRequest(
-					task,
-					this.systemTaskOwner,
-					this.globalConfig.generic.timezone,
-					new Date(),
-				),
-			);
-			this.logger.debug('Provisioned the durable job of a system task', {
-				name: task.name,
-				inserted: summary.inserted.length,
-				redefined: summary.redefined.length,
-				unchanged: summary.unchanged.length,
-				removed: summary.removed.length,
-			});
-		} catch (error) {
-			this.reportFailure(
-				'Could not provision a durable system task, so it will not run',
-				task,
-				error,
-			);
+			await this.jobRegistrar.removeStale();
 		}
 	}
 

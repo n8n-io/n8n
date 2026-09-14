@@ -1,14 +1,20 @@
+import { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import { UnregisteredOwnerTypeError } from '@n8n/scheduler';
+import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
-import { systemTaskProvisionRequest } from '@/scheduling/system-tasks/system-task-job';
+import {
+	SystemTaskJobRegistrar,
+	systemTaskProvisionRequest,
+} from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 
 import { selfOwned } from './shared/job-factory';
@@ -26,6 +32,7 @@ describe('system task provisioning', () => {
 	let taskRepo: ScheduledTaskRepository;
 	let owner: SystemTaskScheduledJobOwner;
 	let provisioner: DurableJobProvisioner;
+	let registrar: SystemTaskJobRegistrar;
 
 	const task = (over: Partial<SystemTask> = {}): SystemTask => ({
 		name: TASK_NAME,
@@ -45,6 +52,7 @@ describe('system task provisioning', () => {
 		taskRepo = Container.get(ScheduledTaskRepository);
 		owner = Container.get(SystemTaskScheduledJobOwner);
 		provisioner = Container.get(DurableJobProvisioner);
+		registrar = Container.get(SystemTaskJobRegistrar);
 	});
 
 	beforeEach(async () => {
@@ -159,11 +167,19 @@ describe('system task provisioning', () => {
 	it('lists a stored task as stale unless provisioned here or stamped by a newer version', async () => {
 		const booting = new SystemTaskScheduledJobOwner(jobRepo);
 		booting.declareDurable(TASK_NAME);
+		const bootingRegistrar = new SystemTaskJobRegistrar(
+			Container.get(Logger),
+			jobRepo,
+			provisioner,
+			booting,
+			Container.get(GlobalConfig),
+			Container.get(ErrorReporter),
+		);
 		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
 		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
 		const older = await store('from-an-older-version', '0.0.1');
 
-		await expect(booting.findStale()).resolves.toEqual([
+		await expect(bootingRegistrar.findStale()).resolves.toEqual([
 			{ id: older.id, ownerId: 'from-an-older-version', payload: { n8nVersion: '0.0.1' } },
 		]);
 	});
@@ -181,7 +197,7 @@ describe('system task provisioning', () => {
 				status: 'pending',
 			}),
 		);
-		const [listed] = await owner.findStale();
+		const [listed] = await registrar.findStale();
 
 		await expect(provisioner.deprovisionUnchangedJob(listed)).resolves.toEqual({ removed: 1 });
 
@@ -191,7 +207,7 @@ describe('system task provisioning', () => {
 
 	it('keeps a listed job another version restamped before the delete ran', async () => {
 		const stale = await store('taken-over', '0.0.1');
-		const [listed] = await owner.findStale();
+		const [listed] = await registrar.findStale();
 		const newer = inc(N8N_VERSION, 'minor') as string;
 		await jobRepo.update({ id: stale.id }, { payload: { n8nVersion: newer } });
 

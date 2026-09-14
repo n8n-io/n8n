@@ -1,17 +1,10 @@
 import { ScheduledJobOwnerType } from '@n8n/constants';
-import type { ScheduledJob, ScheduledJobOwner } from '@n8n/db';
+import type { ScheduledJobOwner } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ScheduledJobOwnerResolver } from '@n8n/scheduler';
-import { gt, valid } from 'semver';
 
-import { N8N_VERSION } from '@/constants';
-
-/** A system task's stored job as listed, pinned to the payload read at the time. */
-export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>;
-
-/** The payload of every system task job: the n8n version that last provisioned it. */
-export type SystemTaskJobPayload = { n8nVersion: string };
+import { stampedByNewerVersion } from './system-task-version-stamp';
 
 /**
  * Marks a system task as the owner of its own durable job, one per task, so
@@ -32,10 +25,6 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return { ownerType: this.ownerType, ownerId: taskName, ownerMemberId: null };
 	}
 
-	jobPayload(): SystemTaskJobPayload {
-		return { n8nVersion: N8N_VERSION };
-	}
-
 	/** Record that this instance runs the task on the durable scheduler. */
 	declareDurable(taskName: string): void {
 		this.durableTaskNames.add(taskName);
@@ -47,7 +36,7 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		if (undeclared.length > 0) {
 			const rows = await this.jobs.findPayloadsByOwnerIds(this.ownerType, undeclared);
 			for (const { ownerId, payload } of rows) {
-				if (stampedByNewerVersion(payload)) {
+				if (this.isAlive(ownerId, payload)) {
 					existing.add(ownerId);
 				}
 			}
@@ -55,19 +44,8 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return existing;
 	}
 
-	/** The stored jobs this instance does not run durably and no newer version stamped, as read. */
-	async findStale(): Promise<StaleSystemTaskJob[]> {
-		const rows = await this.jobs.findPayloadsByOwnerType(this.ownerType);
-		return rows.filter(
-			({ ownerId, payload }) =>
-				!this.durableTaskNames.has(ownerId) && !stampedByNewerVersion(payload),
-		);
+	/** Whether a stored job's task exists: this instance runs it durably, or a newer version stamped it. */
+	isAlive(ownerId: string, payload: Record<string, unknown>): boolean {
+		return this.durableTaskNames.has(ownerId) || stampedByNewerVersion(payload);
 	}
-}
-
-function stampedByNewerVersion(payload: Record<string, unknown>): boolean {
-	const { n8nVersion } = payload;
-	return (
-		typeof n8nVersion === 'string' && valid(n8nVersion) !== null && gt(n8nVersion, N8N_VERSION)
-	);
 }
