@@ -5,7 +5,6 @@ import path from 'node:path';
 export default mergeConfig(
 	createVitestConfigWithDecorators(
 		{
-			globalSetup: ['./test/setup.ts'],
 			setupFiles: ['./test/setup-mocks.ts'],
 		},
 		// Pin `zod` and `n8n-workflow` to their CJS build so cross-boundary `instanceof`

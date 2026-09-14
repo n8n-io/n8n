@@ -7,6 +7,8 @@ export default mergeConfig(
 		include: ['**/*.integration.test.ts'],
 		testTimeout: 120_000,
 		hookTimeout: 120_000,
+		// Skip the shared network guard: these tests reach real services.
+		env: { N8N_TEST_ALLOW_NETWORK: 'true' },
 	}),
 	{
 		resolve: {

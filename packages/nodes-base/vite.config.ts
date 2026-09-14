@@ -8,7 +8,6 @@ process.env.TZ = 'UTC';
 
 export default mergeConfig(
 	createVitestConfigWithDecorators({
-		globalSetup: ['./test/globalSetup.ts'],
 		setupFiles: ['./test/setup.ts'],
 		exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
 	}),
