@@ -115,8 +115,13 @@ reads each scope through a `CacheService` entry keyed
 `type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
 queries at all. The instance entry is one row shared by every project.
 
-Every write drops the entries it changed, after its transaction commits. The 5-minute TTL is a
-backstop for the two cases a delete cannot reach, both under "Known limits".
+Every write drops the entries it changed, after its transaction commits. That delete is
+best-effort, so a 30-second TTL backstops it — see "Cache staleness" under "Known limits" for
+the three cases it covers.
+
+A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
+commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
+would hang the read and spend the whole 250 ms budget instead of failing over.
 
 The admin reads (`getEffectivePolicy`, behind the `GET` routes) stay uncached on purpose: the
 `version` they report is what the editor sends back as `expectedVersion`, so a stale read there
@@ -139,11 +144,18 @@ through a sealed repository method, and the lint rule that guards that has no al
   deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
-- **A forced memory cache goes stale.** A write drops the cached scope it changed, which is
-  enough wherever the processes share one Redis cache — which is every deployment that has
-  more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue mode. There each
-  process keeps its own copy and no delete reaches it, so a policy change takes up to the
-  5-minute TTL to land. The same TTL is what bounds a row edited outside the service.
+- **Cache staleness is bounded by the TTL, not eliminated.** A write drops the cached scope it
+  changed, which is enough wherever the processes share one Redis cache — which is every
+  deployment that has more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
+  mode. Three cases outlive the delete, and the 30-second TTL is what ends all of them:
+
+  - that forced memory backend, where each process keeps its own copy and no delete reaches it;
+  - a `deleteMany` that fails after the write committed, which is logged and not retried;
+  - a read that missed, and writes the value it fetched back after a write committed and
+    deleted the key. The window is the few milliseconds between the two, so it needs a policy
+    edit to land inside one unlucky read.
+
+  A row edited outside the service — a migration, manual SQL — is bounded the same way.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.

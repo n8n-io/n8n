@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -33,16 +33,51 @@ import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint'
 const UNCONFIGURED_VERSION = 0;
 
 /**
- * A backstop, not the staleness control — every write drops the entry it changed, and any
- * deployment running more than one process shares one Redis cache. This only bounds the case
- * an operator opts into with `N8N_CACHE_BACKEND=memory` in queue mode, where each process
- * keeps its own copy and no delete reaches it.
+ * A backstop, not the staleness control — every write drops the entry it changed. Kept short
+ * because a delete is not guaranteed to land: it can fail after the commit, it cannot reach a
+ * process that was given its own cache with `N8N_CACHE_BACKEND=memory`, and a fill that began
+ * before the commit can write the old value back after it. This bounds all three.
  */
-const SCOPE_CACHE_TTL_MS = 5 * Time.minutes.toMilliseconds;
+const SCOPE_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
+
+/**
+ * How long one cache call gets before the decision gives up on it and reads the database.
+ *
+ * ioredis queues commands while it is disconnected instead of rejecting them
+ * (`maxRetriesPerRequest: null`, no command timeout), so an unreachable Redis makes a cache
+ * call hang rather than fail. Well under the 250 ms the enforcement point allows, and far
+ * above a healthy round trip.
+ */
+const CACHE_CALL_TIMEOUT_MS = 50;
 
 /** `projectId: null` is the instance scope, which every project composes against. */
 function scopeCacheKey(kind: string, projectId: string | null): string {
 	return `type-availability-policy:scope:${kind}:${projectId ?? 'instance'}`;
+}
+
+/**
+ * Rejects when `call` outlives `CACHE_CALL_TIMEOUT_MS`, so a hung cache reaches the caller's
+ * error path instead of spending the whole enforcement budget.
+ */
+async function withCacheTimeout<T>(call: Promise<T>): Promise<T> {
+	// The loser of the race stays pending; keep a late rejection from going unhandled.
+	call.catch(() => {});
+
+	let timer: NodeJS.Timeout | undefined;
+
+	try {
+		return await Promise.race([
+			call,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() => reject(new OperationalError('Policy cache call timed out')),
+					CACHE_CALL_TIMEOUT_MS,
+				);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 /** One attachment slot as the API accepts it, before the scope it belongs to is known. */
@@ -844,8 +879,8 @@ export class TypeAvailabilityPolicyService {
 	 * to save queries. The instance scope is one entry shared by every project, so a project's
 	 * sub-executions hit it too.
 	 *
-	 * A cache error falls through to the database rather than propagating: the caller blocks
-	 * on a throw, and an unreachable Redis must not start failing executions.
+	 * A cache that fails or hangs falls through to the database rather than propagating: the
+	 * caller blocks on a throw, and a lost Redis must not start failing executions.
 	 */
 	private async readEffectivePolicyCached(
 		kind: string,
@@ -854,7 +889,7 @@ export class TypeAvailabilityPolicyService {
 		const key = scopeCacheKey(kind, projectId);
 
 		try {
-			const cached = await this.cacheService.get<EffectivePolicy>(key);
+			const cached = await withCacheTimeout(this.cacheService.get<EffectivePolicy>(key));
 			if (cached) return cached;
 		} catch (error) {
 			this.logger.warn('Failed to read the node type policy cache', { key, error });
@@ -865,7 +900,7 @@ export class TypeAvailabilityPolicyService {
 		try {
 			// An unconfigured scope is cached as its allow-all object, never as an absent
 			// value: it is the most common state, and `CacheService.set` drops a `null`.
-			await this.cacheService.set(key, effective, SCOPE_CACHE_TTL_MS);
+			await withCacheTimeout(this.cacheService.set(key, effective, SCOPE_CACHE_TTL_MS));
 		} catch (error) {
 			this.logger.warn('Failed to write the node type policy cache', { key, error });
 		}
@@ -879,8 +914,9 @@ export class TypeAvailabilityPolicyService {
 	 * Runs after the transaction commits, never inside it — a reader racing in before the
 	 * commit would re-populate the entry from the pre-commit state and outlive the delete.
 	 *
-	 * A failure is logged rather than thrown: the write already committed, so failing the
-	 * response would report a success as an error, and the TTL still bounds the stale entry.
+	 * Best-effort. A failure is logged rather than thrown, because the write already committed
+	 * and failing the response would report a success as an error — so the entry can survive,
+	 * and the TTL is what bounds it.
 	 */
 	private async invalidateScopes(keys: readonly PolicyScopeKey[]): Promise<void> {
 		if (keys.length === 0) return;

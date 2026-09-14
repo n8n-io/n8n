@@ -1180,7 +1180,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	describe('the evaluation read cache', () => {
 		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
 		const TYPE = 'n8n-nodes-base.slack';
-		const FIVE_MINUTES = 300_000;
+		const THIRTY_SECONDS = 30_000;
 
 		it('caches an unconfigured scope as its allow-all object, not as an absent value', async () => {
 			cacheService.get.mockResolvedValue(undefined);
@@ -1191,7 +1191,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(cacheService.set).toHaveBeenCalledWith(
 				INSTANCE_KEY,
 				expect.objectContaining({ scopeId: null, defaultAction: 'allow', version: 0 }),
-				FIVE_MINUTES,
+				THIRTY_SECONDS,
 			);
 		});
 
@@ -1247,6 +1247,33 @@ describe('TypeAvailabilityPolicyService', () => {
 			await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
 
 			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('reads the store when the cache read hangs past its timeout', async () => {
+			// Never settles, the way ioredis leaves a command queued while it is disconnected.
+			cacheService.get.mockReturnValue(new Promise(() => {}));
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 7 }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(result.verdicts[0].action).toBe('deny');
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalled();
+		});
+
+		it('still answers when the cache write hangs past its timeout', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			cacheService.set.mockReturnValue(new Promise(() => {}));
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 7 }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(result.verdicts[0].action).toBe('deny');
 		});
 
 		it('does not invalidate when a policy document edit bumps no scope', async () => {
