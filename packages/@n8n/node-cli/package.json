@@ -67,7 +67,6 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/vitest-config": "workspace:*",
     "@oclif/test": "^4.1.13",
     "@typescript/native": "catalog:typescript-tooling",
     "typescript": "catalog:typescript-tooling",

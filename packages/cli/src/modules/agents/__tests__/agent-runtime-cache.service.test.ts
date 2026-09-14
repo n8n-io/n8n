@@ -104,8 +104,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -135,8 +134,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			false,
+			{ allowBackgroundTasks: false },
 		);
 	});
 
@@ -338,6 +336,37 @@ describe('AgentRuntimeCacheService', () => {
 		}
 	});
 
+	it('keeps the preview runtime separate and flags it for reconstruction', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const plainRuntime = makeRuntime();
+		const previewRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(plainRuntime)
+			.mockResolvedValueOnce(previewRuntime);
+
+		const plain = await service.getRuntime({ agentId, projectId });
+		const preview = await service.getRuntime({ agentId, projectId, previewChat: true });
+
+		expect(plain.agent).toBe(plainRuntime.agent);
+		expect(preview.agent).toBe(previewRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ previewChat: true },
+		);
+	});
+
 	it('keeps draft runtimes separate by integration type', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const agent = makeAgent();
@@ -369,8 +398,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -405,8 +433,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -418,8 +445,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 
@@ -592,8 +618,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
-			undefined,
-			undefined,
+			{},
 		);
 	});
 

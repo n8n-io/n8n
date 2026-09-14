@@ -59,7 +59,7 @@ const operations: INodePropertyOptions[] = [
 ];
 
 // Un-gated for the Service Principal credential so far; the rest stay delegated-only.
-const servicePrincipalOperations = ['create'];
+const servicePrincipalOperations = ['create', 'get'];
 
 export const description: INodeProperties[] = [
 	{

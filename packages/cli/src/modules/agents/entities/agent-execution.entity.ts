@@ -1,3 +1,4 @@
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -54,6 +55,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Cleaned user input. Null for resumed runs where the input belongs to an earlier run. */
 	@Column({ type: 'text', nullable: true })
 	userMessage: string | null;
+
+	/** Platform user who wrote the turn. Null for runs that did not come in through a chat integration. */
+	@JsonColumn({ nullable: true })
+	author: AgentMessageAuthor | null;
 
 	/** Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService. */
 	@JsonColumn({ nullable: true })

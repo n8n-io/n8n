@@ -41,10 +41,27 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 // Mock provider packages so createModel() doesn't fail when no API key is set
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
-		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
-			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
-			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
-		}),
+		Object.assign(
+			() => ({
+				provider: 'openai',
+				modelId: 'mock',
+				specificationVersion: 'v3',
+				supportedUrls: {},
+			}),
+			{
+				chat: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v3',
+					supportedUrls: {},
+				}),
+				embeddingModel: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
 vi.mock('@ai-sdk/anthropic', () => ({
@@ -6349,7 +6366,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		const entries = await memory.episodic.searchEntries(
-			{ resourceId: 'resource-1' },
+			{ resourceId: 'resource-1', threadId: 'thread-1' },
 			'Postgres storage',
 			{ queryEmbedding: [1, 0] },
 		);
@@ -6368,10 +6385,56 @@ describe('AgentRuntime — observation log jobs', () => {
 		]);
 		const firstLockCall = episodicLockSpy.mock.calls.at(0);
 		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
-		const [lockedResourceId, lockOptions] = firstLockCall;
-		expect(lockedResourceId).toBe('resource-1');
+		const [lockedScope, lockOptions] = firstLockCall;
+		expect(lockedScope).toEqual({ resourceId: 'resource-1', threadId: 'thread-1' });
 		expect(typeof lockOptions.holderId).toBe('string');
 		expect(typeof lockOptions.ttlMs).toBe('number');
+	});
+
+	it('serializes episodic memory tasks for one resource across threads', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const taskLock = memory.episodic.taskLock!;
+		const acquireSpy = vi.spyOn(taskLock, 'acquire').mockResolvedValue({
+			resourceId: 'resource-1',
+			holderId: 'holder-1',
+			heldUntil: new Date(Date.now() + 60_000),
+		});
+		let finishFirstRelease!: () => void;
+		let markFirstReleaseStarted!: () => void;
+		const firstReleaseGate = new Promise<void>((resolve) => (finishFirstRelease = resolve));
+		const firstReleaseStarted = new Promise<void>((resolve) => (markFirstReleaseStarted = resolve));
+		vi.spyOn(taskLock, 'release')
+			.mockImplementationOnce(async () => {
+				markFirstReleaseStarted();
+				await firstReleaseGate;
+			})
+			.mockResolvedValue(undefined);
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never },
+		});
+
+		await runtime.generate('First run.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await firstReleaseStarted;
+		await runtime.generate('Second run.', {
+			persistence: { threadId: 'thread-2', resourceId: 'resource-1' },
+		});
+		const acquireCountBeforeFirstRelease = acquireSpy.mock.calls.length;
+
+		finishFirstRelease();
+		await runtime.dispose();
+
+		expect(acquireCountBeforeFirstRelease).toBe(1);
+		expect(acquireSpy.mock.calls.map(([scope]) => scope)).toEqual([
+			{ threadId: 'thread-1', resourceId: 'resource-1' },
+			{ threadId: 'thread-2', resourceId: 'resource-1' },
+		]);
 	});
 
 	it('drains pending candidates in the background without blocking the run', async () => {
@@ -6408,16 +6471,26 @@ describe('AgentRuntime — observation log jobs', () => {
 		// The turn completed while the first batch was still embedding.
 		expect(result.finishReason).toBe('stop');
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+			}),
 		).resolves.toHaveLength(2);
 
 		resolveFirstEmbedding({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		await runtime.dispose();
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+			}),
 		).resolves.toEqual([]);
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'resource-1' }, 'Remember', { topK: 10 }),
+			memory.episodic.searchEntries(
+				{ resourceId: 'resource-1', threadId: 'thread-1' },
+				'Remember',
+				{ topK: 10 },
+			),
 		).resolves.toHaveLength(2);
 	});
 

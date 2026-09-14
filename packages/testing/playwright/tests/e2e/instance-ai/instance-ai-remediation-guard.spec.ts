@@ -11,9 +11,7 @@ test.use({
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
-			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
 		},
 	},
 });
@@ -224,7 +222,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 }
 
 test.describe(
-	'Instance AI remediation guard @capability:proxy',
+	'Instance AI remediation guard',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
@@ -253,16 +251,9 @@ test.describe(
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
 
-				// No assertion on the skill-opening narration. It is not an appended
-				// message but the LABEL of the live step-group button, overwritten by each
-				// following step and gone once the run settles, so catching it is a race
-				// against the run rather than a property of the outcome. Under replay the
-				// whole build lands in seconds and the label is already past it, which cost
-				// this spec the full 540s timeout on every attempt. `load_skill` is an
-				// orchestration tool and never reaches the tool trace, so there is nothing
-				// deterministic to assert in its place — and the behaviour this guards
-				// (a real build, not the legacy path) is already pinned below by
-				// `usedLegacyBuilderTool: false` and the `build-workflow` call assertion.
+				// The live skill label changes during the run. An assertion would race the run.
+				// `load_skill` is absent from tool traces.
+				// The assertions below verify the stable outcome.
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 

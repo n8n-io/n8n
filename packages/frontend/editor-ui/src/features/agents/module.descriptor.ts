@@ -1,5 +1,5 @@
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
@@ -25,7 +25,7 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 
-export const AgentsModule: FrontendModuleDescription = {
+export const AgentsModule = defineFrontendModule({
 	id: 'agents',
 	name: 'Agents',
 	description: 'Build and manage AI agents',
@@ -122,4 +122,4 @@ export const AgentsModule: FrontendModuleDescription = {
 			displayName: 'Agent',
 		},
 	],
-};
+});
