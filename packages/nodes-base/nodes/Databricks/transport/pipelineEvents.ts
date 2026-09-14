@@ -85,7 +85,7 @@ export function buildPipelineEventsFilter(
 		clauses.push(`level in (${params.levels.map((level) => `'${level}'`).join(', ')})`);
 	}
 	if (params.after !== undefined) {
-		if (!ISO_TIMESTAMP_PATTERN.test(params.after)) {
+		if (!ISO_TIMESTAMP_PATTERN.test(params.after) || Number.isNaN(Date.parse(params.after))) {
 			throw new UnexpectedError('Pipeline events cursor must be an ISO 8601 UTC timestamp', {
 				extra: { after: params.after },
 			});
