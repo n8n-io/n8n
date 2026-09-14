@@ -66,7 +66,7 @@
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "n8n-module-sdk": "node packages/@n8n/module-cli/bin/n8n-module-sdk.mjs",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
-    "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
+    "start": "node scripts/os-normalize.mjs --dir packages/cli/bin --default N8N_RUNNERS_MODE=internal n8n",
     "mutate": "node scripts/mutation-health/mutate.mjs",
     "mutate:diff": "node scripts/mutation-health/mutate.mjs --diff",
     "test": "turbo run test",

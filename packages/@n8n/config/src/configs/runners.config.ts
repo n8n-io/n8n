@@ -11,10 +11,11 @@ export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 @Config
 export class TaskRunnersConfig {
 	/**
-	 * How the task runner runs: `internal` (child process of n8n) or `external` (separate process).
+	 * How the task runner runs: `external` (separate process, the default) or
+	 * `internal` (child process of n8n, for local development only).
 	 */
 	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
-	mode: TaskRunnerMode = 'internal';
+	mode: TaskRunnerMode = 'external';
 
 	/** URL path segment where the task runner service is exposed (for example, `/runners`). */
 	@Env('N8N_RUNNERS_PATH')

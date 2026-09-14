@@ -24,6 +24,7 @@ import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
+import { TaskRunnerNotConnectedError } from '@/task-runners/errors/task-runner-not-connected.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
@@ -57,7 +58,7 @@ export type RunnerStatus = { available: true } | { available: false; reason?: st
 export abstract class TaskRequester {
 	requestAcceptRejects: Map<
 		string,
-		{ accept: RequestAccept; reject: RequestReject; requestedAt: number }
+		{ accept: RequestAccept; reject: RequestReject; requestedAt: number; taskType: string }
 	> = new Map();
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
@@ -140,6 +141,7 @@ export abstract class TaskRequester {
 				accept: resolve,
 				reject,
 				requestedAt: Date.now(),
+				taskType,
 			});
 		});
 
@@ -273,7 +275,7 @@ export abstract class TaskRequester {
 				this.taskError(message.taskId, message.error);
 				break;
 			case 'broker:requestexpired':
-				this.requestExpired(message.requestId);
+				this.requestExpired(message.requestId, message.reason);
 				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
@@ -301,9 +303,15 @@ export abstract class TaskRequester {
 		this.requestAcceptRejects.delete(requestId);
 	}
 
-	requestExpired(requestId: string) {
+	requestExpired(requestId: string, reason: BrokerMessage.ToRequester.RequestExpired['reason']) {
 		const acceptReject = this.requestAcceptRejects.get(requestId);
 		if (!acceptReject) return;
+
+		if (reason === 'no-runner') {
+			acceptReject.reject(new TaskRunnerNotConnectedError(acceptReject.taskType));
+			this.requestAcceptRejects.delete(requestId);
+			return;
+		}
 
 		const elapsedSeconds = Math.round((Date.now() - acceptReject.requestedAt) / 1000);
 

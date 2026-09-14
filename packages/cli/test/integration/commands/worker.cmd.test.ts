@@ -19,8 +19,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
-import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -35,8 +33,6 @@ const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const taskBrokerServer = mockInstance(TaskBrokerServer);
-const taskRunnerProcess = mockInstance(JsTaskRunnerProcess);
-mockInstance(PyTaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
@@ -77,7 +73,6 @@ test('worker initializes all its components', async () => {
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);
 	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
-	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
 	expect(Container.get(ExecutionsConfig).mode).toBe('queue');
 });

@@ -96,7 +96,7 @@ export namespace BrokerMessage {
 		export interface RequestExpired {
 			type: 'broker:requestexpired';
 			requestId: string;
-			reason: 'timeout' | 'draining';
+			reason: 'timeout' | 'draining' | 'no-runner';
 		}
 
 		export interface TaskDataRequest {

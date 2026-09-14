@@ -426,7 +426,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			mode: 'internal',
+			mode: 'external',
 			path: '/runners',
 			authToken: '',
 			listenAddress: '127.0.0.1',
@@ -1068,7 +1068,7 @@ describe('GlobalConfig', () => {
 			};
 
 			const globalConfig = Container.get(GlobalConfig);
-			expect(globalConfig.taskRunners.mode).toEqual('internal');
+			expect(globalConfig.taskRunners.mode).toEqual('external');
 			expect(consoleWarnMock).toHaveBeenCalledWith(
 				expect.stringContaining(
 					"Invalid value for N8N_RUNNERS_MODE - Invalid enum value. Expected 'internal' | 'external', received 'non-existing-mode'. Falling back to default value.",

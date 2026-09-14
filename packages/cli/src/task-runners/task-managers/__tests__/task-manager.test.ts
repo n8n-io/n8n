@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
+import { TaskRunnerNotConnectedError } from '@/task-runners/errors/task-runner-not-connected.error';
 import type { Task } from '@/task-runners/task-managers/task-requester';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
@@ -34,6 +35,25 @@ describe('TaskRequester', () => {
 			mockGlobalConfig,
 			mockErrorReporter,
 		);
+	});
+
+	describe('requestExpired', () => {
+		it('should reject with a not-connected error when the broker reports no runner', () => {
+			const reject = vi.fn();
+			instance.requestAcceptRejects.set('request1', {
+				accept: vi.fn(),
+				reject,
+				requestedAt: Date.now(),
+				taskType: 'python',
+			});
+
+			instance.requestExpired('request1', 'no-runner');
+
+			expect(reject).toHaveBeenCalledWith(expect.any(TaskRunnerNotConnectedError));
+			expect(reject.mock.calls[0][0].description).toContain('"python"');
+			expect(instance.requestAcceptRejects.has('request1')).toBe(false);
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('handleRpc', () => {

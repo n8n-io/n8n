@@ -36,8 +36,6 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
-import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
@@ -94,8 +92,6 @@ mockInstance(MessageEventBus);
 mockInstance(LogStreamingEventRelay);
 mockInstance(ScalingService);
 mockInstance(TaskBrokerServer);
-mockInstance(JsTaskRunnerProcess);
-mockInstance(PyTaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);

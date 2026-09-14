@@ -199,6 +199,11 @@ To start n8n execute:
 pnpm start
 ```
 
+`pnpm start` and the `pnpm dev` scripts run task runners in `internal` mode,
+so Code nodes work without extra setup. Production defaults to `external`
+mode. To test that locally, see
+[docker/images/runners/README.md](docker/images/runners/README.md).
+
 ### Environment variables (optional)
 
 Most environment variables have default values, but if you needed to modify any a template for local environment variables is provided at `.env.local.example`. Copy it and fill in any values you need.

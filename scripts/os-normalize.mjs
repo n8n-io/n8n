@@ -6,6 +6,7 @@
  *
  * Usage: node scripts/os-normalize.mjs --dir packages/cli/bin n8n
  * Usage (with args): node scripts/os-normalize.mjs --dir packages/cli/bin -- n8n --help
+ * Usage (env default): node scripts/os-normalize.mjs --dir packages/cli/bin --default N8N_RUNNERS_MODE=internal n8n
  * */
 
 import { $, argv, cd, chalk, echo, usePowerShell, fs } from 'zx';
@@ -41,6 +42,12 @@ function printUsage() {
 
 const { dir = '.' } = argv;
 const [run, ...args] = argv._;
+
+// `--default KEY=VALUE` (repeatable) sets an env var only when the caller did not.
+for (const entry of [argv.default].flat().filter(Boolean)) {
+	const [key, ...rest] = String(entry).split('=');
+	process.env[key] ??= rest.join('=');
+}
 
 if (!dir || !run) {
 	printUsage();

@@ -12,6 +12,7 @@ describe('TaskRunnerProcessRestartLoopDetector', () => {
 	const mockLogger = mock<Logger>();
 	const mockAuthService = mock<TaskBrokerAuthService>();
 	const runnerConfig = new TaskRunnersConfig();
+	runnerConfig.mode = 'internal';
 	const taskRunnerProcess = new JsTaskRunnerProcess(
 		mockLogger,
 		runnerConfig,

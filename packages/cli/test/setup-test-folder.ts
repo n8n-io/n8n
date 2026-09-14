@@ -1,8 +1,11 @@
+import { TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
 process.env.N8N_ENCRYPTION_KEY = 'test_key';
+process.env.N8N_RUNNERS_AUTH_TOKEN = 'test_token';
 
 const baseDir = join(tmpdir(), 'n8n-tests/');
 mkdirSync(baseDir, { recursive: true });
@@ -25,3 +28,9 @@ writeFileSync(
 // are set before any of the config classes are instantiated.
 // TODO: delete this after we are done migrating everything to config classes
 import '@/config';
+
+// The import above is hoisted, so `GlobalConfig` is built before the env vars in
+// this file are set. Env only reaches instances built after a `Container.reset()`.
+// Task runners run in external mode only, which needs a shared secret with the
+// launcher, so set it on the instance that already exists as well.
+Container.get(TaskRunnersConfig).authToken = 'test_token';

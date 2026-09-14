@@ -123,7 +123,7 @@ describe('TaskBroker', () => {
 	describe('registerRunner', () => {
 		it('should add a runner to known runners', () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
@@ -140,7 +140,7 @@ describe('TaskBroker', () => {
 
 		it('should send node types to runner', () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
@@ -168,7 +168,7 @@ describe('TaskBroker', () => {
 		const requestTaskFrom = (runnerId: string, isRunnerReachable: () => boolean) => {
 			const messageCallback = vi.fn();
 			taskBroker.registerRunner(
-				mock<TaskRunner>({ id: runnerId }),
+				mock<TaskRunner>({ id: runnerId, taskTypes: [] }),
 				messageCallback,
 				isRunnerReachable,
 			);
@@ -216,7 +216,7 @@ describe('TaskBroker', () => {
 			const requesterCallback = vi.fn();
 
 			taskBroker.registerRunner(
-				mock<TaskRunner>({ id: runnerId }),
+				mock<TaskRunner>({ id: runnerId, taskTypes: [] }),
 				runnerCallback,
 				() => isReachable,
 			);
@@ -300,7 +300,7 @@ describe('TaskBroker', () => {
 			});
 
 			taskBroker.registerRunner(
-				mock<TaskRunner>({ id: 'runner1' }),
+				mock<TaskRunner>({ id: 'runner1', taskTypes: [] }),
 				runnerCallback,
 				() => isReachable,
 			);
@@ -351,7 +351,7 @@ describe('TaskBroker', () => {
 	describe('deregisterRunner', () => {
 		it('should remove a runner from known runners', () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
@@ -365,7 +365,7 @@ describe('TaskBroker', () => {
 
 		it('should remove any pending offers for that runner', () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
@@ -392,7 +392,7 @@ describe('TaskBroker', () => {
 
 		it('should fail any running tasks for that runner', () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const messageCallback = vi.fn();
 
 			const taskId = 'task1';
@@ -452,6 +452,70 @@ describe('TaskBroker', () => {
 
 			expect(vi.spyOn(taskBroker, 'acceptOffer')).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
+		});
+
+		describe('when no runner has connected since start', () => {
+			const requesterId = 'requester1';
+			const requesterCallback = vi.fn<RequesterMessageCallback>();
+			const request = (): TaskRequest => ({
+				requestId: 'request1',
+				requesterId,
+				taskType: 'javascript',
+				timeout: setTimeout(() => {}, 0),
+			});
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+				taskBroker = new TaskBroker(
+					mock(),
+					mock<TaskRunnersConfig>({
+						taskRequestTimeout: 60,
+						taskTimeout: 60,
+						taskAcceptTimeout: 2,
+					}),
+					mock(),
+					mock(),
+				);
+				requesterCallback.mockReset();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('should keep the request pending inside the grace window', () => {
+				vi.advanceTimersByTime(59 * Time.seconds.toMilliseconds);
+
+				taskBroker.taskRequested(request());
+
+				expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+				expect(requesterCallback).not.toHaveBeenCalled();
+			});
+
+			it('should expire the request at once after the grace window', () => {
+				vi.advanceTimersByTime(61 * Time.seconds.toMilliseconds);
+
+				taskBroker.taskRequested(request());
+
+				expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'no-runner',
+				});
+			});
+
+			it('should keep waiting for a task type a runner registered for before', () => {
+				const runner = mock<TaskRunner>({ id: 'runner1', taskTypes: ['javascript'] });
+				taskBroker.registerRunner(runner, vi.fn());
+				vi.advanceTimersByTime(61 * Time.seconds.toMilliseconds);
+
+				taskBroker.taskRequested(request());
+
+				expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+				expect(requesterCallback).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -573,7 +637,7 @@ describe('TaskBroker', () => {
 
 		it('should not create duplicate request when runner defers', async () => {
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 
 			// Simulate a launcher-like runner that defers tasks on acceptance
 			const messageCallback = vi.fn().mockImplementation(async (message) => {
@@ -703,7 +767,7 @@ describe('TaskBroker', () => {
 			const reject = vi.fn();
 
 			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject, runnerId } });
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -729,7 +793,7 @@ describe('TaskBroker', () => {
 			const reject = vi.fn();
 
 			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject, runnerId } });
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -754,7 +818,7 @@ describe('TaskBroker', () => {
 
 			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -785,7 +849,7 @@ describe('TaskBroker', () => {
 
 			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -825,7 +889,7 @@ describe('TaskBroker', () => {
 
 			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -859,7 +923,7 @@ describe('TaskBroker', () => {
 
 			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -897,7 +961,7 @@ describe('TaskBroker', () => {
 
 			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -924,7 +988,7 @@ describe('TaskBroker', () => {
 			};
 
 			const beforeTime = process.hrtime.bigint();
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -957,7 +1021,7 @@ describe('TaskBroker', () => {
 				validFor: -1,
 			};
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -984,7 +1048,10 @@ describe('TaskBroker', () => {
 
 			const runnerMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), runnerMessageCallback);
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: runnerId, taskTypes: [] }),
+				runnerMessageCallback,
+			);
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -1042,7 +1109,7 @@ describe('TaskBroker', () => {
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const runnerMessageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, runnerMessageCallback);
@@ -1138,7 +1205,7 @@ describe('TaskBroker', () => {
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: {
 					id: taskId,
@@ -1167,7 +1234,7 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const runnerCallback = vi.fn();
 			const requesterCallback = vi.fn();
 
@@ -1212,7 +1279,7 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			const runner = mock<TaskRunner>({ id: runnerId, taskTypes: [] });
 			const runnerCallback = vi.fn();
 			const requesterCallback = vi.fn();
 
@@ -1260,7 +1327,7 @@ describe('TaskBroker', () => {
 		let requesterCallback: ReturnType<typeof vi.fn<RequesterMessageCallback>>;
 
 		const setupTaskWithArmedTimer = async () => {
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.registerRequester(requesterId, requesterCallback);
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
@@ -1301,7 +1368,7 @@ describe('TaskBroker', () => {
 		});
 
 		it('should never extend a timer already due before the deadline', async () => {
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId, taskTypes: [] }), vi.fn());
 			taskBroker.registerRequester(requesterId, requesterCallback);
 			const timesOutAt = Date.now() + 10_000;
 			taskBroker.setTasks({
@@ -1420,7 +1487,7 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			const request: TaskRequest = {
 				requestId: 'request1',
@@ -1446,8 +1513,14 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'deadRunner' }), deadRunnerCallback);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'liveRunner' }), liveRunnerCallback);
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: 'deadRunner', taskTypes: [] }),
+				deadRunnerCallback,
+			);
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: 'liveRunner', taskTypes: [] }),
+				liveRunnerCallback,
+			);
 
 			const matchedOffer = offerFor('deadRunner', 'deadOffer1');
 			const request: TaskRequest = {
@@ -1480,7 +1553,7 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), runnerCallback);
 
 			await expectAcceptTimeout(offerFor('runner1', 'offer1'), {
 				requestId: 'request1',
@@ -1500,7 +1573,7 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			await expectAcceptTimeout(offerFor('runner1', 'offer1'), {
 				requestId: 'request1',
@@ -1521,7 +1594,7 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			const acceptPromise = taskBroker.acceptOffer(offerFor('runner1', 'offer1'), {
 				requestId: 'request1',
@@ -1582,7 +1655,7 @@ describe('TaskBroker', () => {
 
 			const config = mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskAcceptTimeout: 2 });
 			taskBroker = new TaskBroker(mock(), config, mock(), mock());
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			const request: TaskRequest = {
 				requestId: 'request1',
@@ -1618,7 +1691,7 @@ describe('TaskBroker', () => {
 				mock(),
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			// the request expired during acceptance, so it is no longer pending
 			const request: TaskRequest = {
@@ -1650,7 +1723,7 @@ describe('TaskBroker', () => {
 				lifecycleEvents,
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 		});
 
 		// a failing assertion must not leak fake timers into later tests
@@ -1891,7 +1964,7 @@ describe('TaskBroker', () => {
 			await timeOutAcceptance();
 
 			taskBroker.deregisterRunner('runner1', new Error('connection lost'));
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
 
 			await timeOutAcceptance();
 			await timeOutAcceptance();
@@ -1937,7 +2010,7 @@ describe('TaskBroker', () => {
 		});
 
 		it('should count acknowledgment timeouts per runner', async () => {
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2', taskTypes: [] }), vi.fn());
 
 			await timeOutAcceptance('runner1');
 			await timeOutAcceptance('runner1');
@@ -2190,7 +2263,7 @@ describe('TaskBroker', () => {
 
 		it('should cancel the task toward the runner when the request expired during acceptance', async () => {
 			const runnerCallback = acknowledgingRunnerCallback();
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), runnerCallback);
 
 			// the request is no longer pending by the time the runner acknowledges
 			await taskBroker.acceptOffer(offerFor('runner1', 'offer1'), {
@@ -2222,7 +2295,7 @@ describe('TaskBroker', () => {
 					taskBroker.handleRequesterAccept(message.taskId, {});
 				}
 			});
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), runnerCallback);
 			taskBroker.registerRequester('requester1', requesterCallback);
 
 			const request: TaskRequest = {
@@ -2235,15 +2308,15 @@ describe('TaskBroker', () => {
 
 			await taskBroker.acceptOffer(offerFor('runner1', 'offer1'), request);
 
-			// only the task execution timeout remains armed
-			expect(vi.getTimerCount()).toBe(1);
+			// only the task execution timeout and the broker's runner grace timer remain armed
+			expect(vi.getTimerCount()).toBe(2);
 		});
 
 		it('should cancel the task and stop tracking it when the requester fails to acknowledge', async () => {
 			vi.useFakeTimers();
 
 			const runnerCallback = acknowledgingRunnerCallback();
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), runnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), runnerCallback);
 			taskBroker.registerRequester('requester1', vi.fn());
 
 			const request: TaskRequest = {
@@ -2278,7 +2351,10 @@ describe('TaskBroker', () => {
 					taskBroker.handleRunnerDeferred(message.taskId);
 				}
 			});
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), deferringRunnerCallback);
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: 'runner1', taskTypes: [] }),
+				deferringRunnerCallback,
+			);
 
 			const request: TaskRequest = {
 				requestId: 'request1',
@@ -2309,8 +2385,11 @@ describe('TaskBroker', () => {
 			vi.useFakeTimers();
 
 			const liveRunnerCallback = vi.fn();
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'deadRunner' }), vi.fn());
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'liveRunner' }), liveRunnerCallback);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'deadRunner', taskTypes: [] }), vi.fn());
+			taskBroker.registerRunner(
+				mock<TaskRunner>({ id: 'liveRunner', taskTypes: [] }),
+				liveRunnerCallback,
+			);
 
 			const request: TaskRequest = {
 				requestId: 'request1',
