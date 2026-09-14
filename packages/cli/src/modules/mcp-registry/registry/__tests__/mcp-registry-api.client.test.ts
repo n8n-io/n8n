@@ -216,9 +216,7 @@ describe('McpRegistryApiClient', () => {
 					...notionMockServer,
 					icons: [{ src: 'https://mcp.notion.com/icon.svg', mimeType: null, theme: null }],
 					websiteUrl: null,
-					remotes: [
-						{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp', headers: null },
-					],
+					remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp', headers: null }],
 					tools: [
 						{
 							name: 'notion-search',
@@ -236,10 +234,7 @@ describe('McpRegistryApiClient', () => {
 			expect(result[0]).toMatchObject({
 				icons: [{ src: 'https://mcp.notion.com/icon.svg' }],
 				remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp' }],
-				tools: [
-					{ name: 'notion-search', annotations: {} },
-					{ name: 'notion-fetch' },
-				],
+				tools: [{ name: 'notion-search', annotations: {} }, { name: 'notion-fetch' }],
 			});
 			expect(result[0].websiteUrl).toBeUndefined();
 			expect(result[0].icons[0].mimeType).toBeUndefined();
