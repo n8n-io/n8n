@@ -41,11 +41,12 @@ describe('useMcpJsonNudgeEligibility', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(MCP_JSON_NUDGE_EXPERIMENT.name);
 	});
 
-	// The PostHog flag is multivariate and, like 110_instance_ai_folder_exploration,
-	// spells its enabled arm `test`, not the `variant` the createExperiment default
-	// assumes. A drift here would make the nudge unreachable for every user.
-	it("names the flag's enabled arm `test`", () => {
-		expect(MCP_JSON_NUDGE_EXPERIMENT.variant).toBe('test');
+	// The PostHog flag is multivariate, and its enabled arm is the variant key
+	// `variant`, matching every other multivariate experiment here. A drift
+	// between this spelling and the flag's would make the nudge unreachable for
+	// every user, with no error to show for it.
+	it("names the flag's enabled arm `variant`", () => {
+		expect(MCP_JSON_NUDGE_EXPERIMENT.variant).toBe('variant');
 	});
 
 	describe('canShow', () => {

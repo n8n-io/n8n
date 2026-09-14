@@ -151,15 +151,11 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 );
 
 /**
- * Multivariate, like `110_instance_ai_folder_exploration`: the enabled arm is
- * the variant string `test`, not a boolean, so the check must go through
- * `isVariantEnabled`. The flag names its on-arm `test` rather than the default
- * `variant`, so this constant tracks the flag's own spelling.
+ * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
+ * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
+ * The default `control` / `variant` arms match the PostHog flag.
  */
-export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import', {
-	control: 'control',
-	variant: 'test',
-});
+export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
 export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
