@@ -548,6 +548,15 @@ type TerminalGuardOrderServiceInternals = {
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
+	inFlightExecutions: Set<Promise<unknown>>;
+	shutdown: () => Promise<void>;
+	executeRun: (
+		user: User,
+		threadId: string,
+		runId: string,
+		message: string,
+		abortController: AbortController,
+	) => Promise<void>;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -3482,6 +3491,253 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				status: 'suspended',
 				outputs: expect.objectContaining({ message: 'Set up the slack channel' }),
 			}),
+		);
+	});
+
+	// Fixtures for the confirmation-card tests below. The tests differ only in
+	// when the abort fires and whether the card must still reach the client.
+	const CARD_EVENT = {
+		type: 'confirmation-request',
+		runId: 'run-1',
+		agentId: 'orchestrator:run-1',
+		payload: {
+			requestId: 'req-1',
+			toolCallId: 'tool-call-1',
+			toolName: 'ask-user',
+			args: {},
+			severity: 'info',
+			message: 'Set up the slack channel',
+		},
+	} as unknown as Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+
+	function suspendedWithCard(): Awaited<ReturnType<typeof resumeAgentRun>> {
+		return {
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tool-call-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
+			},
+			confirmationEvent: CARD_EVENT,
+		};
+	}
+
+	function cardTracing(): InstanceAiTraceContext {
+		return {
+			actorRun: { id: 'segment-a-actor' },
+			withActiveSpan: vi.fn(async (_run: unknown, body: () => Promise<unknown>) => await body()),
+		} as unknown as InstanceAiTraceContext;
+	}
+
+	function resumeOpts(abortController: AbortController, tracing: InstanceAiTraceContext) {
+		return {
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			signal: abortController.signal,
+			abortController,
+			tracing,
+		};
+	}
+
+	/** Aborts the run while the pending-row write is in flight. */
+	function abortDuringRowWrite(service: TerminalGuardOrderServiceInternals): AbortController {
+		const abortController = new AbortController();
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(async () => {
+			abortController.abort();
+		});
+		return abortController;
+	}
+
+	/** The smallest executeRun surface: no tracing, no attachments, no handoff. */
+	function stubInitialRunSurface(service: TerminalGuardOrderServiceInternals): void {
+		Object.assign(service, {
+			resolveContextAttachments: vi.fn(async () => []),
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			isRunDebugEnabled: vi.fn(() => false),
+			createExecutionEnvironment: vi.fn(async () => ({
+				context: {},
+				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+				taskStorage: { get: vi.fn(async () => undefined) },
+				orchestrationContext: {},
+			})),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			instanceContext: { buildBlock: vi.fn(async () => undefined) },
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			domainAccessTrackersByThread: new Map(),
+		});
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+	}
+
+	/** The shutdown() surface: one suspended run, nothing else in flight. */
+	function stubShutdownSurface(
+		service: TerminalGuardOrderServiceInternals,
+		run: { runId: string; tracing: InstanceAiTraceContext; abortController: AbortController },
+	): void {
+		Object.assign(service.liveness, { shutdown: vi.fn() });
+		Object.assign(service.runState, {
+			shutdown: vi.fn(() => ({ activeRuns: [], suspendedRuns: [run], pendingThreadIds: [] })),
+		});
+		Object.assign(service.backgroundTasks, { cancelAll: vi.fn(() => []) });
+		Object.assign(service.tracing, { getTrackedThreadIds: vi.fn(() => []), clear: vi.fn() });
+		Object.assign(service.eventBus, { clear: vi.fn() });
+		Object.assign(service.logger, { debug: vi.fn() });
+		Object.assign(service, {
+			inFlightExecutions: new Set<Promise<unknown>>(),
+			gatewayService: { disconnectAll: vi.fn() },
+			browserSessionService: { shutdown: vi.fn(async () => {}) },
+			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			domainAccessTrackersByThread: new Map(),
+			eventLog: { flushAll: vi.fn(async () => {}) },
+		});
+	}
+
+	it('writes the pending row before it publishes the confirmation card', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		let releaseRow: () => void = () => {};
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseRow = resolve;
+				}),
+		);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		const resumed = service.processResumedStream(
+			{},
+			{},
+			resumeOpts(new AbortController(), cardTracing()),
+		);
+		await vi.waitFor(() =>
+			expect(service.suspendedThreads.persistPendingConfirmation).toHaveBeenCalled(),
+		);
+		// The row write is still in flight: a client that reconnects now must not
+		// be able to read the card from the log, or it settles the card as expired.
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+
+		releaseRow();
+		await resumed;
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+	});
+
+	it('does not publish the confirmation card when the run is cancelled during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		// cancelRun already published run-finish and dropped the row.
+		const abortController = abortDuringRowWrite(service);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		await service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
+			'run-1',
+			tracing,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('publishes the confirmation card when shutdown aborts the run during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		// shutdown keeps the row and the checkpoint, so the card must still go out.
+		service.preserveHitlOnShutdown.add('run-1');
+		const abortController = abortDuringRowWrite(service);
+		mockClaimedResumeResult(suspendedWithCard());
+
+		await service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-1',
+			tracing,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('records the suspended run on shutdown() and keeps the confirmation card publish', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const tracing = cardTracing();
+		const abortController = new AbortController();
+		stubShutdownSurface(service, { runId: 'run-1', tracing, abortController });
+		let flaggedAtAbort = false;
+		abortController.signal.addEventListener('abort', () => {
+			flaggedAtAbort = service.preserveHitlOnShutdown.has('run-1');
+		});
+		let shutdown: Promise<void> | undefined;
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(async () => {
+			shutdown = service.shutdown();
+			await new Promise<void>((resolve) => {
+				abortController.signal.addEventListener('abort', () => resolve(), { once: true });
+			});
+		});
+		mockClaimedResumeResult(suspendedWithCard());
+
+		const run = service.processResumedStream({}, {}, resumeOpts(abortController, tracing));
+		service.inFlightExecutions.add(run);
+		await run;
+		await shutdown;
+
+		// The flag lands before the abort fires, so the guard lets the card through.
+		expect(flaggedAtAbort).toBe(true);
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.eventBus.events.some((event) => event.type === 'run-finish')).toBe(false);
+	});
+
+	it('does not publish the confirmation card when the initial run is cancelled during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		stubInitialRunSurface(service);
+		// cancelRun already published run-finish and dropped the row.
+		const abortController = abortDuringRowWrite(service);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce(suspendedWithCard());
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Set up slack', abortController);
+
+		// The run did suspend; the abort landed after that, not before the stream.
+		expect(service.runState.suspendRun).toHaveBeenCalled();
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
+			'run-1',
+			undefined,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('publishes the confirmation card when shutdown aborts the initial run during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		stubInitialRunSurface(service);
+		// shutdown keeps the row and the checkpoint, so the card must still go out.
+		service.preserveHitlOnShutdown.add('run-1');
+		const abortController = abortDuringRowWrite(service);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce(suspendedWithCard());
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Set up slack', abortController);
+
+		// The run did suspend; the abort landed after that, not before the stream.
+		expect(service.runState.suspendRun).toHaveBeenCalled();
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', CARD_EVENT);
+		expect(service.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			'run-1',
+			undefined,
+			expect.objectContaining({ status: 'suspended' }),
 		);
 	});
 
