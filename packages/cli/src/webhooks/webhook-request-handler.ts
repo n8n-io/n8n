@@ -50,6 +50,10 @@ class WebhookRequestHandler {
 			);
 		}
 
+		Container.get(Logger).debug(
+			`Webhook ${method} ${req.path} user-agent="${req.headers['user-agent'] ?? ''}"`,
+		);
+
 		// Setup CORS headers only if the incoming request has an `origin` header
 		if ('origin' in req.headers) {
 			const corsSetupError = await this.setupCorsHeaders(req, res);
