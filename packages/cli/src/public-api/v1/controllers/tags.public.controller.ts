@@ -99,9 +99,6 @@ export class TagsPublicController {
 		return {
 			id: updatedTag.id,
 			name: updatedTag.name,
-			// The write returns only the columns it touched. `createdAt` is always absent, and a no-op
-			// update (same name) also leaves `updatedAt` absent. The legacy handler sent the raw entity
-			// and dropped the undefined fields; match that instead of throwing on them.
 			...(updatedTag.createdAt ? { createdAt: updatedTag.createdAt.toISOString() } : {}),
 			...(updatedTag.updatedAt ? { updatedAt: updatedTag.updatedAt.toISOString() } : {}),
 		};

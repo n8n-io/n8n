@@ -38,11 +38,6 @@ export class UpdateTagPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
-/**
- * An update answers with only the columns the write touched. `createdAt` is always absent, and a
- * no-op update (the new name equals the stored name) also leaves `updatedAt` absent. Both stay
- * optional to keep the response identical to the one the endpoint published before.
- */
 export class UpdatedTagPublicDto extends Z.class({
 	...tagPublicSchema.shape,
 	createdAt: tagPublicSchema.shape.createdAt.optional(),

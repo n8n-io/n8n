@@ -46,9 +46,9 @@ describe('UpdatedTagPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('should reject a response without updatedAt', () => {
+	test('should accept a response without updatedAt', () => {
 		const result = UpdatedTagPublicDto.safeParse({ id: '2tUt1wbLX592XDdX', name: 'Production' });
 
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
 	});
 });
