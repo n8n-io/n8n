@@ -64,8 +64,7 @@ export declare namespace TestRunRequest {
 }
 
 export declare namespace TagRequest {
-	type Get = AuthenticatedRequest<{ id: string }>;
-	type Delete = Get;
+	type Delete = AuthenticatedRequest<{ id: string }>;
 }
 
 export declare namespace CredentialTypeRequest {

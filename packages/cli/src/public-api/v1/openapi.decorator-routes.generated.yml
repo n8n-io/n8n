@@ -158,6 +158,8 @@ paths:
     post:
       $ref: ./handlers/tags/spec/paths/createTag.generated.yml
   /tags/{tagId}:
+    get:
+      $ref: ./handlers/tags/spec/paths/getTag.generated.yml
     put:
       $ref: ./handlers/tags/spec/paths/updateTag.generated.yml
   /variables:

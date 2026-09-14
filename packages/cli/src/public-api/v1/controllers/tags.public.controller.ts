@@ -92,6 +92,29 @@ export class TagsPublicController {
 		}
 	}
 
+	@Get('/:tagId')
+	@ApiKeyScope('tag:read')
+	@ApiSummary('Retrieves a tag')
+	@ApiDescription('Retrieves a tag.')
+	@ApiTags(tags)
+	@ApiResponse(200, TagPublicDto)
+	@ApiErrorResponse(404)
+	async getTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('tagId', tagIdParamSchema) tagId: string,
+	): Promise<TagPublicDto> {
+		let tag: TagEntity;
+
+		try {
+			tag = await this.tagService.getById(tagId);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		return toTagPublicDto(tag);
+	}
+
 	@Put('/:tagId')
 	@ApiKeyScope('tag:update')
 	@ApiSummary('Update a tag')
