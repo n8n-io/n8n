@@ -2332,41 +2332,7 @@ describe('mapPropertyToZodSchema for display-only callout property', () => {
 	});
 });
 
-describe('mapPropertyToZodSchema for data-carrying button and icon types', () => {
-	it('maps a top-level button property to stringOrExpression (covers AiTransform instructions)', () => {
-		const prop = {
-			name: 'instructions',
-			displayName: 'Instructions',
-			type: 'button',
-			default: '',
-			typeOptions: { buttonConfig: { hasInputField: true } },
-		} as unknown as NodeProperty;
-
-		expect(mapPropertyToZodSchema(prop)).toBe('stringOrExpression');
-	});
-
-	it('maps a button nested inside a collection to stringOrExpression', () => {
-		const prop = {
-			name: 'options',
-			displayName: 'Options',
-			type: 'collection',
-			default: {},
-			options: [
-				{
-					name: 'instructions',
-					displayName: 'Instructions',
-					type: 'button',
-					default: '',
-				},
-			],
-		} as unknown as NodeProperty;
-
-		const schema = mapPropertyToZodSchema(prop);
-
-		expect(schema).not.toContain('z.unknown()');
-		expect(schema).toContain('instructions: stringOrExpression.optional()');
-	});
-
+describe('mapPropertyToZodSchema for data-carrying icon types', () => {
 	it('maps a top-level icon property to a { type, value } object schema (covers ChatTrigger)', () => {
 		const prop = {
 			name: 'agentIcon',

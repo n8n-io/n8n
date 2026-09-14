@@ -71,7 +71,7 @@ import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUt
 import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
-	AI_TRANSFORM_NODE_TYPE,
+	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
@@ -93,7 +93,6 @@ import { htmlEditorEventBus } from '@/app/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -203,7 +202,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const settingsStore = useSettingsStore();
 const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -873,8 +871,6 @@ const showDragnDropTip = computed(
 		(ndvStore.value?.isInputParentOfActiveNode ?? false) &&
 		!props.isForCredential,
 );
-
-const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
 const isMapperAvailable = computed(
 	() =>
@@ -1744,58 +1740,53 @@ onUpdated(async () => {
 						.inputLabelDisplayName(parameter, path)}`"
 					@update:open="onCodeEditDialogOpenUpdate"
 				>
-					<N8nDialogBody>
-						<div
-							class="ignore-key-press-canvas code-edit-dialog"
-							data-test-id="code-editor-fullscreen"
-						>
-							<CodeNodeEditor
-								v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
-								:id="parameterId"
-								:mode="codeEditorMode"
-								:model-value="modelValueString"
-								:default-value="parameter.default"
-								:language="editorLanguage"
-								:is-read-only="isReadOnly"
-								fill-parent
-								@update:model-value="valueChangedDebounced"
-							/>
-							<HtmlEditor
-								v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
-								:model-value="modelValueString"
-								:is-read-only="isReadOnly"
-								:rows="editorRows"
-								:disable-expression-coloring="!isHtmlNode"
-								:disable-expression-completions="!isHtmlNode"
-								fullscreen
-								@update:model-value="valueChangedDebounced"
-							/>
-							<CssEditor
-								v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
-								:model-value="modelValueString"
-								:is-read-only="isReadOnly"
-								:rows="editorRows"
-								fullscreen
-								@update:model-value="valueChangedDebounced"
-							/>
-							<SqlEditor
-								v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
-								:model-value="modelValueString"
-								:dialect="getTypeOption('sqlDialect')"
-								:is-read-only="isReadOnly"
-								:rows="editorRows"
-								fullscreen
-								@update:model-value="valueChangedDebounced"
-							/>
-							<JsEditor
-								v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
-								:model-value="modelValueString"
-								:is-read-only="isReadOnly"
-								:rows="editorRows"
-								:posthog-capture="shouldCaptureForPosthog"
-								fill-parent
-								@update:model-value="valueChangedDebounced"
-							/>
+					<div class="ignore-key-press-canvas code-edit-dialog">
+						<CodeNodeEditor
+							v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
+							:id="parameterId"
+							:mode="codeEditorMode"
+							:model-value="modelValueString"
+							:default-value="parameter.default"
+							:language="editorLanguage"
+							:is-read-only="isReadOnly"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+						<HtmlEditor
+							v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							:disable-expression-coloring="!isHtmlNode"
+							:disable-expression-completions="!isHtmlNode"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
+						<CssEditor
+							v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
+						<SqlEditor
+							v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:dialect="getTypeOption('sqlDialect')"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
+						<JsEditor
+							v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
 
 							<JsonEditor
 								v-else-if="parameter.type === 'json' && codeEditDialogVisible"
@@ -1829,7 +1820,6 @@ onUpdated(async () => {
 					:language="editorLanguage"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
-					:ai-button-enabled="settingsStore.isCloudDeployment"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1922,7 +1912,6 @@ onUpdated(async () => {
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
-					:posthog-capture="shouldCaptureForPosthog"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
