@@ -6,6 +6,14 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
+The `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` environment variable was removed. A throw from `workflow.preExecute` never creates an execution record. n8n now ignores the variable.
+
+### When is action necessary?
+
+If you set `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION=true` to keep the old persist-then-fail path. Remove the variable. A throw from `workflow.preExecute` never starts a run and does not count toward Insights or license usage.
+
+### What changed?
+
 n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
 
 ### When is action necessary?
