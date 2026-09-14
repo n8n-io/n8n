@@ -3,6 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8
 
 @Entity({ name: 'instance_ai_threads' })
 @Index(['appId', 'updatedAt'])
+@Index(['resourceId', 'updatedAt', 'id'])
 export class InstanceAiThread extends WithTimestamps {
 	@PrimaryColumn('uuid')
 	id: string;

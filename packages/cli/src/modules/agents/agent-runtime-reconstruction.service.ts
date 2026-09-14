@@ -251,6 +251,7 @@ export class AgentRuntimeReconstructionService {
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
 		userToolAccessSnapshot?: UserToolAccessSnapshot;
 	}> {
 		let config = agentEntity.schema;
@@ -457,9 +458,11 @@ export class AgentRuntimeReconstructionService {
 	 * when the parent had a user), so raw credential access stays gated there
 	 * regardless.
 	 */
-	async reconstructFromResolvedSource(
-		params: ReconstructAgentRuntimeParams,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	async reconstructFromResolvedSource(params: ReconstructAgentRuntimeParams): Promise<{
+		agent: RuntimeAgent;
+		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
+	}> {
 		let config = params.config;
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
@@ -510,7 +513,11 @@ export class AgentRuntimeReconstructionService {
 		unavailableTools?: UnavailableTool[];
 		/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
 		previewChat?: boolean;
-	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	}): Promise<{
+		agent: RuntimeAgent;
+		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
+	}> {
 		const {
 			config,
 			memoryOwnerAgentId,
@@ -571,6 +578,8 @@ export class AgentRuntimeReconstructionService {
 			unavailable,
 		);
 		const resolvedTools: BuiltTool[] = [];
+		// See AgentRuntime.mcpServerAttributions
+		const mcpServerAttributions = new Map<string, string>();
 
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
@@ -586,8 +595,13 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
-				resolveRegistryConnection: async (nodeTypeName) =>
-					await this.mcpRegistryService.getConnection(nodeTypeName),
+				resolveRegistryConnection: async (nodeTypeName) => {
+					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
+					if (connection?.attribution) {
+						mcpServerAttributions.set(server.name, connection.attribution);
+					}
+					return connection;
+				},
 				onConnectionFailed: (event) => {
 					this.logger.warn('Skipped MCP server that failed to connect', {
 						agentId: memoryOwnerAgentId,
@@ -653,7 +667,11 @@ export class AgentRuntimeReconstructionService {
 			backgroundTasksEnabled,
 		});
 
-		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
+		return {
+			agent: reconstructed,
+			toolRegistry: buildToolRegistry(resolvedTools),
+			mcpServerAttributions,
+		};
 	}
 
 	async createSubAgentDelegationConfig(

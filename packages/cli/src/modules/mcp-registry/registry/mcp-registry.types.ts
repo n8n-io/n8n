@@ -73,6 +73,12 @@ const mcpRegistryServerBaseSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 	tagline: z.string(),
+	// Appended to every tool result from this server, for partners that require
+	// their attribution on the content the agent shows.
+	attribution: z
+		.string()
+		.nullish()
+		.transform((value) => value ?? undefined),
 	version: z.string(),
 	updatedAt: z.string(),
 	icons: z.array(

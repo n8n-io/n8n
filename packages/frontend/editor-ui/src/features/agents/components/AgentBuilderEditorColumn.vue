@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nButton, N8nCard, N8nTabs } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import { N8nCard, N8nIcon, N8nTabs, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -11,7 +11,7 @@ import type {
 	AgentResource,
 	AgentSkill,
 } from '../types';
-import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -57,6 +57,7 @@ const props = defineProps<{
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -68,7 +69,7 @@ const emit = defineEmits<{
 	'update:config': [updates: Partial<AgentJsonConfig>];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'add-tool': [];
+	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
@@ -178,7 +179,7 @@ const i18n = useI18n();
 							:agent-unsaved="agentUnsaved"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
-							@add-tool="emit('add-tool')"
+							@add-tool="emit('add-tool', $event)"
 							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
@@ -210,15 +211,47 @@ const i18n = useI18n();
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
 					/>
-
-					<AgentVectorStoresPanel
-						:vector-stores="localConfig?.vectorStores ?? []"
-						:disabled="childrenDisabled"
-						data-testid="agent-vector-stores-card"
-						@connect="emit('add-vector-store')"
-						@edit="emit('edit-vector-store', $event)"
-						@remove="emit('remove-vector-store', $event)"
-					/>
+					<div
+						:class="$style.advancedSection"
+						:data-state="isKnowledgeAdvancedExpanded ? 'open' : 'closed'"
+					>
+						<button
+							type="button"
+							:class="$style.advancedTrigger"
+							:aria-expanded="isKnowledgeAdvancedExpanded"
+							data-testid="agent-knowledge-advanced-trigger"
+							@click="isKnowledgeAdvancedExpanded = !isKnowledgeAdvancedExpanded"
+						>
+							<N8nText
+								tag="h3"
+								bold
+								:class="$style.title"
+								data-testid="agent-knowledge-tab-content-advanced"
+							>
+								{{ i18n.baseText('agents.builder.knowledge.advanced.title') }}
+							</N8nText>
+							<N8nIcon
+								icon="chevron-down"
+								size="small"
+								:class="$style.chevron"
+								data-testid="agent-knowledge-advanced-chevron"
+							/>
+						</button>
+						<div
+							v-if="isKnowledgeAdvancedExpanded"
+							:class="$style.advancedContent"
+							data-testid="agent-knowledge-advanced-content"
+						>
+							<AgentVectorStoresPanel
+								:vector-stores="localConfig?.vectorStores ?? []"
+								:disabled="childrenDisabled"
+								data-testid="agent-vector-stores-card"
+								@connect="emit('add-vector-store')"
+								@edit="emit('edit-vector-store', $event)"
+								@remove="emit('remove-vector-store', $event)"
+							/>
+						</div>
+					</div>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
@@ -287,6 +320,60 @@ const i18n = useI18n();
 </template>
 
 <style lang="scss" module>
+.advancedSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.advancedTrigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	width: 100%;
+	padding: var(--spacing--xs) 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius--sm);
+	}
+}
+
+.title {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	font-weight: var(--font-weight--medium);
+}
+
+.advancedTrigger h3 {
+	margin: 0;
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	transform: rotate(0deg);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.advancedSection[data-state='open'] .chevron {
+	transform: rotate(180deg);
+}
+
+.advancedContent {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;

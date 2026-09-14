@@ -260,6 +260,7 @@ export class TypeAvailabilityPolicyService {
 			updatedBy,
 			kind,
 			policyId: policy.id,
+			origin: 'document-api',
 			after: { rules: policy.rules, version: policy.version },
 		});
 
@@ -346,6 +347,7 @@ export class TypeAvailabilityPolicyService {
 			updatedBy,
 			kind: result.existing.kind,
 			policyId,
+			origin: 'document-api',
 			before: { rules: result.existing.rules, version: result.existing.version },
 			after: { rules: result.updated.rules, version: result.updated.version },
 		});
@@ -662,6 +664,7 @@ export class TypeAvailabilityPolicyService {
 				updatedBy,
 				kind,
 				policyId: result.policyId,
+				origin: 'composed-save',
 				after: result.documentAfter,
 			});
 		} else {
@@ -669,10 +672,23 @@ export class TypeAvailabilityPolicyService {
 				updatedBy,
 				kind,
 				policyId: result.policyId,
+				origin: 'composed-save',
 				before: result.documentBefore ?? { rules: [], version: UNCONFIGURED_VERSION },
 				after: result.documentAfter,
 			});
 		}
+
+		this.eventService.emit('node-type-policy-saved', {
+			updatedBy,
+			kind,
+			projectId,
+			scopeId: result.scopeId,
+			before: result.scopeBefore,
+			after: result.scopeAfter,
+			rulesBefore: result.documentBefore?.rules ?? null,
+			rulesAfter: result.documentAfter.rules,
+			warningCount: warnings.length,
+		});
 
 		return {
 			scopeId: result.scopeId,

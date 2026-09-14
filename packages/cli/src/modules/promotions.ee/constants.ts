@@ -4,6 +4,8 @@ export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
+export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
+
 /**
  * Subfolder of the checkout that holds the n8n-managed package. Keeping it
  * separate from the repository root leaves `.git` and any files the user commits

@@ -14,6 +14,10 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
+				'instanceAi.tools.activity': 'Activity',
+				'instanceAi.tools.activity.list': 'Checking recent activity',
+				'instanceAi.tools.conversation-history': 'Past conversations',
+				'instanceAi.tools.conversation-history.search': 'Searching past conversations',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
@@ -131,6 +135,14 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('n8n-docs')).toBe('book-open');
 	});
 
+	test('returns history for the activity tool', () => {
+		expect(getToolIcon('activity')).toBe('history');
+	});
+
+	test('returns message-square for the conversation-history tool', () => {
+		expect(getToolIcon('conversation-history')).toBe('message-square');
+	});
+
 	test('returns wrench as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
@@ -202,6 +214,16 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('apps', { action: 'bind' })).toBe('Connecting workflow to app');
 		expect(getToolLabel('apps', { action: 'unknown-action' })).toBe('Working on app');
 		expect(getToolLabel('apps')).toBe('Working on app');
+	});
+
+	test('getToolLabel returns action-specific activity and conversation-history labels', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('activity')).toBe('Activity');
+		expect(getToolLabel('activity', { action: 'list' })).toBe('Checking recent activity');
+		expect(getToolLabel('conversation-history')).toBe('Past conversations');
+		expect(getToolLabel('conversation-history', { action: 'search' })).toBe(
+			'Searching past conversations',
+		);
 	});
 
 	test('getToggleLabel returns show data for regular tools', () => {
