@@ -4,7 +4,7 @@ This package provides a secure, isolated expression evaluation runtime that work
 
 ## Design Goals
 
-1. **Environment Agnostic**: Single codebase that works in Node.js (isolated-vm), browsers (Web Workers), and task runner processes
+1. **Environment Agnostic**: Single codebase that works in Node.js (isolated-vm), browsers (QuickJS in WASM), and task runner processes
 2. **Security**: Expressions run in isolated contexts with memory limits and timeouts
 3. **Performance**: Lazy data loading, code caching, and efficient data transfer
 4. **Observability**: Built-in metrics, traces, and logs
@@ -73,7 +73,7 @@ The architecture is split into three distinct layers:
 **Key Components**:
 - **RuntimeBridge Interface**: Abstract interface for all bridge implementations
 - **IsolatedVmBridge**: Uses isolated-vm API for Node.js backend (Phase 1.1)
-- **WebWorkerBridge**: Uses postMessage API for browser (Phase 2+)
+- **QuickJsBridge**: Uses quickjs-emscripten (WASM) for Node.js and the browser
 - **Task Runner Integration**: TBD - May use IsolatedVmBridge locally or direct evaluation (Phase 2+)
 
 **Responsibilities**:
@@ -175,24 +175,12 @@ class IsolatedVmBridge implements RuntimeBridge {
 }
 ```
 
-### WebWorkerBridge (Browser Frontend)
+### QuickJsBridge (Browser Frontend)
 
-Uses Web Workers for browser-based isolation:
-
-```typescript
-class WebWorkerBridge implements RuntimeBridge {
-  private worker: Worker;
-
-  async initialize(): Promise<void> {
-    this.worker = new Worker('/runtime.worker.js');
-    // Setup message handlers
-  }
-
-  async execute(code: string, dataId: string): Promise<unknown> {
-    // Implementation...
-  }
-}
-```
+The editor runs the same `QuickJsBridge` as Node. It does not use a Web Worker.
+The browser has no filesystem, so the host passes the runtime bundle in with the
+`runtimeBundle` option. The vite stub in `packages/frontend/editor-ui/vite/` maps
+`@n8n/expression-runtime` to the real bridge for the browser build.
 
 ### Task Runner Integration (TBD - Phase 2+)
 
