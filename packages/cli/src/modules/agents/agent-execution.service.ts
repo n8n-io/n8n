@@ -19,7 +19,11 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
+import {
+	AgentExecution,
+	type AgentExecutionStatus,
+	type AgentTurnRunContext,
+} from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -37,8 +41,6 @@ import {
 export interface RecordMessageParams {
 	threadId: string;
 	agentId: string;
-	/** Names a thread created for this run; finalization ignores it. */
-	agentName?: string;
 	projectId: string;
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
@@ -64,15 +66,14 @@ export interface RecordMessageParams {
 	};
 }
 
-export type StartExecutionParams = Omit<
-	RecordMessageParams,
-	'record' | 'hitlStatus' | 'agentName'
-> & {
+export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'> & {
 	agentName: string;
 };
 
-/** What a turn row stores before it runs, next to its start params. */
-export type TurnRowValues = Pick<AgentExecution, 'resourceId' | 'runContext'>;
+/** Queue-managed fields stored before the runtime starts. */
+export type TurnRowValues = Pick<AgentExecution, 'resourceId'> & {
+	runContext: AgentTurnRunContext;
+};
 
 export interface ClaimedExecutionRecording {
 	executionId: string;
@@ -149,7 +150,6 @@ export class AgentExecutionService {
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
 		const executionId = await this.insertExecution(params, {
 			status: 'running',
-			activeThreadId: null,
 			startedAt,
 			resourceId: null,
 			runContext: null,
@@ -170,7 +170,6 @@ export class AgentExecutionService {
 	): Promise<ClaimedExecutionRecording> {
 		const executionId = await this.insertExecution(params, {
 			status: 'running',
-			activeThreadId: params.threadId,
 			startedAt,
 			resourceId: params.resourceId,
 			runContext: params.runContext,
@@ -182,7 +181,6 @@ export class AgentExecutionService {
 	async recordQueuedExecution(params: StartExecutionParams & TurnRowValues): Promise<string> {
 		return await this.insertExecution(params, {
 			status: 'queued',
-			activeThreadId: null,
 			startedAt: null,
 			resourceId: params.resourceId,
 			runContext: params.runContext,
@@ -253,7 +251,7 @@ export class AgentExecutionService {
 
 	private async insertExecution(
 		params: StartExecutionParams,
-		row: Pick<AgentExecution, 'status' | 'activeThreadId' | 'startedAt'> & TurnRowValues,
+		row: Pick<AgentExecution, 'status' | 'startedAt' | 'resourceId' | 'runContext'>,
 	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
 		const inserted = await this.agentExecutionRepository.insertExecution({

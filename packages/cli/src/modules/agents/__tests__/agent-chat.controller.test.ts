@@ -13,11 +13,7 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import {
-	AgentThreadQueueFullError,
-	MAX_QUEUED_TURNS_PER_THREAD,
-	type AgentTurnClaim,
-} from '../agent-turn-queue.service';
+import { AgentThreadQueueFullError, type AgentTurnClaim } from '../agent-turn-queue.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
@@ -366,7 +362,8 @@ describe('AgentChatController HITL cancellation', () => {
 describe('AgentChatController full thread queue', () => {
 	it('sends one coded error event and no done event when the thread queue is full', async () => {
 		const { controller, agentTestRunService } = makeController();
-		agentTestRunService.submitDraftRun.mockRejectedValue(new AgentThreadQueueFullError());
+		const error = new AgentThreadQueueFullError();
+		agentTestRunService.submitDraftRun.mockRejectedValue(error);
 		const writes: string[] = [];
 		const res = makeSseResponse(writes);
 
@@ -383,7 +380,7 @@ describe('AgentChatController full thread queue', () => {
 		expect(events).toEqual([
 			{
 				type: 'error',
-				message: `This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+				message: error.message,
 				errorCode: 'agent_turn_queue_full',
 			},
 		]);

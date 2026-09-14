@@ -608,7 +608,6 @@ export class AgentWorkflowExecutionService {
 				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
 					threadId,
 					agentId,
-					agentName: agentInstance.name,
 					projectId,
 					userMessage: message,
 					record: run.messageRecord,

@@ -220,9 +220,8 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	describe('thread claims', () => {
-		const runningValues = (threadId: string, activeThreadId: string | null) => ({
+		const runningValues = (threadId: string, claimed: boolean) => ({
 			threadId,
-			activeThreadId,
 			status: 'running' as const,
 			startedAt: new Date(),
 			stoppedAt: null,
@@ -242,20 +241,20 @@ describe('AgentExecutionRepository', () => {
 			source: null,
 			attachments: null,
 			resourceId: null,
-			runContext: null,
+			runContext: claimed ? ({ kind: 'message' } as const) : null,
 		});
 
 		it('allows one claimed running row per thread and releases the claim when the row ends', async () => {
 			const thread = await createThread();
 			const other = await createThread({ sessionNumber: 2 });
 
-			const first = await repository.insertExecution(runningValues(thread.id, thread.id));
+			const first = await repository.insertExecution(runningValues(thread.id, true));
 			await expect(
-				repository.insertExecution(runningValues(thread.id, thread.id)),
+				repository.insertExecution(runningValues(thread.id, true)),
 			).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
 			// Rows from mains without the claim, and other threads, are not blocked.
-			await repository.insertExecution(runningValues(thread.id, null));
-			await repository.insertExecution(runningValues(other.id, other.id));
+			await repository.insertExecution(runningValues(thread.id, false));
+			await repository.insertExecution(runningValues(other.id, true));
 
 			expect(await repository.touchRunning(first.id, thread.id)).toBe(true);
 			expect(await repository.touchRunning(first.id, other.id)).toBe(false);
@@ -273,15 +272,15 @@ describe('AgentExecutionRepository', () => {
 			).toBe(true);
 			expect(await repository.touchRunning(first.id, thread.id)).toBe(false);
 			const ended = await repository.findOneByOrFail({ id: first.id });
-			expect(ended.activeThreadId).toBeNull();
+			expect(ended.runContext).toBeNull();
 
-			const next = await repository.insertExecution(runningValues(thread.id, thread.id));
-			expect(next.activeThreadId).toBe(thread.id);
+			const next = await repository.insertExecution(runningValues(thread.id, true));
+			expect(next.runContext).toEqual({ kind: 'message' });
 		});
 
 		it('releases only a stale claim during abandoned finalization', async () => {
 			const thread = await createThread();
-			const execution = await repository.insertExecution(runningValues(thread.id, thread.id));
+			const execution = await repository.insertExecution(runningValues(thread.id, true));
 			const staleBefore = new Date('2026-01-02T00:00:00Z');
 			const finalizationValues = {
 				status: 'interrupted' as const,
@@ -302,7 +301,7 @@ describe('AgentExecutionRepository', () => {
 			);
 			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
 				status: 'running',
-				activeThreadId: thread.id,
+				runContext: { kind: 'message' },
 				stoppedAt: null,
 			});
 
@@ -315,7 +314,7 @@ describe('AgentExecutionRepository', () => {
 			);
 			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
 				status: 'interrupted',
-				activeThreadId: null,
+				runContext: null,
 				stoppedAt: finalizationValues.stoppedAt,
 			});
 		});
@@ -324,7 +323,6 @@ describe('AgentExecutionRepository', () => {
 	describe('queued turns', () => {
 		const queuedValues = (threadId: string, userMessage: string) => ({
 			threadId,
-			activeThreadId: null,
 			status: 'queued' as const,
 			startedAt: null,
 			stoppedAt: null,
@@ -352,7 +350,6 @@ describe('AgentExecutionRepository', () => {
 			const running = await repository.insertExecution({
 				...queuedValues(thread.id, 'running'),
 				status: 'running',
-				activeThreadId: thread.id,
 				startedAt: new Date(),
 			});
 			const first = await repository.insertExecution(queuedValues(thread.id, 'first'));
@@ -383,7 +380,6 @@ describe('AgentExecutionRepository', () => {
 			expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(true);
 			expect(await repository.findOneByOrFail({ id: first.id })).toMatchObject({
 				status: 'running',
-				activeThreadId: thread.id,
 				runContext: { kind: 'message' },
 			});
 			// The promoted row left `queued`: a second promotion and a fail are no-ops.

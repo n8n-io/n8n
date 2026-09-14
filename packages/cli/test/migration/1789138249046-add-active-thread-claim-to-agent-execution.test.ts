@@ -98,16 +98,21 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 			const table = context.escape.tableName('agent_execution');
 			const insertClaimed = async () =>
 				await context.runQuery(
-					`INSERT INTO ${table} ("id", "threadId", "activeThreadId", "status", "createdAt", "updatedAt")
-					 VALUES (:id, :threadId, :threadId, 'running', :now, :now)`,
-					{ id: randomUUID(), threadId: ids.thread, now },
+					`INSERT INTO ${table} ("id", "threadId", "status", "runContext", "createdAt", "updatedAt")
+					 VALUES (:id, :threadId, 'running', :runContext, :now, :now)`,
+					{
+						id: randomUUID(),
+						threadId: ids.thread,
+						runContext: '{"kind":"message"}',
+						now,
+					},
 				);
 
-			const legacy = await context.runQuery<Array<{ activeThreadId: string | null }>>(
-				`SELECT "activeThreadId" FROM ${table} WHERE "threadId" = :threadId`,
+			const legacy = await context.runQuery<Array<{ runContext: string | null }>>(
+				`SELECT "runContext" FROM ${table} WHERE "threadId" = :threadId`,
 				{ threadId: ids.thread },
 			);
-			expect(legacy).toEqual([{ activeThreadId: null }, { activeThreadId: null }]);
+			expect(legacy).toEqual([{ runContext: null }, { runContext: null }]);
 
 			// One claim fits next to the unclaimed legacy rows; a second one does not.
 			await insertClaimed();
@@ -137,7 +142,7 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		await withContext(async (context) => {
 			const table = context.escape.tableName('agent_execution');
 			const columns = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			for (const name of ['activeThreadId', 'resourceId', 'runContext']) {
+			for (const name of ['resourceId', 'runContext']) {
 				expect(columns?.findColumnByName(name)).toBeUndefined();
 			}
 			const rows = await context.runQuery<Array<{ count: number | string }>>(
@@ -163,7 +168,7 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		dataSource = Container.get(DataSource);
 		await withContext(async (context) => {
 			const table = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			for (const name of ['activeThreadId', 'resourceId', 'runContext']) {
+			for (const name of ['resourceId', 'runContext']) {
 				expect(table?.findColumnByName(name)?.isNullable).toBe(true);
 			}
 		});

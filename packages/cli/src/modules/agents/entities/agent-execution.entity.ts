@@ -66,9 +66,9 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
-@Index(['activeThreadId'], {
+@Index(['threadId'], {
 	unique: true,
-	where: '"activeThreadId" IS NOT NULL AND "status" = \'running\'',
+	where: '"runContext" IS NOT NULL AND "status" = \'running\'',
 })
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
@@ -83,14 +83,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
-
-	/**
-	 * Thread this running top-level turn holds. The partial unique index keeps
-	 * one claimed running row per thread. Null once the run ends, and always
-	 * null for runs outside the turn queue (workflow-node and delegated runs).
-	 */
-	@Column({ type: 'varchar', length: 128, nullable: true })
-	activeThreadId: string | null;
 
 	/** Memory resource id of the sender, so a queued turn later runs as that user. */
 	@Column({ type: 'varchar', length: 255, nullable: true })

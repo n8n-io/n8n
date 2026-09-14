@@ -446,7 +446,6 @@ export class SubAgentRunner {
 			await this.agentExecutionService.finalizeExecution(executionId, {
 				threadId,
 				agentId: runtimeSource.sourceId,
-				agentName: runtimeSource.config.name,
 				projectId,
 				userMessage,
 				record,

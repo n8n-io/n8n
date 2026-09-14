@@ -17,11 +17,7 @@ import {
 	type TurnRowValues,
 } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import type {
-	AgentExecution,
-	AgentTurnRunContext,
-	QueuedChannelTurn,
-} from './entities/agent-execution.entity';
+import type { AgentExecution, QueuedChannelTurn } from './entities/agent-execution.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -70,7 +66,7 @@ export interface AgentTurnClaim {
 
 /** A turn as its row stores it before it runs. Telemetry joins at finalize, the agent name at insert. */
 export type AgentTurnSubmission = Omit<StartExecutionParams, 'telemetry' | 'agentName'> &
-	TurnRowValues & { runContext: AgentTurnRunContext };
+	TurnRowValues;
 
 export type AgentTurnSubmitResult =
 	| { status: 'claimed'; claim: AgentTurnClaim }
@@ -82,9 +78,10 @@ type QueuedRun = (claim: AgentTurnClaim) => Promise<void>;
  * The one entry point for agent turns on the interactive surfaces. A turn is
  * an `agent_execution` row: `submit` inserts it as `queued` and promotes it to
  * the thread's claimed running row when the thread is free. The partial unique
- * index on `activeThreadId` is the only fence. A row that stays queued runs
- * headless once the running turn releases its claim, oldest first, on the main
- * that finalized that turn; the sweeper's `drainAll` covers a main that died.
+ * index on running rows with a `runContext` is the only fence. A row that stays
+ * queued runs headless once the running turn releases its claim, oldest first,
+ * on the main that finalized that turn; the sweeper's `drainAll` covers a main
+ * that died.
  *
  * Invariant that keeps this poll-free: insert before claim, drain after finalize.
  */

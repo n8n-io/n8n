@@ -54,15 +54,19 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	/**
-	 * Insert a queued or running row. With `activeThreadId` set, the partial
-	 * unique index turns a second claim on the same thread into
+	 * Insert a queued or running row. For a running row with `runContext`, the
+	 * partial unique index turns a second claim on the same thread into
 	 * {@link AgentThreadClaimConflictError}.
 	 */
 	async insertExecution(values: NewAgentExecution): Promise<AgentExecution> {
 		try {
 			return await this.save(this.create(values));
 		} catch (error) {
-			if (values.activeThreadId !== null && isUniqueConstraintError(error)) {
+			if (
+				values.status === 'running' &&
+				values.runContext !== null &&
+				isUniqueConstraintError(error)
+			) {
 				throw new AgentThreadClaimConflictError();
 			}
 			throw error;
@@ -99,7 +103,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		try {
 			const result = await this.update(
 				{ id: executionId, threadId, status: 'queued' },
-				{ status: 'running', activeThreadId: threadId, startedAt, updatedAt: startedAt },
+				{ status: 'running', startedAt, updatedAt: startedAt },
 			);
 			return result.affected === 1;
 		} catch (error) {
@@ -118,13 +122,16 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	/**
-	 * Refresh the liveness timestamp. With `activeThreadId`, the update matches
-	 * only while the row still holds that claim, so `false` means the claim
-	 * is gone.
+	 * Refresh the liveness timestamp. With `claimedThreadId`, the update matches
+	 * only while the row still has queue context for that thread.
 	 */
-	async touchRunning(executionId: string, activeThreadId?: string): Promise<boolean> {
+	async touchRunning(executionId: string, claimedThreadId?: string): Promise<boolean> {
 		const result = await this.update(
-			{ id: executionId, status: 'running', ...(activeThreadId ? { activeThreadId } : {}) },
+			{
+				id: executionId,
+				status: 'running',
+				...(claimedThreadId ? { threadId: claimedThreadId, runContext: Not(IsNull()) } : {}),
+			},
 			{ updatedAt: new Date() },
 		);
 		return result.affected === 1;
@@ -159,7 +166,6 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			},
 			{
 				...values,
-				activeThreadId: null,
 				runContext: null,
 			} as QueryDeepPartialEntity<AgentExecution>,
 		);

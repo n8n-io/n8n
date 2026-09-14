@@ -4,7 +4,6 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| activeThreadId | varchar(128) |  | true |  |  | Thread this running top-level turn holds; null once the run ends and for runs outside the turn queue |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
 | completionTokens | integer |  | true |  |  |  |
@@ -52,8 +51,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON public.agent_execution USING btree ("threadId", "createdAt") |
-| IDX_agent_execution_activeThreadId | CREATE UNIQUE INDEX "IDX_agent_execution_activeThreadId" ON public.agent_execution USING btree ("activeThreadId") WHERE (("activeThreadId" IS NOT NULL) AND ((status)::text = 'running'::text)) |
 | IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON public.agent_execution USING btree (status) WHERE ((status)::text = 'running'::text) |
+| IDX_agent_execution_threadId | CREATE UNIQUE INDEX "IDX_agent_execution_threadId" ON public.agent_execution USING btree ("threadId") WHERE (("runContext" IS NOT NULL) AND ((status)::text = 'running'::text)) |
 | PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 
 ## Relations
@@ -64,7 +63,6 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
-  varchar_128_ activeThreadId
   json attachments
   json author
   integer completionTokens

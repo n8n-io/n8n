@@ -100,9 +100,9 @@ describe('AgentExecutionService', () => {
 	});
 
 	async function recordExecution(params: RecordMessageParams): Promise<string> {
-		const { record, agentName = 'Agent', ...startParams } = params;
+		const { record, ...startParams } = params;
 		const executionId = await service.startExecutionRecording(
-			{ ...startParams, agentName },
+			{ ...startParams, agentName: 'Agent' },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -140,15 +140,11 @@ describe('AgentExecutionService', () => {
 					threadId: 'thread-1',
 					executionId,
 				});
-				expect(agentExecutionRepository.insertExecution).toHaveBeenCalledWith(
-					expect.objectContaining({ status: 'running', activeThreadId: null }),
-				);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId, undefined);
 
 				await service.finalizeExecution(executionId, {
 					threadId: 'thread-1',
 					agentId: 'agent-1',
-					agentName: 'Agent',
 					projectId: 'project-1',
 					userMessage: 'Run',
 					record: makeMessageRecord(),
@@ -172,7 +168,7 @@ describe('AgentExecutionService', () => {
 					projectId: 'project-1',
 					userMessage: 'Run',
 					resourceId: null,
-					runContext: null,
+					runContext: { kind: 'message' },
 				},
 				new Date(),
 			);
@@ -192,16 +188,13 @@ describe('AgentExecutionService', () => {
 			vi.useRealTimers();
 		});
 
-		it('claims the thread on the running row, confirms it on each heartbeat, and stops on finalize', async () => {
+		it('confirms the thread claim on each heartbeat and stops on finalize', async () => {
 			agentExecutionRepository.touchRunning.mockResolvedValue(true);
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
 			const { executionId, claimLost } = await startClaimed();
 			await vi.advanceTimersByTimeAsync(60_000);
 
-			expect(agentExecutionRepository.insertExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ status: 'running', activeThreadId: 'thread-1' }),
-			);
 			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(2);
 			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId, 'thread-1');
 			expect(claimLost.aborted).toBe(false);
@@ -209,7 +202,6 @@ describe('AgentExecutionService', () => {
 			await service.finalizeExecution(executionId, {
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record: makeMessageRecord(),
@@ -339,7 +331,6 @@ describe('AgentExecutionService', () => {
 		await service.finalizeExecution('execution-1', {
 			threadId: 'thread-1',
 			agentId: 'agent-1',
-			agentName: 'Agent',
 			projectId: 'project-1',
 			userMessage: 'Run',
 			record: makeMessageRecord(),
@@ -390,7 +381,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record,
@@ -468,7 +458,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record,
@@ -506,7 +495,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Goal:\nResearch API behavior.',
 				record,
@@ -543,7 +531,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run task',
 				record: makeMessageRecord(),
@@ -582,7 +569,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Follow up',
 				record: makeMessageRecord(),
@@ -605,7 +591,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Follow up',
 				record: makeMessageRecord(),
@@ -627,7 +612,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record: makeMessageRecord({
@@ -697,7 +681,6 @@ describe('AgentExecutionService', () => {
 				recordExecution({
 					threadId: 'thread-1',
 					agentId: 'agent-1',
-					agentName: 'Agent',
 					projectId: 'project-1',
 					userMessage: 'Run',
 					record: makeMessageRecord({ error: 'model failed', totalCost: null, duration: 456 }),
@@ -740,7 +723,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record: makeMessageRecord({ finishReason: 'error', error: null }),
@@ -782,7 +764,6 @@ describe('AgentExecutionService', () => {
 			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record,
@@ -819,7 +800,6 @@ describe('AgentExecutionService', () => {
 			await service.finalizeExecution('execution-1', {
 				threadId: 'thread-1',
 				agentId: 'agent-1',
-				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
 				record,

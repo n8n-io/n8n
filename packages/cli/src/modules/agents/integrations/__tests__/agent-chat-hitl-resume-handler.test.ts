@@ -96,9 +96,9 @@ const approvalCallback = {
 	kind: 'approval' as const,
 };
 
-it('stores the resume as a turn on the checkpoint thread and runs it once claimed', async () => {
-	const { handler, event, submitTurn, resumeForChat, claim, consume } =
-		makeHandler(approvalCallback);
+it('stores a queued resume for the drain of the running turn', async () => {
+	const { handler, event, submitTurn, resumeForChat, consume } = makeHandler(approvalCallback);
+	submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
 
 	await handler.handleAction(event as never);
 
@@ -117,19 +117,6 @@ it('stores the resume as a turn on the checkpoint thread and runs it once claime
 			channel,
 		},
 	});
-	expect(resumeForChat).toHaveBeenCalledWith(
-		expect.objectContaining({ runId: 'run-1', toolCallId: 'tool-1' }),
-		claim,
-	);
-	expect(consume).toHaveBeenCalledTimes(1);
-});
-
-it('leaves a queued resume to the drain of the running turn', async () => {
-	const { handler, event, submitTurn, resumeForChat, consume } = makeHandler(approvalCallback);
-	submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
-
-	await handler.handleAction(event as never);
-
 	expect(resumeForChat).not.toHaveBeenCalled();
 	expect(consume).not.toHaveBeenCalled();
 	expect(event.thread.post).not.toHaveBeenCalled();
@@ -165,11 +152,18 @@ it.each([
 			updateLatest,
 			resumeForChat,
 			resolve,
+			claim,
+			consume,
 		} = makeHandler(callback);
 
 		await handler.handleAction(event as never);
 
-		// Nothing happens while the resume is still waiting for the thread turn.
+		expect(resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-1', toolCallId: 'tool-1' }),
+			claim,
+		);
+		expect(consume).toHaveBeenCalledTimes(1);
+		// The action stays unsettled until the admitted resume starts.
 		expect(deleteMessage).not.toHaveBeenCalled();
 		expect(settleActionMessage).not.toHaveBeenCalled();
 		expect(updateLatest).not.toHaveBeenCalled();

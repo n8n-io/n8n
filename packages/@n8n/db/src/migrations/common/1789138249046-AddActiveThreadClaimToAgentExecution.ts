@@ -1,7 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const executionTable = 'agent_execution';
-const claimColumn = 'activeThreadId';
 const statusesBefore = ['running', 'success', 'error', 'cancelled', 'interrupted'];
 const statusesAfter = ['queued', ...statusesBefore];
 
@@ -9,11 +8,9 @@ const statusesAfter = ['queued', ...statusesBefore];
  * One agent turn per thread at a time. A turn that arrives while the thread
  * runs is stored as a `queued` row; `resourceId` names the sender's memory
  * resource and `runContext` holds what the row needs to run later without its
- * request. A top-level turn claims its thread by writing
- * `activeThreadId = threadId` on its running row. The partial unique index
- * rejects a second claimed running row for the same thread. Rows from older
- * mains and out-of-scope runs keep the claim null, so a rolling upgrade never
- * trips the index.
+ * request. The partial unique index rejects a second running row with a turn
+ * context for the same thread. Rows from older mains and out-of-scope runs
+ * have no turn context, so a rolling upgrade never trips the index.
  */
 export class AddActiveThreadClaimToAgentExecution1789138249046 implements ReversibleMigration {
 	async up({
@@ -30,9 +27,6 @@ export class AddActiveThreadClaimToAgentExecution1789138249046 implements Revers
 		if (isSqlite) {
 			const table = escape.tableName(executionTable);
 			await runQuery(
-				`ALTER TABLE ${table} ADD COLUMN ${escape.columnName(claimColumn)} varchar(128)`,
-			);
-			await runQuery(
 				`ALTER TABLE ${table} ADD COLUMN ${escape.columnName('resourceId')} varchar(255)`,
 			);
 			await runQuery(`ALTER TABLE ${table} ADD COLUMN ${escape.columnName('runContext')} text`);
@@ -40,11 +34,6 @@ export class AddActiveThreadClaimToAgentExecution1789138249046 implements Revers
 			await addColumns(
 				executionTable,
 				[
-					column(claimColumn)
-						.varchar(128)
-						.comment(
-							'Thread this running top-level turn holds; null once the run ends and for runs outside the turn queue',
-						),
 					column('resourceId')
 						.varchar(255)
 						.comment('Memory resource id of the sender, so a queued turn later runs as that user'),
@@ -57,10 +46,10 @@ export class AddActiveThreadClaimToAgentExecution1789138249046 implements Revers
 		}
 		await createIndex(
 			executionTable,
-			[claimColumn],
+			['threadId'],
 			true,
 			undefined,
-			`${escape.columnName(claimColumn)} IS NOT NULL AND ${escape.columnName('status')} = 'running'`,
+			`${escape.columnName('runContext')} IS NOT NULL AND ${escape.columnName('status')} = 'running'`,
 		);
 	}
 
@@ -70,7 +59,7 @@ export class AddActiveThreadClaimToAgentExecution1789138249046 implements Revers
 		runQuery,
 		schemaBuilder: { dropColumns, dropIndex, addEnumCheck, dropEnumCheck },
 	}: MigrationContext) {
-		await dropIndex(executionTable, [claimColumn]);
+		await dropIndex(executionTable, ['threadId']);
 
 		// A queued row never ran, so it ends as cancelled once the status is gone.
 		await runQuery(
@@ -83,7 +72,7 @@ export class AddActiveThreadClaimToAgentExecution1789138249046 implements Revers
 
 		// Drop the columns last. On SQLite the check rebuild above copies the table
 		// from the definition it loaded first, which brings dropped columns back.
-		const columns = [claimColumn, 'resourceId', 'runContext'];
+		const columns = ['resourceId', 'runContext'];
 		if (isSqlite) {
 			for (const name of columns) {
 				await runQuery(
