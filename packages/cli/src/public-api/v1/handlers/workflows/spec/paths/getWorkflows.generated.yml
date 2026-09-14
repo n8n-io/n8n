@@ -247,7 +247,6 @@ responses:
                       callerPolicy:
                         type: string
                         enum:
-                          - any
                           - none
                           - workflowsFromAList
                           - workflowsFromSameOwner
@@ -256,7 +255,6 @@ responses:
                           Controls which workflows are allowed to call this workflow using the Execute Workflow node. Defaults to workflowsFromSameOwner.
 
                           Available options:
-                          - `any`: Any workflow can call this workflow (no restrictions)
                           - `none`: No other workflows can call this workflow (completely blocked)
                           - `workflowsFromSameOwner` (default): Only workflows owned by the same project can call this workflow
                           - `workflowsFromAList`: Only the workflows listed in `callerIds` can call this workflow

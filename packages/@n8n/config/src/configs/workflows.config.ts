@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
-const callerPolicySchema = z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']);
+const callerPolicySchema = z.enum(['none', 'workflowsFromAList', 'workflowsFromSameOwner']);
 type CallerPolicy = z.infer<typeof callerPolicySchema>;
 
 // Bounded so lease-derived timeouts stay far below Node's max timer delay (~24.8 days).
@@ -16,7 +16,7 @@ export class WorkflowsConfig {
 	@Env('WORKFLOWS_DEFAULT_NAME')
 	defaultName: string = 'My workflow';
 
-	/** Default policy for which workflows are allowed to call this workflow (for example, same owner, any, none). */
+	/** Default policy for which workflows are allowed to call this workflow (for example, same owner, a list, none). */
 	@Env('N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', callerPolicySchema)
 	callerPolicyDefaultOption: CallerPolicy = 'workflowsFromSameOwner';
 
