@@ -65,6 +65,32 @@ export async function erpNextApiRequest(
 	}
 }
 
+/**
+ * Get the field definitions of one DocType.
+ *
+ * `/api/resource/DocType/<name>` reads a record of the `DocType` doctype. A
+ * default Frappe install gives that permission to System Manager only, so a user
+ * who can read the documents still gets a 403 (#35796). The desk UI reads the
+ * same definitions through `getdoctype`, which checks the permission of the
+ * doctype that it loads.
+ */
+export async function erpNextApiDocTypeFields(
+	this: ILoadOptionsFunctions,
+	docType: string,
+): Promise<DocTypeField[]> {
+	const response = (await erpNextApiRequest.call(
+		this,
+		'GET',
+		'/api/method/frappe.desk.form.load.getdoctype',
+		{},
+		// The parameter holds the encoded name, and the query string encodes again.
+		{ doctype: decodeURI(docType) },
+	)) as { docs?: Array<{ fields?: DocTypeField[] }> };
+
+	// `docs` is a meta bundle: the requested doctype first, then its child tables.
+	return response?.docs?.[0]?.fields ?? [];
+}
+
 export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
@@ -87,6 +113,11 @@ export async function erpNextApiRequestAllItems(
 
 	return returnData;
 }
+
+export type DocTypeField = {
+	label: string;
+	fieldname: string;
+};
 
 type ERPNextApiCredentials = {
 	apiKey: string;
