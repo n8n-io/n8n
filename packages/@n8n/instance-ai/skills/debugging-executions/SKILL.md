@@ -58,18 +58,52 @@ executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed
 
 `reuseExecutionId` replays the data the node really received and re-runs only
 that node, so the fix meets the same input that broke it. This is the right
-first move whenever the user is debugging a node that already failed a real
-execution: the node ran for real once already, and a mock-only check is what
-sends the user back for a second session.
+first move whenever the user is debugging a **read** node that already failed a
+real execution: the node ran for real once already, and a mock-only check is
+what sends the user back for a second session.
+
+### Decide whether the node is safe to run first
+
+A step run is a real run. The node uses the user's real credentials and reaches
+the user's real systems, on the user's real data. Check what the node does
+before you reach for `run-step`:
+
+- **Safe to run.** A read (`get`, `getAll`, `search`, `list`, `download`, a GET
+  HTTP Request), or a transform that touches nothing outside the workflow (Set,
+  IF, Filter, Code without network or filesystem access). Run these.
+- **Do not run for real.** A write (`create`, `update`, `upsert`, `delete`,
+  `send`, `append`, a non-GET HTTP Request). Running one sends the message,
+  charges the card, or deletes the row — again, and for real. The user asked
+  you to debug the node, not to perform its effect.
+- **Unsure?** Treat it as a write. Losing a debugging shortcut is recoverable;
+  an un-asked write to the user's data is not.
+
+For a write node, debug without running it: read the failed execution with
+`debug`, inspect the resolved parameters with
+`get-resolved-node-parameters`, and explain the fix. That is usually enough,
+because a write node's failures are nearly always in its input or its
+parameters, both of which you can see without sending anything.
+
+If you genuinely cannot resolve it without a real run, say plainly what the
+node will do to the user's data, and let the user choose. The approval prompt
+alone is not consent: the user sees a node name, not "this posts to your
+#general channel".
+
+**"It already ran anyway" is not a reason.** It holds only for a node that
+errored outright and changed nothing. A node that partly succeeded before it
+failed — a send that delivered some messages and then hit a rate limit — will
+deliver them again.
+
+### When you must invent the input
 
 Use `mockInput` only when the upstream nodes cannot run. It proves the node
 accepts the input you invented, nothing more — the result carries
 `inputMode: "mocked"` and a `mockedNodeNames` list, and you must say so
 instead of reporting the workflow as working.
 
-A node that only partly succeeded before it failed — a send that delivered some
-messages and then hit a rate limit — will repeat that effect. Prefer
-`get-resolved-node-parameters` there, and ask the user before you re-run it.
+Mocked input does **not** make a write node safe. The node still runs for real
+against the user's systems; only its input is invented, which makes the effect
+less predictable, not more.
 
 ## Successful execution with wrong or empty value
 

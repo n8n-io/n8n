@@ -610,6 +610,13 @@ executes, so leaving them on would make the step replay stale output. The saved
 workflow keeps its pins. `workflowPinnedNodeNames` lists only the pins that fed
 the run.
 
+**Safety**: a step run is a real run, with the user's credentials against their
+systems. It suits reads and transforms. A node that writes
+(`create`/`update`/`delete`/`send`/`append`, non-GET HTTP Request) performs its
+effect again, so debug that from `debug` and `get-resolved-node-parameters`
+instead. `mockInput` does not change this: only the input is invented, the node
+still runs. See the `debugging-executions` skill.
+
 **Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
 the pre-authorized workflow list, and session grants. The session grant is per
 node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one

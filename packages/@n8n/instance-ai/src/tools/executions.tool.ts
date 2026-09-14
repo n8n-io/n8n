@@ -84,7 +84,13 @@ const runStepAction = z.object({
 			'Run ONE node of a saved workflow and return its real output — the canvas ' +
 				'"Execute step". The node runs inside the real workflow, so expressions ' +
 				'that reference other nodes resolve, sub-nodes (model, memory, tools) come ' +
-				"along, and the run lands in the workflow's execution history.",
+				"along, and the run lands in the workflow's execution history. " +
+				"This is a REAL run with the user's real credentials against their real " +
+				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
+				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
+				'performs the effect again. Read the failed execution with action="debug" ' +
+				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
+				'node as a write.',
 		),
 	workflowId: z.string().describe('Workflow ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -105,7 +111,8 @@ const runStepAction = z.object({
 				'running the upstream nodes is impossible or unwanted. The result proves the ' +
 				'node accepts THIS input — it does not prove the workflow produces it, ' +
 				'because the upstream output is invented. Prefer reuseExecutionId, or ' +
-				'neither option, whenever you can.',
+				'neither option, whenever you can. This does not make a write node safe: ' +
+				'the node still runs for real, only its input is invented.',
 		),
 	versionId: z
 		.string()
@@ -493,8 +500,9 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
 				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
 				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a node that failed a real execution, pass reuseExecutionId so the ' +
-				'node re-runs on the data it actually received.',
+				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
+				'the node re-runs on the data it actually received. It runs for real, so do ' +
+				'not point it at a node that writes.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
