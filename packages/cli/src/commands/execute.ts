@@ -32,8 +32,6 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsRegexEngine = true;
-
 	override needsTaskRunner = true;
 
 	async init() {
