@@ -153,7 +153,7 @@ type WorkflowNode = { name: string; type: string; onError?: string };
 function makeExecution(
 	overrides: {
 		status?: string;
-		startedAt?: Date;
+		startedAt?: Date | null;
 		stoppedAt?: Date;
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
@@ -165,7 +165,9 @@ function makeExecution(
 	return {
 		id: 'exec-1',
 		status: overrides.status ?? 'success',
-		startedAt: overrides.startedAt ?? new Date('2026-01-01T00:00:00Z'),
+		// A queued execution has no startedAt yet, so null must pass through.
+		startedAt:
+			overrides.startedAt === undefined ? new Date('2026-01-01T00:00:00Z') : overrides.startedAt,
 		stoppedAt: overrides.stoppedAt ?? new Date('2026-01-01T00:01:00Z'),
 		workflowData: {
 			nodes: overrides.workflowNodes ?? [],
@@ -4717,9 +4719,8 @@ describe('createExecutionAdapter test listeners', () => {
 			workflowId: 'wf-1',
 		};
 		const queued = {
-			...makeExecution({ status: 'new' }),
+			...makeExecution({ status: 'new', startedAt: null }),
 			id: 'exec-2',
-			startedAt: null,
 			workflowId: 'wf-1',
 		};
 		const { adapter } = createListenerAdapter(undefined, {
