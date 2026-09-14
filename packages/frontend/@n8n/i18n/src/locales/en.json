@@ -3252,7 +3252,7 @@
 	"settings.context.preferences.modal.title.create": "Create preference",
 	"settings.context.preferences.modal.title.edit": "Edit preference",
 	"settings.context.preferences.modal.text.label": "Preference",
-	"settings.context.preferences.modal.text.placeholder": "For example: prefer sub-workflows over node groups.",
+	"settings.context.preferences.modal.text.placeholder": "e.g. Always connect an error workflow, so that I'm notified on Slack if anything fails",
 	"settings.context.preferences.modal.scope.label": "Scope",
 	"settings.context.preferences.modal.cancel": "Cancel",
 	"settings.context.preferences.modal.save": "Save",
