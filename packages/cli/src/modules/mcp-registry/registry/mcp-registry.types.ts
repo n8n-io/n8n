@@ -9,6 +9,9 @@ type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
+const optionalRegistryField = <T extends z.ZodType>(schema: T) =>
+	schema.nullish().transform((value) => value ?? undefined);
+
 /**
  * Override values for the credential identified by `extends`. Only properties
  * defined on `oAuth2Api`/`mcpOAuth2Api` are accepted; `null`/missing values are
@@ -78,32 +81,28 @@ const mcpRegistryServerBaseSchema = z.object({
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: z
-				.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'])
-				.optional(),
-			theme: z.enum(['light', 'dark']).optional(),
+			mimeType: optionalRegistryField(
+				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
+			),
+			theme: optionalRegistryField(z.enum(['light', 'dark'])),
 		}),
 	),
-	websiteUrl: z
-		.string()
-		.nullish()
-		.transform((value) => value ?? undefined),
+	websiteUrl: optionalRegistryField(z.string()),
 	remotes: z.array(
 		z.object({
 			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
 			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
-			headers: z
-				.record(z.string(), z.string())
-				.nullish()
-				.transform((value) => value ?? undefined),
+			headers: optionalRegistryField(z.record(z.string(), z.string())),
 		}),
 	),
 	tools: z.array(
 		z.object({
 			name: z.string(),
-			title: z.string().optional(),
-			annotations: z.object({ readOnlyHint: z.boolean().optional() }).optional(),
+			title: optionalRegistryField(z.string()),
+			annotations: optionalRegistryField(
+				z.object({ readOnlyHint: optionalRegistryField(z.boolean()) }),
+			),
 		}),
 	),
 	isOfficial: z.boolean(),
