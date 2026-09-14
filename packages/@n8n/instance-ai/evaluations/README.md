@@ -2,18 +2,18 @@
 
 > Module layout, extension points and external contracts: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
+Tests the workflows and standalone Agents that Instance AI builds. Builds call the real configured Instance AI model. Agent execution scenarios also call the configured target Agent model. The harness mocks external tool and service calls. Workflow runs use LLM-generated mock HTTP responses.
 
-Five harnesses live here:
+Six harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:agents`** — intent-resolution cases (plain build requests graded on enacted routing behavior) from the LangTracer `agents` suite (author new ones in `data/agents/`)
+- **`eval:agents`** — standalone Agent build cases from the LangTracer `agents` suite (author new ones in `data/agents/`)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 - **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
 
-> **Writing a test case?** This README is the reference and quick-start. The step-by-step *how* — the four case archetypes (build / behaviour / credential / seeded), right-sizing assertions, director-note scripts for multi-turn cases, seeding vs synthetic, and running/lanes/baselines — lives in the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md). To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
+> **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
 
@@ -97,7 +97,7 @@ INCLUDE_TEST_CONTROLLER=true pnpm build:docker
 # Start a container (E2E_TESTS=true exposes /rest/e2e/reset)
 docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
-  -e N8N_ENABLED_MODULES=instance-ai \
+  -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
   -p 5678:5678 \
@@ -171,9 +171,9 @@ Each test case declares a `datasets` array (default `["full"]` if omitted). The 
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs, chosen for capability diversity and high baseline reliability. |
-| `agents` | Intent-resolution cases graded on enacted routing behavior, loaded from `data/agents/`. |
+| `agents` | Standalone Agent build cases loaded from `data/agents/`. PR runs use an absolute pass gate. |
 
-A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
+A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent cases declare `"datasets": ["agents"]`. `pnpm eval:agents` pulls published cases from the LangTracer `agents` suite. Use `pnpm eval:instance-ai --tier agents` to run unpushed files from `data/agents/` in the default disk mode. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
 **Adding a case to `pr`**: edit the case's `datasets` in LangTracer — the suite is what CI runs, and the export round-trips non-default `datasets`, so `--tier pr` works in langtracer mode. For a not-yet-pushed local case, put `"pr"` in the JSON before `eval:langtracer-push` (push sends `datasets` on create but deliberately does not re-sync tier-only edits to an existing case — see the planner note in `langtracer/push.ts`). No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
 
@@ -720,9 +720,9 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. An `inline` seed pushes with the case; a `replay`-seeded case is refused (it's reconstructed from a LangSmith trace at run time, so a suite can't be its home). Every case is validated against `harness/schema.ts`.
+The corpus lives in **LangTracer**. Workflow cases use the `baseline` suite. Agent cases use the `agents` suite. Author a case as a local JSON file in `evaluations/data/workflows/` or `evaluations/data/agents/`. Disk mode picks it up without a registration step. Calibrate it against a real build. Push it to its suite and delete the local file instead of committing it. An `inline` seed pushes with the case. A `replay` seed cannot be pushed because the harness reconstructs it from a LangSmith trace at run time. Every case is validated against `harness/schema.ts`.
 
-> The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
+> The essentials are below. Follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the full shared process. Follow the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agents.
 
 ```json
 {
@@ -787,6 +787,8 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 ### Credentials
 
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
+
+Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
 A case that tests credential behaviour declares what should exist:
 
@@ -1102,7 +1104,7 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
+├── data/agents/          # standalone Agent case authoring (the corpus lives in LangTracer suite `agents`)
 ├── data/workflows/       # authoring dir for case JSONs (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)

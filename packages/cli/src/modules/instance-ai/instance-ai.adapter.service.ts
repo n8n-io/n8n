@@ -3,6 +3,8 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -523,6 +525,7 @@ export class InstanceAiAdapterService {
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 							credentialService,
+							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
 					}
 				: {}),
@@ -591,6 +594,8 @@ export class InstanceAiAdapterService {
 		computerUseExperimentEnabled: boolean;
 		/** "Connect browser" is rendered for this user, so the prompt may name it. */
 		browserUseExperimentEnabled: boolean;
+		/** Saved AI preferences on the opening turn. */
+		aiPreferencesEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		try {
@@ -618,6 +623,7 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_COMPUTER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 			browserUseExperimentEnabled:
 				flags[INSTANCE_AI_BROWSER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 

@@ -50,6 +50,7 @@ function createService() {
 		folderExplorationEnabled: false,
 		computerUseExperimentEnabled: false,
 		browserUseExperimentEnabled: false,
+		aiPreferencesEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(
