@@ -1,11 +1,12 @@
 import type { Mocked } from 'vitest';
-import type { User, UserRepository } from '@n8n/db';
+import type { User, UserRepository, WorkflowRunAsBindingRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	carriesN8nIdentity,
@@ -19,6 +20,8 @@ describe('N8NIdentifier', () => {
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
 	let mockUserRepository: Mocked<UserRepository>;
+	let mockRunAsBindingRepository: Mocked<WorkflowRunAsBindingRepository>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
@@ -28,8 +31,21 @@ describe('N8NIdentifier', () => {
 		mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(true);
 		mockUserRepository = mock<UserRepository>();
 		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+		mockUserRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+		mockRunAsBindingRepository = mock<WorkflowRunAsBindingRepository>();
+		mockRunAsBindingRepository.findActiveByWorkflowId.mockResolvedValue(
+			mock({ userId: 'user-123' }),
+		);
+		mockWorkflowFinderService = mock<WorkflowFinderService>();
+		mockWorkflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier, mockUserRepository);
+		identifier = new N8NIdentifier(
+			mockAuthService,
+			mockOAuthVerifier,
+			mockUserRepository,
+			mockRunAsBindingRepository,
+			mockWorkflowFinderService,
+		);
 	});
 
 	afterEach(() => {
@@ -536,6 +552,100 @@ describe('N8NIdentifier', () => {
 				expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
 			});
 		});
+
+		describe('run-as branch', () => {
+			const runAsContext = (metaOverrides: Record<string, unknown> = {}) => ({
+				identity: 'user-123',
+				version: 1 as const,
+				metadata: {
+					source: 'run-as' as const,
+					subject: 'user-123',
+					workflowId: 'wf-1',
+					establishedAt: 1,
+					executionPath: ['exec-1'],
+					...metaOverrides,
+				},
+			});
+
+			it('resolves the subject on the happy path', async () => {
+				const result = await identifier.resolve(runAsContext(), {}, 'exec-1');
+
+				expect(result).toBe('user-123');
+				expect(mockRunAsBindingRepository.findActiveByWorkflowId).toHaveBeenCalledWith('wf-1');
+				expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+					where: { id: 'user-123' },
+					relations: ['role'],
+				});
+				expect(mockWorkflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+					['wf-1'],
+					expect.objectContaining({ id: 'user-123' }),
+					['workflow:execute'],
+				);
+			});
+
+			it('rejects an execution id absent from the path', async () => {
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-2')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects a bound seal resolved with no execution id', async () => {
+				await expect(identifier.resolve(runAsContext(), {}, undefined)).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('resolves an unbound seal (publish-time probe) without consulting the binding repository', async () => {
+				const result = await identifier.resolve(runAsContext({ executionPath: [] }), {}, undefined);
+
+				expect(result).toBe('user-123');
+				expect(mockRunAsBindingRepository.findActiveByWorkflowId).not.toHaveBeenCalled();
+			});
+
+			it('rejects when the binding is missing', async () => {
+				mockRunAsBindingRepository.findActiveByWorkflowId.mockResolvedValue(null);
+
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-1')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the binding is for another user', async () => {
+				mockRunAsBindingRepository.findActiveByWorkflowId.mockResolvedValue(
+					mock({ userId: 'someone-else' }),
+				);
+
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-1')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the user no longer exists', async () => {
+				mockUserRepository.findOne.mockResolvedValue(null);
+
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-1')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the user is disabled', async () => {
+				mockUserRepository.findOne.mockResolvedValue(
+					mock<User>({ id: 'user-123', disabled: true }),
+				);
+
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-1')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+
+			it('rejects when the finder denies execute', async () => {
+				mockWorkflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+				await expect(identifier.resolve(runAsContext(), {}, 'exec-1')).rejects.toThrow(
+					CredentialResolverError,
+				);
+			});
+		});
 	});
 });
 
@@ -563,6 +673,6 @@ describe('carriesN8nIdentity', () => {
 	it('covers every source the identifier accepts', () => {
 		// Guards against a source being added to the schema but not to the list, which
 		// would silently hand an n8n token to an external-subject resolver.
-		expect(N8NIdentifierMetadataSchema.options).toHaveLength(3);
+		expect(N8NIdentifierMetadataSchema.options).toHaveLength(4);
 	});
 });
