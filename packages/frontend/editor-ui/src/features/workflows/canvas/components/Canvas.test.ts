@@ -1130,6 +1130,32 @@ describe('Canvas', () => {
 			await waitFor(() => expect(selectedIds(vueFlow)).toEqual(['node-1']));
 		});
 
+		it('keeps a sole expanded group member selectable without selecting the title bar', async () => {
+			workflowDocumentStore.setNodeGroups([{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }]);
+			const rendered = renderComponent({
+				props: {
+					nodes: [
+						createCanvasNodeElement({ id: 'node-1', label: 'Node 1' }),
+						createCanvasGroupNode({ nodeIds: ['node-1'] }),
+					],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(2),
+			);
+
+			const vueFlow = useVueFlow(canvasId);
+			vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!]);
+
+			await waitFor(() =>
+				expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['node-1']),
+			);
+		});
+
 		it('extends the selection to members when a selected group is expanded', async () => {
 			const { vueFlow, getByTestId } = await setupExpandedGroup(true);
 
