@@ -1,0 +1,14 @@
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  h_5d40c27a8fdfd1 1331-1333,1344-1346,1350,1353,1358-1361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "99edaeae6da39da16f255dd8d9acb16208c62c47",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
