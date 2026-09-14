@@ -223,8 +223,27 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
 				.catch(() => undefined);
+			if (
+				workflow &&
+				Array.isArray(workflow.nodes) &&
+				resolvedInput.triggerNodeName !== undefined &&
+				!workflow.nodes.some(
+					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+				)
+			) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
+				};
+			}
+			// WorkflowJSON omits saved pins. The summary supplies names without their payloads.
+			const workflowPins = workflow
+				? await target.domainContext.workflowService.getPinnedDataSummary?.(workflowId)
+				: undefined;
 			const blocker = checkToolSimulationSupport({
 				workflow,
+				workflowPinnedNodeNames: workflowPins?.map(({ nodeName }) => nodeName),
 				plan: buildOutcome.nodeSimulationPlan,
 				prepared,
 				triggerNodeName: resolvedInput.triggerNodeName,
@@ -237,18 +256,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					workflowId,
 					...blocker,
 				});
-			}
-			if (
-				resolvedInput.triggerNodeName !== undefined &&
-				!workflow?.nodes.some(
-					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
-				)
-			) {
-				return {
-					success: false,
-					resolvedWorkItemId: resolvedInput.workItemId,
-					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
-				};
 			}
 			const chatModelRecovery = workflow
 				? await collectChatModelRecoveryContext(

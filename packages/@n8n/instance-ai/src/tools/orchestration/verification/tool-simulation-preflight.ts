@@ -25,6 +25,7 @@ const GRAPH_UNAVAILABLE: ToolSimulationBlocker = {
 /** Check every caller path before verification can run a tool. */
 export function checkToolSimulationSupport(args: {
 	workflow: WorkflowJSON | undefined;
+	workflowPinnedNodeNames?: string[];
 	plan: NodeSimulationVerdict[];
 	prepared: PreparedVerificationRun;
 	triggerNodeName?: string;
@@ -57,6 +58,7 @@ export function checkToolSimulationSupport(args: {
 		};
 	}
 	const unsupported = new Set<string>();
+	const workflowPinnedNodeNames = new Set(args.workflowPinnedNodeNames);
 	const visited = new Set<string>();
 	const pending: Array<{ name: string; scheduled: boolean; caller?: string }> = [...mainScope].map(
 		(name) => ({ name, scheduled: true }),
@@ -67,6 +69,7 @@ export function checkToolSimulationSupport(args: {
 		if (!node) continue;
 		const verdict = verdicts.get(name);
 		const pinned =
+			workflowPinnedNodeNames.has(name) ||
 			itemsForNode(prepared.verificationPinData, name) !== undefined ||
 			itemsForNode(workflow.pinData, name) !== undefined;
 		if (caller !== undefined) {
