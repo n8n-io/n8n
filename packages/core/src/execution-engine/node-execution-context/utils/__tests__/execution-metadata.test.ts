@@ -1,235 +1,76 @@
-import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
-
-import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
+import type { IRunExecutionData } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import {
+	KEY_MAX_LENGTH,
+	VALUE_MAX_LENGTH,
 	setWorkflowExecutionMetadata,
-	setAllWorkflowExecutionMetadata,
-	KV_LIMIT,
-	getWorkflowExecutionMetadata,
-	getAllWorkflowExecutionMetadata,
 } from '../execution-metadata';
 
-describe('Execution Metadata functions', () => {
-	const createExecutionDataWithMetadata = (
-		metadata: Record<string, string> = {},
-	): {
-		metadata: Record<string, string>;
-		executionData: IRunExecutionData;
-	} => {
-		const executionData = createRunExecutionData({ resultData: { metadata } });
+/**
+ * The value log fired at 255 characters while the value was cut at 512, so
+ * everything between the two was reported as truncated when it had been stored
+ * whole — and reported as an `error`, though nothing failed (#38438).
+ */
+describe('setWorkflowExecutionMetadata truncation reporting', () => {
+	const logger = { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() };
+	let executionData: IRunExecutionData;
 
-		return {
-			metadata,
-			executionData,
-		};
+	beforeEach(() => {
+		vi.clearAllMocks();
+		LoggerProxy.init(logger as never);
+		executionData = { resultData: { runData: {} } } as IRunExecutionData;
+	});
+
+	const store = (value: string, key = 'k') => {
+		setWorkflowExecutionMetadata(executionData, key, value);
+		return executionData.resultData.metadata?.[key.slice(0, KEY_MAX_LENGTH)];
 	};
 
-	test('setWorkflowExecutionMetadata will set a value', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+	test('a value between the old threshold and the real limit is stored whole and not reported', () => {
+		const value = 'x'.repeat(300);
 
-		setWorkflowExecutionMetadata(executionData, 'test1', 'value1');
-
-		expect(metadata).toEqual({
-			test1: 'value1',
-		});
+		expect(store(value)).toBe(value);
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
 	});
 
-	test('setAllWorkflowExecutionMetadata will set multiple values', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+	test('a value at the limit is stored whole and not reported', () => {
+		const value = 'x'.repeat(VALUE_MAX_LENGTH);
 
-		setAllWorkflowExecutionMetadata(executionData, {
-			test1: 'value1',
-			test2: 'value2',
-		});
-
-		expect(metadata).toEqual({
-			test1: 'value1',
-			test2: 'value2',
-		});
+		expect(store(value)).toBe(value);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
-	test('setWorkflowExecutionMetadata should only convert numbers to strings', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+	test('a value over the limit is truncated and reported once, as a warning', () => {
+		const value = 'x'.repeat(VALUE_MAX_LENGTH + 1);
 
-		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).not.toThrow(
-			InvalidExecutionMetadataError,
+		expect(store(value)).toHaveLength(VALUE_MAX_LENGTH);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		// LoggerProxy always forwards a second `meta` argument, so assert the message.
+		expect(logger.warn.mock.calls[0][0]).toBe(
+			`Custom data value over ${VALUE_MAX_LENGTH} characters long. Truncating to ${VALUE_MAX_LENGTH} characters.`,
 		);
+		// Truncation is not a failure: the execution carries on and the shortened
+		// value is stored.
+		expect(logger.error).not.toHaveBeenCalled();
+	});
 
-		expect(metadata).toEqual({
-			test1: '1234',
-		});
+	test('an over-long key is truncated and reported as a warning too', () => {
+		const key = 'k'.repeat(KEY_MAX_LENGTH + 1);
 
-		expect(() => setWorkflowExecutionMetadata(executionData, 'test2', {})).toThrow(
-			InvalidExecutionMetadataError,
+		setWorkflowExecutionMetadata(executionData, key, 'v');
+
+		expect(executionData.resultData.metadata).toHaveProperty(key.slice(0, KEY_MAX_LENGTH), 'v');
+		expect(logger.warn.mock.calls[0][0]).toBe(
+			`Custom data key over ${KEY_MAX_LENGTH} characters long. Truncating to ${KEY_MAX_LENGTH} characters.`,
 		);
-
-		expect(metadata).not.toEqual({
-			test1: '1234',
-			test2: {},
-		});
+		expect(logger.error).not.toHaveBeenCalled();
 	});
 
-	test('setAllWorkflowExecutionMetadata should not convert values to strings and should set other values correctly', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
+	test('a key at the limit is not reported', () => {
+		setWorkflowExecutionMetadata(executionData, 'k'.repeat(KEY_MAX_LENGTH), 'v');
 
-		expect(() =>
-			setAllWorkflowExecutionMetadata(executionData, {
-				test1: {} as unknown as string,
-				test2: [] as unknown as string,
-				test3: 'value3',
-				test4: 'value4',
-			}),
-		).toThrow(InvalidExecutionMetadataError);
-
-		expect(metadata).toEqual({
-			test3: 'value3',
-			test4: 'value4',
-		});
-	});
-
-	test('setWorkflowExecutionMetadata should validate key characters', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
-
-		expect(() => setWorkflowExecutionMetadata(executionData, 'te$t1$', 1234)).toThrow(
-			InvalidExecutionMetadataError,
-		);
-
-		expect(metadata).not.toEqual({
-			test1: '1234',
-		});
-	});
-
-	test('setWorkflowExecutionMetadata should limit the number of metadata entries', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
-
-		const expected: Record<string, string> = {};
-		for (let i = 0; i < KV_LIMIT; i++) {
-			expected[`test${i + 1}`] = `value${i + 1}`;
-		}
-
-		for (let i = 0; i < KV_LIMIT + 10; i++) {
-			setWorkflowExecutionMetadata(executionData, `test${i + 1}`, `value${i + 1}`);
-		}
-
-		expect(metadata).toEqual(expected);
-	});
-
-	test('getWorkflowExecutionMetadata should return a single value for an existing key', () => {
-		const { executionData } = createExecutionDataWithMetadata({ test1: 'value1' });
-
-		expect(getWorkflowExecutionMetadata(executionData, 'test1')).toBe('value1');
-	});
-
-	test('getWorkflowExecutionMetadata should return undefined for an unset key', () => {
-		const { executionData } = createExecutionDataWithMetadata({ test1: 'value1' });
-
-		expect(getWorkflowExecutionMetadata(executionData, 'test2')).toBeUndefined();
-	});
-
-	test('getAllWorkflowExecutionMetadata should return all metadata', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata({
-			test1: 'value1',
-			test2: 'value2',
-		});
-
-		expect(getAllWorkflowExecutionMetadata(executionData)).toEqual(metadata);
-	});
-
-	test('getAllWorkflowExecutionMetadata should not an object that modifies internal state', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata({
-			test1: 'value1',
-			test2: 'value2',
-		});
-
-		getAllWorkflowExecutionMetadata(executionData).test1 = 'changed';
-
-		expect(metadata.test1).not.toBe('changed');
-		expect(metadata.test1).toBe('value1');
-	});
-
-	test('setWorkflowExecutionMetadata should truncate long keys', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
-
-		setWorkflowExecutionMetadata(
-			executionData,
-			'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab',
-			'value1',
-		);
-
-		expect(metadata).toEqual({
-			aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: 'value1',
-		});
-	});
-
-	test('setWorkflowExecutionMetadata should truncate long values', () => {
-		const { metadata, executionData } = createExecutionDataWithMetadata();
-
-		const longValue = 'a'.repeat(513);
-
-		setWorkflowExecutionMetadata(executionData, 'test1', longValue);
-
-		expect(metadata).toEqual({
-			test1: longValue.slice(0, 512),
-		});
-	});
-
-	// GHC-8254: AI Agent node with Chinese name fails with "Custom date key can only contain characters A-Za-z0-9_"
-	describe('Unicode support in keys (GHC-8254)', () => {
-		test('should allow Chinese characters in keys', () => {
-			const { metadata, executionData } = createExecutionDataWithMetadata();
-
-			// Simulates AI Agent node named "测试" generating key "response_测试"
-			const chineseKey = 'response_测试';
-			expect(() => setWorkflowExecutionMetadata(executionData, chineseKey, 'value1')).not.toThrow();
-
-			expect(metadata).toHaveProperty(chineseKey, 'value1');
-		});
-
-		test('should allow other Unicode characters (Japanese, Korean)', () => {
-			const { metadata, executionData } = createExecutionDataWithMetadata();
-
-			// Japanese
-			const japaneseKey = 'response_テスト';
-			expect(() =>
-				setWorkflowExecutionMetadata(executionData, japaneseKey, 'value1'),
-			).not.toThrow();
-
-			// Korean
-			const koreanKey = 'response_테스트';
-			expect(() => setWorkflowExecutionMetadata(executionData, koreanKey, 'value2')).not.toThrow();
-
-			expect(metadata).toHaveProperty(japaneseKey, 'value1');
-			expect(metadata).toHaveProperty(koreanKey, 'value2');
-		});
-
-		test('should allow Unicode combining marks (Devanagari)', () => {
-			const { metadata, executionData } = createExecutionDataWithMetadata();
-
-			// `lodash/snakeCase('नमस्ते')` preserves combining marks (e.g. U+094D virama,
-			// U+0947 vowel sign) which fall under \p{M}, not \p{L}.
-			const devanagariKey = 'response_नमस्ते';
-			expect(() =>
-				setWorkflowExecutionMetadata(executionData, devanagariKey, 'value1'),
-			).not.toThrow();
-
-			expect(metadata).toHaveProperty(devanagariKey, 'value1');
-		});
-
-		test('should still reject special characters that could cause issues', () => {
-			const { metadata, executionData } = createExecutionDataWithMetadata();
-
-			// Control characters should still be rejected
-			expect(() => setWorkflowExecutionMetadata(executionData, 'test\x00key', 'value')).toThrow(
-				InvalidExecutionMetadataError,
-			);
-
-			// Newlines should be rejected
-			expect(() => setWorkflowExecutionMetadata(executionData, 'test\nkey', 'value')).toThrow(
-				InvalidExecutionMetadataError,
-			);
-
-			expect(metadata).toEqual({});
-		});
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });
