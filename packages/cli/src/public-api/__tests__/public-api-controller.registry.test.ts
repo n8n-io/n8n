@@ -21,6 +21,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,
