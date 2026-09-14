@@ -10,9 +10,10 @@ import type {
 } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { toITaskData } from '@test/helpers';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, ExecutionContextService } from 'n8n-core';
 import {
 	NodeConnectionTypes,
+	SCHEDULE_TRIGGER_NODE_TYPE,
 	type IConnections,
 	type INode,
 	type INodeExecutionData,
@@ -41,6 +42,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowRunAsBindingService } from '@/workflows/run-as/workflow-run-as-binding.service';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -112,6 +114,8 @@ describe('WorkflowExecutionService', () => {
 	const executionCrashService = mock<ExecutionCrashService>();
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
+	const executionContextService = mock<ExecutionContextService>();
+	const workflowRunAsBindingService = mock<WorkflowRunAsBindingService>();
 	const workflowExecutionService = new WorkflowExecutionService(
 		logger,
 		errorReporter,
@@ -125,12 +129,13 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mockOwnershipService(),
-		mock(),
+		executionContextService,
 		mock(),
 		mock(),
 		pollCursorService,
 		executionCrashService,
 		mock(),
+		workflowRunAsBindingService,
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -177,6 +182,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				mock(),
 			);
 			const node = mock<INode>();
 			const workflow = mock<IWorkflowBase>({
@@ -220,6 +226,76 @@ describe('WorkflowExecutionService', () => {
 				undefined,
 				undefined,
 			);
+		});
+
+		describe('run-as: sealing the bound user into a scheduled execution', () => {
+			const scheduleNode = mock<INode>({ type: SCHEDULE_TRIGGER_NODE_TYPE });
+			const workflow = mock<IWorkflowBase>({ id: 'wf-run-as', nodes: [scheduleNode] });
+
+			beforeEach(() => {
+				workflowRunAsBindingService.isEnabled.mockReset();
+				workflowRunAsBindingService.getActive.mockReset();
+				executionContextService.buildRunAsIdentityCredentials.mockReset();
+				workflowRunner.run.mockClear();
+				workflowRunner.run.mockResolvedValue('fake-execution-id');
+			});
+
+			test('seals the bound user and the encrypted identity when the flag is on and a binding is active', async () => {
+				workflowRunAsBindingService.isEnabled.mockReturnValue(true);
+				workflowRunAsBindingService.getActive.mockResolvedValue({ userId: 'bound' });
+				executionContextService.buildRunAsIdentityCredentials.mockResolvedValue('sealed');
+
+				await workflowExecutionService.runWorkflow(workflow, scheduleNode, [[]], mock(), 'trigger');
+
+				expect(executionContextService.buildRunAsIdentityCredentials).toHaveBeenCalledWith(
+					'bound',
+					workflow.id,
+				);
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({ userId: 'bound', encryptedRunnerIdentity: 'sealed' }),
+					true,
+					undefined,
+					undefined,
+					undefined,
+				);
+			});
+
+			test('keeps the current behaviour when the flag is on but no binding is active', async () => {
+				workflowRunAsBindingService.isEnabled.mockReturnValue(true);
+				workflowRunAsBindingService.getActive.mockResolvedValue(null);
+				const fallbackAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+					userId: 'fallback-user',
+				});
+
+				await workflowExecutionService.runWorkflow(
+					workflow,
+					scheduleNode,
+					[[]],
+					fallbackAdditionalData,
+					'trigger',
+				);
+
+				expect(executionContextService.buildRunAsIdentityCredentials).not.toHaveBeenCalled();
+				const callArgs = workflowRunner.run.mock.calls[0][0];
+				expect(callArgs.userId).toBe('fallback-user');
+				expect('encryptedRunnerIdentity' in callArgs).toBe(false);
+			});
+
+			test('does not look up a binding when the node is not the Schedule Trigger', async () => {
+				workflowRunAsBindingService.isEnabled.mockReturnValue(true);
+
+				await workflowExecutionService.runWorkflow(workflow, webhookNode, [[]], mock(), 'trigger');
+
+				expect(workflowRunAsBindingService.getActive).not.toHaveBeenCalled();
+			});
+
+			test('does not look up a binding when the flag is off', async () => {
+				workflowRunAsBindingService.isEnabled.mockReturnValue(false);
+
+				await workflowExecutionService.runWorkflow(workflow, scheduleNode, [[]], mock(), 'trigger');
+
+				expect(workflowRunAsBindingService.getActive).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -627,6 +703,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				mock(),
 			);
 			const user = mock<User>({ id: 'user-id' });
 			const workflowData = mock<IWorkflowBase>({ nodes: [webhookNode], connections: {} });
@@ -957,6 +1034,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -1030,6 +1108,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -1206,6 +1285,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 		});
 
@@ -1365,6 +1445,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1511,6 +1592,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1618,6 +1700,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1674,6 +1757,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1715,6 +1799,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 				mock(),
 			);

@@ -33,6 +33,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	OperationalError,
+	SCHEDULE_TRIGGER_NODE_TYPE,
 	SubworkflowOperationError,
 	UnexpectedError,
 	Workflow,
@@ -54,6 +55,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowRunAsBindingService } from '@/workflows/run-as/workflow-run-as-binding.service';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -80,6 +82,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly workflowRunAsBindingService: WorkflowRunAsBindingService,
 	) {}
 
 	async runWorkflow(
@@ -112,18 +115,41 @@ export class WorkflowExecutionService {
 			workflowData.id,
 		);
 
+		// A scheduled workflow with an active run-as binding executes as the bound user.
+		// The seal, not this user id, is what credential resolution trusts.
+		const runAs = await this.resolveRunAs(workflowData.id, node);
+
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
-			userId: additionalData.userId,
+			userId: runAs?.userId ?? additionalData.userId,
 			executionMode: mode,
 			executionData,
 			workflowData,
 			deduplicationKey,
 			projectId,
 			projectName,
+			...(runAs ? { encryptedRunnerIdentity: runAs.encryptedRunnerIdentity } : {}),
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
+
+	/**
+	 * Resolves the run-as identity for a scheduled trigger. Returns null for
+	 * every other node, and for a Schedule Trigger with the flag off or no
+	 * active binding, so the caller keeps today's behaviour unchanged.
+	 */
+	private async resolveRunAs(
+		workflowId: string,
+		node: INode,
+	): Promise<{ userId: string; encryptedRunnerIdentity: string } | null> {
+		if (!this.workflowRunAsBindingService.isEnabled()) return null;
+		if (node.type !== SCHEDULE_TRIGGER_NODE_TYPE) return null;
+		const binding = await this.workflowRunAsBindingService.getActive(workflowId);
+		if (!binding) return null;
+		const encryptedRunnerIdentity =
+			await this.executionContextService.buildRunAsIdentityCredentials(binding.userId, workflowId);
+		return { userId: binding.userId, encryptedRunnerIdentity };
 	}
 
 	/**
