@@ -13,6 +13,7 @@ import {
 	dmMessage,
 	selfMessage,
 	TEAMS_DM_CONVERSATION_ID,
+	TEAMS_SERVICE_URL,
 	TEAMS_USER_ID,
 } from './helpers/teams/synthetic-fixtures';
 import {
@@ -117,8 +118,14 @@ runSharedChannelIntegrationContract({
 
 // Teams has no recorded session yet (no tenant in CI), so the contract runs
 // against hand-built activities driven through the real adapter.
-const teamsThreadId =
-	'teams:YToxZG1fY29udmVyc2F0aW9uX2FsaWNl:aHR0cHM6Ly9zbWJhLnRyYWZmaWNtYW5hZ2VyLm5ldC9hbWVy';
+//
+// The adapter encodes its thread id as base64 conversation + service URL;
+// deriving it from the fixture constants keeps the two from drifting apart.
+const teamsThreadId = [
+	'teams',
+	Buffer.from(TEAMS_DM_CONVERSATION_ID).toString('base64url'),
+	Buffer.from(TEAMS_SERVICE_URL).toString('base64url'),
+].join(':');
 
 runSharedChannelIntegrationContract({
 	name: 'Microsoft Teams',
