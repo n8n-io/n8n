@@ -1005,23 +1005,71 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(runtime.messages.map((m) => m.id)).toEqual(['row-late']);
 	});
 
-	test('loadEarlierMessages stops the walk when an older page comes back empty', async () => {
+	test('loadEarlierMessages stops the walk when the server reports no more rows', async () => {
 		const runtime = activeRuntime(registry);
 		await hydrateWithMoreHistory(runtime);
 
-		// Server still reports more, but this page yielded nothing — trusting the
-		// flag alone would leave the control armed on an unchanged list forever.
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: 'thread-1',
 			messages: [],
 			nextEventId: 1,
-			hasMore: true,
+			hasMore: false,
 		});
 
 		await runtime.loadEarlierMessages();
 
 		expect(runtime.hasMoreHistory).toBe(false);
 		expect(runtime.messages).toHaveLength(1);
+	});
+
+	test('loadEarlierMessages reads past a page whose rows all parse away', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// A tool-heavy page: the rows exist, so the server still reports more, but
+		// the parser drops every one of them. The readable turn is a page older.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [],
+			nextEventId: 1,
+			hasMore: true,
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-older', 'm-newest']);
+		expect(runtime.hasMoreHistory).toBe(false);
+	});
+
+	test('loadEarlierMessages reads past a page the newest page already showed', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// Every row on this page is already rendered, so the page adds nothing.
+		// The walk must not stall on it either.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-newest', '2026-01-05T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: true,
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-older', 'm-newest']);
+		expect(runtime.hasMoreHistory).toBe(false);
 	});
 
 	test('loadEarlierMessages does not resurrect an approval prompt from an older turn', async () => {

@@ -1781,7 +1781,7 @@ async function dismissComposerContextChip() {
 .loadEarlier {
 	display: flex;
 	justify-content: center;
-	padding-bottom: var(--spacing-2xs);
+	padding-bottom: var(--spacing--2xs);
 }
 
 .messageList {

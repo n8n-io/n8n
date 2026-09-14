@@ -97,6 +97,10 @@ const MAX_SEEN_EVENT_IDS = 1000;
 /** Silence window after which an active run with no stream traffic counts as stalled. */
 const GENERATION_STALL_TIMEOUT_MS = 60_000;
 
+/** Pages one click may read while looking for one that adds a message. Reaching
+ *  the cap leaves the control armed, so the reader can ask for the next span. */
+const MAX_HISTORY_PAGE_READS_PER_CLICK = 10;
+
 /**
  * Cross-runtime hooks the store wires up at creation time.
  *
@@ -1165,7 +1169,7 @@ export function createThreadRuntime(
 	}
 
 	/**
-	 * Walks one page further back and prepends it.
+	 * Walks back until a page adds messages, then prepends it.
 	 *
 	 * The endpoint pages by offset, so rows appended since the newest page was
 	 * read shift every later page. That shows up as overlap, never as a gap, so
@@ -1181,64 +1185,74 @@ export function createThreadRuntime(
 		if (hydrationPromise) await hydrationPromise;
 
 		const capturedHydrationGeneration = hydrationGeneration;
-		const page = oldestLoadedPage + 1;
 		isLoadingEarlierMessages.value = true;
 
 		try {
-			const result = await fetchThreadMessagesApi(
-				rootStore.restApiContext,
-				threadId,
-				INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
-				page,
-			);
-			// Reset or switched away while the page was in flight.
-			if (capturedHydrationGeneration !== hydrationGeneration) return;
+			// A page can hold rows and still add nothing: the parser drops tool and
+			// system rows, and a turn straddling the seam is already rendered. The
+			// rows are real, so the server still reports more — keep walking rather
+			// than ending on history the reader can still reach.
+			for (let read = 0; read < MAX_HISTORY_PAGE_READS_PER_CLICK; read++) {
+				const page = oldestLoadedPage + 1;
+				const result = await fetchThreadMessagesApi(
+					rootStore.restApiContext,
+					threadId,
+					INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+					page,
+				);
+				// Reset or switched away while the page was in flight.
+				if (capturedHydrationGeneration !== hydrationGeneration) return;
 
-			const renderedIds = new Set(messages.value.map((m) => m.id));
-			const renderedGroupIds = new Set(
-				messages.value.flatMap((m) => (m.messageGroupId ? [m.messageGroupId] : [])),
-			);
-			// Matched on group id as well as row id: the parser keeps the newest row
-			// of a turn *within a page*, so a turn straddling the boundary arrives
-			// here under a different row id. The rendered copy wins — it comes from
-			// a newer page, so it holds the turn's later rows and the fuller tree,
-			// and a duplicate earlier in the array would also capture the live
-			// run-sync lookup, which takes the first matching message.
-			const older = result.messages.filter(
-				(m) =>
-					!renderedIds.has(m.id) &&
-					!(m.messageGroupId !== undefined && renderedGroupIds.has(m.messageGroupId)),
-			);
+				const renderedIds = new Set(messages.value.map((m) => m.id));
+				const renderedGroupIds = new Set(
+					messages.value.flatMap((m) => (m.messageGroupId ? [m.messageGroupId] : [])),
+				);
+				// Matched on group id as well as row id: the parser keeps the newest
+				// row of a turn *within a page*, so a turn straddling the boundary
+				// arrives here under a different row id. The rendered copy wins — it
+				// comes from a newer page, so it holds the turn's later rows and the
+				// fuller tree, and a duplicate earlier in the array would also capture
+				// the live run-sync lookup, which takes the first matching message.
+				const older = result.messages.filter(
+					(m) =>
+						!renderedIds.has(m.id) &&
+						!(m.messageGroupId !== undefined && renderedGroupIds.has(m.messageGroupId)),
+				);
 
-			oldestLoadedPage = page;
-			// A page that returned no rows ends the walk: trusting the server flag
-			// alone would leave the control armed on a list that never grows.
-			hasMoreHistory.value = result.hasMore === true && result.messages.length > 0;
-			// `nextEventId` and `projectId` are whole-thread facts and already
-			// resolved by the first page, so an older page's copies are ignored.
+				oldestLoadedPage = page;
+				// The server counts this on rows, before the parse drops the
+				// unreadable ones, so it stays true while older rows remain.
+				hasMoreHistory.value = result.hasMore === true;
+				// `nextEventId` and `projectId` are whole-thread facts and already
+				// resolved by the first page, so an older page's copies are ignored.
 
-			if (older.length === 0) return;
+				if (older.length === 0) {
+					if (hasMoreHistory.value) continue;
+					return;
+				}
 
-			// Settled before routing adopts the trees, so the run state is built
-			// from the settled shape rather than a perpetually active one.
-			for (const msg of older) {
-				if (msg.agentTree) settleHistoricalTree(msg.agentTree, resolvedConfirmationIds);
+				// Settled before routing adopts the trees, so the run state is built
+				// from the settled shape rather than a perpetually active one.
+				for (const msg of older) {
+					if (msg.agentTree) settleHistoricalTree(msg.agentTree, resolvedConfirmationIds);
+				}
+
+				// Only groups the rendered messages do not already own: rebuilding a
+				// live group from an older page's tree would orphan the tree on screen
+				// that replayed and live events mutate.
+				const routing = buildRoutingFromMessages(older);
+				routing.runStateByGroupId.forEach((value, key) => {
+					if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
+				});
+				routing.groupIdByRunId.forEach((value, key) => {
+					if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
+				});
+				// `latestTasks` and `latestSetupItems` are deliberately left alone:
+				// both take the last value in the list they are given, so recomputing
+				// them over an older page would install stale state.
+				messages.value = [...older, ...messages.value];
+				return;
 			}
-
-			// Only groups the rendered messages do not already own: rebuilding a
-			// live group from an older page's tree would orphan the tree on screen
-			// that replayed and live events mutate.
-			const routing = buildRoutingFromMessages(older);
-			routing.runStateByGroupId.forEach((value, key) => {
-				if (!runStateByGroupId.has(key)) runStateByGroupId.set(key, value);
-			});
-			routing.groupIdByRunId.forEach((value, key) => {
-				if (!groupIdByRunId.has(key)) groupIdByRunId.set(key, value);
-			});
-			// `latestTasks` and `latestSetupItems` are deliberately left alone: both
-			// take the last value in the list they are given, so recomputing them
-			// over an older page would install stale state.
-			messages.value = [...older, ...messages.value];
 		} catch {
 			// Ignored — see the doc comment.
 		} finally {
