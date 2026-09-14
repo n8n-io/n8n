@@ -106,36 +106,36 @@ describe('PreferenceModal', () => {
 		it('always offers the user scope, which follows the user into every project', () => {
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Just you · all projects')?.className).not.toContain('is-disabled');
+			expect(findOption('Just you · All projects')).toBeDefined();
 		});
 
 		it('offers the personal project next to it, for preferences that apply only there', () => {
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Just you · personal project')?.className).not.toContain('is-disabled');
+			expect(findOption('Just you · Personal project')).toBeDefined();
 		});
 
-		it('disables "Everyone" for a user who is not an instance owner or admin', () => {
+		it('hides "Everyone" from a user who is not an instance owner or admin', () => {
 			usersStore.currentUser = currentUser([]);
 
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Everyone')?.className).toContain('is-disabled');
+			expect(findOption('Everyone')).toBeUndefined();
 		});
 
-		it('enables "Everyone" for an instance owner or admin', () => {
+		it('offers "Everyone" to an instance owner or admin', () => {
 			usersStore.currentUser = currentUser(['aiPreference:create']);
 
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Everyone')?.className).not.toContain('is-disabled');
+			expect(findOption('Everyone')).toBeDefined();
 		});
 
 		it('offers only the projects the user may write', () => {
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Writable Project')?.className).not.toContain('is-disabled');
-			expect(findOption('Read Only Project')?.className).toContain('is-disabled');
+			expect(findOption('Writable Project')).toBeDefined();
+			expect(findOption('Read Only Project')).toBeUndefined();
 		});
 
 		it('keeps the current scope selectable when editing, even without the create right there', () => {
@@ -154,7 +154,27 @@ describe('PreferenceModal', () => {
 
 			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
 
-			expect(findOption('Read Only Project')?.className).not.toContain('is-disabled');
+			expect(findOption('Read Only Project')).toBeDefined();
+		});
+
+		it('locks the scope when the row may be edited but not deleted, because a move deletes it', () => {
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-write',
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
+				scopes: ['aiPreference:read', 'aiPreference:update'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+
+			// The row stays where it is; the content is still editable.
+			expect(scopeOptions()).toHaveLength(1);
+			expect(findOption('Writable Project')).toBeDefined();
 		});
 
 		it("adds another user's row as its own option, so an admin can edit it in place", () => {
@@ -173,7 +193,7 @@ describe('PreferenceModal', () => {
 
 			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
 
-			expect(findOption('Jane Doe · all projects')?.className).not.toContain('is-disabled');
+			expect(findOption('Jane Doe · All projects')).toBeDefined();
 		});
 	});
 
@@ -369,7 +389,7 @@ describe('PreferenceModal', () => {
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
 				'Only here.',
 			);
-			await userEvent.click(findOption('Just you · personal project')!);
+			await userEvent.click(findOption('Just you · Personal project')!);
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.createPreference).toHaveBeenCalledWith({

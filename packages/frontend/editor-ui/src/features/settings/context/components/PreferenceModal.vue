@@ -32,6 +32,7 @@ import {
 	preferenceAudience,
 	preferenceScope,
 	preferenceUserName,
+	toPreferencePermissions,
 } from '../context.utils';
 
 // The modal registry mounts this and hands the payload through `data`, so the
@@ -118,7 +119,8 @@ const contentValidationRules: Array<Rule | RuleGroup> = [
  */
 const trimmedContent = computed(() => form.content.trim());
 
-type ScopeOption = { value: string; label: string; icon: IconOrEmoji; disabled: boolean };
+/** `usable` says whether the caller may create a preference at that target. */
+type ScopeOption = { value: string; label: string; icon: IconOrEmoji; usable: boolean };
 
 /**
  * The option for the row's current target when the caller's own list lacks it: an
@@ -134,7 +136,7 @@ function currentTargetOption(editing: Preference): ScopeOption {
 				interpolate: { name: preferenceUserName(audience.user) },
 			}),
 			icon: USER_ICON,
-			disabled: false,
+			usable: true,
 		};
 	}
 	if (audience.kind === 'personalProject') {
@@ -144,14 +146,14 @@ function currentTargetOption(editing: Preference): ScopeOption {
 				interpolate: { name: audience.ownerName },
 			}),
 			icon: USER_ICON,
-			disabled: false,
+			usable: true,
 		};
 	}
 	return {
 		value: initialScope,
 		label: editing.project?.name ?? editing.projectId ?? '',
 		icon: editing.project?.icon ?? DEFAULT_PROJECT_ICON,
-		disabled: false,
+		usable: true,
 	};
 }
 
@@ -161,7 +163,7 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 			value: USER_SCOPE_VALUE,
 			label: i18n.baseText('settings.context.preferences.scope.user'),
 			icon: USER_ICON,
-			disabled: false,
+			usable: true,
 		},
 	];
 
@@ -173,7 +175,7 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 			value: projectScopeValue(personal.id),
 			label: i18n.baseText('settings.context.preferences.scope.personalProject'),
 			icon: USER_ICON,
-			disabled: !canWriteProjectScope(personal.id),
+			usable: canWriteProjectScope(personal.id),
 		});
 	}
 
@@ -181,7 +183,7 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 		value: INSTANCE_SCOPE_VALUE,
 		label: i18n.baseText('settings.context.preferences.scope.instance'),
 		icon: INSTANCE_ICON,
-		disabled: !canWriteInstanceScope(),
+		usable: canWriteInstanceScope(),
 	});
 
 	options.push(
@@ -191,7 +193,7 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 				value: projectScopeValue(project.id),
 				label: project.name ?? project.id,
 				icon: project.icon ?? DEFAULT_PROJECT_ICON,
-				disabled: !canWriteProjectScope(project.id),
+				usable: canWriteProjectScope(project.id),
 			})),
 	);
 
@@ -200,11 +202,13 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 		options.unshift(currentTargetOption(editing));
 	}
 
-	// Moving to a target needs the create right there, which `disabled` reflects.
-	// Staying put needs only the update right the Edit button already checked.
-	return options.map((option) =>
-		option.value === initialScope ? { ...option, disabled: false } : option,
-	);
+	// Targets the caller cannot use are left out rather than greyed out. A move
+	// deletes the row where it is and creates it at the target, so it needs the
+	// delete right on the row and the create right at the target. Staying put needs
+	// only the update right the Edit button already checked, so the current target
+	// always stays.
+	const canLeave = !editing || toPreferencePermissions(editing).delete;
+	return options.filter((option) => option.value === initialScope || (canLeave && option.usable));
 });
 
 const selectedIcon = computed<IconOrEmoji>(
@@ -335,7 +339,6 @@ onMounted(() => {
 							:key="option.value"
 							:value="option.value"
 							:label="option.label"
-							:disabled="option.disabled"
 						>
 							<div :class="$style.optionContent">
 								<N8nText v-if="option.icon.type === 'emoji'" :class="$style.emoji">{{

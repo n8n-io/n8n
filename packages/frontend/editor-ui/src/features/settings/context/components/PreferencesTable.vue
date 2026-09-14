@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nDataTableServer, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nDataTableServer, N8nTooltip } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 
+import PreferenceContentCell from './PreferenceContentCell.vue';
 import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
@@ -101,7 +102,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 			</template>
 
 			<template #[`item.content`]="{ item }">
-				<N8nText :class="$style.text">{{ item.content }}</N8nText>
+				<PreferenceContentCell :content="item.content" />
 			</template>
 
 			<template #[`item.scope`]="{ item }">
@@ -141,12 +142,6 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 </template>
 
 <style lang="scss" module>
-.text {
-	display: block;
-	white-space: normal;
-	overflow-wrap: anywhere;
-}
-
 .actions {
 	display: flex;
 	justify-content: flex-end;

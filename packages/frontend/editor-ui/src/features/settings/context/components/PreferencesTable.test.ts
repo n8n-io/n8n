@@ -74,7 +74,7 @@ describe('PreferencesTable', () => {
 		]);
 
 		const badges = getAllByTestId('preference-scope-badge');
-		expect(badges[0]).toHaveTextContent('Just you · all projects');
+		expect(badges[0]).toHaveTextContent('Just you · All projects');
 		expect(badges[1]).toHaveTextContent('Everyone');
 		expect(badges[2]).toHaveTextContent('Darwin');
 	});
@@ -106,9 +106,9 @@ describe('PreferencesTable', () => {
 		]);
 
 		const badges = getAllByTestId('preference-scope-badge');
-		expect(badges[0]).toHaveTextContent('Jane Doe · all projects');
-		expect(badges[1]).toHaveTextContent('John Roe · personal project');
-		expect(badges[2]).toHaveTextContent('Just you · personal project');
+		expect(badges[0]).toHaveTextContent('Jane Doe · All projects');
+		expect(badges[1]).toHaveTextContent('John Roe · Personal project');
+		expect(badges[2]).toHaveTextContent('Just you · Personal project');
 	});
 
 	it('enables both actions when the row carries write scopes', () => {
