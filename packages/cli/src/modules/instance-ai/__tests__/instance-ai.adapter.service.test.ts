@@ -78,6 +78,8 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5479,7 +5481,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-		[CONTEXT_PREFERENCES_FLAG]: true,
+		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5506,7 +5508,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
-			[CONTEXT_PREFERENCES_FLAG]: false,
+			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5528,6 +5530,16 @@ describe('resolveExperimentGates', () => {
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
 			folderExplorationEnabled: false,
+		});
+	});
+
+	// The preferences flag is multivariate too, so a boolean `true` must not
+	// open the gate.
+	it('does not open the AI preferences gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [CONTEXT_PREFERENCES_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			aiPreferencesEnabled: false,
 		});
 	});
 
