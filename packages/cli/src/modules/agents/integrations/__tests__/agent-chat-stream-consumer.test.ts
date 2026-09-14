@@ -14,9 +14,10 @@ function makeStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 
 function makeConsumer(
 	postErrorToThread: (thread: Thread<unknown, unknown> | null, error: unknown) => Promise<void>,
+	disableStreaming = true,
 ) {
 	return new AgentChatStreamConsumer({
-		disableStreaming: true,
+		disableStreaming,
 		logger: mock<Logger>(),
 		postErrorToThread,
 		handleSuspension: vi.fn().mockResolvedValue('skipped'),
@@ -26,6 +27,55 @@ function makeConsumer(
 }
 
 const thread = mock<Thread<unknown, unknown>>();
+
+describe('AgentChatStreamConsumer — response lifecycle', () => {
+	it.each([
+		{ mode: 'buffered', disableStreaming: true },
+		{ mode: 'native streaming', disableStreaming: false },
+	])(
+		'$mode delivery completes before the finished stream cleans up',
+		async ({ disableStreaming }) => {
+			const order: string[] = [];
+			const bufferedThread = mock<Thread<unknown, unknown>>();
+			bufferedThread.post.mockImplementation(async (content) => {
+				if (content !== null && typeof content === 'object' && Symbol.asyncIterator in content) {
+					for await (const _delta of content) {
+						// Consume the native stream.
+					}
+				}
+				order.push('post');
+				return undefined as never;
+			});
+			const rateLimitResult = {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED,
+					message: 'The integration has exceeded its rate limit.',
+				},
+			};
+			const stream = (async function* () {
+				try {
+					yield { type: 'text-delta', id: 'text-1', delta: 'Done' } as const;
+					yield {
+						type: 'tool-result',
+						toolCallId: 'tool-1',
+						toolName: 'slack_action',
+						output: rateLimitResult,
+					} as const;
+					yield { type: 'finish', finishReason: 'stop' } as const;
+				} finally {
+					order.push('cleanup');
+				}
+			})();
+
+			await makeConsumer(async () => {
+				order.push('fallback');
+			}, disableStreaming).consume(stream, bufferedThread);
+
+			expect(order).toEqual(['post', 'fallback', 'cleanup']);
+		},
+	);
+});
 
 describe('AgentChatStreamConsumer — rate-limit fallback', () => {
 	it('posts a fallback error after a RATE_LIMIT_EXCEEDED tool result', async () => {

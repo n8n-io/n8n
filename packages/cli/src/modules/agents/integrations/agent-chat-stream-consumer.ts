@@ -215,9 +215,13 @@ export class AgentChatStreamConsumer {
 						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
 						break;
+					case 'finish':
+						await responseLifecycle.finish();
+						await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+						break;
 					default:
-						// Ignore non-user-visible chunks (reasoning, finish,
-						// tool-input-*, start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, tool-input-*,
+						// start-step, finish-step, etc.)
 						break;
 				}
 			}
@@ -303,11 +307,13 @@ export class AgentChatStreamConsumer {
 		thread: Thread<unknown, unknown>,
 		throwOnDeliveryError = false,
 	): Promise<void> {
-		if (!state.fallbackSource) return;
+		const fallbackSource = state.fallbackSource;
+		if (!fallbackSource) return;
+		state.fallbackSource = null;
 		// Earlier output only excuses a tool error (the agent's own text explains
 		// it). A dropped approval card is never explained by prior text — the run
 		// stays suspended, so the user must be told to retry.
-		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
+		if (fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
 		// 'rate-limit' and 'suspension' always post.
 		await lifecycle.startDiscreteResponse();
 		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
@@ -397,6 +403,15 @@ export class AgentChatStreamConsumer {
 							// silence can be honored for already-buffered text too.
 							buffer = '';
 						}
+						break;
+					case 'finish':
+						await flushBuffer();
+						await this.postFallbackIfNeeded(
+							responseState,
+							responseLifecycle,
+							thread,
+							options.throwOnDeliveryError,
+						);
 						break;
 					default:
 						break;

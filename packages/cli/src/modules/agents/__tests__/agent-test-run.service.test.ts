@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
+import { AgentThreadBusyError, type AgentTurnQueueService } from '../agent-turn-queue.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -59,6 +60,17 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const agentTurnQueueService = mock<AgentTurnQueueService>();
+	agentTurnQueueService.tryRunNow.mockImplementation(async ({ threadId }) => ({
+		executionId: 'execution-1',
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	}));
+	agentExecutionOrchestratorService.resolveResumeThread.mockImplementation(
+		async ({ expectedMemory }) => expectedMemory?.threadId ?? 'session-1',
+	);
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
@@ -68,11 +80,13 @@ function makeService() {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 			n8nCheckpointStorage,
+			agentTurnQueueService,
 		),
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		n8nCheckpointStorage,
+		agentTurnQueueService,
 	};
 }
 
@@ -112,7 +126,25 @@ describe('AgentTestRunService', () => {
 					resourceId: 'draft-chat:user-1',
 				},
 			}),
+			expect.anything(),
 		);
+	});
+
+	it('does not start a draft turn while its session is busy', async () => {
+		const { service, agentTurnQueueService, agentExecutionOrchestratorService } = makeService();
+		agentTurnQueueService.tryRunNow.mockResolvedValue(null);
+
+		await expect(
+			service.executeDraftRun({
+				agentId,
+				projectId,
+				message: 'Hi',
+				sessionId: 'session-1',
+				user,
+				credentialProvider,
+			}),
+		).rejects.toBeInstanceOf(AgentThreadBusyError);
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
 	it('returns partial text and every suspension for a continued session', async () => {
@@ -233,6 +265,7 @@ describe('AgentTestRunService', () => {
 					resourceId: 'draft-chat:user-1',
 				},
 			}),
+			expect.anything(),
 		);
 	});
 

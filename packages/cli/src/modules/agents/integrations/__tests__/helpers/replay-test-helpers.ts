@@ -6,6 +6,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatBridge } from '../../agent-chat-bridge';
+import { AgentTurnQueueService } from '../../../agent-turn-queue.service';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
 import type { ComponentMapper } from '../../component-mapper';
@@ -210,6 +211,15 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
 	Container.set(ChatIntegrationRegistry, registry);
+	Container.set(AgentTurnQueueService, {
+		tryRunNow: vi.fn(async ({ threadId }) => ({
+			executionId: 'execution-1',
+			threadId,
+			abortSignal: new AbortController().signal,
+			release: vi.fn(async () => {}),
+			fail: vi.fn(async () => {}),
+		})),
+	} as never);
 
 	let stream = params.stream ?? [
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
@@ -218,6 +228,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const agentExecutor = {
 		executeForChatPublished: vi.fn(() => toStream(stream)),
 		resumeForChat: vi.fn(() => toStream(stream)),
+		resolveResumeThread: vi.fn().mockResolvedValue('agent-1:thread-1'),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 

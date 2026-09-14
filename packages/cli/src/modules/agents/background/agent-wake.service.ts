@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
@@ -14,6 +15,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentTurnQueueService } from '../agent-turn-queue.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -21,9 +23,7 @@ import {
 } from './background-job-messages';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
@@ -50,12 +50,11 @@ export class AgentWakeService {
 
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
-		private readonly executionRepository: AgentExecutionRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly userRepository: UserRepository,
-		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
+		private readonly turnQueueService: AgentTurnQueueService,
 		private readonly lockService: LockService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -165,17 +164,6 @@ export class AgentWakeService {
 			return;
 		}
 
-		// Execution records keep their suspended status after a resume.
-		// Check the checkpoint store to determine whether the thread is still suspended.
-		if (
-			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
-		) {
-			return;
-		}
-
 		const agent = await this.agentRepository.findById(first.parentAgentId);
 		if (!agent) {
 			this.recordFailure(threadId, generation, 'Background job parent agent no longer exists');
@@ -199,30 +187,49 @@ export class AgentWakeService {
 		}
 
 		try {
-			this.activeWakes.add(threadId);
-			try {
-				await this.orchestrator.executeForWake({
+			// A wake yields to user turns: nothing is written while the thread runs
+			// or has rows waiting, and the next finished turn requests it again.
+			const claim = await this.turnQueueService.tryRunNow(
+				{
+					threadId,
 					agentId: agent.id,
 					projectId: agent.projectId,
-					message: formatWakeMessage(jobs),
-					memory: { threadId, resourceId: first.parentResourceId },
-					identity,
-					abortSignal: signal,
-				});
+					userMessage: null,
+					source: identity.type === 'draft' ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType,
+					runContext: { kind: 'message' },
+				},
+				{ wake: true },
+			);
+			if (!claim) return;
+
+			this.activeWakes.add(threadId);
+			try {
+				await this.orchestrator.executeForWake(
+					{
+						agentId: agent.id,
+						projectId: agent.projectId,
+						message: formatWakeMessage(jobs),
+						memory: { threadId, resourceId: first.parentResourceId },
+						identity,
+						abortSignal: signal,
+						markResultsConsumed: async () => {
+							await this.jobRepository.markMailConsumed(
+								threadId,
+								jobs.map((job) => job.id),
+							);
+						},
+					},
+					claim,
+				);
 			} finally {
 				this.activeWakes.delete(threadId);
 			}
 
-			if (signal.aborted) return;
-			await this.jobRepository.markMailConsumed(
-				threadId,
-				jobs.map((job) => job.id),
-			);
 			this.failures.delete(threadId);
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
-		} catch {
+		} catch (error) {
 			if (signal.aborted) return;
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.

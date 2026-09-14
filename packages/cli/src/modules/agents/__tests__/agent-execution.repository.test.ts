@@ -12,7 +12,7 @@ describe('AgentExecutionRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentExecutionRepository(mockDataSource as never);
+		repository = new AgentExecutionRepository(mockDataSource as never, {} as never);
 	});
 
 	describe('findLatestSuspendedByThreadId', () => {

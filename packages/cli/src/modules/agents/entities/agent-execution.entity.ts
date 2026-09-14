@@ -12,6 +12,15 @@ import type { TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
 export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+
+export type AgentTurnRunContext =
+	| { kind: 'message' }
+	| {
+			kind: 'resume';
+			runId: string;
+			toolCallId: string;
+			resumeData: unknown;
+	  };
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -28,6 +37,10 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
+@Index(['threadId'], {
+	unique: true,
+	where: '"runContext" IS NOT NULL AND "status" = \'running\'',
+})
 export class AgentExecution extends WithTimestampsAndStringId {
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
@@ -41,6 +54,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
+
+	/** Set while a top-level turn owns the thread; null once the run ends. */
+	@JsonColumn({ nullable: true })
+	runContext: AgentTurnRunContext | null;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;

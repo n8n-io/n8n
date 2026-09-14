@@ -9,6 +9,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { AgentTurnQueueService } from '../../agent-turn-queue.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -114,9 +115,16 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		captured.push(config);
 		return toStream(chunks);
 	});
+	const resumeForChat = vi.fn((config: { beforeResume?: () => Promise<void> }) =>
+		(async function* () {
+			await config.beforeResume?.();
+			yield* toStream(chunks);
+		})(),
+	);
 	return {
 		executeForChatPublished,
-		resumeForChat: vi.fn(() => toStream(chunks)),
+		resumeForChat,
+		resolveResumeThread: vi.fn().mockResolvedValue('agent-1:thread-1'),
 		captured,
 	};
 }
@@ -268,6 +276,15 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentTurnQueueService, {
+			tryRunNow: vi.fn(async ({ threadId }) => ({
+				executionId: 'execution-1',
+				threadId,
+				abortSignal: new AbortController().signal,
+				release: vi.fn(async () => {}),
+				fail: vi.fn(async () => {}),
+			})),
+		} as never);
 	});
 
 	afterEach(() => {
@@ -650,6 +667,48 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(
 				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
 			);
+		});
+
+		it('posts a claimed setup failure before failing the claim', async () => {
+			const order: string[] = [];
+			const claim = {
+				executionId: 'execution-1',
+				threadId: 'agent-1:thread-1',
+				abortSignal: new AbortController().signal,
+				release: vi.fn(async () => {}),
+				fail: vi.fn(async () => {
+					order.push('fail');
+				}),
+			};
+			Container.set(AgentTurnQueueService, {
+				tryRunNow: vi.fn().mockResolvedValue(claim),
+			} as never);
+			const integration = registry.get(bufferedIntegration.type);
+			if (!integration) throw new Error('Expected the buffered test integration');
+			Object.assign(integration, {
+				createBridgeExecutionContext: vi.fn().mockRejectedValue(new Error('setup failed')),
+			});
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+			const thread = makeThread();
+			thread.post.mockImplementation(async () => {
+				order.push('post');
+				return undefined;
+			});
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(order).toEqual(['post', 'fail']);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {
@@ -1702,7 +1761,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {
+		it('retains stored attachments when a claimed execution fails during setup', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
 			const handlers = makeBridge(agentExecutor, attachmentService);
@@ -1727,11 +1786,8 @@ describe('AgentChatBridge — consumeStream', () => {
 					],
 				});
 
-				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+				expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
 				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-				// The mention handler swallows the re-thrown error and reports it to
-				// the platform thread — the awaited call above resolving (rather than
-				// rejecting) is by design.
 				expect(thread.post).toHaveBeenCalledWith(
 					'⚠️ Something went wrong while processing your request. Please try again.',
 				);
@@ -2437,16 +2493,24 @@ describe('AgentChatBridge — consumeStream', () => {
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() =>
-					toStream([
-						{ type: 'reasoning-start', id: 'reasoning-1' },
-						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
-						{ type: 'reasoning-end', id: 'reasoning-1' },
-						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
-						{ type: 'text-delta', id: 't1', delta: 'response' },
-						{ type: 'finish', finishReason: 'stop' },
-					]),
+				resumeForChat: vi.fn((config: { beforeResume?: () => Promise<void> }) =>
+					(async function* () {
+						await config.beforeResume?.();
+						yield* toStream([
+							{ type: 'reasoning-start', id: 'reasoning-1' },
+							{
+								type: 'reasoning-delta',
+								id: 'reasoning-1',
+								delta: 'The tool was approved.',
+							},
+							{ type: 'reasoning-end', id: 'reasoning-1' },
+							{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+							{ type: 'text-delta', id: 't1', delta: 'response' },
+							{ type: 'finish', finishReason: 'stop' },
+						]);
+					})(),
 				),
+				resolveResumeThread: vi.fn().mockResolvedValue('agent-1:thread-1'),
 			};
 
 			new AgentChatBridge(
@@ -3208,6 +3272,15 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentTurnQueueService, {
+			tryRunNow: vi.fn(async ({ threadId }) => ({
+				executionId: 'execution-1',
+				threadId,
+				abortSignal: new AbortController().signal,
+				release: vi.fn(async () => {}),
+				fail: vi.fn(async () => {}),
+			})),
+		} as never);
 	});
 
 	afterEach(() => {

@@ -1,6 +1,13 @@
+import {
+	BaseRepository,
+	isUniqueConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { OperationalError } from 'n8n-workflow';
 
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
@@ -8,6 +15,18 @@ import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
 export type RunningAgentExecution = Pick<
 	AgentExecution,
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+/** Another running turn already claims this thread. */
+export class AgentThreadClaimConflictError extends OperationalError {
+	constructor() {
+		super('Another agent turn already holds this thread', { level: 'info' });
+	}
+}
+
+export type NewAgentExecution = Omit<
+	AgentExecution,
+	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'generateId' | 'setUpdateDate'
 >;
 
 type AgentExecutionFinalizationValues = Pick<
@@ -22,9 +41,9 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
@@ -39,12 +58,35 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
+	/** Insert a row, turning a duplicate thread claim into a domain error. */
+	async insertExecution(
+		values: NewAgentExecution,
+		ctx: OperationContext = {},
+	): Promise<AgentExecution> {
+		try {
+			return await this.managerFor(ctx).save(this.create(values));
+		} catch (error) {
+			if (values.runContext !== null && isUniqueConstraintError(error)) {
+				throw new AgentThreadClaimConflictError();
+			}
+			throw error;
+		}
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	/**
+	 * Refresh the liveness timestamp. With `claimedThreadId`, the update matches
+	 * only while the row still has queue context for that thread.
+	 */
+	async touchRunning(executionId: string, claimedThreadId?: string): Promise<boolean> {
+		const result = await this.update(
+			{
+				id: executionId,
+				status: 'running',
+				...(claimedThreadId ? { threadId: claimedThreadId, runContext: Not(IsNull()) } : {}),
+			},
+			{ updatedAt: new Date() },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -58,13 +100,26 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
+	/**
+	 * Move a running row to a terminal status. This also releases its thread
+	 * claim. With `staleBefore`, only a row without a heartbeat since then
+	 * matches, so a run that is alive again keeps its claim.
+	 */
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ id: executionId, status: 'running' },
-			values as QueryDeepPartialEntity<AgentExecution>,
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThan(staleBefore) } : {}),
+			},
+			{
+				...values,
+				runContext: null,
+			} as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
 	}
@@ -128,6 +183,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return new Map(rows.map((r) => [r.threadId, r.source]));
 	}
 
+	/** Status of each thread's latest turn. */
 	async findLatestStatusesByThreadIds(
 		threadIds: string[],
 	): Promise<Map<string, AgentExecutionStatus>> {

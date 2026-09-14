@@ -9,7 +9,7 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+	static readonly LIVENESS_GRACE_MS = AgentExecutionService.livenessGraceMs;
 
 	constructor(
 		private readonly logger: Logger,

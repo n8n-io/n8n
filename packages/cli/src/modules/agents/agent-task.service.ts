@@ -21,6 +21,7 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentTurnQueueService, type AgentTurnClaim } from './agent-turn-queue.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
@@ -71,6 +72,7 @@ export class AgentTaskService {
 		private readonly taskRunLockRepository: AgentTaskRunLockRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly agentTurnQueueService: AgentTurnQueueService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
@@ -618,18 +620,52 @@ export class AgentTaskService {
 			timezone: snapshot.timezone,
 		});
 
+		const resourceId = taskRunMemoryResourceId(taskId);
+		const claim = await this.claimTaskRun({
+			threadId,
+			agentId,
+			projectId,
+			userMessage: message,
+			source: 'task',
+			taskId,
+			taskVersionId: snapshot.versionId,
+		});
+		if (!claim) return;
 		await this.consumeTaskRun(
 			'Task run',
 			{ taskId, agentId, projectId },
-			this.agentExecutionOrchestratorService.executeForTaskPublished({
-				agentId,
-				projectId,
-				message,
-				memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
-				taskId,
-				taskVersionId: snapshot.versionId,
-			}),
+			this.agentExecutionOrchestratorService.executeForTaskPublished(
+				{
+					agentId,
+					projectId,
+					message,
+					memory: { threadId, resourceId },
+					taskId,
+					taskVersionId: snapshot.versionId,
+				},
+				claim,
+			),
 		);
+	}
+
+	/**
+	 * Claim the run's fresh thread. Every task run gets its own thread, so the
+	 * claim only fails when the same run id was started twice.
+	 */
+	private async claimTaskRun(
+		turn: Omit<Parameters<AgentTurnQueueService['tryRunNow']>[0], 'runContext'>,
+	): Promise<AgentTurnClaim | null> {
+		const claim = await this.agentTurnQueueService.tryRunNow({
+			...turn,
+			runContext: { kind: 'message' },
+		});
+		if (!claim) {
+			this.logger.warn('[AgentTaskService] Task run thread is already in use', {
+				taskId: turn.taskId,
+				threadId: turn.threadId,
+			});
+		}
+		return claim;
 	}
 
 	/**
@@ -697,7 +733,14 @@ export class AgentTaskService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		void this.executeNow(task, agent.projectId, user);
+		void this.executeNow(task, agent.projectId, user).catch((error: unknown) => {
+			this.logger.error('[AgentTaskService] Manual task run failed to start', {
+				taskId,
+				agentId,
+				projectId: agent.projectId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	}
 
 	private async executeNow(task: AgentTask, projectId: string, user: User): Promise<void> {
@@ -709,17 +752,30 @@ export class AgentTaskService {
 			projectId,
 		});
 
+		const resourceId = taskRunMemoryResourceId(task.id);
+		const claim = await this.claimTaskRun({
+			threadId,
+			agentId: task.agentId,
+			projectId,
+			userMessage: message,
+			source: 'task',
+			taskId: task.id,
+		});
+		if (!claim) return;
 		await this.consumeTaskRun(
 			'Manual task run',
 			{ taskId: task.id, agentId: task.agentId, projectId },
-			this.agentExecutionOrchestratorService.executeForTaskNow({
-				agentId: task.agentId,
-				projectId,
-				user,
-				message,
-				memory: { threadId, resourceId: taskRunMemoryResourceId(task.id) },
-				taskId: task.id,
-			}),
+			this.agentExecutionOrchestratorService.executeForTaskNow(
+				{
+					agentId: task.agentId,
+					projectId,
+					user,
+					message,
+					memory: { threadId, resourceId },
+					taskId: task.id,
+				},
+				claim,
+			),
 		);
 	}
 

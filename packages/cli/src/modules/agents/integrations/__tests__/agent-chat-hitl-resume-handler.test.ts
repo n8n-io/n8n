@@ -22,14 +22,33 @@ it.each([
 ])('settles a $name card in place before resuming the agent', async ({ callback, content }) => {
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
-	const resumeForChat = vi.fn(() => (async function* () {})());
+	const resumeRuntime = vi.fn();
+	const resumeForChat = vi.fn((config: { beforeResume?: () => Promise<void> }) =>
+		(async function* () {
+			await config.beforeResume?.();
+			resumeRuntime();
+			yield { type: 'finish' as const, finishReason: 'stop' as const };
+		})(),
+	);
+	const claim = {
+		executionId: 'execution-1',
+		threadId: 'agent-thread-1',
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
 	const handler = new AgentChatHitlResumeHandler({
 		agentId: 'agent-1',
 		projectId: 'project-1',
 		integration: { type: 'discord', credentialId: 'cred-1' },
-		agentService: { resumeForChat },
+		agentService: {
+			resumeForChat,
+			resolveResumeThread: vi.fn().mockResolvedValue('agent-thread-1'),
+		},
+		turnQueueService: { tryRunNow: vi.fn().mockResolvedValue(claim) },
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
+			peek: vi.fn().mockResolvedValue(callback),
 			resolve: vi.fn().mockResolvedValue(callback),
 		} as never,
 		deleteActionMessageBeforeResume: false,
@@ -43,7 +62,13 @@ it.each([
 		toAgentThreadId: () => ({ id: 'agent-thread-1' }) as never,
 		getPlatformAgentContext: () => ({}),
 		messageContextBridge: { updateLatest: vi.fn().mockResolvedValue(undefined) } as never,
-		streamConsumer: { consume: vi.fn().mockResolvedValue(undefined) } as never,
+		streamConsumer: {
+			consume: vi.fn(async (stream: AsyncIterable<unknown>) => {
+				for await (const _chunk of stream) {
+					// Consume the resume through its lifecycle.
+				}
+			}),
+		} as never,
 		createResumeExecutionContext: async () => ({}),
 	});
 
@@ -66,6 +91,6 @@ it.each([
 		content,
 	});
 	expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
-		resumeForChat.mock.invocationCallOrder[0],
+		resumeRuntime.mock.invocationCallOrder[0],
 	);
 });

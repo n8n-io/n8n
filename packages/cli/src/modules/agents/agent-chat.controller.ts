@@ -3,9 +3,9 @@ import {
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
+	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -34,6 +34,11 @@ import { AgentsBuilderService } from './builder/agents-builder.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
+
+function toSseError(error: unknown, fallback: string): AgentSseEvent {
+	const message = error instanceof Error ? error.message : fallback;
+	return { type: 'error', message };
+}
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -152,22 +157,20 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
-					agentId,
-					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftRun({
+				agentId,
+				projectId,
+				message,
+				attachments: storedAttachments,
+				user: req.user,
+				sessionId: threadId,
+				previewChat: true,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal: abortController.signal,
+			});
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
@@ -181,8 +184,7 @@ export class AgentChatController {
 					.catch(() => {});
 			}
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Chat failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);
@@ -207,31 +209,30 @@ export class AgentChatController {
 		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftResume({
+				agentId,
+				projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				user: req.user,
+				previewChat: true,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal: abortController.signal,
+			});
+			if (submitted.status === 'session_not_found') {
+				send({ type: 'error', message: 'Session not found' });
+				return;
+			}
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Resume failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);

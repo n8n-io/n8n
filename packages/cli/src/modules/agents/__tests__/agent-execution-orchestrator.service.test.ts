@@ -27,12 +27,12 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
-import { AgentWakeService } from '../background/agent-wake.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from '../tool-registry';
+import type { AgentTurnClaim } from '../agent-turn-queue.service';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -130,6 +130,20 @@ function makeRuntime(
 	};
 }
 
+/** A claimed row as the queue service hands it out; the orchestrator must release it. */
+function claimFor(
+	threadId: string,
+	executionId = 'execution-1',
+): AgentTurnClaim & { release: Mock; fail: Mock } {
+	return {
+		executionId,
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
+}
+
 function makeService(sandboxEnabled = false) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionService = mock<AgentExecutionService>();
@@ -153,10 +167,6 @@ function makeService(sandboxEnabled = false) {
 		replyTarget: { type: 'thread', threadId: 'slack:channel-1:1' },
 		updatedAt: new Date().toISOString(),
 	});
-	const wakeService = mock<AgentWakeService>();
-	Container.set(AgentWakeService, wakeService);
-
-	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -185,7 +195,6 @@ function makeService(sandboxEnabled = false) {
 		externalHooks,
 		agentSandboxRuntimeService,
 		agentRepository,
-		wakeService,
 		chatIntegrationService,
 		bridge,
 	};
@@ -237,9 +246,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		Container.reset();
 	});
 
-	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
+	it('records into the claimed row, releases the claim after finalize, and stops the runtime when the claim is lost', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		const claimLost = new AbortController();
+		const claim = { ...claimFor('thread-1', 'execution-running'), abortSignal: claimLost.signal };
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
 			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
@@ -248,26 +258,18 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				claim,
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
 
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
-			expect.any(Date),
-		);
-		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
-			executionService.recordTimelineSnapshot.mock.invocationCallOrder[0],
-		);
 		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
 			expect.objectContaining({
 				projectId,
@@ -282,9 +284,43 @@ describe('AgentExecutionOrchestratorService', () => {
 				record: expect.objectContaining({ assistantResponse: 'Working' }),
 			}),
 		);
-		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
-		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
-		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+		expect(claim.release).toHaveBeenCalledOnce();
+		expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			claim.release.mock.invocationCallOrder[0],
+		);
+
+		const runtimeSignal: AbortSignal = runtime.agent.stream.mock.calls[0][1].abortSignal;
+		expect(runtimeSignal.aborted).toBe(false);
+		claimLost.abort(new Error('claim lost'));
+		expect(runtimeSignal.aborted).toBe(true);
+	});
+
+	it('rejects a claim for another thread before anything runs', async () => {
+		const { service, executionService } = makeService();
+		const runtime = makeRuntime();
+		const claim = claimFor('thread-2');
+
+		await expect(
+			collect(
+				service.streamChatResponse({
+					claim,
+					getRuntime: async () => runtime,
+					agentId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+					projectId,
+					runType: 'test',
+					sandboxPrincipalHash: userPrincipalHash,
+				}),
+			),
+		).rejects.toThrow('does not belong to this thread');
+
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({ record: expect.objectContaining({ finishReason: 'error' }) }),
+		);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
 	const genieResult: StreamChunk = {
@@ -298,7 +334,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -311,15 +346,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				claim: claimFor('thread-1', 'execution-running'),
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
@@ -340,7 +374,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -355,15 +388,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				claim: claimFor('thread-1', 'execution-running'),
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
@@ -379,7 +411,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('skips the attribution the model already echoed into its reply', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
 			[
@@ -392,15 +423,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				claim: claimFor('thread-1', 'execution-running'),
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
@@ -411,7 +441,6 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
 		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
-		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(
 			[
@@ -431,15 +460,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const suspendedChunks = await collect(
 			service.streamChatResponse({
-				agentInstance: suspended.agent,
-				toolRegistry: suspended.toolRegistry,
-				mcpServerAttributions: suspended.mcpServerAttributions,
+				claim: claimFor('thread-1', 'execution-running'),
+				getRuntime: async () => suspended,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 			}),
 		);
@@ -455,18 +483,21 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		checkpointStorage.getStatus.mockResolvedValueOnce({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'resource-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(resumed);
 
 		const resumedChunks = await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { approved: true },
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { approved: true },
+				},
+				claimFor('thread-1', 'execution-running'),
+			),
 		);
 		expect(
 			resumedChunks.some(
@@ -491,17 +522,16 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 				abortSignal: abortController.signal,
+				claim: claimFor('thread-1'),
 			}),
 		);
 
@@ -518,11 +548,15 @@ describe('AgentExecutionOrchestratorService', () => {
 					}),
 				},
 				executionCounter: expect.any(Object),
-				abortSignal: abortController.signal,
+				abortSignal: expect.any(AbortSignal),
 				modelStreamIdleTimeoutMs: 90_000,
 				modelStreamFirstOutputTimeoutMs: 180_000,
 			}),
 		);
+		// The caller's signal is one input of the runtime's composed signal.
+		const runtimeSignal: AbortSignal = runtime.agent.stream.mock.calls[0][1].abortSignal;
+		abortController.abort();
+		expect(runtimeSignal.aborted).toBe(true);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
@@ -541,17 +575,16 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
 				onExecutionRecorded,
+				claim: claimFor('thread-1'),
 			}),
 		);
 
@@ -565,16 +598,15 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				getRuntime: async () => runtime,
 				agentId,
 				userId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
+				claim: claimFor('thread-1'),
 			}),
 		);
 
@@ -594,14 +626,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				message: 'hello',
-				user,
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-				source: 'instance-ai',
-			}),
+			service.executeForChat(
+				{
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+					source: 'instance-ai',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
@@ -647,6 +682,31 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('releases the runtime lease when chat message context preparation fails', async () => {
+		const { service, runtimeCacheService, integrationMessageContextService } = makeService();
+		const runtime = makeRuntime();
+		const error = new Error('Failed to save message context');
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		integrationMessageContextService.setLatest.mockRejectedValue(error);
+
+		await expect(
+			collect(
+				service.executeForChat(
+					{
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+					},
+					claimFor('thread-1'),
+				),
+			),
+		).rejects.toBe(error);
+
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(runtime.agent);
+	});
+
 	it('adds full tool configuration to preview approval payloads only', async () => {
 		const { service, runtimeCacheService } = makeService();
 		const approvalChunk: StreamChunk = {
@@ -678,23 +738,29 @@ describe('AgentExecutionOrchestratorService', () => {
 			.mockResolvedValueOnce(publishedRuntime);
 
 		const previewChunks = await collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				message: 'check the ledger',
-				user,
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-			}),
+			service.executeForChat(
+				{
+					agentId,
+					projectId,
+					message: 'check the ledger',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				},
+				claimFor('thread-1'),
+			),
 		);
 		const publishedChunks = await collect(
-			service.executeForChatPublished({
-				agentId,
-				projectId,
-				message: 'check the ledger',
-				memory: { threadId: 'thread-2', resourceId: 'platform-user-1' },
-				integrationType: 'slack',
-				sandboxPrincipalHash: integrationPrincipalHash,
-			}),
+			service.executeForChatPublished(
+				{
+					agentId,
+					projectId,
+					message: 'check the ledger',
+					memory: { threadId: 'thread-2', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+				},
+				claimFor('thread-2'),
+			),
 		);
 
 		expect(previewChunks[0]).toMatchObject({
@@ -726,16 +792,19 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.executeForChatPublished({
-				agentId,
-				projectId,
-				message: 'from slack',
-				modelMessage: '[alice (platform-user-1)]: from slack',
-				author: { id: 'platform-user-1', name: 'alice' },
-				memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
-				integrationType: 'slack',
-				sandboxPrincipalHash: integrationPrincipalHash,
-			}),
+			service.executeForChatPublished(
+				{
+					agentId,
+					projectId,
+					message: 'from slack',
+					modelMessage: '[alice (platform-user-1)]: from slack',
+					author: { id: 'platform-user-1', name: 'alice' },
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
@@ -750,13 +819,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			'[alice (platform-user-1)]: from slack',
 			expect.anything(),
 		);
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({
-				userMessage: 'from slack',
-				author: { id: 'platform-user-1', name: 'alice' },
-			}),
-			expect.any(Date),
-		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
@@ -765,6 +827,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
+				userMessage: 'from slack',
+				author: { id: 'platform-user-1', name: 'alice' },
 				source: 'slack',
 				telemetry: {
 					runType: 'production',
@@ -777,8 +841,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('records a failed session and rethrows when the published runtime cannot be built', async () => {
+	it('ends the claimed row as an error execution and rethrows when the published runtime cannot be built', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const claim = claimFor('thread-1');
 		const buildError = new UserError('Credential "OpenAI" not found');
 		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
 		// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
@@ -793,59 +858,66 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			collect(
-				service.executeForChatPublished({
-					agentId,
-					projectId,
-					message: 'from slack',
-					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
-					integrationType: 'slack',
-					sandboxPrincipalHash: integrationPrincipalHash,
-				}),
+				service.executeForChatPublished(
+					{
+						agentId,
+						projectId,
+						message: 'from slack',
+						memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+						integrationType: 'slack',
+						sandboxPrincipalHash: integrationPrincipalHash,
+					},
+					claim,
+				),
 			),
 		).rejects.toBe(buildError);
 
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({
-				agentId,
-				agentName: 'Support Agent',
-				threadId: 'thread-1',
-				userMessage: 'from slack',
-				source: 'slack',
-				telemetry: expect.objectContaining({ runType: 'production' }),
-			}),
-			expect.any(Date),
-		);
+		// No runtime: the telemetry describes the stored published configuration.
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
+				threadId: 'thread-1',
+				userMessage: 'from slack',
+				source: 'slack',
+				telemetry: expect.objectContaining({
+					runType: 'production',
+					configuration: expect.objectContaining({ model: schema.model }),
+				}),
 				record: expect.objectContaining({
 					finishReason: 'error',
 					error: 'Credential "OpenAI" not found',
 				}),
 			}),
 		);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
-	it('rethrows the build error without recording when the agent no longer exists', async () => {
+	it('ends the claimed row without telemetry when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
 		const buildError = new Error('boom');
 		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const claim = claimFor('thread-1');
 
 		await expect(
 			collect(
-				service.executeForTaskPublished({
-					agentId,
-					projectId,
-					message: 'run task',
-					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
-					taskId: 'task-1',
-					taskVersionId: 'version-1',
-				}),
+				service.executeForTaskPublished(
+					{
+						agentId,
+						projectId,
+						message: 'run task',
+						memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+						taskId: 'task-1',
+						taskVersionId: 'version-1',
+					},
+					claim,
+				),
 			),
 		).rejects.toBe(buildError);
 
-		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledOnce();
+		expect(executionService.finalizeExecution.mock.calls[0][1].telemetry).toBeUndefined();
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
@@ -860,14 +932,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.executeForTaskPublished({
-				agentId,
-				projectId,
-				message: 'run task',
-				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
-				taskId: 'task-1',
-				taskVersionId: 'version-1',
-			}),
+			service.executeForTaskPublished(
+				{
+					agentId,
+					projectId,
+					message: 'run task',
+					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
@@ -907,14 +982,17 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			collect(
-				service.executeForTaskPublished({
-					agentId,
-					projectId,
-					message: 'run task',
-					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
-					taskId: 'task-1',
-					taskVersionId: 'version-1',
-				}),
+				service.executeForTaskPublished(
+					{
+						agentId,
+						projectId,
+						message: 'run task',
+						memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+						taskId: 'task-1',
+						taskVersionId: 'version-1',
+					},
+					claimFor('thread-1'),
+				),
 			),
 		).rejects.toBe(quotaError);
 
@@ -927,14 +1005,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.executeForTaskNow({
-				agentId,
-				projectId,
-				user,
-				message: 'run task manually',
-				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
-				taskId: 'task-1',
-			}),
+			service.executeForTaskNow(
+				{
+					agentId,
+					projectId,
+					user,
+					message: 'run task manually',
+					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+					taskId: 'task-1',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
@@ -946,44 +1027,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('requests pending job results after a chat turn and ignores request errors', async () => {
-		const first = makeService();
-		first.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
-
-		await collect(
-			first.service.executeForChat({
-				agentId,
-				projectId,
-				message: 'hello',
-				user,
-				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			}),
-		);
-
-		expect(first.wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
-
-		const failing = makeService();
-		failing.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
-		failing.wakeService.onParentTurnFinished.mockRejectedValue(
-			new Error('wake service unavailable'),
-		);
-
-		await expect(
-			collect(
-				failing.service.executeForChat({
-					agentId,
-					projectId,
-					message: 'hello',
-					user,
-					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-				}),
-			),
-		).resolves.toEqual(expect.any(Array));
-	});
-
 	it('runs a draft wake without a chat client and hides its input from execution history', async () => {
-		const { service, runtimeCacheService, executionService, externalHooks, wakeService, bridge } =
-			makeService();
+		const { service, runtimeCacheService, executionService, externalHooks, bridge } = makeService();
 		const runtime = makeRuntime([
 			{ type: 'text-start', id: 'text-1' },
 			{ type: 'text-delta', id: 'text-1', delta: 'Handled the background result.' },
@@ -991,15 +1036,21 @@ describe('AgentExecutionOrchestratorService', () => {
 		]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		const abortSignal = new AbortController().signal;
+		const claim = claimFor('thread-1');
+		const markResultsConsumed = vi.fn(async () => {});
 
-		await service.executeForWake({
-			agentId,
-			projectId,
-			message: '<background-jobs-settled>[]</background-jobs-settled>',
-			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			identity: { type: 'draft', user, principalHash: userPrincipalHash },
-			abortSignal,
-		});
+		await service.executeForWake(
+			{
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal,
+				markResultsConsumed,
+			},
+			claim,
+		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
@@ -1011,11 +1062,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			'<background-jobs-settled>[]</background-jobs-settled>',
-			expect.objectContaining({ abortSignal }),
-		);
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: null }),
-			expect.any(Date),
+			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
@@ -1026,16 +1073,16 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+		expect(claim.release).toHaveBeenCalledOnce();
 		expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
-		// Draft wakes skip the quota hook and do not trigger another wake.
+		// Draft wakes skip the quota hook.
 		expect(externalHooks.run).not.toHaveBeenCalled();
-		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 	});
 
 	it.each(['draft', 'published'] as const)(
 		'records a failed %s wake without delivering its output',
 		async (type) => {
-			const { service, runtimeCacheService, executionService, wakeService, bridge } = makeService();
+			const { service, runtimeCacheService, executionService, bridge } = makeService();
 			const cause = new Error('provider unavailable');
 			runtimeCacheService.getRuntime.mockResolvedValue(
 				makeRuntime([
@@ -1043,55 +1090,75 @@ describe('AgentExecutionOrchestratorService', () => {
 					{ type: 'finish', finishReason: 'error' },
 				]),
 			);
+			const claim = claimFor('thread-1');
+			const markResultsConsumed = vi.fn(async () => {});
 
 			await expect(
-				service.executeForWake({
-					agentId,
-					projectId,
-					message: '<background-jobs-settled>[]</background-jobs-settled>',
-					memory: {
-						threadId: 'thread-1',
-						resourceId: type === 'draft' ? 'draft-chat:user-1' : 'integration:slack:user-1',
+				service.executeForWake(
+					{
+						agentId,
+						projectId,
+						message: '<background-jobs-settled>[]</background-jobs-settled>',
+						memory: {
+							threadId: 'thread-1',
+							resourceId: type === 'draft' ? 'draft-chat:user-1' : 'integration:slack:user-1',
+						},
+						identity:
+							type === 'draft'
+								? { type, user, principalHash: userPrincipalHash }
+								: { type, integrationType: 'slack', principalHash: integrationPrincipalHash },
+						abortSignal: new AbortController().signal,
+						markResultsConsumed,
 					},
-					identity:
-						type === 'draft'
-							? { type, user, principalHash: userPrincipalHash }
-							: { type, integrationType: 'slack', principalHash: integrationPrincipalHash },
-					abortSignal: new AbortController().signal,
-				}),
+					claim,
+				),
 			).rejects.toBeInstanceOf(OperationalError);
 
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({ userMessage: null }),
 			);
-			expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+			expect(markResultsConsumed).not.toHaveBeenCalled();
+			expect(claim.release).toHaveBeenCalledOnce();
+			expect(claim.fail).not.toHaveBeenCalled();
 		},
 	);
 
 	it('delivers a published wake through the stored connection and reply thread', async () => {
-		const { service, runtimeCacheService, externalHooks, chatIntegrationService, bridge } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			externalHooks,
+			chatIntegrationService,
+			bridge,
+		} = makeService();
 		const chunks: StreamChunk[] = [
 			{ type: 'text-delta', id: 'text-1', delta: 'The job is done.' },
 			{ type: 'finish', finishReason: 'stop' },
 		];
 		const runtime = makeRuntime(chunks);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const claim = claimFor('thread-1');
+		const markResultsConsumed = vi.fn(async () => {});
 
-		await service.executeForWake({
-			agentId,
-			projectId,
-			message: '<background-jobs-settled>[]</background-jobs-settled>',
-			memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
-			identity: {
-				type: 'published',
-				integrationType: 'slack',
-				principalHash: integrationPrincipalHash,
+		await service.executeForWake(
+			{
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+				markResultsConsumed,
 			},
-			abortSignal: new AbortController().signal,
-		});
+			claim,
+		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
 			agentId,
@@ -1103,31 +1170,100 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith('slack:channel-1:1', chunks);
+		expect(bridge.deliverWakeResponse.mock.invocationCallOrder[0]).toBeLessThan(
+			markResultsConsumed.mock.invocationCallOrder[0],
+		);
+		expect(markResultsConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.finalizeExecution.mock.invocationCallOrder[0],
+		);
+		expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			claim.release.mock.invocationCallOrder[0],
+		);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
-	it('rejects a wake when chat delivery fails and releases the runtime', async () => {
-		const { service, runtimeCacheService, bridge } = makeService();
+	it.each(['delivery', 'consumption'] as const)(
+		'finalizes and releases a wake when %s fails',
+		async (failure) => {
+			const { service, runtimeCacheService, executionService, bridge } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			const error = new Error('Wake completion failed');
+			const markResultsConsumed = vi.fn(async () => {});
+			if (failure === 'delivery') bridge.deliverWakeResponse.mockRejectedValue(error);
+			else markResultsConsumed.mockRejectedValue(error);
+			const claim = claimFor('thread-1');
+
+			await expect(
+				service.executeForWake(
+					{
+						agentId,
+						projectId,
+						message: '<background-jobs-settled>[]</background-jobs-settled>',
+						memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+						identity: {
+							type: 'published',
+							integrationType: 'slack',
+							principalHash: integrationPrincipalHash,
+						},
+						abortSignal: new AbortController().signal,
+						markResultsConsumed,
+					},
+					claim,
+				),
+			).rejects.toBe(error);
+
+			expect(bridge.deliverWakeResponse).toHaveBeenCalledOnce();
+			expect(markResultsConsumed).toHaveBeenCalledTimes(failure === 'consumption' ? 1 : 0);
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'error' }),
+				}),
+			);
+			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+			expect(claim.release).toHaveBeenCalledOnce();
+			expect(claim.fail).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+				claim.release.mock.invocationCallOrder[0],
+			);
+		},
+	);
+
+	it('finalizes a wake that loses its claim without delivering its results', async () => {
+		const { service, runtimeCacheService, executionService, bridge } = makeService();
 		const runtime = makeRuntime();
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		const error = new Error('Slack is unavailable');
-		bridge.deliverWakeResponse.mockRejectedValue(error);
+		const claimLost = new AbortController();
+		const markResultsConsumed = vi.fn(async () => {});
+		const claim = { ...claimFor('thread-1'), abortSignal: claimLost.signal };
+		claimLost.abort();
 
 		await expect(
-			service.executeForWake({
-				agentId,
-				projectId,
-				message: '<background-jobs-settled>[]</background-jobs-settled>',
-				memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
-				identity: {
-					type: 'published',
-					integrationType: 'slack',
-					principalHash: integrationPrincipalHash,
+			service.executeForWake(
+				{
+					agentId,
+					projectId,
+					message: '<background-jobs-settled>[]</background-jobs-settled>',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+					markResultsConsumed,
 				},
-				abortSignal: new AbortController().signal,
-			}),
-		).rejects.toBe(error);
+				claim,
+			),
+		).rejects.toThrow();
 
-		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+		expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+		expect(markResultsConsumed).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ finishReason: 'error' }),
+			}),
+		);
+		expect(claim.release).toHaveBeenCalledOnce();
+		expect(claim.fail).not.toHaveBeenCalled();
 	});
 
 	it.each(['context', 'connection'] as const)(
@@ -1142,24 +1278,33 @@ describe('AgentExecutionOrchestratorService', () => {
 			} = makeService();
 			if (missing === 'context') integrationMessageContextService.getLatest.mockResolvedValue(null);
 			else chatIntegrationService.getBridge.mockReturnValue(undefined);
+			const claim = claimFor('thread-1');
+			const markResultsConsumed = vi.fn(async () => {});
 
 			await expect(
-				service.executeForWake({
-					agentId,
-					projectId,
-					message: '<background-jobs-settled>[]</background-jobs-settled>',
-					memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
-					identity: {
-						type: 'published',
-						integrationType: 'slack',
-						principalHash: integrationPrincipalHash,
+				service.executeForWake(
+					{
+						agentId,
+						projectId,
+						message: '<background-jobs-settled>[]</background-jobs-settled>',
+						memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+						identity: {
+							type: 'published',
+							integrationType: 'slack',
+							principalHash: integrationPrincipalHash,
+						},
+						abortSignal: new AbortController().signal,
+						markResultsConsumed,
 					},
-					abortSignal: new AbortController().signal,
-				}),
+					claim,
+				),
 			).rejects.toBeInstanceOf(OperationalError);
 
 			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+			// The claim never reached the orchestrator's turn, so the wake ends the row itself.
+			expect(claim.fail).toHaveBeenCalledWith(expect.any(OperationalError));
+			expect(markResultsConsumed).not.toHaveBeenCalled();
 		},
 	);
 
@@ -1169,15 +1314,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		const chunks = await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				getRuntime: async () => runtime,
 				agentId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
+				claim: claimFor('thread-1'),
 			}),
 		);
 
@@ -1204,19 +1348,19 @@ describe('AgentExecutionOrchestratorService', () => {
 		const streamError = new Error('reader failed while consuming stream');
 		const runtime = makeRuntime();
 		runtime.agent.stream.mockResolvedValue({ stream: makeFailingStream(streamError) });
+		const claim = claimFor('thread-1');
 
 		await expect(
 			collect(
 				service.streamChatResponse({
-					agentInstance: runtime.agent,
-					toolRegistry: runtime.toolRegistry,
-					mcpServerAttributions: runtime.mcpServerAttributions,
+					getRuntime: async () => runtime,
 					agentId,
 					message: 'hello',
 					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 					projectId,
-					telemetry: telemetryContext,
+					runType: 'test',
 					sandboxPrincipalHash: userPrincipalHash,
+					claim,
 				}),
 			),
 		).rejects.toThrow('reader failed while consuming stream');
@@ -1234,6 +1378,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+		expect(claim.release).toHaveBeenCalledOnce();
+		expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			claim.release.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('persists an aborted chat stream as cancelled without discarding partial output', async () => {
@@ -1246,17 +1394,16 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ type: 'finish', finishReason: 'error' },
 		]);
 		const stream = service.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			mcpServerAttributions: runtime.mcpServerAttributions,
+			getRuntime: async () => runtime,
 			agentId,
 			message: 'hello',
 			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 			projectId,
-			telemetry: telemetryContext,
+			runType: 'test',
 			sandboxPrincipalHash: userPrincipalHash,
 			abortSignal: abortController.signal,
 			onExecutionRecorded: vi.fn(),
+			claim: claimFor('thread-1'),
 		});
 
 		await stream.next();
@@ -1310,47 +1457,57 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
-		const {
-			service,
-			checkpointStorage,
-			runtimeCacheService,
-			executionService,
-			externalHooks,
-			wakeService,
-		} = makeService();
+		const { service, checkpointStorage, runtimeCacheService, executionService, externalHooks } =
+			makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({ status: 'expired' });
+		const expiredClaim = claimFor('thread-1');
 		await expect(
 			collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'expired-run',
-					toolCallId: 'tc-1',
-					resumeData: { value: 'yes' },
-				}),
+				service.resumeForChat(
+					{
+						agentId,
+						projectId,
+						runId: 'expired-run',
+						toolCallId: 'tc-1',
+						resumeData: { value: 'yes' },
+					},
+					expiredClaim,
+				),
 			),
 		).rejects.toThrow(UserError);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('expired-run', agentId);
+		// The rejected resume still ends its claimed row.
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({ record: expect.objectContaining({ finishReason: 'error' }) }),
+		);
+		expect(expiredClaim.release).toHaveBeenCalledOnce();
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		const abortController = new AbortController();
+		const beforeResume = vi.fn(async () => {});
+		const claim = claimFor('thread-1');
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-				abortSignal: abortController.signal,
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+					abortSignal: abortController.signal,
+					beforeResume,
+				},
+				claim,
+			),
 		);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
 
@@ -1360,12 +1517,14 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				abortSignal: abortController.signal,
+				abortSignal: expect.any(AbortSignal),
 			}),
 		);
+		// Side effects of the claimed resume run before the model resumes.
+		expect(beforeResume.mock.invocationCallOrder[0]).toBeLessThan(
+			runtime.agent.resume.mock.invocationCallOrder[0],
+		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
-		// After the resumed turn, request any job results that arrived during the approval wait.
-		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
@@ -1388,6 +1547,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
 	it('reconstructs a resumed runtime from the persisted sandbox scope', async () => {
@@ -1395,8 +1555,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime();
 		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: {
-				persistence: {
+			checkpoint: makeCheckpoint(
+				{},
+				{
 					threadId: 'thread-1',
 					resourceId: 'platform-user-1',
 					hostMetadata: encodeAgentSandboxHostMetadata({
@@ -1404,19 +1565,22 @@ describe('AgentExecutionOrchestratorService', () => {
 						principalHash: integrationPrincipalHash,
 					}),
 				},
-			},
-		} as never);
+			),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
@@ -1447,16 +1611,19 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					resumeData: { value: 'yes' },
-					user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-				}),
+				service.resumeForChat(
+					{
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						resumeData: { value: 'yes' },
+						user,
+						usePublishedVersion: false,
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					},
+					claimFor('thread-1'),
+				),
 			),
 		).rejects.toThrow('unavailable');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
@@ -1471,14 +1638,17 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					resumeData: { value: 'yes' },
-					integrationType: 'slack',
-				}),
+				service.resumeForChat(
+					{
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						resumeData: { value: 'yes' },
+						integrationType: 'slack',
+					},
+					claimFor('thread-1'),
+				),
 			),
 		).rejects.toThrow('unavailable');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
@@ -1495,18 +1665,21 @@ describe('AgentExecutionOrchestratorService', () => {
 		]);
 		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
-		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		const stream = service.resumeForChat({
-			agentId,
-			projectId,
-			runId: 'run-1',
-			toolCallId: 'tc-1',
-			resumeData: { value: 'yes' },
-			abortSignal: abortController.signal,
-			onExecutionRecorded: vi.fn(),
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'resource-1' }),
 		});
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const stream = service.resumeForChat(
+			{
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				abortSignal: abortController.signal,
+				onExecutionRecorded: vi.fn(),
+			},
+			claimFor('thread-1'),
+		);
 
 		await stream.next();
 		await stream.next();
@@ -1575,14 +1748,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		]) {
 			await expect(
 				collect(
-					service.resumeForChat({
-						agentId,
-						projectId,
-						runId: 'run-1',
-						toolCallId: 'tool-call-1',
-						resumeData: { approved: true },
-						expectedMemory,
-					}),
+					service.resumeForChat(
+						{
+							agentId,
+							projectId,
+							runId: 'run-1',
+							toolCallId: 'tool-call-1',
+							resumeData: { approved: true },
+							expectedMemory,
+						},
+						claimFor('thread-1'),
+					),
 				),
 			).rejects.toThrow('Checkpoint run-1 does not belong to this chat');
 		}
@@ -1614,13 +1790,16 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'child-run-1',
-					toolCallId: 'child-tool-call-1',
-					resumeData: { approved: true },
-				}),
+				service.resumeForChat(
+					{
+						agentId,
+						projectId,
+						runId: 'child-run-1',
+						toolCallId: 'child-tool-call-1',
+						resumeData: { approved: true },
+					},
+					claimFor('thread-1'),
+				),
 			),
 		).rejects.toThrow('Delegated actions must be resumed through their parent agent');
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
@@ -1718,15 +1897,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				mcpServerAttributions: runtime.mcpServerAttributions,
+				getRuntime: async () => runtime,
 				agentId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
 				projectId,
-				telemetry: telemetryContext,
+				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
+				claim: claimFor('thread-1'),
 			}),
 		);
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
@@ -1734,21 +1912,24 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+				},
+				claimFor('thread-1'),
+			),
 		);
 		expect(runtime.agent.resume).toHaveBeenCalledWith(
 			'stream',
@@ -1767,31 +1948,30 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce({ source: 'telegram' } as never);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'telegram',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'telegram',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'telegram' }),
-		);
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ source: 'telegram' }),
-			expect.any(Date),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
@@ -1809,22 +1989,25 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce(null);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
@@ -1843,21 +2026,24 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		Object.defineProperty(agentRunTracingService, 'enabled', { value: false });
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(executionService.findLatestSuspendedRun).not.toHaveBeenCalled();
@@ -1877,21 +2063,24 @@ describe('AgentExecutionOrchestratorService', () => {
 			},
 		]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
+			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
+		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
+			service.resumeForChat(
+				{
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'slack',
+				},
+				claimFor('thread-1'),
+			),
 		);
 
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(

@@ -31,15 +31,38 @@ function makeController() {
 		status: 'ready',
 		sessionId: 'thread-1',
 	});
-	agentTestRunService.streamDraftRun.mockImplementation((config) =>
-		agentExecutionOrchestratorService.executeForChat({
-			...config,
-			memory: {
-				threadId: config.sessionId,
-				resourceId: `draft-chat:${config.user.id}`,
+	const claim = {
+		executionId: 'execution-1',
+		threadId: 'thread-1',
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
+	agentTestRunService.submitDraftRun.mockImplementation(async (config) => ({
+		status: 'claimed',
+		sessionId: config.sessionId,
+		stream: agentExecutionOrchestratorService.executeForChat(
+			{
+				...config,
+				memory: {
+					threadId: config.sessionId,
+					resourceId: `draft-chat:${config.user.id}`,
+				},
 			},
-		}),
-	);
+			claim,
+		),
+	}));
+	agentTestRunService.submitDraftResume.mockImplementation(async (config) => ({
+		status: 'claimed',
+		sessionId: 'thread-1',
+		stream: agentExecutionOrchestratorService.resumeForChat(
+			{
+				...config,
+				usePublishedVersion: false,
+			},
+			claim,
+		),
+	}));
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
@@ -187,7 +210,7 @@ describe('AgentChatController SSE done payload', () => {
 		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
+		expect(agentTestRunService.submitDraftRun).not.toHaveBeenCalled();
 	});
 
 	it('includes executionId on done when recorded', async () => {

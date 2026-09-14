@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentTurnQueueService } from '@/modules/agents/agent-turn-queue.service';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -18,6 +19,7 @@ describe('AgentExecutionRepository', () => {
 	let repository: AgentExecutionRepository;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
+	let turnQueueService: AgentTurnQueueService;
 	let projectId: string;
 	let agentId: string;
 
@@ -27,6 +29,7 @@ describe('AgentExecutionRepository', () => {
 		repository = Container.get(AgentExecutionRepository);
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
+		turnQueueService = Container.get(AgentTurnQueueService);
 	});
 
 	beforeEach(async () => {
@@ -76,6 +79,70 @@ describe('AgentExecutionRepository', () => {
 		} as Partial<AgentExecution>);
 		return await repository.save(execution);
 	};
+
+	it('admits one claimed turn and admits the next after a failed claim is finalized', async () => {
+		const thread = await createThread();
+		const turn = {
+			threadId: thread.id,
+			agentId,
+			projectId,
+			userMessage: 'hello',
+			runContext: { kind: 'message' as const },
+		};
+
+		const first = await turnQueueService.tryRunNow(turn, { wake: true });
+		expect(first).not.toBeNull();
+		if (!first) throw new Error('Expected the first turn to claim the thread');
+		expect(await turnQueueService.tryRunNow(turn, { wake: true })).toBeNull();
+
+		await first.fail(new Error('Turn did not start'));
+		expect(await repository.findOneBy({ id: first.executionId })).toMatchObject({
+			status: 'error',
+			runContext: null,
+		});
+
+		const next = await turnQueueService.tryRunNow(turn, { wake: true });
+		expect(next).not.toBeNull();
+		if (!next) throw new Error('Expected the next turn to claim the released thread');
+		await next.fail(new Error('Test cleanup'));
+	});
+
+	it('releases only a stale claim during abandoned finalization', async () => {
+		const thread = await createThread();
+		const execution = await createExecution({
+			threadId: thread.id,
+			status: 'running',
+			runContext: { kind: 'message' },
+			startedAt: new Date('2026-01-01T23:59:00Z'),
+			stoppedAt: null,
+		});
+		const staleBefore = new Date('2026-01-02T00:00:00Z');
+		const finalization = {
+			status: 'interrupted' as const,
+			stoppedAt: new Date('2026-01-02T00:01:00Z'),
+			duration: 1,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: 'interrupted',
+			failureSummary: null,
+		};
+
+		await repository.update({ id: execution.id }, { updatedAt: new Date('2026-01-02T00:00:01Z') });
+		expect(await repository.updateIfRunning(execution.id, finalization, staleBefore)).toBe(false);
+		expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+			status: 'running',
+			runContext: { kind: 'message' },
+			stoppedAt: null,
+		});
+
+		await repository.update({ id: execution.id }, { updatedAt: new Date('2026-01-01T23:59:59Z') });
+		expect(await repository.updateIfRunning(execution.id, finalization, staleBefore)).toBe(true);
+		expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+			status: 'interrupted',
+			runContext: null,
+			stoppedAt: finalization.stoppedAt,
+		});
+	});
 
 	describe('findFirstUserMessageByThreadIds', () => {
 		// The repository builds a raw SQL fragment referencing camelCase columns.
