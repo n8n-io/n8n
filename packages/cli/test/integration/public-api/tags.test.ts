@@ -190,6 +190,23 @@ describe('DELETE /tags/:id', () => {
 
 		expect(notDeletedTag).not.toBeNull();
 	});
+
+	test('should fail due to missing "tag:delete" scope', async () => {
+		const tag = await createTag({});
+
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutScope);
+
+		const response = await agent.delete(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('Forbidden');
+
+		// make sure the tag was not deleted from the db
+		const notDeletedTag = await Container.get(TagRepository).findOneBy({ id: tag.id });
+
+		expect(notDeletedTag).not.toBeNull();
+	});
 });
 
 describe('POST /tags', () => {
