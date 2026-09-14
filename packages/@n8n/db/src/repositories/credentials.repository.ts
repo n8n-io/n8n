@@ -14,6 +14,7 @@ import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
@@ -69,6 +70,15 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 
 		return rows.map((row) => row.id);
+	}
+
+	/** Id and type of every credential that exists with one of these ids, in any usage scope. */
+	async findTypesByIds(ids: string[]): Promise<Array<Pick<CredentialsEntity, 'id' | 'type'>>> {
+		const rows: Array<Pick<CredentialsEntity, 'id' | 'type'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
 	}
 
 	/** True when any of the given credentials is a private (resolvable) credential. */
