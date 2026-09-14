@@ -147,16 +147,29 @@ value, export that value here.
 
 ```ts
 // src/my-feature.module.ts
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 
-export const MyFeatureModule: FrontendModuleDescription = {
+export const MyFeatureModule = defineFrontendModule({
 	// Must match the backend module id: both gate off `/rest/module-settings`.
 	id: 'my-feature',
 	name: 'My Feature',
 	description: 'What this module does',
 	icon: 'box',
-};
+});
 ```
+
+Declare every descriptor with `defineFrontendModule()`. It is the canonical form.
+It returns the object that you give it, and it changes no behaviour. It gives you
+two things:
+
+- One seam. The SDK gets one function to attach validation or a dev-mode check
+  to. Ten annotated object literals give it none.
+- Inference. Each field keeps its literal type, so `MyFeatureModule.id` reads as
+  `'my-feature'` and not as `string`.
+
+Do not annotate the descriptor also. `defineFrontendModule()` checks the object
+against `FrontendModuleDescription`, and the annotation makes the types wide
+again.
 
 The `id` field is critical. `settingsStore.isModuleActive(id)` reads the `activeModules` list from
 the backend. An id with no backend twin is never active. A route that uses the module availability

@@ -35,6 +35,7 @@ runSharedChannelIntegrationContract({
 	fixtures: slackFixtures,
 	expected: {
 		message: 'hello agent',
+		author: { id: 'U_ALICE', name: 'U_ALICE' },
 		followUpMessage: 'follow up',
 		integrationType: 'slack',
 		context: {
@@ -77,6 +78,7 @@ runSharedChannelIntegrationContract({
 	fixtures: telegramFixtures,
 	expected: {
 		message: 'hello agent',
+		author: { id: '123456', name: 'alice_dev' },
 		followUpMessage: 'follow up',
 		integrationType: 'telegram',
 		context: {

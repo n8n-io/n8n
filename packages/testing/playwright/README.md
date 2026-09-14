@@ -36,6 +36,30 @@ Run the browser-backed harness contract tests with the dedicated configuration:
 pnpm test:harness
 ```
 
+Inspect the full E2E distribution without running tests or containers:
+
+```bash
+pnpm --silent distribution:count
+```
+
+The report counts selected specs, runnable tests, declared container images, and
+the Playwright worker profiles that would each start an n8n stack with one worker.
+It compares those stack starts with the fixture count from the distributor.
+
+Inspect the impact selection for a pull request:
+
+```bash
+pnpm --silent distribution:count -- --pr=<pull-request-number>
+```
+
+Pass an explicit changed-file list when no pull request exists:
+
+```bash
+pnpm --silent distribution:count -- \
+  --files=packages/core/src/example.ts,packages/workflow/src/example.ts \
+  --base=<base-sha>
+```
+
 ## Develop against running containers (avoid docker rebuilds)
 
 Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
@@ -76,13 +100,9 @@ pnpm --filter n8n-containers services:clean
 
 This stops the containers and removes `packages/cli/bin/.env`.
 
-**Running capability tests against this setup.** The `@capability:*` tags are
-gated to container mode by default. To exercise them against your local n8n
-(useful for fast iteration on proxy/email/SSO flows), use the
-`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` escape hatch documented under
-[`test:local:isolated`](#test-local-isolated--local-run-with-full-isolation)
-below. Capability fixtures must detect the no-container case and fall back —
-some do, some don't yet.
+**Running service-backed tests against this setup.** Tests with service-backed
+`capability` options skip local mode because the service helpers require an n8n
+test container. Run these tests with a container project.
 
 ## Separate Backend and Frontend URLs
 
@@ -117,7 +137,7 @@ pnpm test:chaos									# Runs the chaos tests
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
 
-# Isolated local run: random port, throwaway DB, runs @capability:* too
+# Isolated local run: random port, throwaway DB, includes container-tagged tests
 pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
 
@@ -133,10 +153,9 @@ situations where `test:local`'s defaults aren't enough:
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
   n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
   from your local `~/.n8n` install.
-- **Container-only tests included.** `@capability:*` / `@licensed` /
-  `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
-  are responsible for detecting the missing container and skipping or falling
-  back.
+- **Container-tagged tests included.** The local project selects `@licensed`,
+  `@db:reset`, and `@mode:*` tests. Service-backed tests still skip because
+  local mode does not provide the service container helpers.
 - **Self-managed n8n.** Boots n8n with a readiness check against
   `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
   Playwright's own webServer.
@@ -152,7 +171,7 @@ The two underlying env-var levers — usable independently of the script:
 
 | Env var | Effect |
 |---------|--------|
-| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Disables `grepInvert` so `@capability:*`, `@mode:*`, `@licensed`, and `@db:reset` tests are picked up by the local `e2e` project. The fixtures consumed by those tests must detect the missing container and either skip or fall back. |
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Includes `@mode:*`, `@licensed`, and `@db:reset` tests in local runs. Service-backed tests still skip. |
 | `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags
@@ -161,7 +180,6 @@ test('basic test', ...)                              // All modes, fully paralle
 test('postgres only @mode:postgres', ...)            // Mode-specific
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
-test('proxy test @capability:proxy', ...)           // Requires proxy server capability
 test('enterprise feature @licensed', ...)           // Requires enterprise license (container-only)
 ```
 
@@ -170,7 +188,6 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | Tag | Description | When to Use |
 |-----|-------------|-------------|
 | `@mode:X` | Infrastructure mode (postgres, queue, multi-main) | Tests requiring specific DB or architecture |
-| `@capability:X` | Container services (email, proxy, oidc, source-control, observability) | Tests needing external services |
 | `@licensed` | Enterprise license features | Tests for features behind license flags at startup |
 | `@cloud:X` | Resource constraints (trial, enterprise) | Performance tests with memory/CPU limits |
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
@@ -292,18 +309,19 @@ You can use ProxyServer to mock API requests.
 ```typescript
 import { test, expect } from '../fixtures/base';
 
-// The `@capability:proxy` tag ensures tests only run when proxy infrastructure is available.
-test.describe('Proxy tests @capability:proxy', () => {
-  test('should mock HTTP requests', async ({ proxyServer, n8n }) => {
+test.use({ capability: 'proxy' });
+
+test.describe('Proxy tests', () => {
+  test('should mock HTTP requests', async ({ services, n8n }) => {
     // Create mock expectations
-    await proxyServer.createGetExpectation('/api/data', { result: 'mocked' });
+    await services.proxy.createGetExpectation('/api/data', { result: 'mocked' });
 
     // Execute workflow that makes HTTP requests
     await n8n.canvas.openNewWorkflow();
     // ... test implementation
 
     // Verify requests were proxied
-    expect(await proxyServer.wasGetRequestMade('/api/data')).toBe(true);
+    expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/api/data' })).toBe(true);
   });
 });
 ```
@@ -316,22 +334,22 @@ The ProxyServer service supports recording HTTP requests for test mocking and re
 
 ```typescript
 // Record all requests (the request is simplified/cleansed to method/path/body/query)
-await proxyServer.recordExpectations('test-folder');
+await services.proxy.recordExpectations('test-folder');
 
 // Record with filtering and options
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   host: 'googleapis.com',           // Filter by host (partial match)
   dedupe: true,                     // Remove duplicate requests
   raw: false                        // Save cleaned requests (default)
 });
 
 // Record raw requests with all headers and metadata
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   raw: true                         // Save complete original requests
 });
 
 // Record requests matching specific criteria
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   pathOrRequestDefinition: {
     method: 'POST',
     path: '/api/workflows'
@@ -344,9 +362,9 @@ await proxyServer.recordExpectations('test-folder', {
 Recorded expectations are saved as JSON files in the `expectations/` directory. To use them in tests, you must explicitly load them:
 
 ```typescript
-test('should use recorded expectations', async ({ proxyServer }) => {
+test('should use recorded expectations', async ({ services }) => {
   // Load expectations from a specific folder
-  await proxyServer.loadExpectations('test-folder');
+  await services.proxy.loadExpectations('test-folder');
 
   // Your test code here - requests will be mocked using loaded expectations
 });
@@ -357,14 +375,14 @@ test('should use recorded expectations', async ({ proxyServer }) => {
 **Remember to clean up expectations before or after test runs:**
 
 ```typescript
-test.beforeEach(async ({ proxyServer }) => {
+test.beforeEach(async ({ services }) => {
   // Clear any existing expectations before test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 
-test.afterEach(async ({ proxyServer }) => {
+test.afterEach(async ({ services }) => {
   // Or clear expectations after test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 ```
 
@@ -380,7 +398,7 @@ Use `N8N_CONTAINERS_KEEPALIVE=true` to keep containers running after tests compl
 - Manual testing against a pre-configured environment
 
 ```bash
-N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite --grep "@capability:email" --workers 1
+N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite tests/e2e/auth/password-reset.spec.ts --workers 1
 ```
 
 After tests complete, connection details are printed:

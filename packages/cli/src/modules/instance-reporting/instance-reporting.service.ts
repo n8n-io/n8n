@@ -8,6 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -55,6 +56,7 @@ export class InstanceReportingService {
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
 		outboundHttp: OutboundHttp,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
@@ -153,8 +155,10 @@ export class InstanceReportingService {
 					`Instance report was rejected with status ${response.statusCode}`,
 				);
 			}
+			this.eventService.emit('instance-report-delivered');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
+			this.eventService.emit('instance-report-failed');
 			await this.reportRepository.recordFailure(report.id, message, new Date());
 
 			// `recordFailure` incremented the count, so the in-memory row is one behind.
