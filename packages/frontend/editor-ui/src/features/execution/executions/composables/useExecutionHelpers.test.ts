@@ -1,3 +1,5 @@
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { useExecutionHelpers } from '../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@n8n/i18n';
@@ -21,6 +23,10 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 describe('useExecutionHelpers()', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('getUIDetails()', () => {
 		it.each([
 			['waiting', 'waiting', i18n.baseText('executionsList.waiting')],
@@ -81,7 +87,11 @@ describe('useExecutionHelpers()', () => {
 	});
 
 	describe('isExecutionRetriable', () => {
-		const { isExecutionRetriable } = useExecutionHelpers();
+		let isExecutionRetriable: ReturnType<typeof useExecutionHelpers>['isExecutionRetriable'];
+
+		beforeEach(() => {
+			({ isExecutionRetriable } = useExecutionHelpers());
+		});
 
 		it.each(['crashed', 'error'])('returns true when execution status is %s', (status) => {
 			expect(isExecutionRetriable({ status } as ExecutionSummary)).toEqual(true);
