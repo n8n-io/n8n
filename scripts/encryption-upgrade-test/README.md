@@ -8,7 +8,7 @@ The cycle runs on both supported databases: sqlite and postgres.
 
 ```bash
 pnpm build            # the checkout under test must be built
-pnpm test:upgrade     # one command, loud failure, cleans up after itself
+pnpm test:encryption:upgrade   # one command, loud failure, cleans up after itself
 ```
 
 ## What it does
