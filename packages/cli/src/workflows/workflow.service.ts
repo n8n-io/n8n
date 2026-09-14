@@ -15,6 +15,7 @@ import {
 	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
@@ -26,11 +27,18 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
+import { WorkflowRunAsBindingService } from './run-as/workflow-run-as-binding.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -40,6 +48,7 @@ import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.servic
 import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -77,6 +86,9 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
+
+/** What a publish must do with the workflow's run-as binding. */
+type RunAsAction = 'claim' | 'revoke' | 'none';
 
 /** The API-key scope a caller needs to put a version live, whether directly or by saving. */
 const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
@@ -129,6 +141,9 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly workflowRunAsBindingService: WorkflowRunAsBindingService,
+		private readonly userRepository: UserRepository,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	async getMany(
@@ -986,6 +1001,12 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		const runAsAction = await this.assertRunAsPublishable(
+			user,
+			workflowId,
+			versionToActivate.nodes,
+			workflow.settings,
+		);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
@@ -1056,6 +1077,8 @@ export class WorkflowService {
 				versionIdToActivate,
 				previousActiveVersionId,
 				workflow.updatedAt,
+				runAsAction,
+				user,
 			);
 
 			if (previousActiveVersionId) {
@@ -1113,6 +1136,14 @@ export class WorkflowService {
 				// workflow content did not change, so we keep updatedAt as is
 				updatedAt: workflow.updatedAt,
 			});
+
+			// No transaction on this path, so the binding commits on its own. Accepted:
+			// the legacy publish has no transaction to join.
+			if (runAsAction === 'claim') {
+				await this.workflowRunAsBindingService.claim(workflowId, user);
+			} else if (runAsAction === 'revoke') {
+				await this.workflowRunAsBindingService.revoke(workflowId);
+			}
 
 			const workflowForActivation = await this.workflowRepository.findOne({
 				where: { id: workflowId },
@@ -1424,6 +1455,11 @@ export class WorkflowService {
 				event: 'deactivated',
 				userId,
 			});
+
+			// An unpublished workflow runs as nobody.
+			if (this.workflowRunAsBindingService.isEnabled()) {
+				await this.workflowRunAsBindingService.revoke(workflowId);
+			}
 		}
 	}
 
@@ -1803,6 +1839,69 @@ export class WorkflowService {
 		}
 	}
 
+	/**
+	 * Decides what the publish does with the run-as binding. Returns 'none' when the
+	 * flag is off or the version has no enabled Schedule Trigger.
+	 *
+	 * The setting is only a claim: it must name the publisher, and the publisher must
+	 * have connected every end-user credential the workflow uses. The binding row that
+	 * the publish then writes is the trust anchor at run time.
+	 */
+	private async assertRunAsPublishable(
+		user: User,
+		workflowId: string,
+		nodes: INode[],
+		settings: IWorkflowSettings | undefined,
+	): Promise<RunAsAction> {
+		if (!this.workflowRunAsBindingService.isEnabled()) return 'none';
+
+		const scheduleTrigger = nodes.find(
+			(node) => node.type === SCHEDULE_TRIGGER_NODE_TYPE && !node.disabled,
+		);
+		if (!scheduleTrigger) return 'none';
+
+		const runAsUserId = settings?.runAsUserId;
+		// The switch is off, so a previous holder must lose the workflow.
+		if (!runAsUserId) return 'revoke';
+
+		if (runAsUserId !== user.id) {
+			const holder = await this.userRepository.findOneBy({ id: runAsUserId });
+			const name = holder
+				? [holder.firstName, holder.lastName].filter(Boolean).join(' ') || holder.email
+				: 'another user';
+			throw new WorkflowValidationError(
+				`Cannot publish workflow: the schedule is set to run as ${name}. Switch the trigger to run as you to publish.`,
+				{ nodeId: scheduleTrigger.id },
+			);
+		}
+
+		const statuses = await this.dynamicCredentialsProxy.getWorkflowCredentialStatus(
+			workflowId,
+			{
+				version: 1,
+				identity: user.id,
+				metadata: {
+					source: 'run-as',
+					subject: user.id,
+					workflowId,
+					establishedAt: Date.now(),
+				},
+			},
+			user,
+		);
+		const missing = statuses
+			.filter((status) => status.status !== 'configured')
+			.map((status) => `"${status.credentialName}"`);
+		if (missing.length > 0) {
+			throw new WorkflowValidationError(
+				`Cannot publish workflow: connect your end-user credentials first: ${missing.join(', ')}.`,
+				{ nodeId: scheduleTrigger.id },
+			);
+		}
+
+		return 'claim';
+	}
+
 	private async _validateDynamicCredentials(
 		workflowId: string,
 		nodes: INode[],
@@ -1897,6 +1996,8 @@ export class WorkflowService {
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
+		runAsAction: RunAsAction = 'none',
+		publisher?: User,
 	): Promise<void> {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			await this._recordPublishInTransaction(
@@ -1906,6 +2007,9 @@ export class WorkflowService {
 				versionIdToActivate,
 				previousActiveVersionId,
 				updatedAt,
+				undefined,
+				runAsAction,
+				publisher,
 			);
 		});
 
@@ -1930,6 +2034,8 @@ export class WorkflowService {
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
 		options?: { onlyIfActiveVersionIs: string },
+		runAsAction: RunAsAction = 'none',
+		publisher?: User,
 	): Promise<boolean> {
 		const result = await trx.update(
 			WorkflowEntity,
@@ -1971,6 +2077,13 @@ export class WorkflowService {
 			},
 			trx,
 		);
+
+		// The binding joins the publish transaction, so a rolled-back publish leaves it unchanged.
+		if (runAsAction === 'claim' && publisher) {
+			await this.workflowRunAsBindingService.claim(workflowId, publisher, trx);
+		} else if (runAsAction === 'revoke') {
+			await this.workflowRunAsBindingService.revoke(workflowId, trx);
+		}
 
 		await this.outboxRepository.enqueue(
 			workflowId,
@@ -2027,6 +2140,11 @@ export class WorkflowService {
 			// leave them firing a workflow already marked inactive.
 			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 			await this.pollTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
+
+			// An unpublished workflow runs as nobody.
+			if (this.workflowRunAsBindingService.isEnabled()) {
+				await this.workflowRunAsBindingService.revoke(workflowId, trx);
+			}
 		});
 
 		// Wake the leader now that the record is committed, so it drains without

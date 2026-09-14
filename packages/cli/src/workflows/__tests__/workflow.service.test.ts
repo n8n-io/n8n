@@ -10,12 +10,14 @@ import type {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowTagMappingRepository,
+	UserRepository,
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { IConnections, INode } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
+import { assert, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -53,6 +55,9 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { WorkflowRunAsBindingService } from '@/workflows/run-as/workflow-run-as-binding.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@/permissions.ee/check-access');
@@ -131,6 +136,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -499,6 +507,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 
 			vi.clearAllMocks();
@@ -1282,6 +1293,9 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 
 			// Bypass validation internals
@@ -1992,6 +2006,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2132,6 +2149,9 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2437,6 +2457,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2606,6 +2629,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2786,6 +2812,9 @@ describe('WorkflowService', () => {
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2888,6 +2917,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
 				mock(), // workflowPublicationStatusService
+				mock(), // workflowRunAsBindingService
+				mock(), // userRepository
+				mock(), // dynamicCredentialsProxy
 			);
 		});
 
@@ -2929,6 +2961,341 @@ describe('WorkflowService', () => {
 			await expect(
 				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['missing-tag']),
 			).rejects.toThrow('Some tags not found');
+		});
+	});
+
+	describe('run-as publish gate', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
+		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
+		let workflowPublishHistoryRepositoryMock: MockProxy<WorkflowPublishHistoryRepository>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
+		let runAsBindingServiceMock: MockProxy<WorkflowRunAsBindingService>;
+		let userRepositoryMock: MockProxy<UserRepository>;
+		let dynamicCredentialsProxyMock: MockProxy<DynamicCredentialsProxy>;
+		let trx: MockProxy<EntityManager>;
+
+		const WORKFLOW_ID = 'workflow-1';
+		const TARGET_VERSION_ID = 'v2';
+		const TRIGGER_NODE_ID = 'schedule-node-id';
+
+		const me = mock<User>({ id: 'me', firstName: 'Ada', lastName: 'Byron', email: 'ada@n8n.io' });
+
+		const scheduleTriggerNode = (overrides: Partial<INode> = {}): INode =>
+			({
+				id: TRIGGER_NODE_ID,
+				name: 'Schedule Trigger',
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				...overrides,
+			}) as INode;
+
+		function makeWorkflowEntity(settings: IWorkflowSettings): WorkflowEntity {
+			const workflow = new WorkflowEntity();
+			workflow.id = WORKFLOW_ID;
+			workflow.name = 'My workflow';
+			workflow.isArchived = false;
+			workflow.versionId = TARGET_VERSION_ID;
+			workflow.activeVersionId = null;
+			workflow.active = false;
+			workflow.nodes = [];
+			workflow.connections = {} as IConnections;
+			workflow.settings = settings;
+			workflow.updatedAt = new Date();
+			return workflow;
+		}
+
+		function makeVersion(nodes: INode[]): WorkflowHistory {
+			const version = new WorkflowHistory();
+			version.versionId = TARGET_VERSION_ID;
+			version.nodes = nodes;
+			version.connections = {} as IConnections;
+			return version;
+		}
+
+		/** Sets up a publish of `nodes` with `settings`, through the outbox path. */
+		function arrangePublish(settings: IWorkflowSettings, nodes: INode[]) {
+			const workflow = makeWorkflowEntity(settings);
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersion(nodes));
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			return workflow;
+		}
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
+			workflowRepositoryMock = mock();
+			workflowPublishHistoryRepositoryMock = mock();
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+			});
+			runAsBindingServiceMock = mock<WorkflowRunAsBindingService>();
+			runAsBindingServiceMock.isEnabled.mockReturnValue(true);
+			userRepositoryMock = mock<UserRepository>();
+			dynamicCredentialsProxyMock = mock<DynamicCredentialsProxy>();
+			dynamicCredentialsProxyMock.getWorkflowCredentialStatus.mockResolvedValue([]);
+
+			workflowRepositoryMock.create.mockImplementation(
+				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
+			);
+
+			trx = mock<EntityManager>();
+			const managerMock = mock<EntityManager>();
+			(managerMock.transaction as unknown as Mock).mockImplementation(
+				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
+					await runInTransaction(trx),
+			);
+			Object.defineProperty(workflowRepositoryMock, 'manager', {
+				value: managerMock,
+				configurable: true,
+			});
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				mock(), // ownershipService
+				mock(), // tagService
+				workflowHistoryServiceMock, // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				globalConfigMock, // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
+				mock(), // policyEnforcementService
+				mock(), // workflowPublicationStatusService
+				runAsBindingServiceMock, // workflowRunAsBindingService
+				userRepositoryMock, // userRepository
+				dynamicCredentialsProxyMock, // dynamicCredentialsProxy
+			);
+
+			// Bypass validation internals unrelated to the run-as gate.
+			const internals = workflowService as unknown as {
+				_detectWebhookConflicts: () => Promise<void>;
+				_validateNodes: () => void;
+				_validateDynamicCredentials: () => Promise<void>;
+				_validateSubWorkflowReferences: () => Promise<void>;
+				_validateTriggerNodeIds: () => void;
+			};
+			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
+			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
+			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);
+		});
+
+		test('rejects a publish when the schedule is set to run as somebody else', async () => {
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+			userRepositoryMock.findOneBy.mockResolvedValue(
+				mock<User>({ id: 'other', firstName: 'Grace', lastName: 'Hopper' }),
+			);
+
+			const error = await workflowService
+				.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID })
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(WorkflowValidationError);
+			assert(error instanceof WorkflowValidationError);
+			expect(error.message).toBe(
+				'Cannot publish workflow: the schedule is set to run as Grace Hopper. Switch the trigger to run as you to publish.',
+			);
+			expect(error.meta.nodeId).toBe(TRIGGER_NODE_ID);
+			expect(error.meta.validationError).toBe(true);
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('falls back to the email, then to "another user", for the holder name', async () => {
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+			userRepositoryMock.findOneBy.mockResolvedValue(
+				mock<User>({ id: 'other', firstName: '', lastName: '', email: 'grace@n8n.io' }),
+			);
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).rejects.toThrow('set to run as grace@n8n.io.');
+
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+			userRepositoryMock.findOneBy.mockResolvedValue(null);
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).rejects.toThrow('set to run as another user.');
+		});
+
+		test('claims the binding inside the publish transaction', async () => {
+			arrangePublish({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+			dynamicCredentialsProxyMock.getWorkflowCredentialStatus.mockResolvedValue([
+				{ credentialName: 'My Gmail', status: 'configured' },
+			]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(runAsBindingServiceMock.claim).toHaveBeenCalledWith(WORKFLOW_ID, me, trx);
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+			// Claimed after the publish-history record, so it joins the same transaction.
+			expect(
+				workflowPublishHistoryRepositoryMock.addRecord.mock.invocationCallOrder[0],
+			).toBeLessThan(runAsBindingServiceMock.claim.mock.invocationCallOrder[0]);
+		});
+
+		test('probes the credential status with a run-as context for the publisher', async () => {
+			arrangePublish({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(dynamicCredentialsProxyMock.getWorkflowCredentialStatus).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				{
+					version: 1,
+					identity: me.id,
+					metadata: {
+						source: 'run-as',
+						subject: me.id,
+						workflowId: WORKFLOW_ID,
+						establishedAt: expect.any(Number),
+					},
+				},
+				me,
+			);
+		});
+
+		test('rejects a publish when the publisher has not connected a credential', async () => {
+			arrangePublish({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+			dynamicCredentialsProxyMock.getWorkflowCredentialStatus.mockResolvedValue([
+				{ credentialName: 'My Gmail', status: 'missing' },
+				{ credentialName: 'My Drive', status: 'configured' },
+				{ credentialName: 'My Slack', status: 'resolver_missing' },
+			]);
+
+			const error = await workflowService
+				.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID })
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(WorkflowValidationError);
+			assert(error instanceof WorkflowValidationError);
+			expect(error.message).toBe(
+				'Cannot publish workflow: connect your end-user credentials first: "My Gmail", "My Slack".',
+			);
+			expect(error.meta.nodeId).toBe(TRIGGER_NODE_ID);
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+		});
+
+		test('revokes the binding when the setting is gone', async () => {
+			arrangePublish({}, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(runAsBindingServiceMock.revoke).toHaveBeenCalledWith(WORKFLOW_ID, trx);
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+		});
+
+		test('does nothing when the feature flag is off', async () => {
+			runAsBindingServiceMock.isEnabled.mockReturnValue(false);
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(userRepositoryMock.findOneBy).not.toHaveBeenCalled();
+			expect(dynamicCredentialsProxyMock.getWorkflowCredentialStatus).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('does nothing when the version has no enabled Schedule Trigger', async () => {
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode({ disabled: true })]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(userRepositoryMock.findOneBy).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('revokes the binding on unpublish', async () => {
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflow.activeVersion = makeVersion([scheduleTriggerNode()]);
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+			await workflowService.deactivateWorkflow(me, WORKFLOW_ID);
+
+			expect(runAsBindingServiceMock.revoke).toHaveBeenCalledWith(WORKFLOW_ID, trx);
+		});
+
+		test('does not touch the binding on unpublish when the flag is off', async () => {
+			runAsBindingServiceMock.isEnabled.mockReturnValue(false);
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflow.activeVersion = makeVersion([scheduleTriggerNode()]);
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+			await workflowService.deactivateWorkflow(me, WORKFLOW_ID);
+
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		describe('legacy publication path', () => {
+			beforeEach(() => {
+				globalConfigMock.workflows.useWorkflowPublicationService = false;
+				vi.spyOn(
+					workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+					'_addToActiveWorkflowManager',
+				).mockResolvedValue(undefined);
+			});
+
+			test('claims the binding without a transaction', async () => {
+				arrangePublish({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+
+				await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+				expect(runAsBindingServiceMock.claim).toHaveBeenCalledWith(WORKFLOW_ID, me);
+			});
+
+			test('revokes the binding on unpublish', async () => {
+				const workflow = makeWorkflowEntity({});
+				workflow.active = true;
+				workflow.activeVersionId = TARGET_VERSION_ID;
+				workflow.activeVersion = makeVersion([scheduleTriggerNode()]);
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+				workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+				await workflowService.deactivateWorkflow(me, WORKFLOW_ID);
+
+				expect(runAsBindingServiceMock.revoke).toHaveBeenCalledWith(WORKFLOW_ID);
+			});
 		});
 	});
 });

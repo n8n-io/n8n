@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
@@ -18,6 +19,7 @@ import { StaticAuthService } from '@/services/static-auth-service';
 
 import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { extractSharedFields } from './shared-fields';
 import type {
@@ -49,6 +51,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
 	) {}
 
 	/**
@@ -194,6 +197,26 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 	getSystemResolverId(): string {
 		return SYSTEM_RESOLVER_ID;
+	}
+
+	/**
+	 * Status of every resolvable credential the workflow tree uses, for the identity in
+	 * `credentialContext`. The publish gate uses it to tell the user which end-user
+	 * credentials they must connect first.
+	 */
+	async getWorkflowCredentialStatus(
+		workflowId: string,
+		credentialContext: ICredentialContext,
+		user?: User,
+	): Promise<
+		Array<{ credentialName: string; status: 'missing' | 'configured' | 'resolver_missing' }>
+	> {
+		const statuses = await this.credentialResolverWorkflowService.getWorkflowStatus(
+			workflowId,
+			credentialContext,
+			user,
+		);
+		return statuses.map(({ credentialName, status }) => ({ credentialName, status }));
 	}
 
 	/**

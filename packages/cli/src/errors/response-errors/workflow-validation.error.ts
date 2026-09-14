@@ -4,10 +4,8 @@ import { WorkflowActivationBadRequestError } from './workflow-activation-bad-req
  * Error thrown when a workflow fails validation before activation.
  */
 export class WorkflowValidationError extends WorkflowActivationBadRequestError {
-	override readonly meta = { validationError: true as const };
-
-	constructor(message: string) {
-		super(message);
+	constructor(message: string, meta: { nodeId?: string; description?: string } = {}) {
+		super(message, { ...meta, validationError: true });
 		this.name = 'WorkflowValidationError';
 	}
 }

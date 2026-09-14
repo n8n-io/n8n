@@ -1,4 +1,6 @@
+import type { User } from '@n8n/db';
 import type {
+	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 	IWorkflowSettings,
@@ -55,4 +57,16 @@ export interface ICredentialResolutionProvider {
 	 * credentials). Returns null when the system resolver has not been seeded.
 	 */
 	getSystemResolverId(): string | null;
+
+	/**
+	 * Status of every resolvable credential the workflow tree uses, for the identity in
+	 * `credentialContext`. Optional: absent when the module cannot check.
+	 */
+	getWorkflowCredentialStatus?(
+		workflowId: string,
+		credentialContext: ICredentialContext,
+		user?: User,
+	): Promise<
+		Array<{ credentialName: string; status: 'missing' | 'configured' | 'resolver_missing' }>
+	>;
 }

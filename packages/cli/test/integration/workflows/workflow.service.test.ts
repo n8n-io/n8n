@@ -19,6 +19,7 @@ import {
 	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 	ProjectRepository,
+	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -26,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
@@ -43,6 +45,7 @@ import { WorkflowPublicationStatusService } from '@/workflows/publication/workfl
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { WorkflowRunAsBindingService } from '@/workflows/run-as/workflow-run-as-binding.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -121,6 +124,9 @@ beforeAll(async () => {
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
+		Container.get(WorkflowRunAsBindingService), // workflowRunAsBindingService
+		Container.get(UserRepository), // userRepository
+		Container.get(DynamicCredentialsProxy), // dynamicCredentialsProxy
 	);
 });
 

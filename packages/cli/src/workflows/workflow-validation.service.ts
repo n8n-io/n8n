@@ -348,7 +348,8 @@ export class WorkflowValidationService {
 	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
 	 *   from trigger data, so it needs a trigger with a context establishment hook.
 	 * - The default/system resolver keys on the n8n user identity, so it needs a
-	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook with n8n user auth).
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP, form, or webhook
+	 *   with n8n user auth, or a schedule trigger with the run-as setting on).
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
@@ -374,7 +375,9 @@ export class WorkflowValidationService {
 		// Workflow override if present, otherwise the seeded system resolver (null when neither).
 		const workflowResolverId =
 			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
-		const triggers = this.classifyTriggerIdentities(nodes, nodeTypes);
+		const triggers = this.classifyTriggerIdentities(nodes, nodeTypes, {
+			runAsUserId: workflowSettings?.runAsUserId,
+		});
 
 		const error = this.getDynamicCredentialsError(workflowResolverId, credNames, triggers);
 
@@ -423,7 +426,7 @@ export class WorkflowValidationService {
 	 * only with n8n user auth (OAuth2). Mirrors `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication';
+		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you';
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -458,6 +461,7 @@ export class WorkflowValidationService {
 	private classifyTriggerIdentities(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
+		options: { runAsUserId?: string } = {},
 	): {
 		allTriggersProvideExternalIdentity: boolean;
 		allTriggersProvideN8nIdentity: boolean;
@@ -480,6 +484,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
+				options,
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

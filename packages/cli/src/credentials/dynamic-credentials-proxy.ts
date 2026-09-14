@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type {
@@ -83,6 +84,28 @@ export class DynamicCredentialsProxy
 			executionContext,
 			workflowSettings,
 			executionId,
+		);
+	}
+
+	/**
+	 * Status of every resolvable credential the workflow tree uses, for the identity in
+	 * `credentialContext`. Returns an empty list when the dynamic credentials module is
+	 * not registered or cannot check, so callers treat "unknown" as "nothing missing".
+	 */
+	async getWorkflowCredentialStatus(
+		workflowId: string,
+		credentialContext: ICredentialContext,
+		user?: User,
+	): Promise<
+		Array<{ credentialName: string; status: 'missing' | 'configured' | 'resolver_missing' }>
+	> {
+		if (!this.resolvingProvider?.getWorkflowCredentialStatus) {
+			return [];
+		}
+		return await this.resolvingProvider.getWorkflowCredentialStatus(
+			workflowId,
+			credentialContext,
+			user,
 		);
 	}
 

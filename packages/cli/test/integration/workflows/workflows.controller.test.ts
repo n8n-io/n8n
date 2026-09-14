@@ -27,6 +27,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowRunAsBindingRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -113,6 +114,7 @@ beforeEach(async () => {
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
+		'WorkflowRunAsBinding',
 		'TagEntity',
 		'Project',
 		'User',
@@ -4747,6 +4749,132 @@ describe('workflow conflict detection when a version is activated mid-edit (INS-
 		// The in-progress edit is persisted and the activation state is preserved.
 		expect(autosave.body.data.name).toBe('Edited while activation landed');
 		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
+	});
+
+	describe('run-as binding', () => {
+		const SCHEDULE_NODE_ID = 'schedule-node-id';
+
+		const scheduleNodes = (): INode[] => [
+			{
+				id: SCHEDULE_NODE_ID,
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					// A schedule that cannot fire during a test run.
+					rule: { interval: [{ field: 'months' }] },
+				},
+			},
+		];
+
+		let bindingRepository: WorkflowRunAsBindingRepository;
+
+		beforeAll(() => {
+			process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS_RUN_AS = 'true';
+		});
+
+		afterAll(() => {
+			delete process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS_RUN_AS;
+		});
+
+		beforeEach(() => {
+			bindingRepository = Container.get(WorkflowRunAsBindingRepository);
+		});
+
+		test('should write an active binding when the publisher is the run-as user', async () => {
+			const workflow = await createWorkflowWithHistory(
+				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
+				owner,
+			);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: workflow.versionId });
+
+			expect(response.statusCode).toBe(200);
+
+			const binding = await bindingRepository.findActiveByWorkflowId(workflow.id);
+			expect(binding).toMatchObject({
+				workflowId: workflow.id,
+				userId: owner.id,
+				setBy: owner.id,
+				status: 'active',
+			});
+		});
+
+		test('should reject a publish by another user and write nothing', async () => {
+			const customRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update', 'workflow:publish'],
+				{
+					roleType: 'project',
+					displayName: 'Custom Workflow Publisher',
+					description: 'Can publish workflows',
+				},
+			);
+			const teamProject = await createTeamProject('Run-as project', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+
+			const workflow = await createWorkflowWithHistory(
+				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
+				teamProject,
+			);
+
+			const response = await authMemberAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: workflow.versionId });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain('the schedule is set to run as');
+			expect(response.body.meta.nodeId).toBe(SCHEDULE_NODE_ID);
+
+			expect(await bindingRepository.findActiveByWorkflowId(workflow.id)).toBeNull();
+			const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+			expect(workflowAfter?.active).toBe(false);
+		});
+
+		test('should revoke the binding when the setting is removed and the workflow is published again', async () => {
+			const workflow = await createWorkflowWithHistory(
+				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
+				owner,
+			);
+
+			await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: workflow.versionId })
+				.expect(200);
+
+			await workflowRepository.update(workflow.id, { settings: {} });
+
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, {
+				versionId: newVersionId,
+				nodes: scheduleNodes(),
+			});
+
+			await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: newVersionId })
+				.expect(200);
+
+			expect(await bindingRepository.findActiveByWorkflowId(workflow.id)).toBeNull();
+		});
+
+		test('should revoke the binding on unpublish', async () => {
+			const workflow = await createWorkflowWithHistory(
+				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
+				owner,
+			);
+
+			await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: workflow.versionId })
+				.expect(200);
+
+			await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`).expect(200);
+
+			expect(await bindingRepository.findActiveByWorkflowId(workflow.id)).toBeNull();
+		});
 	});
 });
 

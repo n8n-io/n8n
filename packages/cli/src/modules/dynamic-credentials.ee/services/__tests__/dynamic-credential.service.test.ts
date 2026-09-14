@@ -29,6 +29,7 @@ import { CredentialResolverNotConfiguredError } from '../../errors/credential-re
 import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
+import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 
@@ -42,6 +43,7 @@ describe('DynamicCredentialService', () => {
 	let mockExpressionService: Mocked<ResolverConfigExpressionService>;
 	let mockDynamicCredentialConfig: Mocked<DynamicCredentialsConfig>;
 	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
+	let mockCredentialResolverWorkflowService: Mocked<CredentialResolverWorkflowService>;
 
 	beforeEach(() => {
 		mockDynamicCredentialConfig = {
@@ -53,6 +55,9 @@ describe('DynamicCredentialService', () => {
 			// pass through the workflow override if any, otherwise null.
 			getEffectiveResolverId: vi.fn((settings) => settings?.credentialResolverId ?? null),
 		} as unknown as Mocked<DynamicCredentialsProxy>;
+		mockCredentialResolverWorkflowService = {
+			getWorkflowStatus: vi.fn().mockResolvedValue([]),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 	});
 
 	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
@@ -229,6 +234,7 @@ describe('DynamicCredentialService', () => {
 			mockLogger,
 			mockExpressionService,
 			mockDynamicCredentialsProxy,
+			mockCredentialResolverWorkflowService,
 		);
 	});
 
@@ -1213,6 +1219,7 @@ describe('DynamicCredentialService', () => {
 					mockLogger,
 					mockExpressionService,
 					mockDynamicCredentialsProxy,
+					mockCredentialResolverWorkflowService,
 				);
 				const middleware = service.getDynamicCredentialsEndpointsMiddleware();
 				const mockReq = {
@@ -1245,6 +1252,7 @@ describe('DynamicCredentialService', () => {
 					mockLogger,
 					mockExpressionService,
 					mockDynamicCredentialsProxy,
+					mockCredentialResolverWorkflowService,
 				);
 				service.getDynamicCredentialsEndpointsMiddleware();
 				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
@@ -1263,6 +1271,7 @@ describe('DynamicCredentialService', () => {
 						mockLogger,
 						mockExpressionService,
 						mockDynamicCredentialsProxy,
+						mockCredentialResolverWorkflowService,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
@@ -1299,6 +1308,7 @@ describe('DynamicCredentialService', () => {
 						mockLogger,
 						mockExpressionService,
 						mockDynamicCredentialsProxy,
+						mockCredentialResolverWorkflowService,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();

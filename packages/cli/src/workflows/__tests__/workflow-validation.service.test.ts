@@ -1229,7 +1229,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 
@@ -1290,7 +1290,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 
@@ -1326,7 +1326,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 		});
@@ -1372,7 +1372,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.error).toBe(
-				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you. To use another trigger, switch the credential to Fixed.',
 			);
 		});
 
@@ -1389,6 +1389,61 @@ describe('WorkflowValidationService', () => {
 
 			expect(result.isValid).toBe(true);
 			expect(mockCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		describe('schedule trigger with the run-as setting', () => {
+			const scheduleWorkflow = () => [
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			beforeEach(() => {
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+			});
+
+			it('should return invalid when the run-as setting is absent', async () => {
+				const result = await service.validateDynamicCredentials(scheduleWorkflow(), mockNodeTypes, {
+					credentialResolverId: SYSTEM_RESOLVER,
+				});
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('schedule triggers set to run as you');
+			});
+
+			it('should return valid when the run-as setting names a user', async () => {
+				const result = await service.validateDynamicCredentials(scheduleWorkflow(), mockNodeTypes, {
+					credentialResolverId: SYSTEM_RESOLVER,
+					runAsUserId: 'u1',
+				});
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('should still return invalid when another trigger provides no identity', async () => {
+				const nodes = [...scheduleWorkflow(), createNode('Webhook', 'n8n-nodes-base.webhook')];
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.scheduleTrigger' || type === 'n8n-nodes-base.webhook') {
+						return createTriggerNodeType();
+					}
+					return {} as INodeType;
+				}) as any);
+
+				const result = await service.validateDynamicCredentials(nodes, mockNodeTypes, {
+					credentialResolverId: SYSTEM_RESOLVER,
+					runAsUserId: 'u1',
+				});
+
+				expect(result.isValid).toBe(false);
+			});
 		});
 	});
 
