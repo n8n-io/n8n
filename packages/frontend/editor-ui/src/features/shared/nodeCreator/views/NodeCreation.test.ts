@@ -27,12 +27,14 @@ vi.mock('vue', async (importOriginal) => {
 		...actual,
 		defineAsyncComponent: () => ({
 			name: 'NodeCreatorStub',
-			emits: ['node-type-selected', 'close-node-creator'],
+			emits: ['node-type-selected', 'empty-group-selected', 'close-node-creator'],
 			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
 				return { emit };
 			},
-			template:
-				'<button data-test-id="node-creator-stub-select" @click="emit(\'node-type-selected\', [{ type: \'n8n-nodes-base.slack\' }])" />',
+			template: `<>
+				<button data-test-id="node-creator-stub-select" @click="emit('node-type-selected', [{ type: 'n8n-nodes-base.slack' }])" />
+				<button data-test-id="node-creator-stub-group" @click="emit('empty-group-selected')" />
+			</>`,
 		}),
 	};
 });
@@ -116,6 +118,20 @@ describe('NodeCreation', () => {
 		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
 	});
 
+	it('emits the anchor position when Group is selected in the node creator', async () => {
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		expect(emitted<[XYPosition]>('addEmptyGroup')[0][0]).toEqual([
+			expect.any(Number),
+			expect.any(Number),
+		]);
+		expect(emitted('toggleNodeCreator')).toEqual([
+			[{ createNodeActive: false, hasAddedNodes: true }],
+		]);
+	});
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 

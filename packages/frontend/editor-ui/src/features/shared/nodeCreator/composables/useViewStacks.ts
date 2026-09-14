@@ -49,7 +49,7 @@ import {
 	transformNodeType,
 } from '../nodeCreator.utils';
 
-import type { NodeViewItem, NodeViewItemSection } from '../views/viewsData';
+import { isNodeViewItem, type NodeViewItem, type NodeViewItemSection } from '../views/viewsData';
 import { AINodesView } from '../views/viewsData';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
@@ -479,9 +479,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		} else {
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
 
-			relatedAIView = AINodesView([]).items.find(
-				(item) => item.properties.connectionType === connectionType,
+			const compatibleAIView = AINodesView([]).items.find(
+				(item) => isNodeViewItem(item) && item.properties.connectionType === connectionType,
 			);
+			if (compatibleAIView && isNodeViewItem(compatibleAIView)) {
+				relatedAIView = compatibleAIView;
+			}
 		}
 
 		// Only add info field if the view does not have any filters (e.g.
