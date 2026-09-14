@@ -2,6 +2,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { JOB_RUN_DEFAULT_TIMEOUT_SECONDS } from '../../constants';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
@@ -11,32 +12,31 @@ import {
 import type { DatabricksJobRun, DatabricksRunNowResponse } from '../interfaces';
 
 const POLL_INTERVAL_MS = 5000;
-const DEFAULT_TIMEOUT_SECONDS = 600;
+// TERMINATED ends `status.state`; SKIPPED and INTERNAL_ERROR end the deprecated `state.life_cycle_state`
 const TERMINAL_RUN_STATES = new Set(['TERMINATED', 'SKIPPED', 'INTERNAL_ERROR']);
 
-function isJobParameterEntry(entry: unknown): entry is { name: string; value?: unknown } {
+function isNamedEntry(entry: unknown): entry is { name: string; value?: unknown } {
 	return (
-		typeof entry === 'object' && entry !== null && 'name' in entry && typeof entry.name === 'string'
+		typeof entry === 'object' &&
+		entry !== null &&
+		'name' in entry &&
+		typeof entry.name === 'string' &&
+		entry.name !== ''
 	);
 }
 
 function readJobParameters(context: IExecuteFunctions, i: number): Record<string, string> {
 	const entries = context.getNodeParameter('jobParameters.parameters', i, []);
-	const parameters: Record<string, string> = {};
-	if (!Array.isArray(entries)) return parameters;
-	for (const entry of entries) {
-		if (isJobParameterEntry(entry) && entry.name) {
-			parameters[entry.name] = String(entry.value ?? '');
-		}
-	}
-	return parameters;
+	if (!Array.isArray(entries)) return {};
+	return Object.fromEntries(
+		entries.filter(isNamedEntry).map((entry) => [entry.name, String(entry.value ?? '')]),
+	);
 }
 
 function getRunState(run: DatabricksJobRun): string {
 	return run.status?.state ?? run.state?.life_cycle_state ?? '';
 }
 
-// Prefer `status.termination_details`; fall back to the deprecated `state` object.
 function getRunOutcome(run: DatabricksJobRun): { success: boolean; code: string; message: string } {
 	const details = run.status?.termination_details;
 	if (details) {
@@ -45,6 +45,12 @@ function getRunOutcome(run: DatabricksJobRun): { success: boolean; code: string;
 	}
 	const code = run.state?.result_state ?? getRunState(run);
 	return { success: code === 'SUCCESS', code, message: run.state?.state_message ?? '' };
+}
+
+function describeRunPage(run: DatabricksJobRun): string | undefined {
+	return run.run_page_url
+		? `Open the run page in Databricks for details: ${run.run_page_url}`
+		: undefined;
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -71,7 +77,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const options = this.getNodeParameter('options', i, {});
 	const timeoutSeconds =
-		options.timeout === undefined ? DEFAULT_TIMEOUT_SECONDS : Number(options.timeout);
+		options.timeout === undefined ? JOB_RUN_DEFAULT_TIMEOUT_SECONDS : Number(options.timeout);
 	if (waitForCompletion && (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0)) {
 		throw new NodeOperationError(this.getNode(), 'Timeout must be a positive number of seconds', {
 			itemIndex: i,
@@ -93,33 +99,38 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		return [{ json: runReference, pairedItem: { item: i } }];
 	}
 
-	const maxPolls = Math.max(1, Math.ceil((timeoutSeconds * 1000) / POLL_INTERVAL_MS));
+	const deadline = Date.now() + timeoutSeconds * 1000;
 	const abortSignal = this.getExecutionCancelSignal();
-
-	let run: DatabricksJobRun | undefined;
-	for (let poll = 0; poll < maxPolls; poll++) {
-		await sleep(POLL_INTERVAL_MS, abortSignal);
-		const latest: DatabricksJobRun = await databricksApiRequest(this, credentialType, {
+	const fetchRun = async (): Promise<DatabricksJobRun> =>
+		await databricksApiRequest(this, credentialType, {
 			method: 'GET',
 			url: `${host}/api/2.2/jobs/runs/get`,
 			qs: { run_id: runReference.run_id },
 			headers: { Accept: 'application/json' },
 			json: true,
 		});
-		run = latest;
-		if (TERMINAL_RUN_STATES.has(getRunState(latest))) break;
-	}
 
-	if (!run || !TERMINAL_RUN_STATES.has(getRunState(run))) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Job run ${runReference.run_id} did not finish within ${timeoutSeconds} seconds`,
-			{
-				itemIndex: i,
-				description:
-					'Raise the timeout in Options, or turn off Wait for Completion and look the run up later by its run ID.',
-			},
-		);
+	let run = await fetchRun();
+	while (!TERMINAL_RUN_STATES.has(getRunState(run))) {
+		const remainingMs = deadline - Date.now();
+		if (remainingMs <= 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Job run ${runReference.run_id} did not finish within ${timeoutSeconds} seconds`,
+				{
+					itemIndex: i,
+					description: [
+						`Last state: ${getRunState(run)}.`,
+						'Raise the timeout in Options, or turn off Wait for Completion and look the run up later by its run ID.',
+						describeRunPage(run),
+					]
+						.filter(Boolean)
+						.join(' '),
+				},
+			);
+		}
+		await sleep(Math.min(POLL_INTERVAL_MS, remainingMs), abortSignal);
+		run = await fetchRun();
 	}
 
 	const outcome = getRunOutcome(run);
@@ -128,12 +139,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		throw new NodeOperationError(
 			this.getNode(),
 			`Job run ${runReference.run_id} failed (${outcome.code}): ${reason}`,
-			{
-				itemIndex: i,
-				description: run.run_page_url
-					? `Open the run page in Databricks for details: ${run.run_page_url}`
-					: undefined,
-			},
+			{ itemIndex: i, description: describeRunPage(run) },
 		);
 	}
 

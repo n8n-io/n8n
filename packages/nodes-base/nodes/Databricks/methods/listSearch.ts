@@ -428,10 +428,8 @@ export async function getFunctions(
 const JOBS_PAGE_SIZE = 100;
 const JOBS_SEARCH_MAX_PAGES = 10;
 
-type JobsListPage = {
-	jobs?: Array<{ job_id: number; settings?: { name?: string } }>;
-	next_page_token?: string;
-};
+type JobSummary = { job_id: number; settings?: { name?: string } };
+type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
 async function fetchJobsPage(
 	context: ILoadOptionsFunctions,
@@ -457,8 +455,7 @@ export async function getJobs(
 ): Promise<INodeListSearchResult> {
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
-
-	const toResult = (job: { job_id: number; settings?: { name?: string } }) => ({
+	const toListItem = (job: JobSummary) => ({
 		name: job.settings?.name ?? String(job.job_id),
 		value: String(job.job_id),
 		url: `${host}/jobs/${job.job_id}`,
@@ -466,23 +463,22 @@ export async function getJobs(
 
 	if (!filter) {
 		const page = await fetchJobsPage(this, credentialType, host, paginationToken);
-		return { results: (page.jobs ?? []).map(toResult), paginationToken: page.next_page_token };
+		return { results: (page.jobs ?? []).map(toListItem), paginationToken: page.next_page_token };
 	}
 
 	// The API's `name` filter only matches a whole job name, so search scans pages instead
 	const filterLower = filter.toLowerCase();
 	const results: INodeListSearchResult['results'] = [];
 	let pageToken = paginationToken;
-	for (let page = 0; page < JOBS_SEARCH_MAX_PAGES; page++) {
+	for (let page = 0; page < JOBS_SEARCH_MAX_PAGES && (page === 0 || pageToken); page++) {
 		const response = await fetchJobsPage(this, credentialType, host, pageToken);
-		for (const job of response.jobs ?? []) {
-			if ((job.settings?.name ?? '').toLowerCase().includes(filterLower)) {
-				results.push(toResult(job));
-			}
-		}
+		results.push(
+			...(response.jobs ?? [])
+				.filter((job) => (job.settings?.name ?? '').toLowerCase().includes(filterLower))
+				.map(toListItem),
+		);
 		pageToken = response.next_page_token;
-		if (!pageToken) break;
 	}
 
-	return { results };
+	return { results, paginationToken: pageToken };
 }

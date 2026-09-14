@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { JOB_RUN_DEFAULT_TIMEOUT_SECONDS } from '../../constants';
+
 const showForRun = { resource: ['job'], operation: ['run'] };
 
 export const jobParameters: INodeProperties[] = [
@@ -110,7 +112,7 @@ export const jobParameters: INodeProperties[] = [
 				displayName: 'Timeout',
 				name: 'timeout',
 				type: 'number',
-				default: 600,
+				default: JOB_RUN_DEFAULT_TIMEOUT_SECONDS,
 				typeOptions: { minValue: 1 },
 				description:
 					'Maximum time in seconds to wait for the run to finish. The node fails if the run is still going after this time.',

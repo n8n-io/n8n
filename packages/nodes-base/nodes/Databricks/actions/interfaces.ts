@@ -67,6 +67,7 @@ export type DatabricksJobRun = {
 			message?: string;
 		};
 	};
+	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: {
 		life_cycle_state?: string;
 		result_state?: string;

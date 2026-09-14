@@ -731,9 +731,10 @@ describe('makePermissionErrorLegible', () => {
 });
 
 describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () => {
-	// One dropdown suffices: all five listSearch call sites share the listRequest
-	// wrapper this exercises
-	it('should reject with the legible message from getCatalogs', async () => {
+	it.each([
+		['getCatalogs', getCatalogs],
+		['getJobs', getJobs],
+	])('should reject with the legible message from %s', async (_name, method) => {
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNodeParameter.mockReturnValue('accessToken');
 		context.getCredentials.mockResolvedValue({ host: HOST });
@@ -741,9 +742,7 @@ describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () =
 			apiErrorFromBody(403, { error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE }),
 		);
 
-		await expect(getCatalogs.call(context)).rejects.toMatchObject({
-			message: PERMISSION_MESSAGE,
-		});
+		await expect(method.call(context)).rejects.toMatchObject({ message: PERMISSION_MESSAGE });
 	});
 
 	// getSchemas swallows the error into a placeholder row instead of throwing —
@@ -900,17 +899,26 @@ describe('Job -> Run (wait for completion)', () => {
 	const JOB_ID = 281874479417551;
 	const RUN_ID = 41847992357943;
 	const RUN_NOW_RESPONSE = { run_id: RUN_ID, number_in_job: RUN_ID };
-	const runningRun = { job_id: JOB_ID, run_id: RUN_ID, status: { state: 'RUNNING' } };
-	const terminatedRun = (terminationDetails: { code: string; type: string; message?: string }) => ({
+	const RUN_PAGE_URL = `${HOST}/?o=123#job/${JOB_ID}/run/${RUN_ID}`;
+	const RUN_PAGE_HINT = `Open the run page in Databricks for details: ${RUN_PAGE_URL}`;
+	const runWith = (fields: object) => ({
 		job_id: JOB_ID,
 		run_id: RUN_ID,
-		run_page_url: `${HOST}/?o=123#job/${JOB_ID}/run/${RUN_ID}`,
-		status: { state: 'TERMINATED', termination_details: terminationDetails },
+		run_page_url: RUN_PAGE_URL,
+		...fields,
 	});
-
+	const pendingRun = runWith({ status: { state: 'PENDING' } });
+	const runningRun = runWith({ status: { state: 'RUNNING' } });
+	const terminatedRun = (terminationDetails: object) =>
+		runWith({ status: { state: 'TERMINATED', termination_details: terminationDetails } });
+	const legacyRun = (state: object) => runWith({ state });
 	const parameterEntry = (name: string, value?: unknown) => ({ name, value });
+	const cancelSignal = new AbortController().signal;
 
-	const setupContext = (overrides: Record<string, NodeParameterValueType | object> = {}) => {
+	const setupContext = (
+		overrides: Record<string, NodeParameterValueType | object> = {},
+		itemIndex = 0,
+	) => {
 		const parameters: Record<string, NodeParameterValueType | object> = {
 			authentication: 'accessToken',
 			jobId: String(JOB_ID),
@@ -921,28 +929,101 @@ describe('Job -> Run (wait for completion)', () => {
 		};
 		const context = mockDeep<IExecuteFunctions>();
 		context.getNode.mockReturnValue(node);
-		context.getNodeParameter.mockImplementation((name) => parameters[name]);
+		context.getExecutionCancelSignal.mockReturnValue(cancelSignal);
+		context.getNodeParameter.mockImplementation((name, index) =>
+			index === itemIndex ? parameters[name] : undefined,
+		);
 		context.getCredentials.mockResolvedValue({ host: HOST });
 		return context;
 	};
+	const apiMock = (context: ReturnType<typeof setupContext>) =>
+		context.helpers.httpRequestWithAuthentication;
+	const sleepDurations = () => vi.mocked(sleep).mock.calls.map(([ms]) => ms);
 
-	beforeEach(() => vi.mocked(sleep).mockClear());
+	let clockMs = 0;
+	beforeEach(() => {
+		clockMs = 0;
+		vi.spyOn(Date, 'now').mockImplementation(() => clockMs);
+		vi.mocked(sleep)
+			.mockClear()
+			.mockImplementation(async (ms) => {
+				clockMs += ms;
+			});
+	});
+	afterEach(() => {
+		vi.mocked(Date.now).mockRestore();
+		vi.mocked(sleep).mockReset().mockResolvedValue(undefined);
+	});
 
-	it('should poll runs/get until the run terminates and return the final run', async () => {
+	it('should return the run reference for the given item without polling when not waiting', async () => {
+		const context = setupContext({ waitForCompletion: false }, 1);
+		apiMock(context).mockResolvedValueOnce(RUN_NOW_RESPONSE);
+
+		const result = await runJob.call(context, 1);
+
+		expect(result).toEqual([{ json: RUN_NOW_RESPONSE, pairedItem: { item: 1 } }]);
+		expect(sleep).not.toHaveBeenCalled();
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		expect(apiMock(context)).toHaveBeenCalledWith(
+			'databricksApi',
+			expect.objectContaining({ method: 'POST', url: `${HOST}/api/2.2/jobs/run-now` }),
+		);
+	});
+
+	it.each([
+		['no parameters', [], { job_id: JOB_ID }],
+		[
+			'one parameter',
+			[parameterEntry('environment', 'staging')],
+			{ job_id: JOB_ID, job_parameters: { environment: 'staging' } },
+		],
+		[
+			'mixed parameter values',
+			[
+				parameterEntry('count', 3),
+				parameterEntry('flag', false),
+				parameterEntry('', 'ignored'),
+				parameterEntry('empty'),
+				parameterEntry('__proto__', 'kept'),
+			],
+			{
+				job_id: JOB_ID,
+				job_parameters: Object.fromEntries([
+					['count', '3'],
+					['flag', 'false'],
+					['empty', ''],
+					['__proto__', 'kept'],
+				]),
+			},
+		],
+	])('should build the run-now body for %s', async (_label, entries, body) => {
+		const context = setupContext({ waitForCompletion: false, 'jobParameters.parameters': entries });
+		apiMock(context).mockResolvedValueOnce(RUN_NOW_RESPONSE);
+
+		await runJob.call(context, 0);
+
+		expect(apiMock(context)).toHaveBeenCalledWith(
+			'databricksApi',
+			expect.objectContaining({ body }),
+		);
+	});
+
+	it('should poll right away, then every 5 seconds, and return the final run', async () => {
 		const context = setupContext();
 		const finalRun = terminatedRun({ code: 'SUCCESS', type: 'SUCCESS' });
-		context.helpers.httpRequestWithAuthentication
+		apiMock(context)
 			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
+			.mockResolvedValueOnce(pendingRun)
 			.mockResolvedValueOnce(runningRun)
 			.mockResolvedValueOnce(finalRun);
 
 		const result = await runJob.call(context, 0);
 
 		expect(result).toEqual([{ json: finalRun, pairedItem: { item: 0 } }]);
-		expect(sleep).toHaveBeenCalledTimes(2);
-		expect(sleep).toHaveBeenCalledWith(5000, context.getExecutionCancelSignal());
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(3);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenNthCalledWith(
+		expect(sleepDurations()).toEqual([5000, 5000]);
+		expect(sleep).toHaveBeenCalledWith(5000, cancelSignal);
+		expect(apiMock(context)).toHaveBeenCalledTimes(4);
+		expect(apiMock(context)).toHaveBeenNthCalledWith(
 			2,
 			'databricksApi',
 			expect.objectContaining({
@@ -953,191 +1034,95 @@ describe('Job -> Run (wait for completion)', () => {
 		);
 	});
 
-	it('should return the run reference without polling when not waiting', async () => {
-		const context = setupContext({
-			waitForCompletion: false,
-			'jobParameters.parameters': [parameterEntry('environment', 'staging')],
-		});
-		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(RUN_NOW_RESPONSE);
-
-		const result = await runJob.call(context, 0);
-
-		expect(result).toEqual([{ json: RUN_NOW_RESPONSE, pairedItem: { item: 0 } }]);
-		expect(sleep).not.toHaveBeenCalled();
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'databricksApi',
-			expect.objectContaining({
-				method: 'POST',
-				url: `${HOST}/api/2.2/jobs/run-now`,
-				body: { job_id: JOB_ID, job_parameters: { environment: 'staging' } },
-			}),
-		);
-	});
-
-	it('should omit job_parameters when none are set', async () => {
-		const context = setupContext({ waitForCompletion: false });
-		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(RUN_NOW_RESPONSE);
-
-		await runJob.call(context, 0);
-
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'databricksApi',
-			expect.objectContaining({ body: { job_id: JOB_ID } }),
-		);
-	});
-
-	it('should fail with the termination message when the run does not succeed', async () => {
+	it('should accept a success reported only through the deprecated state object', async () => {
 		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication
+		const finalRun = legacyRun({ life_cycle_state: 'TERMINATED', result_state: 'SUCCESS' });
+		apiMock(context)
 			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-			.mockResolvedValueOnce(
-				terminatedRun({
-					code: 'RUN_EXECUTION_ERROR',
-					type: 'CLIENT_ERROR',
-					message: 'Task main failed with message: Workload failed, see run output for details.',
-				}),
-			);
+			.mockResolvedValueOnce(legacyRun({ life_cycle_state: 'PENDING' }))
+			.mockResolvedValueOnce(finalRun);
+
+		await expect(runJob.call(context, 0)).resolves.toEqual([
+			{ json: finalRun, pairedItem: { item: 0 } },
+		]);
+	});
+
+	const longMessage = `bad\x00\x1fmsg${'x'.repeat(600)}`;
+	it.each([
+		[
+			'an execution error',
+			terminatedRun({ code: 'RUN_EXECUTION_ERROR', type: 'CLIENT_ERROR', message: 'Task failed' }),
+			'RUN_EXECUTION_ERROR): Task failed',
+		],
+		[
+			'task failures',
+			terminatedRun({ code: 'SUCCESS_WITH_FAILURES', type: 'CLIENT_ERROR', message: 'One failed' }),
+			'SUCCESS_WITH_FAILURES): One failed',
+		],
+		[
+			'termination details without a code',
+			terminatedRun({ type: 'CLOUD_FAILURE' }),
+			'CLOUD_FAILURE): CLOUD_FAILURE',
+		],
+		[
+			'a message with control characters, truncated',
+			terminatedRun({ code: 'RUN_EXECUTION_ERROR', message: longMessage }),
+			`RUN_EXECUTION_ERROR): ${`bad msg${'x'.repeat(600)}`.slice(0, 500)}`,
+		],
+		[
+			'conflicting status and deprecated state objects',
+			runWith({
+				status: {
+					state: 'TERMINATED',
+					termination_details: { code: 'RUN_EXECUTION_ERROR', message: 'from status' },
+				},
+				state: { life_cycle_state: 'TERMINATED', result_state: 'SUCCESS' },
+			}),
+			'RUN_EXECUTION_ERROR): from status',
+		],
+		[
+			'a deprecated failed result',
+			legacyRun({ life_cycle_state: 'TERMINATED', result_state: 'FAILED', state_message: 'Died' }),
+			'FAILED): Died',
+		],
+		[
+			'a deprecated skipped run',
+			legacyRun({ life_cycle_state: 'SKIPPED', state_message: 'Another run is active' }),
+			'SKIPPED): Another run is active',
+		],
+		[
+			'a deprecated internal error',
+			legacyRun({ life_cycle_state: 'INTERNAL_ERROR', state_message: 'Internal error' }),
+			'INTERNAL_ERROR): Internal error',
+		],
+	])('should fail with the termination details of %s', async (_label, finalRun, detail) => {
+		const context = setupContext();
+		apiMock(context).mockResolvedValueOnce(RUN_NOW_RESPONSE).mockResolvedValueOnce(finalRun);
 
 		await expect(runJob.call(context, 0)).rejects.toMatchObject({
-			message: `Job run ${RUN_ID} failed (RUN_EXECUTION_ERROR): Task main failed with message: Workload failed, see run output for details.`,
-			description: expect.stringContaining(`#job/${JOB_ID}/run/${RUN_ID}`),
+			message: `Job run ${RUN_ID} failed (${detail}`,
+			description: RUN_PAGE_HINT,
 		});
-	});
-
-	it('should treat a run that finished with task failures as failed', async () => {
-		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication
-			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-			.mockResolvedValueOnce(
-				terminatedRun({
-					code: 'SUCCESS_WITH_FAILURES',
-					type: 'CLIENT_ERROR',
-					message: 'One or more tasks failed',
-				}),
-			);
-
-		await expect(runJob.call(context, 0)).rejects.toThrow(
-			`Job run ${RUN_ID} failed (SUCCESS_WITH_FAILURES): One or more tasks failed`,
-		);
-	});
-
-	it('should read the deprecated state object when status is absent', async () => {
-		const context = setupContext();
-		const legacyRun = {
-			job_id: JOB_ID,
-			run_id: RUN_ID,
-			state: { life_cycle_state: 'TERMINATED', result_state: 'SUCCESS' },
-		};
-		context.helpers.httpRequestWithAuthentication
-			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-			.mockResolvedValueOnce({
-				job_id: JOB_ID,
-				run_id: RUN_ID,
-				state: { life_cycle_state: 'PENDING' },
-			})
-			.mockResolvedValueOnce(legacyRun);
-
-		const result = await runJob.call(context, 0);
-
-		expect(result).toEqual([{ json: legacyRun, pairedItem: { item: 0 } }]);
-	});
-
-	it('should fail from the deprecated state object when the result is not a success', async () => {
-		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication
-			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-			.mockResolvedValueOnce({
-				job_id: JOB_ID,
-				run_id: RUN_ID,
-				state: {
-					life_cycle_state: 'TERMINATED',
-					result_state: 'FAILED',
-					state_message: 'Cluster failed to start',
-				},
-			});
-
-		await expect(runJob.call(context, 0)).rejects.toThrow(
-			`Job run ${RUN_ID} failed (FAILED): Cluster failed to start`,
-		);
+		expect(sleep).not.toHaveBeenCalled();
 	});
 
 	it.each([
-		['SKIPPED', 'Skipped: another run of this job is active'],
-		['INTERNAL_ERROR', 'Internal error'],
+		[{ timeout: 10 }, 10, [5000, 5000]],
+		[{ timeout: 3 }, 3, [3000]],
+		[{ timeout: 1 }, 1, [1000]],
+		[{}, 600, Array<number>(120).fill(5000)],
 	])(
-		'should stop polling on the deprecated terminal state %s and fail with its message',
-		async (lifeCycleState, stateMessage) => {
-			const context = setupContext();
-			context.helpers.httpRequestWithAuthentication
-				.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-				.mockResolvedValueOnce({
-					job_id: JOB_ID,
-					run_id: RUN_ID,
-					state: { life_cycle_state: lifeCycleState, state_message: stateMessage },
-				});
-
-			await expect(runJob.call(context, 0)).rejects.toThrow(
-				`Job run ${RUN_ID} failed (${lifeCycleState}): ${stateMessage}`,
-			);
-			expect(sleep).toHaveBeenCalledTimes(1);
-		},
-	);
-
-	it('should fall back to the termination type when no termination code is present', async () => {
-		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication
-			.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-			.mockResolvedValueOnce({
-				job_id: JOB_ID,
-				run_id: RUN_ID,
-				status: { state: 'TERMINATED', termination_details: { type: 'CLOUD_FAILURE' } },
-			});
-
-		await expect(runJob.call(context, 0)).rejects.toThrow(
-			`Job run ${RUN_ID} failed (CLOUD_FAILURE): CLOUD_FAILURE`,
-		);
-	});
-
-	it('should coerce job parameter values to strings and skip entries without a name', async () => {
-		const context = setupContext({
-			waitForCompletion: false,
-			'jobParameters.parameters': [
-				parameterEntry('count', 3),
-				parameterEntry('flag', false),
-				parameterEntry('', 'ignored'),
-				parameterEntry('empty'),
-			],
-		});
-		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(RUN_NOW_RESPONSE);
-
-		await runJob.call(context, 0);
-
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'databricksApi',
-			expect.objectContaining({
-				body: { job_id: JOB_ID, job_parameters: { count: '3', flag: 'false', empty: '' } },
-			}),
-		);
-	});
-
-	it.each([
-		[{ timeout: 10 }, 10, 2],
-		[{ timeout: 3 }, 3, 1],
-		[{}, 600, 120],
-	])(
-		'should poll every 5 seconds until the timeout %j elapses and then fail',
-		async (options, seconds, polls) => {
+		'should poll until the timeout %j is reached and then fail',
+		async (options, seconds, expectedSleeps) => {
 			const context = setupContext({ options });
-			context.helpers.httpRequestWithAuthentication
-				.mockResolvedValueOnce(RUN_NOW_RESPONSE)
-				.mockResolvedValue(runningRun);
+			apiMock(context).mockResolvedValueOnce(RUN_NOW_RESPONSE).mockResolvedValue(runningRun);
 
-			await expect(runJob.call(context, 0)).rejects.toThrow(
-				`Job run ${RUN_ID} did not finish within ${seconds} seconds`,
-			);
-			expect(sleep).toHaveBeenCalledTimes(polls);
-			expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(polls + 1);
+			await expect(runJob.call(context, 0)).rejects.toMatchObject({
+				message: `Job run ${RUN_ID} did not finish within ${seconds} seconds`,
+				description: `Last state: RUNNING. Raise the timeout in Options, or turn off Wait for Completion and look the run up later by its run ID. ${RUN_PAGE_HINT}`,
+			});
+			expect(sleepDurations()).toEqual(expectedSleeps);
+			expect(apiMock(context)).toHaveBeenCalledTimes(expectedSleeps.length + 2);
 		},
 	);
 
@@ -1149,37 +1134,41 @@ describe('Job -> Run (wait for completion)', () => {
 			await expect(runJob.call(context, 0)).rejects.toThrow(
 				'Timeout must be a positive number of seconds',
 			);
-			expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(apiMock(context)).not.toHaveBeenCalled();
 		},
 	);
 
 	it('should ignore an invalid timeout when not waiting for completion', async () => {
 		const context = setupContext({ waitForCompletion: false, options: { timeout: 0 } });
-		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(RUN_NOW_RESPONSE);
+		apiMock(context).mockResolvedValueOnce(RUN_NOW_RESPONSE);
 
 		await expect(runJob.call(context, 0)).resolves.toEqual([
 			{ json: RUN_NOW_RESPONSE, pairedItem: { item: 0 } },
 		]);
 	});
 
-	it('should reject a non-numeric job ID before any request', async () => {
-		const context = setupContext({ jobId: 'not-a-number' });
+	it.each([
+		['', 'Job ID must be a whole number'],
+		['not-a-number', 'Job ID must be a whole number'],
+		['9007199254740993', 'Job ID is too large to send exactly'],
+	])('should reject the job ID %j before any request', async (jobId, message) => {
+		const context = setupContext({ jobId });
 
-		await expect(runJob.call(context, 0)).rejects.toThrow('Job ID must be a whole number');
-		expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
-	});
-
-	it('should reject a job ID that cannot be sent as an exact number', async () => {
-		const context = setupContext({ jobId: '9007199254740993' });
-
-		await expect(runJob.call(context, 0)).rejects.toThrow('Job ID is too large to send exactly');
-		expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+		await expect(runJob.call(context, 0)).rejects.toThrow(message);
+		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 });
 
 describe('Job -> Run (job locator URL mode)', () => {
-	const regexSource = jobParameters[0].modes?.find((mode) => mode.name === 'url')?.extractValue;
-	const regex = new RegExp(String(regexSource?.type === 'regex' ? regexSource.regex : ''));
+	const urlMode = jobParameters
+		.find((property) => property.name === 'jobId')
+		?.modes?.find((mode) => mode.name === 'url');
+	const regexSource = urlMode?.extractValue?.type === 'regex' ? urlMode.extractValue.regex : '';
+	const regex = new RegExp(String(regexSource));
+
+	it('should define a regex for the URL mode', () => {
+		expect(regexSource).not.toBe('');
+	});
 
 	it.each([
 		['https://adb-1234567890.1.azuredatabricks.net/jobs/281874479417551', '281874479417551'],
@@ -1228,18 +1217,21 @@ describe('listSearch -> getJobs', () => {
 		context.getCredentials.mockResolvedValue({ host: HOST });
 		return context;
 	};
+	const apiMock = (context: ReturnType<typeof setupContext>) =>
+		context.helpers.httpRequestWithAuthentication;
 
 	it('should return one page with its next token when no filter is given', async () => {
 		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication.mockResolvedValue({
+		apiMock(context).mockResolvedValue({
 			jobs: [job(281874479417551, 'Nightly ETL'), job(42)],
+			has_more: true,
 			next_page_token: 'next-token',
 		});
 
 		const result = await getJobs.call(context, undefined, 'prev-token');
 
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
@@ -1253,57 +1245,54 @@ describe('listSearch -> getJobs', () => {
 		});
 	});
 
-	it('should send only the limit on the first unfiltered page', async () => {
+	it('should handle an empty workspace, whose page carries no jobs key', async () => {
 		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication.mockResolvedValue({ jobs: [] });
+		apiMock(context).mockResolvedValue({ has_more: false });
 
 		const result = await getJobs.call(context);
 
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksApi',
 			expect.objectContaining({ qs: { limit: 100 } }),
 		);
-		expect(result).toEqual({ results: [], paginationToken: undefined });
+		expect(result).toEqual({ results: [] });
 	});
 
-	it('should scan pages and match the filter against job names case-insensitively', async () => {
-		// The API's `name` parameter only matches a whole job name, so it must not be sent
+	it('should scan pages and match the filter anywhere in the job name, ignoring case', async () => {
 		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication
+		apiMock(context)
 			.mockResolvedValueOnce({
 				jobs: [job(1, 'Nightly ETL'), job(2, 'Daily Load')],
+				has_more: true,
 				next_page_token: 'page-2',
 			})
-			.mockResolvedValueOnce({ jobs: [job(3, 'nightly backfill'), job(4)] });
+			.mockResolvedValueOnce({ jobs: [job(3, 'backfill nightly'), job(4)], has_more: false });
 
 		const result = await getJobs.call(context, 'Nightly');
 
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenNthCalledWith(
+		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+		expect(apiMock(context)).toHaveBeenNthCalledWith(
 			1,
 			'databricksApi',
 			expect.objectContaining({ qs: { limit: 100 } }),
 		);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenNthCalledWith(
+		expect(apiMock(context)).toHaveBeenNthCalledWith(
 			2,
 			'databricksApi',
 			expect.objectContaining({ qs: { limit: 100, page_token: 'page-2' } }),
 		);
 		expect(result).toEqual({
-			results: [listItem(1, 'Nightly ETL'), listItem(3, 'nightly backfill')],
+			results: [listItem(1, 'Nightly ETL'), listItem(3, 'backfill nightly')],
 		});
 	});
 
-	it('should stop scanning after ten pages while filtering', async () => {
+	it('should stop scanning after ten pages and hand back the continuation token', async () => {
 		const context = setupContext();
-		context.helpers.httpRequestWithAuthentication.mockResolvedValue({
-			jobs: [job(7, 'Other')],
-			next_page_token: 'more',
-		});
+		apiMock(context).mockResolvedValue({ has_more: true, next_page_token: 'more' });
 
 		const result = await getJobs.call(context, 'missing');
 
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(10);
-		expect(result).toEqual({ results: [] });
+		expect(apiMock(context)).toHaveBeenCalledTimes(10);
+		expect(result).toEqual({ results: [], paginationToken: 'more' });
 	});
 });
