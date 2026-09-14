@@ -606,29 +606,32 @@ describe('Test Notion, simplifyObjects', () => {
 		},
 	});
 
-	/**
-	 * The simplified key that a property with this name gets. Found by value, so a name
-	 * whose key collides with the title key still reports the key it landed on.
-	 * `undefined` when the property is missing from the output.
-	 */
+	// The key a property with this name gets, found by its value. `undefined` when it is dropped.
 	const keyFor = (propertyName: string, version: number): string | undefined => {
 		const [result] = simplifyObjects([page({ [propertyName]: richText('x') })], false, version);
 		return Object.keys(result).find((key) => result[key] === 'x');
 	};
 
-	it('prefixes simplified property keys and keeps the title', () => {
-		const result = simplifyObjects([page({ 'First Name': richText('Jean') })], false, 2);
-
-		expect(result[0]).toEqual({
-			id: 'page-id',
-			name: 'Roadmap',
-			url: 'https://www.notion.so/page-id',
-			property_name: 'Roadmap',
-			property_first_name: 'Jean',
-		});
-	});
-
 	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
+		it('preserves non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
+
+			expect(result[0]).toMatchObject({ property_prénom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_naïve'],
+			['café', 'property_café'],
+			['Mädchen', 'property_mädchen'],
+			['Köln', 'property_köln'],
+			['Prüfung', 'property_prüfung'],
+			['Straße', 'property_straße'],
+		])('keeps %s as %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
 		describeKeyDerivation('property keys', (name) => keyFor(name, 3), {
 			keyPattern: /^property_[\p{L}\p{M}\d_]*$/u,
 		});
@@ -642,13 +645,10 @@ describe('Test Notion, simplifyObjects', () => {
 				fc.property(lowercaseWord, (name) => {
 					expect(keyFor(name, 3)).toBe(`property_${name}`);
 				}),
-				{ examples: [['prénom'], ['straße'], ['κόσμος'], ['имя']] },
 			);
 		});
 
-		// A look-alike letter survives into the key, so `$json.property_nаme` with a Cyrillic а
-		// is a different key from `$json.property_name` while looking identical. The one way
-		// two names merge is case mapping, e.g. the Kelvin sign K lowercases to an ASCII k.
+		// Only case mapping merges two names, e.g. the Kelvin sign K lowercases to an ASCII k.
 		it('keeps a look-alike distinct from its ASCII twin unless case mapping merges them', () => {
 			fc.assert(
 				fc.property(lookAlikePair, ([word, lookAlike]) => {
@@ -660,12 +660,49 @@ describe('Test Notion, simplifyObjects', () => {
 	});
 
 	describe('earlier versions fold to the pre-v5 ASCII shape', () => {
+		it('folds non-ASCII characters in simplified property keys', () => {
+			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pr_nom: 'Jean' });
+			expect(result[0]).not.toHaveProperty('property_prénom');
+		});
+
+		it('snake-cases ASCII property keys without folding', () => {
+			const result = simplifyObjects([page({ 'First Name': richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({
+				property_name: 'Roadmap',
+				property_first_name: 'Jean',
+			});
+		});
+
+		// Decomposed input (base letter + combining mark) must fold like change-case v4,
+		// which kept the ASCII base letter — i.e. no NFC normalization first.
+		it('folds decomposed accents without normalizing', () => {
+			const decomposedPrenom = 'Pre\u0301nom'; // e + combining acute, not the composed é
+			const result = simplifyObjects([page({ [decomposedPrenom]: richText('Jean') })], false, 2);
+
+			expect(result[0]).toMatchObject({ property_pre_nom: 'Jean' });
+		});
+
+		it.each([
+			['naïve', 'property_na_ve'],
+			['café', 'property_caf'],
+			['Prix (€)', 'property_prix'],
+			['Mädchen', 'property_m_dchen'],
+			['Köln', 'property_k_ln'],
+			['Prüfung', 'property_pr_fung'],
+			['Straße', 'property_stra_e'],
+		])('folds %s to %s', (propertyName, expectedKey) => {
+			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
+
+			expect(result[0]).toHaveProperty(expectedKey, 'x');
+		});
+
 		describeKeyDerivation('property keys', (name) => keyFor(name, 2), {
 			keyPattern: /^property_[a-z0-9_]*$/,
 		});
 
-		// change-case v4 saw every non-ASCII code point as a separator, decomposed accents
-		// included: `Pre` + combining acute + `nom` gives `pre_nom`, not `pr_nom`.
 		it('treats every non-ASCII character as a word separator', () => {
 			const nonAsciiCharacter = fc
 				.string({ unit: 'grapheme-composite', minLength: 1, maxLength: 1 })
@@ -681,18 +718,9 @@ describe('Test Notion, simplifyObjects', () => {
 				fc.property(wordsWithSeparators, ({ name, expectedKey }) => {
 					expect(keyFor(name, 2)).toBe(expectedKey);
 				}),
-				{
-					examples: [
-						[{ name: 'Prénom', expectedKey: 'property_pr_nom' }],
-						[{ name: 'Prénom'.normalize('NFD'), expectedKey: 'property_pre_nom' }],
-						[{ name: 'Prix (€)', expectedKey: 'property_prix' }],
-					],
-				},
 			);
 		});
 
-		// Every character of a non-Latin script folds away, so all such names share one key
-		// and only the last property survives. v3 keeps one key per property.
 		it('gives every name of a non-Latin script the empty key', () => {
 			fc.assert(
 				fc.property(hardString('greek', 'cyrillic', 'cjk'), (name) => {

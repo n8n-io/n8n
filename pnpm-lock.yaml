@@ -7439,6 +7439,9 @@ importers:
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
+      '@unicode/unicode-17.0.0':
+        specifier: 2.0.7
+        version: 2.0.7
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
@@ -15230,6 +15233,9 @@ packages:
 
   '@ungap/structured-clone@1.3.1':
     resolution: {integrity: sha512-mUFwbeTqrVgDQxFveS+df2yfap6iuP20NAKAsBt5jDEoOTDew+zwLAOilHCeQJOVSvmgCX4ogqIrA0mnyr08yQ==}
+
+  '@unicode/unicode-17.0.0@2.0.7':
+    resolution: {integrity: sha512-XdCUsw7exiSD8QICrzwb99xx9O/e7qMx/Oew1e8MBQGavCIIR0VO6vID7OSH/wQjUjogcfydqmsuRLkGM6LfLA==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     resolution: {integrity: sha512-tS+lqTU3N0kkthU+rYp0spAYq15DU8ld9kXkaKg9sbQqJNF+WPMuNHZQGCgdxrUOEO0j22RKMwRVhF1HTl+X8A==}
@@ -35088,6 +35094,8 @@ snapshots:
       - supports-color
 
   '@ungap/structured-clone@1.3.1': {}
+
+  '@unicode/unicode-17.0.0@2.0.7': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     optional: true

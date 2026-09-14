@@ -7,8 +7,7 @@ import {
 	CASE_EDGE,
 	chars,
 	CYRILLIC,
-	DEVANAGARI_CONSONANTS,
-	DEVANAGARI_VOWEL_SIGNS,
+	DEVANAGARI,
 	DIACRITICAL_MARKS,
 	DIGITS,
 	FULLWIDTH,
@@ -49,8 +48,11 @@ export interface Family {
 /** An ASCII word with an optional capital, the shape most fixtures already use. */
 export const asciiWord = fc.stringMatching(/^[A-Za-z][a-z]{0,7}$/);
 
+/** One of the values. Unlike `fc.constantFrom(...values)` it takes sets of any size. */
+const pick = (values: readonly string[]) => fc.nat(values.length - 1).map((index) => values[index]);
+
 const wordOf = (characters: readonly string[]) =>
-	fc.array(fc.constantFrom(...characters), { minLength: 1, maxLength: 8 }).map((c) => c.join(''));
+	fc.array(pick(characters), { minLength: 1, maxLength: 8 }).map((c) => c.join(''));
 
 /** An ASCII word with at least one letter replaced by one of the given characters. */
 const mixedWord = (characters: readonly string[]) =>
@@ -58,7 +60,7 @@ const mixedWord = (characters: readonly string[]) =>
 		.array(
 			fc.oneof(
 				{ weight: 2, arbitrary: fc.stringMatching(/^[a-z]$/) },
-				{ weight: 1, arbitrary: fc.constantFrom(...characters) },
+				{ weight: 1, arbitrary: pick(characters) },
 			),
 			{ minLength: 2, maxLength: 10 },
 		)
@@ -160,19 +162,7 @@ export const families = [
 		description:
 			'Devanagari words, where vowel signs are combining marks on the consonant before them.',
 		examples: ['नाम', 'हिन्दी', 'जन्म तिथि'],
-		arbitrary: phrase(
-			fc
-				.array(
-					fc
-						.tuple(
-							fc.constantFrom(...DEVANAGARI_CONSONANTS),
-							fc.option(fc.constantFrom(...DEVANAGARI_VOWEL_SIGNS), { nil: '' }),
-						)
-						.map(([consonant, vowelSign]) => consonant + vowelSign),
-					{ minLength: 1, maxLength: 5 },
-				)
-				.map((syllables) => syllables.join('')),
-		),
+		arbitrary: phrase(wordOf(DEVANAGARI)),
 	},
 	{
 		name: 'cjk',
@@ -200,7 +190,7 @@ export const families = [
 		arbitrary: fc
 			.tuple(
 				asciiWord,
-				fc.array(fc.array(fc.constantFrom(...DIACRITICAL_MARKS), { minLength: 1, maxLength: 6 }), {
+				fc.array(fc.array(pick(DIACRITICAL_MARKS), { minLength: 1, maxLength: 6 }), {
 					minLength: 8,
 					maxLength: 8,
 				}),
@@ -228,7 +218,7 @@ export const families = [
 		examples: ['😀 Mood', '🚀 Launch date', '👨‍👩‍👧', '🇩🇪', '👍🏽', '1️⃣'],
 		arbitrary: phrase(
 			fc.oneof(
-				fc.constantFrom(...PICTOGRAPHS),
+				pick(PICTOGRAPHS),
 				fc
 					.tuple(fc.constantFrom('👍', '👋', '🙏', '✋', '👶'), fc.constantFrom(...SKIN_TONES))
 					.map(([base, tone]) => base + tone),
