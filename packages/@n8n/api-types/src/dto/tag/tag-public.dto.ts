@@ -24,10 +24,6 @@ export class TagListPublicDto extends Z.class({
 	nextCursor: z.string().nullable(),
 }) {}
 
-/**
- * `name` stays an unconstrained string: the published spec constrains only the type, and the tag
- * service owns the length rule.
- */
 export class UpdateTagPublicDto extends Z.class(
 	{
 		id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
