@@ -551,6 +551,9 @@ export class TestWebhooks implements IWebhookManager {
 
 					await this.registrations.register(registration, registrationTtl);
 
+					// Clear the timer of the registration this one replaces. Otherwise it fires
+					// early and cancels the new registration.
+					if (this.timeouts[key] !== timeout) this.clearTimeout(key);
 					this.timeouts[key] = timeout;
 				} catch (error) {
 					await this.deactivateWebhooks(workflow);

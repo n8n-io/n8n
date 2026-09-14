@@ -119,6 +119,26 @@ describe('TestWebhooks', () => {
 			expect(ttls.at(-1)).toBe(600_000 + TEST_WEBHOOK_TIMEOUT_BUFFER);
 		});
 
+		test('clears the timer of a replaced registration so it cannot cancel the new one early', async () => {
+			vi.clearAllTimers();
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression: mock<WorkflowExpression>(),
+			});
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			const cancelSpy = vi.spyOn(testWebhooks, 'cancelWebhook').mockResolvedValue(undefined);
+
+			await testWebhooks.needsWebhook(args);
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: TEST_WEBHOOK_MAX_TIMEOUT });
+
+			vi.advanceTimersByTime(TEST_WEBHOOK_TIMEOUT);
+			expect(cancelSpy).not.toHaveBeenCalled();
+
+			vi.advanceTimersByTime(TEST_WEBHOOK_MAX_TIMEOUT - TEST_WEBHOOK_TIMEOUT);
+			expect(cancelSpy).toHaveBeenCalledExactlyOnceWith(workflowEntity.id);
+		});
+
 		test('clamps timeoutMs to the maximum window and falls back to the default for non-positive values', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
