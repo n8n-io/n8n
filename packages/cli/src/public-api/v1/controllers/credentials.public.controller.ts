@@ -383,7 +383,7 @@ export class CredentialsPublicController {
 	@ProjectScope('credential:delete')
 	@ApiSummary('Delete credential by ID')
 	@ApiDescription(
-		'Deletes a credential from your instance. You must be the owner of the credentials',
+		'Deletes a credential from your instance. You must be the owner of the credential.',
 	)
 	@ApiTags(['Credential'])
 	@ApiResponse(200, DeleteCredentialPublicDto)
