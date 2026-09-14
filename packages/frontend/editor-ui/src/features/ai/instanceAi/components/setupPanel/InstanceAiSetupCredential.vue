@@ -6,9 +6,11 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nCopyInput,
+	N8nIcon,
 	N8nSegmentControl,
 	N8nSetupConnection,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { addCredentialTranslation, useI18n } from '@n8n/i18n';
@@ -282,7 +284,12 @@ const modeOptions = computed<Array<{ value: 'credits' | 'own'; label: string }>>
 	{ value: 'own', label: i18n.baseText('instanceAi.setupPanel.useOwnKey') },
 ]);
 const actions = computed<DropdownMenuItemProps[]>(() => {
-	if (!connected.value && useCredits.value) return [];
+	const existing = usableCredentials.value.some(
+		(credential) => !connected.value || credential.id !== binding.value?.id,
+	)
+		? [{ id: 'existing', label: i18n.baseText('instanceAi.setupPanel.useExisting') }]
+		: [];
+	if (!connected.value && useCredits.value) return existing;
 	if (connected.value && binding.value?.__aiGatewayManaged)
 		return [
 			{ id: 'replace', label: i18n.baseText('instanceAi.setupPanel.useOwnKey') },
@@ -305,9 +312,7 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
 	if (!connected.value && documentationUrl.value)
 		items.push({ id: 'docs', label: i18n.baseText('credentialEdit.credentialConfig.openDocs') });
-	if (usableCredentials.value.some((credential) => credential.id !== binding.value?.id))
-		items.push({ id: 'existing', label: i18n.baseText('instanceAi.setupPanel.useExisting') });
-	return items;
+	return [...items, ...existing];
 });
 
 const helpLabel = computed(() => {
@@ -598,8 +603,19 @@ onScopeDispose(() => {
 					i18n.baseText('instanceAi.setupPanel.creditsDescription')
 				}}</N8nText>
 			</template>
-			<template v-if="useCredits && balanceLabel" #action-leading>
-				<N8nText step="xs">{{ balanceLabel }}</N8nText>
+			<template #action-leading>
+				<N8nText v-if="useCredits && balanceLabel" step="xs">{{ balanceLabel }}</N8nText>
+				<N8nTooltip v-else-if="!useCredits" :content="helpLabel" placement="top">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:disabled="helpDisabled || busy"
+						@click="askForHelp"
+					>
+						<N8nIcon icon="sparkles" size="small" />
+						{{ i18n.baseText('instanceAi.askAiAssistant') }}
+					</N8nButton>
+				</N8nTooltip>
 			</template>
 			<template v-if="initialized && !useCredits && !canQuickConnect">
 				<N8nText size="small" :class="$style.hint">
@@ -634,27 +650,7 @@ onScopeDispose(() => {
 					@update="onDataChange"
 				/>
 			</template>
-			<template v-if="!useCredits" #footer>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:class="$style.help"
-					:disabled="helpDisabled || busy"
-					@click="askForHelp"
-				>
-					{{ helpLabel }}
-				</N8nButton>
-			</template>
 		</N8nSetupConnection>
-		<N8nButton
-			v-if="!showExistingPicker && !connected && node && usableCredentials.length"
-			:class="$style.existing"
-			variant="ghost"
-			size="small"
-			@click="chooseExisting = true"
-		>
-			{{ i18n.baseText('instanceAi.setupPanel.useExisting') }}
-		</N8nButton>
 		<N8nCallout v-if="form.authError.value" theme="danger">{{ form.authError.value }}</N8nCallout>
 		<N8nButton v-if="initializationFailed" variant="ghost" size="small" @click="initialize">
 			{{ i18n.baseText('generic.retry') }}
@@ -677,16 +673,8 @@ onScopeDispose(() => {
 	color: var(--text-color--subtle);
 }
 
-.existing {
-	align-self: flex-start;
-}
-
 .hint {
 	color: var(--text-color--subtle);
-}
-
-.help {
-	align-self: flex-start;
 }
 
 .redirectInput {

@@ -550,7 +550,7 @@ describe('InstanceAiSetupCredential', () => {
 		const rendered = renderComponent();
 		await flushPromises();
 		await fireEvent.update(rendered.getByLabelText('API key'), 'private-draft');
-		await userEvent.click(rendered.getByRole('button', { name: 'Help me find my API key' }));
+		await userEvent.click(rendered.getByRole('button', { name: 'Ask n8n Assistant' }));
 		expect(rendered.emitted('askForHelp')).toEqual([
 			[
 				expect.objectContaining({
@@ -564,18 +564,42 @@ describe('InstanceAiSetupCredential', () => {
 		expect(JSON.stringify(rendered.emitted('askForHelp'))).not.toContain('private-draft');
 		expect(rendered.getByLabelText('API key')).toHaveValue('private-draft');
 		await rendered.rerender({ helpDisabled: true });
-		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Ask n8n Assistant' })).toBeDisabled();
 	});
 
-	it('offers another existing credential only when a different account is available', async () => {
-		const store = mockedStore(useCredentialsStore);
-		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
-		store.getUsableCredentialByType = vi.fn().mockReturnValue([savedCredential]);
-		const rendered = renderComponent({ props: { pendingCredential: savedCredential } });
-		await flushPromises();
-		await userEvent.click(rendered.getByRole('button', { name: 'Change connection' }));
-		expect(rendered.queryByRole('menuitem', { name: 'Use an existing credential' })).toBeNull();
-	});
+	it.each([false, true])(
+		'lets users return to their existing credential through the menu, credits: %s',
+		async (useCredits) => {
+			const store = mockedStore(useCredentialsStore);
+			store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+			store.getUsableCredentialByType = vi.fn().mockReturnValue([savedCredential]);
+			const rendered = renderComponent({
+				props: { pendingCredential: { id: savedCredential.id, name: savedCredential.name } },
+			});
+			await flushPromises();
+			await userEvent.click(rendered.getByRole('button', { name: 'Change connection' }));
+			expect(rendered.queryByRole('menuitem', { name: 'Use an existing credential' })).toBeNull();
+			await userEvent.click(rendered.getByRole('menuitem', { name: 'Create new credential' }));
+			await flushPromises();
+			await fireEvent.update(rendered.getByLabelText('API key'), 'draft-key');
+			if (useCredits) {
+				gateway.isEnabled.value = true;
+				await flushPromises();
+				await userEvent.click(rendered.getByRole('radio', { name: 'Gateway credits' }));
+			}
+			expect(rendered.queryByRole('button', { name: 'Use an existing credential' })).toBeNull();
+			await openMenu(rendered, 'Use an existing credential');
+			expect(rendered.getByRole('button', { name: 'Select existing connection' })).toBeVisible();
+			await userEvent.click(rendered.getByRole('button', { name: 'Cancel' }));
+			if (useCredits)
+				await userEvent.click(rendered.getByRole('radio', { name: 'Use my API key' }));
+			expect(rendered.getByLabelText('API key')).toHaveValue('draft-key');
+			await openMenu(rendered, 'Use an existing credential');
+			await userEvent.click(rendered.getByRole('button', { name: 'Select existing connection' }));
+			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe('existing');
+			expect(store.createNewCredential).not.toHaveBeenCalled();
+		},
+	);
 
 	it('reconciles a newly saved binding without opening a new OAuth form', async () => {
 		mocks.isOAuth.mockReturnValue(true);
