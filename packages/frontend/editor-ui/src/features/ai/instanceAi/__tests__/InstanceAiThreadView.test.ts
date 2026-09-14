@@ -2519,20 +2519,18 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('focuses the composer when asking for plan edits, without entering a mode', async () => {
+	// The live composer is the one way to ask for edits, so the card must not
+	// offer a second one that only points back at it.
+	it('renders the plan card without an ask-for-edits action', async () => {
 		seedPendingPlanReview();
 
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
 		});
 
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
-
-		await vi.waitFor(() => {
-			expect(store.requestComposerFocus).toHaveBeenCalled();
-		});
+		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
 	});
 
 	it('routes a typed message to the plan without any prior click', async () => {

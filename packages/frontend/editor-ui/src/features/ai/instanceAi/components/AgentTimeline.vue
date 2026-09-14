@@ -14,7 +14,7 @@ import {
 } from '../agentTimeline.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { resolvePlanTasks } from '../planReview.utils';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -28,7 +28,6 @@ import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
 const thread = useThread();
-const store = useInstanceAiStore();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 
@@ -196,12 +195,6 @@ function handlePlanApprove(tc: InstanceAiToolCallState) {
 	void thread.confirmAction(requestId, { kind: 'approval', approved: true });
 }
 
-/** The composer already accepts plan feedback, so this is just a shortcut to it. */
-function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
-	if (isCardReadOnly(tc)) return;
-	store.requestComposerFocus();
-}
-
 function handlePlanDeny(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
@@ -261,7 +254,6 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 				:read-only="isCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation?.expired"
 				@approve="handlePlanApprove(block.toolCall)"
-				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
 				@deny="handlePlanDeny(block.toolCall)"
 			/>
 

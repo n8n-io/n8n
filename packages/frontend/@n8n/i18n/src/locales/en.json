@@ -7221,7 +7221,6 @@
 	"instanceAi.planReview.building": "Building plan...",
 	"instanceAi.planReview.awaitingApproval": "Awaiting approval",
 	"instanceAi.planReview.description": "Review the plan, then approve it to start building or request changes to revise it.",
-	"instanceAi.planReview.askForEdits": "Ask for edits",
 	"instanceAi.planReview.approve": "Approve",
 	"instanceAi.planReview.deny": "Deny",
 	"instanceAi.planReview.approved": "Plan approved",

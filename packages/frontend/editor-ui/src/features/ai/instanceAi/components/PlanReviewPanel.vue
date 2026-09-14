@@ -9,8 +9,8 @@ import {
  * PlanReviewPanel.vue
  *
  * Single-card plan approval UI. Shows planned tasks as an accordion with
- * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
- * "Ask for edits" hands off feedback collection to the main chat input.
+ * expandable specs, dependency info, and approve/deny controls. Edits are asked
+ * for in the chat composer, which stays live for the whole review.
  */
 import type { PlannedTaskArg } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -37,7 +37,6 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	approve: [];
-	'ask-for-edits': [];
 	deny: [];
 }>();
 
@@ -105,11 +104,6 @@ function handleApprove() {
 	isResolved.value = true;
 	resolvedAction.value = 'approved';
 	emit('approve');
-}
-
-function handleAskForEdits() {
-	if (isResolved.value) return;
-	emit('ask-for-edits');
 }
 
 function handleDeny() {
@@ -220,26 +214,15 @@ function handleDeny() {
 				>
 					{{ i18n.baseText('instanceAi.planReview.deny') }}
 				</N8nButton>
-				<div :class="$style.footerActions">
-					<N8nButton
-						variant="outline"
-						size="medium"
-						:disabled="disabled"
-						data-test-id="instance-ai-plan-ask-for-edits"
-						@click="handleAskForEdits"
-					>
-						{{ i18n.baseText('instanceAi.planReview.askForEdits') }}
-					</N8nButton>
-					<N8nButton
-						variant="solid"
-						size="medium"
-						:disabled="disabled"
-						data-test-id="instance-ai-plan-approve"
-						@click="handleApprove"
-					>
-						{{ i18n.baseText('instanceAi.planReview.approve') }}
-					</N8nButton>
-				</div>
+				<N8nButton
+					variant="solid"
+					size="medium"
+					:disabled="disabled"
+					data-test-id="instance-ai-plan-approve"
+					@click="handleApprove"
+				>
+					{{ i18n.baseText('instanceAi.planReview.approve') }}
+				</N8nButton>
 			</ConfirmationFooter>
 
 			<ConfirmationFooter v-else-if="showChangesRequested" layout="row-end" bordered>
@@ -342,11 +325,6 @@ function handleDeny() {
 	display: flex;
 	flex-direction: column;
 	padding-bottom: var(--spacing--xs);
-}
-
-.footerActions {
-	display: flex;
-	gap: var(--spacing--2xs);
 }
 
 .taskItem {
