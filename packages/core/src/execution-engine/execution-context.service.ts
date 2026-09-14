@@ -6,9 +6,10 @@ import {
 	IExecutionContext,
 	IN8NOAuthMetadata,
 	INodeExecutionData,
-	N8NOAuthMetadataSchema,
+	IRunAsMetadata,
 	OAuthResourceGrant,
 	PlaintextExecutionContext,
+	SealedIdentityMetadataSchema,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
 	toSecureArtifacts,
@@ -112,7 +113,9 @@ export class ExecutionContextService {
 		const decryptedContext = await this.decryptExecutionContext(context);
 		if (decryptedContext.credentials) {
 			if (decryptedContext.credentials.metadata) {
-				const metadata = N8NOAuthMetadataSchema.safeParse(decryptedContext.credentials.metadata);
+				const metadata = SealedIdentityMetadataSchema.safeParse(
+					decryptedContext.credentials.metadata,
+				);
 				// Only sealed carriers (a resolved subject) need execution binding; a
 				// non-sealed n8n-oauth carrier has nothing that reads its executionPath.
 				if (metadata.success && metadata.data.subject) {
@@ -164,14 +167,31 @@ export class ExecutionContextService {
 	}
 
 	/**
+	 * Seals the run-as user of a scheduled run. The control plane owns this identity,
+	 * so there is no token: `identity` holds the subject id. The resolver re-checks
+	 * the binding row and the user before it trusts the subject.
+	 */
+	async buildRunAsIdentityCredentials(subject: string, workflowId: string): Promise<string> {
+		const metadata: IRunAsMetadata = {
+			source: 'run-as',
+			subject,
+			workflowId,
+			establishedAt: Date.now(),
+			executionPath: [],
+		};
+		const payload: ICredentialContext = { version: 1, identity: subject, metadata };
+		return await this.cipher.encryptV2(payload);
+	}
+
+	/**
 	 * Reads the n8n user id a trigger sealed into the identity carrier, if any.
-	 * Only `n8n-oauth` carriers with a `subject` carry one; manual and chat-hub
-	 * carriers hold a session token and yield `undefined`.
+	 * `n8n-oauth` carriers with a `subject` and `run-as` carriers both carry one;
+	 * manual and chat-hub carriers hold a session token and yield `undefined`.
 	 */
 	async readSealedSubject(encryptedCredentials: string): Promise<string | undefined> {
 		try {
 			const context = await this.decryptCredentialContext(encryptedCredentials);
-			const metadata = N8NOAuthMetadataSchema.safeParse(context.metadata);
+			const metadata = SealedIdentityMetadataSchema.safeParse(context.metadata);
 			return metadata.success ? metadata.data.subject : undefined;
 		} catch (error) {
 			// This field is audit-only. A decrypt failure must not abort the run.

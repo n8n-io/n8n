@@ -450,6 +450,44 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('buildRunAsIdentityCredentials()', () => {
+		beforeEach(() => {
+			// Round-trip the cipher and the credential-context mapper through JSON, so
+			// builder output can be read back. Earlier tests leave a fixed return value
+			// on `toCredentialContext`; restore its real parsing behaviour here.
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+			toCredentialContext.mockImplementation((data: string) => JSON.parse(data));
+		});
+
+		it('seals the subject and workflow with an empty execution path', async () => {
+			const encrypted = await service.buildRunAsIdentityCredentials('user-1', 'wf-1');
+			const context = await service.decryptCredentialContext(encrypted);
+			expect(context.identity).toBe('user-1');
+			expect(context.metadata).toMatchObject({
+				source: 'run-as',
+				subject: 'user-1',
+				workflowId: 'wf-1',
+				executionPath: [],
+			});
+		});
+
+		it('readSealedSubject returns the run-as subject', async () => {
+			const encrypted = await service.buildRunAsIdentityCredentials('user-1', 'wf-1');
+			await expect(service.readSealedSubject(encrypted)).resolves.toBe('user-1');
+		});
+
+		it('maybeBindExecutionId binds the execution id onto a run-as carrier', async () => {
+			const credentials = await service.buildRunAsIdentityCredentials('user-1', 'wf-1');
+			const bound = await service.maybeBindExecutionId(
+				{ version: 1, establishedAt: 1, source: 'trigger', credentials },
+				'exec-1',
+			);
+			const decrypted = await service.decryptExecutionContext(bound);
+			expect(decrypted.credentials?.metadata).toMatchObject({ executionPath: ['exec-1'] });
+		});
+	});
+
 	describe('readSealedSubject()', () => {
 		beforeEach(() => {
 			// Round-trip the cipher and the credential-context mapper through JSON, so
