@@ -148,6 +148,9 @@ export class TestWebhookRegistrationsService {
 	 * each registration renews the TTL of the whole hash, so the TTL never removes an entry that a
 	 * main left behind on exit. Keep entries of an unknown shape in the store; a main on another
 	 * version may own them.
+	 *
+	 * A registration that replaces an expired entry between the read and this delete is lost. The
+	 * window is one Redis round trip; a compare-and-delete script would close it.
 	 */
 	private async prune(hash: Record<string, unknown>) {
 		for (const key of Object.keys(hash)) {
