@@ -19,6 +19,10 @@
     "./nodes": {
       "types": "./dist/configs/nodes.d.js",
       "default": "./dist/configs/nodes.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "default": "./dist/plugin.js"
     }
   },
   "scripts": {
@@ -39,7 +43,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
-    "@types/eslint": "^9.6.1",
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",

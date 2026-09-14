@@ -45,6 +45,7 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
+import { createAttributionTracker } from './utils/mcp-attribution';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 export interface AgentMemoryScope {
@@ -534,9 +535,14 @@ export class AgentExecutionOrchestratorService {
 				abortSignal: turnAbortSignal(claim, abortSignal),
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
+			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
+				}
 				yield chunk;
 			}
 		} catch (error) {
@@ -925,6 +931,7 @@ export class AgentExecutionOrchestratorService {
 				...(tracing ? { telemetry: tracing } : {}),
 				abortSignal: turnAbortSignal(claim, abortSignal),
 			});
+			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);
@@ -940,6 +947,10 @@ export class AgentExecutionOrchestratorService {
 						recorder.record(chunk);
 						yield chunk;
 					}
+				}
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
 				}
 				yield chunk;
 			}
