@@ -5,10 +5,12 @@ import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
+import AgentCredentialSelect from '../components/AgentCredentialSelect.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
+const openNewCredentialMock = vi.hoisted(() => vi.fn());
 const modelCatalog = ref<ProviderCatalog>({});
 
 vi.mock('../composables/useModelCatalog', () => ({
@@ -36,7 +38,20 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
 			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
 		],
+		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		currentProject: { id: 'project-1', scopes: ['credential:create'] },
+		personalProject: null,
+		myProjects: [],
+	}),
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
 }));
 
 // Numeric/reasoning sub-controls debounce — execute synchronously in the test.
@@ -179,6 +194,7 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 describe('AgentAdvancedPanel', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
+		openNewCredentialMock.mockReset();
 		modelCatalog.value = makeCatalog();
 	});
 
@@ -284,11 +300,54 @@ describe('AgentAdvancedPanel', () => {
 		});
 
 		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-web-search-fallback-credential"]').exists()).toBe(
+		expect(wrapper.find('[data-test-id="agent-web-search-fallback-credential"]').exists()).toBe(
 			true,
 		);
 		expect(wrapper.find('[data-testid="agent-web-search-max-uses"]').exists()).toBe(false);
 	});
+
+	it.each([
+		['brave', 'braveSearchApi'],
+		['searxng', 'searXngApi'],
+	] as const)(
+		"creating a credential from the fallback picker opens the credential modal for the provider's type in the panel's project and selects the created credential",
+		async (provider, credentialType) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: {
+					config: makeConfig({
+						model: 'deepseek/deepseek-chat',
+						config: { webSearch: { enabled: true, provider } },
+					} as Partial<AgentJsonConfig>),
+					projectId: 'project-1',
+				},
+				global: { stubs: globalStubs },
+			});
+
+			wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+
+			expect(openNewCredentialMock).toHaveBeenCalledWith(
+				credentialType,
+				false,
+				false,
+				'project-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ hideAskAssistant: true }),
+			);
+
+			const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
+			expect(onCredentialCreated).toBeTypeOf('function');
+			onCredentialCreated?.({ id: 'new-cred' });
+
+			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(getWebSearchConfig(last)).toEqual({
+				enabled: true,
+				provider,
+				credential: 'new-cred',
+			});
+		},
+	);
 
 	it('switches fallback web search to native and emits native provider tools', async () => {
 		const config = makeConfig({

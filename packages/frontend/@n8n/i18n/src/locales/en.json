@@ -7789,6 +7789,7 @@
 	"agents.builder.advanced.webSearch.fallbackProvider.searxng": "SearXNG",
 	"agents.builder.advanced.webSearch.credential.label": "Credential",
 	"agents.builder.advanced.webSearch.credential.hint": "Used by the selected search provider",
+	"agents.builder.advanced.webSearch.credential.placeholder": "Select credential",
 	"agents.builder.advanced.reasoning.label": "Reasoning",
 	"agents.builder.advanced.reasoning.hint": "Let the model reason before responding.",
 	"agents.builder.advanced.reasoning.unsupportedHint": "This model does not support reasoning",
