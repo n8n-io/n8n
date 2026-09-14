@@ -2,17 +2,17 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { nodeMigrations } from './migrations';
-import type { NodeMigration } from './migrations/node-migration';
+import type { Migration } from './migrations/node-migration';
 
 /**
- * Holds the node migrations, keyed by the breaking-change rule id that detects
- * the deprecated node. Detection (rules) and transformation (migrations) stay
+ * Holds the migrations, keyed by the breaking-change rule id that detects the
+ * deprecated node. Detection (rules) and transformation (migrations) stay
  * decoupled: a rule can exist with no migration, in which case the report falls
  * back to prose recommendations.
  */
 @Service()
 export class MigrationRegistry {
-	private readonly migrations = new Map<string, NodeMigration>();
+	private readonly migrations = new Map<string, Migration>();
 
 	constructor(private readonly logger: Logger) {
 		this.logger = logger.scoped('breaking-changes');
@@ -29,7 +29,7 @@ export class MigrationRegistry {
 		}
 	}
 
-	get(ruleId: string): NodeMigration | undefined {
+	get(ruleId: string): Migration | undefined {
 		return this.migrations.get(ruleId);
 	}
 
