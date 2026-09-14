@@ -822,13 +822,14 @@ describe('DELETE /credentials/:id', () => {
 
 	test('should not return credential secrets in the delete response', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const decryptedData = await getDecryptedCredentialData(savedCredential.id);
 
 		const response = await authOwnerAgent.delete(`/credentials/${savedCredential.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).not.toHaveProperty('data');
 		expect(response.body).not.toHaveProperty('shared');
-		expect(JSON.stringify(response.body)).not.toContain(savedCredential.data);
+		expect(JSON.stringify(response.body)).not.toContain(decryptedData.accessToken);
 		expect(response.body).toMatchObject({
 			id: savedCredential.id,
 			name: savedCredential.name,
