@@ -30,7 +30,6 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "reflect-metadata": "catalog:",
     "uuid": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
