@@ -9,7 +9,7 @@ export const tagFieldDocs = {
 
 /**
  * A read-only request field has no runtime type of its own, so its descriptor must carry the whole
- * documented schema.
+ * documented schema. Every tag write route documents the same three fields.
  */
 export const tagRequestReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },

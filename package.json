@@ -104,6 +104,7 @@
     "cross-env": "^7.0.3",
     "eslint": "catalog:",
     "get-tsconfig": "catalog:",
+    "knip": "catalog:",
     "lefthook": "^1.7.15",
     "nock": "^14.0.14",
     "nodemon": "^3.0.1",
