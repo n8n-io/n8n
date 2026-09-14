@@ -44,6 +44,14 @@ n8n enforces a Content-Security-Policy on its own HTML pages. The policy was ser
 
 If you inject your own scripts into n8n's pages. Test the instance before you update, because a script without the response nonce no longer runs. Set `N8N_CONTENT_SECURITY_POLICY` to `{}` to enforce nothing, or to your own policy. To try a policy before you enforce it, put it in `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` instead.
 
+### What changed?
+
+Chat hub is off by default. `chat-hub` is no longer a default module, so the **Chat** section disappears from the navigation and the chat endpoints stop responding. Your chat sessions, agents, messages and tools stay in the database. Chat hub is deprecated and version 4.0 removes it.
+
+### When is action necessary?
+
+If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn it on again for the 3.x line. n8n then prints a deprecation warning at startup. The migration report on v2 lists this change for every instance that uses chat hub.
+
 # 2.0.0
 
 ### What changed?
