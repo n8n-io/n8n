@@ -12,6 +12,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
+import { UnimplementedError } from '@n8n/engine';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -118,7 +119,7 @@ describe('RemoteCredentialsHelper', () => {
 					'manual',
 					executeData,
 				),
-			).rejects.toThrow(UnexpectedError);
+			).rejects.toThrow(UnimplementedError);
 
 			expect(client.resolve).not.toHaveBeenCalled();
 		});
@@ -166,7 +167,7 @@ describe('RemoteCredentialsHelper', () => {
 
 			await expect(
 				helper.preAuthentication(helpers, credentials, type, httpRequestNode, false),
-			).rejects.toThrow(UnexpectedError);
+			).rejects.toThrow(UnimplementedError);
 
 			expect(delegate.preAuthentication).not.toHaveBeenCalled();
 		});
@@ -200,7 +201,7 @@ describe('RemoteCredentialsHelper', () => {
 		it('updateCredentialsOauthTokenData throws', async () => {
 			await expect(
 				helper.updateCredentialsOauthTokenData(nodeCredentials, type, decrypted, additionalData),
-			).rejects.toThrow(UnexpectedError);
+			).rejects.toThrow(UnimplementedError);
 		});
 
 		it('getCredentials throws', async () => {

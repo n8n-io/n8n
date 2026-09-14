@@ -1,3 +1,4 @@
+import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import type {
 	ICredentialDataDecryptedObject,
@@ -66,9 +67,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
-			throw new UnexpectedError('Gateway credits are not supported on Engine 2.0', {
-				tags: { credentialType: type },
-			});
+			throw new UnimplementedError('Gateway credits are not supported on Engine 2.0 yet');
 		}
 
 		if (!nodeCredentials.id) {
@@ -88,7 +87,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		// refreshed one, and that write throws below. Fail here with the same
 		// error, so the step reports the unsupported refresh and not a missing node.
 		if (!consumerNode && raw === true) {
-			throw this.oauthRefreshUnsupported(type);
+			throw this.oauthRefreshUnsupported();
 		}
 
 		if (!consumerNode) {
@@ -127,9 +126,8 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		if (this.hasExpirableProperty(typeName)) {
-			throw new UnexpectedError(
+			throw new UnimplementedError(
 				'Engine 2.0 does not support credentials with an expirable property yet',
-				{ tags: { credentialType: typeName } },
 			);
 		}
 
@@ -150,23 +148,19 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 			);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async updateCredentialsOauthTokenData(
 		_nodeCredentials: INodeCredentialsDetails,
-		type: string,
+		_type: string,
 		_data: ICredentialDataDecryptedObject,
 		_additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
-		throw this.oauthRefreshUnsupported(type);
+		throw this.oauthRefreshUnsupported();
 	}
 
-	private oauthRefreshUnsupported(type: string): UnexpectedError {
-		return new UnexpectedError('Engine 2.0 does not support OAuth token refresh yet', {
-			tags: { credentialType: type },
-		});
+	private oauthRefreshUnsupported(): UnimplementedError {
+		return new UnimplementedError('Engine 2.0 does not support OAuth token refresh yet');
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async getCredentials(
 		_nodeCredentials: INodeCredentialsDetails,
 		type: string,
@@ -176,7 +170,6 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async updateCredentials(
 		_nodeCredentials: INodeCredentialsDetails,
 		type: string,
