@@ -462,16 +462,27 @@ export const useExpressionEditor = ({
 			if (secretPreview) {
 				result.resolved = secretPreview.text;
 				result.state = secretPreview.exists ? 'pending' : 'invalid';
+			} else if (isUncalledExpressionExtension(resolvable)) {
+				result.resolved = i18n.baseText('expressionEditor.uncalledFunction');
+				result.error = true;
+			} else if (isRedactedExecution.value) {
+				// Redaction empties the item data, so the expression reads nothing even
+				// though the execution has a value. Prompt for a reveal instead of an error.
+				result.resolved = i18n.baseText('expressionModalInput.redacted');
+				result.state = 'pending';
 			} else {
-				result.resolved = isUncalledExpressionExtension(resolvable)
-					? i18n.baseText('expressionEditor.uncalledFunction')
-					: i18n.baseText('expressionModalInput.undefined');
+				result.resolved = i18n.baseText('expressionModalInput.undefined');
 				result.error = true;
 			}
 		}
 
 		return result;
 	}
+
+	const isRedactedExecution = computed(
+		() =>
+			workflowExecutionStateStore.value.activeExecution?.data?.redactionInfo?.isRedacted === true,
+	);
 
 	const targetItem = computed<TargetItem | null>(() => ndvStore.value.expressionTargetItem);
 
