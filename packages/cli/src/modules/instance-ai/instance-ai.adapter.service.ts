@@ -2110,11 +2110,11 @@ export class InstanceAiAdapterService {
 				});
 
 				// A pinned node never executes, so the target's own pin — and any pin on
-				// a node whose output we just fabricated — has to come off this run's
+				// a node whose output we just mocked — has to come off this run's
 				// copy. The saved workflow keeps them.
 				const stepPinData = pinDataForStepRun(workflow.pinData, {
 					targetName: nodeName,
-					fabricatedNodeNames: plan.fabricatedNodeNames,
+					mockedNodeNames: plan.mockedNodeNames,
 				});
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
@@ -2205,11 +2205,11 @@ export class InstanceAiAdapterService {
 					const replayedNodeNames = offeredForReplay.filter((name) => inRunData.has(name));
 
 					// `extractExecutionOutcome` derives `executedNodeNames` from the run
-					// data keys, and both a fabricated stub and a replayed entry carry run
+					// data keys, and both a mocked stub and a replayed entry carry run
 					// data without having run in *this* execution. Leaving them in reports
 					// a whole chain as executed when one node was — the false-coverage
 					// signal this tool must never emit.
-					const notExecutedHere = new Set([...plan.fabricatedNodeNames, ...replayedNodeNames]);
+					const notExecutedHere = new Set([...plan.mockedNodeNames, ...replayedNodeNames]);
 
 					return {
 						...result,
@@ -2222,7 +2222,7 @@ export class InstanceAiAdapterService {
 							: {}),
 						nodeName,
 						inputMode: plan.inputMode,
-						fabricatedNodeNames: plan.fabricatedNodeNames,
+						mockedNodeNames: plan.mockedNodeNames,
 						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
 						// Report the pins that actually fed this run, not every pin the

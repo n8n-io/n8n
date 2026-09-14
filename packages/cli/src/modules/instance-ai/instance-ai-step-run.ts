@@ -15,7 +15,7 @@ import { mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
  * The engine picks the nodes to run with `findStartNodes`, which walks *down*
  * from the trigger and stops at the first node that has neither run data nor
  * pin data. To run one node on its own, every node between the trigger and
- * that node must therefore carry run data. A single fabricated parent is not
+ * that node must therefore carry run data. A single mocked parent is not
  * enough.
  *
  * This module builds that run data. It stays pure so the graph rules are
@@ -34,7 +34,7 @@ export interface StepRunPlan {
 	/** Forces the target to re-run when the reused data already covers it. */
 	dirtyNodeNames?: string[];
 	/** Nodes whose output this plan invented. Never real evidence. */
-	fabricatedNodeNames: string[];
+	mockedNodeNames: string[];
 	/** Nodes replaying output from an earlier execution. */
 	reusedNodeNames: string[];
 }
@@ -117,13 +117,13 @@ export function buildMockedStepRunData(args: {
 	connections: IConnections;
 	targetName: string;
 	mockItems: INodeExecutionData[];
-}): { runData: IRunData; fabricatedNodeNames: string[] } {
+}): { runData: IRunData; mockedNodeNames: string[] } {
 	const { nodes, connections, targetName, mockItems } = args;
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 	const connectionsByDestination = mapConnectionsByDestination(connections);
 
 	const runData: IRunData = {};
-	const fabricatedNodeNames: string[] = [];
+	const mockedNodeNames: string[] = [];
 	let executionIndex = 0;
 
 	// Breadth-first up the graph. `visited` is keyed by node name, so a node
@@ -144,7 +144,7 @@ export function buildMockedStepRunData(args: {
 			// exist to keep the path "clean", so a placeholder is enough.
 			const items = depth === 0 ? mockItems : [{ json: {} }];
 			runData[edge.node.name] = [taskDataOnOutput(items, edge.outputIndex, executionIndex++)];
-			fabricatedNodeNames.push(edge.node.name);
+			mockedNodeNames.push(edge.node.name);
 
 			next.push(...directParents(connectionsByDestination, nodesByName, edge.node.name));
 		}
@@ -153,7 +153,7 @@ export function buildMockedStepRunData(args: {
 		depth++;
 	}
 
-	return { runData, fabricatedNodeNames };
+	return { runData, mockedNodeNames };
 }
 
 /**
@@ -186,7 +186,7 @@ export function collectAncestorNames(
 /**
  * Chooses the run data for a step run.
  *
- * - `mockItems` given → fabricate the path (mode `mocked`).
+ * - `mockItems` given → mock the path (mode `mocked`).
  * - `priorRunData` given → replay it and mark the target dirty so it runs again
  *   (mode `reused-execution`). The engine's `cleanRunData` drops the target and
  *   everything downstream of it, so stale output cannot survive the run.
@@ -203,7 +203,7 @@ export function planStepRun(args: {
 	const { nodes, connections, targetName, mockItems, priorRunData } = args;
 
 	if (mockItems !== undefined) {
-		const { runData, fabricatedNodeNames } = buildMockedStepRunData({
+		const { runData, mockedNodeNames } = buildMockedStepRunData({
 			nodes,
 			connections,
 			targetName,
@@ -212,12 +212,12 @@ export function planStepRun(args: {
 		// A node with no enabled parent has nothing to mock. Running the chain
 		// gives the engine a start point it accepts, instead of a partial run it
 		// rejects for having no reachable root with run data.
-		if (fabricatedNodeNames.length > 0) {
+		if (mockedNodeNames.length > 0) {
 			return {
 				inputMode: 'mocked',
 				runData,
 				dirtyNodeNames: [targetName],
-				fabricatedNodeNames,
+				mockedNodeNames,
 				reusedNodeNames: [],
 			};
 		}
@@ -235,7 +235,7 @@ export function planStepRun(args: {
 				inputMode: 'reused-execution',
 				runData: priorRunData,
 				dirtyNodeNames: [targetName],
-				fabricatedNodeNames: [],
+				mockedNodeNames: [],
 				reusedNodeNames,
 			};
 		}
@@ -243,7 +243,7 @@ export function planStepRun(args: {
 
 	return {
 		inputMode: 'chain',
-		fabricatedNodeNames: [],
+		mockedNodeNames: [],
 		reusedNodeNames: [],
 	};
 }
@@ -253,7 +253,7 @@ export function planStepRun(args: {
  *
  * A pinned node never executes — `isDirty` treats it as clean and
  * `getPinnedOutput` returns the pin — so a pinned target would make "run this
- * node" silently replay stale output instead. The same applies to a fabricated
+ * node" silently replay stale output instead. The same applies to a mocked
  * parent: `recreateNodeExecutionStack` prefers pin data over run data, so the
  * caller's mock input would lose to a leftover pin.
  *
@@ -261,11 +261,11 @@ export function planStepRun(args: {
  */
 export function pinDataForStepRun(
 	workflowPinData: IPinData | undefined,
-	args: { targetName: string; fabricatedNodeNames: string[] },
+	args: { targetName: string; mockedNodeNames: string[] },
 ): IPinData | undefined {
 	if (!workflowPinData) return undefined;
 
-	const overridden = new Set([args.targetName, ...args.fabricatedNodeNames]);
+	const overridden = new Set([args.targetName, ...args.mockedNodeNames]);
 	const kept = Object.entries(workflowPinData).filter(([nodeName]) => !overridden.has(nodeName));
 
 	if (kept.length === Object.keys(workflowPinData).length) return workflowPinData;

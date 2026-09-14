@@ -155,7 +155,7 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 *
 	 * On a `runStep` result this counts only what ran in *that* execution:
-	 * fabricated and replayed nodes carry run data without having run, and are
+	 * mocked and replayed nodes carry run data without having run, and are
 	 * excluded.
 	 */
 	executedNodeNames?: string[];
@@ -190,7 +190,7 @@ export interface StepExecutionResult extends ExecutionResult {
 	 * Nodes whose output was invented so the run could reach the target. Empty
 	 * unless `inputMode` is `mocked`.
 	 */
-	fabricatedNodeNames: string[];
+	mockedNodeNames: string[];
 	/**
 	 * Nodes whose output this run carried over from `reusedFromExecutionId`.
 	 * Absent unless `inputMode` is `reused-execution`. A node of the reused

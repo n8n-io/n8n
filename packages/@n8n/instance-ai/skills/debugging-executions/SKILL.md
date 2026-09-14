@@ -64,7 +64,7 @@ sends the user back for a second session.
 
 Use `mockInput` only when the upstream nodes cannot run. It proves the node
 accepts the input you invented, nothing more — the result carries
-`inputMode: "mocked"` and a `fabricatedNodeNames` list, and you must say so
+`inputMode: "mocked"` and a `mockedNodeNames` list, and you must say so
 instead of reporting the workflow as working.
 
 A node that only partly succeeded before it failed — a send that delivered some

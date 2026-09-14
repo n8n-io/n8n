@@ -292,7 +292,7 @@ never turns "partial coverage" into "verified". Use it to inspect one node —
 most often with `reuseExecutionId` on a node that failed a real run — and keep
 verifying with `verify-built-workflow`. A step run with `mockInput` proves even
 less: the result names the nodes whose output it invented in
-`fabricatedNodeNames`, and you must repeat that limitation in what you tell the
+`mockedNodeNames`, and you must repeat that limitation in what you tell the
 user.
 
 **Reserve `executions(action="run")` for runs the user explicitly asked for**

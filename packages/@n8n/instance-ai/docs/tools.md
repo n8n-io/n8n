@@ -579,7 +579,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
-**Returns**: `{ executionId, status, nodeName, inputMode, fabricatedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
+**Returns**: `{ executionId, status, nodeName, inputMode, mockedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
 
 **Input modes**, in descending order of what the result proves:
 
@@ -589,23 +589,23 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `chain` | neither option | The node ran on data its ancestors really produced in this run |
 | `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
 
-`executedNodeNames` counts only what ran in *this* execution. Fabricated and
+`executedNodeNames` counts only what ran in *this* execution. Mocked and
 replayed nodes carry run data without having run, so they are excluded —
 otherwise a step run on a ten-node workflow would report ten nodes as executed
 when one was. `data` still shows their output, listed under
-`fabricatedNodeNames` and `replayedNodeNames`. `replayedNodeNames` names only
+`mockedNodeNames` and `replayedNodeNames`. `replayedNodeNames` names only
 what this run carried: a node of the reused execution that sits outside the
 trigger-to-target subgraph never enters the run and is not listed.
 
-`mocked` also fabricates a placeholder item for every node between the trigger
+`mocked` also invents a placeholder item for every node between the trigger
 and the target, because `findStartNodes` walks down from the trigger and stops
-at the first node with no run data. `fabricatedNodeNames` lists them. A
+at the first node with no run data. `mockedNodeNames` lists them. A
 placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
-mocked mode fabricated, come off this run's copy — a pinned node never
+mocked mode replaced, come off this run's copy — a pinned node never
 executes, so leaving them on would make the step replay stale output. The saved
 workflow keeps its pins. `workflowPinnedNodeNames` lists only the pins that fed
 the run.

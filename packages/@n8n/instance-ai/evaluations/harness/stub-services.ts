@@ -244,7 +244,7 @@ export async function createStubServices(
 				status: 'success' as const,
 				nodeName,
 				inputMode: 'chain' as const,
-				fabricatedNodeNames: [],
+				mockedNodeNames: [],
 				data: { __eval_synthetic_step__: [{ workflowId, nodeName }] },
 				startedAt: new Date().toISOString(),
 				finishedAt: new Date().toISOString(),

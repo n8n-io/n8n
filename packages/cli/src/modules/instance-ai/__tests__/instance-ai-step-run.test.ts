@@ -65,7 +65,7 @@ describe('buildMockedStepRunData', () => {
 			['Transform', 'Target'],
 		);
 
-		const { runData, fabricatedNodeNames } = buildMockedStepRunData({
+		const { runData, mockedNodeNames } = buildMockedStepRunData({
 			nodes,
 			connections,
 			targetName: 'Target',
@@ -78,7 +78,7 @@ describe('buildMockedStepRunData', () => {
 		// The target itself stays without run data, which is what makes the
 		// engine treat it as dirty and re-run it.
 		expect(runData.Target).toBeUndefined();
-		expect(fabricatedNodeNames.sort()).toEqual(['Fetch', 'Transform', 'Trigger']);
+		expect(mockedNodeNames.sort()).toEqual(['Fetch', 'Transform', 'Trigger']);
 	});
 
 	it('places the placeholder on the output that leads to the target', () => {
@@ -101,7 +101,7 @@ describe('buildMockedStepRunData', () => {
 		const nodes = [node('Trigger'), node('Skipped', { disabled: true }), node('Target')];
 		const connections = connect(['Trigger', 'Skipped'], ['Skipped', 'Target']);
 
-		const { runData, fabricatedNodeNames } = buildMockedStepRunData({
+		const { runData, mockedNodeNames } = buildMockedStepRunData({
 			nodes,
 			connections,
 			targetName: 'Target',
@@ -112,7 +112,7 @@ describe('buildMockedStepRunData', () => {
 		// data for it would never be read.
 		expect(runData.Skipped).toBeUndefined();
 		expect(itemsOn(runData, 'Trigger')).toEqual([{ json: { a: 1 } }]);
-		expect(fabricatedNodeNames).toEqual(['Trigger']);
+		expect(mockedNodeNames).toEqual(['Trigger']);
 	});
 
 	it('feeds every direct input of a multi-input node', () => {
@@ -141,18 +141,18 @@ describe('buildMockedStepRunData', () => {
 		const nodes = [node('Loop'), node('Work')];
 		const connections = connect(['Loop', 'Work'], ['Work', 'Loop']);
 
-		const { fabricatedNodeNames } = buildMockedStepRunData({
+		const { mockedNodeNames } = buildMockedStepRunData({
 			nodes,
 			connections,
 			targetName: 'Work',
 			mockItems: toExecutionItems([{}]),
 		});
 
-		expect(fabricatedNodeNames).toEqual(['Loop']);
+		expect(mockedNodeNames).toEqual(['Loop']);
 	});
 
 	it('produces nothing for a node with no parents', () => {
-		const { runData, fabricatedNodeNames } = buildMockedStepRunData({
+		const { runData, mockedNodeNames } = buildMockedStepRunData({
 			nodes: [node('Alone')],
 			connections: {},
 			targetName: 'Alone',
@@ -160,7 +160,7 @@ describe('buildMockedStepRunData', () => {
 		});
 
 		expect(runData).toEqual({});
-		expect(fabricatedNodeNames).toEqual([]);
+		expect(mockedNodeNames).toEqual([]);
 	});
 });
 
@@ -184,7 +184,7 @@ describe('planStepRun', () => {
 		// `runManually` routes on `runData === undefined`, so leaving it unset is
 		// what selects the full-chain path.
 		expect(plan.runData).toBeUndefined();
-		expect(plan.fabricatedNodeNames).toEqual([]);
+		expect(plan.mockedNodeNames).toEqual([]);
 	});
 
 	it('mocks the path when given items', () => {
@@ -197,7 +197,7 @@ describe('planStepRun', () => {
 
 		expect(plan.inputMode).toBe('mocked');
 		expect(plan.dirtyNodeNames).toEqual(['Target']);
-		expect(plan.fabricatedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(plan.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
 	});
 
 	it('falls back to a chain run when the target has nothing above it to mock', () => {
@@ -226,7 +226,7 @@ describe('planStepRun', () => {
 		// data instead of running it again.
 		expect(plan.dirtyNodeNames).toEqual(['Target']);
 		expect(plan.reusedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
-		expect(plan.fabricatedNodeNames).toEqual([]);
+		expect(plan.mockedNodeNames).toEqual([]);
 	});
 
 	it('runs the chain when the prior run never reached an ancestor', () => {
@@ -262,15 +262,15 @@ describe('pinDataForStepRun', () => {
 	};
 
 	it("drops the target's own pin, which would stop it from ever running", () => {
-		const result = pinDataForStepRun(pins, { targetName: 'Target', fabricatedNodeNames: [] });
+		const result = pinDataForStepRun(pins, { targetName: 'Target', mockedNodeNames: [] });
 
 		expect(result).toEqual({ Trigger: pins.Trigger, Fetch: pins.Fetch });
 	});
 
-	it('drops a pin on a node whose output the plan fabricated', () => {
+	it('drops a pin on a node whose output the plan mocked', () => {
 		const result = pinDataForStepRun(pins, {
 			targetName: 'Target',
-			fabricatedNodeNames: ['Fetch'],
+			mockedNodeNames: ['Fetch'],
 		});
 
 		// Otherwise `recreateNodeExecutionStack` would feed the target the pin
@@ -279,14 +279,14 @@ describe('pinDataForStepRun', () => {
 	});
 
 	it('keeps the same object when nothing needs dropping', () => {
-		const result = pinDataForStepRun(pins, { targetName: 'Elsewhere', fabricatedNodeNames: [] });
+		const result = pinDataForStepRun(pins, { targetName: 'Elsewhere', mockedNodeNames: [] });
 
 		expect(result).toBe(pins);
 	});
 
 	it('passes an absent pin set through', () => {
 		expect(
-			pinDataForStepRun(undefined, { targetName: 'Target', fabricatedNodeNames: [] }),
+			pinDataForStepRun(undefined, { targetName: 'Target', mockedNodeNames: [] }),
 		).toBeUndefined();
 	});
 });

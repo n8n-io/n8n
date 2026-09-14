@@ -5257,7 +5257,7 @@ describe('createExecutionAdapter runStep()', () => {
 		// chain path depends on it staying undefined.
 		expect(runData.runData).toBeUndefined();
 		expect(result.inputMode).toBe('chain');
-		expect(result.fabricatedNodeNames).toEqual([]);
+		expect(result.mockedNodeNames).toEqual([]);
 	});
 
 	it('always runs in manual mode, because pin data is dropped in any other mode', async () => {
@@ -5277,7 +5277,7 @@ describe('createExecutionAdapter runStep()', () => {
 		});
 	});
 
-	it('fabricates the path above the target when given mock input', async () => {
+	it('mocks the path above the target when given mock input', async () => {
 		const { runData, result } = await runStepOn(chainWorkflow, 'Send', {
 			mockInput: [{ text: 'hello' }],
 		});
@@ -5287,7 +5287,7 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(runData.runData.Send).toBeUndefined();
 		expect(runData.dirtyNodeNames).toEqual(['Send']);
 		expect(result.inputMode).toBe('mocked');
-		expect(result.fabricatedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
 	});
 
 	it('replays a past execution and re-runs only the target', async () => {
@@ -5452,11 +5452,11 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hi' } }]);
 	});
 
-	it('does not report a fabricated node as executed', async () => {
+	it('does not report a mocked node as executed', async () => {
 		const harness = createRunAdapterForTests(chainWorkflow, {
 			execution: makeExecution({
 				status: 'success',
-				// The engine persists run data for the fabricated nodes too, because
+				// The engine persists run data for the mocked nodes too, because
 				// that is how it feeds the target. Only the target really ran.
 				runData: {
 					Trigger: [makeTaskData([{}])],
@@ -5470,7 +5470,7 @@ describe('createExecutionAdapter runStep()', () => {
 
 		const result = await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
 
-		expect(result.fabricatedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
 		expect(result.executedNodeNames).toEqual(['Send']);
 	});
 
@@ -5513,7 +5513,7 @@ describe('createExecutionAdapter runStep()', () => {
 		// run stops there.
 		expect(result.executedNodeNames).toEqual(['Send']);
 		expect(result.replayedNodeNames?.sort()).toEqual(['Fetch', 'Trigger']);
-		expect(result.fabricatedNodeNames).toEqual([]);
+		expect(result.mockedNodeNames).toEqual([]);
 	});
 
 	it('omits a reused node the subgraph never carried', async () => {
