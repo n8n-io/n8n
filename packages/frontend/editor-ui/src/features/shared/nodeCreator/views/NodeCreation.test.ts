@@ -5,7 +5,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodeCreation from './NodeCreation.vue';
-import type { AddedNodesAndConnections } from '@/Interface';
+import type { AddedNodesAndConnections, XYPosition } from '@/Interface';
 
 const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(() => ({
 	nodes: [],
