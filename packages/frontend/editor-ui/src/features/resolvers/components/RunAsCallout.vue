@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCallout, N8nButton, N8nText } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
@@ -9,6 +9,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useRunAsHolderName } from '@/features/resolvers/composables/useRunAsHolderName';
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
@@ -36,28 +37,7 @@ const state = computed<'off' | 'you' | 'other'>(() => {
 	return runAsUserId.value === usersStore.currentUser?.id ? 'you' : 'other';
 });
 
-const holderName = computed(() => {
-	const id = runAsUserId.value;
-	if (!id) return '';
-	const user = usersStore.usersById[id];
-	return user?.fullName ?? user?.email ?? i18n.baseText('runAs.callout.unknownUser');
-});
-
-// The name is decorative: fetch it when the holder isn't cached yet, but never
-// let a failed lookup break the NDV.
-watch(
-	runAsUserId,
-	async (id) => {
-		if (id && !usersStore.usersById[id]) {
-			try {
-				await usersStore.fetchUsers({ filter: { ids: [id] } });
-			} catch {
-				// Ignored: holderName already falls back to "another user".
-			}
-		}
-	},
-	{ immediate: true },
-);
+const { holderName } = useRunAsHolderName(runAsUserId);
 
 async function setRunAs(on: boolean) {
 	const value = on ? usersStore.currentUser?.id : undefined;

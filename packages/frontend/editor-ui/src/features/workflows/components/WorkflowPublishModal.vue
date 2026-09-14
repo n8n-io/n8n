@@ -21,12 +21,16 @@ import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/features/workflows/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useRunAsHolderName } from '@/features/resolvers/composables/useRunAsHolderName';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -34,6 +38,9 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
+const envFeatureFlag = useEnvFeatureFlag();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
@@ -69,11 +76,38 @@ const nodesWithValidationIssues = computed(
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
+// Only turned on with the flag and the dynamic-credentials module, matching the
+// gate on `RunAsCallout` (the Schedule Trigger NDV callout that owns the setting).
+const isRunAsEnabled = computed(
+	() =>
+		envFeatureFlag.check.value('DYNAMIC_CREDENTIALS_RUN_AS') &&
+		settingsStore.isModuleActive('dynamic-credentials'),
+);
+
+const scheduleTriggers = computed(() =>
+	workflowDocumentStore.value.workflowTriggerNodes.filter(
+		(node: INodeUi) => node.type === SCHEDULE_TRIGGER_NODE_TYPE && !node.disabled,
+	),
+);
+
+const runAsUserId = computed(() => workflowDocumentStore.value.settings?.runAsUserId);
+
+const { holderName: runAsHolderName } = useRunAsHolderName(runAsUserId);
+
+const runAsMismatch = computed(
+	() =>
+		isRunAsEnabled.value &&
+		scheduleTriggers.value.length > 0 &&
+		!!runAsUserId.value &&
+		runAsUserId.value !== usersStore.currentUser?.id,
+);
+
 const inputsDisabled = computed(() => {
 	return (
 		!(wfHasAnyChanges.value || isReattempt.value) ||
 		!containsTrigger.value ||
 		hasNodeIssues.value ||
+		runAsMismatch.value ||
 		publishing.value
 	);
 });
@@ -82,7 +116,12 @@ const isPublishDisabled = computed(() => {
 	return inputsDisabled.value || versionName.value.trim().length === 0;
 });
 
-type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges' | 'reattempt';
+type WorkflowPublishCalloutId =
+	| 'noTrigger'
+	| 'nodeIssues'
+	| 'runAsMismatch'
+	| 'noChanges'
+	| 'reattempt';
 
 const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	if (!containsTrigger.value) {
@@ -91,6 +130,10 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	if (hasNodeIssues.value) {
 		return 'nodeIssues';
+	}
+
+	if (runAsMismatch.value) {
+		return 'runAsMismatch';
 	}
 
 	if (isReattempt.value) {
@@ -286,6 +329,28 @@ async function handlePublish() {
 					}}
 					<ul :class="$style.nodeLinks">
 						<li v-for="node in nodesWithValidationIssues" :key="node.id">
+							<N8nLink
+								size="small"
+								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"
+								@click="modalBus.emit('close')"
+								>{{ node.name }}</N8nLink
+							>
+						</li>
+					</ul>
+				</N8nCallout>
+				<N8nCallout
+					v-else-if="activeCalloutId === 'runAsMismatch'"
+					theme="danger"
+					icon="status-error"
+					data-test-id="workflow-publish-callout-run-as"
+				>
+					{{
+						i18n.baseText('workflows.publishModal.runAsMismatch', {
+							interpolate: { name: runAsHolderName },
+						})
+					}}
+					<ul :class="$style.nodeLinks">
+						<li v-for="node in scheduleTriggers" :key="node.id">
 							<N8nLink
 								size="small"
 								:to="`/workflow/${workflowDocumentStore.workflowId}/${node.id}`"

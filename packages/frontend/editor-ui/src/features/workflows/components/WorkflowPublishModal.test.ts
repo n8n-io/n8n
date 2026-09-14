@@ -9,11 +9,19 @@ import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { WEBHOOK_NODE_TYPE, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	WEBHOOK_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -88,6 +96,18 @@ const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
 	webhooks: [{ name: 'default', httpMethod: 'GET', path: '' }],
 };
 
+const SCHEDULE_TRIGGER_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
+	displayName: 'Schedule Trigger',
+	name: SCHEDULE_TRIGGER_NODE_TYPE,
+	group: ['trigger'],
+	version: 1,
+	description: 'Triggers the workflow on a schedule',
+	defaults: { name: 'Schedule Trigger' },
+	inputs: [],
+	outputs: [NodeConnectionTypes.Main],
+	properties: [],
+};
+
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
@@ -97,9 +117,12 @@ describe('WorkflowPublishModal', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
-		// Register the webhook node type so workflowTriggerNodes computed recognises triggers
+		// Register the trigger node types so workflowTriggerNodes computed recognises triggers
 		const nodeTypesStore = useNodeTypesStore();
-		nodeTypesStore.setNodeTypes([WEBHOOK_NODE_TYPE_DESCRIPTION]);
+		nodeTypesStore.setNodeTypes([
+			WEBHOOK_NODE_TYPE_DESCRIPTION,
+			SCHEDULE_TRIGGER_NODE_TYPE_DESCRIPTION,
+		]);
 
 		workflowsStore.setWorkflowId('workflow-1');
 
@@ -296,6 +319,136 @@ describe('WorkflowPublishModal', () => {
 
 			expect(getByTestId('workflow-publish-callout-no-changes')).toBeInTheDocument();
 			expect(queryByTestId('workflow-publish-callout-reattempt')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('run-as mismatch callout', () => {
+		const CURRENT_USER_ID = 'current-user';
+		const OTHER_USER_ID = 'other-user';
+
+		let settingsStore: ReturnType<typeof useSettingsStore>;
+		let usersStore: ReturnType<typeof useUsersStore>;
+
+		beforeEach(() => {
+			settingsStore = useSettingsStore();
+			usersStore = useUsersStore();
+
+			settingsStore.settings = {
+				...settingsStore.settings,
+				envFeatureFlags: { N8N_ENV_FEAT_DYNAMIC_CREDENTIALS_RUN_AS: true },
+				activeModules: ['dynamic-credentials'],
+			};
+
+			usersStore.usersById = {
+				[CURRENT_USER_ID]: { id: CURRENT_USER_ID, fullName: 'Me' } as IUser,
+				[OTHER_USER_ID]: { id: OTHER_USER_ID, fullName: 'Ada Lovelace' } as IUser,
+			};
+			usersStore.currentUserId = CURRENT_USER_ID;
+
+			// An enabled Schedule Trigger alongside the webhook trigger already on the workflow
+			workflowDocumentStore.setNodes([
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+				},
+				{
+					id: 'schedule-1',
+					name: 'Schedule Trigger',
+					type: SCHEDULE_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+					disabled: false,
+				},
+			]);
+		});
+
+		it('shows the callout with a link to the trigger and disables Publish when the setting names another user', async () => {
+			workflowDocumentStore.mergeSettings({ runAsUserId: OTHER_USER_ID });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-callout-run-as')).toBeInTheDocument();
+			});
+			expect(
+				getByText(
+					'The schedule is set to run as Ada Lovelace. Switch the trigger to run as you before publishing.',
+				),
+			).toBeInTheDocument();
+			expect(getByText('Schedule Trigger')).toBeInTheDocument();
+			expect(getByTestId('workflow-publish-button')).toBeDisabled();
+		});
+
+		it('does not show the callout when the setting names the current user', () => {
+			workflowDocumentStore.mergeSettings({ runAsUserId: CURRENT_USER_ID });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-callout-run-as')).not.toBeInTheDocument();
+		});
+
+		it('does not show the callout when the setting is unset', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-callout-run-as')).not.toBeInTheDocument();
+		});
+
+		it('does not show the callout when the env feature flag is off', () => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				envFeatureFlags: { N8N_ENV_FEAT_DYNAMIC_CREDENTIALS_RUN_AS: false },
+			};
+			workflowDocumentStore.mergeSettings({ runAsUserId: OTHER_USER_ID });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-callout-run-as')).not.toBeInTheDocument();
+		});
+
+		it('does not show the callout when the dynamic-credentials module is not active', () => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: [],
+			};
+			workflowDocumentStore.mergeSettings({ runAsUserId: OTHER_USER_ID });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-callout-run-as')).not.toBeInTheDocument();
+		});
+
+		it('does not show the callout without an enabled Schedule Trigger', () => {
+			workflowDocumentStore.setNodes([
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+				},
+				{
+					id: 'schedule-1',
+					name: 'Schedule Trigger',
+					type: SCHEDULE_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+					disabled: true,
+				},
+			]);
+			workflowDocumentStore.mergeSettings({ runAsUserId: OTHER_USER_ID });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('workflow-publish-callout-run-as')).not.toBeInTheDocument();
 		});
 	});
 });
