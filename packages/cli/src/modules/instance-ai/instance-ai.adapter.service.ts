@@ -2190,39 +2190,48 @@ export class InstanceAiAdapterService {
 					});
 				};
 
-				// Nodes carried over from the reused execution. The target is excluded:
+				// Nodes the reused execution could contribute. The target is excluded:
 				// `dirtyNodeNames` forces it to re-run, and a step run stops there, so
 				// it is the only node of the reused set that executes again.
-				const replayedNodeNames = priorRunData
+				const offeredForReplay = priorRunData
 					? Object.keys(priorRunData).filter((name) => name !== nodeName)
 					: [];
 
-				// `extractExecutionOutcome` derives `executedNodeNames` from the run data
-				// keys, and both a fabricated stub and a replayed entry carry run data
-				// without having run in *this* execution. Leaving them in reports a whole
-				// chain as executed when one node was — the false-coverage signal this
-				// tool must never emit.
-				const notExecutedHere = new Set([...plan.fabricatedNodeNames, ...replayedNodeNames]);
-				const describe = (result: ExecutionResult): StepExecutionResult => ({
-					...result,
-					...(result.executedNodeNames
-						? {
-								executedNodeNames: result.executedNodeNames.filter(
-									(name) => !notExecutedHere.has(name),
-								),
-							}
-						: {}),
-					nodeName,
-					inputMode: plan.inputMode,
-					fabricatedNodeNames: plan.fabricatedNodeNames,
-					...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
-					...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
-					// Report the pins that actually fed this run, not every pin the
-					// workflow carries: the ones this run dropped never applied.
-					...(Object.keys(stepPinData ?? {}).length > 0
-						? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
-						: {}),
-				});
+				const describe = (result: ExecutionResult): StepExecutionResult => {
+					// `findSubgraph` keeps only the nodes between the trigger and the
+					// target, so a sibling branch of the reused execution never enters
+					// this run. Report what the run really carried, not what was offered.
+					const inRunData = new Set(result.executedNodeNames ?? []);
+					const replayedNodeNames = offeredForReplay.filter((name) => inRunData.has(name));
+
+					// `extractExecutionOutcome` derives `executedNodeNames` from the run
+					// data keys, and both a fabricated stub and a replayed entry carry run
+					// data without having run in *this* execution. Leaving them in reports
+					// a whole chain as executed when one node was — the false-coverage
+					// signal this tool must never emit.
+					const notExecutedHere = new Set([...plan.fabricatedNodeNames, ...replayedNodeNames]);
+
+					return {
+						...result,
+						...(result.executedNodeNames
+							? {
+									executedNodeNames: result.executedNodeNames.filter(
+										(name) => !notExecutedHere.has(name),
+									),
+								}
+							: {}),
+						nodeName,
+						inputMode: plan.inputMode,
+						fabricatedNodeNames: plan.fabricatedNodeNames,
+						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
+						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
+						// Report the pins that actually fed this run, not every pin the
+						// workflow carries: the ones this run dropped never applied.
+						...(Object.keys(stepPinData ?? {}).length > 0
+							? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
+							: {}),
+					};
+				};
 
 				try {
 					const executionId = await workflowRunner.run(runData);

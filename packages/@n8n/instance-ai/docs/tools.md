@@ -593,7 +593,9 @@ evaluation mode, so any other mode would drop the workflow's pins.
 replayed nodes carry run data without having run, so they are excluded —
 otherwise a step run on a ten-node workflow would report ten nodes as executed
 when one was. `data` still shows their output, listed under
-`fabricatedNodeNames` and `replayedNodeNames`.
+`fabricatedNodeNames` and `replayedNodeNames`. `replayedNodeNames` names only
+what this run carried: a node of the reused execution that sits outside the
+trigger-to-target subgraph never enters the run and is not listed.
 
 `mocked` also fabricates a placeholder item for every node between the trigger
 and the target, because `findStartNodes` walks down from the trigger and stops

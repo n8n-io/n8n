@@ -5516,6 +5516,38 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(result.fabricatedNodeNames).toEqual([]);
 	});
 
+	it('omits a reused node the subgraph never carried', async () => {
+		// Execution 97 covered the whole workflow, but a step on `Send` only pulls
+		// in the nodes between the trigger and `Send`. `findSubgraph` drops the
+		// rest, so they were offered for replay but never carried.
+		const priorRunData = {
+			Trigger: [makeTaskData([{}])],
+			Fetch: [makeTaskData([{ id: 9 }])],
+			Send: [makeTaskData([{ old: true }])],
+			'Sibling Branch': [makeTaskData([{ unrelated: true }])],
+		};
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{ id: 9 }])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		harness.mockExecutionPersistence.findSingleExecution.mockResolvedValueOnce({
+			...makeExecution({ status: 'success', runData: priorRunData }),
+		} as never);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' });
+
+		expect(result.replayedNodeNames?.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.executedNodeNames).toEqual(['Send']);
+	});
+
 	it('omits the replayed list for a chain run', async () => {
 		const { result } = await runStepOn(chainWorkflow, 'Send');
 

@@ -192,8 +192,10 @@ export interface StepExecutionResult extends ExecutionResult {
 	 */
 	fabricatedNodeNames: string[];
 	/**
-	 * Nodes whose output was carried over from `reusedFromExecutionId`. Absent
-	 * unless `inputMode` is `reused-execution`.
+	 * Nodes whose output this run carried over from `reusedFromExecutionId`.
+	 * Absent unless `inputMode` is `reused-execution`. A node of the reused
+	 * execution that sits outside the trigger-to-target subgraph is not listed:
+	 * the run never carried it.
 	 */
 	replayedNodeNames?: string[];
 	/** Execution the replayed run data came from. */
