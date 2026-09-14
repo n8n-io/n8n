@@ -2024,6 +2024,64 @@ describe('verify-built-workflow tool — attached tools', () => {
 		},
 	);
 
+	it.each([0, 1])(
+		'keeps tools beneath a saved pinned Agent v2 unverified with %i pinned items',
+		async (itemCount) => {
+			const workflow = agentToolWorkflow(2);
+			const { ctx, getOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: plan }), {
+				executionId: 'exec-parent',
+				status: 'success',
+				executedNodeNames: ['Trigger', 'Agent'],
+			});
+			const workflowService = ctx.domainContext.workflowService!;
+			vi.mocked(workflowService.getAsWorkflowJSON).mockResolvedValue(workflow);
+			workflowService.getPinnedDataSummary = vi
+				.fn<NonNullable<InstanceAiWorkflowService['getPinnedDataSummary']>>()
+				.mockResolvedValue([{ nodeName: 'Agent', itemCount }]);
+
+			const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+			expect(result.success).toBe(true);
+			expect(result.executionId).toBe('exec-parent');
+			expect(result.nodesNotReached).toEqual(['Write']);
+			expect(result.simulatedNodes).toBeUndefined();
+			expect(ctx.domainContext.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({ verificationPinData: { Write: [{}] } }),
+			);
+			expect(getOutcome().verification).toMatchObject({
+				success: true,
+				evidence: { nodesNotReached: ['Write'] },
+			});
+		},
+	);
+
+	it('rejects a non-trigger with a simulated tool without recording a verification failure', async () => {
+		const workflow = agentToolWorkflow(2);
+		const { ctx, getOutcome, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({ nodeSimulationPlan: plan }),
+			{ status: 'success' },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(workflow);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Agent',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('Could not find trigger "Agent" in this workflow.');
+		expect(result.remediation).toBeUndefined();
+		expect(result.executionId).toBeUndefined();
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.reportVerificationVerdict).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toBeUndefined();
+	});
+
 	it('keeps tools beneath a simulated parent unverified', async () => {
 		const workflow = agentToolWorkflow(2, 3);
 		const { ctx } = makeContext(
