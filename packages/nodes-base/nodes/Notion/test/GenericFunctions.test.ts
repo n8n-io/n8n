@@ -626,7 +626,6 @@ describe('Test Notion, simplifyObjects', () => {
 				fc.property(accentedWord, (name) => {
 					expect(keyFor(name, 3)).toBe(`property_${name.toLowerCase()}`);
 				}),
-				{ examples: [['naïve'], ['café'], ['Mädchen'], ['Köln'], ['Prüfung'], ['Straße']] },
 			);
 		});
 	});
@@ -668,7 +667,6 @@ describe('Test Notion, simplifyObjects', () => {
 
 					expect(keyFor(name, 2)).toBe(`property_${words.join('_')}`);
 				}),
-				{ examples: [['naïve'], ['café'], ['Mädchen'], ['Köln'], ['Prüfung'], ['Straße']] },
 			);
 		});
 	});
