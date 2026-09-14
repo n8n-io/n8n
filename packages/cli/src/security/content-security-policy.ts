@@ -3,7 +3,7 @@ import type {
 	ContentSecurityPolicyReportOnlySetting,
 	ContentSecurityPolicySetting,
 } from '@n8n/config';
-import { DEFAULT_CONTENT_SECURITY_POLICY, isLegacyBooleanSetting } from '@n8n/config';
+import { isLegacyBooleanSetting } from '@n8n/config';
 import { NONCE_PLACEHOLDER } from '@n8n/constants';
 
 export type ContentSecurityPolicies = {
@@ -18,8 +18,8 @@ export type ContentSecurityPolicies = {
  * already read each variable on its own; the only decision left is the one that needs
  * both, namely the boolean the report-only variable used to hold.
  *
- * Only the report-only variable carries a policy by default, so a new instance reports
- * violations but cannot break on them.
+ * Only the enforced variable carries a policy by default, so a new instance enforces
+ * n8n's policy and sends no report-only header.
  */
 export const resolveContentSecurityPolicies = (
 	policy: ContentSecurityPolicySetting,
@@ -31,11 +31,13 @@ export const resolveContentSecurityPolicies = (
 			'N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY is deprecated as a boolean: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honoring the old meaning for now - set it to a policy, or to `{}` to report on nothing.',
 		);
 
-		// Read as a policy, `true` would start enforcing a policy that the instance
-		// deliberately kept report-only.
-		return reportOnly.legacyBoolean
-			? { reportOnly: policy ?? DEFAULT_CONTENT_SECURITY_POLICY }
-			: { enforced: policy, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
+		// `true` used to mean "report, never block". Enforcing the default policy here
+		// would break an instance that deliberately asked for report-only.
+		if (reportOnly.legacyBoolean) return { reportOnly: policy };
+
+		// `false` meant "enforce". The boolean took the place of a report-only policy, so
+		// there is none to send.
+		return { enforced: policy };
 	}
 
 	return { enforced: policy, reportOnly };
