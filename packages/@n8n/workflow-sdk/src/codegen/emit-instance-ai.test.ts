@@ -237,8 +237,10 @@ describe('emit-instance-ai', () => {
 			'isSwitchNodeType',
 			'isWebhookType',
 			// Codegen + parse round-trip
+			'buildImports',
 			'emitInstanceAi',
 			'generateWorkflowCode',
+			'locateNodeDeclarations',
 			'parseWorkflowCode',
 			'parseWorkflowCodeToBuilder',
 			// Code-step helpers — appear as arguments to `.code()` callbacks, not as
@@ -254,6 +256,12 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalIssue',
+			'partitionValidationIssues',
+			'validateWorkflowBuilder',
+			// Code-node source lint — the host re-runs it with the executing runner's
+			// real import policy. Never called from a workflow body.
+			'lintPythonCode',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',
@@ -263,11 +271,15 @@ describe('emit-instance-ai', () => {
 			'normalizePinData',
 			// Mock/pin-data generation building blocks (src/mock-data/) — eval
 			// and simulated-verification tooling, never in workflow bodies
+			'buildAiRootPlaceholder',
 			'buildDateAnchors',
+			'buildFieldViolationRetryMessage',
 			'buildNodeSchemaSection',
 			'buildPinDataUserPrompt',
 			'buildSchemaContexts',
+			'buildSchemaPlaceholderItem',
 			'collectDownstreamConsumers',
+			'collectPinFieldViolations',
 			'describeAiRootShape',
 			'findEnvelopeKey',
 			'findOutputParserTargets',
@@ -277,6 +289,10 @@ describe('emit-instance-ai', () => {
 			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
+			// SDK-to-engine adapters for host-side validation and graph helpers
+			'dropInvalidWorkflowJsonGroups',
+			'toEngineConnections',
+			'toGroupValidationNodes',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

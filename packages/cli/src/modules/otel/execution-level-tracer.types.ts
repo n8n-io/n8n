@@ -17,12 +17,9 @@ type WorkflowContext = {
 
 export type StartWorkflowParams = {
 	executionId: string;
-	/** Parent context — incoming webhook traceparent or parent sub-workflow span. */
+	/** Parent context — webhook traceparent, parent sub-workflow span, or the parked span on a resume. */
 	tracingContext?: TracingContext;
-	/**
-	 * Link this workflow to a different workflow. Used by `workflowExecuteResume` when a
-	 * workflow is resumed after a pause.
-	 */
+	/** Adds a `n8n.continuation.reason` link. Set alongside `tracingContext` on a resume. */
 	linkTo?: TracingContext;
 	workflow: WorkflowContext;
 	project?: ProjectContext;

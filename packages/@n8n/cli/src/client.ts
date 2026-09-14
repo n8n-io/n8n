@@ -16,11 +16,20 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	bindings?: string;
 	workflowConflictPolicy: string;
+	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
+	overwriteDeletionPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
+	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -28,8 +37,99 @@ export interface ExportPackageFields {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
+	credentialExportPolicy?: string;
+	includeArchivedWorkflows?: boolean;
 }
+
+/** True per-entity counts of what ended up in an exported package. */
+export interface ExportPackageCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	/** Undefined when talking to an older server that doesn't send the counts header. */
+	counts?: ExportPackageCounts;
+}
+
+export interface ImportPackageCounts {
+	projects: { created: number; updated: number; skipped: number; deleted: number };
+	folders: { created: number; skipped: number; removed: number };
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		archived: number;
+		deleted: number;
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
+	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number };
+	variables: {
+		matched: number;
+		created: number;
+		updated: number;
+		stubbed: number;
+		missing: number;
+	};
+	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
+}
+
+/** The direction a promotion config, checkout, or operation works in. */
+export type PromotionDirection = 'apply' | 'promote';
+
+/** The Git part of a promotion operation result. */
+export interface PromotionGitResult {
+	commitSha: string;
+	/** For Promote the branch it pushed to, for Apply the branch the package came from. */
+	branchName: string;
+}
+
+/** Outcome of promoting the team projects of a connection. */
+export type PromotePackageResult = {
+	connectionId: string;
+	configId: string;
+	counts: ExportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** Outcome of applying a package to the instance. */
+export type ApplyPackageResult = {
+	connectionId: string;
+	configId: string;
+	counts: ImportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** State of one direction's local checkout, after a clone or a disconnect. */
+export type PromotionCheckoutResult = {
+	connectionId: string;
+	configId: string;
+	direction: PromotionDirection;
+	branchName: string;
+	hasCheckout: boolean;
+};
+
+/** A new provider, with the generated public key for SSH providers. */
+export type PromotionProviderCreatedResult = {
+	provider: Record<string, unknown>;
+	publicKey: string | null;
+};
 
 export class ApiError extends Error {
 	constructor(
@@ -75,6 +175,7 @@ export class N8nClient {
 			query?: Record<string, string>;
 			formData?: FormData;
 			responseType?: 'json' | 'binary';
+			onResponse?: (response: Response) => void;
 		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
@@ -125,6 +226,8 @@ export class N8nClient {
 						: undefined;
 			throw new ApiError(response.status, message, hint, errorBody);
 		}
+
+		options.onResponse?.(response);
 
 		if (response.status === 204) {
 			return undefined as T;
@@ -182,6 +285,96 @@ export class N8nClient {
 		} while (cursor && (limit === undefined || results.length < limit));
 
 		return limit !== undefined ? results.slice(0, limit) : results;
+	}
+
+	// ─── Promotion providers ───────────────────────────────────────
+
+	async listPromotionProviders(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
+	}
+
+	async getPromotionProvider(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
+	}
+
+	async createPromotionProvider(body: unknown) {
+		return await this.post<PromotionProviderCreatedResult>('/promotions/providers', body);
+	}
+
+	async updatePromotionProvider(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/providers/${id}`, body);
+	}
+
+	async deletePromotionProvider(id: string) {
+		return await this.del<undefined>(`/promotions/providers/${id}`);
+	}
+
+	// ─── Promotion connections ─────────────────────────────────────
+
+	async listPromotionConnections(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/connections', query, limit);
+	}
+
+	async getPromotionConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/connections/${id}`);
+	}
+
+	async createPromotionConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/connections', body);
+	}
+
+	async updatePromotionConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/connections/${id}`, body);
+	}
+
+	async deletePromotionConnection(id: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}`);
+	}
+
+	/** Creates the config of one direction, or replaces it with the settings sent. */
+	async setPromotionConfig(id: string, direction: PromotionDirection, body: unknown) {
+		return await this.put<Record<string, unknown>>(
+			`/promotions/connections/${id}/configs/${direction}`,
+			body,
+		);
+	}
+
+	async deletePromotionConfig(id: string, direction: PromotionDirection) {
+		return await this.del<undefined>(`/promotions/connections/${id}/configs/${direction}`);
+	}
+
+	async clonePromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/clone`,
+		);
+	}
+
+	async disconnectPromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/disconnect`,
+		);
+	}
+
+	async listPromotionConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/connections/${id}/projects`);
+	}
+
+	async addProjectToPromotionConnection(id: string, projectId: string) {
+		return await this.post<{ connectionId: string; projectId: string }>(
+			`/promotions/connections/${id}/projects/${projectId}`,
+		);
+	}
+
+	async removeProjectFromPromotionConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}/projects/${projectId}`);
+	}
+
+	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
+	}
+
+	async applyPackage(id: string) {
+		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -434,27 +627,52 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
+			credentialExportPolicy?: string;
+			includeArchivedWorkflows?: boolean;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
+		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		// Only sent when set, so an older server without this field in its schema never sees it.
+		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
+		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
 
-		return await this.request<Buffer>('POST', '/n8n-packages/export', {
+		let counts: ExportPackageCounts | undefined;
+		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
 			responseType: 'binary',
+			// Older servers omit this header; counts then stays undefined.
+			onResponse: (response) => {
+				const header = response.headers.get('X-N8n-Export-Counts');
+				if (header) counts = this.parseExportCounts(header);
+			},
 		});
+
+		return { archive, counts };
+	}
+
+	private parseExportCounts(header: string): ExportPackageCounts | undefined {
+		try {
+			return JSON.parse(header) as ExportPackageCounts;
+		} catch {
+			return undefined;
+		}
 	}
 
 	async importPackage(

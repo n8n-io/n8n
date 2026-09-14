@@ -29,6 +29,32 @@ export function isCredentialTypeClass(node: TSESTree.ClassDeclaration): boolean 
 	return implementsInterface(node, 'ICredentialType');
 }
 
+/** Matches this plugin's convention for identifying trigger nodes: class name ends with `Trigger`. */
+export function isTriggerNodeClass(node: TSESTree.ClassDeclaration): boolean {
+	return node.id?.name.endsWith('Trigger') ?? false;
+}
+
+function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const groupArray = findArrayLiteralProperty(descriptionValue, 'group');
+	return (
+		groupArray?.elements.some(
+			(element) => element?.type === AST_NODE_TYPES.Literal && element.value === 'trigger',
+		) ?? false
+	);
+}
+
+/**
+ * `group` is the authoritative signal for "is this a trigger node" (also catches e.g. Cron,
+ * Webhook, versioned `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic
+ * `group` values.
+ */
+export function isTriggerNode(
+	node: TSESTree.ClassDeclaration,
+	descriptionValue: TSESTree.ObjectExpression,
+): boolean {
+	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
+}
+
 export function findClassProperty(
 	node: TSESTree.ClassDeclaration,
 	propertyName: string,
@@ -40,6 +66,73 @@ export function findClassProperty(
 			member.key.name === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.PropertyDefinition ? property : null;
+}
+
+/**
+ * Returns the object literal behind an expression, and looks through the type
+ * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ */
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	let current = node;
+	while (
+		current?.type === AST_NODE_TYPES.TSAsExpression ||
+		current?.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+		current?.type === AST_NODE_TYPES.TSTypeAssertion ||
+		current?.type === AST_NODE_TYPES.TSNonNullExpression
+	) {
+		current = current.expression;
+	}
+
+	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
+}
+
+function findConstructorAssignedDescription(
+	node: TSESTree.ClassDeclaration,
+): TSESTree.ObjectExpression | null {
+	const constructor = node.body.body.find(
+		(member) => member.type === AST_NODE_TYPES.MethodDefinition && member.kind === 'constructor',
+	);
+	if (constructor?.type !== AST_NODE_TYPES.MethodDefinition) {
+		return null;
+	}
+
+	for (const statement of constructor.value.body?.body ?? []) {
+		if (statement.type !== AST_NODE_TYPES.ExpressionStatement) continue;
+
+		const { expression } = statement;
+		if (
+			expression.type === AST_NODE_TYPES.AssignmentExpression &&
+			expression.operator === '=' &&
+			expression.left.type === AST_NODE_TYPES.MemberExpression &&
+			expression.left.object.type === AST_NODE_TYPES.ThisExpression &&
+			expression.left.property.type === AST_NODE_TYPES.Identifier &&
+			expression.left.property.name === 'description'
+		) {
+			const description = asObjectExpression(expression.right);
+			if (description) {
+				return description;
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Returns the `description` object literal of a node class. Versioned nodes
+ * follow the layout in the node-building docs and assign `this.description` in
+ * their constructor, so look there when the class property has no initializer.
+ */
+export function findNodeDescriptionObject(
+	node: TSESTree.ClassDeclaration,
+): TSESTree.ObjectExpression | null {
+	const property = findClassProperty(node, 'description');
+	const propertyValue = asObjectExpression(property?.value ?? null);
+	if (propertyValue) {
+		return propertyValue;
+	}
+
+	return findConstructorAssignedDescription(node);
 }
 
 export function findObjectProperty(

@@ -25,6 +25,12 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// spies set up once don't leak across tests. Packages may override via `options`.
 			restoreMocks: true,
 			environment: 'jsdom',
+			// CI shards the frontend suite 2-way (`--shard=N/2`). A package with fewer
+			// test files than shards leaves a shard with nothing to run, and vitest
+			// treats that as an error — so a sparse package (a freshly scaffolded
+			// module, a config-only package) would fail outright. Default it on here so
+			// every frontend package inherits it instead of rediscovering the failure.
+			passWithNoTests: true,
 			setupFiles: ['./src/__tests__/setup.ts'],
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },

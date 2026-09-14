@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleType,
@@ -35,20 +35,11 @@ export function useRoleMappingRules() {
 
 	const instanceRules = ref<RoleMappingRuleResponse[]>([]);
 	const projectRules = ref<RoleMappingRuleResponse[]>([]);
-	const fallbackInstanceRole = ref<string>('global:member');
 	const isLoading = ref(false);
 	const isDirty = ref(false);
 
 	let serverRuleIds = new Set<string>();
 	let serverProjectRuleIds = new Set<string>();
-
-	let fallbackInitialized = false;
-	watch(fallbackInstanceRole, () => {
-		if (fallbackInitialized) {
-			isDirty.value = true;
-		}
-		fallbackInitialized = true;
-	});
 
 	function getRulesRef(type: RoleMappingRuleType) {
 		return type === 'instance' ? instanceRules : projectRules;
@@ -195,7 +186,6 @@ export function useRoleMappingRules() {
 	return {
 		instanceRules,
 		projectRules,
-		fallbackInstanceRole,
 		isLoading: computed(() => isLoading.value),
 		isDirty: computed(() => isDirty.value),
 		addRule,

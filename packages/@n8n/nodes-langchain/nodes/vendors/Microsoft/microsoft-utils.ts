@@ -13,6 +13,7 @@ import {
 	type IDataObject,
 	type IWebhookFunctions,
 	type INodePropertyOptions,
+	type NodeEgressFilter,
 } from 'n8n-workflow';
 
 import {
@@ -223,17 +224,22 @@ function normalizeMcpServerConfig(rawServer: unknown): MCPServerConfig | undefin
 async function getMcpServerConfigsWithoutAudienceTokens(
 	turnContext: TurnContext,
 	mcpAuthToken: string,
+	secureEgressFilter: NodeEgressFilter,
 ) {
 	MicrosoftToolingUtility.ValidateAuthToken(mcpAuthToken);
 
 	const agenticAppId = MicrosoftRuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
 	const endpoint = getToolingGatewayUrl(agenticAppId);
-	const response = await proxyFetch(endpoint, {
-		headers: MicrosoftToolingUtility.GetToolRequestHeaders(
-			mcpAuthToken,
-			turnContext,
-			MICROSOFT_TOOL_OPTIONS,
-		),
+	const response = await proxyFetch({
+		input: endpoint,
+		init: {
+			headers: MicrosoftToolingUtility.GetToolRequestHeaders(
+				mcpAuthToken,
+				turnContext,
+				MICROSOFT_TOOL_OPTIONS,
+			),
+		},
+		lookup: secureEgressFilter.createSecureLookup(),
 	});
 
 	if (!response.ok) {
@@ -361,6 +367,7 @@ export async function getMicrosoftMcpTools(
 	authorization: Authorization,
 	mcpAuthToken: string,
 	selectedTools: string[] | undefined,
+	secureEgressFilter: NodeEgressFilter,
 ) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
@@ -376,7 +383,11 @@ export async function getMicrosoftMcpTools(
 		);
 	} catch (error) {
 		console.warn('Microsoft SDK listToolServers failed, falling back to direct discovery');
-		servers = await getMcpServerConfigsWithoutAudienceTokens(turnContext, mcpAuthToken);
+		servers = await getMcpServerConfigsWithoutAudienceTokens(
+			turnContext,
+			mcpAuthToken,
+			secureEgressFilter,
+		);
 		shouldAttachServerAuthorization = true;
 	}
 
@@ -418,6 +429,7 @@ export async function getMicrosoftMcpTools(
 			headers,
 			name: 'Microsoft-Agent-365',
 			version: 1,
+			secureEgressFilter,
 		});
 
 		if (!clientResult.ok) {
@@ -558,6 +570,7 @@ export const configureActivityCallback = (
 								authorization,
 								mcpTokenRef.token,
 								selectedTools,
+								nodeContext.helpers.getSecureEgressFilter(),
 							);
 
 							mcpClient = result?.client;

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { CheckpointStore, SerializableAgentState } from '@n8n/instance-ai';
+import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
 import { LessThan } from '@n8n/typeorm';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -51,6 +51,10 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			throw new UserError(EXPIRED_CHECKPOINT_MESSAGE);
 		}
 		return checkpoint.state;
+	}
+
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.checkpointRepo.claimSuspendedForResume(key, state);
 	}
 
 	async delete(key: string): Promise<void> {

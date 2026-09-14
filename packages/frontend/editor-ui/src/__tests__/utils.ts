@@ -1,43 +1,22 @@
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
-import { UserManagementAuthenticationMethod } from '@/Interface';
-import { defaultSettings } from './defaults';
-import type { Mock } from 'vitest';
-import type { Store, StoreDefinition } from 'pinia';
-import type { ComputedRef } from 'vue';
+import { AuthenticationMethod } from '@n8n/api-types';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
-/**
- * Retries the given assertion until it passes or the timeout is reached
- *
- * @example
- * await retry(
- *   () => expect(screen.getByText('Hello')).toBeInTheDocument()
- * );
- */
-export const retry = async (assertion: () => void, { interval = 20, timeout = 1000 } = {}) => {
-	return await new Promise((resolve, reject) => {
-		const startTime = Date.now();
-
-		const tryAgain = () => {
-			setTimeout(() => {
-				try {
-					resolve(assertion());
-				} catch (error) {
-					if (Date.now() - startTime > timeout) {
-						reject(error);
-					} else {
-						tryAgain();
-					}
-				}
-			}, interval);
-		};
-
-		tryAgain();
-	});
-};
-
-export const waitAllPromises = async () => await new Promise((resolve) => setTimeout(resolve));
+// `mockedStore`, `retry`, `waitAllPromises` and `useEmitters` now live in
+// `@n8n/frontend-test-utils`, so a module package can reach them. They are re-exported rather
+// than codemodded away: `mockedStore` alone has 200+ importers here, and this file stays for the
+// helpers below it that are bound to the shell (`ISettingsState`) or to editor-ui's own DOM.
+export {
+	mockedStore,
+	retry,
+	useEmitters,
+	waitAllPromises,
+	type Emitter,
+	type Emitters,
+	type MockedStore,
+} from '@n8n/frontend-test-utils';
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	initialized: true,
@@ -45,7 +24,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
-		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		authenticationMethod: AuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
 		passwordMinLength: 8,
 	},
@@ -93,53 +72,6 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
 	expect(selectedItem).toBeInTheDocument();
 	return selectedItem?.querySelector('p')?.textContent?.trim();
-};
-
-/**
- * Typescript helper for mocking pinia store actions return value
- *
- * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
- */
-export const mockedStore = <TStoreDef extends (...args: never[]) => unknown>(
-	useStore: TStoreDef,
-	...args: Parameters<TStoreDef>
-): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
-	? Store<
-			Id,
-			State,
-			Record<string, never>,
-			{
-				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-					? Mock<(...args: Args) => ReturnT>
-					: Actions[K];
-			}
-		> & {
-			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
-		}
-	: ReturnType<TStoreDef> => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return useStore(...args) as any;
-};
-
-export type MockedStore<T extends (...args: never[]) => unknown> = ReturnType<
-	typeof mockedStore<T>
->;
-
-export type Emitter = (event: string, ...args: unknown[]) => void;
-export type Emitters<T extends string> = Record<
-	T,
-	{
-		emit: Emitter;
-	}
->;
-export const useEmitters = <T extends string>() => {
-	const emitters = {} as Emitters<T>;
-	return {
-		emitters,
-		addEmitter: (name: T, emitter: Emitter) => {
-			emitters[name] = { emit: emitter };
-		},
-	};
 };
 
 /**

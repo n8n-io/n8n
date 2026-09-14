@@ -30,6 +30,13 @@ describe('extractFromAICalls', () => {
 		['{{ $fromAI("a", "b", "string", "5") }}', ['a', 'b', 'string', '5']],
 		['{{ $fromAI("a", "b", "string", "true") }}', ['a', 'b', 'string', 'true']],
 		['{{ $fromAI("a", "b", "string", "{}") }}', ['a', 'b', 'string', '{}']],
+		// The type argument is accepted case-insensitively, so it has to be normalized
+		// before it is used to coerce the default value.
+		['{{ $fromAI("a", "b", "String", "true") }}', ['a', 'b', 'string', 'true']],
+		['{{ $fromAI("a", "b", "STRING", "5") }}', ['a', 'b', 'string', '5']],
+		['{{ $fromAI("a", "b", "String", "{}") }}', ['a', 'b', 'string', '{}']],
+		['{{ $fromAI("a", "b", "Number", "5") }}', ['a', 'b', 'number', 5]],
+		['{{ $fromAI("a", "b", "Boolean", "true") }}', ['a', 'b', 'boolean', true]],
 	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
 		expect(extractFromAICalls(formula)).toEqual([
 			{

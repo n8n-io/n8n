@@ -86,6 +86,7 @@ function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 		.filter((pattern) => pattern)
 		.some((pattern) => {
 			try {
+				// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- env var patterns
 				return new RegExp(pattern, 'mi').test(normalizedPath);
 			} catch {
 				return true;

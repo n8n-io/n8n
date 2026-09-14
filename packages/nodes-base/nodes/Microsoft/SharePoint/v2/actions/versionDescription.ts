@@ -2,6 +2,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import * as file from './file';
+import * as item from './item';
 import * as list from './list';
 import { SERVICE_PRINCIPAL_AUTH } from '../transport';
 
@@ -19,6 +21,9 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft SharePoint',
 	},
+	// The generated Tool variant ships with the version: dormant while v2 is
+	// unregistered, exposed together with the node at launch.
+	usableAsTool: true,
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	// The v1 credential (microsoftSharePointOAuth2Api) is deliberately not
@@ -73,6 +78,14 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
+					name: 'File',
+					value: 'file',
+				},
+				{
+					name: 'Item',
+					value: 'item',
+				},
+				{
 					name: 'List',
 					value: 'list',
 				},
@@ -80,6 +93,8 @@ export const versionDescription: INodeTypeDescription = {
 			default: 'list',
 		},
 
+		...file.description,
+		...item.description,
 		...list.description,
 	],
 };

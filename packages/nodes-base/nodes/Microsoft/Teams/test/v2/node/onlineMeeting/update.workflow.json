@@ -1,0 +1,106 @@
+{
+	"name": "onlineMeeting update",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"resource": "onlineMeeting",
+				"operation": "update",
+				"meetingId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi"
+				},
+				"updateFields": {
+					"subject": "Quarterly Sync (moved)",
+					"startDateTime": "2026-09-12T10:00:00Z",
+					"endDateTime": "2026-09-12T10:45:00Z",
+					"allowMeetingChat": "disabled",
+					"allowTeamworkReactions": false,
+					"lobbyBypassScope": "organizer"
+				}
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "6isd5ytvA0qV78eK",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('11111111-2222-3333-4444-555555555555')/onlineMeetings/$entity",
+					"id": "MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi",
+					"creationDateTime": "2026-09-01T09:00:00.649Z",
+					"startDateTime": "2026-09-12T10:00:00Z",
+					"endDateTime": "2026-09-12T10:45:00Z",
+					"joinWebUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0?context=%7b%22Tid%22%3a%22abc%22%7d",
+					"subject": "Quarterly Sync (moved)",
+					"allowMeetingChat": "disabled",
+					"allowTeamworkReactions": false,
+					"lobbyBypassSettings": {
+						"scope": "organizer",
+						"isDialInBypassEnabled": false
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5c1c7a0e-2d51-4f0e-9c1e-7b0d2f3a4e01",
+	"id": "onlineMeetingUpdate01",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

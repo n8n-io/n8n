@@ -82,6 +82,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 "chat_hub_agent_tools" {
   varchar agentId PK

@@ -1,19 +1,14 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type { IRunData } from 'n8n-workflow';
-import {
-	FORM_NODE_TYPE,
-	WAIT_NODE_TYPE,
-	WAITING_FORMS_EXECUTION_STATUS,
-	Workflow,
-} from 'n8n-workflow';
+import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { applyCors } from '@/utils/cors.util';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 
 import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -87,6 +82,7 @@ export class WaitingForms extends WaitingWebhooks {
 		if (execution?.data.resumeToken) {
 			const result = this.validateToken(req, execution);
 			if (!result.valid) {
+				applyFormSandboxCSP(res);
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
 			}
@@ -123,9 +119,7 @@ export class WaitingForms extends WaitingWebhooks {
 			);
 
 			if (!completionPage) {
-				if (!isFormHtmlSandboxingDisabled()) {
-					res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-				}
+				applyFormSandboxCSP(res);
 				res.render('form-trigger-completion', {
 					title: 'Form Submitted',
 					message: 'Your response has been recorded',
@@ -166,13 +160,8 @@ export class WaitingForms extends WaitingWebhooks {
 		let status: string = execution?.status ?? 'null';
 		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
 
-		if (node && status === 'waiting') {
-			if (node.type === FORM_NODE_TYPE) {
-				status = 'form-waiting';
-			}
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form') {
-				status = 'form-waiting';
-			}
+		if (node && status === 'waiting' && this.isFormResumeNode(node)) {
+			status = 'form-waiting';
 		}
 
 		applyCors(req, res);

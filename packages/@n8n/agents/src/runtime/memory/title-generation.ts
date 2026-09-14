@@ -7,6 +7,7 @@ import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
+import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 const logger = createFilteredLogger();
 
@@ -53,22 +54,6 @@ interface GenerateTitleFromMessageOptions {
 	instructions?: string;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
-}
-
-function buildTelemetryOptions(telemetry: BuiltTelemetry | undefined): Record<string, unknown> {
-	if (!telemetry?.enabled) return {};
-
-	return {
-		experimental_telemetry: {
-			isEnabled: true,
-			functionId: telemetry.functionId ?? 'title-generation',
-			metadata: telemetry.metadata,
-			recordInputs: telemetry.recordInputs,
-			recordOutputs: telemetry.recordOutputs,
-			tracer: telemetry.tracer,
-			integrations: telemetry.integrations.length > 0 ? telemetry.integrations : undefined,
-		},
-	};
 }
 
 /**
@@ -134,14 +119,14 @@ export async function generateTitleFromMessage(
 
 	const result = await loadAi().generateText({
 		model,
-		system: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS,
+		instructions: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS,
 		messages: [
 			{
 				role: 'user',
 				content: `Generate a title for the following first message of a conversation. Do not answer the message — only produce the title.\n\n<message>\n${trimmed}\n</message>`,
 			},
 		],
-		...buildTelemetryOptions(opts?.telemetry),
+		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 
@@ -181,7 +166,7 @@ ${trimmed}
 
 	const result = await loadAi().generateText({
 		model,
-		system: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
+		instructions: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
 		messages: [{ role: 'user', content: wrappedMessage }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);

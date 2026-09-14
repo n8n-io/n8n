@@ -185,6 +185,9 @@
                 }
             }
         },
+        "id": {
+            "type": "integer"
+        },
         "link": {
             "type": "string"
         },
@@ -232,5 +235,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

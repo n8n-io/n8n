@@ -7,53 +7,44 @@ import { createComponentRenderer } from '@/__tests__/render';
 const renderComponent = createComponentRenderer(CredentialTypeSelector);
 
 describe('CredentialTypeSelector', () => {
-	it('renders both radio cards', () => {
+	it('renders the selector', () => {
 		renderComponent({ props: { modelValue: false } });
 
 		expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
-		expect(screen.getByTestId('credential-type-card-end-user')).toBeInTheDocument();
-		expect(screen.getByTestId('credential-type-card-fixed')).toBeInTheDocument();
+		expect(screen.getByTestId('credential-type-select')).toBeInTheDocument();
 	});
 
-	it('marks the fixed card as checked when not resolvable', () => {
+	it('shows both options when opened', async () => {
 		renderComponent({ props: { modelValue: false } });
 
-		expect(screen.getByTestId('credential-type-card-fixed')).toHaveAttribute(
-			'aria-checked',
-			'true',
-		);
-		expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
-			'aria-checked',
-			'false',
-		);
+		await userEvent.click(screen.getByTestId('credential-type-select'));
+
+		expect(screen.getByTestId('credential-type-option-fixed')).toBeInTheDocument();
+		expect(screen.getByTestId('credential-type-option-endUser')).toBeInTheDocument();
 	});
 
-	it('marks the end-user card as checked when resolvable', () => {
-		renderComponent({ props: { modelValue: true } });
-
-		expect(screen.getByTestId('credential-type-card-end-user')).toHaveAttribute(
-			'aria-checked',
-			'true',
-		);
-		expect(screen.getByTestId('credential-type-card-fixed')).toHaveAttribute(
-			'aria-checked',
-			'false',
-		);
-	});
-
-	it('emits update:modelValue when selecting a different card', async () => {
+	it('emits update:modelValue when selecting the end-user option', async () => {
 		const { emitted } = renderComponent({ props: { modelValue: false } });
 
-		await userEvent.click(screen.getByTestId('credential-type-card-end-user'));
+		await userEvent.click(screen.getByTestId('credential-type-select'));
+		await userEvent.click(screen.getByTestId('credential-type-option-endUser'));
 
 		expect(emitted()['update:modelValue']).toEqual([[true]]);
 	});
 
-	it('does not emit when clicking the already-selected card', async () => {
+	it('does not emit when selecting the already-selected option', async () => {
 		const { emitted } = renderComponent({ props: { modelValue: false } });
 
-		await userEvent.click(screen.getByTestId('credential-type-card-fixed'));
+		await userEvent.click(screen.getByTestId('credential-type-select'));
+		await userEvent.click(screen.getByTestId('credential-type-option-fixed'));
 
 		expect(emitted()['update:modelValue']).toBeUndefined();
+	});
+
+	it('disables the select when the disabled prop is set', () => {
+		renderComponent({ props: { modelValue: true, disabled: true } });
+
+		const input = screen.getByTestId('credential-type-select').querySelector('input');
+		expect(input).toBeDisabled();
 	});
 });

@@ -52,6 +52,48 @@ describe('setupApiKeyAuthentication', () => {
 		expect(ctx.getCredentials).toHaveBeenCalledWith('testCredential');
 	});
 
+	it('should return a Foundry base URL when endpointType is foundry', async () => {
+		const mockCredentials = {
+			apiKey: 'test-api-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+		};
+
+		ctx.getCredentials = vi.fn().mockResolvedValue(mockCredentials);
+
+		const result = await setupApiKeyAuthentication.call(ctx, 'testCredential');
+
+		expect(result).toEqual({
+			azureOpenAIApiKey: 'test-api-key',
+			azureOpenAIApiInstanceName: '',
+			azureOpenAIApiVersion: '',
+			azureOpenAIEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+			azureFoundryBaseURL: 'https://test.services.ai.azure.com/openai/v1',
+		});
+	});
+
+	it('should throw NodeOperationError when a classic credential is missing resourceName', async () => {
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			apiVersion: '2023-05-15',
+		});
+
+		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(
+			'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+		);
+	});
+
+	it('should throw NodeOperationError when a classic credential is missing apiVersion', async () => {
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			resourceName: 'test-resource',
+		});
+
+		await expect(setupApiKeyAuthentication.call(ctx, 'testCredential')).rejects.toThrow(
+			'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+		);
+	});
+
 	it('should throw NodeOperationError when API key is missing', async () => {
 		// Arrange
 		const mockCredentials = {

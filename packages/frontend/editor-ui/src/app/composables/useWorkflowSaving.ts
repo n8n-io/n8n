@@ -1,9 +1,11 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
-import { watch } from 'vue';
+import { computed, getCurrentInstance, watch } from 'vue';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -11,7 +13,6 @@ import {
 	VIEWS,
 	AutoSaveState,
 	DEBOUNCE_TIME,
-	getDebounceTime,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,10 +21,11 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 import { isExpression, type IDataObject } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
@@ -39,14 +41,83 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (error && typeof error === 'object' && 'message' in error) {
+		const { message } = error as { message?: unknown };
+		if (message !== undefined) {
+			return String(message);
+		}
+	}
+
+	return String(error);
+}
+
+function getHttpStatusCode(error: unknown): number | undefined {
+	if (error instanceof ResponseError) {
+		return error.httpStatusCode;
+	}
+
+	if (!error || typeof error !== 'object') {
+		return;
+	}
+
+	const { httpStatusCode, errorCode, response } = error as {
+		httpStatusCode?: unknown;
+		errorCode?: unknown;
+		response?: unknown;
+	};
+
+	if (typeof httpStatusCode === 'number') {
+		return httpStatusCode;
+	}
+
+	if (response && typeof response === 'object') {
+		const { status } = response as { status?: unknown };
+		if (typeof status === 'number') {
+			return status;
+		}
+	}
+
+	if (typeof errorCode === 'number' && errorCode >= 400 && errorCode < 600) {
+		return errorCode;
+	}
+
+	return undefined;
+}
+
+function shouldRetryAutoSaveFailure(error: unknown): boolean {
+	const statusCode = getHttpStatusCode(error);
+
+	if (!statusCode) {
+		return true;
+	}
+
+	return [408, 409, 429].includes(statusCode) || statusCode >= 500;
+}
 
 export function useWorkflowSaving({
 	router,
 	onSaved,
+	ownsAutoSave = false,
 }: {
 	router: ReturnType<typeof useRouter>;
 	onSaved?: (isFirstSave: boolean) => void;
+	/**
+	 * Whether this instance drives the canvas's autosave. Only the component
+	 * rendering the canvas passes `true`: it sits inside the host that scopes the
+	 * editor context, so it is the only one that can tell a preview from an
+	 * editable canvas. Everyone else — dialogs, a Pinia store, a push handler —
+	 * builds this composable for its explicit save calls, and an autosave engine
+	 * there would react to app-wide signals from outside any canvas.
+	 */
+	ownsAutoSave?: boolean;
 }) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
@@ -67,6 +138,173 @@ export function useWorkflowSaving({
 	const backendConnectionStore = useBackendConnectionStore();
 	const settingsStore = useSettingsStore();
 	const workflowId = useWorkflowId();
+	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+	function showSaveErrorToast(errorMessage: string, retryDelay?: number) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHelpers.showMessage.title'),
+			message:
+				retryDelay === undefined
+					? errorMessage
+					: i18n.baseText('generic.autosave.retrying', {
+							interpolate: {
+								error: errorMessage,
+								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
+							},
+						}),
+			type: 'error',
+			...(retryDelay === undefined ? {} : { duration: retryDelay }),
+		});
+	}
+
+	function scheduleAutoSaveRetry(retryDelay: number) {
+		saveStore.setRetrying(true);
+
+		setTimeout(() => {
+			saveStore.setRetrying(false);
+			// Trigger autosave again if workflow is still dirty
+			if (uiStore.stateIsDirty) {
+				scheduleAutoSave();
+			}
+		}, retryDelay);
+	}
+
+	function handleAutoSaveFailure(error: unknown, errorMessage: string): false {
+		// Handle autosave failures with exponential backoff
+		if (!shouldRetryAutoSaveFailure(error)) {
+			saveStore.resetRetry();
+			saveStore.setLastError(errorMessage);
+			showSaveErrorToast(errorMessage);
+
+			return false;
+		}
+
+		saveStore.incrementRetry();
+		saveStore.setLastError(errorMessage);
+
+		// Schedule retry with exponential backoff
+		const retryDelay = saveStore.getRetryDelay();
+		scheduleAutoSaveRetry(retryDelay);
+		showSaveErrorToast(errorMessage, retryDelay);
+
+		return false;
+	}
+
+	async function handleConflictSaveFailure({
+		error,
+		errorMessage,
+		currentWorkflow,
+		id,
+		redirect,
+		autosaved,
+	}: {
+		error: unknown;
+		errorMessage: string;
+		currentWorkflow: string;
+		id: string | undefined;
+		redirect: boolean;
+		autosaved: boolean;
+	}): Promise<boolean> {
+		telemetry.track('User attempted to save locked workflow', {
+			workflowId: currentWorkflow,
+			sharing_role: getWorkflowProjectRole(currentWorkflow),
+		});
+
+		// Hide modal if we already showed it
+		// So that user could explore the workflow
+		if (!saveStore.conflictModalShown) {
+			if (autosaved) {
+				saveStore.setConflictModalShown(true);
+			}
+
+			const url = router.resolve({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: currentWorkflow },
+			}).href;
+
+			const overwrite = await message.confirm(
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+					interpolate: {
+						url,
+					},
+				}),
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+				{
+					confirmButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+					),
+				},
+			);
+
+			if (overwrite === MODAL_CONFIRM) {
+				return await saveCurrentWorkflow({ id }, redirect, true);
+			}
+		}
+
+		// For autosaves, use retry logic so we still communicate autosave stopped working.
+		if (autosaved) {
+			return handleAutoSaveFailure(error, errorMessage);
+		}
+
+		return false;
+	}
+
+	// Preview hosts (template, workflow history, execution) render the real canvas
+	// and scope their subtree read-only through the editor context. The context is
+	// injected, so it only resolves inside a component — fall back to no context
+	// for the out-of-tree callers, the way `useRunWorkflow` does for the same key.
+	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
+	const canAutoSave = computed(() => ownsAutoSave && editorContext?.readOnly.value !== true);
+	const currentWorkflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+	);
+
+	const canArmAutoSave = computed(() => {
+		// Don't schedule from a read-only canvas, or from an instance that doesn't
+		// own one. Every autosave entry point funnels through here, so a preview
+		// never writes whatever marked it dirty.
+		if (!canAutoSave.value) {
+			return false;
+		}
+
+		// Don't schedule if autosave is disabled via environment variable
+		if (!settingsStore.isAutosaveEnabled) {
+			return false;
+		}
+
+		// Don't schedule if we're offline
+		if (!backendConnectionStore.isOnline) {
+			return false;
+		}
+
+		if (!currentWorkflowDocumentStore.value.hydrated) {
+			return false;
+		}
+
+		return true;
+	});
+
+	const canScheduleAutoSave = computed(() => {
+		if (!canArmAutoSave.value) {
+			return false;
+		}
+
+		// Don't schedule if a save is already in progress - the finally block
+		// will reschedule if there are pending changes
+		if (saveStore.pendingSave) {
+			return false;
+		}
+
+		// Don't schedule if we're waiting for retry backoff to complete
+		if (saveStore.isRetrying) {
+			return false;
+		}
+
+		return true;
+	});
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -121,6 +359,7 @@ export function useWorkflowSaving({
 				await cancel();
 
 				uiStore.markStateClean();
+				cancelAutoSave();
 				next();
 
 				return;
@@ -182,31 +421,40 @@ export function useWorkflowSaving({
 		}
 
 		const savePromise = (async (): Promise<boolean> => {
-			// Check if workflow needs to be saved as new (doesn't exist in store yet)
-			const existingWorkflow = currentWorkflow
-				? workflowsListStore.getWorkflowById(currentWorkflow)
-				: null;
-			if (!currentWorkflow || !existingWorkflow?.id) {
-				const workflowId = await saveAsNewWorkflow(
-					{ parentFolderId, uiContext, autosaved },
-					redirect,
-				);
-				return !!workflowId;
-			}
+			let isExistingWorkflowSave = false;
 
-			// Workflow exists already so update it
 			try {
+				// Check if workflow needs to be saved as new (doesn't exist in store yet)
+				const existingWorkflow = currentWorkflow
+					? workflowsListStore.getWorkflowById(currentWorkflow)
+					: null;
+				if (!currentWorkflow || !existingWorkflow?.id) {
+					const workflowId = await saveAsNewWorkflow(
+						{ parentFolderId, uiContext, autosaved },
+						redirect,
+					);
+					return !!workflowId;
+				}
+
+				isExistingWorkflowSave = true;
+				// Workflow exists already so update it
 				if (!forceSave && isLoading) {
 					return true;
 				}
-				uiStore.addActiveAction('workflowSaving');
-
-				// Capture dirty state count before save to detect changes made during save
-				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(currentWorkflow),
 				);
+
+				// Ungroup node groups this version can't save (e.g. groups created on a
+				// newer n8n version) so the request isn't rejected on every (auto)save.
+				// Runs before the dirty-count capture so the removal doesn't keep the
+				// state dirty after a successful save.
+				removeInvalidNodeGroups(workflowDocumentStore);
+
+				// Capture dirty state count before save to detect changes made during save
+				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
+
 				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
@@ -244,7 +492,6 @@ export function useWorkflowSaving({
 					// workflow id and the autosave would create an empty workflow.
 					if (!autosaved) cancelAutoSave();
 				}
-				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				// Reset AI Builder edits flag only after successful save
@@ -256,94 +503,25 @@ export function useWorkflowSaving({
 				onSaved?.(false); // Update of existing workflow
 				return true;
 			} catch (error) {
+				const errorMessage = getErrorMessage(error);
 				console.error(error);
 
-				uiStore.removeActiveAction('workflowSaving');
-
-				if (error.errorCode === 409) {
-					telemetry.track('User attempted to save locked workflow', {
-						workflowId: currentWorkflow,
-						sharing_role: getWorkflowProjectRole(currentWorkflow),
+				if (isExistingWorkflowSave && getHttpStatusCode(error) === 409) {
+					return await handleConflictSaveFailure({
+						error,
+						errorMessage,
+						currentWorkflow,
+						id,
+						redirect,
+						autosaved,
 					});
-
-					// Hide modal if we already showed it
-					// So that user could explore the workflow
-					if (!saveStore.conflictModalShown) {
-						if (autosaved) {
-							saveStore.setConflictModalShown(true);
-						}
-
-						const url = router.resolve({
-							name: VIEWS.WORKFLOW,
-							params: { workflowId: currentWorkflow },
-						}).href;
-
-						const overwrite = await message.confirm(
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-								interpolate: {
-									url,
-								},
-							}),
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-							{
-								confirmButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-								),
-								cancelButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-								),
-							},
-						);
-
-						if (overwrite === MODAL_CONFIRM) {
-							return await saveCurrentWorkflow({ id }, redirect, true);
-						}
-					}
-
-					// For autosaves, fall through to retry logic below
-					// As we want to still communicate autosave stopped working
-					if (!autosaved) {
-						return false;
-					}
 				}
 
-				// Handle autosave failures with exponential backoff
 				if (autosaved) {
-					saveStore.incrementRetry();
-					saveStore.setLastError(error.message);
-
-					// Schedule retry with exponential backoff
-					const retryDelay = saveStore.getRetryDelay();
-					saveStore.setRetrying(true);
-
-					setTimeout(() => {
-						saveStore.setRetrying(false);
-						// Trigger autosave again if workflow is still dirty
-						if (uiStore.stateIsDirty) {
-							scheduleAutoSave();
-						}
-					}, retryDelay);
-
-					toast.showMessage({
-						title: i18n.baseText('workflowHelpers.showMessage.title'),
-						message: i18n.baseText('generic.autosave.retrying', {
-							interpolate: {
-								error: error.message,
-								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
-							},
-						}),
-						type: 'error',
-						duration: retryDelay,
-					});
-
-					return false;
+					return handleAutoSaveFailure(error, errorMessage);
 				}
 
-				toast.showMessage({
-					title: i18n.baseText('workflowHelpers.showMessage.title'),
-					message: error.message,
-					type: 'error',
-				});
+				showSaveErrorToast(errorMessage);
 
 				return false;
 			}
@@ -387,16 +565,26 @@ export function useWorkflowSaving({
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
+		let createRequestFailed = false;
+
 		try {
-			uiStore.addActiveAction('workflowSaving');
+			const currentDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+
+			if (!data) {
+				removeInvalidNodeGroups(currentDocumentStore);
+			}
 
 			// Capture dirty state count before save to detect changes made during save
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
-			const currentDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowId.value),
-			);
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
+			// A description staged on an unsaved workflow (via the description and
+			// tags modal) is not part of serialize(), so carry it into the first save.
+			if (!data && currentDocumentStore.description) {
+				workflowDataRequest.description = currentDocumentStore.description;
+			}
 			const changedNodes = {} as IDataObject;
 
 			if (requestNewId) {
@@ -425,7 +613,9 @@ export function useWorkflowSaving({
 					if (node.webhookId) {
 						const newId = nodeHelpers.assignWebhookId(node);
 
-						if (!isExpression(node.parameters.path)) {
+						// Triggers whose webhook path comes from the node description (e.g. Trello
+						// Trigger, Wait) have no `path` parameter to re-key.
+						if ('path' in node.parameters && !isExpression(node.parameters.path)) {
 							node.parameters.path = newId;
 						}
 
@@ -455,7 +645,13 @@ export function useWorkflowSaving({
 				workflowDataRequest.autosaved = autosaved;
 			}
 
-			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			let workflowData: IWorkflowDb;
+			try {
+				workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			} catch (e) {
+				createRequestFailed = true;
+				throw e;
+			}
 
 			workflowsListStore.addWorkflow(workflowData);
 
@@ -467,7 +663,6 @@ export function useWorkflowSaving({
 					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
-				uiStore.removeActiveAction('workflowSaving');
 				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
@@ -505,6 +700,10 @@ export function useWorkflowSaving({
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
+			if (workflowData.settings) {
+				workflowDocumentStore.setSettings(workflowData.settings);
+			}
+
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {
 				Object.keys(changedNodes).forEach((nodeName) => {
@@ -535,7 +734,6 @@ export function useWorkflowSaving({
 				});
 			}
 
-			uiStore.removeActiveAction('workflowSaving');
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 				uiStore.markStateClean();
@@ -548,13 +746,18 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
-			uiStore.removeActiveAction('workflowSaving');
+			if (autosaved && createRequestFailed) {
+				throw e;
+			}
 
-			toast.showMessage({
-				title: i18n.baseText('workflowHelpers.showMessage.title'),
-				message: (e as Error).message,
-				type: 'error',
-			});
+			if (autosaved) {
+				// The create request already succeeded; retrying this autosave
+				// would POST the same new workflow again.
+				console.error(e);
+				return null;
+			}
+
+			showSaveErrorToast(getErrorMessage(e));
 
 			return null;
 		}
@@ -567,22 +770,23 @@ export function useWorkflowSaving({
 				return;
 			}
 
-			// Check if another save is already in progress
-			if (saveStore.pendingSave) {
+			if (!uiStore.stateIsDirty || !canScheduleAutoSave.value) {
+				saveStore.setAutoSaveState(AutoSaveState.Idle);
 				return;
 			}
 
 			saveStore.setAutoSaveState(AutoSaveState.InProgress);
 
 			void (async () => {
+				let saved = false;
 				try {
-					await saveCurrentWorkflow({}, true, false, true);
+					saved = await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (saveStore.autoSaveState === AutoSaveState.InProgress) {
 						saveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
 					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty && !saveStore.isRetrying) {
+					if (saved && uiStore.stateIsDirty && canScheduleAutoSave.value) {
 						saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -594,24 +798,7 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
-		// Don't schedule if autosave is disabled via environment variable
-		if (!settingsStore.isAutosaveEnabled) {
-			return;
-		}
-
-		// Don't schedule if a save is already in progress - the finally block
-		// will reschedule if there are pending changes
-		if (saveStore.pendingSave) {
-			return;
-		}
-
-		// Don't schedule if we're waiting for retry backoff to complete
-		if (saveStore.isRetrying) {
-			return;
-		}
-
-		// Don't schedule if we're offline
-		if (!backendConnectionStore.isOnline) {
+		if (!canScheduleAutoSave.value) {
 			return;
 		}
 
@@ -626,17 +813,24 @@ export function useWorkflowSaving({
 		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
 
-	// Watch for network coming back online
-	watch(
-		() => backendConnectionStore.isOnline,
-		(isOnline, wasOnline) => {
-			if (isOnline && !wasOnline) {
-				if (uiStore.stateIsDirty) {
-					scheduleAutoSave();
-				}
+	// These watchers write on their own, off app-wide signals, so only the canvas's
+	// owner arms them. A non-owner instance armed them too, and outside a canvas
+	// host there is no read-only scope to consult — which is how a preview still
+	// issued a save when the connection returned. They are also unstopped, so the
+	// push handler that builds this composable per message would leak one apiece.
+	if (ownsAutoSave) {
+		// Re-arm when a host lifts read-only with changes still pending — the
+		// Instance AI preview locks the canvas while its agent edits, and nothing
+		// else would save what the agent wrote. Mirrors the AI-builder re-arm in
+		// NodeView.
+		// Watch for network coming back online, and for other autosave eligibility
+		// returning after document hydration.
+		watch(canArmAutoSave, (allowed, wasAllowed) => {
+			if (allowed && !wasAllowed && uiStore.stateIsDirty) {
+				scheduleAutoSave();
 			}
-		},
-	);
+		});
+	}
 
 	return {
 		promptSaveUnsavedWorkflowChanges,

@@ -20,6 +20,7 @@
 // the comparison is advisory and shouldn't fail the eval run.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { Client } from 'langsmith';
 import { z } from 'zod';
 
@@ -29,8 +30,8 @@ import {
 	type EvaluationUnitCounts,
 	type ExperimentBucket,
 } from './compare';
-import { expectationResultsSchema } from '../cli/reshape';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
+import { expectationResultsSchema } from '../run/reshape';
 
 /**
  * Prefix the latest-baseline lookup matches against. The CLI flag
@@ -67,10 +68,6 @@ const outputsSchema = z
  *  behind the probe window; only the no-marker-found path pays the extra
  *  reads. The plain-newest fallback below stays for pre-marker cohorts. */
 const MAX_COMPLETION_PROBES = 25;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /**
  * A capture killed mid-run (job timeout, runner death) leaves a partial

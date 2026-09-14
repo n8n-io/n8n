@@ -40,6 +40,7 @@
     "src/tsconfig-build.json"
   ],
   "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/inquirer": "^7.0.1",
     "typescript": "catalog:",

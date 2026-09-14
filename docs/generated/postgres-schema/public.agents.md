@@ -5,12 +5,15 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | activeVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) |  |
+| availableInMCP | boolean | false | false |  |  | Whether MCP clients granted agent scopes may operate on this agent |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
 | integrations | json | '[]'::json | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
+| revision | integer | 0 | false |  |  |  |
 | schema | json |  | true |  |  |  |
+| setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
 | tools | json | '{}'::json | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -23,11 +26,13 @@
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
+| agents_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
 | agents_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_id_not_null | n | NOT NULL id |
 | agents_integrations_not_null | n | NOT NULL integrations |
 | agents_name_not_null | n | NOT NULL name |
 | agents_projectId_not_null | n | NOT NULL "projectId" |
+| agents_revision_not_null | n | NOT NULL revision |
 | agents_skills_not_null | n | NOT NULL skills |
 | agents_tools_not_null | n | NOT NULL tools |
 | agents_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -46,15 +51,21 @@
 erDiagram
 
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_channel_status" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_chat_attachments" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_chat_subscriptions" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_checkpoints" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_credential_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_eval_dataset" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_memory_entries" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
-"public.agents_memory_entry_cursors" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agents_memory_entry_candidates" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_memory_entry_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_memory_entry_sources" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observation_cursors" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -64,12 +75,15 @@ erDiagram
 
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt
@@ -86,6 +100,54 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
 }
+"public.agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  timestamp_3__with_time_zone createdAt
+  text error
+  varchar_36_ id
+  varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentThreadId
+  text result
+  timestamp_3__with_time_zone settledAt
+  varchar_16_ status
+  varchar_36_ subAgentId
+  timestamp_3__with_time_zone timeoutAt
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
+}
+"public.agent_channel_status" {
+  varchar_36_ agentId FK
+  integer attempts
+  timestamp_3__with_time_zone backoffUntil
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId
+  text errorMessage
+  timestamp_3__with_time_zone expiresAt
+  varchar_128_ hostId
+  varchar_64_ integrationType
+  varchar_16_ status
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_chat_attachments" {
+  varchar_36_ agentId FK
+  text binaryDataId
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  varchar_32_ source
+  varchar_128_ threadId
+  timestamp_3__with_time_zone updatedAt
+}
 "public.agent_chat_subscriptions" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
@@ -100,6 +162,23 @@ erDiagram
   boolean expired
   varchar_255_ runId
   text state
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_credential_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
+}
+"public.agent_eval_dataset" {
+  varchar_36_ agentId FK
+  json columnMapping
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json datasetRef
+  varchar_32_ datasetSource
+  text description
+  varchar_36_ id
+  varchar_128_ name
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution_threads" {
@@ -129,6 +208,8 @@ erDiagram
   integer fileSizeBytes
   varchar_16_ id
   varchar_255_ mimeType
+  text storageKey
+  varchar_2_ storedAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_definition" {
@@ -138,6 +219,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_task_run_lock" {
@@ -147,6 +229,11 @@ erDiagram
   uuid holderId
   varchar_32_ taskId
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_workflow_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ workflowId FK
 }
 "public.agents_memory_entries" {
   varchar_36_ agentId FK
@@ -163,12 +250,20 @@ erDiagram
   varchar_36_ supersededBy FK
   timestamp_3__with_time_zone updatedAt
 }
-"public.agents_memory_entry_cursors" {
+"public.agents_memory_entry_candidates" {
   varchar_36_ agentId FK
+  smallint attemptCount
+  text content
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone lastIndexedObservationCreatedAt
-  varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId FK
+  text evidenceText
+  varchar_36_ id
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_locks" {
@@ -181,6 +276,7 @@ erDiagram
 }
 "public.agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   timestamp_3__with_time_zone createdAt
   varchar_64_ evidenceHash
   text evidenceText

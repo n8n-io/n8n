@@ -4,6 +4,7 @@ import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
 	type CredentialsRepository,
+	type DbConnection,
 	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
@@ -13,6 +14,7 @@ import {
 	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
@@ -32,6 +34,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
+import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 
@@ -64,7 +67,22 @@ describe('TelemetryEventRelay', () => {
 		diagnostics: {
 			enabled: true,
 		},
+		versionNotifications: {
+			enabled: true,
+		},
+		executions: {
+			mode: 'regular',
+			timeout: -1,
+			maxTimeout: 3600,
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
+			pruneData: true,
+			pruneDataMaxAge: 336,
+		},
 		endpoints: {
+			disableProductionWebhooksOnMainProcess: false,
 			metrics: {
 				enable: true,
 				includeDefaultMetrics: true,
@@ -87,6 +105,7 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
+			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
@@ -122,6 +141,9 @@ describe('TelemetryEventRelay', () => {
 			sandboxProvider: 'n8n-sandbox',
 			braveSearchApiKey: '',
 			searxngUrl: '',
+			model: 'anthropic/claude-sonnet-4',
+			modelApiKey: '',
+			modelUrl: '',
 		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
@@ -136,6 +158,7 @@ describe('TelemetryEventRelay', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+	const dbConnection = mock<DbConnection>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -155,6 +178,7 @@ describe('TelemetryEventRelay', () => {
 			projectRelationRepository,
 			credentialsRepository,
 			dynamicCredentialsProxy,
+			dbConnection,
 		);
 
 		await telemetryEventRelay.init();
@@ -186,6 +210,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -212,6 +237,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -342,6 +368,7 @@ describe('TelemetryEventRelay', () => {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -350,6 +377,25 @@ describe('TelemetryEventRelay', () => {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
+				workflowUpdates: 5,
+				workflowConflicts: 2,
+				credConflicts: 1,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-pull-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started pull via UI', {
+				workflow_updates: 5,
+				workflow_conflicts: 2,
+				cred_conflicts: 1,
+				public_api: true,
 			});
 		});
 
@@ -389,6 +435,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -400,6 +447,31 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible: 5,
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-push-ui'] = {
+				userId: 'userId',
+				workflowsEligible: 10,
+				workflowsEligibleWithConflicts: 2,
+				credsEligible: 5,
+				credsEligibleWithConflicts: 1,
+				variablesEligible: 3,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-push-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
+				user_id: 'userId',
+				workflows_eligible: 10,
+				workflows_eligible_with_conflicts: 2,
+				creds_eligible: 5,
+				creds_eligible_with_conflicts: 1,
+				variables_eligible: 3,
+				public_api: true,
 			});
 		});
 
@@ -410,6 +482,7 @@ describe('TelemetryEventRelay', () => {
 				workflowsPushed: 8,
 				credsPushed: 5,
 				variablesPushed: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-finished-push-ui', event);
@@ -420,6 +493,29 @@ describe('TelemetryEventRelay', () => {
 				workflows_pushed: 8,
 				creds_pushed: 5,
 				variables_pushed: 3,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-finished-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
+				userId: 'userId',
+				workflowsEligible: 10,
+				workflowsPushed: 8,
+				credsPushed: 5,
+				variablesPushed: 3,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-finished-push-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User finished push via UI', {
+				user_id: 'userId',
+				workflows_eligible: 10,
+				workflows_pushed: 8,
+				creds_pushed: 5,
+				variables_pushed: 3,
+				public_api: true,
 			});
 		});
 	});
@@ -563,6 +659,360 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				project_id: 'projectId',
 			});
+		});
+	});
+
+	describe('node type policy events', () => {
+		const denyRule: PolicyRule = {
+			id: 'rule-1',
+			action: 'deny',
+			selector: { kind: 'name', value: 'n8n-nodes-base.executeCommand' },
+		};
+		const allowPackageRule: PolicyRule = {
+			id: 'rule-2',
+			action: 'allow',
+			selector: { kind: 'package', value: 'n8n-nodes-base' },
+		};
+		const delegateRule: PolicyRule = {
+			id: 'rule-3',
+			action: 'delegate',
+			selector: { kind: 'name', value: 'n8n-nodes-base.code' },
+		};
+
+		const knownTypes = (...names: string[]) =>
+			Object.fromEntries(names.map((name) => [name, {}])) as ReturnType<NodeTypes['getKnownTypes']>;
+
+		beforeEach(() => {
+			nodeTypes.getKnownTypes.mockReturnValue(
+				knownTypes(
+					'n8n-nodes-base.code',
+					'n8n-nodes-base.executeCommand',
+					'@acme/n8n-nodes-acme.thing',
+				),
+			);
+		});
+
+		it('should track a first instance-scope save', () => {
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [denyRule, allowPackageRule, delegateRule],
+				warningCount: 2,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				{
+					user_id: 'user123',
+					source: 'user',
+					scope: 'instance',
+					default_action: 'deny',
+					previous_default_action: null,
+					is_first_write: true,
+					rule_count: 3,
+					allow_rule_count: 1,
+					deny_rule_count: 1,
+					delegate_rule_count: 1,
+					name_selector_count: 2,
+					package_selector_count: 1,
+					evaluated_type_count: 3,
+					blocked_type_count: 2,
+					allowed_type_count: 1,
+					delegated_type_count: 0,
+					blocked_types: ['n8n-nodes-base.executeCommand', '@acme/n8n-nodes-acme.thing'],
+					allowed_types: ['n8n-nodes-base.code'],
+					previous_rule_count: null,
+					shadow_warning_count: 2,
+					version: 1,
+				},
+			);
+		});
+
+		it('should track a project-scope save over an existing policy', () => {
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: 'project-1',
+				scopeId: 'scope-2',
+				before: { defaultAction: 'allow', version: 4 },
+				after: { defaultAction: 'deny', version: 5 },
+				rulesBefore: [denyRule],
+				rulesAfter: [allowPackageRule],
+				warningCount: 0,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					scope: 'project',
+					project_id: 'project-1',
+					previous_default_action: 'allow',
+					is_first_write: false,
+					previous_rule_count: 1,
+					rule_count: 1,
+					allow_rule_count: 1,
+					version: 5,
+				}),
+			);
+		});
+
+		it('should report an environment write as a source instead of a user', () => {
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'environment',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				warningCount: 0,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).not.toHaveProperty('user_id');
+			expect(properties).toMatchObject({ source: 'environment' });
+		});
+
+		it('should track a created policy document', () => {
+			const event: RelayEventMap['node-type-policy-document-created'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				policyId: 'policy-1',
+				origin: 'document-api',
+				after: { rules: [denyRule], version: 1 },
+			};
+
+			eventService.emit('node-type-policy-document-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				{
+					user_id: 'user123',
+					source: 'user',
+					operation: 'created',
+					policy_id: 'policy-1',
+					rule_count: 1,
+					allow_rule_count: 0,
+					deny_rule_count: 1,
+					delegate_rule_count: 0,
+					previous_rule_count: null,
+				},
+			);
+		});
+
+		it('should track an updated policy document', () => {
+			const event: RelayEventMap['node-type-policy-document-updated'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				policyId: 'policy-1',
+				origin: 'document-api',
+				before: { rules: [denyRule], version: 1 },
+				after: { rules: [denyRule, allowPackageRule], version: 2 },
+			};
+
+			eventService.emit('node-type-policy-document-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				expect.objectContaining({
+					operation: 'updated',
+					rule_count: 2,
+					previous_rule_count: 1,
+				}),
+			);
+		});
+
+		it('should report a deleted policy document as empty, keeping its prior size', () => {
+			const event: RelayEventMap['node-type-policy-document-deleted'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				policyId: 'policy-1',
+				before: { rules: [denyRule, allowPackageRule], version: 3 },
+			};
+
+			eventService.emit('node-type-policy-document-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				expect.objectContaining({
+					operation: 'deleted',
+					rule_count: 0,
+					deny_rule_count: 0,
+					previous_rule_count: 2,
+				}),
+			);
+		});
+
+		it('should list the blocked types when the policy allows by default', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [denyRule],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					blocked_type_count: 1,
+					allowed_type_count: 2,
+					blocked_types: ['n8n-nodes-base.executeCommand'],
+					allowed_types: ['n8n-nodes-base.code', '@acme/n8n-nodes-acme.thing'],
+				}),
+			);
+		});
+
+		it('should expand a package rule into the types it actually blocks', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [{ ...allowPackageRule, action: 'deny' }],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					rule_count: 1,
+					blocked_type_count: 2,
+					blocked_types: ['n8n-nodes-base.code', 'n8n-nodes-base.executeCommand'],
+				}),
+			);
+		});
+
+		it('should cap the listed types and flag that it did', () => {
+			const names = Array.from({ length: 250 }, (_, i) => `n8n-nodes-base.node${i}`);
+			nodeTypes.getKnownTypes.mockReturnValue(knownTypes(...names));
+
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: names.slice(0, 120).map((name, i) => ({
+					id: `allow-${i}`,
+					action: 'allow' as const,
+					selector: { kind: 'name' as const, value: name },
+				})),
+				warningCount: 0,
+			});
+
+			const properties = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1];
+			expect(properties).toMatchObject({
+				evaluated_type_count: 250,
+				allowed_type_count: 120,
+				blocked_type_count: 130,
+			});
+			expect(properties?.blocked_types).toHaveLength(100);
+			expect(properties?.allowed_types).toHaveLength(100);
+		});
+
+		it('should report every known type as blocked when nothing is allowed', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					blocked_type_count: 3,
+					allowed_type_count: 0,
+					blocked_types: [
+						'n8n-nodes-base.code',
+						'n8n-nodes-base.executeCommand',
+						'@acme/n8n-nodes-acme.thing',
+					],
+					allowed_types: [],
+				}),
+			);
+		});
+
+		it.each(['created', 'updated'] as const)(
+			'should not report a composed save as a %s document, which would double-count it',
+			(operation) => {
+				eventService.emit(`node-type-policy-document-${operation}`, {
+					updatedBy: 'user123',
+					kind: 'node-types',
+					policyId: 'policy-1',
+					origin: 'composed-save',
+					before: { rules: [], version: 1 },
+					after: { rules: [denyRule], version: 2 },
+				});
+
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+					expect.anything(),
+				);
+			},
+		);
+
+		it('should track replaced attachments', () => {
+			const event: RelayEventMap['node-type-policy-attachments-updated'] = {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: 'project-1',
+				scopeId: 'scope-2',
+				before: {
+					attachments: [{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false }],
+					version: 1,
+				},
+				after: {
+					attachments: [
+						{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false },
+						{ policyId: 'policy-2', rules: [denyRule], priority: 0, isFloor: true },
+					],
+					version: 2,
+				},
+			};
+
+			eventService.emit('node-type-policy-attachments-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				{
+					user_id: 'user123',
+					source: 'user',
+					scope: 'project',
+					project_id: 'project-1',
+					scope_id: 'scope-2',
+					attachment_count: 2,
+					floor_attachment_count: 1,
+					previous_attachment_count: 1,
+				},
+			);
 		});
 	});
 
@@ -948,6 +1398,7 @@ describe('TelemetryEventRelay', () => {
 	describe('credentials events', () => {
 		it('should track on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1013,6 +1464,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1042,6 +1494,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1061,6 +1515,35 @@ describe('TelemetryEventRelay', () => {
 				credential_type: 'github',
 				credential_id: 'cred123',
 			});
+		});
+
+		it('should track on `credentials-probed` event', () => {
+			const event: RelayEventMap['credentials-probed'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				outcome: 'rejected',
+			};
+
+			eventService.emit('credentials-probed', event);
+
+			const payload = {
+				user_id: 'user123',
+				credential_id: 'cred123',
+				outcome: 'rejected',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL.getValidationError(payload),
+			).toBeNull();
 		});
 
 		it('should track on `private-credential-created` event', () => {
@@ -1631,6 +2114,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -2232,9 +2717,18 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'overwrite',
+					variableParentPolicy: 'global',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'rename',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2248,6 +2742,11 @@ describe('TelemetryEventRelay', () => {
 						created: 2,
 						updated: 1,
 						skipped: 1,
+						archived: 3,
+						deleted: 2,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 2,
@@ -2258,6 +2757,22 @@ describe('TelemetryEventRelay', () => {
 						matched: 1,
 						created: 1,
 						requirements: 2,
+					},
+					variables: {
+						matched: 1,
+						missing: 1,
+						created: 3,
+						stubbed: 2,
+						updated: 4,
+						requirements: 2,
+					},
+					tags: {
+						matched: 6,
+						created: 7,
+						renamed: 8,
+						reconciled: 11,
+						skipped: 9,
+						requirements: 10,
 					},
 				},
 			};
@@ -2271,18 +2786,42 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				missing_node_type_mode: 'fail',
+				project_conflict_policy: 'merge',
+				folder_conflict_policy: 'merge',
+				overwrite_deletion_policy: 'archive',
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
+				variable_missing_mode: 'create-stub',
+				variable_conflict_policy: 'overwrite',
+				variable_parent_policy: 'global',
+				tag_missing_mode: 'create',
+				tag_conflict_policy: 'rename',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
+				workflows_archived: 3,
+				workflows_deleted: 2,
+				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
 				data_tables_matched: 1,
 				data_tables_created: 1,
 				data_tables_required: 2,
+				variables_matched: 1,
+				variables_missing: 1,
+				variables_with_value_created: 3,
+				variables_stubs_created: 2,
+				variables_updated: 4,
+				variables_required: 2,
+				tags_matched: 6,
+				tags_created: 7,
+				tags_renamed: 8,
+				tags_reconciled: 11,
+				tags_skipped: 9,
+				tags_required: 10,
 			});
 		});
 
@@ -2297,7 +2836,10 @@ describe('TelemetryEventRelay', () => {
 					credentials: 2,
 					dataTables: 1,
 					variables: 4,
+					tags: 2,
 				},
+				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2309,6 +2851,9 @@ describe('TelemetryEventRelay', () => {
 				credential_count: 2,
 				data_table_count: 1,
 				variable_count: 4,
+				tag_count: 2,
+				credential_export_policy: 'expression-values-only',
+				include_archived_workflows: true,
 			});
 		});
 
@@ -2347,7 +2892,7 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('user events', () => {
-		it('should track on `user-updated` event', () => {
+		describe('on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
 				user: {
 					id: 'user123',
@@ -2359,18 +2904,31 @@ describe('TelemetryEventRelay', () => {
 				fieldsChanged: ['firstName', 'lastName'],
 			};
 
-			eventService.emit('user-updated', event);
+			it('should track without `user_email` on a self-hosted deployment', () => {
+				eventService.emit('user-updated', event);
 
-			expect(telemetry.identify).toHaveBeenCalledWith(
-				{
-					user_role: GLOBAL_OWNER_ROLE.slug,
-					user_email: 'user@example.com',
-				},
-				'user123',
-			);
-			expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
-				user_id: 'user123',
-				fields_changed: ['firstName', 'lastName'],
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug },
+					'user123',
+				);
+				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
+					user_id: 'user123',
+					fields_changed: ['firstName', 'lastName'],
+				});
+			});
+
+			it('should track with `user_email` on a cloud deployment', () => {
+				globalConfig.deployment.type = 'cloud';
+				try {
+					eventService.emit('user-updated', event);
+				} finally {
+					globalConfig.deployment.type = 'default';
+				}
+
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug, user_email: 'user@example.com' },
+					'user123',
+				);
 			});
 		});
 
@@ -2543,6 +3101,11 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('lifecycle events', () => {
+		beforeEach(() => {
+			dbConnection.getDbVersion.mockResolvedValue(null);
+			license.getPlanName.mockReturnValue('Community');
+		});
+
 		it('should track on `server-started` event', async () => {
 			const firstWorkflow = mock<WorkflowEntity>({ createdAt: new Date() });
 			workflowRepository.findOne.mockResolvedValue(firstWorkflow);
@@ -2613,7 +3176,7 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
 					settings_managed_by_env_vars: {
@@ -2644,6 +3207,58 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should report the database version on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue('16.11');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+				}),
+			);
+		});
+
+		it('should emit a payload that satisfies the registry schema', async () => {
+			workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ createdAt: new Date() }));
+			dbConnection.getDbVersion.mockResolvedValue('17.6');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+			);
+			expect(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED.getValidationError(startupEvent?.[1]),
+			).toBeNull();
+		});
+
+		it('should report a `null` database version when it cannot be determined', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: null }),
+			);
+		});
+
 		it('should track instance settings env management on `server-started` event', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);
 			Object.assign(globalConfig.instanceSettingsLoader, {
@@ -2660,7 +3275,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
@@ -2711,7 +3326,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Instance started',
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
@@ -2739,7 +3354,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					otel: {
 						enabled: true,
@@ -2770,7 +3385,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Instance started',
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			expect(startupEvent?.[1]).toEqual(
@@ -2780,6 +3395,8 @@ describe('TelemetryEventRelay', () => {
 						sandbox_provider: 'daytona',
 						search_brave_set: true,
 						search_searxng_set: false,
+						model_env_set: false,
+						model_id: 'anthropic/claude-sonnet-4',
 					},
 				}),
 			);
@@ -3602,6 +4219,159 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('workflow review events', () => {
+		it('should track a workflow submitted for review, with how many reviewers were asked', () => {
+			eventService.emit('workflow-review-requested', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				reviewerCount: 2,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				project_id: 'project-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				reviewer_count: 2,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review re-pinned to another version', () => {
+			eventService.emit('workflow-review-version-updated', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-2',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+
+		it('should track an approval, when the review opened, and who was entitled to decide', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				decision: 'approved',
+				decidedVia: 'assigned-reviewer',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				decision: 'approved',
+				decided_via: 'assigned-reviewer',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a change request decided by an admin on a review whose version was pruned', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: null,
+				decision: 'changes_requested',
+				decidedVia: 'admin-override',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: null,
+				decision: 'changes_requested',
+				decided_via: 'admin-override',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review closed with no trigger recorded, never the acting user', () => {
+			eventService.emit('workflow-review-closed', {
+				workflowReviewRequestId: 'review-1',
+				cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+			});
+
+			const payload = {
+				workflow_review_request_id: 'review-1',
+				cause_trigger: 'unknown',
+				cause_actor_kind: 'system',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a comment on a review, never its body', () => {
+			eventService.emit('workflow-review-comment-created', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+	});
+
 	describe('instance AI MCP events', () => {
 		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
 			eventService.emit('instance-ai-mcp-registry-connection-created', {
@@ -3717,6 +4487,25 @@ describe('TelemetryEventRelay', () => {
 				is_approved: true,
 				is_authorized: false,
 			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
 		});
 	});
 });

@@ -6,8 +6,7 @@ export default mergeConfig(createVitestConfig({}), {
 	resolve: {
 		alias: [
 			// @inquirer/prompts and its sub-packages are ESM-only. Tests redirect
-			// any @inquirer/* import to this mock (mirrors the former Jest
-			// moduleNameMapper).
+			// any @inquirer/* import to this mock.
 			{
 				find: /^@inquirer\/.*$/,
 				replacement: path.resolve(__dirname, './src/__mocks__/@inquirer/prompts.ts'),

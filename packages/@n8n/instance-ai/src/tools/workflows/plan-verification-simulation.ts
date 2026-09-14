@@ -9,20 +9,36 @@
  * - An empty plan (no candidate nodes) is kept as `[]` so verify can tell
  *   "nothing to simulate" apart from "classification failed". Only the latter
  *   (plan `undefined`) runs unprotected and makes verify surface a warning.
- * - Fixtures are only generated for non-empty plans; a fixture failure keeps
- *   the plan (verify pins fixture-less simulated nodes with an empty item).
+ * - Fixtures are only generated for non-empty plans. Every simulated node that
+ *   is not a halted wait gate leaves here with at least one item, because zero
+ *   items stop the whole branch below it and the verification then reports
+ *   success on a chain it never exercised. When generation is skipped or fails,
+ *   the item is a schema-shaped placeholder.
  */
 
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
 import {
+	buildPlaceholderFixtures,
 	generateSimulationFixtures,
+	withPassThroughFloor,
 	type SimulationFixtures,
 } from './generate-simulation-fixtures.service';
-import { isMockableTriggerNodeType, isTriggerNodeType } from './workflow-json-utils';
+import { deriveWaitGateScripts } from './wait-gate-script';
+import {
+	isMockableTriggerNodeType,
+	isTriggerNodeType,
+	isWaitGateNode,
+	nodeCanReachItself,
+} from './workflow-json-utils';
 import type { Logger } from '../../logger';
-import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+import type { ModelConfig } from '../../types';
+import { itemsForNode } from '../../utils/node-keyed-items';
+import type {
+	NodeSimulationVerdict,
+	WaitGateScript,
+} from '../../workflow-loop/workflow-loop-state';
 
 export interface PlanVerificationSimulationInput {
 	workflow: WorkflowJSON;
@@ -37,11 +53,15 @@ export interface PlanVerificationSimulationInput {
 	workflowId: string;
 	/** Node output `__schema__` lookup used to shape generated fixtures. */
 	outputSchemaLookup?: OutputSchemaLookup;
+	/** Host-resolved model used when no eval model API key is configured in the environment. */
+	fallbackModelConfig?: ModelConfig;
 	logger?: Logger;
 }
 
 export interface VerificationSimulationPlan {
 	nodeSimulationPlan?: NodeSimulationVerdict[];
+	/** Scripted decisions for wait gates on loops; absent when none derivable. */
+	waitGateScripts?: WaitGateScript[];
 	simulationFixtures?: SimulationFixtures;
 }
 
@@ -206,6 +226,37 @@ function withSimulatedCredentiallessAiRootVerdicts(
 	return verdicts;
 }
 
+export const WAIT_GATE_HALT_REASON =
+	'Send-and-wait gate on a loop — verification pauses here because continuing needs a human decision';
+
+/**
+ * Halt simulated wait gates that sit on a loop: pin them with zero items
+ * instead of a fixture — a pinned gate cannot pause, so its canned decision
+ * would re-run the loop forever. Live (`execute`) gates pause on their own.
+ * Runs last so it overrides fixtures from every source.
+ */
+export function withWaitGateHaltVerdicts(
+	plan: NodeSimulationVerdict[],
+	workflow: WorkflowJSON,
+): NodeSimulationVerdict[] {
+	const nodesByName = new Map(
+		(workflow.nodes ?? [])
+			.filter((node): node is WorkflowJSON['nodes'][number] & { name: string } =>
+				Boolean(node.name),
+			)
+			.map((node) => [node.name, node] as const),
+	);
+
+	return plan.map((verdict) => {
+		if (verdict.verdict !== 'simulate' || verdict.haltBranch) return verdict;
+		const node = nodesByName.get(verdict.nodeName);
+		if (!node || !isWaitGateNode(node) || !nodeCanReachItself(workflow, verdict.nodeName)) {
+			return verdict;
+		}
+		return { ...verdict, haltBranch: true, reason: WAIT_GATE_HALT_REASON };
+	});
+}
+
 function nonEmptyDeclaredFixtures(
 	fixtures: SimulationFixtures | undefined,
 ): SimulationFixtures | undefined {
@@ -249,19 +300,62 @@ function withDeclaredOutputVerdicts(
 	return overriddenPlan;
 }
 
+/**
+ * Fill in a placeholder for every non-halted simulated node the fixture map
+ * missed, then rebuild the pass-through nodes from their input. Halted wait
+ * gates are skipped on purpose: a pinned gate cannot pause, and a canned
+ * decision would re-run its loop forever.
+ *
+ * Both passes run HERE rather than inside the generator because this is the
+ * first point where the map is complete. Declared-output fixtures never reach
+ * the generator (they are merged in below), so a Wait sitting under a
+ * declared node would otherwise borrow that node's schema placeholder while
+ * its real declared items sat one layer up.
+ */
+function withFixtureFloor(
+	fixtures: SimulationFixtures,
+	plan: NodeSimulationVerdict[],
+	workflow: WorkflowJSON,
+	declaredFixtures: SimulationFixtures | undefined,
+	outputSchemaLookup?: OutputSchemaLookup,
+): SimulationFixtures {
+	const missing = plan
+		.filter(
+			(verdict) =>
+				verdict.verdict === 'simulate' &&
+				!verdict.haltBranch &&
+				!itemsForNode(fixtures, verdict.nodeName)?.length,
+		)
+		.map((verdict) => verdict.nodeName);
+	const floored =
+		missing.length > 0
+			? { ...buildPlaceholderFixtures(workflow, missing, outputSchemaLookup), ...fixtures }
+			: fixtures;
+	return withPassThroughFloor(floored, workflow, {
+		outputSchemaLookup,
+		declaredNodeNames: new Set(Object.keys(declaredFixtures ?? {})),
+	});
+}
+
 export async function planVerificationSimulation({
 	workflow,
 	mockedNodeNames,
 	declaredOutputFixtures,
 	workflowId,
 	outputSchemaLookup,
+	fallbackModelConfig,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
 	let simulationFixtures: SimulationFixtures | undefined;
+	let waitGateScripts: WaitGateScript[] | undefined;
 	const declaredFixtures = nonEmptyDeclaredFixtures(declaredOutputFixtures);
 	try {
-		nodeSimulationPlan = await classifyNodesForSimulation({ workflow, mockedNodeNames });
+		nodeSimulationPlan = await classifyNodesForSimulation({
+			workflow,
+			mockedNodeNames,
+			fallbackModelConfig,
+		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
 		nodeSimulationPlan = withSimulatedCredentiallessAiRootVerdicts(
@@ -269,10 +363,15 @@ export async function planVerificationSimulation({
 			workflow,
 			new Set(mockedNodeNames ?? []),
 		);
+		nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
+		const derivedScripts = deriveWaitGateScripts(workflow, nodeSimulationPlan);
+		waitGateScripts = derivedScripts.length > 0 ? derivedScripts : undefined;
 		if (nodeSimulationPlan.length > 0) {
 			const planNeedingGeneratedFixtures = nodeSimulationPlan.filter(
 				(verdict) =>
-					verdict.verdict === 'simulate' && !declaredFixtures?.[verdict.nodeName]?.length,
+					verdict.verdict === 'simulate' &&
+					!verdict.haltBranch &&
+					!itemsForNode(declaredFixtures, verdict.nodeName)?.length,
 			);
 			const generatedFixtures =
 				planNeedingGeneratedFixtures.length > 0
@@ -280,9 +379,17 @@ export async function planVerificationSimulation({
 							workflow,
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
+							fallbackModelConfig,
+							logger,
 						})
 					: {};
-			const fixtures = { ...generatedFixtures, ...declaredFixtures };
+			const fixtures = withFixtureFloor(
+				{ ...generatedFixtures, ...declaredFixtures },
+				nodeSimulationPlan,
+				workflow,
+				declaredFixtures,
+				outputSchemaLookup,
+			);
 			simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
 			logger?.debug('Classified workflow nodes for verification simulation', {
 				workflowId,
@@ -302,9 +409,7 @@ export async function planVerificationSimulation({
 			// Re-apply ALL deterministic passes, not just the declared verdicts: a
 			// classification failure must never leave a plan where a simulated-only
 			// trigger has no verdict — verify would accept the plan and the trigger
-			// (e.g. a polling node) would really fire. Fixture-less simulated nodes
-			// are pinned with an empty item downstream, so skipping generation here
-			// is safe.
+			// (e.g. a polling node) would really fire.
 			nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan ?? [], declaredFixtures);
 			nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
 			nodeSimulationPlan = withSimulatedCredentiallessAiRootVerdicts(
@@ -312,8 +417,21 @@ export async function planVerificationSimulation({
 				workflow,
 				new Set(mockedNodeNames ?? []),
 			);
+			nodeSimulationPlan = withWaitGateHaltVerdicts(nodeSimulationPlan, workflow);
 			simulationFixtures = declaredFixtures;
 		}
+		// Generation is out of reach here, but every node the surviving plan
+		// marks simulated still needs an item — a placeholder beats a dead branch.
+		if (nodeSimulationPlan) {
+			const floored = withFixtureFloor(
+				simulationFixtures ?? {},
+				nodeSimulationPlan,
+				workflow,
+				declaredFixtures,
+				outputSchemaLookup,
+			);
+			simulationFixtures = Object.keys(floored).length > 0 ? floored : undefined;
+		}
 	}
-	return { nodeSimulationPlan, simulationFixtures };
+	return { nodeSimulationPlan, simulationFixtures, waitGateScripts };
 }

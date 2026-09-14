@@ -2,6 +2,7 @@ import type {
 	BreakingChangeLightReportResult,
 	BreakingChangeWorkflowRuleResult,
 	BreakingChangeVersion,
+	WorkflowMigrationResult,
 } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
@@ -34,4 +35,16 @@ export async function getReportForRule(
 	ruleId: string,
 ): Promise<BreakingChangeWorkflowRuleResult> {
 	return (await get(context.baseUrl, `/breaking-changes/report/${ruleId}`)).data;
+}
+
+export async function migrateWorkflowForRule(
+	context: IRestApiContext,
+	ruleId: string,
+	workflowId: string,
+): Promise<WorkflowMigrationResult> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/breaking-changes/report/${ruleId}/workflows/${workflowId}/migrate`,
+	);
 }

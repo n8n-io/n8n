@@ -39,13 +39,14 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(
+		return await microsoftApiRequestAllItems.call(
 			this,
 			'value',
 			'GET',
 			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
 			{},
+			{ $top: limit },
+			limit,
 		);
-		return responseData.splice(0, limit);
 	}
 }

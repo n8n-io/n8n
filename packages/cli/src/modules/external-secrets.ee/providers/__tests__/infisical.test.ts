@@ -118,7 +118,7 @@ describe('InfisicalProvider', () => {
 			expect(requests).toHaveBeenCalledWith({
 				baseURL: SITE_URL,
 				headers: expect.any(Function),
-				ssrf: 'disabled',
+				useDefaultSsrfPolicy: 'unsafe',
 			});
 		});
 

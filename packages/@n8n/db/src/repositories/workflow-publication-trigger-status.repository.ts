@@ -6,6 +6,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from '../entities/workflow-publication-outbox';
+import { chunkIds } from '../utils/chunk-ids';
 
 export type TriggerStatusRow = {
 	nodeId: string;
@@ -49,16 +50,15 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 	}
 
 	/**
-	 * Returns every trigger that should currently be registered in memory: the
-	 * activated, in-memory triggers of active workflows. The join on
-	 * `activeVersionId` drops stale rows left by an interrupted unpublish, which
-	 * would otherwise read as missing forever. Workflows with an in-flight
-	 * (pending/in-progress) publication record are excluded: that publication is
-	 * about to reconcile them anyway.
+	 * Returns every trigger status row that claims an in-memory registration
+	 * (`activated`, in-memory) — deliberately including rows of unpublished
+	 * workflows: stale rows left by an interrupted unpublish then surface as a
+	 * deficit, and reconciliation heals them by re-running the unpublish.
+	 * Workflows with an in-flight (pending/in-progress) publication record are
+	 * excluded: that publication is about to reconcile them anyway.
 	 */
 	async findActivatedInMemoryTriggers(): Promise<InMemoryTriggerRef[]> {
 		return await this.createQueryBuilder('ts')
-			.innerJoin('ts.workflow', 'workflow', 'workflow.activeVersionId IS NOT NULL')
 			.select(['ts.workflowId AS "workflowId"', 'ts.nodeId AS "nodeId"'])
 			.where('ts.status = :status', { status: 'activated' })
 			.andWhere('ts.triggerKind = :kind', { kind: 'in-memory' })
@@ -78,5 +78,41 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 				return `NOT EXISTS ${inFlight}`;
 			})
 			.getRawMany<InMemoryTriggerRef>();
+	}
+
+	/**
+	 * Aggregate settled trigger counts per workflow for a set of workflows.
+	 * Returns a map containing the total and failed trigger counts for each specified workflow.
+	 * This lets us determine the overall status for that workflow.  A workflow with no triggers
+	 * will not appear in the map.
+	 *
+	 * @param workflowIds The IDs of the workflows to aggregate trigger counts for.
+	 * @returns A map from workflow ID to an object containing the total and failed trigger counts.
+	 */
+	async getStatusCountsByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, { total: number; failed: number }>> {
+		const counts = new Map<string, { total: number; failed: number }>();
+		// Type-bound so a change to the status union surfaces here instead of
+		// silently miscounting inside the raw SQL literal.
+		const failedStatus: WorkflowPublicationTriggerStatus['status'] = 'failed';
+
+		// Break workflowIds into chunks to avoid exceeding driver bind-parameter limits.
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.createQueryBuilder('t')
+				.select('t.workflowId', 'workflowId')
+				.addSelect('COUNT(*)', 'total')
+				.addSelect('SUM(CASE WHEN t.status = :failedStatus THEN 1 ELSE 0 END)', 'failed')
+				.setParameter('failedStatus', failedStatus)
+				.where('t.workflowId IN (:...workflowIds)', { workflowIds: chunk })
+				.groupBy('t.workflowId')
+				.getRawMany<{ workflowId: string; total: string | number; failed: string | number }>();
+
+			for (const row of rows) {
+				// Raw aggregates come back as strings on some drivers; normalise to number.
+				counts.set(row.workflowId, { total: Number(row.total), failed: Number(row.failed) });
+			}
+		}
+		return counts;
 	}
 }

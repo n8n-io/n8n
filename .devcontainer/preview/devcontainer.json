@@ -1,0 +1,37 @@
+{
+	"name": "n8n (PR preview)",
+	// No compose: a preview needs no Postgres sidecar. n8n defaults to sqlite
+	// (packages/@n8n/config/src/configs/database.config.ts), which is what a
+	// throwaway instance wants. Context is .devcontainer/ so the Dockerfile can
+	// reuse the token-rotation shims in codespaces/ instead of copying them.
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+	// Codespaces clones the repo into /workspaces/<repo>
+	"workspaceFolder": "/workspaces/n8n",
+	// The floor, so the 2-core machine stays available. This config exists mainly to
+	// ask for less than the agent one: the measured footprint is ~15gb, the
+	// editor-ui build peaks near 3gb, and scripts/agent-setup.mjs already builds the
+	// whole repo inside 6gb.
+	"hostRequirements": {
+		"cpus": 2,
+		"memory": "8gb",
+		"storage": "32gb"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		// gh codespace ssh needs an SSH server inside the container
+		"ghcr.io/devcontainers/features/sshd:1": {}
+	},
+	"forwardPorts": [5678],
+	// Runs in prebuilds, so a fresh preview starts with deps installed and the build
+	// warm. Concurrency and heap are capped for the 2-core box, matching the
+	// reasoning in scripts/agent-setup.mjs. A failing onCreateCommand is fatal —
+	// Codespaces discards the container — so the build only ever tails its log.
+	"onCreateCommand": "corepack install && pnpm install && (NODE_OPTIONS=--max-old-space-size=6144 pnpm exec turbo run build --concurrency=2 > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log)",
+	// Codespaces regenerates the managed /etc/gitconfig on each start, and the ssh
+	// command shells `pnpm preview` uses are neither login nor interactive, so
+	// profile.d and bashrc never fire for them. Register the helper here instead.
+	"postStartCommand": "git config --global --get-all credential.helper 2>/dev/null | grep -qs gitcredential-refresh || git config --global --add credential.helper /usr/local/bin/gitcredential-refresh.sh"
+}

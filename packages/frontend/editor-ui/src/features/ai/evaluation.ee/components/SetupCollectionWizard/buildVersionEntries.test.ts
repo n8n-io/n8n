@@ -26,9 +26,11 @@ const version = (
 
 describe('isReusableRun', () => {
 	it.each<[EvalCollectionRunStatus, boolean]>([
+		// Only a completed run is reusable — anything else schedules a fresh run
+		// (matches the backend, which rejects reuse of non-completed runs).
 		['completed', true],
-		['running', true],
-		['new', true],
+		['running', false],
+		['new', false],
 		['error', false],
 		['cancelled', false],
 	])('returns %s → %s', (status, expected) => {

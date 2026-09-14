@@ -85,18 +85,20 @@ export async function unleashedApiRequestAllItems(
 //which is useless on JS side and could not treated as a date for other nodes
 //so we need to convert all of the fields that has it.
 
-export function convertNETDates(item: { [key: string]: any }) {
+export function convertNETDates(item: { [key: string]: any }, serializeDates = false) {
 	Object.keys(item).forEach((path) => {
 		const type = typeof item[path] as string;
 		if (type === 'string') {
 			const value = item[path] as string;
 			const a = /\/Date\((\d*)\)\//.exec(value);
 			if (a) {
-				item[path] = new Date(+a[1]);
+				const date = new Date(+a[1]);
+				// v1.1+ returns ISO strings so node output stays JSON-safe
+				item[path] = serializeDates ? date.toISOString() : date;
 			}
 		}
 		if (type === 'object' && item[path]) {
-			convertNETDates(item[path] as IDataObject);
+			convertNETDates(item[path] as IDataObject, serializeDates);
 		}
 	});
 }

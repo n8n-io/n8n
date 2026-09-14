@@ -11,6 +11,8 @@
 import type { CapturedEvent, CapturedToolCall } from '../types';
 import type { TokenStats } from './tokens';
 
+export type { CapturedToolCall };
+
 // ---------------------------------------------------------------------------
 // Scenario specification (JSON)
 // ---------------------------------------------------------------------------

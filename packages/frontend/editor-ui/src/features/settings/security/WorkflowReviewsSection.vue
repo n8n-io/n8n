@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
 import { ElSwitch } from 'element-plus';
-import { N8nAlertDialog, N8nText } from '@n8n/design-system';
+import { N8nAlertDialog, N8nPreviewTag, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const props = defineProps<{
 	initialEnabled: boolean;
@@ -14,6 +15,7 @@ const props = defineProps<{
 
 const $style = useCssModule();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
@@ -36,16 +38,19 @@ async function persist(value: boolean): Promise<void> {
 	const previousValue = enabled.value;
 	enabled.value = value;
 	isSaving.value = true;
+
 	try {
-		await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
+		const response = await securitySettingsApi.updateSecuritySettings(rootStore.restApiContext, {
 			workflowReviews: { enabled: value },
 		});
+		if (response.workflowReviews) {
+			enabled.value = response.workflowReviews.enabled;
+			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
+		}
 		showToast({
 			type: 'success',
 			title: i18n.baseText(
-				value
-					? 'settings.security.workflowReviews.success.enabled'
-					: 'settings.security.workflowReviews.success.disabled',
+				`settings.security.workflowReviews.success.${enabled.value ? 'enabled' : 'disabled'}`,
 			),
 			message: '',
 		});
@@ -67,9 +72,12 @@ function confirmDisable() {
 	<div>
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">
-					{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
-				</N8nText>
+				<div :class="$style.titleRow">
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
+					</N8nText>
+					<N8nPreviewTag size="small" data-test-id="security-workflow-reviews-preview-tag" />
+				</div>
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
 				</N8nText>
@@ -113,6 +121,12 @@ function confirmDisable() {
 	gap: var(--spacing--5xs);
 	flex: 1;
 	min-width: 0;
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .settingsContainerAction {

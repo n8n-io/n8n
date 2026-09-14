@@ -8,6 +8,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IWorkflowExecutionDataProcess,
@@ -62,11 +63,24 @@ describe('execute-workflow MCP tool', () => {
 			expect(tool.name).toBe('execute_workflow');
 			expect(tool.config).toBeDefined();
 			expect(typeof tool.config.description).toBe('string');
-			expect(tool.config.description).toBe(
-				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			expect(tool.config.description).toContain(
+				'Execute a workflow by ID. Returns the execution ID immediately without waiting for completion.',
 			);
+			expect(tool.config.description).toContain("detailLevel 'execution'");
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.inputSchema?.executionMode.safeParse(undefined).success).toBe(false);
+			expect(tool.config.inputSchema?.triggerNodeName.safeParse(undefined).success).toBe(true);
+			expect(tool.config.inputSchema?.inputs.safeParse({ chatInput: 'hi' }).success).toBe(true);
+			expect(tool.config.inputSchema?.inputs.safeParse({ type: 'chat' }).success).toBe(false);
+			expect(
+				tool.config.inputSchema?.inputs.safeParse({ type: 'chat', chatInput: 'hi' }).success,
+			).toBe(false);
+			expect(
+				tool.config.inputSchema?.inputs.safeParse({
+					chatInput: 'hi',
+					webhookData: { body: { x: 1 } },
+				}).success,
+			).toBe(false);
 			expect(tool.config.outputSchema).toBeDefined();
 			expect(typeof tool.handler).toBe('function');
 		});
@@ -120,6 +134,17 @@ describe('execute-workflow MCP tool', () => {
 				const workflow = createWorkflow({
 					activeVersionId: null,
 					settings: { availableInMCP: true },
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Manual',
+							type: MANUAL_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
 				});
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as Mock).mockResolvedValue('execution-id');
@@ -213,8 +238,9 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'manual-workflow-with-pindata',
-					{ type: 'webhook', webhookData: { method: 'POST', body: { test: 'input' } } },
+					{ webhookData: { method: 'POST', body: { test: 'input' } } },
 					'manual',
+					'WebhookNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -258,8 +284,9 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'production-workflow-with-pindata',
-					undefined,
+					{ webhookData: { method: 'POST', body: {} } },
 					'production',
+					'WebhookNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -314,7 +341,45 @@ describe('execute-workflow MCP tool', () => {
 						undefined,
 						'production',
 					),
-				).rejects.toThrow(/Only workflows with the following trigger nodes can be executed/);
+				).rejects.toThrow(/no trigger that can be executed in production mode/);
+			});
+
+			test('names the supported trigger types when inputs are passed and no trigger is eligible', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Error Trigger',
+							type: 'n8n-nodes-base.errorTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+				// Without the eligibility check inside the guard this reports
+				// "Available triggers: none.", which the caller cannot act on.
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRunner,
+						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
+						'unsupported-trigger',
+						{ webhookData: { method: 'POST', body: { hello: 'world' } } },
+						'production',
+					),
+				).rejects.toMatchObject({
+					reason: 'unsupported_trigger',
+					message: expect.stringContaining('no trigger that can be executed in production mode'),
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
 			});
 
 			test('throws error with correct reason when workflow has unsupported trigger', async () => {
@@ -412,7 +477,6 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'webhook-workflow',
 					{
-						type: 'webhook',
 						webhookData: {
 							method: 'POST',
 							headers: { 'content-type': 'application/json' },
@@ -421,6 +485,7 @@ describe('execute-workflow MCP tool', () => {
 						},
 					},
 					'production',
+					'WebhookNode',
 				);
 
 				expect(result).toMatchObject({
@@ -472,13 +537,13 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'webhook-workflow',
 					{
-						type: 'webhook',
 						webhookData: {
 							method: 'GET',
 							query: { id: '123' },
 						},
 					},
 					'production',
+					'WebhookNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -525,10 +590,10 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'chat-workflow',
 					{
-						type: 'chat',
 						chatInput: 'Hello, how can I help?',
 					},
 					'production',
+					'ChatNode',
 				);
 
 				expect(result).toMatchObject({
@@ -581,7 +646,6 @@ describe('execute-workflow MCP tool', () => {
 					workflowPublishedDataService,
 					'form-workflow',
 					{
-						type: 'form',
 						formData: {
 							name: 'John Doe',
 							email: 'john@example.com',
@@ -589,6 +653,7 @@ describe('execute-workflow MCP tool', () => {
 						},
 					},
 					'production',
+					'FormNode',
 				);
 
 				expect(result).toMatchObject({
@@ -642,8 +707,9 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'success-workflow',
-					undefined,
+					{ webhookData: { method: 'POST', body: {} } },
 					'production',
+					'WebhookNode',
 				);
 
 				expect(result).toMatchObject({
@@ -655,7 +721,7 @@ describe('execute-workflow MCP tool', () => {
 		});
 
 		describe('workflow with no inputs', () => {
-			test('executes workflow without any inputs', async () => {
+			test('rejects webhook execution when inputs are omitted', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
 					nodes: [
@@ -671,33 +737,61 @@ describe('execute-workflow MCP tool', () => {
 					],
 				});
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
-				(workflowRunner.run as Mock).mockResolvedValue('exec-no-inputs');
 
-				await executeWorkflow(
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRunner,
+						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
+						'no-inputs-workflow',
+						undefined,
+						'production',
+					),
+				).rejects.toMatchObject({
+					reason: 'invalid_inputs',
+					message: expect.stringContaining('Provide triggerNodeName and inputs'),
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('executes a schedule workflow without inputs or triggerNodeName', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Schedule Trigger',
+							type: SCHEDULE_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-schedule');
+
+				const result = await executeWorkflow(
 					user,
 					workflowFinderService,
 					workflowRunner,
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					'no-inputs-workflow',
+					'schedule-workflow',
 					undefined,
 					'production',
 				);
 
+				expect(result.status).toBe('started');
 				const runCall = (workflowRunner.run as Mock).mock
 					.calls[0][0] as IWorkflowExecutionDataProcess;
-				expect(runCall.pinData).toMatchObject({
-					WebhookNode: [
-						{
-							json: {
-								headers: {},
-								query: {},
-								body: {},
-							},
-						},
-					],
-				});
+				expect(runCall.startNodes).toEqual([{ name: 'Schedule Trigger', sourceData: null }]);
+				expect(runCall.pinData).toHaveProperty('Schedule Trigger');
 			});
 		});
 
@@ -735,7 +829,8 @@ describe('execute-workflow MCP tool', () => {
 					{
 						workflowId: 'telemetry-workflow',
 						executionMode: 'production',
-						inputs: { type: 'chat', chatInput: 'test' },
+						triggerNodeName: 'WebhookNode',
+						inputs: { webhookData: { method: 'POST', body: { hello: 'world' } } },
 					},
 					{} as any,
 				);
@@ -748,7 +843,11 @@ describe('execute-workflow MCP tool', () => {
 						parameters: {
 							workflowId: 'telemetry-workflow',
 							executionMode: 'production',
-							inputs: { type: 'chat', parameter_count: 1 },
+							inputs: {
+								type: 'webhook',
+								parameter_count: 1,
+								triggerNodeName: 'WebhookNode',
+							},
 						},
 						results: {
 							success: true,
@@ -841,7 +940,7 @@ describe('execute-workflow MCP tool', () => {
 		});
 
 		describe('multiple trigger nodes', () => {
-			test('uses first eligible trigger node when multiple are present', async () => {
+			test('rejects execution when multiple triggers are present and triggerNodeName is omitted', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
 					nodes: [
@@ -875,6 +974,51 @@ describe('execute-workflow MCP tool', () => {
 					],
 				});
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+				await expect(
+					executeWorkflow(
+						user,
+						workflowFinderService,
+						workflowRunner,
+						mcpService,
+						workflowsConfig,
+						workflowPublishedDataService,
+						'multi-trigger-workflow',
+						undefined,
+						'production',
+					),
+				).rejects.toMatchObject({
+					reason: 'invalid_inputs',
+					message: expect.stringContaining('Provide triggerNodeName and inputs'),
+				});
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			test('executes the named trigger when multiple triggers are present', async () => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [
+						{
+							id: 'node-2',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [100, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+						{
+							id: 'node-3',
+							name: 'ChatNode',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							typeVersion: 1,
+							position: [200, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
 				(workflowRunner.run as Mock).mockResolvedValue('exec-multi');
 
 				await executeWorkflow(
@@ -885,16 +1029,24 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'multi-trigger-workflow',
-					undefined,
+					{ chatInput: 'THIS SHOULD REACH THE CHAT TRIGGER' },
 					'production',
+					'ChatNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
 					.calls[0][0] as IWorkflowExecutionDataProcess;
-				// Should use the WebhookNode (first eligible trigger)
-				expect(runCall.startNodes).toEqual([{ name: 'WebhookNode', sourceData: null }]);
-				expect(runCall.pinData).toHaveProperty('WebhookNode');
-				expect(runCall.executionMode).toBe('webhook');
+				expect(runCall.startNodes).toEqual([{ name: 'ChatNode', sourceData: null }]);
+				expect(runCall.pinData).toMatchObject({
+					ChatNode: [
+						{
+							json: {
+								chatInput: 'THIS SHOULD REACH THE CHAT TRIGGER',
+							},
+						},
+					],
+				});
+				expect(runCall.executionMode).toBe('chat');
 			});
 		});
 
@@ -933,8 +1085,9 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'mcp-meta-workflow',
-					undefined,
+					{ webhookData: { method: 'POST', body: {} } },
 					'production',
+					'WebhookNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -971,8 +1124,9 @@ describe('execute-workflow MCP tool', () => {
 					workflowsConfig,
 					workflowPublishedDataService,
 					'regular-workflow',
-					undefined,
+					{ webhookData: { method: 'POST', body: {} } },
 					'production',
+					'WebhookNode',
 				);
 
 				const runCall = (workflowRunner.run as Mock).mock
@@ -980,6 +1134,252 @@ describe('execute-workflow MCP tool', () => {
 				// isMcpExecution should be false in regular mode - this is the key flag that
 				// determines whether queue mode MCP handling is applied
 				expect(runCall.isMcpExecution).toBe(false);
+			});
+		});
+	});
+
+	describe('trigger selection', () => {
+		const webhookAndChat = [
+			{
+				id: 'node-1',
+				name: 'Webhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				disabled: false,
+				parameters: {},
+			} as INode,
+			{
+				id: 'node-2',
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				position: [100, 0],
+				disabled: false,
+				parameters: {},
+			} as INode,
+		];
+
+		test('rejects inputs when triggerNodeName is omitted', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: webhookAndChat,
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ chatInput: 'THIS SHOULD NOT BE DISCARDED' },
+					'production',
+				),
+			).rejects.toMatchObject({
+				reason: 'invalid_inputs',
+				message: expect.stringContaining('Provide triggerNodeName when passing inputs'),
+			});
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('rejects a named webhook when inputs do not match that trigger', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: webhookAndChat,
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ chatInput: 'THIS SHOULD NOT BE DISCARDED' },
+					'production',
+					'Webhook',
+				),
+			).rejects.toMatchObject({
+				reason: 'invalid_inputs',
+				message: expect.stringContaining('{ webhookData: { headers?, query?, body? } }'),
+			});
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		test('rejects a named webhook when inputs are omitted', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Webhook',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					undefined,
+					'production',
+					'Webhook',
+				),
+			).rejects.toMatchObject({
+				reason: 'invalid_inputs',
+				message: expect.stringContaining('requires inputs matching'),
+			});
+		});
+
+		test('rejects inputs on a schedule trigger', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Schedule Trigger',
+						type: SCHEDULE_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ webhookData: { method: 'POST', body: { x: 1 } } },
+					'production',
+					'Schedule Trigger',
+				),
+			).rejects.toMatchObject({
+				reason: 'invalid_inputs',
+				message: expect.stringContaining('does not accept inputs'),
+			});
+		});
+
+		test('rejects an unknown triggerNodeName', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: webhookAndChat,
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ chatInput: 'hi' },
+					'production',
+					'Missing Trigger',
+				),
+			).rejects.toMatchObject({
+				reason: 'unsupported_trigger',
+				message: expect.stringContaining('was not found'),
+			});
+		});
+
+		test('rejects a disabled named trigger', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Webhook',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: true,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ webhookData: { method: 'POST', body: { x: 1 } } },
+					'production',
+					'Webhook',
+				),
+			).rejects.toMatchObject({
+				reason: 'unsupported_trigger',
+				message: expect.stringContaining('is disabled'),
+			});
+		});
+
+		test('rejects a manual trigger in production mode', async () => {
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Manual',
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					undefined,
+					'production',
+					'Manual',
+				),
+			).rejects.toMatchObject({
+				reason: 'unsupported_trigger',
+				message: expect.stringContaining('cannot be used in production mode'),
 			});
 		});
 	});
@@ -1027,8 +1427,9 @@ describe('execute-workflow MCP tool', () => {
 				workflowsConfig,
 				workflowPublishedDataService,
 				'wf-1',
-				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				{ webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
 				'production',
+				'MappingWebhook',
 			);
 
 			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
@@ -1070,8 +1471,9 @@ describe('execute-workflow MCP tool', () => {
 				workflowsConfig,
 				workflowPublishedDataService,
 				'wf-1',
-				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				{ webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
 				'production',
+				'MappingWebhook',
 			);
 
 			const runCall = (workflowRunner.run as Mock).mock

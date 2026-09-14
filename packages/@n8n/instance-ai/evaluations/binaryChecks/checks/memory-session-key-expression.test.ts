@@ -6,6 +6,7 @@ function createWorkflow(memoryParameters: Record<string, unknown>): WorkflowResp
 		id: 'workflow-1',
 		name: 'Memory expression test',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{
 				name: 'Telegram Trigger',

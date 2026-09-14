@@ -11,7 +11,7 @@ import { MODAL_CONFIRM } from '@/app/constants/modals';
 const showError = vi.fn();
 const confirm = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
 }));
 

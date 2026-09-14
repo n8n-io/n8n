@@ -1,8 +1,6 @@
+import { JsonStore } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
-
-import { FsByteStore } from '@/blob-storage/fs-byte-store';
-import { JsonStore } from '@/blob-storage/json-store';
+import { ErrorReporter, FsByteStoreService } from 'n8n-core';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
@@ -15,7 +13,7 @@ import type { ExecutionDataPayload, ExecutionRef } from './types';
  */
 @Service()
 export class ExecutionDataJsonStore extends JsonStore<ExecutionRef, ExecutionDataPayload> {
-	constructor(fsByteStore: FsByteStore, errorReporter: ErrorReporter) {
+	constructor(fsByteStore: FsByteStoreService, errorReporter: ErrorReporter) {
 		super({
 			byteStores: { fs: fsByteStore },
 			version: EXECUTION_DATA_BUNDLE_VERSION,

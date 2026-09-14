@@ -26,6 +26,7 @@ import {
 	DISCORD_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -41,10 +42,11 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
@@ -134,6 +136,10 @@ export function removeTrailingTrigger(searchFilter: string) {
 const AI_GATEWAY_SEARCH_BOOST = 75;
 const AI_GATEWAY_BOOST_MIN_QUERY_LENGTH = 3;
 
+// Must exceed the legacy AI Agent's popularity boost (~98, see node-popularity.json)
+// so the successor node ranks first when both match a query equally.
+const MESSAGE_AN_AGENT_SEARCH_BOOST = 150;
+
 /**
  * 1. exact alias match (any query length): `scrape` → `scrape`
  * 2. whole-alias prefix match at 3+ chars: `scra` → `scrape`
@@ -158,7 +164,7 @@ export function matchesAliasForConnectBoost(query: string, aliases: string[]): b
 /**
  * Whether the node is eligible for n8n Connect (AI Gateway)
  */
-function isAiGatewayEligibleNode(nodeName: string): boolean {
+export function isAiGatewayEligibleNode(nodeName: string): boolean {
 	if (!useSettingsStore().isAiGatewayEnabled) return false;
 
 	const aiGatewayStore = useAiGatewayStore();
@@ -241,6 +247,7 @@ export function searchNodes(
 	const reRankedResults = reRankSearchResults(searchResults, {
 		...additionalFactors,
 		aiGatewayBoost,
+		messageAnAgentBoost: { [MESSAGE_AN_AGENT_NODE_TYPE]: MESSAGE_AN_AGENT_SEARCH_BOOST },
 	});
 
 	return reRankedResults.map(({ item }) => item);
@@ -434,6 +441,13 @@ export function extractAiGatewaySection(
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node') return element;
 
+	// Every creator list flows through here, so this also renames the item
+	// (and the panel title derived from it) for the inline agents experiment.
+	const agentsNodeName = getN8nAgentsNodeName(element.properties.name);
+	if (agentsNodeName) {
+		element.properties.displayName = agentsNodeName;
+	}
+
 	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
 	if (
 		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
@@ -444,7 +458,12 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 	if (element.properties.tag) return element;
 
-	if (RECOMMENDED_NODES.includes(element.properties.name)) {
+	if (element.properties.name === MESSAGE_AN_AGENT_NODE_TYPE) {
+		element.properties.tag = {
+			preview: true,
+			text: i18n.baseText('nodeCreator.nodeItem.earlyPreview'),
+		};
+	} else if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.recommended'),
@@ -455,10 +474,11 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			text: i18n.baseText('generic.betaProper'),
 		};
 	} else if (isAiGatewayEligibleNode(element.properties.name)) {
-		element.properties.tag = {
-			text: i18n.baseText('generic.freeCredits'),
-			pill: true,
-		};
+		const creditsLabelKey = useAiGatewayStore().creditsLabelKey;
+		element.properties.tag =
+			creditsLabelKey === 'generic.freeCredits'
+				? { text: i18n.baseText(creditsLabelKey), pill: true }
+				: { text: i18n.baseText(creditsLabelKey), pill: true, type: 'info' };
 	}
 
 	return element;
@@ -466,10 +486,16 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items
-		.map((item) => ({
-			...item,
-			uuid: `${item.key}-${uuidv4()}`,
-		}))
+		.map((item) =>
+			item.type !== 'node'
+				? { ...item, uuid: `${item.key}-${uuidv4()}` }
+				: {
+						...item,
+						uuid: `${item.key}-${uuidv4()}`,
+						// Clone so applyNodeTags cannot stamp a stale credits tag onto baselineItems.
+						properties: { ...item.properties },
+					},
+		)
 		.map(applyNodeTags);
 }
 

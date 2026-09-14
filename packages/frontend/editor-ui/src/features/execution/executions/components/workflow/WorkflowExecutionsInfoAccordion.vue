@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
@@ -12,8 +12,8 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { IconColor } from '@n8n/design-system';
-import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IAccordionItem } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system';
 
 import { N8nInfoAccordion, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface IWorkflowSaveSettings {

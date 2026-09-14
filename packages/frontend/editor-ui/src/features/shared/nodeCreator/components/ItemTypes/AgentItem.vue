@@ -23,7 +23,7 @@ defineProps<Props>();
 			<div v-if="agent.variant === 'create'" :class="$style.createIcon">
 				<N8nIcon icon="plus" :size="16" />
 			</div>
-			<AgentPersonalisationIcon v-else :personalisation="agent.personalisation" :size="24" />
+			<AgentPersonalisationIcon v-else :personalisation="agent.personalisation" :size="20" />
 		</template>
 	</N8nNodeCreatorNode>
 </template>
@@ -32,18 +32,20 @@ defineProps<Props>();
 .agentItem {
 	margin-left: var(--spacing--sm);
 	margin-right: var(--spacing--xs);
+	height: var(--height--lg);
+	padding: var(--spacing--2xs) 0;
 }
 
 .createIcon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 24px;
-	height: 24px;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
 	flex-shrink: 0;
 	// Proportional to the 16/64 squircle radius of the personalisation tile;
 	// radius tokens are clobbered by the legacy theme, so keep it fixed.
-	border-radius: 6px;
+	border-radius: var(--radius--lg);
 	color: var(--color--primary);
 	background-color: var(--color--primary--tint-3);
 }

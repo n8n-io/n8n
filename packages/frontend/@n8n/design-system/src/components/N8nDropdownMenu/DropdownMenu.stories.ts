@@ -2,11 +2,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref, computed } from 'vue';
 
-import N8nBadge from '@n8n/design-system/components/N8nBadge/Badge.vue';
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
-import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
-
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
+import N8nBadge from '../N8nBadge/Badge.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
@@ -16,7 +17,7 @@ type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 };
 
 const meta = {
-	title: 'Core/Dropdown Menu',
+	title: 'Core/DropdownMenu',
 	component: DropdownMenu,
 	parameters: {
 		docs: {
@@ -29,7 +30,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Basic: Story = {
+export const Default: Story = {
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -39,7 +40,7 @@ export const Basic: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu placement="bottom-start" :items="args.items" @select="handleSelect" />
 		</div>
 		`,
@@ -70,7 +71,7 @@ export const WithCustomTrigger: Story = {
 			return { args, isOpen, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				v-model="isOpen"
 				:items="args.items"
@@ -110,7 +111,7 @@ export const EmojiActivator: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="args.items"
 				:activator-icon="{ type: 'emoji', value: '✨' }"
@@ -137,7 +138,7 @@ export const WithCheckedItems: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items" @select="handleSelect" />
 		</div>
 		`,
@@ -161,7 +162,7 @@ export const WithDisabledItems: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items" @select="handleSelect" />
 		</div>
 		`,
@@ -190,7 +191,7 @@ export const WithBadgesAndShortcuts: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p>Example of using custom trailing slots to render badges and keyboard shortcuts for each item.</p>
 			<DropdownMenu :items="args.items" @select="handleSelect">
 				<template #item-trailing="{ item, ui }">
@@ -255,7 +256,7 @@ export const WithCustomLeadingSlot: Story = {
 			return { args, handleSelect, isChecked };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p>Example of using a custom leading slot to render checkboxes for each item.</p>
 			<DropdownMenu :items="args.items" @select="handleSelect">
 				<template #item-leading="{ item, ui }">
@@ -287,7 +288,7 @@ export const LoadingState: Story = {
 			return { args };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="args.items"
 				:loading="args.loading"
@@ -320,7 +321,7 @@ export const Placements: Story = {
 			return { args, placements };
 		},
 		template: `
-		<div style="padding: 200px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+		<div style="display: flex; flex-wrap: wrap; gap: 20px">
 			<DropdownMenu
 				v-for="placement in placements"
 				:key="placement"
@@ -360,7 +361,7 @@ export const ControlledState: Story = {
 			return { args, isOpen, toggle, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p style="margin-bottom: 16px; user-select: none;">Dropdown is {{ isOpen ? 'open' : 'closed' }}</p>
 			<div style="margin-bottom: 16px;">
 				<N8nButton @click="toggle">
@@ -394,7 +395,7 @@ export const NestedMenu: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="args.items"
 				placement="bottom-start"
@@ -434,6 +435,68 @@ export const NestedMenu: Story = {
 	},
 };
 
+export const WithTooltips: Story = {
+	render: (args) => ({
+		components: { DropdownMenu, N8nIcon, N8nTooltip },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div>
+			<DropdownMenu :items="args.items" @select="handleSelect">
+				<template #item-label="{ item, ui }">
+					<N8nTooltip
+						v-if="item.id === 'main-menu-item'"
+						:content="item.data.tooltip"
+						placement="right"
+						teleported
+						as-child
+					>
+						<span :class="ui.class">{{ item.label }}</span>
+					</N8nTooltip>
+					<span v-else :class="ui.class">{{ item.label }}</span>
+				</template>
+				<template #item-trailing="{ item, ui }">
+					<N8nTooltip
+						v-if="item.id === 'submenu-item'"
+						:content="item.data.tooltip"
+						placement="right"
+						teleported
+						as-child
+					>
+						<N8nIcon icon="info" size="medium" :class="ui.class" />
+					</N8nTooltip>
+				</template>
+			</DropdownMenu>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{
+				id: 'main-menu-item',
+				label: 'Main menu item',
+				data: { tooltip: 'Tooltip for the main menu item' },
+			},
+			{
+				id: 'submenu',
+				label: 'Open submenu',
+				data: { tooltip: '' },
+				children: [
+					{
+						id: 'submenu-item',
+						label: 'Submenu item',
+						data: { tooltip: 'Tooltip for the submenu item' },
+					},
+				],
+			},
+		] as Array<DropdownMenuItemProps<string, { tooltip: string }>>,
+	},
+};
+
 export const MoreLevels: Story = {
 	render: (args) => ({
 		components: { DropdownMenu },
@@ -444,7 +507,7 @@ export const MoreLevels: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items" @select="handleSelect" />
 		</div>
 		`,
@@ -497,7 +560,7 @@ export const SubMenuLoading: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items" @select="handleSelect" />
 		</div>
 		`,
@@ -560,7 +623,7 @@ export const SearchableRoot: Story = {
 			return { args, filteredItems, handleSearch, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
@@ -635,7 +698,7 @@ export const SearchableRootWithSubmenus: Story = {
 			return { args, filteredItems, handleSearch, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
 				The main menu is searchable, and the non-searchable "Fruits" submenu has enough
 				items to scroll. Use this to verify hover and keyboard focus do not cause scroll jumps.
@@ -722,7 +785,7 @@ export const SearchableRootWithFlatResults: Story = {
 			return { filteredItems, handleSearch, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
@@ -796,7 +859,7 @@ export const SearchableSubmenu: Story = {
 			return { items, handleSearch, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu
 				:items="items"
 				:activator-icon="{ type: 'icon', value: 'plus' }"
@@ -907,7 +970,7 @@ export const LazyLoadingSubmenu: Story = {
 			return { items, handleSelect, handleOpenChange, handleSubmenuToggle };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
 				Open the dropdown and hover over "Recent Files" or "Shared With Me" to see lazy loading in action.
 				Each submenu fetches its content independently when hovered.
@@ -936,7 +999,7 @@ export const TruncatedLabelsWithTooltip: Story = {
 			return { args, handleSelect };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
 				Hover over items with long labels to see the full text in a tooltip.
 				Short labels (under 20 characters) won't show a tooltip.
@@ -974,7 +1037,7 @@ export const EmptyState: Story = {
 			return { args };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items" />
 		</div>
 		`,
@@ -991,7 +1054,7 @@ export const CustomEmptyState: Story = {
 			return { args };
 		},
 		template: `
-		<div style="padding: 40px;">
+		<div>
 			<DropdownMenu :items="args.items">
 				<template #empty>
 					<div style="padding: 24px; text-align: center; color: var(--color--text--tint-1);">

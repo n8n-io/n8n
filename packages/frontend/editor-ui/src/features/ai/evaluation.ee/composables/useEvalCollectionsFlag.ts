@@ -2,7 +2,7 @@ import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { computed } from 'vue';
 
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 /**
  * Frontend gate for the eval-collections feature surface, matching the

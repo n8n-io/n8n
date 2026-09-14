@@ -38,3 +38,17 @@ export function inferSelectionMode(
 ): ApiKeyScopeSelectionMode {
 	return inferSelectionModeGeneric(selectedScopes, availableScopes, READ_SCOPE_ACTIONS);
 }
+
+/** Full name when any part is set, otherwise the email. */
+export function getApiKeyOwnerDisplayName(owner: {
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+}): string {
+	const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
+	return name || owner.email || '';
+}
+
+export function isApiKeyExpired(apiKey: { expiresAt: number | null }): boolean {
+	return apiKey.expiresAt !== null && apiKey.expiresAt <= Math.floor(Date.now() / 1000);
+}

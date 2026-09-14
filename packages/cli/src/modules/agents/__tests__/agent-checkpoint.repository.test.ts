@@ -20,11 +20,21 @@ describe('AgentCheckpointRepository', () => {
 			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
 
 			await expect(
-				repository.claimForResume('run-1', '{"status":"suspended"}', '{"status":"running"}'),
+				repository.claimForResume(
+					'run-1',
+					'agent-1',
+					'{"status":"suspended"}',
+					'{"status":"running"}',
+				),
 			).resolves.toBe(true);
 
 			expect(repository.update).toHaveBeenCalledWith(
-				{ runId: 'run-1', expired: false, state: '{"status":"suspended"}' },
+				{
+					runId: 'run-1',
+					agentId: 'agent-1',
+					expired: false,
+					state: '{"status":"suspended"}',
+				},
 				{ state: '{"status":"running"}' },
 			);
 		});
@@ -33,8 +43,33 @@ describe('AgentCheckpointRepository', () => {
 			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 0 } as never);
 
 			await expect(
-				repository.claimForResume('run-1', '{"status":"suspended"}', '{"status":"running"}'),
+				repository.claimForResume(
+					'run-1',
+					'agent-1',
+					'{"status":"suspended"}',
+					'{"status":"running"}',
+				),
 			).resolves.toBe(false);
+		});
+	});
+
+	describe('cancelSuspended', () => {
+		it('matches checkpoints scoped to the current agent', async () => {
+			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
+
+			await expect(
+				repository.cancelSuspended('run-1', 'agent-1', '{"status":"suspended"}'),
+			).resolves.toBe(true);
+
+			expect(repository.update).toHaveBeenCalledWith(
+				{
+					runId: 'run-1',
+					agentId: 'agent-1',
+					expired: false,
+					state: '{"status":"suspended"}',
+				},
+				{ expired: true },
+			);
 		});
 	});
 });

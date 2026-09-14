@@ -1,4 +1,5 @@
 name: 'Release: Push to Channel'
+run-name: "Release: Push n8n@${{ inputs.version }} to ${{ inputs['release-channel'] }}"
 
 on:
   workflow_call:
@@ -75,7 +76,7 @@ jobs:
     steps:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 24.18.0
+          node-version: 24.18.1
 
       # Remove after https://github.com/npm/cli/issues/8547 gets resolved
       - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc

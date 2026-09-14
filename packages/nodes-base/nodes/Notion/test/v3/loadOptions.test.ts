@@ -19,9 +19,7 @@ const mockNotionApiRequest = Transport.notionApiRequestV3 as Mock;
 
 function createLoadOptionsContext(parameters: Record<string, unknown>): ILoadOptionsFunctions {
 	return {
-		getCurrentNodeParameter: vi.fn(
-			(name: string, fallback?: unknown) => parameters[name] ?? fallback,
-		),
+		getCurrentNodeParameter: vi.fn((name: string) => parameters[name]),
 	} as unknown as ILoadOptionsFunctions;
 }
 
@@ -44,6 +42,15 @@ describe('Notion V3 load options', () => {
 		const result = await getDataSourceOptionsFromPage.call(context);
 
 		expect(result).toEqual([]);
+	});
+
+	it('returns no options when page data source properties are requested without a page', async () => {
+		const context = createLoadOptionsContext({ pageId: null });
+
+		const result = await getDataSourcePropertiesFromPage.call(context);
+
+		expect(result).toEqual([]);
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
 	});
 
 	it('uses only the last key segment as the property type for selected data source options', async () => {

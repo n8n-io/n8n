@@ -1,15 +1,12 @@
 import type { EvalCollectionVersionEntry, EvalVersionEntry } from '../../evalCollections.types';
 
-// A version's last run is only worth reusing if it can still yield results. A
-// failed or cancelled run has no usable data, so pinning it would produce a
-// collection that "compares" a run with nothing to show (a Done card with an
-// empty bar). Schedule a fresh run for those instead. `new`/`running`/
-// `completed` runs are reusable — they already have data or will once they
-// finish.
+// A version's last run is only reusable if it's a completed result. Reusing a
+// new/running/failed/cancelled run would seed a version with no comparable
+// scores — and the backend now rejects anything not `completed` on create, so
+// keep the FE in sync. Anything else schedules a fresh run.
 export const isReusableRun = (
 	run: EvalVersionEntry['lastRun'],
-): run is NonNullable<EvalVersionEntry['lastRun']> =>
-	!!run && run.status !== 'error' && run.status !== 'cancelled';
+): run is NonNullable<EvalVersionEntry['lastRun']> => !!run && run.status === 'completed';
 
 // Map the selected versions to create-collection entries: reuse a still-good
 // run, otherwise omit `existingTestRunId` so the backend schedules a fresh run.

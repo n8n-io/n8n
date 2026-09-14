@@ -31,6 +31,7 @@ const versions: CompareVersion[] = [
 const cell = (versionIndex: number, output: string): CompareCaseCell => ({
 	versionIndex,
 	testCaseId: `c${versionIndex}`,
+	executionId: null,
 	inputs: { q: 'What is 2+2?' },
 	outputs: { output },
 	metrics: { helpfulness: 0.8 },
@@ -59,7 +60,7 @@ const renderComponent = createComponentRenderer(OutputsTab);
 describe('OutputsTab', () => {
 	it('renders one output column per version for the selected case', () => {
 		const { container } = renderComponent({
-			props: { versions, caseRows: rows, selectedIndex: 0 },
+			props: { versions, caseRows: rows, selectedIndex: 0, workflowId: 'wf-1' },
 		});
 
 		expect(container.querySelectorAll('[data-test-id="compare-outputs-column"]')).toHaveLength(2);
@@ -69,7 +70,7 @@ describe('OutputsTab', () => {
 
 	it('emits the new index when a sidebar case is clicked', async () => {
 		const { container, emitted } = renderComponent({
-			props: { versions, caseRows: rows, selectedIndex: 0 },
+			props: { versions, caseRows: rows, selectedIndex: 0, workflowId: 'wf-1' },
 		});
 
 		const items = container.querySelectorAll('[data-test-id="compare-outputs-case"]');

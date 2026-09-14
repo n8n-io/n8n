@@ -50,8 +50,13 @@ export class AgentTasksController {
 		@Param('agentId') agentId: string,
 		@Body payload: CreateAgentTaskDto,
 	): Promise<AgentTaskDto> {
-		await this.getAgentOrThrow(agentId, req.params.projectId);
-		return await this.agentTaskService.create(agentId, payload);
+		const projectId = req.params.projectId;
+		await this.getAgentOrThrow(agentId, projectId);
+		return await this.agentTaskService.create(agentId, projectId, payload, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 	}
 
 	@Patch('/:agentId/tasks/:taskId')
@@ -63,8 +68,13 @@ export class AgentTasksController {
 		@Param('taskId') taskId: string,
 		@Body payload: UpdateAgentTaskDto,
 	): Promise<AgentTaskDto> {
-		await this.getAgentOrThrow(agentId, req.params.projectId);
-		return await this.agentTaskService.update(agentId, taskId, payload);
+		const projectId = req.params.projectId;
+		await this.getAgentOrThrow(agentId, projectId);
+		return await this.agentTaskService.update(agentId, projectId, taskId, payload, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 	}
 
 	@Delete('/:agentId/tasks/:taskId')
@@ -75,8 +85,13 @@ export class AgentTasksController {
 		@Param('agentId') agentId: string,
 		@Param('taskId') taskId: string,
 	): Promise<{ success: true }> {
-		await this.getAgentOrThrow(agentId, req.params.projectId);
-		await this.agentTaskService.delete(agentId, taskId);
+		const projectId = req.params.projectId;
+		await this.getAgentOrThrow(agentId, projectId);
+		await this.agentTaskService.delete(agentId, projectId, taskId, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 		return { success: true };
 	}
 

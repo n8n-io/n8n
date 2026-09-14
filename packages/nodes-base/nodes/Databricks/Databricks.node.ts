@@ -22,6 +22,7 @@ import {
 } from './resources';
 
 import { router } from './actions/router';
+import { DATABRICKS_NODE_VERSION } from './constants';
 import * as listSearch from './methods/listSearch';
 
 export class Databricks implements INodeType {
@@ -30,7 +31,7 @@ export class Databricks implements INodeType {
 		name: 'databricks',
 		icon: 'file:databricks.svg',
 		group: ['transform'],
-		version: 1,
+		version: DATABRICKS_NODE_VERSION,
 		usableAsTool: true,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with Databricks API',

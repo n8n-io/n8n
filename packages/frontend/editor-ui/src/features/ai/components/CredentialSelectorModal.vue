@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -23,6 +23,7 @@ const props = defineProps<{
 		hideCreateNew?: boolean;
 		source?: string;
 		pickerDataTestId?: string;
+		appendToBody?: boolean;
 	};
 }>();
 
@@ -102,6 +103,7 @@ function onCancel() {
 		:center="true"
 		max-width="460px"
 		min-height="250px"
+		:append-to-body="data.appendToBody"
 	>
 		<template #header>
 			<div :class="$style.header">
@@ -130,6 +132,7 @@ function onCancel() {
 						:hide-create-new="data.hideCreateNew ?? true"
 						:data-testid="data.pickerDataTestId"
 						teleported
+						:credential-modal-append-to-body="data.appendToBody"
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
 						@credential-deleted="onDeleteCredential"

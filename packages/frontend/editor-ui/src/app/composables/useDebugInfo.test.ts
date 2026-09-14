@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ClusterInfoResponse } from '@n8n/api-types';
 import { useDebugInfo } from './useDebugInfo';
 import type { RootStoreState } from '@n8n/stores/useRootStore';
-import type { useSettingsStore as useSettingsStoreType } from '@/app/stores/settings.store';
+import type { useSettingsStore as useSettingsStoreType } from '@n8n/stores/settings.store';
 import type { RecursivePartial } from '@/app/types/utils';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -47,7 +47,7 @@ const { useSettingsStore } = vi.hoisted(() => ({
 	useSettingsStore: vi.fn(),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore,
 }));
 
@@ -62,7 +62,7 @@ const { mockClusterInfo } = vi.hoisted(() => ({
 	mockClusterInfo: { value: null as ClusterInfoResponse | null },
 }));
 
-vi.mock('@/features/instanceRegistry/stores/instanceRegistry.store', () => ({
+vi.mock('@n8n/frontend-module-instance-registry', () => ({
 	useInstanceRegistryStore: () => ({
 		get clusterInfo() {
 			return mockClusterInfo.value;

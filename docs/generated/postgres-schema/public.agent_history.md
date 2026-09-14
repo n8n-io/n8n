@@ -58,12 +58,15 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt
@@ -112,6 +115,7 @@ erDiagram
   varchar_128_ name
   text objective
   varchar_32_ taskId
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
 }

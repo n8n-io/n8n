@@ -19,6 +19,8 @@ interface TelegramCallbackUpdate {
  */
 @Service()
 export class TelegramInteractionWebhooks extends HitlInteractionWebhooks {
+	protected readonly platformNodeType = 'n8n-nodes-base.telegram';
+
 	protected async parseCallback(
 		req: WaitingWebhookRequest,
 	): Promise<ParsedHitlCallbackReference | null> {

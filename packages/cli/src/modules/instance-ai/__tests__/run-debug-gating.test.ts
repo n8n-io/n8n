@@ -1,11 +1,13 @@
 import type { User } from '@n8n/db';
-import { RunDebugBuffer } from '@n8n/instance-ai';
+import { RunDebugBuffer, RunStateRegistry } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
 type RunDebugGatingInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	runDebugBuffer: RunDebugBuffer;
+	runState: RunStateRegistry<User>;
 	buildOrchestratorAgentStreamOptions: (
 		user: User,
 		threadId: string,
@@ -18,6 +20,7 @@ type RunDebugGatingInternals = {
 		runId: string,
 		agentRunId: string,
 		toolCallId: string,
+		signal: AbortSignal,
 	) => Record<string, unknown>;
 	getRunDebug: (runId: string) => ReturnType<RunDebugBuffer['get']>;
 };
@@ -25,7 +28,9 @@ type RunDebugGatingInternals = {
 function createRunDebugGatingService(runDebugEnabled: boolean): RunDebugGatingInternals {
 	const service = Object.create(InstanceAiService.prototype) as RunDebugGatingInternals;
 	service.instanceAiConfig = { runDebugEnabled };
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.runDebugBuffer = new RunDebugBuffer();
+	service.runState = new RunStateRegistry((user: User) => user.id);
 	return service;
 }
 
@@ -50,16 +55,27 @@ describe('InstanceAiService run debug gating', () => {
 			runId,
 			'agent-run-1',
 			'tool-call-1',
+			signal,
 		);
 
 		expect(streamOptions.onStepStart).toBeUndefined();
+		expect(streamOptions.onStepEnd).toBeUndefined();
 		expect(streamOptions.onStepFinish).toBeUndefined();
 		expect(resumeOptions.onStepStart).toBeUndefined();
+		expect(resumeOptions.onStepEnd).toBeUndefined();
 		expect(resumeOptions.onStepFinish).toBeUndefined();
 		expect(service.getRunDebug(runId)).toBeUndefined();
 		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
 		expect(streamOptions.recoverUsageOnAbort).toBe(true);
 		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
+		expect(streamOptions.modelStreamIdleTimeoutMs).toBe(90_000);
+		expect(resumeOptions.modelStreamIdleTimeoutMs).toBe(90_000);
+		expect(streamOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
+		expect(resumeOptions.modelStreamFirstOutputTimeoutMs).toBe(180_000);
+		// Both paths must carry the run's signal, or a stop cannot reach the agent
+		// loop and its sub-agents (AGENT-453).
+		expect(streamOptions.abortSignal).toBe(signal);
+		expect(resumeOptions.abortSignal).toBe(signal);
 		// Both paths must carry the request-level Anthropic cache directive; without it
 		// on resume, HITL turns reprocess the whole conversation uncached (INS-759).
 		const cacheDirective = { anthropic: { cacheControl: { type: 'ephemeral' } } };
@@ -82,11 +98,14 @@ describe('InstanceAiService run debug gating', () => {
 			runId,
 			'agent-run-1',
 			'tool-call-1',
+			signal,
 		);
 
 		expect(typeof streamOptions.onStepStart).toBe('function');
+		expect(typeof streamOptions.onStepEnd).toBe('function');
 		expect(typeof streamOptions.onStepFinish).toBe('function');
 		expect(typeof resumeOptions.onStepStart).toBe('function');
+		expect(typeof resumeOptions.onStepEnd).toBe('function');
 		expect(typeof resumeOptions.onStepFinish).toBe('function');
 		expect(service.getRunDebug(runId)).toEqual(
 			expect.objectContaining({

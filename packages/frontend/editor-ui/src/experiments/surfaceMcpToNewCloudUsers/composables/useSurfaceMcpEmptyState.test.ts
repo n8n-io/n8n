@@ -6,8 +6,6 @@ const mocks = vi.hoisted(() => ({
 	mcpAccessEnabled: false,
 	isEnabled: false,
 	isTileVariant: false,
-	isFirstOpenModalVariant: false,
-	hasDismissedFirstOpenModal: false,
 	trackEntryPointViewed: vi.fn(),
 	trackOpportunityViewed: vi.fn(),
 }));
@@ -27,12 +25,6 @@ vi.mock('../stores/surfaceMcpToNewCloudUsers.store', () => ({
 		},
 		get isTileVariant() {
 			return mocks.isTileVariant;
-		},
-		get isFirstOpenModalVariant() {
-			return mocks.isFirstOpenModalVariant;
-		},
-		get hasDismissedFirstOpenModal() {
-			return mocks.hasDismissedFirstOpenModal;
 		},
 		trackEntryPointViewed: mocks.trackEntryPointViewed,
 		trackOpportunityViewed: mocks.trackOpportunityViewed,
@@ -75,8 +67,6 @@ describe('useSurfaceMcpEmptyState', () => {
 		mocks.mcpAccessEnabled = false;
 		mocks.isEnabled = false;
 		mocks.isTileVariant = false;
-		mocks.isFirstOpenModalVariant = false;
-		mocks.hasDismissedFirstOpenModal = false;
 		mocks.trackEntryPointViewed.mockClear();
 		mocks.trackOpportunityViewed.mockClear();
 	});
@@ -142,15 +132,5 @@ describe('useSurfaceMcpEmptyState', () => {
 			false,
 		);
 		expect(mocks.trackEntryPointViewed).toHaveBeenCalledWith('tile', 'empty_state_tile', false);
-	});
-
-	it('shows the reminder after the retained first-open modal was dismissed', () => {
-		mocks.isFirstOpenModalVariant = true;
-		mocks.hasDismissedFirstOpenModal = true;
-
-		const rendered = renderComposable();
-		scope = rendered.scope;
-
-		expect(rendered.result.showReminder.value).toBe(true);
 	});
 });

@@ -3,10 +3,17 @@ vi.mock('../npm-utils', async () => ({
 	executeNpmCommand: vi.fn(),
 }));
 
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import { N8N_NODES_API_VERSION } from 'n8n-workflow';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesModule } from '@/modules/community-packages/community-packages.module';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
@@ -22,9 +29,7 @@ import {
 	mockPackageName,
 } from '../../../../test/integration/shared/utils';
 
-const communityPackagesService = mockInstance(CommunityPackagesService, {
-	hasMissingPackages: false,
-});
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const mockedExecuteNpmCommand = vi.mocked(executeNpmCommand);
 mockInstance(LoadNodesAndCredentials);
 
@@ -54,6 +59,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
 describe('GET /community-packages', () => {
@@ -178,8 +184,7 @@ describe('POST /community-packages', () => {
 
 	test('should reject if package is duplicate', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.isPackageInstalled.mockResolvedValue(true);
-		communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+		communityPackagesService.isPackageLoaded.mockReturnValue(true);
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
@@ -191,14 +196,14 @@ describe('POST /community-packages', () => {
 
 	test('should allow installing packages that could not be loaded', async () => {
 		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+		communityPackagesService.isPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 		communityPackagesService.installPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackagesService.removePackageFromMissingList).toHaveBeenCalled();
+		expect(communityPackagesService.installPackage).toHaveBeenCalled();
 	});
 
 	test('should not install a banned package', async () => {
@@ -258,5 +263,71 @@ describe('PATCH /community-packages', () => {
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
 		expect(communityPackagesService.updatePackage).toHaveBeenCalledTimes(1);
+	});
+});
+
+// The module's `nodeLoaders()` provider is what startup goes through
+// (`ModuleRegistry` → `LoadNodesAndCredentials`). An incompatible package
+// already on disk must yield no loader, so its node code is never imported,
+// its node types stay unknown to `LoadNodesAndCredentials`, and the settings
+// UI reports the package as failed-loading via `withLoadStatus`.
+describe('node API compatibility at startup', () => {
+	let downloadDir: string;
+	let nodeModulesDir: string;
+
+	const writePackage = (name: string, n8n?: object) => {
+		const dir = path.join(nodeModulesDir, name);
+		mkdirSync(dir);
+		writeFileSync(
+			path.join(dir, 'package.json'),
+			JSON.stringify({ name, version: '1.0.0', ...(n8n ? { n8n } : {}) }),
+		);
+	};
+
+	beforeEach(() => {
+		downloadDir = mkdtempSync(path.join(tmpdir(), 'n8n-community-packages-'));
+		nodeModulesDir = path.join(downloadDir, 'node_modules');
+		mkdirSync(nodeModulesDir);
+	});
+
+	afterEach(() => {
+		rmSync(downloadDir, { recursive: true, force: true });
+	});
+
+	test('boots with an incompatible package on disk and registers no loader for it', async () => {
+		writePackage('n8n-nodes-future', {
+			nodes: ['dist/nodes/Future.node.js'],
+			n8nNodesApiVersion: N8N_NODES_API_VERSION + 1,
+		});
+		writePackage('n8n-nodes-good');
+
+		const originalSettings = Container.get(InstanceSettings);
+		mockInstance(InstanceSettings, { nodesDownloadDir: downloadDir });
+
+		const loaders = await Container.get(CommunityPackagesModule).nodeLoaders();
+
+		Container.set(InstanceSettings, originalSettings);
+
+		expect(loaders.map((loader) => loader.packageName)).toEqual(['n8n-nodes-good']);
+		expect(Container.get(Logger).warn).toHaveBeenCalledWith(
+			expect.stringContaining('n8n-nodes-future'),
+		);
+	});
+
+	test('registers loaders for compatible and legacy packages on disk', async () => {
+		writePackage('n8n-nodes-explicit', { n8nNodesApiVersion: N8N_NODES_API_VERSION });
+		writePackage('n8n-nodes-legacy');
+
+		const originalSettings = Container.get(InstanceSettings);
+		mockInstance(InstanceSettings, { nodesDownloadDir: downloadDir });
+
+		const loaders = await Container.get(CommunityPackagesModule).nodeLoaders();
+
+		Container.set(InstanceSettings, originalSettings);
+
+		expect(loaders.map((loader) => loader.packageName).sort()).toEqual([
+			'n8n-nodes-explicit',
+			'n8n-nodes-legacy',
+		]);
 	});
 });

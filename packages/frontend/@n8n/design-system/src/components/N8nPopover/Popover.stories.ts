@@ -62,10 +62,10 @@ const Template: StoryFn = (args) => ({
 		N8nInput,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
-					<N8nButton type="primary">Open Form</N8nButton>
+					<N8nButton>Open Form</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 12px; padding: var(--spacing--sm);">
@@ -82,8 +82,8 @@ const Template: StoryFn = (args) => ({
 							type="email"
 						/>
 						<div style="display: flex; gap: 8px; margin-top: 8px;">
-							<N8nButton size="small" type="primary">Save</N8nButton>
-							<N8nButton size="small" type="secondary" @click="close">Cancel</N8nButton>
+							<N8nButton size="small">Save</N8nButton>
+							<N8nButton size="small" @click="close">Cancel</N8nButton>
 						</div>
 					</div>
 				</template>
@@ -92,9 +92,8 @@ const Template: StoryFn = (args) => ({
 	`,
 });
 
-export const SimpleExample = Template.bind({});
-SimpleExample.args = {};
-SimpleExample.storyName = 'With Form Inputs';
+export const Default = Template.bind({});
+Default.args = {};
 
 const ScrollableTemplate: StoryFn = (args) => ({
 	setup() {
@@ -106,10 +105,10 @@ const ScrollableTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 50px;">
+		<div>
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
-					<N8nButton type="primary">Open Scrollable Menu</N8nButton>
+					<N8nButton>Open Scrollable Menu</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 8px; padding: var(--spacing--sm);">
@@ -189,7 +188,7 @@ const AlignmentVariantsTemplate: StoryFn = (args) => ({
 		N8nButton,
 	},
 	template: `
-		<div style="padding: 80px; display: flex; flex-direction: column; gap: 16px; align-items: flex-start;">
+		<div style="display: flex; flex-direction: column; gap: 16px; align-items: flex-start">
 			<div v-for="side in sides" :key="side" style="display: flex; align-items: center; gap: 12px;">
 				<div style="width: 56px; text-transform: capitalize; font-size: 12px; color: var(--color--text--tint-1);">
 					{{ side }}
@@ -204,7 +203,7 @@ const AlignmentVariantsTemplate: StoryFn = (args) => ({
 						:align="align"
 					>
 						<template #trigger>
-							<N8nButton type="primary">{{ align }}</N8nButton>
+							<N8nButton>{{ align }}</N8nButton>
 						</template>
 						<template #content>
 							<div style="padding: var(--spacing--sm); min-width: 160px; text-transform: capitalize;">

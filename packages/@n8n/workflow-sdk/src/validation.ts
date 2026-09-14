@@ -8,6 +8,17 @@ export {
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
+	type IssueSeverity,
+	isInformationalIssue,
+	partitionValidationIssues,
+	validateWorkflowBuilder,
+	buildUncheckedNotes,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation/index';
 
-export { validateNodeConfig, type SchemaValidationResult } from './validation/schema-validator';
+export {
+	validateNodeConfig,
+	type SchemaValidationResult,
+} from './validation/node-parameter-schema/schema-validator';

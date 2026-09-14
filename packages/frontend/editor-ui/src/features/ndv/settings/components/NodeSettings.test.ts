@@ -14,6 +14,7 @@ import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgent
 import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -110,16 +111,26 @@ interface RenderOptions {
 	nodeType?: INodeTypeDescription;
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
+	canvasOnly?: boolean;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
-	const { runData, node = httpNode, nodeType = httpNodeType, provide = {}, stubs = {} } = options;
+	const {
+		runData,
+		node = httpNode,
+		nodeType = httpNodeType,
+		provide = {},
+		stubs = {},
+		canvasOnly = false,
+	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes: [node], connections: {} });
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = { ...settingsStore.settings, canvasOnly };
 	workflowsStore.setWorkflowId(workflow.id);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
@@ -157,12 +168,10 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		global: {
 			provide,
 			stubs: {
-				NodeTitle: true,
 				NodeExecuteButton: true,
 				NodeCredentials: true,
 				NodeWebhooks: true,
 				NodeActionsList: true,
-				NodeSettingsHeader: true,
 				NodeSettingsInvalidNodeWarning: true,
 				ExperimentalEmbeddedNdvHeader: true,
 				NDVSubConnections: true,
@@ -172,7 +181,6 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 				QuickConnectBanner: true,
 				CommunityNodeFooter: true,
 				CommunityNodeUpdateInfo: true,
-				AgentNdvBuilderBanner: true,
 				AgentNdvReferencedSummary: true,
 				AgentNdvInlineControls: true,
 				...stubs,
@@ -234,6 +242,21 @@ describe('NodeSettings', () => {
 		});
 	});
 
+	describe('feature request link', () => {
+		it('renders the feature request link by default', async () => {
+			const { findByTestId } = renderNodeSettings({});
+
+			expect(await findByTestId('node-feature-request')).toBeInTheDocument();
+		});
+
+		it('hides the feature request link when in canvas-only mode', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({ canvasOnly: true });
+
+			await findByTestId('tab-params');
+			expect(queryByTestId('node-feature-request')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('AI Agent node surfaces', () => {
 		// The children are stubbed, so NodeSettings only checks the facade's
 		// presence + mode. A missing `mode` resolves to referenced.
@@ -241,7 +264,7 @@ describe('NodeSettings', () => {
 			[NdvAgentConfigKey as symbol]: {} as UseNdvAgentConfigReturn,
 		};
 
-		it('renders the banner and referenced summary on the Parameters tab', async () => {
+		it('renders the referenced summary on the Parameters tab', async () => {
 			const { container } = renderNodeSettings({
 				node: agentNode,
 				nodeType: agentNodeType,
@@ -249,7 +272,6 @@ describe('NodeSettings', () => {
 			});
 
 			await waitFor(() => {
-				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
 				expect(container.querySelector('agent-ndv-referenced-summary-stub')).not.toBeNull();
 			});
 			expect(container.querySelector('agent-ndv-inline-controls-stub')).toBeNull();
@@ -265,7 +287,6 @@ describe('NodeSettings', () => {
 			});
 
 			await waitFor(() => {
-				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
 				expect(container.querySelector('agent-ndv-inline-controls-stub')).not.toBeNull();
 			});
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
@@ -278,7 +299,6 @@ describe('NodeSettings', () => {
 			});
 
 			await findByTestId('tab-params');
-			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
 		});
 
@@ -286,57 +306,7 @@ describe('NodeSettings', () => {
 			const { container, findByTestId } = renderNodeSettings({ provide });
 
 			await findByTestId('tab-params');
-			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
-		});
-
-		it('re-points an inline node at a saved agent in a single referenced-mode commit', async () => {
-			const inlineAgentNode = createTestNode({
-				name: 'Message an Agent',
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-				parameters: { agentSource: 'inline' },
-			});
-			const agentReference = {
-				__rl: true,
-				mode: 'list',
-				value: 'agent-9',
-				cachedResultName: 'Drafted',
-			};
-
-			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
-				node: inlineAgentNode,
-				nodeType: agentNodeType,
-				provide: {
-					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
-				},
-				stubs: {
-					// The banner's draft-creation flow ends in this emit; the stub only
-					// needs to fire it with the new saved agent's resource locator.
-					AgentNdvBuilderBanner: {
-						template:
-							'<button data-test-id="set-agent-reference-stub" @click="$emit(\'set-agent-reference\', agentReference)" />',
-						emits: ['set-agent-reference'],
-						data: () => ({ agentReference }),
-					},
-				},
-			});
-
-			await fireEvent.click(await findByTestId('set-agent-reference-stub'));
-
-			// One commit flips the node back to referenced mode AND points it at the
-			// new agent — a two-commit sequence would leave an inconsistent
-			// intermediate state (e.g. inline mode with a dangling reference).
-			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledTimes(1);
-			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: inlineAgentNode.name,
-					value: expect.objectContaining({
-						agentId: agentReference,
-						agentSource: 'referenced',
-					}),
-				}),
-			);
 		});
 	});
 });

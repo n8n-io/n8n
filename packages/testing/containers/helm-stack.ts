@@ -12,6 +12,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 
+import postgresVersions from './postgres-versions.json';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
@@ -236,9 +237,13 @@ function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 		'Add Bitnami repo',
 	);
 
-	log('Deploying PostgreSQL...');
+	// By digest because the Bitnami catalog only publishes `postgresql:latest`,
+	// which the chart defaults to.
+	const { chartVersion, imageDigest } = postgresVersions.helm;
+
+	log(`Deploying PostgreSQL (chart ${chartVersion})...`);
 	execOnHost(
-		'helm install postgresql bitnami/postgresql --set auth.username=n8n --set auth.password=n8n-test-password --set auth.database=n8n --set primary.resources.requests.cpu=100m --set primary.resources.requests.memory=256Mi --set primary.resources.limits.cpu=500m --set primary.resources.limits.memory=512Mi --wait --timeout 3m',
+		`helm install postgresql bitnami/postgresql --version ${chartVersion} --set image.digest=${imageDigest} --set auth.username=n8n --set auth.password=n8n-test-password --set auth.database=n8n --set primary.resources.requests.cpu=100m --set primary.resources.requests.memory=256Mi --set primary.resources.limits.cpu=500m --set primary.resources.limits.memory=512Mi --wait --timeout 3m`,
 		env,
 		'Deploy PostgreSQL',
 	);

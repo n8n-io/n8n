@@ -62,7 +62,7 @@ describe('useEventSourceClient', () => {
 		expect(MockEventSource.getInstance().close).toHaveBeenCalled();
 	});
 
-	test('should handle connection loss', () => {
+	test('should reconnect after a terminal connection error', () => {
 		const { connect, isConnected } = useEventSourceClient({
 			url: 'http://test.com',
 			onMessage: vi.fn(),
@@ -81,6 +81,21 @@ describe('useEventSourceClient', () => {
 		// Advance timer to trigger reconnect
 		vi.advanceTimersByTime(1_000);
 		expect(MockEventSource.init).toHaveBeenCalledTimes(2);
+	});
+
+	test('should let EventSource retry a transient connection error', () => {
+		const { connect, isConnected } = useEventSourceClient({
+			url: 'http://test.com',
+			onMessage: vi.fn(),
+		});
+		connect();
+		MockEventSource.getInstance().simulateConnectionOpen();
+
+		MockEventSource.getInstance().simulateTransientError();
+
+		expect(isConnected.value).toBe(false);
+		vi.advanceTimersByTime(1_000);
+		expect(MockEventSource.init).toHaveBeenCalledTimes(1);
 	});
 
 	test('sendMessage should be a noop function', () => {

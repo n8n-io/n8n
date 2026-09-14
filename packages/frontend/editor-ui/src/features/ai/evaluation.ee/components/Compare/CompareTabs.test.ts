@@ -41,6 +41,7 @@ const caseRows: CompareCaseRow[] = [
 			{
 				versionIndex: 0,
 				testCaseId: 'a',
+				executionId: null,
 				inputs: {},
 				outputs: { output: 'x' },
 				metrics: { helpfulness: 0.7 },
@@ -49,6 +50,7 @@ const caseRows: CompareCaseRow[] = [
 			{
 				versionIndex: 1,
 				testCaseId: 'b',
+				executionId: null,
 				inputs: {},
 				outputs: { output: 'y' },
 				metrics: { helpfulness: 0.9 },

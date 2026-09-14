@@ -108,6 +108,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					buildOutcome,
 					workflow: json,
 					availableCredentials,
+					fallbackModelConfig: context.modelId,
 				});
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {

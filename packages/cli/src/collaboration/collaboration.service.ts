@@ -7,13 +7,6 @@ import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowSettings, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CollaborationState } from '@/collaboration/collaboration.state';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { Push } from '@/push';
-import type { OnPushMessage } from '@/push/types';
-import { AccessService } from '@/services/access.service';
-
 import { parseWorkflowMessage } from './collaboration.message';
 import type {
 	WorkflowClosedMessage,
@@ -22,6 +15,13 @@ import type {
 	WriteAccessReleaseRequestedMessage,
 	WriteAccessHeartbeatMessage,
 } from './collaboration.message';
+
+import { CollaborationState } from '@/collaboration/collaboration.state';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
+import { Push } from '@/push';
+import type { OnPushMessage } from '@/push/types';
+import { AccessService } from '@/services/access.service';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
 
@@ -317,6 +317,26 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers({ type: 'workflowSettingsUpdated', data: msgData }, userIds);
+	}
+
+	/**
+	 * Invalidation-only: clients refetch the authoritative status. Delivery is best-effort and
+	 * per-instance; cross-main viewers heal via focus/reconnect refetch. Review lifecycle write
+	 * paths must call this after their transactions commit.
+	 */
+	async broadcastWorkflowReviewStateChanged(workflowId: Workflow['id']) {
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
+
+		if (userIds.length === 0) {
+			return;
+		}
+
+		const msgData: PushPayload<'workflowReviewStateChanged'> = {
+			workflowId,
+		};
+
+		this.push.sendToUsers({ type: 'workflowReviewStateChanged', data: msgData }, userIds);
 	}
 
 	/**

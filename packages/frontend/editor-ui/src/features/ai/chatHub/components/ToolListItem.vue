@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -11,6 +11,11 @@ const props = defineProps<{
 	configuredNode?: INode;
 	enabled?: boolean;
 	mode: 'configured' | 'available';
+	/** Uninstalled verified community preview — show Install CTA + verified badge. */
+	communityPreview?: boolean;
+	installing?: boolean;
+	/** Non-admin cannot install; button is disabled with contact-admin tooltip. */
+	installDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +40,16 @@ const displayName = computed(() => {
 	}
 	return props.nodeType.displayName;
 });
+
+const actionLabel = computed(() =>
+	props.communityPreview
+		? i18n.baseText('communityNodeDetails.install')
+		: i18n.baseText('chatHub.toolsManager.add'),
+);
+
+const actionDisabled = computed(
+	() => props.communityPreview && (props.installing || props.installDisabled),
+);
 </script>
 
 <template>
@@ -44,9 +59,24 @@ const displayName = computed(() => {
 		</div>
 
 		<div :class="$style.content">
-			<N8nText :class="$style.name" size="small" color="text-dark">
-				{{ displayName }}
-			</N8nText>
+			<div :class="$style.nameRow">
+				<N8nText :class="$style.name" size="small" color="text-dark">
+					{{ displayName }}
+				</N8nText>
+				<N8nTooltip
+					v-if="communityPreview"
+					:content="i18n.baseText('communityNodeInfo.approved')"
+					placement="top"
+				>
+					<N8nIcon
+						icon="shield-half"
+						:size="12"
+						:class="$style.verifiedIcon"
+						:aria-label="i18n.baseText('communityNodeInfo.approved')"
+						data-test-id="chat-tool-verified-badge"
+					/>
+				</N8nTooltip>
+			</div>
 			<N8nText :class="$style.description" size="small" color="text-light">
 				{{ description }}
 			</N8nText>
@@ -90,8 +120,35 @@ const displayName = computed(() => {
 			</template>
 
 			<template v-else>
-				<N8nButton variant="subtle" size="small" icon="plus" @click="emit('add')">
-					{{ i18n.baseText('chatHub.toolsManager.add') }}
+				<N8nTooltip
+					v-if="communityPreview && installDisabled && !installing"
+					:content="i18n.baseText('communityNodeInfo.contact.admin')"
+					placement="top"
+				>
+					<span>
+						<N8nButton
+							variant="subtle"
+							size="small"
+							icon="plus"
+							:loading="installing"
+							:disabled="true"
+							data-test-id="chat-tool-install-button"
+						>
+							{{ actionLabel }}
+						</N8nButton>
+					</span>
+				</N8nTooltip>
+				<N8nButton
+					v-else
+					variant="subtle"
+					size="small"
+					icon="plus"
+					:loading="installing"
+					:disabled="actionDisabled"
+					:data-test-id="communityPreview ? 'chat-tool-install-button' : 'chat-tool-add-button'"
+					@click="emit('add')"
+				>
+					{{ actionLabel }}
 				</N8nButton>
 			</template>
 		</div>
@@ -133,6 +190,19 @@ const displayName = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+}
+
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.verifiedIcon {
+	flex-shrink: 0;
+	vertical-align: middle;
+	color: var(--color--success);
 }
 
 .name {

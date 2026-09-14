@@ -4,8 +4,54 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 	seededTurnCounters,
+	savedWorkflowsFromEvents,
+	lastSavedWorkflowIdFromEvents,
 } from '../outcome/event-parser';
 import type { CapturedEvent, ConversationMetrics, TranscriptTurn } from '../types';
+
+describe('saved workflow names', () => {
+	function saved(id: string, workflowName?: string, success = true): CapturedEvent {
+		return {
+			timestamp: 0,
+			type: 'tool-result',
+			data: {
+				payload: {
+					toolName: 'build-workflow',
+					result: { success, workflowId: id, workflowName },
+				},
+			},
+		};
+	}
+
+	it.each([undefined, '', ' '])('preserves the last name when a later save has name %s', (name) => {
+		const events = [saved('a', 'Contact log'), saved('b', 'Helper'), saved('a', name)];
+		expect(savedWorkflowsFromEvents(events)).toEqual([
+			{ id: 'a', name: 'Contact log' },
+			{ id: 'b', name: 'Helper' },
+			{ id: 'a', name: 'Contact log' },
+		]);
+		expect(lastSavedWorkflowIdFromEvents(events)).toBe('a');
+	});
+
+	it('updates names only after successful saves and falls back to IDs for unknown names', () => {
+		expect(
+			savedWorkflowsFromEvents([
+				saved('a'),
+				saved('a', 'Original'),
+				saved('a', 'Rejected', false),
+				saved('a'),
+				saved('a', 'Renamed'),
+				saved('a'),
+			]),
+		).toEqual([
+			{ id: 'a', name: 'a' },
+			{ id: 'a', name: 'Original' },
+			{ id: 'a', name: 'Original' },
+			{ id: 'a', name: 'Renamed' },
+			{ id: 'a', name: 'Renamed' },
+		]);
+	});
+});
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -317,7 +363,7 @@ describe('extractOutcomeFromEvents', () => {
 				data: {
 					type: 'agent-spawned',
 					agentId: 'agent-1',
-					payload: { agentId: 'agent-1', role: 'builder', parentId: 'root' },
+					payload: { agentId: 'agent-1', role: 'agent-builder', parentId: 'root' },
 				},
 			},
 			{
@@ -333,7 +379,7 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.agentActivities).toHaveLength(1);
-		expect(result.agentActivities[0].role).toBe('builder');
+		expect(result.agentActivities[0].role).toBe('agent-builder');
 		expect(result.agentActivities[0].status).toBe('completed');
 	});
 
@@ -344,7 +390,12 @@ describe('extractOutcomeFromEvents', () => {
 			data: {
 				type: 'agent-spawned',
 				agentId,
-				payload: { agentId, role: 'agent-builder', parentId: 'root', ...(targetResource ? { targetResource } : {}) },
+				payload: {
+					agentId,
+					role: 'agent-builder',
+					parentId: 'root',
+					...(targetResource ? { targetResource } : {}),
+				},
 			},
 		});
 		const call = (
@@ -367,7 +418,7 @@ describe('extractOutcomeFromEvents', () => {
 			// eval-config create → ref is the owning workflow id from the args.
 			call('tc-2', 'eval-config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
 			resultEvent('tc-2', { config: { id: 'cfg-1', workflowId: 'wf-1' } }),
-			// A spawn whose targetResource is a workflow (e.g. eval-setup) contributes no agent ref.
+			// A spawn whose targetResource is a workflow contributes no agent ref.
 			spawn('a2', { type: 'workflow', id: 'wf-2' }),
 			// A spawn with no targetResource contributes nothing.
 			spawn('a3'),
@@ -827,7 +878,7 @@ describe('seededTurnCounters', () => {
 		const [counter] = seededTurnCounters([
 			seededTurn([
 				{ kind: 'agent-text', text: 'hello' },
-				{ kind: 'setup-wizard', completedNodes: [], skippedNodes: [] },
+				{ kind: 'setup-wizard', completedNodes: [], nodesStillNeedingSetup: [] },
 			]),
 		]);
 		expect(counter.toolCallCount).toBe(1); // setup-wizard is a tool call; agent-text is not

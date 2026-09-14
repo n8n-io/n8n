@@ -5,12 +5,16 @@ import {
 	SUB_AGENT_TASK_DIFFICULTIES,
 } from './delegate-sub-agent-tool';
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
+import {
+	buildTodosInputSchema,
+	buildTodosOutputSchema,
+	todosEchoHandler,
+	todoStatusSchema,
+} from './todos-core';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';
-
-const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
 
 const todoDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 
@@ -38,38 +42,6 @@ function buildTodoItemSchema(delegateToolName: string) {
 			`Task difficulty: "low", "medium", or "high". Use the same value when delegating this task with ${delegateToolName}.`,
 		),
 		delegateHint: todoDelegateHintSchema,
-	});
-}
-
-type TodoItemSchema = ReturnType<typeof buildTodoItemSchema>;
-
-function buildWriteTodosInputSchema(todoItemSchema: TodoItemSchema) {
-	return z
-		.object({
-			todos: z
-				.array(todoItemSchema)
-				.describe('Full task list for the current run. Replaces any previous list.'),
-		})
-		.superRefine((value, ctx) => {
-			const seen = new Set<string>();
-			for (const [index, todo] of value.todos.entries()) {
-				if (seen.has(todo.id)) {
-					ctx.addIssue({
-						code: 'custom',
-						message: `Duplicate todo id "${todo.id}". Each task must have a unique id.`,
-						path: ['todos', index, 'id'],
-					});
-				}
-				seen.add(todo.id);
-			}
-		});
-}
-
-function buildWriteTodosOutputSchema(todoItemSchema: TodoItemSchema) {
-	return z.object({
-		status: z.literal('ok'),
-		todoCount: z.number(),
-		todos: z.array(todoItemSchema),
 	});
 }
 
@@ -112,8 +84,8 @@ export interface CreateWriteTodosToolOptions {
 }
 
 /**
- * Build the planner-only `write_todos` tool — lets a parent agent maintain a
- * structured task list for complex work without auto-dispatching sub-agents.
+ * Build the delegation-aware `write_todos` tool — lets a parent agent maintain
+ * a structured task list and mark tasks for sub-agent delegation.
  */
 export function createWriteTodosTool(options: CreateWriteTodosToolOptions = {}): BuiltTool {
 	const delegateToolName = options.delegateToolName ?? DELEGATE_SUB_AGENT_TOOL_NAME;
@@ -122,17 +94,9 @@ export function createWriteTodosTool(options: CreateWriteTodosToolOptions = {}):
 	const tool = new Tool(WRITE_TODOS_TOOL_NAME)
 		.description(buildWriteTodosDescription(delegateToolName))
 		.systemInstruction(buildWriteTodosSystemInstruction(delegateToolName))
-		.input(buildWriteTodosInputSchema(todoItemSchema))
-		.output(buildWriteTodosOutputSchema(todoItemSchema))
-		.handler(async (input) => {
-			const todos = [...input.todos];
-
-			return await Promise.resolve({
-				status: 'ok' as const,
-				todoCount: todos.length,
-				todos,
-			});
-		})
+		.input(buildTodosInputSchema(todoItemSchema))
+		.output(buildTodosOutputSchema(todoItemSchema))
+		.handler(todosEchoHandler)
 		.build();
 
 	return withSdkOwnedBuiltInMetadata(tool);

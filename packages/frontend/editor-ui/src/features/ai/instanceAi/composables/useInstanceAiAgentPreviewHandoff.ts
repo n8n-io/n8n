@@ -1,4 +1,5 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
@@ -6,20 +7,23 @@ import {
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
 
-interface AgentPreviewHandoffParams {
+export interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
 	threadId: string;
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
+	initialDraft?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
 	const telemetry = useTelemetry();
 	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-	const { openThreadWithContext } = useInstanceAiHandoff();
+	const { openAgentArtifactThread } = useInstanceAiHandoff();
 
+	/** Resolves true when the assistant thread actually opened. */
 	async function sendPreviewSessionToInstanceAi({
 		projectId,
 		agentId,
@@ -27,26 +31,44 @@ export function useInstanceAiAgentPreviewHandoff() {
 		agentName,
 		agentIcon,
 		sessionTitle,
-	}: AgentPreviewHandoffParams): Promise<void> {
-		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
+		executionId,
+		initialDraft,
+	}: AgentPreviewHandoffParams): Promise<boolean> {
+		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return false;
 
-		const opened = await openThreadWithContext(
-			projectId,
-			buildInstanceAiAgentPreviewHandoffContext({
-				agentId,
-				threadId,
-				agentName,
-				agentIcon,
-				sessionTitle,
-			}),
-			{ newTab: true },
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId,
+			threadId,
+			agentName,
+			agentIcon,
+			sessionTitle,
+			executionId,
+		});
+		const opened = await openAgentArtifactThread(
+			{
+				type: 'agent',
+				id: agentId,
+				projectId,
+				...(agentName ? { name: agentName } : {}),
+			},
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId, previewThreadId: threadId },
+			},
+			{
+				context,
+				...(initialDraft ? { initialDraft } : {}),
+			},
 		);
-		if (!opened) return;
+		if (!opened) return false;
 
-		telemetry.track('Instance AI opened from agent preview', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
 			agent_id: agentId,
 			preview_thread_id: threadId,
+			...(executionId ? { preview_execution_id: executionId } : {}),
 		});
+		return true;
 	}
 
 	return { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi };

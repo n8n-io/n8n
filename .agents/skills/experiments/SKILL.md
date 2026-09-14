@@ -20,4 +20,4 @@ Start with the relevant mode in [reference.md](reference.md):
 - `Review` for auditing experiment changes.
 - `Retire` for cleaning up completed or abandoned experiments.
 
-When experiment work touches Vue components or user-facing copy, also follow `n8n:design-system` and `n8n:content-design`.
+When experiment work touches Vue components or user-facing copy, also follow `n8n:ui-design` and `n8n:content-design`.

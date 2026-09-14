@@ -8,7 +8,7 @@ import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, randomString } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -40,7 +40,9 @@ vi.mock('ldapts', async () => {
 	ClientMock.prototype.startTLS = vi.fn();
 	ClientMock.prototype.search = vi.fn();
 
-	return { Client: ClientMock };
+	class ResultCodeError extends Error {}
+
+	return { Client: ClientMock, ResultCodeError };
 });
 
 vi.mock('../helpers.ee', async () => ({
@@ -317,7 +319,17 @@ describe('LdapService', () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
-				'LDAP cannot be enabled if SSO in enabled',
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: saml)',
+			);
+		});
+
+		it('should throw the same error if login is enabled and the current authentication method is neither saml/oidc nor email/ldap', async () => {
+			config.set('userManagement.authenticationMethod', 'token-exchange');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: token-exchange)',
 			);
 		});
 
@@ -343,6 +355,34 @@ describe('LdapService', () => {
 			expect(cipherMock.encryptV2).toHaveBeenCalledTimes(1);
 			expect(cipherMock.encryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
+		});
+
+		it('reuses the stored admin password when the redacted placeholder is submitted', async () => {
+			// loadConfig reads the stored (encrypted) password and deciphers it
+			mockSettingsRespositoryFindOneByOrFail({
+				...ldapConfig,
+				bindingAdminPassword: 'storedEncrypted',
+			});
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('realStoredPassword'),
+				encryptV2: vi.fn().mockResolvedValue('reEncrypted'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const newConfig = { ...ldapConfig, bindingAdminPassword: CREDENTIAL_BLANKING_VALUE };
+			await ldapService.updateConfig(newConfig);
+
+			// The placeholder must never be encrypted and stored as the real password.
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith('realStoredPassword');
 		});
 
 		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {

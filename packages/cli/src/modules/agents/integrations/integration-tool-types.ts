@@ -21,6 +21,14 @@ export type IntegrationMessageTarget =
 			threadId?: string;
 	  };
 
+/**
+ * Whether the latest inbound message expects a reply. Only when 'optional'
+ * may the agent end the turn silently via the `do_not_respond` action.
+ * Each platform decides which messages are 'optional' (see
+ * `AgentChatIntegration.getReplyExpectation`).
+ */
+export type ReplyExpectation = 'required' | 'optional';
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -29,6 +37,10 @@ export interface IntegrationMessageContext {
 	interactingUserId?: string;
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
+	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
+	replyTarget?: IntegrationMessageTarget;
+	replyMessageId?: string;
 	updatedAt: string;
 }
 
@@ -78,8 +90,10 @@ export type IntegrationContextQuery =
 
 export type IntegrationAction =
 	| 'respond'
+	| 'do_not_respond'
 	| 'send_dm'
 	| 'send_channel_message'
+	| 'edit_message'
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
@@ -117,6 +131,15 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
+	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	unbindSession(derivedThreadId: string): Promise<void>;
+	clearSessionBindings(originThreadId: string): Promise<void>;
+}
+
+export interface SessionBinding {
+	threadId: string;
+	resourceId: string;
 }
 
 export interface IntegrationContextQueryExecutor {

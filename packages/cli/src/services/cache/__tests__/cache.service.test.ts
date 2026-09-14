@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import random from 'lodash/random';
-import { sleep } from 'n8n-workflow';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
@@ -138,6 +138,15 @@ for (const backend of ['memory', 'redis'] as const) {
 			});
 		});
 
+		describe('take', () => {
+			test('should return a value only once', async () => {
+				await cacheService.set('single-use', 'value');
+
+				await expect(cacheService.take('single-use')).resolves.toBe('value');
+				await expect(cacheService.take('single-use')).resolves.toBeUndefined();
+			});
+		});
+
 		describe('get', () => {
 			const createRefreshFn = () => vi.fn(async () => await Promise.resolve('refreshValue'));
 
@@ -200,6 +209,15 @@ for (const backend of ['memory', 'redis'] as const) {
 					});
 				});
 			}
+		});
+
+		describe('take', () => {
+			test('should return a value only once', async () => {
+				await cacheService.set('single-use', 'value');
+
+				await expect(cacheService.take('single-use')).resolves.toBe('value');
+				await expect(cacheService.take('single-use')).resolves.toBeUndefined();
+			});
 		});
 
 		describe('delete', () => {

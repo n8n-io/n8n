@@ -36,8 +36,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { NodeCreatorTag } from '@n8n/design-system';
 import {
+	AGENT_NODE_TYPE,
+	AGENT_TOOL_NODE_TYPE,
 	DISCORD_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
@@ -53,9 +57,9 @@ import {
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
@@ -64,6 +68,7 @@ vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
 	useAiGatewayStore: vi.fn(() => ({
 		isNodeSupported: vi.fn(() => false),
 		isNodeTypeVersionSupported: vi.fn(() => true),
+		creditsLabelKey: 'generic.freeCredits',
 	})),
 }));
 
@@ -71,6 +76,13 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeVersions: vi.fn(() => []),
 		communityNodeType: vi.fn(() => null),
+	})),
+}));
+
+const inlineAgentsFlag = { enabled: false };
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isFeatureEnabled: vi.fn(() => inlineAgentsFlag.enabled),
 	})),
 }));
 
@@ -779,6 +791,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1, 1.1]),
@@ -788,6 +801,32 @@ describe('NodeCreator - utils', () => {
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
+		});
+
+		it('should show n8n credits badge after a top-up or depleted allowance', () => {
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
+		});
+
+		it('should retag credits when the wallet arrives after the first finalize', () => {
+			const items = [makeGatewayNode()];
+			const [first] = finalizeItems(items) as NodeCreateElement[];
+			expect(first.properties.tag).toEqual({ text: 'Free credits', pill: true });
+
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [second] = finalizeItems(items) as NodeCreateElement[];
+			expect(second.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -817,6 +856,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -832,6 +872,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -849,6 +890,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -860,6 +902,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === 'llamaParsePlatform'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -874,6 +917,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === '@vendor/n8n-nodes-connect.connect'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -890,6 +934,74 @@ describe('NodeCreator - utils', () => {
 
 			const [result] = finalizeItems([makeGatewayNode('unknownTool')]) as NodeCreateElement[];
 			expect(result.properties.tag).toBeUndefined();
+		});
+	});
+
+	describe('finalizeItems - agent badges', () => {
+		const makeAgentNode = (name: string, tag?: NodeCreatorTag) =>
+			mockNodeCreateElement(undefined, { name, ...(tag ? { tag } : {}) });
+
+		const mockSettingsStore = (agentsModuleActive: boolean) => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isModuleActive: vi.fn((name: string) => agentsModuleActive && name === 'agents'),
+			} as unknown as ReturnType<typeof useSettingsStore>);
+		};
+
+		it.each([AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE])(
+			'should not show a transition badge on %s',
+			(nodeType) => {
+				mockSettingsStore(true);
+				const [result] = finalizeItems([makeAgentNode(nodeType)]) as NodeCreateElement[];
+				expect(result.properties.tag).toBeUndefined();
+			},
+		);
+
+		it('should show Preview badge on the AI Agent V2 node', () => {
+			mockSettingsStore(true);
+			const [result] = finalizeItems([
+				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Preview' });
+		});
+
+		it('should keep a pre-set tag', () => {
+			mockSettingsStore(true);
+			const presetTag = { text: 'Custom' };
+			const [result] = finalizeItems([
+				makeAgentNode(AGENT_NODE_TYPE, presetTag),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual(presetTag);
+		});
+	});
+
+	describe('finalizeItems - inline agents node name', () => {
+		const makeMessageAnAgentNode = () =>
+			mockNodeCreateElement(undefined, {
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+				displayName: 'Message an Agent',
+			});
+
+		beforeEach(() => {
+			inlineAgentsFlag.enabled = false;
+		});
+
+		it('keeps the shipped Message an Agent name when the flag is off', () => {
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('Message an Agent');
+		});
+
+		it('renames the item to AI Agent V2 when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent V2');
+		});
+
+		it('does not rename other nodes when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([
+				mockNodeCreateElement(undefined, { name: AGENT_NODE_TYPE, displayName: 'AI Agent' }),
+			]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent');
 		});
 	});
 
@@ -932,6 +1044,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1]),
@@ -1155,6 +1268,48 @@ describe('NodeCreator - utils', () => {
 
 			const keys = searchNodes('serp', [plain, action]).map((item) => item.key);
 			expect(keys[0]).toBe('plainNode');
+		});
+	});
+
+	describe('searchNodes - Message an Agent boost', () => {
+		const makeNode = (name: string, displayName: string, alias: string[] = []) =>
+			mockNodeCreateElement(
+				{ key: name },
+				{ name, displayName, codex: { categories: [], subcategories: {}, alias } },
+			);
+
+		beforeEach(() => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAskAiEnabled: true,
+				isAiGatewayEnabled: false,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+		});
+
+		// The legacy node is an exact "AI Agent" match and carries the popularity factor,
+		// so the AI Agent V2 successor ranking first proves the boost outweighs both.
+		const legacyAgent = makeNode(AGENT_NODE_TYPE, 'AI Agent', ['agent']);
+		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent V2', [
+			'agent',
+			'ai',
+			'sdk',
+			'Message an Agent',
+		]);
+		const popularity = { [AGENT_NODE_TYPE]: 98.2 };
+
+		it('should rank the AI Agent V2 node above the legacy agent despite its popularity', () => {
+			const result = searchNodes('AI Agent', [legacyAgent, messageAnAgent], { popularity });
+			expect(result.map((item) => item.key)).toEqual([MESSAGE_AN_AGENT_NODE_TYPE, AGENT_NODE_TYPE]);
+		});
+
+		it('should keep the legacy agent first without the boosted node in the result set', () => {
+			const result = searchNodes('AI Agent', [legacyAgent], { popularity });
+			expect(result.map((item) => item.key)).toEqual([AGENT_NODE_TYPE]);
+		});
+
+		it('should not hijack an exact match on another node', () => {
+			const sheets = makeNode('googleSheets', 'Google Sheets');
+			const result = searchNodes('Google Sheets', [messageAnAgent, sheets], { popularity });
+			expect(result[0].key).toBe('googleSheets');
 		});
 	});
 

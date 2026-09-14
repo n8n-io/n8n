@@ -29,10 +29,17 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 		role: GLOBAL_OWNER_ROLE,
 	};
-	const user = mock<User>(userData);
+	// Assign user data onto an empty mock instead of passing it as overrides:
+	// mock(overrides) deep-wraps nested objects in proxies and mutates shared
+	// constants like GLOBAL_OWNER_ROLE in place, stacking a proxy layer per
+	// call and slowing the whole file down.
+	const mockUser = (overrides: Partial<User> = {}) =>
+		Object.assign(mock<User>(), userData, overrides);
+	const user = mockUser();
 	const globalConfig = mock<GlobalConfig>({
 		auth: { cookie: { secure: true, samesite: 'lax' } },
 		userManagement: { jwtSecret: 'random-secret' },
+		endpoints: { rest: 'rest' },
 	});
 	const jwtService = new JwtService(mock(), globalConfig);
 	const urlService = mock<UrlService>();
@@ -435,7 +442,7 @@ describe('AuthService', () => {
 			});
 
 			it('should clear cookie if MFA required and not used', async () => {
-				const userWithMfa = mock<User>({ ...userData, mfaEnabled: true, mfaSecret: 'secret' });
+				const userWithMfa = mockUser({ mfaEnabled: true, mfaSecret: 'secret' });
 
 				const req = mockReq();
 				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
@@ -679,6 +686,34 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it('should skip browserId check for GET requests matching a RegExp skip entry', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			// Project-scoped routes resolve :projectId into req.baseUrl, so the
+			// skip entry must be a pattern rather than an exact string.
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other project-scoped agent routes', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/chat/:threadId/messages' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+		});
+
 		it('should not skip browserId check for POST requests on skip endpoints', async () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
@@ -712,7 +747,7 @@ describe('AuthService', () => {
 				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
+			userRepository.findOne.mockResolvedValueOnce(data && Object.assign(mock<User>(), data));
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
@@ -811,7 +846,7 @@ describe('AuthService', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
 			const url = authService.generatePasswordResetUrl(user);
 			expect(url).toEqual(
-				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1fQ.rg90I7MKjc_KC77mov59XYAeRc-CoW9ka4mt1dCfrnk&mfaEnabled=false',
+				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1LCJhdWQiOiJuOG4tcGFzc3dvcmQtcmVzZXQifQ.zUcoIN2QmmzU0EAT0QfEosnud3Q-bDf_tmIuXCZU_CE&mfaEnabled=false',
 			);
 		});
 	});
@@ -909,6 +944,60 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('email change token', () => {
+		const newEmail = 'new@example.com';
+		const tokenFromUrl = (url: string) => new URL(url).searchParams.get('token') ?? '';
+
+		beforeEach(() => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
+		});
+
+		it('should resolve a token it generated', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			userRepository.findOne.mockResolvedValueOnce(user);
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toEqual({ user, newEmail });
+		});
+
+		it('should not resolve a password-reset token as an email change token', async () => {
+			const passwordResetToken = authService.generatePasswordResetToken(user);
+			userRepository.findOne.mockResolvedValueOnce(user);
+
+			const resolved = await authService.resolveEmailChangeToken(passwordResetToken);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve after the current email changed', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			const userWithChangedEmail = Object.assign(mockUser(), {
+				email: 'already-changed@example.com',
+			});
+			userRepository.findOne.mockResolvedValueOnce(userWithChangedEmail);
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve an expired token', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			vi.setSystemTime(new Date(now.getTime() + 21 * 60 * 1000));
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve a malformed token', async () => {
+			const resolved = await authService.resolveEmailChangeToken('not-a-jwt');
+
+			expect(resolved).toBeUndefined();
+		});
+	});
+
 	describe('invalidateToken', () => {
 		const req = mock<AuthenticatedRequest>({
 			cookies: {
@@ -923,6 +1012,19 @@ describe('AuthService', () => {
 				token: validToken,
 				expiresAt: new Date('2024-02-08T01:23:45.000Z'),
 			});
+		});
+	});
+
+	describe('clearCookie', () => {
+		it('should clear the session cookie', () => {
+			const res = mock<Response>();
+
+			authService.clearCookie(res);
+
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			// The form page cookies are not clearable from here: their names embed the
+			// workflow/execution they were minted for, unknown to this response.
+			expect(res.clearCookie).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1036,7 +1138,7 @@ describe('AuthService', () => {
 		it('should throw when user is disabled', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+			userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
 		});
@@ -1171,7 +1273,7 @@ describe('AuthService', () => {
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1181,9 +1283,7 @@ describe('AuthService', () => {
 			it('should throw when user password has changed', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, password: 'newPasswordHash' }),
-				);
+				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1409,7 +1509,7 @@ describe('AuthService', () => {
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});
@@ -1417,9 +1517,7 @@ describe('AuthService', () => {
 			it('should throw when user password hash changed', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, password: 'newPasswordHash' }),
-				);
+				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});

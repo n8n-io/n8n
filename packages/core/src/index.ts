@@ -3,6 +3,7 @@ import * as NodeExecuteFunctions from './node-execute-functions';
 export * from './binary-data';
 export * from './constants';
 export { StorageConfig } from './storage.config';
+export { FsByteStoreService } from './fs-byte-store.service';
 export * from './credentials';
 export * from './data-deduplication-service';
 export * from './encryption';

@@ -116,8 +116,13 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 			const parsed = parseJudgeVerdict(text);
 
 			if (!parsed) {
+				// Same class as a timeout above: the judge never returned a verdict, so
+				// there is nothing to score. Without `errored` this counts as a real
+				// failure and reads as a defect in the workflow — the raw text is often
+				// a markdown analysis that AGREED with the workflow.
 				return {
 					pass: false,
+					errored: true,
 					comment: `Failed to parse LLM response. Raw (first 500 chars): ${text.slice(0, 500)}`,
 				};
 			}

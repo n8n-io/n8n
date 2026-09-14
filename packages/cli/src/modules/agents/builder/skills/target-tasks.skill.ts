@@ -7,9 +7,11 @@ export function targetTasksSkill(): RuntimeSkill {
 		id: 'agent-builder-target-tasks',
 		name: 'Agent Builder Target Tasks',
 		description:
-			'Use when the user wants the target agent to run something on a recurring schedule (a "task"): a daily/weekly/hourly objective the agent carries out on its own with create_tasks. Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
+			'Use when the user wants to create or change something the target agent runs on a recurring schedule (a "task"). Not for one-off requests, chat/event triggers, or config/tool/skill/model edits.',
 		recommendedTools: [
 			'create_tasks',
+			'list_tasks',
+			'update_task',
 			'ask_questions',
 			'read_config',
 			'patch_config',
@@ -17,6 +19,8 @@ export function targetTasksSkill(): RuntimeSkill {
 		],
 		allowedTools: [
 			'create_tasks',
+			'list_tasks',
+			'update_task',
 			'ask_questions',
 			'read_config',
 			'patch_config',
@@ -30,17 +34,20 @@ export function targetTasksSkill(): RuntimeSkill {
 		instructions: `\
 ## Purpose
 
-Use this to create one or more recurring scheduled tasks for the target agent
-with \`create_tasks\`. A task = a name + an objective (what the agent does each
-run) + a cron schedule, stored as a \`{ type: "task", id, enabled }\` ref in the
-agent config (\`config.tasks\`) plus a saved body. The config is the source of
-truth.
+Use this to create recurring scheduled tasks with \`create_tasks\`, discover
+them with \`list_tasks\`, and edit their saved bodies with \`update_task\`.
+A task = a name + an objective (what the agent does each run) + a cron schedule,
+stored as a \`{ type: "task", id, enabled }\` ref in the agent config
+(\`config.tasks\`) plus a saved body. The config is the source of truth for
+membership and enabled state.
 
 ## Use when
 
 - The user wants the agent to do something automatically on a schedule
   ("every morning", "each Monday", "hourly", etc.).
 - There is a clear, repeatable objective the agent can carry out unattended.
+- The user wants to rename, reschedule, or change the objective of an existing
+  scheduled task.
 
 ## Don't use when
 
@@ -53,41 +60,60 @@ ${TASK_OBJECTIVE_FORMAT_RULE}
 
 ${TASK_OBJECTIVE_TEMPLATE}
 
-## Ask first (required)
+## Fill the template with assumptions (required)
 
-Do NOT call \`create_tasks\` for a task until BOTH of these are true for it:
+Do NOT call \`create_tasks\`, or replace an objective with \`update_task\`, until
+BOTH of these are true for it:
 
 1. You can fill EVERY section of the objective template above with concrete,
-   specific content — no placeholders, no guesses, nothing left to "refine
-   later". The objective is the ONLY message the agent receives when the task
-   fires, so it must stand on its own and must not rely on the current chat.
-2. The schedule is concrete — how often and at what time it should run.
+   specific content — no placeholders, nothing left to "refine
+   later". The objective must stand on its own from the current builder chat,
+   but the target Agent Instructions still apply and its configured Skills
+   remain available. Do not repeat universal rules or copy reusable procedures.
+   When the user did not specify a detail, derive it from the goal as a stated
+   assumption and list it in your summary.
+2. The schedule is concrete — how often and at what time it should run. If
+   the user did not specify a cadence, pick a sensible default and state it
+   as an assumption.
 
-If any section would be empty or a guess, ask the user clarifying questions (use
-\`ask_questions\`, batching multiple questions into one call — discrete options for
-choices, or \`type: "text"\` for open-ended) until you can complete the whole
-template and pin down the cadence for every task. Never create a placeholder or
+Use \`ask_questions\` only when even a reasonable assumption is impossible —
+never during an initial build: mark the task \`blocked\` instead, per the
+Initial Build rules in your system prompt. Never create a placeholder or
 "refine-it-later" task.
 
 ## Workflow
 
-- Gather everything the template needs (every objective section + the cadence)
-  for every task, asking clarifying questions until no section is a guess.
-- Write each objective using the exact template above, filling each section.
-- Make sure the agent already has every tool the steps need (an integration,
-  node/workflow tool, or web search). If something is missing, add it to the agent
-  config first — a task can only use tools the agent already has.
+- For an existing task, call \`list_tasks\` to resolve its current id and body.
+  Then call \`update_task\` with only the fields the user asked to change. Never
+  rewrite the objective for a name-only or schedule-only edit.
+- For each new or replacement objective, fill every template section with
+  run-specific details. Do not duplicate Agent Instructions or Skill bodies;
+  name a configured capability only when it helps route the work.
+- Make sure the agent already has every capability the steps need (an
+  integration, node/workflow tool, or web search). Configured chat integrations
+  automatically generate their context and action tools in scheduled runs too.
+  If the task sends through a configured platform and the integration lists the
+  needed action (for example \`send_dm\`), use that action; do not add a
+  same-platform node, MCP, or workflow tool. Add a tool only when the exact
+  operation is not supplied by an existing integration.
 - Translate each cadence into a valid 5-field cron expression (e.g. daily 09:00
   -> "0 9 * * *"; weekdays 08:30 -> "30 8 * * 1-5"; hourly -> "0 * * * *").
+  Keep this cadence out of the objective; only a data lookback window belongs
+  in its Context.
+- Set \`timezone\` to the IANA zone whenever the user names a timezone or a
+  location ("9am in Tokyo" -> "Asia/Tokyo"); omit it to run on the instance
+  timezone.
 - Call \`create_tasks\` once with a \`tasks\` array containing every task you
   currently know how to write — do not spread multiple fully-specified tasks
   across separate calls. A single task is still a one-item array.
 - On \`{ ok: false, errors }\` (for example an invalid cron), fix the input and
-  retry the whole batch — an invalid task rejects every task in the call.
+  retry the failed operation. An invalid task rejects the whole
+  \`create_tasks\` batch.
 
 ## Rules
 
-- Every objective must be self-contained and unambiguous.
+- Every objective must be self-contained from the builder chat and unambiguous,
+  without repeating universal instructions or reusable skill procedures.
 - Use a short, descriptive name per task.
 - One task = one objective + one schedule. Include multiple tasks in the same
   \`create_tasks\` call for multiple recurring jobs.
@@ -99,11 +125,20 @@ template and pin down the cadence for every task. Never create a placeholder or
   only start running once the agent is (re)published via \`publish_agent\`; tell
   the user this when relevant, and call \`publish_agent\` when they ask to publish
   or make the agent live.
+- \`update_task\` preserves the task id and config ref. Its draft changes affect
+  scheduled runs after the agent is (re)published.
 - To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
   \`enabled: false\`, or drop the ref). Changes take effect on the next
   \`publish_agent\`.
-- \`create_tasks\` does NOT add tools — if a task needs a tool the agent lacks,
-  add it to the config yourself first.
+- \`create_tasks\` does not add config tools. This does not mean a scheduled
+  message needs a messaging node: configured integrations supply their generated
+  action tools at runtime even when the task has no inbound conversation.
+- A proactive or scheduled send through a connected chat platform is not a
+  separate backend integration. Use the channel's \`send_dm\` or
+  \`send_channel_message\` action when available.
+- Never claim that a task requires a same-platform messaging node solely because
+  it starts without an inbound conversation. If such a redundant tool already
+  exists and the integration covers its action, remove it.
 - Do not call \`create_tasks\` once per task when several are ready; batch them
   into one call so the whole set is stored in a single round trip.`,
 	};

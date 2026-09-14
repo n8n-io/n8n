@@ -15,6 +15,10 @@ export class BreakingChangesModule implements ModuleInterface {
 		const { BreakingChangeService } = await import('./breaking-changes.service.js');
 		Container.get(BreakingChangeService).registerRules();
 
+		// Register the node migrations keyed by rule id
+		const { MigrationRegistry } = await import('./breaking-changes.migration-registry.service.js');
+		Container.get(MigrationRegistry).registerAll();
+
 		await import('./breaking-changes.controller.js');
 	}
 }

@@ -37,9 +37,8 @@ export const BUILDER_CHECKPOINT_UNAVAILABLE_CODE = 'BUILDER_CHECKPOINT_UNAVAILAB
 
 /**
  * Agent-builder tools whose success should set `configUpdated` on `build-agent`
- * (refresh the agent artifact preview) and emit "Builder modified agent"
- * telemetry. Includes config writers and publish lifecycle tools. Values must
- * match `BUILDER_TOOLS` in
+ * (refresh the agent artifact preview). Includes config writers and publish
+ * lifecycle tools. Values must match `BUILDER_TOOLS` in
  * `packages/cli/src/modules/agents/builder/builder-tool-names.ts`.
  */
 export const CONFIG_MUTATION_TOOL_NAMES = [
@@ -102,6 +101,9 @@ export const credentialSuspendPayloadSchema = z.object({
 	severity: z.literal('info'),
 	credentialRequests: z.array(credentialRequestSchema).min(1),
 	credentialFlow: z.object({ stage: z.literal('generic') }),
+	// Scopes the FE credential picker to the builder's project — without it the
+	// picker falls back to the user's personal project.
+	projectId: z.string().optional(),
 });
 export type CredentialSuspendPayload = z.infer<typeof credentialSuspendPayloadSchema>;
 

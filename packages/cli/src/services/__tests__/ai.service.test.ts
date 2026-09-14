@@ -272,6 +272,22 @@ describe('AiService', () => {
 			expect(client.generateAiCreditsCredentials).toHaveBeenCalledWith(user);
 		});
 
+		it('should not retry timed-out credential generation', async () => {
+			vi.useFakeTimers();
+			client.generateAiCreditsCredentials.mockImplementation(
+				async () => await new Promise<never>(() => {}),
+			);
+
+			const promise = aiService.createFreeAiCredits(user);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not retry definite client errors', async () => {
 			const alreadyClaimed = Object.assign(new Error('Already claimed'), { statusCode: 400 });
 			client.generateAiCreditsCredentials.mockRejectedValue(alreadyClaimed);

@@ -1,5 +1,4 @@
-import type { N8nLocale, N8nLocaleTranslateFn } from '@n8n/design-system/types';
-
+import type { N8nLocale, N8nLocaleTranslateFn } from '../types';
 import createFormatTemplate from './format';
 import defaultLang from '../locale/lang/en';
 

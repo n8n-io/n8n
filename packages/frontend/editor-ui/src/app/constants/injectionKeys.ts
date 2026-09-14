@@ -10,19 +10,13 @@ import type { TelemetryContext } from '@/app/types/telemetry';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import type { INodeUpdatePropertiesInformation } from '@/Interface';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-/**
- * @deprecated Import from `@n8n/composables/injectionKeys` instead. The key's
- * canonical definition moved into `@n8n/composables` (folded in with its
- * consumer `useClipboard`) during the CAT-3686 migration; this re-export keeps
- * `@/app/constants` consumers working until they are retired. (N8N-31)
- */
-export { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
@@ -48,6 +42,22 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/** Whether resource mappers may reconcile cached schemas without an explicit user action. */
+export const ResourceMapperSchemaAutoRefreshKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperSchemaAutoRefresh',
+);
+/** Whether an empty resource mapper may load once its dependencies first become available. */
+export const ResourceMapperRefreshEmptySchemaKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperRefreshEmptySchema',
+);
+/**
+ * Optional callback for hosts that keep a local node draft (e.g. tool-config
+ * modals). ParameterInput invokes this when CredentialsSelect picks a
+ * credential, so the draft stays in sync with the document store write.
+ */
+export const ToolConfigCredentialSelectedKey: InjectionKey<
+	(update: INodeUpdatePropertiesInformation) => void
+> = Symbol('ToolConfigCredentialSelected');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
  * AI editor capabilities a host can toggle per editor, using enablement

@@ -21,6 +21,7 @@
 		{ "path": "../@n8n/decorators/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
 		{ "path": "../@n8n/backend-network/tsconfig.build.json" },
+		{ "path": "../@n8n/blob-storage/tsconfig.build.json" },
 		{ "path": "../@n8n/config/tsconfig.build.json" },
 		{ "path": "../@n8n/constants/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },

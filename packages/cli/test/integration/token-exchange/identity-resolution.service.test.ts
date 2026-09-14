@@ -14,6 +14,7 @@ import {
 	qualifiedProviderId,
 } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
+import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 
 import { createOwner, createUser } from '../shared/db/users';
@@ -63,6 +64,11 @@ const baseClaims: ExternalTokenClaims = {
 /** The issuer-scoped provider id a token-exchange identity is stored under. */
 const providerIdFor = (sub: string, iss: string = baseClaims.iss) => qualifiedProviderId(iss, sub);
 
+/** Key context passed to resolve(); requireVerifiedEmail defaults off for these tests. */
+function ctx(requireVerifiedEmail = false) {
+	return { kid: 'kid-1', issuer: baseClaims.iss, requireVerifiedEmail };
+}
+
 describe('IdentityResolutionService (integration)', () => {
 	describe('Path 1 — known sub', () => {
 		it('should resolve user by auth identity and return role with scopes', async () => {
@@ -71,11 +77,15 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-known'), 'token-exchange'),
 			);
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-known',
-				email: 'known@example.com',
-			});
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-known',
+					email: 'known@example.com',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 			expect(result.email).toBe('known@example.com');
@@ -94,13 +104,17 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-unchanged'), 'token-exchange'),
 			);
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-unchanged',
-				email: 'unchanged@example.com',
-				given_name: 'Same',
-				family_name: 'Name',
-			});
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-unchanged',
+					email: 'unchanged@example.com',
+					given_name: 'Same',
+					family_name: 'Name',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 
@@ -120,12 +134,12 @@ describe('IdentityResolutionService (integration)', () => {
 			};
 
 			// First call: email fallback creates the identity link
-			const result = await service.resolve(claims);
+			const result = await service.resolve(claims, undefined, ctx());
 			expect(result.id).toBe(user.id);
 
 			// Second call: should now resolve via Path 1 (known sub),
 			// proving the identity was correctly linked to the user
-			const secondResult = await service.resolve(claims);
+			const secondResult = await service.resolve(claims, undefined, ctx());
 			expect(secondResult.id).toBe(user.id);
 			expect(secondResult.role).toBeDefined();
 			expect(secondResult.role.slug).toBe('global:member');
@@ -141,7 +155,8 @@ describe('IdentityResolutionService (integration)', () => {
 					email: 'fallback-role@example.com',
 					role: 'global:admin',
 				},
-				['global:admin'],
+				['global:member', 'global:admin'],
+				ctx(),
 			);
 
 			expect(result.id).toBe(user.id);
@@ -157,11 +172,15 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should match existing user when email claim has different casing', async () => {
 			const user = await createUser({ email: 'casetest@example.com' });
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-case',
-				email: 'CaseTest@Example.COM',
-			});
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-case',
+					email: 'CaseTest@Example.COM',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 
@@ -183,7 +202,7 @@ describe('IdentityResolutionService (integration)', () => {
 				family_name: 'Tee',
 			};
 
-			const result = await service.resolve(claims);
+			const result = await service.resolve(claims, undefined, ctx());
 
 			expect(result.email).toBe('jit@example.com');
 			expect(result.firstName).toBe('Jay');
@@ -225,6 +244,7 @@ describe('IdentityResolutionService (integration)', () => {
 				service.resolve(
 					{ ...baseClaims, sub: 'ext-rejected', email: 'rejected@example.com', role },
 					allowedRoles,
+					ctx(),
 				),
 			).rejects.toThrow(errorMsg);
 		});
@@ -232,19 +252,23 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should throw when email is missing and no identity match exists', async () => {
 			const claimsWithoutEmail = { ...baseClaims, sub: 'ext-no-email', email: undefined };
 
-			await expect(service.resolve(claimsWithoutEmail)).rejects.toThrow(
+			await expect(service.resolve(claimsWithoutEmail, undefined, ctx())).rejects.toThrow(
 				'Email claim is required for user provisioning',
 			);
 		});
 
 		it('should throw on unknown role claim for new user', async () => {
 			await expect(
-				service.resolve({
-					...baseClaims,
-					sub: 'ext-jit-unknown-role',
-					email: 'jit-unknown-role@example.com',
-					role: 'global:nonsense',
-				}),
+				service.resolve(
+					{
+						...baseClaims,
+						sub: 'ext-jit-unknown-role',
+						email: 'jit-unknown-role@example.com',
+						role: 'global:nonsense',
+					},
+					undefined,
+					ctx(),
+				),
 			).rejects.toThrow("Unrecognized role 'global:nonsense' cannot be assigned to new user");
 		});
 
@@ -257,6 +281,7 @@ describe('IdentityResolutionService (integration)', () => {
 					role: 'global:admin',
 				},
 				['global:admin', 'global:member'],
+				ctx(),
 			);
 
 			expect(result.role.slug).toBe('global:admin');
@@ -270,33 +295,31 @@ describe('IdentityResolutionService (integration)', () => {
 	});
 
 	describe('profile and role sync', () => {
-		it('should allow global:owner user to log in without changing their role', async () => {
+		it('rejects a global:owner user by default (excludeOwner)', async () => {
+			Container.get(TokenExchangeConfig).excludeOwner = true;
 			const owner = await createOwner();
 			await authIdentityRepository.save(
 				AuthIdentity.create(owner, providerIdFor('ext-owner'), 'token-exchange'),
 			);
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-owner',
-				email: owner.email,
-				role: 'global:owner',
-			});
-
-			expect(result.id).toBe(owner.id);
-			expect(result.role.slug).toBe('global:owner');
-
-			const dbUser = await userRepository.findOne({
-				where: { id: owner.id },
-				relations: ['role'],
-			});
-			expect(dbUser!.role.slug).toBe('global:owner');
+			await expect(
+				service.resolve(
+					{
+						...baseClaims,
+						sub: 'ext-owner',
+						email: owner.email,
+						role: 'global:owner',
+					},
+					undefined,
+					ctx(),
+				),
+			).rejects.toThrow('User role is not allowed for this key');
 		});
 
 		it('should throw when claimed role is not in allowedRoles for known identity', async () => {
-			const admin = await createUser({ email: 'admin-keep@example.com', role: GLOBAL_ADMIN_ROLE });
+			const user = await createUser({ email: 'admin-keep@example.com' });
 			await authIdentityRepository.save(
-				AuthIdentity.create(admin, providerIdFor('ext-admin-keep'), 'token-exchange'),
+				AuthIdentity.create(user, providerIdFor('ext-admin-keep'), 'token-exchange'),
 			);
 
 			await expect(
@@ -308,12 +331,13 @@ describe('IdentityResolutionService (integration)', () => {
 						role: 'global:admin',
 					},
 					['global:member'],
+					ctx(),
 				),
 			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
 		});
 
 		it('should throw when claimed role is not in allowedRoles for email fallback', async () => {
-			await createUser({ email: 'admin-email@example.com', role: GLOBAL_ADMIN_ROLE });
+			await createUser({ email: 'admin-email@example.com' });
 
 			await expect(
 				service.resolve(
@@ -324,6 +348,7 @@ describe('IdentityResolutionService (integration)', () => {
 						role: 'global:admin',
 					},
 					['global:member'],
+					ctx(),
 				),
 			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
 
@@ -340,12 +365,16 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-unknown-role'), 'token-exchange'),
 			);
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-unknown-role',
-				email: 'unknown-role@example.com',
-				role: 'global:nonsense',
-			});
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-unknown-role',
+					email: 'unknown-role@example.com',
+					role: 'global:nonsense',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 			expect(result.role.slug).toBe('global:member');
@@ -357,12 +386,16 @@ describe('IdentityResolutionService (integration)', () => {
 				AuthIdentity.create(user, providerIdFor('ext-escalation'), 'token-exchange'),
 			);
 
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-escalation',
-				email: 'escalation@example.com',
-				role: 'global:owner',
-			});
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-escalation',
+					email: 'escalation@example.com',
+					role: 'global:owner',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 			expect(result.role.slug).toBe('global:member');
@@ -385,6 +418,7 @@ describe('IdentityResolutionService (integration)', () => {
 					role: 'global:member',
 				},
 				['global:admin', 'global:member'],
+				ctx(),
 			);
 
 			expect(result.id).toBe(admin.id);
@@ -416,7 +450,8 @@ describe('IdentityResolutionService (integration)', () => {
 					family_name: 'Last',
 					role: 'global:admin',
 				},
-				['global:admin'],
+				['global:member', 'global:admin'],
+				ctx(),
 			);
 
 			expect(result.firstName).toBe('New');
@@ -440,18 +475,26 @@ describe('IdentityResolutionService (integration)', () => {
 			const issuerA = 'https://issuer-a.example.com';
 			const issuerB = 'https://issuer-b.example.com';
 
-			const userA = await service.resolve({
-				...baseClaims,
-				sub: sharedSub,
-				iss: issuerA,
-				email: 'a@example.com',
-			});
-			const userB = await service.resolve({
-				...baseClaims,
-				sub: sharedSub,
-				iss: issuerB,
-				email: 'b@example.com',
-			});
+			const userA = await service.resolve(
+				{
+					...baseClaims,
+					sub: sharedSub,
+					iss: issuerA,
+					email: 'a@example.com',
+				},
+				undefined,
+				ctx(),
+			);
+			const userB = await service.resolve(
+				{
+					...baseClaims,
+					sub: sharedSub,
+					iss: issuerB,
+					email: 'b@example.com',
+				},
+				undefined,
+				ctx(),
+			);
 
 			expect(userB.id).not.toBe(userA.id);
 
@@ -470,7 +513,11 @@ describe('IdentityResolutionService (integration)', () => {
 			const emitSpy = vi.spyOn(eventService, 'emit');
 
 			// No email claim — the rebind must work for email-less integrations.
-			const result = await service.resolve({ ...baseClaims, sub: 'legacy-sub', email: undefined });
+			const result = await service.resolve(
+				{ ...baseClaims, sub: 'legacy-sub', email: undefined },
+				undefined,
+				ctx(),
+			);
 
 			expect(result.id).toBe(user.id);
 
@@ -493,7 +540,11 @@ describe('IdentityResolutionService (integration)', () => {
 
 			// An email-less token sharing a subject cannot be safely attributed to one issuer.
 			await expect(
-				service.resolve({ ...baseClaims, sub: 'legacy-multi-sub', email: undefined }),
+				service.resolve(
+					{ ...baseClaims, sub: 'legacy-multi-sub', email: undefined },
+					undefined,
+					ctx(),
+				),
 			).rejects.toThrow('Email claim is required for user provisioning');
 
 			const identities = await authIdentityRepository.findBy({ providerType: 'token-exchange' });

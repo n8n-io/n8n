@@ -16,6 +16,7 @@ const alias = {
 	'@test': path.resolve(__dirname, 'test/shared'),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/backend-test-utils': path.resolve(__dirname, '../@n8n/backend-test-utils/src/index.ts'),
+	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),
 };
 
@@ -37,7 +38,12 @@ export const baseConfig = mergeConfig(createVitestConfigWithDecorators(), {
 		// would leak that state across files.
 		pool: 'forks',
 		globalSetup: ['./test/global-setup.ts'],
-		setupFiles: ['./test/setup-test-folder.ts', './test/setup-mocks.ts', './test/extend-expect.ts'],
+		setupFiles: [
+			'./test/setup-test-folder.ts',
+			'./test/setup-mocks.ts',
+			'./test/setup-encryption-key.ts',
+			'./test/extend-expect.ts',
+		],
 		// Vitest's default exclude does not cover dist; compiled test files left in
 		// dist would otherwise be collected and fail as CJS.
 		exclude: [...configDefaults.exclude, '**/dist/**'],

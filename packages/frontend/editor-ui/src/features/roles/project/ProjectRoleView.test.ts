@@ -3,8 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor, type RenderResult } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
@@ -14,7 +14,7 @@ const mockShowMessage = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockBack = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,

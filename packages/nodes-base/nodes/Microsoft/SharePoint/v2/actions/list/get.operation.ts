@@ -2,8 +2,9 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { listRLC, siteRLC, untilSiteSelected } from '../../descriptions';
-import { LIST_SIMPLIFY_SELECT, resolveSiteId } from '../../helpers/utils';
+import { LIST_SIMPLIFY_SELECT } from '../../helpers/utils';
+import { listRLC, untilSiteSelected } from '../../list';
+import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -38,21 +39,21 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	siteIdCache?: Map<string, string>,
+): Promise<IDataObject | IDataObject[]> {
 	// https://learn.microsoft.com/en-us/graph/api/list-get — {list-id} accepts the list ID or title
-	const siteId = await resolveSiteId.call(this, i);
+	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 	const listIdOrTitle = (
 		this.getNodeParameter('list', i, '', { extractValue: true }) as string
 	).trim();
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
 	// An empty segment would change the request shape (e.g. /lists/ returns the
-	// whole collection) — fail loudly instead.
-	if (siteId === '') {
-		throw new NodeOperationError(this.getNode(), "The 'Site' parameter is empty", {
-			description: 'Set the site ID or URL and try again.',
-		});
-	}
+	// whole collection) — fail loudly instead. The site field validates itself
+	// inside resolveSiteId.
 	if (listIdOrTitle === '') {
 		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
 			description: 'Set the list ID or title and try again.',

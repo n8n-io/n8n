@@ -37,8 +37,14 @@ function formatTimelineEvent(event: TimelineEvent): string {
 	if (event.type === 'text') {
 		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
 	}
+	if (event.type === 'reasoning') {
+		return `Reasoning: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+	}
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
+	}
+	if (event.type === 'hitl-response') {
+		return `Human response: ${stringifyToolValue(event.response)}`;
 	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [

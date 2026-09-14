@@ -8,6 +8,9 @@
                 "properties": {
                     "email": {
                         "type": "string"
+                    },
+                    "validEmailDate": {
+                        "type": "string"
                     }
                 }
             }
@@ -96,6 +99,9 @@
         "locationId": {
             "type": "string"
         },
+        "phone": {
+            "type": "string"
+        },
         "source": {
             "type": "string"
         },
@@ -109,5 +115,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

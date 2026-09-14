@@ -22,7 +22,7 @@ export type PreviewVisualizationType =
 	| 'slack-message'
 	| 'salesforce-card'
 	| 'invoice-spreadsheet'
-	| 'whatsapp-chat';
+	| 'agent-builder';
 
 export interface PreviewVisualization {
 	type: PreviewVisualizationType;
@@ -51,5 +51,6 @@ export interface PreviewWorkflow {
 	connections: PreviewWorkflowConnection[];
 	inputVisualization?: PreviewVisualization;
 	outputVisualization?: PreviewVisualization | PreviewOutputVisualization[];
+	fullCanvasVisualization?: PreviewVisualization;
 	crmCycle?: CrmCycleConfig;
 }

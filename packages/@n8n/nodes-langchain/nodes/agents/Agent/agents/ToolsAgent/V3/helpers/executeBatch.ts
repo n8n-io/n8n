@@ -82,7 +82,7 @@ export async function executeBatch(
 
 		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse, model);
 
-		const { tools, prompt, options, outputParser } = itemContext;
+		const { tools, prompt, options, outputParser, steps } = itemContext;
 
 		// Create executors for primary and fallback models
 		const executor: AgentRunnableSequence = createAgentSequence(
@@ -93,6 +93,7 @@ export async function executeBatch(
 			outputParser,
 			memory,
 			fallbackModel,
+			options.forceToolCallOnFirstIteration === true && steps.length === 0,
 		);
 
 		// Run the agent with processed response
@@ -107,7 +108,9 @@ export async function executeBatch(
 	batchResults.forEach((result, index) => {
 		const itemIndex = startIndex + index;
 		if (result.status === 'rejected') {
-			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex);
+			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex, {
+				enrichNonParserErrors: true,
+			});
 			if (ctx.continueOnFail()) {
 				returnData.push({
 					json: { error: error.message },

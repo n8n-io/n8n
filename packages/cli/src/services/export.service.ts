@@ -1,7 +1,6 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
@@ -10,7 +9,7 @@ import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-uti
 import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 @Service()
 export class ExportService {

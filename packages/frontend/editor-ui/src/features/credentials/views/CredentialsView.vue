@@ -8,15 +8,14 @@ import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.ty
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -195,7 +194,8 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 const maybeCreateCredential = () => {
 	if (props.credentialId === 'create') {
 		if (projectPermissions.value.credential.create) {
-			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+			// Modal data persists across opens, so clear the instance-only preset.
+			uiStore.openModalWithData({ name: CREDENTIAL_SELECT_MODAL_KEY, data: {} });
 		} else {
 			void router.replace({ name: VIEWS.HOMEPAGE });
 		}
@@ -232,17 +232,14 @@ const initialize = async () => {
 	const isVarsEnabled =
 		useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
-	const isPersonalView =
-		!overview.isSharedSubPage &&
-		overview.isProjectsSubPage &&
-		route?.params?.projectId === projectsStore.personalProject?.id;
-
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials({
 			projectId: route?.params?.projectId as string | undefined,
 			includeScopes: true,
 			onlySharedWithMe: overview.isSharedSubPage,
-			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			// a credential shared with all users and projects belongs in every
+			// project list, the personal one included
+			includeGlobal: true,
 			externalSecretsStore: filters.value.externalSecretsStore,
 		}),
 		credentialsStore.fetchCredentialTypes(false),

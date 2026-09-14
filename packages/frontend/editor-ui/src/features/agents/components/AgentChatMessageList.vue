@@ -1,26 +1,35 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
+import {
+	getMessageThinkingSegments,
+	getThinkingDurationSec,
+} from '@/features/ai/shared/agentsChat/thinking';
 import type {
 	ChatMessage,
 	InteractivePayload,
 	ToolCall,
 } from '@/features/ai/shared/agentsChat/types';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -34,13 +43,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
 	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
 );
+
+function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	if (!executionId || failures.length === 0) return;
+	emit('sendToAssistant', { executionId, failures });
+}
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
@@ -129,6 +144,43 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
+
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === 'message' &&
+					group.message.role === 'user' &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
+
+function isThinkingActive(message: ChatMessage): boolean {
+	return (
+		message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+		message.status === CHAT_MESSAGE_STATUS.AWAITING_USER
+	);
+}
 
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === 'toolRun') {
@@ -266,18 +318,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
-
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
 // large enough that sub-pixel DOM growth during markdown rendering doesn't
@@ -321,24 +361,6 @@ function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
 }
 
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
-}
-
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
 // purpose: the watcher with `immediate: true` fires after setup / initial
 // render, and `onMounted` covers cases where the post-flush scroll measured an
@@ -376,33 +398,14 @@ watch(
 	() => {
 		const last = props.messages[props.messages.length - 1];
 		if (!last) return '';
-		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${
-			last.thinking ?? ''
-		}`;
+		const thinking = getMessageThinkingSegments(last)
+			.map((segment) => segment.content)
+			.join('');
+		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
 	},
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
@@ -410,17 +413,13 @@ onBeforeUnmount(() => {
 		<template v-for="group in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
-					<details v-if="group.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">
-							<N8nIcon icon="brain" :size="12" />
-							Thinking...
-						</summary>
-						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
-					</details>
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.executionId"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -455,6 +454,21 @@ onBeforeUnmount(() => {
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AiThinkingBlock
+						v-if="group.thinkingSegments.length"
+						:segments="group.thinkingSegments"
+						:active="group.active || group.awaitingInput"
+						:awaiting-input="group.awaitingInput"
+						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+						test-id="agent-chat-thinking-block"
+					>
+						<AiReasoningBlock
+							v-for="segment in group.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+							:streaming="group.active && segment.endTime === undefined"
+						/>
+					</AiThinkingBlock>
 					<div
 						v-if="shouldShowAssistantFooter(group.id)"
 						:class="[
@@ -469,10 +483,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
@@ -480,7 +491,8 @@ onBeforeUnmount(() => {
 						v-if="
 							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.finalMessage.content &&
-							!group.toolCalls.length
+							!group.toolCalls.length &&
+							!group.thinkingSegments.length
 						"
 						:class="$style.typingIndicator"
 					/>
@@ -491,17 +503,13 @@ onBeforeUnmount(() => {
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
 				<div :class="$style.content">
-					<details v-if="group.message.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">
-							<N8nIcon icon="brain" :size="12" />
-							Thinking...
-						</summary>
-						<div :class="$style.thinkingContent">{{ group.message.thinking }}</div>
-					</details>
 					<AgentChatToolSteps
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.message.executionId"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -518,8 +526,23 @@ onBeforeUnmount(() => {
 						</N8nText>
 					</template>
 
+					<AgentChatMessageAttachments
+						v-if="group.message.attachments?.length && projectId && agentId"
+						:attachments="group.message.attachments"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
-						v-if="group.message.role === 'user'"
+						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
@@ -545,6 +568,58 @@ onBeforeUnmount(() => {
 							</div>
 						</template>
 					</template>
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<AiThinkingBlock
+						v-if="group.thinkingSegments.length"
+						:segments="group.thinkingSegments"
+						:active="isThinkingActive(group.message)"
+						:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
+						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+						test-id="agent-chat-thinking-block"
+					>
+						<AiReasoningBlock
+							v-for="segment in group.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+							:streaming="
+								group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
+								segment.endTime === undefined
+							"
+						/>
+					</AiThinkingBlock>
 					<div
 						v-if="shouldShowAssistantFooter(group.id)"
 						:class="[
@@ -555,10 +630,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
@@ -571,7 +643,8 @@ onBeforeUnmount(() => {
 							group.message.role === 'assistant' &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
-							!group.message.toolCalls?.length
+							!group.message.toolCalls?.length &&
+							!getMessageThinkingSegments(group.message).length
 						"
 						:class="$style.typingIndicator"
 					/>
@@ -590,6 +663,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .messages {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
@@ -598,8 +672,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
-	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
 	&::-webkit-scrollbar {
 		display: none;
@@ -651,6 +727,28 @@ onBeforeUnmount(() => {
 	margin-bottom: var(--spacing--2xs);
 }
 
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
@@ -660,10 +758,14 @@ onBeforeUnmount(() => {
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--subtle);
+	background: var(--assistant--color--background--user-bubble);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {
@@ -686,31 +788,6 @@ onBeforeUnmount(() => {
 	> *:first-child > *:first-child {
 		margin-top: 0;
 	}
-}
-
-.thinkingBlock {
-	margin-bottom: var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-}
-
-.thinkingSummary {
-	cursor: pointer;
-	color: var(--text-color--subtler);
-	font-style: italic;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.thinkingContent {
-	margin: var(--spacing--4xs) 0 0;
-	white-space: pre-wrap;
-	font-family: inherit;
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
-	max-height: 150px;
-	overflow-y: auto;
-	scrollbar-width: none;
 }
 
 .typingIndicator {

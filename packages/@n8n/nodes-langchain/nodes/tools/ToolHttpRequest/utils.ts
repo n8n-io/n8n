@@ -13,9 +13,17 @@ import type {
 	ExecutionError,
 	NodeApiError,
 	ISupplyDataFunctions,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
+import {
+	assertCredentialAllowsUrl,
+	NodeConnectionTypes,
+	NodeOperationError,
+	jsonParse,
+} from 'n8n-workflow';
 import { z } from 'zod';
+
+import { logAiEvent, redactSecrets } from '@n8n/ai-utilities';
 
 import type {
 	ParameterInputType,
@@ -27,6 +35,24 @@ import type {
 } from './interfaces';
 import type { DynamicZodObject } from '../../../types/zod.types';
 
+// Enforce the credential's "Allowed HTTP Request Domains" restriction against the
+// request URL before the secret is attached, so a tool-controlled URL can't leak it.
+// The resulting allowlist is forwarded onto the options so the HTTP layer re-checks
+// every redirect hop too, not just the initial URL.
+const assertCredentialUrlAllowed = (
+	ctx: ISupplyDataFunctions,
+	credentials: ICredentialDataDecryptedObject | undefined,
+	options: IHttpRequestOptions,
+) => {
+	if (!credentials) return;
+	const allowedDomains = assertCredentialAllowsUrl({
+		node: ctx.getNode(),
+		credentialData: credentials,
+		url: options.url,
+	});
+	if (allowedDomains) options.allowedDomains = allowedDomains;
+};
+
 const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
@@ -35,6 +61,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
 
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, basicAuth, options);
 			options.auth = {
 				username: basicAuth.user as string,
 				password: basicAuth.password as string,
@@ -48,6 +75,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, headerAuth, options);
 			if (!options.headers) options.headers = {};
 			options.headers[headerAuth.name as string] = headerAuth.value;
 			return await ctx.helpers.httpRequest(options);
@@ -58,6 +86,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, queryAuth, options);
 			if (!options.qs) options.qs = {};
 			options.qs[queryAuth.name as string] = queryAuth.value;
 			return await ctx.helpers.httpRequest(options);
@@ -68,6 +97,7 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		const customAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, customAuth, options);
 			const auth = jsonParse<IRequestOptionsSimplified>((customAuth.json as string) || '{}', {
 				errorMessage: 'Invalid Custom Auth JSON',
 			});
@@ -84,14 +114,31 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
-	if (genericType === 'oAuth1Api') {
+	if (genericType === 'httpTemplatedCustomAuth') {
+		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, templatedAuth, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(
+				ctx,
+				'httpTemplatedCustomAuth',
+				options,
+			);
+		};
+	}
+
+	if (genericType === 'oAuth1Api') {
+		const oAuth1 = await ctx.getCredentials('oAuth1Api', itemIndex);
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, oAuth1, options);
 			return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', options);
 		};
 	}
 
 	if (genericType === 'oAuth2Api') {
+		const oAuth2 = await ctx.getCredentials('oAuth2Api', itemIndex);
 		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, oAuth2, options);
 			return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
@@ -106,8 +153,10 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 const predefinedCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: number) => {
 	const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
 	const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
+	const credentials = await ctx.getCredentials(predefinedType, itemIndex);
 
 	return async (options: IHttpRequestOptions) => {
+		assertCredentialUrlAllowed(ctx, credentials, options);
 		return await ctx.helpers.httpRequestWithAuthentication.call(
 			ctx,
 			predefinedType,
@@ -143,6 +192,57 @@ const defaultOptimizer = <T>(response: T) => {
 	}
 
 	return String(response);
+};
+
+/** Error payloads are appended to the tool output, so they must not flood the model's context. */
+const MAX_ERROR_BODY_LENGTH = 2000;
+
+type FailedRequest = {
+	error?: unknown;
+	response?: { status?: number; data?: unknown };
+	// A tool using a predefined credential goes through `httpRequestWithAuthentication`, which
+	// rejects with a `NodeApiError`. That has no `response`, and its `cause` is not retained, but
+	// it copies an object payload onto `context.data`.
+	context?: { data?: unknown };
+};
+
+/**
+ * Reads the status and payload a failed request came back with. The error is either the one the
+ * HTTP client rejected with, or a `NodeApiError` wrapping it. The current client reports the
+ * payload as `response.data`, the legacy one as `error`.
+ */
+const getFailedRequest = (error: unknown): { status?: number; body?: unknown } => {
+	for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
+		const failed = candidate as FailedRequest | undefined;
+		const body = failed?.response?.data ?? failed?.error ?? failed?.context?.data;
+		const status = failed?.response?.status;
+
+		if (body !== undefined || status !== undefined) {
+			return { status, body };
+		}
+	}
+
+	return {};
+};
+
+/**
+ * Turns an error payload into something safe to hand to the model: skips empty and binary bodies,
+ * and never throws, since this runs while we are already handling a failed request.
+ */
+const serializeErrorBody = (body: unknown): string | undefined => {
+	if (body === undefined || body === null || body === '' || isBinary(body)) {
+		return undefined;
+	}
+
+	let serialized: string;
+
+	try {
+		serialized = defaultOptimizer(body);
+	} catch {
+		return undefined;
+	}
+
+	return serialized.trim() ? redactSecrets(serialized) : undefined;
 };
 
 function isBinary(data: unknown) {
@@ -755,8 +855,21 @@ export const configureToolFunction = (
 			try {
 				fullResponse = await httpRequest(options);
 			} catch (error) {
-				const httpCode = (error as NodeApiError).httpCode;
-				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+				const { status, body } = getFailedRequest(error);
+				const httpCode = (error as NodeApiError).httpCode ?? status;
+				// Some clients fold the response body into the message, so it needs the same masking
+				// as the body itself — and the dedupe check below only holds if both sides are redacted.
+				const message = redactSecrets(error.message);
+				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${message}"`;
+
+				// The API's own error payload is what tells the model why the call was rejected. Without
+				// it the model only sees a status code and tends to invent a reason for the failure.
+				const errorBody = serializeErrorBody(body);
+				if (errorBody !== undefined && !message.includes(errorBody)) {
+					response += `\nResponse body: ${errorBody.slice(0, MAX_ERROR_BODY_LENGTH)}${
+						errorBody.length > MAX_ERROR_BODY_LENGTH ? '... [truncated]' : ''
+					}`;
+				}
 			}
 
 			if (!response) {
@@ -785,6 +898,8 @@ export const configureToolFunction = (
 		} else {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
+
+		logAiEvent(ctx, 'ai-tool-called', { query, response });
 
 		return response;
 	};

@@ -89,19 +89,30 @@ describe('AgentPublishController revert to version', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
 
 		const result = await controller.revertToVersion(
 			{
 				params: { projectId: 'project-1' },
 				user: { id: 'user-1' },
+				headers: { 'push-ref': 'push-ref-1' },
 			} as never,
 			undefined as never,
 			'agent-1',
 			{ versionId: 'v1' } as never,
 		);
 
-		expect(agentPublishService.revertToVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v1');
+		expect(agentPublishService.revertToVersion).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'v1',
+			{ id: 'user-1' },
+			'user',
+			'push-ref-1',
+		);
 		expect(result).toEqual(
 			expect.objectContaining({
 				id: 'agent-1',

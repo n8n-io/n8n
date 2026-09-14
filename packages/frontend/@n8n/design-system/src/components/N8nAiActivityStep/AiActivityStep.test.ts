@@ -46,6 +46,31 @@ describe('N8nAiActivityStep', () => {
 		expect(getByText('Something went wrong')).toBeInTheDocument();
 	});
 
+	it('should hide the inner error callout when hideErrorCallout is true', () => {
+		const { container } = render(AiActivityStep, {
+			props: {
+				label: 'Search nodes',
+				error: 'Something went wrong',
+				hideErrorCallout: true,
+			},
+			global: {
+				...global,
+				stubs: {
+					...global.stubs,
+					N8nCallout: {
+						template: '<div data-test-id="activity-error-callout"><slot /></div>',
+					},
+					N8nTooltip: { template: '<div><slot /></div>' },
+				},
+			},
+		});
+
+		expect(
+			container.querySelector('[data-test-id="activity-error-callout"]'),
+		).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-icon')).toBeInTheDocument();
+	});
+
 	it('should render slot content', () => {
 		const { getByText } = render(AiActivityStep, {
 			props: { label: 'Search nodes' },

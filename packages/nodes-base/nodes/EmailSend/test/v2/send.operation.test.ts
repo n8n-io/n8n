@@ -602,4 +602,47 @@ describe('Test EmailSendV2, send operation', () => {
 			);
 		});
 	});
+
+	describe('message parameters', () => {
+		it('should request normalized text and HTML values before sending', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('both')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					ccEmail: 'cc@example.com',
+					bccEmail: 'bcc@example.com',
+					replyTo: 'reply@example.com',
+				})
+				.mockReturnValueOnce(['plain text'])
+				.mockReturnValueOnce(['rich text']);
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					from: 'from@example.com',
+					to: 'to@example.com',
+					cc: 'cc@example.com',
+					bcc: 'bcc@example.com',
+					subject: 'Test Subject',
+					text: '["plain text"]',
+					html: '["rich text"]',
+					replyTo: 'reply@example.com',
+				}),
+			);
+		});
+	});
 });

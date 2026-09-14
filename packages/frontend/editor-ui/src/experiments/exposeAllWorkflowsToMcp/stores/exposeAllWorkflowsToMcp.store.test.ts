@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 const mockTrack = vi.fn();
 const featureFlagProperty = `$feature/${EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name}`;
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),
