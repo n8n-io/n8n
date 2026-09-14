@@ -14,12 +14,14 @@ import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
-import { VIEWS } from '../constants';
+import { NO_OP_NODE_TYPE, VIEWS } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import { useHistoryStore } from '@/app/stores/history.store';
+import { AddNodeCommand, AddNodeGroupCommand, BulkCommand } from '@/app/models/history';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
@@ -99,7 +101,11 @@ describe('NodeView', () => {
 					// The node creator is an async component that pulls in a large subtree. No
 					// test here needs it, and on a writable canvas the import can still be in
 					// flight when the environment tears down, which fails the whole run.
-					LazyNodeCreation: true,
+					LazyNodeCreation: defineComponent({
+						emits: ['addEmptyGroup'],
+						template:
+							'<button data-test-id="node-creation-stub-add-empty-group" @click="$emit(\'addEmptyGroup\', [320, 240])" />',
+					}),
 					// Same for the setup-credentials button: its import chain pulls in the
 					// ready-to-run stores and their bundled workflow fixtures.
 					LazySetupWorkflowCredentialsButton: true,
@@ -116,6 +122,54 @@ describe('NodeView', () => {
 			},
 		});
 	}
+
+	describe('Empty group creation', () => {
+		it('creates a marked NoOp and its group as one undoable action', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					properties: [
+						{
+							displayName: 'Empty Group Anchor',
+							name: 'emptyGroupAnchor',
+							type: 'hidden',
+							default: false,
+							validateType: undefined,
+						},
+					],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
+
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			const anchor = workflowDocumentStore.allNodes[0];
+			expect(anchor).toMatchObject({
+				type: NO_OP_NODE_TYPE,
+				position: [320, 240],
+				parameters: { emptyGroupAnchor: true },
+			});
+			expect(workflowDocumentStore.allGroups[0]).toMatchObject({
+				name: 'Group 1',
+				nodeIds: [anchor.id],
+			});
+
+			const historyStore = useHistoryStore();
+			expect(historyStore.undoStack).toHaveLength(1);
+			const undoable = historyStore.undoStack[0];
+			expect(undoable).toBeInstanceOf(BulkCommand);
+			if (!(undoable instanceof BulkCommand)) throw new Error('Expected a bulk history action');
+			expect(undoable.commands).toHaveLength(2);
+			expect(undoable.commands[0]).toBeInstanceOf(AddNodeCommand);
+			expect(undoable.commands[1]).toBeInstanceOf(AddNodeGroupCommand);
+		});
+	});
 
 	describe('Trigger node selection', () => {
 		const n0 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
