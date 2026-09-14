@@ -21,6 +21,7 @@ import type {
 	TaskList,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
+	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	McpTool,
@@ -1296,9 +1297,6 @@ export interface InstanceAiBuilderDelegate {
 
 // ── Computer Use state ──────────────────────────────────────────────────────
 
-/** How the user connects — one entry in the chat input's + menu each. */
-export type ComputerUseChannel = 'localComputer' | 'browser';
-
 export type ComputerUseChannelState =
 	/** Not offered to this user, so the + menu has no entry to name. */
 	| { status: 'unavailable' }
@@ -1311,6 +1309,8 @@ export type ComputerUseChannelState =
 	| { status: 'connected'; toolCategories: string[] };
 
 export type ComputerUseState = Record<ComputerUseChannel, ComputerUseChannelState>;
+
+export type { ComputerUseChannel };
 
 // ── Conversation history ─────────────────────────────────────────────────────
 

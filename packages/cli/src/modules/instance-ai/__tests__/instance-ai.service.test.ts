@@ -288,6 +288,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
+		setComputerUseChannels: Mock;
+		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -313,6 +315,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
+		setComputerUseChannels: vi.fn(),
+		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -748,6 +752,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -819,6 +824,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1066,6 +1072,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1134,6 +1141,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1408,6 +1416,29 @@ describe('InstanceAiService — run start', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+		const service = createStartRunService();
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'build',
+			undefined,
+			undefined,
+			'UTC',
+			undefined,
+			undefined,
+			undefined,
+			['browser'],
+		);
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
+			'browser',
+		]);
+
+		// A client that stops reporting clears it, so nothing is advertised.
+		service.startRun(fakeUser, 'thread-a', 'continue');
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('records each request mode for later internal runs', () => {
@@ -6005,6 +6036,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
+		getComputerUseChannels: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -6023,6 +6055,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
+		getComputerUseChannels: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 

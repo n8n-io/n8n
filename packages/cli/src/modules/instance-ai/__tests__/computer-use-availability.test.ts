@@ -6,26 +6,33 @@ const adminAllowsBoth = {
 	browserUseEnabledGlobally: true,
 };
 
-const rolloutsOff = {
-	computerUseExperimentEnabled: false,
-	browserUseExperimentEnabled: false,
-};
-
-const rolloutsOn = {
-	computerUseExperimentEnabled: true,
-	browserUseExperimentEnabled: true,
-};
-
 const nothingConnected = {
 	localComputerToolCategories: undefined,
 	browserConnected: false,
 };
 
 describe('resolveComputerUseState', () => {
-	describe('when neither rollout covers the user', () => {
-		it('reports both channels unavailable, even on an instance with admin defaults', () => {
+	describe('when the client reported no channels', () => {
+		it('reports both unavailable, so a client that stays silent advertises nothing', () => {
 			expect(
-				resolveComputerUseState({ ...adminAllowsBoth, ...rolloutsOff, ...nothingConnected }),
+				resolveComputerUseState({
+					...adminAllowsBoth,
+					clientChannels: [],
+					...nothingConnected,
+				}),
+			).toEqual({
+				localComputer: { status: 'unavailable' },
+				browser: { status: 'unavailable' },
+			});
+		});
+
+		it('reports both unavailable when the client sent nothing at all', () => {
+			expect(
+				resolveComputerUseState({
+					...adminAllowsBoth,
+					clientChannels: undefined,
+					...nothingConnected,
+				}),
 			).toEqual({
 				localComputer: { status: 'unavailable' },
 				browser: { status: 'unavailable' },
@@ -33,10 +40,14 @@ describe('resolveComputerUseState', () => {
 		});
 	});
 
-	describe('when both rollouts cover the user', () => {
-		it('reports both channels disconnected while nothing is paired', () => {
+	describe('when the client reported both channels', () => {
+		it('reports both disconnected while nothing is paired', () => {
 			expect(
-				resolveComputerUseState({ ...adminAllowsBoth, ...rolloutsOn, ...nothingConnected }),
+				resolveComputerUseState({
+					...adminAllowsBoth,
+					clientChannels: ['localComputer', 'browser'],
+					...nothingConnected,
+				}),
 			).toEqual({
 				localComputer: { status: 'disconnected' },
 				browser: { status: 'disconnected' },
@@ -44,13 +55,13 @@ describe('resolveComputerUseState', () => {
 		});
 	});
 
-	describe('the local-computer channel', () => {
-		it('is unavailable when the admin disabled the local gateway', () => {
+	describe('the client can only narrow, never widen', () => {
+		it('keeps the local computer unavailable when the admin disabled the gateway', () => {
 			const state = resolveComputerUseState({
 				...adminAllowsBoth,
 				localGatewayDisabledGlobally: true,
 				localGatewayDisabledForUser: true,
-				...rolloutsOn,
+				clientChannels: ['localComputer', 'browser'],
 				...nothingConnected,
 			});
 
@@ -58,11 +69,40 @@ describe('resolveComputerUseState', () => {
 			expect(state.browser).toEqual({ status: 'disconnected' });
 		});
 
+		it('keeps the browser unavailable when the admin disabled browser-use', () => {
+			const state = resolveComputerUseState({
+				...adminAllowsBoth,
+				browserUseEnabledGlobally: false,
+				clientChannels: ['localComputer', 'browser'],
+				...nothingConnected,
+			});
+
+			expect(state.browser).toEqual({ status: 'unavailable' });
+			expect(state.localComputer).toEqual({ status: 'disconnected' });
+		});
+
+		it('does not advertise a channel the client left out, even with a live session', () => {
+			const state = resolveComputerUseState({
+				...adminAllowsBoth,
+				clientChannels: ['localComputer'],
+				localComputerToolCategories: ['filesystem'],
+				browserConnected: true,
+			});
+
+			expect(state.browser).toEqual({ status: 'unavailable' });
+			expect(state.localComputer).toEqual({
+				status: 'connected',
+				toolCategories: ['filesystem'],
+			});
+		});
+	});
+
+	describe('the local-computer channel', () => {
 		it('is disabledByUser when the user turned it off but the admin allows it', () => {
 			const state = resolveComputerUseState({
 				...adminAllowsBoth,
 				localGatewayDisabledForUser: true,
-				...rolloutsOn,
+				clientChannels: ['localComputer', 'browser'],
 				...nothingConnected,
 			});
 
@@ -72,7 +112,7 @@ describe('resolveComputerUseState', () => {
 		it('carries the tool categories the connected daemon serves', () => {
 			const state = resolveComputerUseState({
 				...adminAllowsBoth,
-				...rolloutsOn,
+				clientChannels: ['localComputer', 'browser'],
 				localComputerToolCategories: ['filesystem', 'shell'],
 				browserConnected: false,
 			});
@@ -82,36 +122,13 @@ describe('resolveComputerUseState', () => {
 				toolCategories: ['filesystem', 'shell'],
 			});
 		});
-
-		it('stays unavailable when connected but the rollout does not cover the user', () => {
-			const state = resolveComputerUseState({
-				...adminAllowsBoth,
-				...rolloutsOff,
-				localComputerToolCategories: ['filesystem'],
-				browserConnected: false,
-			});
-
-			expect(state.localComputer).toEqual({ status: 'unavailable' });
-		});
 	});
 
 	describe('the browser channel', () => {
-		it('is unavailable when the admin disabled browser-use', () => {
-			const state = resolveComputerUseState({
-				...adminAllowsBoth,
-				browserUseEnabledGlobally: false,
-				...rolloutsOn,
-				...nothingConnected,
-			});
-
-			expect(state.browser).toEqual({ status: 'unavailable' });
-			expect(state.localComputer).toEqual({ status: 'disconnected' });
-		});
-
 		it('serves the browser tool category when the extension session is live', () => {
 			const state = resolveComputerUseState({
 				...adminAllowsBoth,
-				...rolloutsOn,
+				clientChannels: ['browser'],
 				localComputerToolCategories: undefined,
 				browserConnected: true,
 			});
@@ -125,28 +142,13 @@ describe('resolveComputerUseState', () => {
 			expect(
 				resolveComputerUseState({
 					...adminAllowsBoth,
-					...rolloutsOn,
+					clientChannels: ['localComputer', 'browser'],
 					localComputerToolCategories: undefined,
 					browserConnected: true,
 				}),
 			).toEqual({
 				localComputer: { status: 'disconnected' },
 				browser: { status: 'connected', toolCategories: ['browser'] },
-			});
-		});
-
-		it('reports a live daemon while the browser channel is unavailable', () => {
-			expect(
-				resolveComputerUseState({
-					...adminAllowsBoth,
-					browserUseEnabledGlobally: false,
-					...rolloutsOn,
-					localComputerToolCategories: ['filesystem', 'shell'],
-					browserConnected: false,
-				}),
-			).toEqual({
-				localComputer: { status: 'connected', toolCategories: ['filesystem', 'shell'] },
-				browser: { status: 'unavailable' },
 			});
 		});
 	});

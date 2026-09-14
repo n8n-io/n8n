@@ -16,6 +16,7 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
+	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -1463,6 +1464,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
+		computerUseChannels?: ComputerUseChannel[],
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1483,6 +1485,10 @@ export class InstanceAiService {
 		if (timeZone) {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
+
+		// Same reason: a resumed or background run has no request of its own to ask
+		// which + menu entries the client renders.
+		this.runState.setComputerUseChannels(threadId, computerUseChannels);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -2495,8 +2501,6 @@ export class InstanceAiService {
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
-			computerUseExperimentEnabled,
-			browserUseExperimentEnabled,
 			aiPreferencesEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
@@ -2626,14 +2630,14 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// The two channels connect through independent services, so the prompt gets
-		// one state per channel instead of a single merged status.
+		// The client reports which + menu entries it renders, because only it can see
+		// its own rollout and the device. The admin switches are still applied here,
+		// so the report can only narrow.
 		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
 			browserUseEnabledGlobally,
-			computerUseExperimentEnabled,
-			browserUseExperimentEnabled,
+			clientChannels: this.runState.getComputerUseChannels(threadId),
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
 				: undefined,

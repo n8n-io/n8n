@@ -48,8 +48,6 @@ function createService() {
 		progressiveBuildingEnabled: false,
 		nodeUsageEnabled: false,
 		folderExplorationEnabled: false,
-		computerUseExperimentEnabled: false,
-		browserUseExperimentEnabled: false,
 		aiPreferencesEnabled: false,
 	});
 

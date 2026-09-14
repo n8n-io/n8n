@@ -209,6 +209,7 @@ describe('InstanceAiController', () => {
 				payload.pushRef,
 				payload.mode,
 				payload.promptVersion,
+				payload.computerUseChannels,
 			);
 		});
 
@@ -245,6 +246,7 @@ describe('InstanceAiController', () => {
 				'iframe-push-ref-123',
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
+				payloadWithPushRef.computerUseChannels,
 			);
 		});
 
@@ -272,6 +274,7 @@ describe('InstanceAiController', () => {
 				payloadWithMode.pushRef,
 				'progressive',
 				'progressive@1',
+				payloadWithMode.computerUseChannels,
 			);
 		});
 
@@ -306,6 +309,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.pushRef,
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
+				payloadWithContext.computerUseChannels,
 			);
 		});
 
@@ -406,6 +410,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.pushRef,
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
+				nodesPayload.computerUseChannels,
 			);
 		});
 

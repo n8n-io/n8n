@@ -77,13 +77,9 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	INSTANCE_AI_COMPUTER_USE_FLAG,
-	INSTANCE_AI_BROWSER_USE_FLAG,
-	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	INSTANCE_AI_BROWSER_USE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5485,8 +5481,6 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-		[INSTANCE_AI_COMPUTER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
-		[INSTANCE_AI_BROWSER_USE_FLAG]: INSTANCE_AI_BROWSER_USE_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
@@ -5500,8 +5494,6 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
-			computerUseExperimentEnabled: true,
-			browserUseExperimentEnabled: true,
 			aiPreferencesEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -5526,8 +5518,6 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
-			computerUseExperimentEnabled: false,
-			browserUseExperimentEnabled: false,
 			aiPreferencesEnabled: false,
 		});
 	});
@@ -5563,8 +5553,6 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
-			computerUseExperimentEnabled: false,
-			browserUseExperimentEnabled: false,
 			aiPreferencesEnabled: false,
 		});
 	});
@@ -5580,8 +5568,6 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
-			computerUseExperimentEnabled: false,
-			browserUseExperimentEnabled: false,
 			aiPreferencesEnabled: false,
 		});
 	});

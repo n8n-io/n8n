@@ -398,10 +398,7 @@ export {
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	INSTANCE_AI_BROWSER_USE_FLAG,
-	INSTANCE_AI_BROWSER_USE_ENABLED_VARIANT,
-	INSTANCE_AI_COMPUTER_USE_FLAG,
-	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+	computerUseChannelSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -490,6 +487,7 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	ComputerUseChannel,
 } from './schemas/instance-ai.schema';
 
 export type {
