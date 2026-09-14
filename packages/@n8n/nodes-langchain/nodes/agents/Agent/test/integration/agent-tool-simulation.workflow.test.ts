@@ -1,6 +1,6 @@
 import { NodeTypes } from '@nodes-testing/node-types';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { WorkflowExecute } from '../../../../../../../core/dist/execution-engine/workflow-execute';
+import { WorkflowExecute } from 'n8n-core/dist/execution-engine/workflow-execute';
 import {
 	NodeConnectionTypes,
 	type INodeExecutionData,
