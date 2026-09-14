@@ -24,6 +24,18 @@ paths:
   /credentials/schema/{credentialTypeName}:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
+  /data-tables:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/listDataTables.generated.yml
+    post:
+      $ref: ./handlers/data-tables/spec/paths/createDataTable.generated.yml
+  /data-tables/{dataTableId}:
+    get:
+      $ref: ./handlers/data-tables/spec/paths/getDataTable.generated.yml
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTable.generated.yml
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTable.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml

@@ -1,0 +1,69 @@
+import '../../openapi-extend';
+
+import { z } from 'zod';
+
+import {
+	createDataTableFieldDocs,
+	dataTableColumnFieldDocs,
+	dataTableFieldDocs,
+	dataTableListFieldDocs,
+	updateDataTableFieldDocs,
+} from './data-table-public.openapi';
+import {
+	dataTableColumnNameSchema,
+	dataTableColumnTypeSchema,
+	dataTableNameSchema,
+} from '../../schemas/data-table.schema';
+import { Z } from '../../zod-class';
+
+// `type` is a varchar column, so a table created before a type was retired must still parse.
+// The documented values live in `.openapi()` metadata instead of a runtime enum.
+const dataTableColumnPublicSchema = z.object({
+	id: z.string().openapi(dataTableColumnFieldDocs.id),
+	name: z.string().openapi(dataTableColumnFieldDocs.name),
+	type: z.string().openapi(dataTableColumnFieldDocs.type),
+	index: z.number().openapi(dataTableColumnFieldDocs.index),
+});
+
+/** The data table as the Public API publishes it. */
+export const dataTablePublicSchema = z.object({
+	id: z.string().openapi(dataTableFieldDocs.id),
+	name: z.string().openapi(dataTableFieldDocs.name),
+	columns: z.array(dataTableColumnPublicSchema).openapi(dataTableFieldDocs.columns),
+	projectId: z.string().openapi(dataTableFieldDocs.projectId),
+	createdAt: z.string().datetime().openapi(dataTableFieldDocs.createdAt),
+	updatedAt: z.string().datetime().openapi(dataTableFieldDocs.updatedAt),
+	sizeBytes: z.number().openapi(dataTableFieldDocs.sizeBytes),
+});
+
+export type DataTablePublic = z.infer<typeof dataTablePublicSchema>;
+
+export class DataTablePublicDto extends Z.class(dataTablePublicSchema.shape) {}
+
+export class DataTableListPublicDto extends Z.class({
+	data: z.array(dataTablePublicSchema),
+	nextCursor: z.string().nullable().openapi(dataTableListFieldDocs.nextCursor),
+}) {}
+
+const createDataTableColumnPublicSchema = z
+	.object({
+		name: dataTableColumnNameSchema.openapi(dataTableColumnFieldDocs.name),
+		type: dataTableColumnTypeSchema.openapi(dataTableColumnFieldDocs.type),
+	})
+	.strict();
+
+export class CreateDataTablePublicDto extends Z.class(
+	{
+		name: dataTableNameSchema.openapi(createDataTableFieldDocs.name),
+		columns: z.array(createDataTableColumnPublicSchema).openapi(createDataTableFieldDocs.columns),
+		projectId: z.string().optional().openapi(createDataTableFieldDocs.projectId),
+	},
+	{ strict: true },
+) {}
+
+export class UpdateDataTablePublicDto extends Z.class(
+	{
+		name: dataTableNameSchema.openapi(updateDataTableFieldDocs.name),
+	},
+	{ strict: true },
+) {}
