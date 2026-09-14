@@ -197,6 +197,9 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
 
 export const PROJECT_DATA_TABLE_VIEWER_SCOPES: Scope[] = [
+	// The frontend derives data table permissions from `GET /projects/:id`, which needs `project:read`
+	'project:list',
+	'project:read',
 	'dataTable:listProject',
 	'dataTable:read',
 	'dataTable:readRow',
