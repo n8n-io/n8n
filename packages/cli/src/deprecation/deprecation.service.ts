@@ -84,6 +84,13 @@ export class DeprecationService {
 			},
 		},
 		{
+			envVar: 'N8N_ENABLED_MODULES',
+			message:
+				'Chat hub is deprecated. It is off by default since v3 and will be removed in v4. Remove `chat-hub` from this variable before you update to v4.',
+			checkValue: (value?: string) =>
+				(value ?? '').split(',').some((moduleName) => moduleName.trim() === 'chat-hub'),
+		},
+		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
