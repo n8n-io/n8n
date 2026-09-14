@@ -1037,8 +1037,10 @@ async function onAddEmptyGroup(position: XYPosition) {
 			[
 				{
 					type: NO_OP_NODE_TYPE,
+					name: 'No Operation, do nothing',
 					position,
 					parameters: { emptyGroupAnchor: true },
+					placeholder: true,
 					isAutoAdd: true,
 					openDetail: false,
 				},

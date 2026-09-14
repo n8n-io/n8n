@@ -157,8 +157,10 @@ describe('NodeView', () => {
 			const anchor = workflowDocumentStore.allNodes[0];
 			expect(anchor).toMatchObject({
 				type: NO_OP_NODE_TYPE,
+				name: 'No Operation, do nothing',
 				position: [320, 240],
 				parameters: { emptyGroupAnchor: true },
+				placeholder: true,
 			});
 			expect(workflowDocumentStore.allGroups[0]).toMatchObject({
 				name: 'Group 1',
