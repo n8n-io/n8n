@@ -1955,6 +1955,47 @@ describe('verify-built-workflow tool — attached tools', () => {
 	});
 	const plan = [verdict('Agent'), verdict('Write', true)];
 
+	it('records a blocked result when the saved pin summary cannot be loaded', async () => {
+		const { ctx, getOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: plan }), {
+			status: 'success',
+		});
+		const workflowService = ctx.domainContext.workflowService!;
+		vi.mocked(workflowService.getAsWorkflowJSON).mockResolvedValue(agentToolWorkflow());
+		workflowService.getPinnedDataSummary = vi
+			.fn<NonNullable<InstanceAiWorkflowService['getPinnedDataSummary']>>()
+			.mockRejectedValue(new Error('Pin summary unavailable'));
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			status: 'unknown',
+			resolvedWorkItemId: 'wi-1',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'verification_pin_summary_unavailable',
+			},
+		});
+		expect(result.error).toContain('Retry verification');
+		expect(result.executionId).toBeUndefined();
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'unknown',
+			failureSignature: 'verification_pin_summary_unavailable',
+			evidence: { errorMessage: result.error },
+		});
+		expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'verification_pin_summary_unavailable',
+			}),
+		);
+	});
+
 	it.each([
 		{ scripted: false, incomplete: false },
 		{ scripted: true, incomplete: false },

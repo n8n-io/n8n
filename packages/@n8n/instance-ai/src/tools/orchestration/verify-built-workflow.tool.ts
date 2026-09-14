@@ -238,12 +238,26 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				};
 			}
 			// WorkflowJSON omits saved pins. The summary supplies names without their payloads.
-			const workflowPins = workflow
-				? await target.domainContext.workflowService.getPinnedDataSummary?.(workflowId)
-				: undefined;
+			let workflowPinnedNodeNames: string[] | undefined;
+			try {
+				const workflowPins = workflow
+					? await target.domainContext.workflowService.getPinnedDataSummary?.(workflowId)
+					: undefined;
+				workflowPinnedNodeNames = workflowPins?.map(({ nodeName }) => nodeName);
+			} catch {
+				return await handleBlockedVerification({
+					input: resolvedInput,
+					context,
+					workflowTaskService,
+					workflowId,
+					reason: 'verification_pin_summary_unavailable',
+					guidance:
+						'Verification was not run because saved pinned data could not be inspected. Retry verification.',
+				});
+			}
 			const blocker = checkToolSimulationSupport({
 				workflow,
-				workflowPinnedNodeNames: workflowPins?.map(({ nodeName }) => nodeName),
+				workflowPinnedNodeNames,
 				plan: buildOutcome.nodeSimulationPlan,
 				prepared,
 				triggerNodeName: resolvedInput.triggerNodeName,
