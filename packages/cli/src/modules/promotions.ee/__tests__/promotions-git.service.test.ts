@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -270,11 +270,15 @@ describe('PromotionsGitService (git operations)', () => {
 		it("does not delete another request's in-progress staging directory", async () => {
 			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
 			const firstClone = createDeferredPromise();
+			const sentinelPath = path.join(paths.nextRepositoryFolder, 'clone-in-progress');
 			let cloneCalls = 0;
 			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
 				cloneCalls += 1;
 				await mkdir(String(dir), { recursive: true });
-				if (cloneCalls === 1) await firstClone.promise;
+				if (cloneCalls === 1) {
+					await writeFile(sentinelPath, 'first-clone');
+					await firstClone.promise;
+				}
 			});
 
 			const first = call();
@@ -287,7 +291,7 @@ describe('PromotionsGitService (git operations)', () => {
 				);
 				expect(checkRefCalls).toHaveLength(2);
 			});
-			await expect(stat(paths.nextRepositoryFolder)).resolves.toBeDefined();
+			await expect(readFile(sentinelPath, 'utf8')).resolves.toBe('first-clone');
 
 			firstClone.resolve();
 			await Promise.all([first, second]);
