@@ -964,8 +964,13 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
-	it('tracks inspiration from taxonomy exposure for the control variant', () => {
+	it('tracks inspiration from taxonomy exposure for a control user with a mapped role', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
 
 		renderView();
 
@@ -973,6 +978,22 @@ describe('InstanceAiEmptyView', () => {
 			variant: 'control',
 			'$feature/112_aia_inspiration_from_taxonomy': 'control',
 		});
+	});
+
+	it('does not track inspiration from taxonomy exposure for a control user without a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
 	});
 
 	it.each([
@@ -988,8 +1009,19 @@ describe('InstanceAiEmptyView', () => {
 				experimentMocks.proactiveAgentEnabled.value = true;
 			},
 		},
+		{
+			name: 'template examples',
+			setup: () => {
+				templateExamplesEnabled.value = true;
+			},
+		},
 	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
 		setup();
 
 		renderView();

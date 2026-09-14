@@ -65,13 +65,7 @@ describe('instance AI inspiration from taxonomy metadata', () => {
 				metadata,
 				metadataLoadState: 'loaded',
 			}),
-		).toMatchObject({
-			source: 'control',
-			telemetryPayload: {
-				suggestion_source: 'control',
-				metadata_load_state: 'loaded',
-			},
-		});
+		).toEqual({ source: 'control' });
 	});
 
 	it('falls back to control when metadata is not loaded', () => {
@@ -80,12 +74,6 @@ describe('instance AI inspiration from taxonomy metadata', () => {
 				metadata: { what_team_are_you_on: 'Sales' },
 				metadataLoadState: 'not_cloud',
 			}),
-		).toMatchObject({
-			source: 'control',
-			telemetryPayload: {
-				suggestion_source: 'control',
-				metadata_load_state: 'not_cloud',
-			},
-		});
+		).toEqual({ source: 'control' });
 	});
 });

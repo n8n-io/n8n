@@ -57,6 +57,7 @@ import {
 	isPersonalizedPromptSuggestionResolution,
 	isTaxonomyPromptSuggestionResolution,
 	resolveTaxonomyPromptSuggestions,
+	resolveTaxonomySegment,
 	useInstanceAiInspirationFromTaxonomyExperiment,
 	type TaxonomyPromptSuggestionResolution,
 } from '@/experiments/instanceAiInspirationFromTaxonomy';
@@ -204,8 +205,15 @@ const personalizedPromptSuggestionResolution = ref<
 const shouldShowTaxonomySuggestions = computed(() =>
 	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
 );
+const isTaxonomySegmentResolved = computed(
+	() =>
+		appSettingsStore.isCloudDeployment &&
+		cloudPlanStore.state.initialized &&
+		resolveTaxonomySegment(cloudPlanStore.currentUserCloudInfo?.information ?? null).source ===
+			'taxonomy',
+);
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value) {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || showTemplateExamples.value) {
 		return false;
 	}
 
@@ -217,7 +225,7 @@ const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
 		inspirationFromTaxonomyVariant.value ===
 		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
 	) {
-		return true;
+		return isTaxonomySegmentResolved.value;
 	}
 
 	return shouldShowTaxonomySuggestions.value;

@@ -15,6 +15,8 @@ import {
 
 const TEAM_METADATA_KEY = 'what_team_are_you_on';
 
+const SUGGESTIONS_PER_BUCKET = 4;
+
 const TAXONOMY_ROLE_ANSWERS = {
 	Sales: 'sales-and-marketing',
 	Marketing: 'sales-and-marketing',
@@ -28,8 +30,8 @@ export type TaxonomyPromptSegment =
 export type TaxonomyPromptTelemetryPayload = {
 	suggestion_catalog_version: typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION;
 	suggestion_format: 'list';
-	suggestion_source: 'taxonomy' | 'control';
-	segment_key?: TaxonomyRole;
+	suggestion_source: 'taxonomy';
+	segment_key: TaxonomyRole;
 	metadata_load_state: PersonalizedPromptMetadataLoadState;
 };
 
@@ -40,10 +42,7 @@ export type TaxonomyPromptSuggestionResolution =
 			showSeeMore: boolean;
 			telemetryPayload: TaxonomyPromptTelemetryPayload;
 	  }
-	| {
-			source: 'control';
-			telemetryPayload: TaxonomyPromptTelemetryPayload;
-	  };
+	| { source: 'control' };
 
 export function isTaxonomyPromptSuggestionResolution(
 	resolution: PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null,
@@ -87,22 +86,10 @@ function getBucketSuggestions(
 			builderPrompt,
 		}));
 
-	return suggestions.length === 4 ? suggestions : null;
+	return suggestions.length === SUGGESTIONS_PER_BUCKET ? suggestions : null;
 }
 
-function createControlResolution(
-	metadataLoadState: PersonalizedPromptMetadataLoadState,
-): Extract<TaxonomyPromptSuggestionResolution, { source: 'control' }> {
-	return {
-		source: 'control',
-		telemetryPayload: {
-			suggestion_catalog_version: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
-			suggestion_format: 'list',
-			suggestion_source: 'control',
-			metadata_load_state: metadataLoadState,
-		},
-	};
-}
+const CONTROL_RESOLUTION = { source: 'control' } as const;
 
 export function resolveTaxonomyPromptSuggestions({
 	metadata,
@@ -114,17 +101,17 @@ export function resolveTaxonomyPromptSuggestions({
 	catalog?: readonly TaxonomyPromptSuggestion[];
 }): TaxonomyPromptSuggestionResolution {
 	if (metadataLoadState !== 'loaded') {
-		return createControlResolution(metadataLoadState);
+		return CONTROL_RESOLUTION;
 	}
 
 	const segment = resolveTaxonomySegment(metadata);
 	if (segment.source === 'control') {
-		return createControlResolution(metadataLoadState);
+		return CONTROL_RESOLUTION;
 	}
 
 	const suggestions = getBucketSuggestions(segment.taxonomyRole, catalog);
 	if (!suggestions) {
-		return createControlResolution(metadataLoadState);
+		return CONTROL_RESOLUTION;
 	}
 
 	return {
