@@ -40,12 +40,8 @@ jobs:
           # its own from `token`, so nothing here needs to survive the checkout.
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+      - name: Setup workflow scripts
+        uses: ./.github/actions/setup-workflow-scripts
 
       # Refreshes only. Validation runs on the PR this opens, so a schema change
       # that rejects the current cubic.yaml shows up as a red check to act on

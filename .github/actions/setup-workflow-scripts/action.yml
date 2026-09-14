@@ -1,0 +1,74 @@
+# Prepares a job to run the `.mjs` helpers in `.github/scripts`.
+#
+# Those dependencies change only when `.github/scripts/pnpm-lock.yaml` changes,
+# so the whole dependency tree is cached under a key derived from that lockfile.
+# A hit skips the install completely; a miss installs once and repopulates the
+# cache. This replaces the copy-pasted `setup-nodejs` block that ~25 workflows
+# used to carry, and drops the Turborepo cache server those jobs never used.
+
+name: 'Workflow Scripts Setup'
+description: 'Installs Node.js and pnpm, then restores the .github/scripts dependencies from cache, installing only when the lockfile changed.'
+
+outputs:
+  cache-hit:
+    description: 'Whether the dependency tree came from the cache instead of an install.'
+    value: ${{ steps.dependency-tree.outputs.usable }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js and pnpm
+      id: toolchain
+      uses: ./.github/actions/setup-node-toolchain
+      with:
+        cache-dependency-path: .github/scripts/pnpm-lock.yaml
+        # The dependency-tree cache below already covers these packages, and it
+        # invalidates on the same lockfile hash. A second cache of the store
+        # would hold the same content under the same miss conditions.
+        enable-store-cache: 'false'
+
+    - name: Restore workflow script dependencies
+      id: restore-dependencies
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .github/scripts/node_modules
+        key: workflow-scripts-v1-${{ runner.os }}-${{ runner.arch }}-node${{ steps.toolchain.outputs.node-version }}-pnpm${{ steps.toolchain.outputs.pnpm-version }}-${{ hashFiles('.github/scripts/pnpm-lock.yaml') }}
+
+    # pnpm writes `.modules.yaml` at the root of the tree once an install
+    # completes, so its presence separates a usable restore from a partial one.
+    # A restore without it falls through to a normal install.
+    - name: Check restored dependency tree
+      id: dependency-tree
+      shell: bash
+      run: |
+        if [ -f .github/scripts/node_modules/.modules.yaml ]; then
+          echo 'Restored .github/scripts dependencies from cache.'
+          echo 'usable=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'No usable cache entry. Installing .github/scripts dependencies.'
+          echo 'usable=false' >> "$GITHUB_OUTPUT"
+        fi
+
+    # Kept outside the cache gate: the caller can still run its own
+    # package-manager commands later in the job, and those must go through the
+    # guard whether or not this action installed anything.
+    - name: Setup Aikido SafeChain
+      uses: ./.github/actions/setup-safechain
+
+    - name: Install workflow script dependencies
+      if: steps.dependency-tree.outputs.usable != 'true'
+      uses: ./.github/actions/pnpm-install
+      with:
+        # pnpm 11 and 12 resolve a relative lockfile directory from different
+        # locations. Use the checkout path because a workflow can run new
+        # workflow code against the old base.
+        install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+
+    # Saved right after the install rather than in a post step, so a job that
+    # fails later still leaves a warm cache for the next run.
+    - name: Save workflow script dependencies
+      if: steps.dependency-tree.outputs.usable != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .github/scripts/node_modules
+        key: ${{ steps.restore-dependencies.outputs.cache-primary-key }}
