@@ -10,6 +10,7 @@ import {
 	commonPartitionIdOption,
 	commonReturnFullMetadataOption,
 	commonSelectOption,
+	commonSessionTokenOption,
 	forOperation,
 } from './sharedProperties';
 import type { OperationDefinition } from './types';
@@ -77,6 +78,7 @@ export const getManyRows: OperationDefinition = {
 				description: 'OData $filter expression',
 			},
 			commonPartitionIdOption(),
+			commonSessionTokenOption(),
 			commonReturnFullMetadataOption(),
 			{
 				displayName: 'Row Count ($Top)',

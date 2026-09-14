@@ -3,7 +3,11 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
+import {
+	dataverseApiRequest,
+	dataverseApiRequestAllItems,
+	dataverseApiRequestWithResponse,
+} from '../GenericFunctions';
 
 // Neutralize the retry back-off so tests don't actually wait.
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
@@ -434,6 +438,30 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const [, options] = request.mock.calls[0];
 			expect(options.timeout).toBe(60_000);
 			expect(options.headers['User-Agent']).toBe('n8n-nodes-base.microsoftDataverse/2.0');
+		});
+	});
+
+	describe('dataverseApiRequestWithResponse', () => {
+		it('returns the full HTTP response when requested', async () => {
+			const response = {
+				body: { accountid: 'account-id' },
+				headers: { 'x-ms-session-token': 'session-token' },
+				statusCode: 200,
+			};
+			request.mockResolvedValue(response);
+
+			const result = await dataverseApiRequestWithResponse(
+				ctx,
+				'PATCH',
+				'/accounts(account-id)',
+				{ name: 'Acme' },
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual(response);
+			expect(request.mock.calls[0][1]).toMatchObject({ returnFullResponse: true });
 		});
 	});
 

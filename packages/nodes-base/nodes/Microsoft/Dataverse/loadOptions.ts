@@ -42,6 +42,7 @@ interface EntityDefinition {
 interface AttributeDefinition {
 	LogicalName: string;
 	AttributeOf?: string | null;
+	IsValidODataAttribute?: boolean;
 	IsValidForRead?: boolean;
 	IsValidForCreate?: boolean;
 	IsValidForUpdate?: boolean;
@@ -359,7 +360,7 @@ async function getColumns(
 		`/EntityDefinitions(LogicalName='${logicalName}')/Attributes`,
 		{
 			$select:
-				'LogicalName,DisplayName,AttributeOf,IsValidForRead,IsValidForCreate,IsValidForUpdate,AttributeType',
+				'LogicalName,DisplayName,AttributeOf,IsValidODataAttribute,IsValidForRead,IsValidForCreate,IsValidForUpdate,AttributeType',
 		},
 	);
 	const operation = parameterValue(ctx.getCurrentNodeParameter('operation'));
@@ -368,6 +369,7 @@ async function getColumns(
 		// Skip virtual sub-attributes (e.g. <lookup>name, <lookup>yominame) —
 		// they have an AttributeOf set and aren't queryable in their own right.
 		if (attr.AttributeOf) continue;
+		if (attr.IsValidODataAttribute === false) continue;
 		if (mode === 'read' && attr.IsValidForRead === false) continue;
 		if (mode === 'write') {
 			if (operation === 'create' && attr.IsValidForCreate !== true) continue;

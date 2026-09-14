@@ -180,6 +180,29 @@ export function commonPartitionIdOption(): INodeProperties {
 	};
 }
 
+/** Logical-session token used for consistent reads after an elastic-table write. */
+export function commonSessionTokenOption(): INodeProperties {
+	return {
+		displayName: 'Session Token',
+		name: 'sessionToken',
+		type: 'string',
+		typeOptions: { password: true },
+		default: '',
+		description: 'Token from an earlier elastic-table write in the same logical session',
+	};
+}
+
+/** Include the Dataverse logical-session token in a write result. */
+export function commonReturnSessionTokenOption(): INodeProperties {
+	return {
+		displayName: 'Return Session Token',
+		name: 'returnSessionToken',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return the token used for consistent reads after this write',
+	};
+}
+
 /** `$select` — multi-select of column logical names. */
 export function commonSelectOption(): INodeProperties {
 	return {

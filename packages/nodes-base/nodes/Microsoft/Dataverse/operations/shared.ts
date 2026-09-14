@@ -3,6 +3,7 @@ import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 import {
 	dataverseApiRequest,
 	dataverseApiRequestAllItems,
+	dataverseApiRequestWithResponse,
 	type DataverseHeaders,
 	type DataverseQuery,
 } from '../GenericFunctions';
@@ -333,6 +334,8 @@ export interface RequestPlan {
 	paged?: boolean;
 	/** Only used when `paged: true`. 0 = no limit. */
 	limit?: number;
+	/** Return the write response with its Dataverse logical-session token. */
+	returnSessionToken?: boolean;
 }
 
 /**
@@ -355,6 +358,9 @@ export async function executeRequest(
 	});
 	const headers: DataverseHeaders = { ...(plan.extraHeaders ?? {}) };
 	if (prefer) headers.Prefer = prefer;
+	if (typeof options.sessionToken === 'string' && options.sessionToken.trim()) {
+		headers['MSCRM.SessionToken'] = options.sessionToken.trim();
+	}
 
 	if (plan.paged) {
 		return await dataverseApiRequestAllItems(
@@ -366,6 +372,25 @@ export async function executeRequest(
 			credentialType,
 			headers,
 		);
+	}
+
+	if (plan.returnSessionToken) {
+		const response = await dataverseApiRequestWithResponse(
+			ctx,
+			plan.method,
+			plan.path,
+			plan.body ?? {},
+			qs,
+			headers,
+			credentialType,
+		);
+		const sessionToken = Object.entries(response.headers).find(
+			([name]) => name.toLowerCase() === 'x-ms-session-token',
+		)?.[1];
+		return {
+			data: response.body,
+			...(typeof sessionToken === 'string' ? { sessionToken } : {}),
+		};
 	}
 
 	return await dataverseApiRequest(

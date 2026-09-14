@@ -19,7 +19,9 @@ import {
 	commonEntitySetProperty,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
+	commonReturnSessionTokenOption,
 	commonRowItemProperties,
+	commonSessionTokenOption,
 } from './sharedProperties';
 
 /**
@@ -39,7 +41,11 @@ export const updateRow: OperationDefinition = {
 		commonEntitySetProperty(['update']),
 		commonRecordIdProperty(['update']),
 		...commonRowItemProperties(['update']),
-		buildOptionsCollection('update', [commonReturnFullMetadataOption()]),
+		buildOptionsCollection('update', [
+			commonReturnFullMetadataOption(),
+			commonSessionTokenOption(),
+			commonReturnSessionTokenOption(),
+		]),
 	],
 	async execute(ctx, i, credentialType) {
 		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
@@ -53,13 +59,15 @@ export const updateRow: OperationDefinition = {
 			? await resolveLookupFields(ctx, credentialType, entitySet)
 			: EMPTY_LOOKUP_FIELDS;
 		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
+		const options = ctx.getNodeParameter('updateOptions', i, {}) as IDataObject;
 		return await executeRequest(ctx, credentialType, {
 			method: 'PATCH',
 			path: buildRecordPath(entitySet, recordId),
 			body,
-			options: ctx.getNodeParameter('updateOptions', i, {}) as IDataObject,
+			options,
 			prefer: { returnRepresentation: true },
 			extraHeaders: { 'If-Match': '*' },
+			returnSessionToken: Boolean(options.returnSessionToken),
 		});
 	},
 };

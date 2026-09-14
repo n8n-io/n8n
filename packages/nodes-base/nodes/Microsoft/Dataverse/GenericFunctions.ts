@@ -15,6 +15,12 @@ export type DataverseHeaders = Record<string, string>;
 /** Query-string parameters Dataverse accepts. Numbers cover `$top`. */
 export type DataverseQuery = Record<string, string | number>;
 
+export interface DataverseFullResponse {
+	body: IDataObject;
+	headers: Record<string, string | string[] | undefined>;
+	statusCode: number;
+}
+
 /**
  * Contexts that can issue Dataverse requests. Node execution uses
  * `IExecuteFunctions`; the in-editor `loadOptions` pickers use
@@ -289,7 +295,8 @@ export async function dataverseApiRequestRaw(
 	qs: DataverseQuery = {},
 	headers: DataverseHeaders = {},
 	credentialType: string,
-): Promise<IDataObject> {
+	returnFullResponse = false,
+): Promise<IDataObject | DataverseFullResponse> {
 	const baseUrl = await resolveBaseUrl(ctx, credentialType);
 	let url: string;
 	if (/^https?:\/\//i.test(resource)) {
@@ -320,13 +327,16 @@ export async function dataverseApiRequestRaw(
 		},
 		json: true,
 		timeout: REQUEST_TIMEOUT_MS,
+		...(returnFullResponse ? { returnFullResponse: true } : {}),
 	};
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 
-	return (await dispatchWithRetry(ctx, credentialType, options)) as IDataObject;
+	return (await dispatchWithRetry(ctx, credentialType, options)) as
+		| IDataObject
+		| DataverseFullResponse;
 }
 
 /**
@@ -351,7 +361,40 @@ export async function dataverseApiRequest(
 	credentialType: string,
 ): Promise<IDataObject> {
 	try {
-		return await dataverseApiRequestRaw(ctx, method, resource, body, qs, headers, credentialType);
+		return (await dataverseApiRequestRaw(
+			ctx,
+			method,
+			resource,
+			body,
+			qs,
+			headers,
+			credentialType,
+		)) as IDataObject;
+	} catch (error) {
+		throw new NodeApiError(ctx.getNode(), error as JsonObject);
+	}
+}
+
+export async function dataverseApiRequestWithResponse(
+	ctx: IExecuteFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: DataverseQuery = {},
+	headers: DataverseHeaders = {},
+	credentialType: string,
+): Promise<DataverseFullResponse> {
+	try {
+		return (await dataverseApiRequestRaw(
+			ctx,
+			method,
+			resource,
+			body,
+			qs,
+			headers,
+			credentialType,
+			true,
+		)) as DataverseFullResponse;
 	} catch (error) {
 		throw new NodeApiError(ctx.getNode(), error as JsonObject);
 	}

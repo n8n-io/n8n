@@ -15,6 +15,7 @@ import {
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonSelectOption,
+	commonSessionTokenOption,
 } from './sharedProperties';
 
 /**
@@ -36,6 +37,7 @@ export const getRow: OperationDefinition = {
 			commonExpandOption(),
 			commonReturnFullMetadataOption(),
 			commonPartitionIdOption(),
+			commonSessionTokenOption(),
 		]),
 	],
 	async execute(ctx, i, credentialType) {

@@ -202,6 +202,12 @@ describe('Microsoft Dataverse loadOptions', () => {
 					},
 					{ LogicalName: 'accountidname', AttributeOf: 'accountid' },
 					{ LogicalName: 'hidden', IsValidForRead: false },
+					{
+						LogicalName: 'to',
+						AttributeType: 'PartyList',
+						IsValidForRead: true,
+						IsValidODataAttribute: false,
+					},
 				],
 			});
 
@@ -218,6 +224,7 @@ describe('Microsoft Dataverse loadOptions', () => {
 			]);
 			const [, attrOptions] = request.mock.calls[1];
 			expect(attrOptions.qs.$select).toContain('AttributeType');
+			expect(attrOptions.qs.$select).toContain('IsValidODataAttribute');
 			expect(attrOptions.qs.$select).toContain('IsValidForCreate');
 			expect(attrOptions.qs.$select).toContain('IsValidForUpdate');
 		});
@@ -257,6 +264,12 @@ describe('Microsoft Dataverse loadOptions', () => {
 						LogicalName: 'primarycontactid',
 						AttributeType: 'Lookup',
 						[validityProperty]: true,
+					},
+					{
+						LogicalName: 'requiredattendees',
+						AttributeType: 'PartyList',
+						[validityProperty]: true,
+						IsValidODataAttribute: false,
 					},
 				],
 			});

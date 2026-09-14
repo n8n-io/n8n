@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { type DataverseHeaders } from '../GenericFunctions';
 import {
@@ -7,6 +8,7 @@ import {
 	EMPTY_LOOKUP_FIELDS,
 	resolveLookupFields,
 } from './lookups';
+import { isElasticTable, resolveTableMetadata } from './metadata';
 import {
 	assertNonEmptyBody,
 	assertValidAlternateKey,
@@ -21,7 +23,9 @@ import {
 	commonEntitySetProperty,
 	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
+	commonReturnSessionTokenOption,
 	commonRowItemProperties,
+	commonSessionTokenOption,
 	forOperation,
 } from './sharedProperties';
 import type { OperationDefinition } from './types';
@@ -111,7 +115,17 @@ export const upsertRow: OperationDefinition = {
 					},
 				],
 			},
+			{
+				displayName: 'Allow Elastic Table Replacement',
+				name: 'allowElasticTableReplacement',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow Create or Update to replace an existing elastic-table row. Values omitted from the Row Item are removed.',
+			},
 			commonReturnFullMetadataOption(),
+			commonSessionTokenOption(),
+			commonReturnSessionTokenOption(),
 		]),
 	],
 	async execute(ctx, i, credentialType) {
@@ -134,6 +148,16 @@ export const upsertRow: OperationDefinition = {
 		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
 		const options = ctx.getNodeParameter('upsertOptions', i, {}) as IDataObject;
 		const behavior = (options.behavior as string) ?? 'upsert';
+		if (behavior === 'upsert') {
+			const metadata = await resolveTableMetadata(ctx, credentialType, entitySet);
+			if (metadata && isElasticTable(metadata) && !options.allowElasticTableReplacement) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					'Create or Update replaces the complete row for an elastic table. Enable "Allow Elastic Table Replacement" only when the Row Item contains every value to keep.',
+					{ itemIndex: i },
+				);
+			}
+		}
 		const extraHeaders: DataverseHeaders = {};
 		if (behavior === 'updateOnly') extraHeaders['If-Match'] = '*';
 		if (behavior === 'createOnly') extraHeaders['If-None-Match'] = '*';
@@ -145,6 +169,7 @@ export const upsertRow: OperationDefinition = {
 			options,
 			prefer: { returnRepresentation: true },
 			extraHeaders,
+			returnSessionToken: Boolean(options.returnSessionToken),
 		});
 	},
 };

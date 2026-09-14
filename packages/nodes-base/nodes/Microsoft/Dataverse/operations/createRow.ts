@@ -11,7 +11,9 @@ import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
 	commonReturnFullMetadataOption,
+	commonReturnSessionTokenOption,
 	commonRowItemProperties,
+	commonSessionTokenOption,
 } from './sharedProperties';
 
 /**
@@ -28,7 +30,11 @@ export const createRow: OperationDefinition = {
 	properties: [
 		commonEntitySetProperty(['create']),
 		...commonRowItemProperties(['create']),
-		buildOptionsCollection('create', [commonReturnFullMetadataOption()]),
+		buildOptionsCollection('create', [
+			commonReturnFullMetadataOption(),
+			commonSessionTokenOption(),
+			commonReturnSessionTokenOption(),
+		]),
 	],
 	async execute(ctx, i, credentialType) {
 		const entitySet = assertValidEntitySet(ctx, i, ctx.getNodeParameter('entitySet', i));
@@ -41,12 +47,14 @@ export const createRow: OperationDefinition = {
 			? await resolveLookupFields(ctx, credentialType, entitySet)
 			: EMPTY_LOOKUP_FIELDS;
 		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
+		const options = ctx.getNodeParameter('createOptions', i, {}) as IDataObject;
 		return await executeRequest(ctx, credentialType, {
 			method: 'POST',
 			path: `/${entitySet}`,
 			body,
-			options: ctx.getNodeParameter('createOptions', i, {}) as IDataObject,
+			options,
 			prefer: { returnRepresentation: true },
+			returnSessionToken: Boolean(options.returnSessionToken),
 		});
 	},
 };

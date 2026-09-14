@@ -61,8 +61,18 @@ describe('Microsoft Dataverse lookups', () => {
 				})
 				.mockResolvedValueOnce({
 					value: [
-						{ LogicalName: 'contact', EntitySetName: 'contacts' },
-						{ LogicalName: 'account', EntitySetName: 'accounts' },
+						{
+							LogicalName: 'contact',
+							EntitySetName: 'contacts',
+							PrimaryIdAttribute: 'contactid',
+							TableType: 'Standard',
+						},
+						{
+							LogicalName: 'account',
+							EntitySetName: 'accounts',
+							PrimaryIdAttribute: 'accountid',
+							TableType: 'Standard',
+						},
 					],
 				});
 		};
@@ -77,6 +87,8 @@ describe('Microsoft Dataverse lookups', () => {
 					navigationProperty: 'primarycontactid',
 					referencedEntity: 'contact',
 					targetEntitySet: 'contacts',
+					tableType: 'Standard',
+					primaryIdAttribute: 'contactid',
 				},
 			]);
 			expect(map.get('customerid')).toEqual([
@@ -84,11 +96,15 @@ describe('Microsoft Dataverse lookups', () => {
 					navigationProperty: 'customerid_account',
 					referencedEntity: 'account',
 					targetEntitySet: 'accounts',
+					tableType: 'Standard',
+					primaryIdAttribute: 'accountid',
 				},
 				{
 					navigationProperty: 'customerid_contact',
 					referencedEntity: 'contact',
 					targetEntitySet: 'contacts',
+					tableType: 'Standard',
+					primaryIdAttribute: 'contactid',
 				},
 			]);
 		});
@@ -289,6 +305,55 @@ describe('Microsoft Dataverse lookups', () => {
 			expect(out).toEqual({ 'primarycontactid@odata.bind': `/contacts(${guid})` });
 		});
 
+		it('rejects a bare GUID for an elastic-table lookup', () => {
+			const elasticTarget: LookupFieldMap = new Map([
+				[
+					'primarycontactid',
+					[
+						{
+							navigationProperty: 'primarycontactid',
+							referencedEntity: 'contact',
+							targetEntitySet: 'contacts',
+							tableType: 'Elastic',
+							primaryIdAttribute: 'contactid',
+						},
+					],
+				],
+			]);
+
+			expect(() => applyLookupBindings(ctx, 0, { primarycontactid: guid }, elasticTarget)).toThrow(
+				/partitionId/,
+			);
+		});
+
+		it('builds a partition-aware reference for an elastic-table lookup', () => {
+			const elasticTarget: LookupFieldMap = new Map([
+				[
+					'primarycontactid',
+					[
+						{
+							navigationProperty: 'primarycontactid',
+							referencedEntity: 'contact',
+							targetEntitySet: 'contacts',
+							tableType: 'Elastic',
+							primaryIdAttribute: 'contactid',
+						},
+					],
+				],
+			]);
+
+			const out = applyLookupBindings(
+				ctx,
+				0,
+				{ primarycontactid: { id: guid, partitionId: "device's partition" } },
+				elasticTarget,
+			);
+
+			expect(out).toEqual({
+				'primarycontactid@odata.bind': `/contacts(contactid=${guid},partitionid='device''s partition')`,
+			});
+		});
+
 		it('passes a full reference path through and selects the matching navigation property', () => {
 			const out = applyLookupBindings(ctx, 0, { customerid: `/accounts(${guid})` }, polymorphic);
 
@@ -402,6 +467,12 @@ describe('Microsoft Dataverse lookups', () => {
 
 		it('returns true for a null value (potential disassociation)', () => {
 			expect(bodyHasLookupCandidates({ primarycontactid: null })).toBe(true);
+		});
+
+		it('returns true for a structured elastic lookup value', () => {
+			expect(
+				bodyHasLookupCandidates({ primarycontactid: { id: guid, partitionId: 'device' } }),
+			).toBe(true);
 		});
 
 		it('ignores keys that already carry @odata.bind', () => {

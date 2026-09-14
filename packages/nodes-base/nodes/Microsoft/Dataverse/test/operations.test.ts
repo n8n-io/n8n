@@ -1,19 +1,38 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
+import {
+	dataverseApiRequest,
+	dataverseApiRequestAllItems,
+	dataverseApiRequestWithResponse,
+} from '../GenericFunctions';
 import { applyLookupBindings, resolveLookupFields } from '../operations/lookups';
 import { createRow } from '../operations/createRow';
 import { deleteRow } from '../operations/deleteRow';
 import { getRow } from '../operations/getRow';
 import { getManyRows } from '../operations/getManyRows';
+import { resolveTableMetadata } from '../operations/metadata';
 import { updateRow } from '../operations/updateRow';
 import { upsertRow } from '../operations/upsertRow';
 
 vi.mock('../GenericFunctions', () => ({
 	dataverseApiRequest: vi.fn(),
 	dataverseApiRequestAllItems: vi.fn(),
+	dataverseApiRequestWithResponse: vi.fn(),
 }));
+
+vi.mock('../operations/metadata', async (importActual) => {
+	const actual = await importActual<typeof import('../operations/metadata')>();
+	return {
+		...actual,
+		resolveTableMetadata: vi.fn().mockResolvedValue({
+			logicalName: 'account',
+			entitySetName: 'accounts',
+			primaryIdAttribute: 'accountid',
+			tableType: 'Standard',
+		}),
+	};
+});
 
 // Lookup translation is unit-tested in lookups.test.ts. Here we stub only the
 // network-bound resolve/apply pair to a pass-through so the write-op assertions
@@ -67,6 +86,11 @@ describe('Microsoft Dataverse operations', () => {
 		ctx.getNode.mockReturnValue(node);
 		vi.mocked(dataverseApiRequest).mockResolvedValue({ id: 'row-1' });
 		vi.mocked(dataverseApiRequestAllItems).mockResolvedValue([{ id: 'row-1' }]);
+		vi.mocked(dataverseApiRequestWithResponse).mockResolvedValue({
+			body: { id: 'row-1' },
+			headers: { 'x-ms-session-token': 'session-token' },
+			statusCode: 200,
+		});
 	});
 
 	describe('createRow', () => {
@@ -172,6 +196,19 @@ describe('Microsoft Dataverse operations', () => {
 
 			await expect(getRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/required/);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('forwards a session token for a consistent read', async () => {
+			withParams({
+				entitySet: 'accounts',
+				recordId: ROW_ID,
+				getOptions: { sessionToken: 'token-from-write' },
+			});
+
+			await getRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , , , headers] = singleCall();
+			expect(headers?.['MSCRM.SessionToken']).toBe('token-from-write');
 		});
 
 		it('resolves table and row resource locator values', async () => {
@@ -363,6 +400,19 @@ describe('Microsoft Dataverse operations', () => {
 			expect(qs).not.toHaveProperty('fetchXml');
 			expect(qs).toMatchObject({ $filter: 'statecode eq 0', $top: 25 });
 		});
+
+		it('forwards a session token to every paged request', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: true,
+				getAllOptions: { sessionToken: 'token-from-write' },
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , , , , headers] = pagedCall();
+			expect(headers?.['MSCRM.SessionToken']).toBe('token-from-write');
+		});
 	});
 
 	describe('updateRow', () => {
@@ -401,6 +451,23 @@ describe('Microsoft Dataverse operations', () => {
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
 			// The empty body is rejected before any lookup metadata is fetched.
 			expect(resolveLookupFields).not.toHaveBeenCalled();
+		});
+
+		it('returns the session token when requested', async () => {
+			withParams({
+				entitySet: 'accounts',
+				recordId: ROW_ID,
+				inputMode: 'json',
+				fieldsJson: '{"name":"New"}',
+				updateOptions: { returnSessionToken: true, sessionToken: 'earlier-token' },
+			});
+
+			const result = await updateRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			expect(result).toEqual({ data: { id: 'row-1' }, sessionToken: 'session-token' });
+			const [, method, , , , headers] = vi.mocked(dataverseApiRequestWithResponse).mock.calls[0]!;
+			expect(method).toBe('PATCH');
+			expect(headers?.['MSCRM.SessionToken']).toBe('earlier-token');
 		});
 	});
 
@@ -456,6 +523,51 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, , , , , headers] = singleCall();
 			expect(headers?.['If-None-Match']).toBe('*');
+		});
+
+		it('blocks replacement upsert for an elastic table without acknowledgment', async () => {
+			vi.mocked(resolveTableMetadata).mockResolvedValueOnce({
+				logicalName: 'sensordata',
+				entitySetName: 'sensordatas',
+				primaryIdAttribute: 'sensordataid',
+				tableType: 'Elastic',
+			});
+			withParams({
+				entitySet: 'sensordatas',
+				identifierType: 'guid',
+				recordId: ROW_ID,
+				inputMode: 'json',
+				fieldsJson: '{"name":"reading"}',
+				upsertOptions: {},
+			});
+
+			await expect(upsertRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(
+				/Allow Elastic Table Replacement/,
+			);
+			expect(dataverseApiRequest).not.toHaveBeenCalled();
+		});
+
+		it('allows replacement upsert for an elastic table after acknowledgment', async () => {
+			vi.mocked(resolveTableMetadata).mockResolvedValueOnce({
+				logicalName: 'sensordata',
+				entitySetName: 'sensordatas',
+				primaryIdAttribute: 'sensordataid',
+				tableType: 'Elastic',
+			});
+			withParams({
+				entitySet: 'sensordatas',
+				identifierType: 'guid',
+				recordId: ROW_ID,
+				inputMode: 'json',
+				fieldsJson: '{"name":"reading"}',
+				upsertOptions: { allowElasticTableReplacement: true },
+			});
+
+			await upsertRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, method, path] = singleCall();
+			expect(method).toBe('PATCH');
+			expect(path).toBe(`/sensordatas(${ROW_ID})`);
 		});
 
 		it('addresses the row by an alternate-key predicate', async () => {

@@ -1,7 +1,8 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
-import { dataverseApiRequest, type DataverseQuery } from '../GenericFunctions';
+import { dataverseApiRequest } from '../GenericFunctions';
+import { isElasticTable, resolveTableMetadataByLogicalNames } from './metadata';
 import { normalizeEntitySet } from './shared';
 
 /**
@@ -25,6 +26,10 @@ export interface LookupCandidate {
 	referencedEntity: string;
 	/** Referenced table entity-set name used in the bind path (e.g. `contacts`). */
 	targetEntitySet: string;
+	/** Target table classification reported by EntityMetadata.TableType. */
+	tableType?: string;
+	/** Target table primary key used in an elastic composite reference. */
+	primaryIdAttribute?: string;
 }
 
 /** Lookup logical name (lower-cased) → its writable navigation-property targets. */
@@ -179,7 +184,11 @@ async function collectLookupFieldMap(
 				.flatMap((name) => ABSTRACT_LOOKUP_TARGETS[name.toLowerCase()] ?? [name]),
 		),
 	];
-	const entitySetByLogical = await resolveEntitySets(ctx, credentialType, referenced);
+	const metadataByLogical = await resolveTableMetadataByLogicalNames(
+		ctx,
+		credentialType,
+		referenced,
+	);
 
 	for (const row of rows) {
 		const attribute = row.ReferencingAttribute?.toLowerCase();
@@ -191,9 +200,15 @@ async function collectLookupFieldMap(
 		const targets = ABSTRACT_LOOKUP_TARGETS[referencedEntity.toLowerCase()] ?? [referencedEntity];
 		const candidates = map.get(attribute) ?? [];
 		for (const target of targets) {
-			const targetEntitySet = entitySetByLogical.get(target);
-			if (!targetEntitySet) continue;
-			candidates.push({ navigationProperty, referencedEntity: target, targetEntitySet });
+			const metadata = metadataByLogical.get(target);
+			if (!metadata) continue;
+			candidates.push({
+				navigationProperty,
+				referencedEntity: target,
+				targetEntitySet: metadata.entitySetName,
+				tableType: metadata.tableType,
+				primaryIdAttribute: metadata.primaryIdAttribute,
+			});
 		}
 		if (candidates.length > 0) map.set(attribute, candidates);
 	}
@@ -221,33 +236,6 @@ async function resolveLogicalName(
 	return value?.[0]?.LogicalName;
 }
 
-async function resolveEntitySets(
-	ctx: IExecuteFunctions,
-	credentialType: string,
-	logicalNames: string[],
-): Promise<Map<string, string>> {
-	const result = new Map<string, string>();
-	if (logicalNames.length === 0) return result;
-	const filter = logicalNames
-		.map((name) => `LogicalName eq '${name.replace(/'/g, "''")}'`)
-		.join(' or ');
-	const response = await dataverseApiRequest(
-		ctx,
-		'GET',
-		'/EntityDefinitions',
-		{},
-		{ $select: 'LogicalName,EntitySetName', $filter: filter } as DataverseQuery,
-		{},
-		credentialType,
-	);
-	const value =
-		(response.value as Array<{ LogicalName?: string; EntitySetName?: string }> | undefined) ?? [];
-	for (const def of value) {
-		if (def.LogicalName && def.EntitySetName) result.set(def.LogicalName, def.EntitySetName);
-	}
-	return result;
-}
-
 /**
  * Cheap pre-check: could `body` contain a value {@link applyLookupBindings} may
  * need relationship metadata to translate or validate? Returns true for any
@@ -269,6 +257,7 @@ export function bodyHasLookupCandidates(body: IDataObject): boolean {
 		if (key.includes('@odata.bind')) continue;
 		if (value === null) return true;
 		if (typeof value === 'string' && value.trim() !== '') return true;
+		if (typeof value === 'object' && value !== null && 'id' in value) return true;
 	}
 	return false;
 }
@@ -336,6 +325,60 @@ function buildLookupBinding(
 		return { navigationProperty: single.navigationProperty, path: '', disassociate: true };
 	}
 
+	if (typeof value === 'object' && 'id' in value) {
+		if (!single) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup "${field}" can point to multiple tables (${targets}). Provide a complete "/entityset(key)" reference.`,
+				{ itemIndex },
+			);
+		}
+		const id = typeof value.id === 'string' ? value.id.trim() : '';
+		if (!GUID_PATTERN.test(id)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup field "${field}" needs a valid row GUID.`,
+				{
+					itemIndex,
+				},
+			);
+		}
+		if (!isElasticTable(single)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup field "${field}" only accepts an object value for an elastic table target.`,
+				{ itemIndex },
+			);
+		}
+		if (!('partitionId' in value)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup field "${field}" targets an elastic table. Provide both "id" and "partitionId".`,
+				{ itemIndex },
+			);
+		}
+		if (value.partitionId === null) {
+			return {
+				navigationProperty: single.navigationProperty,
+				path: `/${single.targetEntitySet}(${id})`,
+				disassociate: false,
+			};
+		}
+		const partitionId = typeof value.partitionId === 'string' ? value.partitionId.trim() : '';
+		if (!partitionId || !single.primaryIdAttribute) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup field "${field}" needs a non-empty partition ID and target primary key metadata.`,
+				{ itemIndex },
+			);
+		}
+		return {
+			navigationProperty: single.navigationProperty,
+			path: `/${single.targetEntitySet}(${single.primaryIdAttribute}=${id},partitionid='${partitionId.replace(/'/g, "''")}')`,
+			disassociate: false,
+		};
+	}
+
 	const raw = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
 	if (!raw) {
 		throw new NodeOperationError(
@@ -371,6 +414,13 @@ function buildLookupBinding(
 			throw new NodeOperationError(
 				ctx.getNode(),
 				`Lookup "${field}" can point to multiple tables (${targets}). Provide a "/entityset(${raw})" reference so the target table is unambiguous.`,
+				{ itemIndex },
+			);
+		}
+		if (isElasticTable(single)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup "${field}" targets an elastic table. Provide { "id": "${raw}", "partitionId": "..." } or a complete "/entityset(key)" reference.`,
 				{ itemIndex },
 			);
 		}
