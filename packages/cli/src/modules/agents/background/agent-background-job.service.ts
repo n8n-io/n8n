@@ -39,6 +39,7 @@ export type BackgroundJobView = Pick<
 	| 'createdAt'
 	| 'timeoutAt'
 	| 'settledAt'
+	| 'notifiedAt'
 	| 'childExecutionId'
 >;
 
@@ -207,7 +208,14 @@ export class AgentBackgroundJobService {
 			// A tool can read these results during a wake. Wait for chat delivery before marking them.
 			if (Container.get(AgentWakeService).isWakeActive(parentThreadId)) return 0;
 		}
-		return await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
+		return await this.consumeMail(parentThreadId, jobIds);
+	}
+
+	private async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
+		const count = await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
+		// Clear pending cards when a foreground turn consumes results without a signal.
+		if (count > 0 && jobIds[0]) await this.notifyTaskUpdate(jobIds[0]);
+		return count;
 	}
 
 	registerAbortController(jobId: string, controller: AbortController): void {
@@ -236,6 +244,7 @@ export class AgentBackgroundJobService {
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
+			notifiedAt: job.notifiedAt,
 			childExecutionId: job.childExecutionId,
 		}));
 	}
@@ -258,7 +267,8 @@ export class AgentBackgroundJobService {
 					: (job.settledAt?.getTime() ?? startedAt),
 			);
 		}
-		return group.some((job) => job.status === 'running') ? group : [];
+		// Keep final statuses available during the parent wake's batching delay.
+		return group.some((job) => job.status === 'running' || !job.notifiedAt) ? group : [];
 	}
 
 	/**
@@ -418,7 +428,7 @@ export class AgentBackgroundJobService {
 	 */
 	private async consumeCancelledMail(parentThreadId: string, jobId: string): Promise<void> {
 		try {
-			await this.jobRepository.markMailConsumed(parentThreadId, [jobId]);
+			await this.consumeMail(parentThreadId, [jobId]);
 		} catch (error) {
 			this.logger.warn('Failed to mark the cancelled job result as delivered', { jobId, error });
 		}

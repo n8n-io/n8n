@@ -152,6 +152,8 @@ describe('AgentChatController background tasks', () => {
 				title: 'Completed job',
 				status: 'completed',
 				createdAt: new Date('2026-09-09T10:02:00Z'),
+				settledAt: new Date('2026-09-09T10:05:00Z'),
+				notifiedAt: null,
 			},
 			{
 				id: 'job-4',
@@ -159,6 +161,7 @@ describe('AgentChatController background tasks', () => {
 				title: 'Failed job',
 				status: 'failed',
 				createdAt: new Date('2026-09-09T10:03:00Z'),
+				notifiedAt: null,
 			},
 			{
 				id: 'job-5',
@@ -166,9 +169,11 @@ describe('AgentChatController background tasks', () => {
 				title: 'Canceled job',
 				status: 'cancelled',
 				createdAt: new Date('2026-09-09T10:04:00Z'),
+				notifiedAt: new Date('2026-09-09T10:05:00Z'),
 			},
 		] as never);
 		expect(await controller.getBackgroundTasks(request as never)).toEqual({
+			pendingTaskIds: ['job-3', 'job-4'],
 			tasks: [
 				{
 					id: 'job-1',
@@ -190,6 +195,7 @@ describe('AgentChatController background tasks', () => {
 					title: 'Completed job',
 					status: 'completed',
 					startedAt: '2026-09-09T10:02:00.000Z',
+					settledAt: '2026-09-09T10:05:00.000Z',
 				},
 				{
 					id: 'job-4',

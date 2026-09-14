@@ -667,6 +667,10 @@ watch(
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {

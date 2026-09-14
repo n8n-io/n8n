@@ -78,14 +78,49 @@ const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
+const {
+	messages,
+	isStreaming,
+	isCancelling,
+	messagingState,
+	fatalError,
+	warnings,
+	loadHistory,
+	sendMessage,
+	stopGenerating,
+	resume,
+	cancelAndSteer,
+	dismissFatalError,
+	dismissWarning,
+} = useAgentChatStream({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	continueSessionId: toRef(props, 'continueSessionId'),
+	onHistoryLoaded: (count) => {
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
+	},
+});
+
 const { tasks: backgroundTasks } = useAgentBackgroundTasks({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
 	active: () => props.backgroundTasksActive,
+	receivedTasks: () =>
+		messages.value.flatMap((message) => message.backgroundTaskSignal?.tasks ?? []),
 });
+const backgroundRunningCount = computed(
+	() => backgroundTasks.value.filter((task) => task.status === 'running').length,
+);
 const backgroundTitle = computed(() => {
-	const count = backgroundTasks.value.filter((task) => task.status === 'running').length;
+	const count = backgroundRunningCount.value;
+	if (count === 0) {
+		return locale.baseText('agents.chat.backgroundTasks.finished', {
+			adjustToNumber: backgroundTasks.value.length,
+		});
+	}
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
 		adjustToNumber: count,
 		interpolate: { count },
@@ -145,7 +180,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 watch(
 	() =>
 		props.backgroundTasksActive &&
-		backgroundTasks.value.length > 0 &&
+		backgroundRunningCount.value > 0 &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -158,9 +193,12 @@ watch(
 const backgroundElapsed = computed(() => {
 	const startedAt = backgroundTasks.value[0]?.startedAt;
 	const start = startedAt ? Date.parse(startedAt) : now.value;
-	const seconds = Number.isFinite(start)
-		? Math.max(0, Math.floor((now.value - start) / TIME.SECOND))
-		: 0;
+	const end = backgroundRunningCount.value
+		? now.value
+		: Math.max(
+				...backgroundTasks.value.map((task) => Date.parse(task.settledAt ?? '') || now.value),
+			);
+	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
 	const minutes = Math.floor(seconds / 60);
 	const remainder = String(seconds % 60).padStart(2, '0');
 	return minutes < 60
@@ -239,31 +277,6 @@ const inputText = computed<string>({
 });
 const isPreparingToSend = ref(false);
 let disposed = false;
-
-const {
-	messages,
-	isStreaming,
-	isCancelling,
-	messagingState,
-	fatalError,
-	warnings,
-	loadHistory,
-	sendMessage,
-	stopGenerating,
-	resume,
-	cancelAndSteer,
-	dismissFatalError,
-	dismissWarning,
-} = useAgentChatStream({
-	projectId: toRef(props, 'projectId'),
-	agentId: toRef(props, 'agentId'),
-	continueSessionId: toRef(props, 'continueSessionId'),
-	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) {
-			emit('continue-loaded', { sessionId: props.continueSessionId, count });
-		}
-	},
-});
 
 const RUNTIME_ISSUE_PATH_PREFIXES = [
 	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
@@ -567,10 +580,10 @@ onBeforeUnmount(() => {
 						>
 							<template #prefix>
 								<N8nIcon
-									icon="loader-circle"
-									spin
+									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
+									:spin="backgroundRunningCount > 0"
 									size="small"
-									:class="$style.taskSpinner"
+									:class="{ [$style.taskSpinner]: backgroundRunningCount > 0 }"
 									aria-hidden="true"
 								/>
 							</template>

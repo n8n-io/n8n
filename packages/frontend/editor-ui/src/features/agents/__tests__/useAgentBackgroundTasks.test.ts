@@ -1,5 +1,6 @@
 import type {
 	AgentBackgroundTaskDto,
+	AgentBackgroundTaskSignal,
 	AgentBackgroundTasksResponse,
 	PushMessage,
 } from '@n8n/api-types';
@@ -45,10 +46,11 @@ describe('useAgentBackgroundTasks', () => {
 	let scope: EffectScope;
 	const threadId = ref('t1');
 	const active = ref(true);
+	const receivedTasks = ref<AgentBackgroundTaskSignal['tasks']>([]);
 	function create() {
 		scope = effectScope();
 		const result = scope.run(() =>
-			useAgentBackgroundTasks({ projectId: 'p1', agentId: 'a1', threadId, active }),
+			useAgentBackgroundTasks({ projectId: 'p1', agentId: 'a1', threadId, active, receivedTasks }),
 		);
 		if (!result) throw new Error('Missing scope');
 		return result;
@@ -58,6 +60,7 @@ describe('useAgentBackgroundTasks', () => {
 		vi.resetAllMocks();
 		threadId.value = 't1';
 		active.value = true;
+		receivedTasks.value = [];
 		visibility.value = 'visible';
 		pushStore.isConnected = true;
 		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({ tasks: [task] });
@@ -122,6 +125,73 @@ describe('useAgentBackgroundTasks', () => {
 		expect(tasks.value).toEqual([completedTask, runningTask]);
 		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({ tasks: [] });
 		onEvent(update);
+		await flushPromises();
+		expect(tasks.value).toEqual([]);
+	});
+
+	it('keeps final statuses until all pending task signals reach the chat', async () => {
+		const { tasks } = create();
+		await flushPromises();
+		const completed = { ...task, status: 'completed' as const };
+		const failed = { ...task, id: 'job-2', status: 'failed' as const };
+		const cancelled = { ...task, id: 'job-3', status: 'cancelled' as const };
+		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({
+			tasks: [completed, failed, cancelled],
+			pendingTaskIds: [completed.id, failed.id],
+		});
+		onEvent(update);
+		await flushPromises();
+		expect(tasks.value).toEqual([completed, failed, cancelled]);
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(tasks.value).toEqual([completed, failed, cancelled]);
+		expect(getAgentBackgroundTasks).toHaveBeenCalledTimes(2);
+		receivedTasks.value = [completed];
+		expect(tasks.value).toHaveLength(3);
+		receivedTasks.value = [completed, failed];
+		expect(tasks.value).toEqual([]);
+		onEvent(update);
+		await flushPromises();
+		expect(tasks.value).toEqual([]);
+	});
+
+	it('does not restore a running card from a late response after its signal arrives', async () => {
+		let resolveRequest!: (value: AgentBackgroundTasksResponse) => void;
+		vi.mocked(getAgentBackgroundTasks).mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveRequest = resolve;
+			}),
+		);
+		const { tasks } = create();
+		await flushPromises();
+		receivedTasks.value = [{ ...task, status: 'completed' }];
+		resolveRequest({ tasks: [task] });
+		await flushPromises();
+		expect(tasks.value).toEqual([]);
+	});
+
+	it('clears results consumed without a signal and clears pending tasks on a session change', async () => {
+		const terminal = { ...task, status: 'cancelled' as const };
+		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({
+			tasks: [terminal],
+			pendingTaskIds: [task.id],
+		});
+		const { tasks } = create();
+		await flushPromises();
+		expect(tasks.value).toEqual([terminal]);
+		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({ tasks: [], pendingTaskIds: [] });
+		onEvent(update);
+		await flushPromises();
+		expect(tasks.value).toEqual([]);
+		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({
+			tasks: [terminal],
+			pendingTaskIds: [task.id],
+		});
+		onEvent(update);
+		await flushPromises();
+		expect(tasks.value).toEqual([terminal]);
+		threadId.value = 't2';
+		expect(tasks.value).toEqual([]);
+		vi.mocked(getAgentBackgroundTasks).mockResolvedValue({ tasks: [] });
 		await flushPromises();
 		expect(tasks.value).toEqual([]);
 	});

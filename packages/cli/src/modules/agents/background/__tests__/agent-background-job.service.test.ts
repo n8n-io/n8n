@@ -343,7 +343,7 @@ describe('listForThread', () => {
 
 describe('listCurrentGroupForThread', () => {
 	it.each(['completed', 'failed', 'cancelled'] as const)(
-		'keeps a %s job until every job in its group is terminal',
+		'keeps a %s job until every job is terminal and its results are consumed',
 		async (status) => {
 			const { service } = setup();
 			const finished = makeJob({
@@ -355,7 +355,12 @@ describe('listCurrentGroupForThread', () => {
 			const list = vi.spyOn(service, 'listForThread').mockResolvedValue([running, finished]);
 			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([finished, running]);
 			expect(list).toHaveBeenCalledWith('thread-1');
-			list.mockResolvedValue([finished, { ...running, status, settledAt: new Date(4000) }]);
+			const terminal = { ...running, status, settledAt: new Date(4000) };
+			list.mockResolvedValue([finished, terminal]);
+			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([finished, terminal]);
+			list.mockResolvedValue(
+				[finished, terminal].map((job) => ({ ...job, notifiedAt: new Date(5000) })),
+			);
 			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([]);
 		},
 	);
@@ -400,6 +405,33 @@ describe('listCurrentGroupForThread', () => {
 	it('returns no group when the thread has no jobs', async () => {
 		const { service } = setup();
 		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([]);
+	});
+});
+
+describe('result consumption updates', () => {
+	it('broadcasts after a foreground turn consumes results', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		jobRepository.findById.mockResolvedValue(makeJob());
+		jobRepository.markMailConsumed.mockResolvedValue(1);
+		await service.markMailConsumed('thread-1', ['job-1']);
+		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			updateBroadcaster.notifyBackgroundTasks.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('broadcasts after cancellation consumes results without a parent wake', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		const job = makeJob();
+		jobRepository.findByParentThread.mockResolvedValue([job]);
+		jobRepository.findById.mockResolvedValue(job);
+		jobRepository.markMailConsumed.mockResolvedValue(1);
+		service.registerAbortController(job.id, new AbortController());
+		await service.cancel('thread-1', job.id);
+		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledTimes(2);
+		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			updateBroadcaster.notifyBackgroundTasks.mock.invocationCallOrder[1],
+		);
 	});
 });
 

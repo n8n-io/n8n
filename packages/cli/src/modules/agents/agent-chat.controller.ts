@@ -278,12 +278,16 @@ export class AgentChatController {
 		}
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(threadId);
 		return {
+			pendingTaskIds: jobs
+				.filter((job) => job.status !== 'running' && !job.notifiedAt)
+				.map((job) => job.id),
 			tasks: jobs.map((job) => ({
 				id: job.id,
 				title: job.title,
 				kind: job.kind,
 				status: job.status,
 				startedAt: job.createdAt.toISOString(),
+				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
 			})),
 		};
 	}

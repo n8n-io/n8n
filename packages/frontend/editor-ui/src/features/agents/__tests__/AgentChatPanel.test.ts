@@ -36,13 +36,18 @@ const defaultAgentConfig: AgentJsonConfig = {
 };
 
 vi.mock('@n8n/i18n', () => {
-	const baseText = (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+	const baseText = (
+		key: string,
+		options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
+	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
 			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+			'agents.chat.backgroundTasks.finished':
+				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.workflow': `Workflow (Wait node) — ${options?.interpolate?.title}`,
@@ -290,6 +295,35 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.get('[data-testid="agent-background-tasks"] button').text()).toContain(
 				'Running 1 background task',
 			);
+			wrapper.unmount();
+		});
+
+		it('keeps final statuses and expansion with a stopped timer while results await delivery', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-09T10:00:30Z'));
+			backgroundTasksMock.value = [task, { ...task, id: 'job-2' }];
+			const wrapper = mountPanel({ backgroundTasksActive: true });
+			const panel = wrapper.get('[data-testid="agent-background-tasks"]');
+			const trigger = panel.get('button');
+			await trigger.trigger('click');
+			backgroundTasksMock.value = [
+				{ ...task, status: 'completed', settledAt: '2026-09-09T10:00:31Z' },
+				{ ...task, id: 'job-2', status: 'failed', settledAt: '2026-09-09T10:00:32Z' },
+			];
+			await flushPromises();
+			expect(trigger.text()).toContain('Background tasks finished');
+			expect(trigger.attributes('aria-expanded')).toBe('true');
+			expect(panel.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('0:32');
+			for (const icon of panel.findAllComponents({ name: 'N8nIcon' })) {
+				expect(icon.props('spin')).toBe(false);
+			}
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(panel.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('0:32');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+			backgroundTasksMock.value = [];
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-background-tasks"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 

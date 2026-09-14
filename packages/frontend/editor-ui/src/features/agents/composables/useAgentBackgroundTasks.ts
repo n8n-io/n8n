@@ -1,4 +1,8 @@
-import type { AgentBackgroundTaskDto, PushMessage } from '@n8n/api-types';
+import type {
+	AgentBackgroundTaskSignal,
+	AgentBackgroundTasksResponse,
+	PushMessage,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDocumentVisibility } from '@vueuse/core';
 import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
@@ -13,6 +17,7 @@ interface BackgroundTasksTarget {
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
+	receivedTasks?: MaybeRefOrGetter<AgentBackgroundTaskSignal['tasks']>;
 }
 
 const MAX_RETRIES = 2;
@@ -21,7 +26,17 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 	const rootStore = useRootStore();
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
-	const tasks = ref<AgentBackgroundTaskDto[]>([]);
+	const group = ref<AgentBackgroundTasksResponse>({ tasks: [] });
+	const tasks = computed(() => {
+		const received = new Map(toValue(target.receivedTasks)?.map((task) => [task.id, task]));
+		// A late task response must not restore a running status after its chat signal arrives.
+		const current = group.value.tasks.map((task) => ({
+			...task,
+			status: received.get(task.id)?.status ?? task.status,
+		}));
+		if (current.some((task) => task.status === 'running')) return current;
+		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
+	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
 	let generation = 0;
 	let disposed = false;
@@ -64,9 +79,12 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 				threadId,
 			);
 			if (isCurrent()) {
-				tasks.value = [...result.tasks].sort(
-					(a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id),
-				);
+				group.value = {
+					...result,
+					tasks: [...result.tasks].sort(
+						(a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id),
+					),
+				};
 				retries = 0;
 			}
 		} catch {
@@ -123,7 +141,7 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 			generation++;
 			inFlight = undefined;
 			queued = false;
-			tasks.value = [];
+			group.value = { tasks: [] };
 			clearRetry();
 			refresh();
 		},

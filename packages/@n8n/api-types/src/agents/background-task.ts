@@ -6,6 +6,8 @@ export interface AgentBackgroundTaskDto {
 	status: 'running' | 'completed' | 'failed' | 'cancelled';
 	/** ISO timestamp when the background task started. */
 	startedAt: string;
+	/** ISO timestamp when the background task reached a terminal status. */
+	settledAt?: string;
 }
 
 export interface AgentBackgroundTaskSignal {
@@ -17,6 +19,8 @@ export interface AgentBackgroundTaskSignal {
 }
 
 export interface AgentBackgroundTasksResponse {
-	/** Jobs in the current group. Empty when no jobs are running. */
+	/** Jobs in the current group while tasks run or results await delivery. */
 	tasks: AgentBackgroundTaskDto[];
+	/** Terminal jobs whose results the parent has not consumed. */
+	pendingTaskIds?: string[];
 }
