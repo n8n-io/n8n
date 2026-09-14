@@ -250,13 +250,24 @@ describe('getComputerUsePrompt', () => {
 			expect(result).not.toContain('Filesystem Exploration');
 		});
 
-		it("points at the user's own settings when they turned the local computer off", () => {
+		it('never offers the local-computer entry when that channel is unavailable', () => {
+			const localUnavailable = getComputerUsePrompt({
+				state: state(UNAVAILABLE, connected('browser')),
+			});
+
+			expect(localUnavailable).not.toContain('"Connect local computer"');
+			expect(localUnavailable).not.toContain('Local Computer (Not Connected)');
+		});
+
+		it('still offers the + menu entry when the user turned the local computer off', () => {
+			// The client renders the entry regardless of the user's own preference, and
+			// clicking it clears that preference, so the + menu is the way back.
 			const withLocalOff = getComputerUsePrompt({
 				state: state(DISABLED_BY_USER, connected('browser')),
 			});
 
-			expect(withLocalOff).toContain('turned their local computer connection off');
-			expect(withLocalOff).not.toContain('"Connect local computer"');
+			expect(withLocalOff).toContain('"Connect local computer"');
+			expect(withLocalOff).not.toContain('n8n Assistant settings');
 		});
 	});
 

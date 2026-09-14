@@ -251,17 +251,14 @@ Browser automation is not available on this instance. If the user asks for it, s
 
 	// The channels connect separately, so one can be live while the other is
 	// still only offered. Say so rather than implying the local tools exist.
-	const localComputer = state.localComputer;
-	if (localComputer.status === 'disconnected') {
+	// `disabledByUser` reads the same as `disconnected` here: the client renders
+	// the entry either way, and selecting it clears the user's own preference.
+	const localComputerStatus = state.localComputer.status;
+	if (localComputerStatus === 'disconnected' || localComputerStatus === 'disabledByUser') {
 		promptParts.push(`
 ### Local Computer (Not Connected)
 
 The user's local computer is not connected, so filesystem, shell, and other local tools are unavailable. If the user needs them, tell them to select the + button beside the chat input, select "Connect local computer", and follow the setup instructions.`);
-	} else if (localComputer.status === 'disabledByUser') {
-		promptParts.push(`
-### Local Computer (Turned Off)
-
-The user turned their local computer connection off in their own settings, so filesystem, shell, and other local tools are unavailable. If the user needs them, tell them to turn the connection back on in their n8n Assistant settings.`);
 	}
 
 	return promptParts.join('\n');
