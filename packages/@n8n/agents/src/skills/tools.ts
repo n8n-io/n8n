@@ -11,6 +11,8 @@ import {
 	type RuntimeSkillRegistry,
 	type RuntimeSkillRegistryEntry,
 	type RuntimeSkillSource,
+	type RuntimeSkillLoader,
+	type RuntimeSkillContent,
 } from './types';
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
@@ -109,7 +111,10 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 			)
 			.input(skillLoadInputSchema)
 			.output(skillLoadResultSchema)
-			.handler(async ({ skillId, name }) => await loadSkill(source, { skillId, name }))
+			.handler(
+				async ({ skillId, name }, context) =>
+					await loadSkill(source, { skillId, name }, context.loadSkill),
+			)
 			.build();
 	}
 
@@ -121,8 +126,8 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadResultSchema)
 		.handler(
-			async ({ skillId, name, filePath }) =>
-				await loadSkill(source, { skillId, name, filePath, loadFile }),
+			async ({ skillId, name, filePath }, context) =>
+				await loadSkill(source, { skillId, name, filePath, loadFile }, context.loadSkill),
 		)
 		.build();
 }
@@ -135,6 +140,7 @@ async function loadSkill(
 		filePath?: string;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
+	activate?: RuntimeSkillLoader,
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, filePath, loadFile } = input;
 	await source.prepare?.();
@@ -205,7 +211,7 @@ async function loadSkill(
 		};
 	}
 
-	const skill = await source.loadSkill(skillEntry.id);
+	const skill = await (activate ?? source.loadSkill)(skillEntry.id);
 	if (!skill) {
 		return {
 			ok: false,
@@ -217,6 +223,26 @@ async function loadSkill(
 		};
 	}
 
+	if (activate) {
+		return {
+			success: true,
+			skillId: skillEntry.id,
+			name: skillEntry.name,
+			hash: skillEntry.hash,
+			content: 'The skill instructions are active. Follow them for this task.',
+			linkedFiles: skillEntry.linkedFiles,
+		};
+	}
+	return {
+		type: 'content',
+		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry) }],
+	};
+}
+
+export function formatActiveSkill(
+	skill: RuntimeSkillContent,
+	skillEntry: RuntimeSkillRegistryEntry,
+): string {
 	const content = cap(skill.instructions);
 	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
 		(file) => file.path,
@@ -229,10 +255,7 @@ async function loadSkill(
 				]
 			: []),
 	];
-	return {
-		type: 'content',
-		value: [{ type: 'text', text: `${header.join('\n')}\n\n${content}` }],
-	};
+	return `${header.join('\n')}\n\n${content}`;
 }
 
 function findSkillEntry(

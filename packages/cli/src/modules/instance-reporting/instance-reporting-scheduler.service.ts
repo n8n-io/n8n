@@ -11,6 +11,8 @@ import { InstanceReportingSettingsService } from './instance-reporting-settings.
 import { InstanceReportingConfig } from './instance-reporting.config';
 import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
 
+import { EventService } from '@/events/event.service';
+
 const MINUTES_PER_DAY = 24 * 60;
 
 /**
@@ -38,6 +40,8 @@ export class InstanceReportingScheduler {
 
 	private isShuttingDown = false;
 
+	private readonly onServerStarted = () => this.start();
+
 	constructor(
 		private readonly config: InstanceReportingConfig,
 		private readonly reportingService: InstanceReportingService,
@@ -45,6 +49,7 @@ export class InstanceReportingScheduler {
 		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly modulesConfig: ModulesConfig,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
@@ -74,7 +79,11 @@ export class InstanceReportingScheduler {
 			return;
 		}
 
-		if (this.instanceSettings.isLeader) this.start();
+		// Defer the first tick until the server has finished starting. A boot
+		// catch-up report can send right away, but log streaming module was not properly initialized
+		if (this.instanceSettings.isLeader) {
+			this.eventService.once('server-started', this.onServerStarted);
+		}
 	}
 
 	get isEnabled(): boolean {
@@ -101,6 +110,8 @@ export class InstanceReportingScheduler {
 
 	@OnLeaderStepdown()
 	stop(): void {
+		this.eventService.off('server-started', this.onServerStarted);
+
 		if (this.timeout === undefined) return;
 
 		clearTimeout(this.timeout);

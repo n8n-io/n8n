@@ -9,6 +9,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
+	AGENT_DUPLICATE_MODAL_KEY,
 } from './constants';
 
 export const AGENTS_MODALS: ModalDefinition[] = [
@@ -99,5 +100,19 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 		key: AGENT_CONFIRMATION_MODAL_KEY,
 		component: async () => await import('./components/AgentConfirmationModal.vue'),
 		initialState: { open: false },
+	},
+	{
+		key: AGENT_DUPLICATE_MODAL_KEY,
+		component: async () => await import('./components/AgentDuplicateModal.vue'),
+		initialState: {
+			open: false,
+			data: {
+				projectId: '',
+				agentId: '',
+				name: '',
+				existingNames: [],
+				onConfirm: () => {},
+			},
+		},
 	},
 ];

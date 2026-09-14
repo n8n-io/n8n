@@ -151,7 +151,7 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 
 	displayName = 'Microsoft Entra Service Principal';
 
-	documentationUrl = 'microsoftentra';
+	documentationUrl = 'microsoftentraserviceprincipal';
 
 	icon: Icon = 'file:icons/Microsoft.svg';
 

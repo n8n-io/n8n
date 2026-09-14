@@ -24,7 +24,7 @@ import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLa
 
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
@@ -74,7 +74,7 @@ const emit = defineEmits<{
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
@@ -312,6 +312,7 @@ useKeybindings({
 
 			<AgentPreviewChatPage
 				ref="previewChatPage"
+				:visible="props.isOpen"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"

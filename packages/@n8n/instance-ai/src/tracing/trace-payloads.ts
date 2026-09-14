@@ -4,6 +4,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -97,6 +98,7 @@ const LLM_AI_SDK_OPERATION_IDS = new Set([
 ]);
 
 export interface AgentTraceInputOptions {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
@@ -1381,6 +1383,14 @@ export function mergeTraceInputs(
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
+		...(options.promptConfiguration
+			? {
+					prompt_configuration: options.promptConfiguration,
+					system_prompt_hash: createHash('sha256')
+						.update(options.systemPrompt ?? '')
+						.digest('hex'),
+				}
+			: {}),
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
 		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined

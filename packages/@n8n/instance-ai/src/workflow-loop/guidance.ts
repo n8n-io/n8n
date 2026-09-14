@@ -33,7 +33,11 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	const rules = [
 		'Do NOT call the workflow verified, tested, working, or ready to publish.',
 		'Do NOT offer to publish it.',
-		claim.liveTestRecommended ? 'Offer a live end-to-end test instead.' : '',
+		(claim.pendingTriggers?.length ?? 0) > 0
+			? 'Follow the verification obligation for the remaining triggers. Respect its attempt limit.'
+			: claim.liveTestRecommended
+				? 'Offer a live end-to-end test instead.'
+				: '',
 	].filter((rule) => rule !== '');
 
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');

@@ -13,7 +13,11 @@ import type {
 } from '../../../workflow-loop/workflow-loop-state';
 
 export interface DeriveVerificationClaimArgs {
-	analysis: VerificationAnalysis;
+	analysis: Pick<
+		VerificationAnalysis,
+		'success' | 'nodesNotReached' | 'reachedSimulatedNodes' | 'workflowPinnedNodeNames'
+	>;
+	pendingTriggers?: string[];
 	/** Planned nodes from the build outcome simulation plan. */
 	plannedNodeCount: number;
 	/**
@@ -37,6 +41,7 @@ export function deriveVerificationClaim(args: DeriveVerificationClaimArgs): Veri
 		hasUnreached: nodesNotReached.length > 0,
 		hasSimulated: simulatedNodes.length > 0,
 		hasUnprovenTarget: unprovenTargets.length > 0,
+		hasPendingTrigger: (args.pendingTriggers?.length ?? 0) > 0,
 	});
 
 	return {
@@ -50,6 +55,7 @@ export function deriveVerificationClaim(args: DeriveVerificationClaimArgs): Veri
 		simulatedNodes,
 		pinnedNodes: [...analysis.workflowPinnedNodeNames],
 		unprovenTargets,
+		...(args.pendingTriggers ? { pendingTriggers: args.pendingTriggers } : {}),
 		publishReady: level === 'verified',
 		liveTestRecommended: level === 'partial' || level === 'unproven',
 	};
@@ -60,11 +66,12 @@ function resolveLevel(facts: {
 	hasUnreached: boolean;
 	hasSimulated: boolean;
 	hasUnprovenTarget: boolean;
+	hasPendingTrigger: boolean;
 }): VerificationClaimLevel {
 	if (!facts.success) return 'failed';
 	// A named target that never ran for real outranks overall coverage: the user
 	// asked about that node, so a green run elsewhere does not answer them.
 	if (facts.hasUnprovenTarget) return 'unproven';
-	if (facts.hasUnreached || facts.hasSimulated) return 'partial';
+	if (facts.hasUnreached || facts.hasSimulated || facts.hasPendingTrigger) return 'partial';
 	return 'verified';
 }

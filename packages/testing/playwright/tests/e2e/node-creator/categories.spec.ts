@@ -1,8 +1,6 @@
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.use({ capability: { env: { TEST_ISOLATION: 'node-creator-categories' } } });
-
 test.skip(
 	'Node Creator Categories',
 	{

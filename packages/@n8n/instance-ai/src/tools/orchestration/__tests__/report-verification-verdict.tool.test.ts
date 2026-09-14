@@ -12,6 +12,8 @@ function createWorkflowTaskService(reportVerificationVerdict = vi.fn()) {
 		beginVerification: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
+		startVerification: vi.fn(),
+		recordVerification: vi.fn(),
 	};
 }
 

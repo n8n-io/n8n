@@ -3,10 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
+	InstanceAiPromptConfiguration,
 } from '@n8n/api-types';
 import type { z } from 'zod';
 
@@ -162,6 +164,7 @@ export interface EventOutcome {
 }
 
 export interface BuildTrace {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	finalText: string;
 	toolCalls: CapturedToolCall[];
 	agentActivities: AgentActivity[];
@@ -181,6 +184,13 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+}
+
+/** Structured agent preview. Capture redacts it; persistence validates and caps it. */
+export interface AgentArtifact {
+	agentId?: string;
+	config: unknown;
+	skills: Record<string, AgentSkill>;
 }
 
 export interface ExecutionScenario {
@@ -242,6 +252,11 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional case override. Unset cases use the suite mode or control. */
+	buildMode?: 'progressive' | 'default';
+	promptVersion?: string;
+	/** Enable the user-run action for credential-free execution cases. */
+	allowUserExecution?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -344,8 +359,10 @@ export interface WorkflowTestCaseResult {
 	workflowId?: string;
 	/** Agent the case's scenarios executed (agent-artifact cases). */
 	agentId?: string;
-	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	/** Rendered agent config + skills, used by the local HTML report. */
 	agentArtifactContext?: string;
+	/** Structured, redacted agent config and skills. Persistence validates and caps this value. */
+	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];
