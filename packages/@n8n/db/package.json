@@ -47,7 +47,6 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "p-lazy": "3.1.0",
-    "reflect-metadata": "catalog:",
     "uuid": "catalog:",
     "xss": "catalog:",
     "zod": "catalog:"

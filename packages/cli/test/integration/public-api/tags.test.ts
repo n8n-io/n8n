@@ -191,6 +191,47 @@ describe('POST /tags', () => {
 		const response = await authOwnerAgent.post('/tags').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should fail due to non-string name', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 42 });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test.each(['id', 'createdAt', 'updatedAt'])(
+		'should fail due to read-only property %s in body',
+		async (key) => {
+			const response = await authOwnerAgent
+				.post('/tags')
+				.send({ name: 'Tag 1', [key]: '2tUt1wbLX592XDdX' });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(`request/body/${key} is read-only`);
+		},
+	);
+
+	test('should fail due to unknown property in body', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 'Tag 1', unknown: true });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should fail due to missing "tag:create" scope', async () => {
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+
+		const response = await testServer
+			.publicApiAgentFor(memberWithoutScope)
+			.post('/tags')
+			.send({ name: 'Tag 1' });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('Forbidden');
+
+		const tag = await Container.get(TagRepository).findOneBy({ name: 'Tag 1' });
+
+		expect(tag).toBeNull();
 	});
 
 	test('should create tag', async () => {
@@ -201,6 +242,7 @@ describe('POST /tags', () => {
 		const response = await authMemberAgent.post('/tags').send(payload);
 
 		expect(response.statusCode).toBe(201);
+		expect(Object.keys(response.body).sort()).toEqual(['createdAt', 'id', 'name', 'updatedAt']);
 
 		const { id, name, createdAt, updatedAt } = response.body;
 
