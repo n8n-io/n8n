@@ -33,7 +33,7 @@ test.use({
 });
 
 test.describe(
-	'Workflow Builder @auth:owner @ai @capability:proxy',
+	'Workflow Builder @auth:owner @ai',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

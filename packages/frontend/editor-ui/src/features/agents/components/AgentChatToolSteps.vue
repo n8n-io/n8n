@@ -13,7 +13,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
@@ -92,16 +92,17 @@ interface ToolStepDisplay {
 	expandable: boolean;
 }
 
-function getToolDisplayName(toolName: string): string {
-	return resolveToolNameForDisplay(toolName, i18n);
+function getToolDisplayName(toolName: string, output?: unknown): string {
+	return resolveToolNameForDisplay(toolName, i18n, output);
 }
 
-function toolStepLabel(tc: ToolCall): string {
+function toolStepLabel(tc: ToolCall, isCompact = false): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
-	return getToolDisplayName(tc.tool);
+	// The compact "Memory noted" label only applies once the call has finished.
+	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
@@ -154,14 +155,15 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
+	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
-		label: [toolStepLabel(tc), ...metadata].join(' · '),
+		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
-		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
+		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
 	};
 }
 

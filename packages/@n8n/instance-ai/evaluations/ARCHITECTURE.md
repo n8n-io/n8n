@@ -74,8 +74,8 @@ split them out of the old `runner.ts` monolith):
 - **`eval-results.json`** is ingested by the LangTracer dispatcher, which runs
   this CLI keyless per case. The exact field set is pinned by
   `__tests__/eval-results-dispatcher-contract.test.ts`.
-- **`eval-pr-comment.md`** is posted verbatim by CI; the comment is found by its
-  `### Instance AI Workflow Eval` prefix.
+- **`eval-pr-comment.md`** is posted verbatim by CI. The comment uses an
+  `### Instance AI Workflow Eval` or `### Instance AI Agent Eval` prefix.
 - **LangSmith feedback keys** (`scenario_pass`, `failure_category`,
   `evals.workflows.*`, `pass_at_k`, `pass_hat_k` — plus `build_cost_usd` /
   `build_turns` on `--build-via-mcp` rows) and the traced span names
