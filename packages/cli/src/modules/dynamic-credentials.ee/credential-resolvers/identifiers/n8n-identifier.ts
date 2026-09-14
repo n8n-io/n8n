@@ -262,11 +262,15 @@ export class N8NIdentifier implements ITokenIdentifier {
 		// themself, before any execution or binding exists, so it skips the binding
 		// check below. A fire-minted carrier, in contrast, always sets an explicit
 		// `executionPath` (`[]` on its first, pre-executionId pass through
-		// establishExecutionContext) — once defaulted above it reads identically to
-		// the probe's absent path, so the gate below checks the raw field, not the
-		// defaulted local, to still hit the binding check for that carrier.
+		// establishExecutionContext). Once defaulted above, that empty path reads
+		// identically to the probe's absent path, so the gate below checks the raw
+		// field, not the defaulted local, to still hit the binding check.
 		const isPublishProbe = !executionId && metadata.executionPath === undefined;
 		if (!isPublishProbe) {
+			// The binding and the `workflow:execute` check below both use the sealed
+			// `metadata.workflowId`, not the workflow that executes now. A sub-workflow
+			// inherits the carrier of its parent, and `executionPath` already stops a
+			// replay of the carrier into a different execution.
 			const binding = await this.runAsBindingRepository.findActiveByWorkflowId(workflowId);
 			if (!binding || binding.userId !== subject) throw invalid();
 		}
