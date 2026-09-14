@@ -43,8 +43,8 @@ export class Line implements INodeType {
 		properties: [
 			{
 				displayName:
-					'End of service: LINE Notify will be discontinued from April 1st 2025, You can find more information <a href="https://notify-bot.line.me/closing-announce" target="_blank">here</a>',
-				name: 'notice',
+					'This node is deprecated. LINE Notify was discontinued on April 1st 2025, so this node no longer sends notifications. You can find more information <a href="https://notify-bot.line.me/closing-announce" target="_blank">here</a>',
+				name: 'deprecationNotice',
 				type: 'notice',
 				default: '',
 			},
