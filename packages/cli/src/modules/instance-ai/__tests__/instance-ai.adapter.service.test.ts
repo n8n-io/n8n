@@ -76,6 +76,7 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_COMPUTER_USE_FLAG,
 	INSTANCE_AI_BROWSER_USE_FLAG,
 	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
@@ -5479,7 +5480,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
-		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
+		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[INSTANCE_AI_COMPUTER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 		[INSTANCE_AI_BROWSER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 	};
@@ -5508,7 +5509,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
-			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
+			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5520,6 +5521,17 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			computerUseExperimentEnabled: false,
 			browserUseExperimentEnabled: false,
+		});
+	});
+
+	// Regression guard for the shipped bug: the flag is multivariate, so a
+	// boolean `true` is not a value PostHog can return for it. Reading it as one
+	// left the gate shut at every rollout percentage.
+	it('does not open the folder-exploration gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			folderExplorationEnabled: false,
 		});
 	});
 
