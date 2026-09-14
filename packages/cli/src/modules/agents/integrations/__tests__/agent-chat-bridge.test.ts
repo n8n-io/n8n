@@ -1524,7 +1524,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1']);
 		});
 
-		it('tells the sender when the thread already has the maximum number of waiting messages', async () => {
+		it('posts the queue-full notice when the turn coordinator rejects the admission', async () => {
 			vi.spyOn(Container.get(AgentThreadTurnCoordinator), 'run').mockRejectedValue(
 				new AgentThreadQueueFullError(),
 			);

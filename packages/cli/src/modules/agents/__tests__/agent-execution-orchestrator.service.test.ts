@@ -1365,6 +1365,14 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(beforeResume.mock.invocationCallOrder[0]).toBeLessThan(
 			runtime.agent.resume.mock.invocationCallOrder[0],
 		);
+
+		// A resume that cannot claim the turn settles nothing.
+		beforeResume.mockClear();
+		runtime.agent.resume.mockClear();
+		executionService.startClaimedExecutionRecording.mockRejectedValueOnce(new Error('db down'));
+		await expect(resume()).rejects.toThrow('db down');
+		expect(beforeResume).not.toHaveBeenCalled();
+		expect(runtime.agent.resume).not.toHaveBeenCalled();
 	});
 
 	it('reconstructs a resumed runtime from the persisted sandbox scope', async () => {
