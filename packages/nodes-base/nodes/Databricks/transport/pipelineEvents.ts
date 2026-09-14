@@ -71,6 +71,12 @@ function isPipelineEventLevel(level: string): level is PipelineEventLevel {
 	return (PIPELINE_EVENT_LEVELS as readonly string[]).includes(level);
 }
 
+function isIsoUtcTimestamp(value: string): boolean {
+	if (!ISO_TIMESTAMP_PATTERN.test(value)) return false;
+	const parsed = new Date(value);
+	return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value.slice(0, 19));
+}
+
 export function buildPipelineEventsFilter(
 	params: Pick<ListPipelineEventsParams, 'after' | 'levels'>,
 ): string | undefined {
@@ -85,7 +91,7 @@ export function buildPipelineEventsFilter(
 		clauses.push(`level in (${params.levels.map((level) => `'${level}'`).join(', ')})`);
 	}
 	if (params.after !== undefined) {
-		if (!ISO_TIMESTAMP_PATTERN.test(params.after) || Number.isNaN(Date.parse(params.after))) {
+		if (!isIsoUtcTimestamp(params.after)) {
 			throw new UnexpectedError('Pipeline events cursor must be an ISO 8601 UTC timestamp', {
 				extra: { after: params.after },
 			});
