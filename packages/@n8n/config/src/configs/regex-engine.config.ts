@@ -13,5 +13,5 @@ export class RegexEngineConfig {
 	 * Patterns n8n itself authored always use the built-in engine.
 	 */
 	@Env('N8N_REGEX_ENGINE', regexEngineSchema)
-	engine: 'js' = 'js';
+	engine: 'js' = 'js' as const;
 }
