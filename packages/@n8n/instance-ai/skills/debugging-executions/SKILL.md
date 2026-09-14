@@ -94,12 +94,25 @@ errored outright and changed nothing. A node that partly succeeded before it
 failed — a send that delivered some messages and then hit a rate limit — will
 deliver them again.
 
-### When you must invent the input
+### Studying a node on its own with `mockInput`
 
-Use `mockInput` only when the upstream nodes cannot run. It proves the node
-accepts the input you invented, nothing more — the result carries
-`inputMode: "mocked"` and a `mockedNodeNames` list, and you must say so
-instead of reporting the workflow as working.
+`mockInput` runs the node on items you supply and skips everything above it.
+This is a good way to study one node by itself, and a normal thing to do while
+debugging:
+
+- probe an edge case the workflow rarely produces — an empty list, a missing
+  field, a zero or negative amount;
+- hold the input still when the upstream data changes between runs, so two
+  attempts are comparable;
+- separate "this node is wrong" from "this node gets the wrong input".
+
+Reach for it whenever the question is about the node. Use `reuseExecutionId` or
+a chain run when the question is about the workflow.
+
+Keep the claim at the level of the evidence. A mocked run shows the node
+handles the input you gave it; it shows nothing about what the chain really
+produces. The result carries `inputMode: "mocked"` and a `mockedNodeNames`
+list — report the node's behaviour, not the workflow's.
 
 Mocked input does **not** make a write node safe. The node still runs for real
 against the user's systems; only its input is invented, which makes the effect

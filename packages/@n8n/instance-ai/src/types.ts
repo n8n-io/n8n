@@ -601,11 +601,15 @@ export interface InstanceAiExecutionService {
 	 * nodes resolve, sub-nodes come along, and the execution lands in the
 	 * workflow's history where `getNodeOutput` and the user's canvas can see it.
 	 *
-	 * The target's input comes from one of three places, in descending order of
-	 * how much the result proves:
-	 * 1. `reuseExecutionId` — replay a past run's data and re-run only the target.
-	 * 2. neither option — run every ancestor that has no data yet, then the target.
-	 * 3. `mockInput` — invent the input and skip the ancestors entirely.
+	 * The target's input comes from one of three places:
+	 * - `reuseExecutionId` — replay a past run's data and re-run only the target.
+	 * - neither option — run every ancestor that has no data yet, then the target.
+	 * - `mockInput` — supply the input and skip the ancestors entirely.
+	 *
+	 * The first two say something about the workflow, because the input is data
+	 * the workflow really produced. `mockInput` says something about the node
+	 * alone, which is what you want when isolating it — but a caller must not
+	 * read a mocked result as evidence about the chain.
 	 */
 	runStep?(
 		workflowId: string,

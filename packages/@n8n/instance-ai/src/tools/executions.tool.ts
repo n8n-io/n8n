@@ -107,12 +107,13 @@ const runStepAction = z.object({
 		.array(z.record(z.unknown()))
 		.optional()
 		.describe(
-			'Items to feed the target node, skipping every node above it. Use only when ' +
-				'running the upstream nodes is impossible or unwanted. The result proves the ' +
-				'node accepts THIS input — it does not prove the workflow produces it, ' +
-				'because the upstream output is invented. Prefer reuseExecutionId, or ' +
-				'neither option, whenever you can. This does not make a write node safe: ' +
-				'the node still runs for real, only its input is invented.',
+			'Items to feed the target node, skipping every node above it. Good for ' +
+				'studying one node on its own: probing an edge case, or holding the input ' +
+				'still while upstream data changes between runs. The result shows the node ' +
+				'handles THIS input; it shows nothing about what the workflow really ' +
+				'produces, so use reuseExecutionId or a chain run when that is the ' +
+				'question. This does not make a write node safe: the node still runs for ' +
+				'real, only its input is invented.',
 		),
 	versionId: z
 		.string()
