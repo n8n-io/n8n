@@ -589,6 +589,9 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `chain` | neither option | The node ran on data its ancestors really produced in this run |
 | `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
 
+`executedNodeNames` excludes the fabricated nodes: they carry run data without
+ever having run, so counting them would report the whole chain as executed.
+
 `mocked` also fabricates a placeholder item for every node between the trigger
 and the target, because `findStartNodes` walks down from the trigger and stops
 at the first node with no run data. `fabricatedNodeNames` lists them. A

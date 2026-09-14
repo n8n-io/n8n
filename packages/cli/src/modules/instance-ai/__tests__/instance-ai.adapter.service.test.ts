@@ -5452,6 +5452,47 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hi' } }]);
 	});
 
+	it('does not report a fabricated node as executed', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				// The engine persists run data for the fabricated nodes too, because
+				// that is how it feeds the target. Only the target really ran.
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{}])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
+
+		expect(result.fabricatedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.executedNodeNames).toEqual(['Send']);
+	});
+
+	it('keeps every executed node for a chain run', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{}])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', undefined);
+
+		expect(result.executedNodeNames).toEqual(['Trigger', 'Fetch', 'Send']);
+	});
+
 	it('reports the step in telemetry', async () => {
 		const { mockTelemetry } = await runStepOn(
 			chainWorkflow,

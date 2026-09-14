@@ -2190,8 +2190,18 @@ export class InstanceAiAdapterService {
 					});
 				};
 
+				const fabricated = new Set(plan.fabricatedNodeNames);
 				const describe = (result: ExecutionResult): StepExecutionResult => ({
 					...result,
+					// `extractExecutionOutcome` derives this from the run data keys, and a
+					// fabricated node has run data without ever having run. Leaving it in
+					// would report four nodes as executed when one was, which is exactly
+					// the false-coverage signal this tool must not emit.
+					...(result.executedNodeNames
+						? {
+								executedNodeNames: result.executedNodeNames.filter((name) => !fabricated.has(name)),
+							}
+						: {}),
 					nodeName,
 					inputMode: plan.inputMode,
 					fabricatedNodeNames: plan.fabricatedNodeNames,

@@ -184,7 +184,8 @@ export interface StepExecutionResult extends ExecutionResult {
 	inputMode: StepRunInputMode;
 	/**
 	 * Nodes whose output was invented so the run could reach the target. Empty
-	 * unless `inputMode` is `mocked`.
+	 * unless `inputMode` is `mocked`. They are excluded from
+	 * `executedNodeNames`: they carry run data without ever having run.
 	 */
 	fabricatedNodeNames: string[];
 	/** Execution the replayed run data came from. */
