@@ -33,7 +33,7 @@ const nonAscii = (characters: readonly string[]) => characters.filter((c) => !is
 export const chars = (...parts: Array<string | number>) =>
 	parts.map((part) => (typeof part === 'number' ? String.fromCodePoint(part) : part)).join('');
 
-export const LATIN_ACCENTED = nonAscii(latin);
+export const LATIN_ACCENTED = nonAscii(latin).filter((c) => /^\p{L}$/u.test(c));
 export const GREEK = greek;
 export const CYRILLIC = cyrillic;
 export const HEBREW = hebrew;

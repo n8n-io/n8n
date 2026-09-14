@@ -42,7 +42,8 @@ export interface Family {
 	readonly description: string;
 	/** Named cases worth reading, passed as fast-check examples by callers. */
 	readonly examples: readonly string[];
-	readonly arbitrary: fc.Arbitrary<string>;
+	/** Generates one word of this family. `stringFrom` joins words into phrases. */
+	readonly word: fc.Arbitrary<string>;
 }
 
 /** An ASCII word with an optional capital, the shape most fixtures already use. */
@@ -66,10 +67,6 @@ const mixedWord = (characters: readonly string[]) =>
 		)
 		.map((c) => c.join(''))
 		.filter((word) => !isAscii(word));
-
-/** One to three words joined by a space, the shape of a property name or a label. */
-const phrase = (word: fc.Arbitrary<string>) =>
-	fc.array(word, { minLength: 1, maxLength: 3 }).map((words) => words.join(' '));
 
 /** ASCII words and the given separators in random order, with at least one separator. */
 const interleaved = (separators: readonly string[]) =>
@@ -132,7 +129,7 @@ const latinAccented: Family = {
 	name: 'latin-accented',
 	description: 'ASCII words with accented Latin letters or ligatures, which ASCII folding drops.',
 	examples: ['Prénom', 'Straße', 'Größe', 'naïve', 'café', 'Ærø', 'Łódź', 'Ñandú'],
-	arbitrary: phrase(mixedWord(LATIN_ACCENTED)),
+	word: mixedWord(LATIN_ACCENTED),
 };
 
 export const families = [
@@ -141,42 +138,42 @@ export const families = [
 		name: 'greek',
 		description: 'Greek words. ASCII folding removes every letter, so all of them share one key.',
 		examples: ['κόσμος', 'Όνομα', 'ΟΔΥΣΣΕΥΣ', 'Τιμή (€)'],
-		arbitrary: phrase(wordOf(GREEK)),
+		word: wordOf(GREEK),
 	},
 	{
 		name: 'cyrillic',
 		description:
 			'Cyrillic words. ASCII folding removes every letter, so all of them share one key.',
 		examples: ['Имя', 'Фамилия', 'Ёлка', 'Дата рождения'],
-		arbitrary: phrase(wordOf(CYRILLIC)),
+		word: wordOf(CYRILLIC),
 	},
 	{
 		name: 'right-to-left',
 		description:
 			'Hebrew and Arabic words, which render right to left and reorder ASCII around them.',
 		examples: ['שלום', 'مرحبا', 'اسم Name', 'שם: Value'],
-		arbitrary: phrase(fc.oneof(wordOf(HEBREW), wordOf(ARABIC))),
+		word: fc.oneof(wordOf(HEBREW), wordOf(ARABIC)),
 	},
 	{
 		name: 'devanagari',
 		description:
 			'Devanagari words, where vowel signs are combining marks on the consonant before them.',
 		examples: ['नाम', 'हिन्दी', 'जन्म तिथि'],
-		arbitrary: phrase(wordOf(DEVANAGARI)),
+		word: wordOf(DEVANAGARI),
 	},
 	{
 		name: 'cjk',
 		description:
 			'Han, Hiragana, Katakana and Hangul text, with no letter case and no word separators.',
 		examples: ['日本語 名前', '中文 字段', '이름', 'カタカナ', 'ひらがな'],
-		arbitrary: phrase(fc.oneof(wordOf(HAN), wordOf(HIRAGANA), wordOf(KATAKANA), wordOf(HANGUL))),
+		word: fc.oneof(wordOf(HAN), wordOf(HIRAGANA), wordOf(KATAKANA), wordOf(HANGUL)),
 	},
 	{
 		name: 'decomposed',
 		description:
 			'Accented words in NFD form: base letter plus combining mark, equal to NFC only after normalization.',
 		examples: ['Prénom', 'naïve', 'Größe', 'Ångström'].map((text) => text.normalize('NFD')),
-		arbitrary: latinAccented.arbitrary
+		word: latinAccented.word
 			.map((text) => text.normalize('NFD'))
 			.filter((text) => text !== text.normalize('NFC')),
 	},
@@ -187,7 +184,7 @@ export const families = [
 			'nãm̈ë'.normalize('NFD'),
 			chars('T', 0x338, 0x359, 'o', 0x337, 0x34b, 't', 0x335, 0x33c, 'a', 0x336, 0x351, 'l', 0x337),
 		],
-		arbitrary: fc
+		word: fc
 			.tuple(
 				asciiWord,
 				fc.array(fc.array(pick(DIACRITICAL_MARKS), { minLength: 1, maxLength: 6 }), {
@@ -203,40 +200,37 @@ export const families = [
 		name: 'fullwidth',
 		description: 'Fullwidth ASCII letters and digits. They read as ASCII and are not.',
 		examples: ['ＮＡＭＥ', 'Ｐｒｉｃｅ', 'ｎａｍｅ１', 'Ｓtatus'],
-		arbitrary: phrase(fc.oneof(wordOf(FULLWIDTH), mixedWord(FULLWIDTH))),
+		word: fc.oneof(wordOf(FULLWIDTH), mixedWord(FULLWIDTH)),
 	},
 	{
 		name: 'case-mapping',
 		description: 'Letters whose case mapping changes the length or does not round-trip: ß, ﬁ, İ.',
 		examples: ['Straße', 'İstanbul', 'ﬁle', 'ΟΔΥΣΣΕΥΣ', 'ŉ'],
-		arbitrary: phrase(mixedWord(CASE_EDGE)),
+		word: mixedWord(CASE_EDGE),
 	},
 	{
 		name: 'emoji',
 		description:
 			'Emoji with skin tones, joiner sequences, flags and keycaps: one symbol, several code points.',
 		examples: ['😀 Mood', '🚀 Launch date', '👨‍👩‍👧', '🇩🇪', '👍🏽', '1️⃣'],
-		arbitrary: phrase(
-			fc.oneof(
-				pick(PICTOGRAPHS),
-				fc
-					.tuple(fc.constantFrom('👍', '👋', '🙏', '✋', '👶'), fc.constantFrom(...SKIN_TONES))
-					.map(([base, tone]) => base + tone),
-				fc
-					.tuple(fc.constantFrom(...REGIONAL_INDICATORS), fc.constantFrom(...REGIONAL_INDICATORS))
-					.map(([a, b]) => a + b),
-				fc.constantFrom('👨‍👩‍👧', '👩‍💻', '🏳️‍🌈', '🧑‍🚀', '❤️‍🔥'),
-				fc.constantFrom(...'0123456789#*').map((digit) => chars(digit, 0xfe0f, 0x20e3)),
-				asciiWord,
-			),
-		).filter((text) => !isAscii(text)),
+		word: fc.oneof(
+			pick(PICTOGRAPHS),
+			fc
+				.tuple(fc.constantFrom('👍', '👋', '🙏', '✋', '👶'), fc.constantFrom(...SKIN_TONES))
+				.map(([base, tone]) => base + tone),
+			fc
+				.tuple(fc.constantFrom(...REGIONAL_INDICATORS), fc.constantFrom(...REGIONAL_INDICATORS))
+				.map(([a, b]) => a + b),
+			fc.constantFrom('👨‍👩‍👧', '👩‍💻', '🏳️‍🌈', '🧑‍🚀', '❤️‍🔥'),
+			fc.constantFrom(...'0123456789#*').map((digit) => chars(digit, 0xfe0f, 0x20e3)),
+		),
 	},
 	{
 		name: 'digits',
 		description:
 			'Decimal digits of other scripts, which \\d does not match and Number() does not parse.',
 		examples: ['٣٢١', '१२३', '１２３', 'Q٣ 2026'],
-		arbitrary: phrase(fc.oneof(asciiWord, wordOf(DIGITS))).filter((text) => !isAscii(text)),
+		word: fc.oneof(wordOf(DIGITS), mixedWord(DIGITS)),
 	},
 	{
 		name: 'whitespace',
@@ -250,7 +244,7 @@ export const families = [
 			'First  Name',
 			'Tab\tName',
 		],
-		arbitrary: interleaved(SPACES),
+		word: interleaved(SPACES),
 	},
 	{
 		name: 'invisible',
@@ -263,7 +257,7 @@ export const families = [
 			chars('Name', 0x200d),
 			chars('Na', 0x3164, 'me'),
 		],
-		arbitrary: interleaved(INVISIBLE),
+		word: interleaved(INVISIBLE),
 	},
 	{
 		name: 'bidi-controls',
@@ -274,21 +268,21 @@ export const families = [
 			chars(0x200f, 'Name'),
 			chars('Total', 0x2067, ' (USD)', 0x2069),
 		],
-		arbitrary: interleaved(BIDI_CONTROLS),
+		word: interleaved(BIDI_CONTROLS),
 	},
 	{
 		name: 'unsafe-keys',
 		description:
 			'Object.prototype members and other built-in properties. As object keys they pollute or vanish.',
 		examples: UNSAFE_KEYS,
-		arbitrary: withCasing(UNSAFE_KEYS),
+		word: withCasing(UNSAFE_KEYS),
 	},
 	{
 		name: 'reserved-words',
 		description:
 			'Words some layer reads as a value or a device: JS literals, Python and SQL nulls, Windows devices.',
 		examples: RESERVED_WORDS,
-		arbitrary: withCasing(RESERVED_WORDS),
+		word: withCasing(RESERVED_WORDS),
 	},
 	{
 		name: 'expression-hostile',
@@ -311,7 +305,7 @@ export const families = [
 			'=cmd',
 			'<script>alert(1)</script>',
 		],
-		arbitrary: fc.oneof(
+		word: fc.oneof(
 			interleaved(PUNCTUATION),
 			fc.tuple(fc.nat(99), asciiWord).map(([digit, word]) => `${digit}${word}`),
 		),
@@ -321,7 +315,7 @@ export const families = [
 		description:
 			'Strings of one to twenty thousand characters, past what most columns and regexes expect.',
 		examples: ['Name'.repeat(250), 'é'.repeat(1000), 'a b '.repeat(500).trim()],
-		arbitrary: fc
+		word: fc
 			.tuple(
 				fc.constantFrom('a', 'Name ', 'é', '日', '😀', '__proto__'),
 				fc.integer({ min: 1000, max: 20000 }),
@@ -333,14 +327,14 @@ export const families = [
 		description:
 			'ASCII words with Greek or Cyrillic letters in place of Latin ones, such as Nаme with a Cyrillic а.',
 		examples: ['Nаme', 'Ρrice', 'Ѕtatus', 'Dаte'],
-		arbitrary: mixedWord([...GREEK, ...CYRILLIC]),
+		word: mixedWord([...GREEK, ...CYRILLIC]),
 	},
 	{
 		name: 'confusables',
 		description:
 			'ASCII words with letters swapped for UTS #39 look-alikes: Cyrillic а, fullwidth ａ, mathematical 𝐚.',
 		examples: ['Nаme', 'Ρrice', 'ｎａｍｅ', '𝐍𝐚𝐦𝐞', 'Ⅼength'],
-		arbitrary: lookAlikePair.map(([, lookAlike]) => lookAlike),
+		word: lookAlikePair.map(([, lookAlike]) => lookAlike),
 	},
 ] as const satisfies readonly Family[];
 
@@ -353,10 +347,15 @@ export const familyByName = (name: FamilyName): Family => {
 };
 
 /**
- * A string from any of the given families, or from every family when none is
- * named. The single entry point for a property that must hold for all user text.
+ * Up to `words` words from the given families, joined by spaces. With no
+ * family every family contributes. `{ words: 1 }` gives a single word.
  */
-export const stringFrom = (...names: FamilyName[]): fc.Arbitrary<string> => {
+export const stringFrom = (
+	family: FamilyName | FamilyName[] = [],
+	{ words = 3 }: { words?: number } = {},
+): fc.Arbitrary<string> => {
+	const names = Array.isArray(family) ? family : [family];
 	const selected = names.length > 0 ? names.map(familyByName) : families;
-	return fc.oneof(...selected.map((family) => family.arbitrary));
+	const word = fc.oneof(...selected.map((f) => f.word));
+	return fc.array(word, { minLength: 1, maxLength: words }).map((w) => w.join(' '));
 };
