@@ -46,3 +46,30 @@ export interface OpenAPISchema {
 		};
 	};
 }
+
+export type DatabricksRunNowResponse = {
+	run_id: number;
+	number_in_job?: number;
+};
+
+export type DatabricksJobRun = {
+	job_id?: number;
+	run_id?: number;
+	run_name?: string;
+	run_page_url?: string;
+	start_time?: number;
+	end_time?: number;
+	status?: {
+		state?: string;
+		termination_details?: {
+			code?: string;
+			type?: string;
+			message?: string;
+		};
+	};
+	state?: {
+		life_cycle_state?: string;
+		result_state?: string;
+		state_message?: string;
+	};
+};

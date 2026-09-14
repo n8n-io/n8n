@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -422,4 +423,66 @@ export async function getFunctions(
 			],
 		};
 	}
+}
+
+const JOBS_PAGE_SIZE = 100;
+const JOBS_SEARCH_MAX_PAGES = 10;
+
+type JobsListPage = {
+	jobs?: Array<{ job_id: number; settings?: { name?: string } }>;
+	next_page_token?: string;
+};
+
+async function fetchJobsPage(
+	context: ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	pageToken?: string,
+): Promise<JobsListPage> {
+	const qs: IDataObject = { limit: JOBS_PAGE_SIZE };
+	if (pageToken) qs.page_token = pageToken;
+	return await listRequest<JobsListPage>(context, credentialType, {
+		method: 'GET',
+		url: `${host}/api/2.2/jobs/list`,
+		qs,
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
+}
+
+export async function getJobs(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const credentialType = getActiveCredentialType(this);
+	const host = await getHost(this, credentialType);
+
+	const toResult = (job: { job_id: number; settings?: { name?: string } }) => ({
+		name: job.settings?.name ?? String(job.job_id),
+		value: String(job.job_id),
+		url: `${host}/jobs/${job.job_id}`,
+	});
+
+	if (!filter) {
+		const page = await fetchJobsPage(this, credentialType, host, paginationToken);
+		return { results: (page.jobs ?? []).map(toResult), paginationToken: page.next_page_token };
+	}
+
+	// The API's `name` filter only matches a whole job name, so search scans pages instead
+	const filterLower = filter.toLowerCase();
+	const results: INodeListSearchResult['results'] = [];
+	let pageToken = paginationToken;
+	for (let page = 0; page < JOBS_SEARCH_MAX_PAGES; page++) {
+		const response = await fetchJobsPage(this, credentialType, host, pageToken);
+		for (const job of response.jobs ?? []) {
+			if ((job.settings?.name ?? '').toLowerCase().includes(filterLower)) {
+				results.push(toResult(job));
+			}
+		}
+		pageToken = response.next_page_token;
+		if (!pageToken) break;
+	}
+
+	return { results };
 }
