@@ -1,3 +1,4 @@
+import { N8nInput } from '@n8n/design-system';
 import { shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, reactive } from 'vue';
@@ -73,15 +74,13 @@ describe('InstanceAiThreadsView', () => {
 		await nextTick();
 
 		expect(wrapper.text()).toContain("Couldn't load chats");
-		wrapper.findComponent('[data-test-id="instance-ai-threads-retry"]').vm.$emit('click');
+		await wrapper.find('[data-test-id="instance-ai-threads-retry"]').trigger('click');
 		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(2);
 	});
 
 	it('restarts the list with the debounced search text', async () => {
 		const wrapper = mountView();
-		wrapper
-			.findComponent('[data-test-id="instance-ai-threads-search"]')
-			.vm.$emit('update:modelValue', ' invoice ');
+		wrapper.findComponent(N8nInput).vm.$emit('update:modelValue', ' invoice ');
 		await nextTick();
 		expect(store.resetThreadHistory).not.toHaveBeenCalled();
 

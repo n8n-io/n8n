@@ -25,7 +25,9 @@ export function useInstanceAiThreadHistory() {
 		store.resetThreadHistory(search.value.trim());
 		loadMore();
 	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-	watch(search, () => void applySearch());
+	watch(search, () => {
+		void applySearch();
+	});
 
 	// The observer fires once per observe() call. Re-arm it after every page so a sentinel that
 	// is still in view (short list in a tall window) loads the next page right away.
