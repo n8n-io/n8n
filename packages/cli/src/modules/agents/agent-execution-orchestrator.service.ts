@@ -5,7 +5,7 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
@@ -72,6 +72,12 @@ export interface ExecuteForChatConfig {
 	attachments?: StoredAttachmentRef[];
 	/** Identifies the surface that started the draft test run. */
 	source?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -80,7 +86,12 @@ export interface ExecuteForChatConfig {
 export interface ExecuteForChatPublishedConfig {
 	agentId: string;
 	projectId: string;
+	/** What the user wrote; recorded in the execution transcript. */
 	message: string;
+	/** What the model receives when it differs from `message`, e.g. with an author label or thread history. */
+	modelMessage?: string;
+	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
+	author?: AgentMessageAuthor;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	attachments?: StoredAttachmentRef[];
@@ -119,6 +130,12 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -174,7 +191,12 @@ export interface StreamChatResponseConfig {
 	toolRegistry: ToolRegistry;
 	agentId: string;
 	userId?: string;
+	/** What the user wrote; recorded in the execution transcript. */
 	message: string;
+	/** What the model receives when it differs from `message`. */
+	modelMessage?: string;
+	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
+	author?: AgentMessageAuthor;
 	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -436,6 +458,7 @@ export class AgentExecutionOrchestratorService {
 			// `user` actually reach the cache/reconstruction layer.
 			user: usePublishedVersion ? undefined : user,
 			...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
+			previewChat: config.previewChat,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -567,6 +590,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			attachments,
 			source,
+			previewChat,
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -583,6 +607,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
 			sandboxPrincipalHash,
+			previewChat,
 		});
 
 		try {
@@ -630,6 +655,8 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			projectId,
 			message,
+			modelMessage,
+			author,
 			memory,
 			integrationType,
 			attachments,
@@ -647,7 +674,13 @@ export class AgentExecutionOrchestratorService {
 				usePublishedVersion: true,
 				sandboxPrincipalHash,
 			},
-			{ threadId: memory.threadId, userMessage: message, attachments, source: integrationType },
+			{
+				threadId: memory.threadId,
+				userMessage: message,
+				author,
+				attachments,
+				source: integrationType,
+			},
 		);
 
 		try {
@@ -656,6 +689,8 @@ export class AgentExecutionOrchestratorService {
 				toolRegistry: runtime.toolRegistry,
 				agentId,
 				message,
+				modelMessage,
+				author,
 				attachments,
 				memory,
 				projectId: runtime.projectId,
@@ -859,6 +894,8 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId,
 			message,
+			modelMessage = message,
+			author,
 			attachments,
 			memory,
 			projectId,
@@ -893,7 +930,9 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
-			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const input = attachments?.length
+				? buildInboundUserMessage(modelMessage, attachments)
+				: modelMessage;
 			const hostMetadata = encodeAgentSandboxHostMetadata({
 				projectId,
 				principalHash: sandboxPrincipalHash,
@@ -915,6 +954,7 @@ export class AgentExecutionOrchestratorService {
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: hideUserMessageFromTranscript ? null : message,
+				author,
 				attachments,
 				source,
 				taskId,
@@ -962,6 +1002,7 @@ export class AgentExecutionOrchestratorService {
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: hideUserMessageFromTranscript ? null : message,
+					author,
 					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
@@ -994,7 +1035,7 @@ export class AgentExecutionOrchestratorService {
 		params: GetRuntimeParams,
 		session: Pick<
 			StartExecutionParams,
-			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+			'threadId' | 'userMessage' | 'author' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
 		>,
 	): Promise<AgentRuntime> {
 		try {
@@ -1017,7 +1058,7 @@ export class AgentExecutionOrchestratorService {
 		{ agentId, projectId }: GetRuntimeParams,
 		session: Pick<
 			StartExecutionParams,
-			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+			'threadId' | 'userMessage' | 'author' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
 		>,
 		error: unknown,
 	): Promise<void> {

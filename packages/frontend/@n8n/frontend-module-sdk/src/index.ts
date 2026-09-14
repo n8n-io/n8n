@@ -1,5 +1,6 @@
 export type * from './types';
 
+export { defineFrontendModule } from './defineFrontendModule';
 export { assertUniqueRouteNames } from './routeNames';
 
 export * as modalRegistry from './registries/modalRegistry';

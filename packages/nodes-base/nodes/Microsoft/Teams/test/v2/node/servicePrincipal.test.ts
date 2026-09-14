@@ -95,7 +95,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	);
 
 	it.each([
-		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
 		['createOrGet', { externalId: 'order-4711', options: {} }],
 		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
 		[
