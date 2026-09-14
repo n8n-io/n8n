@@ -5,9 +5,10 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as sendAndWait from './sendAndWait.operation';
 import * as softDeleteMessage from './softDeleteMessage.operation';
+import * as undoSoftDeleteMessage from './undoSoftDeleteMessage.operation';
 import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from '../../transport';
 
-export { create, get, getAll, sendAndWait, softDeleteMessage };
+export { create, get, getAll, sendAndWait, softDeleteMessage, undoSoftDeleteMessage };
 
 export const description: INodeProperties[] = [
 	{
@@ -67,6 +68,12 @@ export const description: INodeProperties[] = [
 				description: 'Send a message and wait for response',
 				action: 'Send message and wait for response',
 			},
+			{
+				name: 'Undo Delete',
+				value: 'undoSoftDeleteMessage',
+				description: 'Restore a deleted message in a chat',
+				action: 'Undo delete chat message',
+			},
 		],
 		default: 'create',
 	},
@@ -76,4 +83,5 @@ export const description: INodeProperties[] = [
 	...getAll.description,
 	...sendAndWait.description,
 	...softDeleteMessage.description,
+	...undoSoftDeleteMessage.description,
 ];

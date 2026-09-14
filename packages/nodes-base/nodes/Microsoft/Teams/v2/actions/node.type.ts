@@ -4,7 +4,13 @@ type NodeMap = {
 	channel: 'create' | 'deleteChannel' | 'get' | 'getAll' | 'update';
 	channelMessage: 'create' | 'get' | 'getAll' | 'getAllReplies' | 'reply';
 	chatMember: 'add' | 'getAll';
-	chatMessage: 'create' | 'get' | 'getAll' | 'sendAndWait' | 'softDeleteMessage';
+	chatMessage:
+		| 'create'
+		| 'get'
+		| 'getAll'
+		| 'sendAndWait'
+		| 'softDeleteMessage'
+		| 'undoSoftDeleteMessage';
 	onlineMeeting: 'create' | 'createOrGet' | 'deleteMeeting' | 'get' | 'update';
 	task: 'create' | 'deleteTask' | 'get' | 'getAll' | 'update';
 };
