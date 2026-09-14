@@ -95,7 +95,8 @@ export class TestWebhookRegistrationsService {
 		 *
 		 * The TTL covers the whole hash, so it is the longest window a registration can ask for
 		 * (`TEST_WEBHOOK_MAX_TIMEOUT`) plus the buffer. A constant keeps concurrent registrations on
-		 * different mains from shortening each other's TTL; `expiresAt` bounds each entry on read.
+		 * different mains from shortening each other's TTL. Each new registration renews the TTL, so
+		 * `expiresAt` bounds each entry and a read deletes an expired one (see `prune`).
 		 */
 		await this.cacheService.expire(
 			this.cacheKey,
@@ -114,6 +115,7 @@ export class TestWebhookRegistrationsService {
 
 	async get(key: string): Promise<TestWebhookRegistration | undefined> {
 		const val = await this.cacheService.getHashValue(this.cacheKey, key);
+		await this.prune({ [key]: val });
 		return isLiveRegistration(val) ? val : undefined;
 	}
 
@@ -130,17 +132,30 @@ export class TestWebhookRegistrationsService {
 
 		if (!hash) return [];
 
-		return Object.values(hash).filter(isLiveRegistration);
+		await this.prune(hash);
+
+		return Object.values(hash);
 	}
 
 	async getRegistrationsHash() {
 		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
-		for (const key in val) {
-			if (!isLiveRegistration(val[key])) {
-				delete val[key];
-			}
-		}
+		if (val) await this.prune(val);
 		return val;
+	}
+
+	/**
+	 * Remove entries that are not live from `hash`. Also delete an expired entry from the store:
+	 * each registration renews the TTL of the whole hash, so the TTL never removes an entry that a
+	 * main left behind on exit. Keep entries of an unknown shape in the store; a main on another
+	 * version may own them.
+	 */
+	private async prune(hash: Record<string, unknown>) {
+		for (const key of Object.keys(hash)) {
+			const val = hash[key];
+			if (isLiveRegistration(val)) continue;
+			if (isTestWebhookRegistration(val)) await this.deregister(key);
+			delete hash[key];
+		}
 	}
 
 	toKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {

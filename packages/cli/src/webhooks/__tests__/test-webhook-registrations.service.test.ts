@@ -109,10 +109,11 @@ describe('TestWebhookRegistrationsService', () => {
 			await expect(promise).resolves.toBeUndefined();
 		});
 
-		test('should skip an expired registration', async () => {
+		test('should skip and delete an expired registration', async () => {
 			cacheService.getHashValue.mockResolvedValueOnce({ version: 1, expiresAt: now - 1 });
 
 			await expect(registrations.get(webhookKey)).resolves.toBeUndefined();
+			expect(cacheService.deleteFromHash).toHaveBeenCalledExactlyOnceWith(cacheKey, webhookKey);
 		});
 
 		test('should skip registrations with outdated version', async () => {
@@ -122,6 +123,8 @@ describe('TestWebhookRegistrationsService', () => {
 			const promise = registrations.get(webhookKey);
 
 			await expect(promise).resolves.toBeUndefined();
+			// A main on another version may own it, so it stays in the store.
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
 		});
 	});
 
@@ -136,7 +139,7 @@ describe('TestWebhookRegistrationsService', () => {
 	});
 
 	describe('getAllRegistrations()', () => {
-		test('should retrieve all test webhook registrations', async () => {
+		test('should retrieve live registrations and delete expired ones', async () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' }, // invalid registration to test filtering
@@ -146,11 +149,12 @@ describe('TestWebhookRegistrationsService', () => {
 			const result = await registrations.getAllRegistrations();
 
 			expect(result).toEqual([registration]);
+			expect(cacheService.deleteFromHash).toHaveBeenCalledExactlyOnceWith(cacheKey, 'EXPIRED_KEY');
 		});
 	});
 
 	describe('getRegistrationsHash()', () => {
-		test('should drop invalid and expired registrations', async () => {
+		test('should drop invalid registrations and delete expired ones', async () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' },
@@ -160,6 +164,7 @@ describe('TestWebhookRegistrationsService', () => {
 			const result = await registrations.getRegistrationsHash();
 
 			expect(result).toEqual({ [webhookKey]: registration });
+			expect(cacheService.deleteFromHash).toHaveBeenCalledExactlyOnceWith(cacheKey, 'EXPIRED_KEY');
 		});
 	});
 
