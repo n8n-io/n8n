@@ -108,7 +108,7 @@ const handleSubmit = () => {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="submitting"
 						:label="i18n.baseText('generic.cancel')"
 						:data-test-id="`${modalName}-cancel-button`"

@@ -259,7 +259,7 @@ const typeOptions = [
 
 			<div :class="$style.provenance">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					data-test-id="templated-auth-edit-setup"
 					@click="setEditing(true)"

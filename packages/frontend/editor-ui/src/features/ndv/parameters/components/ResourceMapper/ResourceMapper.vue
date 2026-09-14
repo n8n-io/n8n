@@ -719,7 +719,7 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="xsmall"
 					icon="refresh-cw"
 					:loading="state.refreshInProgress"

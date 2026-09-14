@@ -36,7 +36,7 @@ const onViewPlans = async () => {
 		</div>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="visible = false">
+				<N8nButton variant="outline" @click="visible = false">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" @click="onViewPlans">

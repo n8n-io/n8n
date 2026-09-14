@@ -946,7 +946,7 @@ onMounted(async () => {
 					>
 						<template #trigger>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon="funnel"
 								:class="$style.filterButton"
 								:active="Boolean(filterCount)"
@@ -1256,7 +1256,7 @@ onMounted(async () => {
 																	placement="top"
 																>
 																	<N8nIconButton
-																		variant="subtle"
+																		variant="outline"
 																		data-test-id="source-control-workflow-diff-button"
 																		icon="file-diff"
 																		@click="openDiffModal(row.file.id, row.file.status)"

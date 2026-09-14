@@ -59,7 +59,7 @@ export const Variants: Story = {
 		template: `
 			<div style="display: flex; gap: var(--spacing--xs); align-items: center; flex-wrap: wrap;">
 				<N8nIconButton icon="plus" aria-label="Create" variant="solid" />
-				<N8nIconButton icon="plus" aria-label="Create" variant="subtle" />
+				<N8nIconButton icon="plus" aria-label="Create" variant="outline" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="outline" />
 				<N8nIconButton icon="plus" aria-label="Create" variant="ghost" />
 				<N8nIconButton icon="trash-2" aria-label="Delete" variant="destructive" />

@@ -37,7 +37,7 @@ const props = withDefaults(
 	{ type: 'primary' },
 );
 
-const buttonVariant = computed(() => (props.type === 'secondary' ? 'subtle' : 'solid'));
+const buttonVariant = computed(() => (props.type === 'secondary' ? 'outline' : 'solid'));
 
 const i18n = useI18n();
 

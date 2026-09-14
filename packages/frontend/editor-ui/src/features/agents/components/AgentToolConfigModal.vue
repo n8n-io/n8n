@@ -459,7 +459,7 @@ function handleNodeUpdate(node: INode) {
 			<div :class="$style.footer">
 				<N8nButton
 					v-if="data.onRemove"
-					variant="subtle"
+					variant="outline"
 					data-test-id="agent-tool-config-remove"
 					@click="handleRemove"
 				>
@@ -467,7 +467,7 @@ function handleNodeUpdate(node: INode) {
 					{{ i18n.baseText('agents.builder.tools.remove') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="handleCancel">
+					<N8nButton variant="outline" @click="handleCancel">
 						{{ i18n.baseText('agents.toolConfig.cancel') }}
 					</N8nButton>
 					<N8nButton

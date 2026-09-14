@@ -59,7 +59,7 @@ function handleSelectMenu(action: MenuAction) {
 
 		<div :class="$style.actions">
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				v-if="canEdit"
 				icon="pen"
 				size="medium"

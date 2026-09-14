@@ -180,7 +180,7 @@ onMounted(async () => {
 				/>
 				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						icon-only
 						data-test-id="mcp-agents-refresh-button"
 						size="small"

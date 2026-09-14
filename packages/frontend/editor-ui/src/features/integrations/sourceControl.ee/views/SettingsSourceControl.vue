@@ -335,7 +335,7 @@ watch(connectionType, () => {
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="isConnected"
 						:class="$style.disconnectButton"
 						size="large"
@@ -434,7 +434,7 @@ watch(connectionType, () => {
 						:copy-button-text="locale.baseText('generic.clickToCopy')"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="!isConnected"
 						size="large"
 						icon="refresh-cw"
@@ -496,7 +496,7 @@ watch(connectionType, () => {
 								</span>
 							</template>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								iconOnly
 								size="xlarge"
 								icon="refresh-cw"

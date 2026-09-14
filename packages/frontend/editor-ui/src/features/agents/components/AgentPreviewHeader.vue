@@ -130,7 +130,7 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 				/>
 			</N8nTooltip>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="medium"
 				icon="message-circle-plus"
 				:label="i18n.baseText('agents.builder.chat.newChat.label')"

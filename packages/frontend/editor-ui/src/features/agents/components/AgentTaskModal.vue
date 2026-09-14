@@ -637,7 +637,7 @@ async function onSave() {
 			<div :class="$style.footer">
 				<N8nButton
 					v-if="isEditing"
-					variant="subtle"
+					variant="outline"
 					:loading="deleting"
 					data-testid="agent-task-delete"
 					@click="onDelete"
@@ -646,7 +646,7 @@ async function onSave() {
 					{{ i18n.baseText('agents.builder.tasks.delete') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
+					<N8nButton variant="outline" @click="closeModal">
 						{{ i18n.baseText('agents.builder.tasks.cancel') }}
 					</N8nButton>
 					<N8nButton

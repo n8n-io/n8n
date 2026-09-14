@@ -260,7 +260,7 @@ function onRemove() {
 			<div :class="$style.footer">
 				<N8nButton
 					v-if="isEditing && data.onRemove"
-					variant="subtle"
+					variant="outline"
 					data-testid="agent-skill-remove"
 					@click="onRemove"
 				>
@@ -268,7 +268,7 @@ function onRemove() {
 					{{ i18n.baseText('agents.builder.skills.remove') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
+					<N8nButton variant="outline" @click="closeModal">
 						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
 					</N8nButton>
 					<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">

@@ -101,7 +101,7 @@ async function onConfirm() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" :label="i18n.baseText('generic.cancel')" @click="closeModal" />
+				<N8nButton variant="outline" :label="i18n.baseText('generic.cancel')" @click="closeModal" />
 				<N8nButton
 					:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
 					:disabled="!parsedConfig || importing"

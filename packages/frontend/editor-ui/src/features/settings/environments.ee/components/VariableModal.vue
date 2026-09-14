@@ -359,7 +359,7 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('variables.modal.button.cancel')"
 					data-test-id="variable-modal-cancel-button"
 					@click="closeModal"

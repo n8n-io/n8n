@@ -336,7 +336,7 @@ defineExpose({
 										</template>
 									</template>
 									<N8nIconButton
-										variant="subtle"
+										variant="outline"
 										size="medium"
 										icon="plus"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"

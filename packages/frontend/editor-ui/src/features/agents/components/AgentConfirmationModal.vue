@@ -66,7 +66,7 @@ async function onBeforeClose() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
+				<N8nButton variant="outline" size="medium" :disabled="submitting" @click="onCancel">
 					{{ props.data.cancelButtonText }}
 				</N8nButton>
 				<N8nButton variant="solid" size="medium" :loading="submitting" @click="onConfirm">

@@ -37,7 +37,7 @@ export const Default: Story = {
 		},
 		template: `
 			<N8nButtonList v-bind="args">
-				<N8nButton variant="subtle">Save</N8nButton>
+				<N8nButton variant="outline">Save</N8nButton>
 				<N8nButton variant="solid">Publish</N8nButton>
 				<N8nButton variant="ghost">More</N8nButton>
 			</N8nButtonList>
@@ -56,9 +56,9 @@ export const IconButtons: Story = {
 		},
 		template: `
 			<N8nButtonList v-bind="args">
-				<N8nIconButton variant="subtle" size="large" icon="maximize" aria-label="Zoom to fit" />
-				<N8nIconButton variant="subtle" size="large" icon="zoom-in" aria-label="Zoom in" />
-				<N8nIconButton variant="subtle" size="large" icon="zoom-out" aria-label="Zoom out" />
+				<N8nIconButton variant="outline" size="large" icon="maximize" aria-label="Zoom to fit" />
+				<N8nIconButton variant="outline" size="large" icon="zoom-in" aria-label="Zoom in" />
+				<N8nIconButton variant="outline" size="large" icon="zoom-out" aria-label="Zoom out" />
 			</N8nButtonList>
 		`,
 	}),
@@ -75,9 +75,9 @@ export const Vertical: Story = {
 		},
 		template: `
 			<N8nButtonList v-bind="args">
-				<N8nIconButton variant="subtle" size="large" icon="plus" aria-label="Add" />
-				<N8nIconButton variant="subtle" size="large" icon="search" aria-label="Search" />
-				<N8nIconButton variant="subtle" size="large" icon="sticky-note" aria-label="Sticky note" />
+				<N8nIconButton variant="outline" size="large" icon="plus" aria-label="Add" />
+				<N8nIconButton variant="outline" size="large" icon="search" aria-label="Search" />
+				<N8nIconButton variant="outline" size="large" icon="sticky-note" aria-label="Sticky note" />
 			</N8nButtonList>
 		`,
 	}),

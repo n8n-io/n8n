@@ -56,7 +56,7 @@ const buttonLabel = computed(() => {
 			<N8nButton
 				v-else
 				v-bind="$attrs"
-				variant="subtle"
+				variant="outline"
 				:size="size"
 				:class="$style.quickConnectButton"
 				:disabled="disabled"

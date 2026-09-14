@@ -456,7 +456,7 @@ onMounted(() => {
 						</div>
 						<div :class="$style.actions">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								data-testid="agent-vector-stores-modal-connect"
 								@click="selectProvider(provider)"
@@ -585,7 +585,7 @@ onMounted(() => {
 			<div :class="$style.footer">
 				<N8nButton
 					v-if="isEditing && data.onRemove"
-					variant="subtle"
+					variant="outline"
 					data-testid="agent-vector-stores-modal-remove"
 					@click="onRemove"
 				>
@@ -593,14 +593,14 @@ onMounted(() => {
 				</N8nButton>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					data-testid="agent-vector-stores-modal-back"
 					@click="goBack"
 				>
 					{{ i18n.baseText('agents.builder.vectorStores.modal.back') }}
 				</N8nButton>
 				<div :class="$style.footerActions">
-					<N8nButton variant="subtle" @click="closeModal">
+					<N8nButton variant="outline" @click="closeModal">
 						{{ i18n.baseText('generic.cancel') }}
 					</N8nButton>
 					<N8nButton

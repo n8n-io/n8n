@@ -1620,7 +1620,7 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					v-if="
 						!props.disableEdit &&
@@ -1653,7 +1653,7 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>

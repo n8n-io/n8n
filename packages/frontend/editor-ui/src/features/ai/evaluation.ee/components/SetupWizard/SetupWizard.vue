@@ -121,7 +121,7 @@ function onSeePlans() {
 
 					<div :class="$style.actionButton">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationTrigger')"
 						>
@@ -150,7 +150,7 @@ function onSeePlans() {
 					</ul>
 					<div :class="$style.actionButton">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationNode')"
 						>
@@ -188,7 +188,7 @@ function onSeePlans() {
 					</N8nCallout>
 					<div :class="$style.actionButton">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="!evaluationsQuotaExceeded"
 							size="small"
 							@click="navigateToWorkflow('addEvaluationNode')"
@@ -235,7 +235,7 @@ function onSeePlans() {
 				>
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="
 								evaluationState.evaluationSetMetricsNodeExist.value && !evaluationsQuotaExceeded
 							"
@@ -250,7 +250,7 @@ function onSeePlans() {
 							{{ locale.baseText('evaluations.setupWizard.step4.button') }}
 						</N8nButton>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-else
 							size="medium"
 							:disabled="

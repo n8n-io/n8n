@@ -51,7 +51,7 @@ const emit = defineEmits<{
 		<N8nIconButton
 			v-if="!hideExecute && isExecuting"
 			data-test-id="ndv-stop-execution-button"
-			variant="subtle"
+			variant="outline"
 			icon="square"
 			size="small"
 			:class="$style.stop"

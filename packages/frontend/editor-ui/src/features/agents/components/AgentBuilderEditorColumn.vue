@@ -132,7 +132,7 @@ const i18n = useI18n();
 					>
 						<template #header-actions>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon="play"
 								size="medium"
 								:disabled="childrenDisabled"

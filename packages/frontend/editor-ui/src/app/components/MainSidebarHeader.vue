@@ -149,7 +149,7 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"

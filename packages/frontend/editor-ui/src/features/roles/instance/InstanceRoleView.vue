@@ -243,7 +243,7 @@ async function deleteRole() {
 					<N8nButton
 						v-for="preset in presetRoles"
 						:key="preset.slug"
-						variant="subtle"
+						variant="outline"
 						:data-test-id="`role-preset-${preset.slug}`"
 						@click="setPreset(preset.slug)"
 					>

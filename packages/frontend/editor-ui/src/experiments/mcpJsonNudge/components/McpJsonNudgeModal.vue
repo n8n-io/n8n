@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
 				</N8nCheckbox>
 				<div :class="$style.actions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:label="i18n.baseText('experiments.mcpJsonNudge.modal.skip')"
 						data-test-id="mcp-json-nudge-skip-button"

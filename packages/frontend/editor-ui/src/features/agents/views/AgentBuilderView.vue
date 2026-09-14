@@ -2086,7 +2086,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:class="$style.aiButtonWrapper"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					icon-only
 					size="large"
 					:disabled="!agent"

@@ -363,7 +363,7 @@ onMounted(async () => {
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								:icon="redirectUrlCopied ? 'check' : 'copy'"
 								@click="handleCopy(redirectUrl, 'redirectUrl')"
@@ -384,7 +384,7 @@ onMounted(async () => {
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								:icon="entityIdCopied ? 'check' : 'copy'"
 								@click="handleCopy(entityId, 'entityId')"
@@ -502,7 +502,7 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:disabled="!isTestEnabled"
 				size="large"
 				data-test-id="sso-test"

@@ -740,7 +740,7 @@ onMounted(async () => {
 			</div>
 			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.ldap.dryRun')"
 					size="large"
 					class="mr-s"

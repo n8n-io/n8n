@@ -142,7 +142,7 @@ watch(
 
 <template>
 	<N8nButton
-		variant="subtle"
+		variant="outline"
 		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		:disabled="isButtonDisabled"

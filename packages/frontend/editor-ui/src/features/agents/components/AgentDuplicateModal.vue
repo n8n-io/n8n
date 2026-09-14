@@ -92,7 +92,7 @@ async function onConfirm() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" :disabled="submitting" @click="closeModal">
+				<N8nButton variant="outline" :disabled="submitting" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
