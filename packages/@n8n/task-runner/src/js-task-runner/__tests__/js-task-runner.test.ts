@@ -1825,22 +1825,22 @@ describe('JsTaskRunner', () => {
 			vi.spyOn(defaultTaskRunner, 'requestNodeTypes').mockResolvedValue([]);
 		});
 
-		it('should throw an unsupported-function error for $evaluateExpression', async () => {
+		it('should throw for $evaluateExpression', async () => {
 			await expect(
 				executeForAllItems({
 					code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
 					inputItems: [],
 				}),
-			).rejects.toThrow('The function "$evaluateExpression" is not supported in the Code Node');
+			).rejects.toThrow('The function "$evaluateExpression" is not available in this context');
 		});
 
-		it('should throw an unsupported-function error for $evaluateExpression on $item()', async () => {
+		it('should throw for $evaluateExpression on $item()', async () => {
 			await expect(
 				executeForAllItems({
 					code: "return { val: $item(0).$item(0).$evaluateExpression('{{ 1 + 1 }}') }",
 					inputItems: [{ a: 1 }],
 				}),
-			).rejects.toThrow('The function "$evaluateExpression" is not supported in the Code Node');
+			).rejects.toThrow('The function "$evaluateExpression" is not available in this context');
 		});
 	});
 

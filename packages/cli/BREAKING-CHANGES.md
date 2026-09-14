@@ -62,7 +62,7 @@ If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn 
 
 ### What changed?
 
-The `$evaluateExpression()` helper was removed from the Code node. A Code node that calls it fails with the error `The function "$evaluateExpression" is not supported in the Code Node`. The helper is still available in expression fields.
+The `$evaluateExpression()` helper was removed from the Code node. A Code node that calls it fails with the error `The function "$evaluateExpression" is not available in this context`. The helper is still available in expression fields.
 
 ### When is action necessary?
 

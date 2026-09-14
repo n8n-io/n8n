@@ -224,7 +224,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 				ok: false,
 				error: expect.objectContaining({
 					message: expect.stringContaining(
-						'The function "$evaluateExpression" is not supported in the Code Node',
+						'The function "$evaluateExpression" is not available in this context',
 					),
 				}),
 			});

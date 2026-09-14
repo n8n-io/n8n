@@ -1129,7 +1129,15 @@ export class WorkflowDataProxy {
 	 * Returns the data proxy object which allows to query data from current run
 	 *
 	 */
-	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
+	/**
+	 * @param opts.throwOnMissingExecutionData Throw when no execution data is available. Default true.
+	 * @param opts.evaluateExpression Expose `$evaluateExpression`. When false, a call throws
+	 * instead. Default true. Proxies returned by `$item()` inherit both options.
+	 */
+	getDataProxy(opts?: {
+		throwOnMissingExecutionData?: boolean;
+		evaluateExpression?: boolean;
+	}): IWorkflowDataProxyData {
 		const that = this;
 
 		// replacing proxies with the actual data.
@@ -1642,6 +1650,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (opts?.evaluateExpression === false) {
+					throw new ExpressionError(
+						'The function "$evaluateExpression" is not available in this context',
+						{
+							description:
+								'Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before this node, and read the result from the input item.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,
@@ -1676,7 +1693,7 @@ export class WorkflowDataProxy {
 					{},
 					that.contextNodeName,
 				);
-				return dataProxy.getDataProxy();
+				return dataProxy.getDataProxy(opts);
 			},
 			$fromAI: handleFromAi,
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it

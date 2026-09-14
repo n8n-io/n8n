@@ -479,7 +479,7 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
-		const dataProxy = new WorkflowDataProxy(
+		return new WorkflowDataProxy(
 			workflow,
 			data.runExecutionData,
 			data.runIndex,
@@ -508,22 +508,11 @@ export class JsTaskRunner extends TaskRunner {
 			// We assign the available built-ins to the execution context, which
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
-		).getDataProxy({ throwOnMissingExecutionData: false });
-
-		return this.disableEvaluateExpression(dataProxy);
-	}
-
-	// Removed from the Code node in v3. The helper stays available in
-	// expression fields, so it is overridden here instead of in the proxy.
-	// $item() returns a fresh proxy, so the override has to recurse into it.
-	private disableEvaluateExpression(dataProxy: IWorkflowDataProxyData) {
-		dataProxy.$evaluateExpression = () => {
-			throw new UnsupportedFunctionError('$evaluateExpression');
-		};
-		const item = dataProxy.$item;
-		dataProxy.$item = (itemIndex: number, runIndex?: number) =>
-			this.disableEvaluateExpression(item(itemIndex, runIndex));
-		return dataProxy;
+		).getDataProxy({
+			throwOnMissingExecutionData: false,
+			// Removed from the Code node in v3. Stays available in expression fields.
+			evaluateExpression: false,
+		});
 	}
 
 	private extractJsonData(result: INodeExecutionData) {
