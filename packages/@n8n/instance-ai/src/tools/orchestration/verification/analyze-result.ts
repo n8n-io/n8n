@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -88,6 +90,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+/** Per-output counts when the adapter grouped a multi-output node's items per output. */
+function countOutputBranchItems(nodeOutput: unknown): VerificationNodePreview['outputs'] {
+	const output = outputForInspection(nodeOutput);
+	if (!isRecord(output) || !Array.isArray(output.outputs)) return undefined;
+	return output.outputs.filter(isRecord).map((branch, position) => ({
+		index: typeof branch.index === 'number' ? branch.index : position,
+		...(typeof branch.name === 'string' ? { name: branch.name } : {}),
+		itemCount: countOutputItems(branch.items),
+	}));
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -109,9 +122,11 @@ export function buildNodePreviews(
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
 		const preview = previewValue(nodeOutput, maxChars);
+		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
 			itemCount: countOutputItems(nodeOutput),
+			...(outputs ? { outputs } : {}),
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,
@@ -427,6 +442,16 @@ export interface VerificationAnalysis {
 	nodeErrors: ExecutionNodeError[];
 }
 
+export function getTriggerMainFlowScope(
+	connections: WorkflowJSON['connections'],
+	triggerNodeName: string,
+): Set<string> {
+	return new Set([
+		triggerNodeName,
+		...getChildNodes(toEngineConnections(connections), triggerNodeName, NodeConnectionTypes.Main),
+	]);
+}
+
 export function analyzeVerificationResult(args: {
 	result: ExecutionRunResult;
 	buildOutcome: WorkflowBuildOutcome;
@@ -445,6 +470,8 @@ export function analyzeVerificationResult(args: {
 	chatModelRecovery?: ChatModelRecoveryOptions;
 	/** Trigger this pass started from, when the caller named one. */
 	triggerNodeName?: string;
+	/** Main-flow nodes that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -456,6 +483,7 @@ export function analyzeVerificationResult(args: {
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
 		triggerNodeName,
+		verificationScope,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -474,6 +502,7 @@ export function analyzeVerificationResult(args: {
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;

@@ -4,7 +4,7 @@ import { ref, useTemplateRef } from 'vue';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
@@ -12,7 +12,7 @@ import AgentChatPanel from './AgentChatPanel.vue';
 
 withDefaults(
 	defineProps<{
-		active?: boolean;
+		visible?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -25,13 +25,13 @@ withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ layout: 'dock' },
+	{ visible: true, layout: 'dock' },
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const inputDraft = ref('');
@@ -62,7 +62,8 @@ defineExpose({ focusInput, getConversationMarkdown });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:background-tasks-active="active !== false"
+				:visible="visible"
+				:background-tasks-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"

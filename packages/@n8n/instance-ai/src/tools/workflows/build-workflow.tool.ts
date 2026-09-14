@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -9,10 +9,8 @@ import {
 	SDK_IMPORTABLE_FUNCTIONS,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
+import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
@@ -57,6 +55,7 @@ import { withDeterministicRouting } from './workflow-build-routing';
 import {
 	trackWaitGateVerificationPlan,
 	trackWorkflowSourceBuild,
+	type BuildTelemetryStage,
 } from './workflow-build-telemetry';
 import {
 	bindSourceFileToExistingWorkflow,
@@ -80,20 +79,27 @@ import {
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import {
+	GROUP_DROPPED_OVER_CEILING_CODE,
+	groupingDecisionBlocker,
+	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
+	summarizeWorkflowTopLevelItems,
+	topLevelItemsWarning,
 	type ValidationWarning,
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
-import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import {
+	groupingOutcomeSchema,
 	remediationMetadataSchema,
 	workflowVerificationReadinessSchema,
+	type GroupingOutcome,
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
@@ -115,6 +121,7 @@ const confirmationSuspendSchema = z.object({
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
+	loadSkill?: RuntimeSkillLoader;
 	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
@@ -203,6 +210,20 @@ export const buildWorkflowInputSchema = z
 					'vehicle — verification becomes an optional pre-flight and completion is a live run whose ' +
 					'output was read back (see the one-off-operations skill). Omit or pass `reusable` for ' +
 					'anything the user may run again.',
+			),
+		groupingDecision: z
+			.enum(['grouped', 'not_warranted'])
+			.optional()
+			.describe(
+				'Only for a canvas that will exceed the top-level ceiling with no node group: pass `not_warranted` ' +
+					'together with `groupingReason` to say why no valid group can hold the remaining nodes. ' +
+					'Never pass it to skip the grouping decision.',
+			),
+		groupingReason: z
+			.string()
+			.optional()
+			.describe(
+				'Required with `groupingDecision: not_warranted`: why these nodes cannot form a valid group.',
 			),
 	})
 	.strict();
@@ -321,9 +342,6 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 const POST_BUILD_FLOW_GUIDANCE =
 	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
-// Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
-const inlineSkillInstructionsCache = new Map<string, string>();
-
 /** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
 const INLINE_SKIPPED_SECTIONS = [
 	'## Verification follow-up',
@@ -331,20 +349,19 @@ const INLINE_SKIPPED_SECTIONS = [
 	'## Credentials before build',
 ];
 
-function getInlineSkillInstructions(skillId: string): string {
-	let instructions = inlineSkillInstructionsCache.get(skillId);
-	if (instructions === undefined) {
-		const raw = readFileSync(join(INSTANCE_AI_SKILLS_DIR, skillId, 'SKILL.md'), 'utf-8');
-		// Strip the YAML front-matter; catalog metadata is noise in a tool result.
-		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
-		instructions = body
-			.split(/\n(?=## )/)
-			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
-			.join('\n')
-			.trim();
-		inlineSkillInstructionsCache.set(skillId, instructions);
-	}
-	return instructions;
+async function getInlineSkillInstructions(
+	skillId: string,
+	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
+	activate?: RuntimeSkillLoader,
+): Promise<string> {
+	const skill = await (activate ?? source.loadSkill)(skillId);
+	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
+	if (activate) return `Follow the active ${skillId} skill instructions.`;
+	return skill.instructions
+		.split(/\n(?=#{1,2} )/)
+		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
+		.join('\n')
+		.trim();
 }
 
 // Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
@@ -366,11 +383,13 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 	}),
 ]);
 
-function directPostBuildFlowHandoff(
+async function directPostBuildFlowHandoff(
 	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
-): z.infer<typeof postBuildFlowOutputSchema> | undefined {
+	skills?: RuntimeSkillSource,
+	activate?: RuntimeSkillLoader,
+): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
 
 	// One-off instructions only apply when the workflow can actually run — their
@@ -383,7 +402,7 @@ function directPostBuildFlowHandoff(
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
 			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
-			instructions: getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID),
+			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};
 	}
 
@@ -392,7 +411,7 @@ function directPostBuildFlowHandoff(
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID),
+		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
 	};
 }
 
@@ -414,6 +433,41 @@ interface ValidationFailureArgs {
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
 	withEscalation: (errors: string[]) => string[];
+	stage?: BuildTelemetryStage;
+	grouping?: GroupingOutcome;
+}
+
+/**
+ * The grouping decision this build ends with, for the result and telemetry.
+ *
+ * - `grouped`: the agent made groups, even if the save dropped all of them.
+ * - `not_warranted`: the agent made no groups and gave a reason.
+ * - `under_ceiling`: the canvas has `TOP_LEVEL_ITEM_CEILING` boxes or fewer, so
+ *   groups are not needed.
+ * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
+ *   agent made no groups and gave no reason. It skipped the decision. The build
+ *   is refused.
+ */
+function resolveGroupingDecision(input: {
+	groupCount: number;
+	overCeiling: boolean;
+	groupingDecision: 'grouped' | 'not_warranted' | undefined;
+}): GroupingOutcome['decision'] {
+	if (input.groupCount > 0) {
+		return 'grouped';
+	}
+
+	if (input.groupingDecision !== undefined) {
+		return input.groupingDecision;
+	}
+
+	// No groups and no reason given. With more than `TOP_LEVEL_ITEM_CEILING` boxes on
+	// the canvas, the agent had to make groups or give a reason. It did neither.
+	if (input.overCeiling) {
+		return 'missing';
+	}
+
+	return 'under_ceiling';
 }
 
 async function handleValidationFailure(args: ValidationFailureArgs) {
@@ -435,6 +489,8 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		isSupportingWorkflow = false,
 		isAuxiliarySupportingWorkflow = false,
 		withEscalation,
+		stage = 'validation',
+		grouping,
 	} = args;
 
 	const formattedErrors = withEscalation(
@@ -453,10 +509,11 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		errors: formattedErrors,
 		summary,
 		storeOnRunContext: !isAuxiliarySupportingWorkflow,
+		grouping,
 	});
 	trackWorkflowSourceBuild(context, {
 		result: 'failure',
-		stage: 'validation',
+		stage,
 		binding,
 		targetWorkflowId,
 		isSupportingWorkflow,
@@ -464,6 +521,15 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		remediation,
 		errorCount: formattedErrors.length,
 		warningCount: informational.length,
+		...(grouping
+			? {
+					topLevelItemCount: grouping.topLevelItemCount,
+					groupCount: grouping.groupCount,
+					droppedGroupCount: grouping.droppedGroupCount,
+					groupingDecision: grouping.decision,
+					groupingReasonProvided: grouping.reason !== undefined,
+				}
+			: {}),
 	});
 	return {
 		success: false as const,
@@ -473,6 +539,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		errors: formattedErrors,
 		remediation,
 		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+		...(grouping ? { grouping } : {}),
 	};
 }
 
@@ -498,6 +565,7 @@ const buildWorkflowOutputSchema = z.object({
 	credentialResolutionNote: z.string().optional(),
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	grouping: groupingOutcomeSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),
@@ -532,6 +600,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			const { groupingDecision, groupingReason } = input;
+			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
+				const guidance =
+					"Pass `groupingReason` with `groupingDecision: 'not_warranted'`: say why no valid node group can hold the remaining nodes.";
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: ['groupingDecision is not_warranted but groupingReason is missing.'],
+					remediation: createRemediation({
+						category: 'code_fixable',
+						shouldEdit: false,
+						reason: 'grouping_reason_missing',
+						guidance,
+					}),
+				};
+			}
+
 			let filePath: string;
 			try {
 				// Accepts absolute paths under the workspace root (models often echo
@@ -1131,6 +1216,103 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
 
+				const topLevel = summarizeWorkflowTopLevelItems(json);
+				const grouping: GroupingOutcome = {
+					topLevelItemCount: topLevel.total,
+					ceiling: topLevel.ceiling,
+					groupCount: topLevel.groupCount,
+					droppedGroupCount,
+					decision: resolveGroupingDecision({
+						groupCount: groupCountBeforeDrop,
+						overCeiling: topLevel.overCeiling,
+						groupingDecision,
+					}),
+					...(groupingReason ? { reason: groupingReason } : {}),
+				};
+
+				// The check applies to canvases this run is responsible for: a new
+				// workflow, a rebuild of one it created, or an edit that pushed a small
+				// workflow over the ceiling. A small edit to a wide user workflow only warns.
+				const snapshotWasUnderCeiling =
+					savedWorkflowSnapshot !== undefined &&
+					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
+
+				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
+				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.
+				const agentExceededCeiling =
+					!targetWorkflowId ||
+					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
+					snapshotWasUnderCeiling;
+
+				const refusalReason = groupingDecisionBlocker({
+					summary: topLevel,
+					declaredGroupCount: groupCountBeforeDrop,
+					droppedGroupWarnings,
+					groupingDecision,
+				});
+
+				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
+				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
+				// is refused only when the agent made the canvas exceed the ceiling; on the user's
+				// pre-existing layout it stays a warning.
+				const blocker =
+					agentExceededCeiling || refusalReason?.code === GROUP_DROPPED_OVER_CEILING_CODE
+						? refusalReason
+						: undefined;
+
+				if (blocker) {
+					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
+
+					const reason = groupWasDropped
+						? 'workflow_group_dropped_over_ceiling'
+						: 'workflow_grouping_decision_missing';
+
+					const guidance =
+						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+						(groupWasDropped
+							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
+							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
+
+					// The dropped-group error already carries each drop reason, so the matching
+					// warnings would only repeat it.
+					const informationalWithoutDrops = groupWasDropped
+						? informational.filter((warning) => warning.code !== NODE_GROUP_DROPPED_CODE)
+						: informational;
+
+					return await handleValidationFailure({
+						context,
+						blocking: [blocker],
+						informational: informationalWithoutDrops,
+						reason,
+						guidance,
+						summary:
+							'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
+						binding,
+						sourceHash,
+						targetWorkflowId,
+						filePath,
+						resolvedWorkItemId,
+						resolvedTaskId,
+						plannedTaskId,
+						owner,
+						isSupportingWorkflow,
+						isAuxiliarySupportingWorkflow,
+						withEscalation,
+						stage: 'grouping',
+						grouping,
+					});
+				}
+
+				const overCeiling = topLevelItemsWarning(json, topLevel);
+				if (overCeiling) {
+					const accepted = groupingDecision === 'not_warranted' && groupingReason;
+					informational.push(
+						accepted
+							? { ...overCeiling, message: `${overCeiling.message} (accepted: ${groupingReason})` }
+							: overCeiling,
+					);
+				}
+
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
 						workflowId: targetWorkflowId,
@@ -1153,7 +1335,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
-					.filter((n) => isTriggerNodeType(n.type))
+					.filter((n) => !n.disabled && isTriggerNodeType(n.type))
 					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
 					.filter(
 						(t): t is { nodeName: string; nodeType: string } =>
@@ -1292,17 +1474,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,
+						verificationProgress:
+							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						changedNodeNames,
 						executionIntent,
+						grouping,
 						summary,
 					});
-					const postBuildFlow = directPostBuildFlowHandoff(
+					const postBuildFlow = await directPostBuildFlowHandoff(
 						owner,
 						isAuxiliarySupportingWorkflow,
 						outcome,
+						context.runtimeSkillCatalog,
+						ctx.loadSkill,
 					);
 
 					await promoteMainWorkflow(context, saved.id);
@@ -1324,6 +1511,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
 						droppedGroupCount,
+						...(grouping
+							? {
+									topLevelItemCount: grouping.topLevelItemCount,
+									groupCount: grouping.groupCount,
+									groupingDecision: grouping.decision,
+									groupingReasonProvided: grouping.reason !== undefined,
+								}
+							: {}),
 					});
 
 					return {
@@ -1365,6 +1560,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+						grouping,
 						warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
 					};
 				};

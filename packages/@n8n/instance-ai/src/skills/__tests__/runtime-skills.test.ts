@@ -3,7 +3,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
-import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import {
+	INSTANCE_AI_SKILLS_DIR,
+	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
+} from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
@@ -194,15 +198,34 @@ describe('Instance AI runtime skills', () => {
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: false, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: false,
+				instanceContextEnabled: true,
+			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				instanceContextEnabled: true,
+			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
+	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const progressive = source.registry.skills.find(
+			(skill) => skill.name === 'progressive-building',
+		);
+		expect(progressive?.id).toBe('progressive-building');
+		for (const mode of ['default', 'progressive'] as const) {
+			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
+			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
+			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
+		}
 	});
 
 	it('excludes bundled Agents module skills unless the module is enabled', async () => {

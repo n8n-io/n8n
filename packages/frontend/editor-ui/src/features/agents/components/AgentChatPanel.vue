@@ -27,7 +27,7 @@ import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -71,7 +71,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const locale = useI18n();
@@ -81,6 +81,7 @@ const toast = useToast();
 const {
 	messages,
 	isStreaming,
+	refresh,
 	isCancelling,
 	messagingState,
 	fatalError,
@@ -384,6 +385,12 @@ const chatPlaceholder = computed(() => {
 });
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(
+	() => props.visible,
+	(visible) => {
+		if (visible) refresh();
+	},
+);
 
 async function onSubmit() {
 	const text = inputText.value.trim();
@@ -429,6 +436,8 @@ async function onSubmit() {
 			props.connectedTriggers,
 		);
 		if (!isCurrentTarget()) return;
+		// Keep the draft if a local resume or cancellation started during preparation.
+		if (isStreaming.value || isCancelling.value) return;
 
 		inputText.value = '';
 		attachedFiles.value = [];

@@ -882,6 +882,18 @@ export function appendRootRunMetadata(
 	}
 }
 
+export function setTracePromptVersion(
+	tracing: InstanceAiTraceContext | undefined,
+	version: string | undefined,
+): void {
+	if (!tracing || version === undefined) return;
+	const metadata = { prompt_version: version };
+	appendRootRunMetadata(tracing.rootRun, metadata);
+	if (tracing.actorRun.id !== tracing.rootRun.id) {
+		appendRootRunMetadata(tracing.actorRun, metadata);
+	}
+}
+
 export function appendGeneratedWorkflowIdToRootMetadata(
 	root: InstanceAiTraceRun,
 	workflowId: string,
@@ -1658,14 +1670,21 @@ function createTelemetryFactory(options: {
 		const executionMode =
 			telemetryOptions.executionMode ??
 			(options.traceKind === 'background_subagent' ? 'background_subagent' : 'foreground');
-		const metadata = toTelemetryMetadata(options.baseMetadata, telemetryOptions.metadata, {
-			agent_role: agentRole,
-			execution_mode: executionMode,
-			trace_kind: options.traceKind,
-			langsmith_trace_id: options.rootRun.traceId,
-			langsmith_root_run_id: options.rootRun.id,
-			langsmith_actor_run_id: actorRun.id,
-		});
+		const metadata = toTelemetryMetadata(
+			options.baseMetadata,
+			{
+				prompt_version: options.rootRun.metadata?.prompt_version,
+			},
+			telemetryOptions.metadata,
+			{
+				agent_role: agentRole,
+				execution_mode: executionMode,
+				trace_kind: options.traceKind,
+				langsmith_trace_id: options.rootRun.traceId,
+				langsmith_root_run_id: options.rootRun.id,
+				langsmith_actor_run_id: actorRun.id,
+			},
+		);
 		const functionId = telemetryOptions.functionId ?? formatTelemetryFunctionId(agentRole);
 
 		if (options.baseTelemetry) {
@@ -1824,7 +1843,14 @@ export async function continueInstanceAiTraceContext(
 		return existingContext;
 	}
 
-	const baseMetadata = await buildBaseMetadata(options);
+	const promptVersion = existingContext?.rootRun.metadata?.prompt_version;
+	const baseMetadata = await buildBaseMetadata({
+		...options,
+		metadata: {
+			...(typeof promptVersion === 'string' ? { prompt_version: promptVersion } : {}),
+			...options.metadata,
+		},
+	});
 	const projectName =
 		existingContext?.projectName ?? options.projectName ?? resolveDefaultProjectName();
 	const continuedMetadata =

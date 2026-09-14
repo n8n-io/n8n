@@ -21,6 +21,7 @@ import {
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiSendMessageRequest,
 	instanceAiEventSchema,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
@@ -45,6 +46,22 @@ import {
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('Instance AI prompt version requests', () => {
+	it('accepts an optional version pin and rejects empty or oversized pins', () => {
+		const base = { message: 'Build a workflow', timeZone: 'UTC' };
+		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
+				.promptVersion,
+		).toBe('progressive@1');
+		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
+			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
+				false,
+			);
+		}
+	});
+});
 
 describe('sandbox provider', () => {
 	it('accepts supported providers', () => {

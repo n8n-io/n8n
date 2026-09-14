@@ -165,6 +165,7 @@ export class AgentChatController {
 					attachments: storedAttachments,
 					user: req.user,
 					sessionId: threadId,
+					previewChat: true,
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},
@@ -221,6 +222,7 @@ export class AgentChatController {
 					user: req.user,
 					usePublishedVersion: false,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					previewChat: true,
 					onExecutionRecorded: (id) => {
 						executionId = id;
 					},

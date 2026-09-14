@@ -1,1026 +1,1031 @@
 {
-  "updatedAt": "2026-08-31T14:52:43.296Z",
+  "updatedAt": "2026-09-10T12:16:31.008Z",
   "source": "currents",
   "projectId": "nHHLA5",
   "specs": {
-    "tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts": {
-      "avgDuration": 228188,
-      "testCount": 1,
-      "flakyRate": 0.064
-    },
     "tests/e2e/workflows/editor/canvas/node-groups.spec.ts": {
-      "avgDuration": 214656,
+      "avgDuration": 229835,
       "testCount": 28,
-      "flakyRate": 0.0039
-    },
-    "tests/e2e/workflows/editor/canvas/actions.spec.ts": {
-      "avgDuration": 211223,
-      "testCount": 20,
-      "flakyRate": 0.0319
-    },
-    "tests/e2e/credentials/crud.spec.ts": {
-      "avgDuration": 197441,
-      "testCount": 14,
-      "flakyRate": 0.0085
-    },
-    "tests/e2e/projects/projects.spec.ts": {
-      "avgDuration": 191530,
-      "testCount": 7,
-      "flakyRate": 0.0077
+      "flakyRate": 0.0082
     },
     "tests/e2e/instance-ai/instance-ai-workflow-execution.spec.ts": {
-      "avgDuration": 183185,
+      "avgDuration": 227544,
       "testCount": 5,
-      "flakyRate": 0.0566
+      "flakyRate": 0.0785
+    },
+    "tests/e2e/credentials/crud.spec.ts": {
+      "avgDuration": 207109,
+      "testCount": 14,
+      "flakyRate": 0.0108
+    },
+    "tests/e2e/workflows/editor/canvas/actions.spec.ts": {
+      "avgDuration": 206797,
+      "testCount": 20,
+      "flakyRate": 0.0167
+    },
+    "tests/e2e/projects/projects.spec.ts": {
+      "avgDuration": 192396,
+      "testCount": 7,
+      "flakyRate": 0.0067
     },
     "tests/e2e/workflows/list/workflows.spec.ts": {
-      "avgDuration": 179027,
+      "avgDuration": 186327,
       "testCount": 10,
-      "flakyRate": 0.0099
+      "flakyRate": 0.0074
     },
     "tests/e2e/workflows/editor/execution/logs.spec.ts": {
-      "avgDuration": 170700,
+      "avgDuration": 174246,
       "testCount": 10,
-      "flakyRate": 0.0104
+      "flakyRate": 0.0236
     },
     "tests/e2e/settings/personal/two-factor-authentication.spec.ts": {
-      "avgDuration": 162971,
+      "avgDuration": 168330,
       "testCount": 7,
-      "flakyRate": 0.0068
-    },
-    "tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts": {
-      "avgDuration": 156214,
-      "testCount": 19,
-      "flakyRate": 0.0111
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": {
-      "avgDuration": 156145,
-      "testCount": 11,
-      "flakyRate": 0.0353
-    },
-    "tests/e2e/data-tables/tables.spec.ts": {
-      "avgDuration": 154938,
-      "testCount": 7,
-      "flakyRate": 0.0041
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": {
-      "avgDuration": 154157,
-      "testCount": 14,
-      "flakyRate": 0
+      "flakyRate": 0.0087
     },
     "tests/e2e/ai/langchain-agents.spec.ts": {
-      "avgDuration": 153950,
+      "avgDuration": 167052,
       "testCount": 7,
-      "flakyRate": 0.0247
+      "flakyRate": 0.0823
     },
-    "tests/e2e/workflows/editor/code/code-node.spec.ts": {
-      "avgDuration": 149685,
-      "testCount": 12,
-      "flakyRate": 0.066
+    "tests/e2e/data-tables/tables.spec.ts": {
+      "avgDuration": 162642,
+      "testCount": 7,
+      "flakyRate": 0.0045
     },
-    "tests/e2e/workflows/editor/canvas/undo-redo.spec.ts": {
-      "avgDuration": 148285,
-      "testCount": 14,
-      "flakyRate": 0.0076
-    },
-    "tests/e2e/workflows/editor/code/editors.spec.ts": {
-      "avgDuration": 136383,
+    "tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": {
+      "avgDuration": 161802,
       "testCount": 11,
-      "flakyRate": 0.0154
+      "flakyRate": 0.027
     },
-    "tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts": {
-      "avgDuration": 133781,
-      "testCount": 13,
-      "flakyRate": 0
+    "tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts": {
+      "avgDuration": 161343,
+      "testCount": 19,
+      "flakyRate": 0.0195
     },
-    "tests/e2e/projects/folders-operations.spec.ts": {
-      "avgDuration": 131773,
+    "tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": {
+      "avgDuration": 158690,
       "testCount": 14,
-      "flakyRate": 0.0034
-    },
-    "tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": {
-      "avgDuration": 129169,
-      "testCount": 8,
-      "flakyRate": 0.0069
+      "flakyRate": 0.0111
     },
     "tests/e2e/instance-ai/instance-ai-workflow-preview.spec.ts": {
-      "avgDuration": 128222,
+      "avgDuration": 155619,
       "testCount": 4,
-      "flakyRate": 0
+      "flakyRate": 0.011
+    },
+    "tests/e2e/workflows/editor/canvas/undo-redo.spec.ts": {
+      "avgDuration": 151163,
+      "testCount": 14,
+      "flakyRate": 0.0054
+    },
+    "tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts": {
+      "avgDuration": 139221,
+      "testCount": 13,
+      "flakyRate": 0.0023
     },
     "tests/e2e/data-tables/details.spec.ts": {
-      "avgDuration": 127653,
+      "avgDuration": 137654,
       "testCount": 11,
-      "flakyRate": 0.007
+      "flakyRate": 0.0101
     },
-    "tests/e2e/projects/project-settings.spec.ts": {
-      "avgDuration": 120887,
-      "testCount": 10,
-      "flakyRate": 0.0068
-    },
-    "tests/e2e/nodes/webhook.spec.ts": {
-      "avgDuration": 119964,
-      "testCount": 9,
-      "flakyRate": 0.0065
-    },
-    "tests/e2e/sharing/credential-visibility.spec.ts": {
-      "avgDuration": 118389,
-      "testCount": 5,
-      "flakyRate": 0.0055
-    },
-    "tests/e2e/ai/assistant-basic.spec.ts": {
-      "avgDuration": 116839,
+    "tests/e2e/workflows/editor/code/editors.spec.ts": {
+      "avgDuration": 137108,
       "testCount": 11,
-      "flakyRate": 0.0068
+      "flakyRate": 0.0078
     },
-    "tests/e2e/instance-ai/instance-ai-artifacts.spec.ts": {
-      "avgDuration": 109768,
-      "testCount": 2,
+    "tests/e2e/projects/folders-operations.spec.ts": {
+      "avgDuration": 134504,
+      "testCount": 14,
       "flakyRate": 0
     },
-    "tests/e2e/ai/builder-setup-wizard.spec.ts": {
-      "avgDuration": 106790,
+    "tests/e2e/projects/project-settings.spec.ts": {
+      "avgDuration": 133665,
+      "testCount": 10,
+      "flakyRate": 0.0084
+    },
+    "tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": {
+      "avgDuration": 132336,
+      "testCount": 8,
+      "flakyRate": 0.0118
+    },
+    "tests/e2e/ai/assistant-basic.spec.ts": {
+      "avgDuration": 124196,
+      "testCount": 11,
+      "flakyRate": 0.01
+    },
+    "tests/e2e/sharing/credential-visibility.spec.ts": {
+      "avgDuration": 124006,
+      "testCount": 5,
+      "flakyRate": 0.0143
+    },
+    "tests/e2e/nodes/webhook.spec.ts": {
+      "avgDuration": 120282,
       "testCount": 9,
       "flakyRate": 0
     },
     "tests/e2e/workflows/templates/credentials-setup.spec.ts": {
-      "avgDuration": 104870,
+      "avgDuration": 109282,
       "testCount": 8,
-      "flakyRate": 0.005
+      "flakyRate": 0.0018
+    },
+    "tests/e2e/ai/builder-setup-wizard.spec.ts": {
+      "avgDuration": 108442,
+      "testCount": 9,
+      "flakyRate": 0
     },
     "tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts": {
-      "avgDuration": 102540,
+      "avgDuration": 105579,
       "testCount": 9,
-      "flakyRate": 0.0306
-    },
-    "tests/e2e/instance-ai/instance-ai-sidebar.spec.ts": {
-      "avgDuration": 102510,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/instance-ai/instance-ai-onboarding.spec.ts": {
-      "avgDuration": 100625,
-      "testCount": 2,
-      "flakyRate": 0.1165
+      "flakyRate": 0.0471
     },
     "tests/e2e/workflows/editor/ndv/pinning.spec.ts": {
-      "avgDuration": 99976,
+      "avgDuration": 103893,
       "testCount": 10,
-      "flakyRate": 0.0063
+      "flakyRate": 0.0281
     },
-    "tests/e2e/instance-ai/instance-ai-chat-basics.spec.ts": {
-      "avgDuration": 97853,
+    "tests/e2e/chat-hub/chat-hub-tools.spec.ts": {
+      "avgDuration": 99836,
+      "testCount": 1,
+      "flakyRate": 0.0018
+    },
+    "tests/e2e/ai/langchain-chains.spec.ts": {
+      "avgDuration": 97254,
       "testCount": 4,
-      "flakyRate": 0.0801
+      "flakyRate": 0.1429
     },
     "tests/e2e/workflows/executions/list.spec.ts": {
-      "avgDuration": 95622,
+      "avgDuration": 95160,
       "testCount": 12,
-      "flakyRate": 0.0031
+      "flakyRate": 0.0021
     },
     "tests/e2e/workflows/editor/tags.spec.ts": {
-      "avgDuration": 91542,
+      "avgDuration": 93366,
       "testCount": 7,
-      "flakyRate": 0.0486
-    },
-    "tests/e2e/workflows/editor/execution/execution.spec.ts": {
-      "avgDuration": 90218,
-      "testCount": 14,
-      "flakyRate": 0
-    },
-    "tests/e2e/settings/environments/source-control.spec.ts": {
-      "avgDuration": 88754,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/workflows/editor/expressions/inline.spec.ts": {
-      "avgDuration": 86306,
-      "testCount": 7,
-      "flakyRate": 0.1045
-    },
-    "tests/e2e/workflows/editor/viewer-permissions.spec.ts": {
-      "avgDuration": 86106,
-      "testCount": 3,
-      "flakyRate": 0
-    },
-    "tests/e2e/ai/workflow-builder.spec.ts": {
-      "avgDuration": 86079,
-      "testCount": 5,
-      "flakyRate": 0.2615
+      "flakyRate": 0.0449
     },
     "tests/e2e/workflows/editor/expressions/mapping.spec.ts": {
-      "avgDuration": 83929,
+      "avgDuration": 93087,
       "testCount": 10,
       "flakyRate": 0
     },
-    "tests/e2e/building-blocks/canvas-actions.spec.ts": {
-      "avgDuration": 82586,
-      "testCount": 9,
-      "flakyRate": 0.01
+    "tests/e2e/instance-ai/instance-ai-artifacts.spec.ts": {
+      "avgDuration": 91631,
+      "testCount": 2,
+      "flakyRate": 0.0028
     },
-    "tests/e2e/nodes/form-trigger-node.spec.ts": {
-      "avgDuration": 81311,
-      "testCount": 5,
-      "flakyRate": 0.0528
+    "tests/e2e/workflows/editor/expressions/inline.spec.ts": {
+      "avgDuration": 90321,
+      "testCount": 7,
+      "flakyRate": 0.1268
+    },
+    "tests/e2e/workflows/editor/execution/execution.spec.ts": {
+      "avgDuration": 89991,
+      "testCount": 14,
+      "flakyRate": 0.0021
+    },
+    "tests/e2e/workflows/editor/viewer-permissions.spec.ts": {
+      "avgDuration": 89655,
+      "testCount": 3,
+      "flakyRate": 0.0127
+    },
+    "tests/e2e/settings/environments/source-control.spec.ts": {
+      "avgDuration": 88510,
+      "testCount": 4,
+      "flakyRate": 0.0022
+    },
+    "tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts": {
+      "avgDuration": 83701,
+      "testCount": 1,
+      "flakyRate": 0.0132
     },
     "tests/e2e/building-blocks/node-details-configuration.spec.ts": {
-      "avgDuration": 79978,
+      "avgDuration": 82298,
       "testCount": 7,
-      "flakyRate": 0.003
-    },
-    "tests/e2e/projects/folders-basic.spec.ts": {
-      "avgDuration": 78940,
-      "testCount": 10,
-      "flakyRate": 0.0034
-    },
-    "tests/e2e/workflows/editor/expressions/modal.spec.ts": {
-      "avgDuration": 78771,
-      "testCount": 6,
-      "flakyRate": 0
-    },
-    "tests/e2e/nodes/send-and-wait.spec.ts": {
-      "avgDuration": 77281,
-      "testCount": 5,
-      "flakyRate": 0.0422
+      "flakyRate": 0.0018
     },
     "tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": {
-      "avgDuration": 76368,
+      "avgDuration": 80433,
       "testCount": 9,
-      "flakyRate": 0.0036
+      "flakyRate": 0
+    },
+    "tests/e2e/ai/langchain-vectorstores.spec.ts": {
+      "avgDuration": 79339,
+      "testCount": 2,
+      "flakyRate": 0.0097
+    },
+    "tests/e2e/building-blocks/canvas-actions.spec.ts": {
+      "avgDuration": 79139,
+      "testCount": 9,
+      "flakyRate": 0.0025
+    },
+    "tests/e2e/nodes/form-trigger-node.spec.ts": {
+      "avgDuration": 78502,
+      "testCount": 5,
+      "flakyRate": 0.0304
+    },
+    "tests/e2e/nodes/send-and-wait.spec.ts": {
+      "avgDuration": 78208,
+      "testCount": 5,
+      "flakyRate": 0.05
+    },
+    "tests/e2e/workflows/editor/expressions/modal.spec.ts": {
+      "avgDuration": 78071,
+      "testCount": 6,
+      "flakyRate": 0.005
     },
     "tests/e2e/auth/oidc.spec.ts": {
-      "avgDuration": 75449,
+      "avgDuration": 76844,
       "testCount": 1,
-      "flakyRate": 0.0098
+      "flakyRate": 0.023
+    },
+    "tests/e2e/projects/folders-basic.spec.ts": {
+      "avgDuration": 76676,
+      "testCount": 10,
+      "flakyRate": 0.0027
     },
     "tests/e2e/projects/folders-advanced.spec.ts": {
-      "avgDuration": 74178,
+      "avgDuration": 76490,
+      "testCount": 6,
+      "flakyRate": 0.0021
+    },
+    "tests/e2e/workflows/editor/routing.spec.ts": {
+      "avgDuration": 75012,
+      "testCount": 6,
+      "flakyRate": 0.0042
+    },
+    "tests/e2e/building-blocks/credentials.spec.ts": {
+      "avgDuration": 74897,
+      "testCount": 6,
+      "flakyRate": 0.0078
+    },
+    "tests/e2e/instance-ai/instance-ai-onboarding.spec.ts": {
+      "avgDuration": 74715,
+      "testCount": 2,
+      "flakyRate": 0.0593
+    },
+    "tests/e2e/workflows/editor/workflow-actions/publish.spec.ts": {
+      "avgDuration": 73733,
+      "testCount": 8,
+      "flakyRate": 0.0074
+    },
+    "tests/e2e/workflows/editor/ndv/paired-item.spec.ts": {
+      "avgDuration": 73000,
+      "testCount": 6,
+      "flakyRate": 0.0119
+    },
+    "tests/e2e/workflows/editor/expressions/transformation.spec.ts": {
+      "avgDuration": 72655,
       "testCount": 6,
       "flakyRate": 0
     },
     "tests/e2e/projects/projects-move-resources.spec.ts": {
-      "avgDuration": 73964,
+      "avgDuration": 71964,
       "testCount": 2,
-      "flakyRate": 0.1102
+      "flakyRate": 0.0261
     },
-    "tests/e2e/chat-hub/chat-hub-tools.spec.ts": {
-      "avgDuration": 73000,
-      "testCount": 1,
-      "flakyRate": 0
+    "tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts": {
+      "avgDuration": 71301,
+      "testCount": 4,
+      "flakyRate": 0.0514
     },
-    "tests/e2e/dynamic-credentials/form-trigger-end-user-credential-shell.spec.ts": {
-      "avgDuration": 72327,
-      "testCount": 2,
-      "flakyRate": 0.0435
-    },
-    "tests/e2e/workflows/editor/routing.spec.ts": {
-      "avgDuration": 71721,
-      "testCount": 6,
-      "flakyRate": 0.0034
-    },
-    "tests/e2e/ai/langchain-vectorstores.spec.ts": {
-      "avgDuration": 71614,
-      "testCount": 2,
-      "flakyRate": 0.0064
+    "tests/e2e/workflows/editor/code/code-node.spec.ts": {
+      "avgDuration": 70641,
+      "testCount": 5,
+      "flakyRate": 0.0323
     },
     "tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": {
-      "avgDuration": 70996,
+      "avgDuration": 70590,
       "testCount": 7,
       "flakyRate": 0
     },
-    "tests/e2e/workflows/editor/ndv/paired-item.spec.ts": {
-      "avgDuration": 70922,
-      "testCount": 6,
-      "flakyRate": 0.0068
-    },
-    "tests/e2e/workflows/editor/expressions/transformation.spec.ts": {
-      "avgDuration": 70679,
-      "testCount": 6,
-      "flakyRate": 0
-    },
-    "tests/e2e/workflows/editor/workflow-actions/publish.spec.ts": {
-      "avgDuration": 69585,
-      "testCount": 8,
-      "flakyRate": 0.0098
-    },
-    "tests/e2e/building-blocks/credentials.spec.ts": {
-      "avgDuration": 66234,
-      "testCount": 6,
-      "flakyRate": 0
+    "tests/e2e/dynamic-credentials/form-trigger-end-user-credential-shell.spec.ts": {
+      "avgDuration": 69882,
+      "testCount": 2,
+      "flakyRate": 0.0207
     },
     "tests/e2e/workflows/editor/execution/executions-list-infinite-scroll.spec.ts": {
-      "avgDuration": 65971,
+      "avgDuration": 68376,
       "testCount": 2,
-      "flakyRate": 0
+      "flakyRate": 0.0034
     },
-    "tests/e2e/instance-ai/instance-ai-oversized-attachments.spec.ts": {
-      "avgDuration": 65381,
-      "testCount": 5,
-      "flakyRate": 0.0805
-    },
-    "tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts": {
-      "avgDuration": 64602,
+    "tests/e2e/ai/assistant-credential-help.spec.ts": {
+      "avgDuration": 67012,
       "testCount": 4,
-      "flakyRate": 0
+      "flakyRate": 0.0037
+    },
+    "tests/e2e/ai/workflow-builder.spec.ts": {
+      "avgDuration": 65937,
+      "testCount": 5,
+      "flakyRate": 0.0019
     },
     "tests/e2e/credentials/global.spec.ts": {
-      "avgDuration": 63848,
+      "avgDuration": 63715,
       "testCount": 5,
-      "flakyRate": 0.0046
+      "flakyRate": 0.0081
     },
-    "tests/e2e/settings/external-secrets/secret-providers-connections-ui.spec.ts": {
-      "avgDuration": 59840,
-      "testCount": 2,
-      "flakyRate": 0
+    "tests/e2e/instance-ai/instance-ai-confirmations.spec.ts": {
+      "avgDuration": 62755,
+      "testCount": 5,
+      "flakyRate": 0.0259
+    },
+    "tests/e2e/instance-ai/instance-ai-chat-basics.spec.ts": {
+      "avgDuration": 61849,
+      "testCount": 4,
+      "flakyRate": 0.0136
     },
     "tests/e2e/workflows/editor/subworkflows/workflow-selector.spec.ts": {
-      "avgDuration": 59163,
+      "avgDuration": 61468,
       "testCount": 5,
-      "flakyRate": 0.0035
+      "flakyRate": 0.0097
     },
-    "tests/e2e/capabilities/proxy-server.spec.ts": {
-      "avgDuration": 59043,
-      "testCount": 4,
-      "flakyRate": 0.0252
-    },
-    "tests/e2e/chat-hub/chat-hub-basic.spec.ts": {
-      "avgDuration": 58764,
+    "tests/e2e/ai/assistant-support-chat.spec.ts": {
+      "avgDuration": 59969,
       "testCount": 3,
-      "flakyRate": 0.0181
+      "flakyRate": 0.0737
     },
     "tests/e2e/workflows/checklist/production-checklist.spec.ts": {
-      "avgDuration": 58339,
+      "avgDuration": 59885,
       "testCount": 6,
-      "flakyRate": 0.0033
+      "flakyRate": 0.019
+    },
+    "tests/e2e/settings/external-secrets/secret-providers-connections-ui.spec.ts": {
+      "avgDuration": 59732,
+      "testCount": 2,
+      "flakyRate": 0.004
     },
     "tests/e2e/chat-hub/chat-hub-attachment.spec.ts": {
-      "avgDuration": 58090,
+      "avgDuration": 58576,
       "testCount": 3,
-      "flakyRate": 0.0023
+      "flakyRate": 0.0072
     },
     "tests/e2e/workflows/templates/templates.spec.ts": {
-      "avgDuration": 57530,
+      "avgDuration": 58136,
       "testCount": 9,
       "flakyRate": 0
     },
-    "tests/e2e/ai/assistant-support-chat.spec.ts": {
-      "avgDuration": 55431,
-      "testCount": 3,
-      "flakyRate": 0.0345
-    },
-    "tests/e2e/dynamic-credentials/execution-status.spec.ts": {
-      "avgDuration": 53819,
+    "tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts": {
+      "avgDuration": 55323,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/ndv/resource-mapper.spec.ts": {
-      "avgDuration": 53796,
+      "avgDuration": 54879,
       "testCount": 5,
       "flakyRate": 0
     },
-    "tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts": {
-      "avgDuration": 53249,
+    "tests/e2e/ai/assistant-code-help.spec.ts": {
+      "avgDuration": 54371,
       "testCount": 2,
-      "flakyRate": 0
+      "flakyRate": 0.0034
     },
-    "tests/e2e/ai/assistant-credential-help.spec.ts": {
-      "avgDuration": 52935,
-      "testCount": 4,
-      "flakyRate": 0.0134
-    },
-    "tests/e2e/workflows/editor/execution/debug.spec.ts": {
-      "avgDuration": 52061,
-      "testCount": 4,
+    "tests/e2e/dynamic-credentials/execution-status.spec.ts": {
+      "avgDuration": 53988,
+      "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/workflow-reviews/review-round-trip.spec.ts": {
-      "avgDuration": 51959,
+      "avgDuration": 52463,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/ai/assistant-code-help.spec.ts": {
-      "avgDuration": 51568,
-      "testCount": 2,
-      "flakyRate": 0
+    "tests/e2e/building-blocks/workflow-entry-points.spec.ts": {
+      "avgDuration": 51693,
+      "testCount": 5,
+      "flakyRate": 0.0033
     },
-    "tests/e2e/building-blocks/user-service.spec.ts": {
-      "avgDuration": 51389,
-      "testCount": 8,
-      "flakyRate": 0.0036
-    },
-    "tests/e2e/settings/log-streaming/log-streaming.spec.ts": {
-      "avgDuration": 50536,
-      "testCount": 6,
-      "flakyRate": 0.004
-    },
-    "tests/e2e/scheduling/schedule-trigger-durable.spec.ts": {
-      "avgDuration": 50242,
+    "tests/e2e/workflows/editor/execution/debug.spec.ts": {
+      "avgDuration": 51484,
       "testCount": 4,
-      "flakyRate": 0
+      "flakyRate": 0.0024
+    },
+    "tests/e2e/dynamic-credentials/form-trigger-submit-gate-client.spec.ts": {
+      "avgDuration": 51375,
+      "testCount": 2,
+      "flakyRate": 0.0828
     },
     "tests/e2e/workflows/editor/subworkflows/extraction.spec.ts": {
-      "avgDuration": 49510,
+      "avgDuration": 51335,
       "testCount": 3,
       "flakyRate": 0
     },
     "tests/e2e/dynamic-credentials/webhook-trigger-private-credential.spec.ts": {
-      "avgDuration": 49329,
+      "avgDuration": 51159,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/instance-ai/instance-ai-multimain.spec.ts": {
-      "avgDuration": 49227,
-      "testCount": 1,
-      "flakyRate": 0.0069
+    "tests/e2e/settings/log-streaming/log-streaming.spec.ts": {
+      "avgDuration": 50853,
+      "testCount": 6,
+      "flakyRate": 0
     },
-    "tests/e2e/dynamic-credentials/form-trigger-submit-gate-client.spec.ts": {
-      "avgDuration": 48968,
-      "testCount": 2,
-      "flakyRate": 0.0756
-    },
-    "tests/e2e/cloud/cloud.spec.ts": {
-      "avgDuration": 48584,
-      "testCount": 3,
+    "tests/e2e/scheduling/schedule-trigger-durable.spec.ts": {
+      "avgDuration": 50760,
+      "testCount": 4,
       "flakyRate": 0
     },
     "tests/e2e/regression/ADO-4462-template-setup-experiment.spec.ts": {
-      "avgDuration": 48083,
+      "avgDuration": 50326,
       "testCount": 2,
-      "flakyRate": 0.0033
-    },
-    "tests/e2e/agents/agent-sessions.spec.ts": {
-      "avgDuration": 47698,
-      "testCount": 2,
-      "flakyRate": 0.0047
+      "flakyRate": 0.007
     },
     "tests/e2e/app-config/security-notifications.spec.ts": {
-      "avgDuration": 47033,
+      "avgDuration": 49658,
       "testCount": 5,
-      "flakyRate": 0.0069
+      "flakyRate": 0.0082
     },
-    "tests/e2e/nodes/kafka-nodes.spec.ts": {
-      "avgDuration": 46723,
+    "tests/e2e/cloud/cloud.spec.ts": {
+      "avgDuration": 49248,
+      "testCount": 3,
+      "flakyRate": 0.0023
+    },
+    "tests/e2e/agents/agent-sessions.spec.ts": {
+      "avgDuration": 48482,
       "testCount": 2,
-      "flakyRate": 0
+      "flakyRate": 0.0016
     },
     "tests/e2e/workflows/demo-diff.spec.ts": {
-      "avgDuration": 45902,
+      "avgDuration": 47965,
       "testCount": 9,
-      "flakyRate": 0.0085
+      "flakyRate": 0.009
     },
-    "tests/e2e/settings/log-streaming/log-streaming-observability.spec.ts": {
-      "avgDuration": 45143,
-      "testCount": 2,
+    "tests/e2e/building-blocks/user-service.spec.ts": {
+      "avgDuration": 47901,
+      "testCount": 8,
+      "flakyRate": 0.0046
+    },
+    "tests/e2e/node-creator/navigation.spec.ts": {
+      "avgDuration": 47715,
+      "testCount": 4,
       "flakyRate": 0
     },
-    "tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": {
-      "avgDuration": 43980,
-      "testCount": 2,
-      "flakyRate": 0.0231
+    "tests/e2e/instance-ai/instance-ai-oversized-attachments.spec.ts": {
+      "avgDuration": 46968,
+      "testCount": 5,
+      "flakyRate": 0.0034
     },
-    "tests/e2e/ai/rag-callout.spec.ts": {
-      "avgDuration": 43891,
+    "tests/e2e/nodes/kafka-nodes.spec.ts": {
+      "avgDuration": 46842,
       "testCount": 2,
-      "flakyRate": 0.0045
+      "flakyRate": 0.0017
     },
-    "tests/e2e/instance-ai/instance-ai-attachments.spec.ts": {
-      "avgDuration": 43646,
-      "testCount": 1,
+    "tests/e2e/app-config/demo.spec.ts": {
+      "avgDuration": 46294,
+      "testCount": 4,
+      "flakyRate": 0
+    },
+    "tests/e2e/settings/log-streaming/log-streaming-observability.spec.ts": {
+      "avgDuration": 44994,
+      "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/settings/environments/variables.spec.ts": {
-      "avgDuration": 43102,
+      "avgDuration": 43978,
       "testCount": 7,
-      "flakyRate": 0.0042
-    },
-    "tests/e2e/ai/langchain-chains.spec.ts": {
-      "avgDuration": 42326,
-      "testCount": 4,
-      "flakyRate": 0.0037
-    },
-    "tests/e2e/building-blocks/workflow-entry-points.spec.ts": {
-      "avgDuration": 41662,
-      "testCount": 5,
-      "flakyRate": 0.0015
-    },
-    "tests/e2e/ai/ai-2505-pdf-embed.spec.ts": {
-      "avgDuration": 41537,
-      "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts": {
-      "avgDuration": 41490,
+    "tests/e2e/ai/rag-callout.spec.ts": {
+      "avgDuration": 42985,
+      "testCount": 2,
+      "flakyRate": 0.0024
+    },
+    "tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": {
+      "avgDuration": 42495,
+      "testCount": 2,
+      "flakyRate": 0.0217
+    },
+    "tests/e2e/capabilities/proxy-server.spec.ts": {
+      "avgDuration": 42308,
+      "testCount": 4,
+      "flakyRate": 0.0166
+    },
+    "tests/e2e/ai/ai-2505-pdf-embed.spec.ts": {
+      "avgDuration": 42242,
+      "testCount": 1,
+      "flakyRate": 0.0017
+    },
+    "tests/e2e/workflows/editor/subworkflows/debugging.spec.ts": {
+      "avgDuration": 42172,
+      "testCount": 4,
+      "flakyRate": 0
+    },
+    "tests/e2e/instance-ai/instance-ai-sidebar.spec.ts": {
+      "avgDuration": 41530,
+      "testCount": 4,
+      "flakyRate": 0.0147
+    },
+    "tests/e2e/settings/log-streaming/log-streaming-delivery.spec.ts": {
+      "avgDuration": 41154,
+      "testCount": 5,
+      "flakyRate": 0.0069
+    },
+    "tests/e2e/scheduling/schedule-trigger-multimain.spec.ts": {
+      "avgDuration": 40268,
+      "testCount": 2,
+      "flakyRate": 0
+    },
+    "tests/e2e/chat-hub/chat-hub-basic.spec.ts": {
+      "avgDuration": 39423,
+      "testCount": 3,
+      "flakyRate": 0.008
+    },
+    "tests/e2e/mcp/mcp-oauth.spec.ts": {
+      "avgDuration": 39374,
+      "testCount": 17,
+      "flakyRate": 0.0029
+    },
+    "tests/e2e/chat-hub/chat-hub-settings.spec.ts": {
+      "avgDuration": 39340,
+      "testCount": 2,
+      "flakyRate": 0.0101
+    },
+    "tests/e2e/scheduling/poll-trigger-cursor-migrated.spec.ts": {
+      "avgDuration": 39218,
+      "testCount": 3,
+      "flakyRate": 0.0239
+    },
+    "tests/e2e/sentry/sentry-baseline.spec.ts": {
+      "avgDuration": 38693,
+      "testCount": 3,
+      "flakyRate": 0
+    },
+    "tests/e2e/nodes/community-nodes.spec.ts": {
+      "avgDuration": 38217,
+      "testCount": 3,
+      "flakyRate": 0
+    },
+    "tests/e2e/chat-hub/chat-hub-chat-user.spec.ts": {
+      "avgDuration": 37998,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/auth/authenticated.spec.ts": {
-      "avgDuration": 41043,
+      "avgDuration": 37956,
       "testCount": 6,
-      "flakyRate": 0.0033
-    },
-    "tests/e2e/node-creator/actions.spec.ts": {
-      "avgDuration": 41036,
-      "testCount": 4,
-      "flakyRate": 0.0065
-    },
-    "tests/e2e/scheduling/schedule-trigger-multimain.spec.ts": {
-      "avgDuration": 40807,
-      "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/building-blocks/credential-mismatch.spec.ts": {
-      "avgDuration": 40299,
+      "avgDuration": 37586,
       "testCount": 2,
-      "flakyRate": 0.0094
-    },
-    "tests/e2e/sentry/sentry-baseline.spec.ts": {
-      "avgDuration": 40245,
-      "testCount": 3,
-      "flakyRate": 0.0036
-    },
-    "tests/e2e/workflows/editor/subworkflows/debugging.spec.ts": {
-      "avgDuration": 39603,
-      "testCount": 4,
-      "flakyRate": 0.0035
-    },
-    "tests/e2e/node-creator/navigation.spec.ts": {
-      "avgDuration": 39506,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/mcp/mcp-oauth.spec.ts": {
-      "avgDuration": 39301,
-      "testCount": 15,
-      "flakyRate": 0.0048
-    },
-    "tests/e2e/instance-ai/thread-launcher.spec.ts": {
-      "avgDuration": 38801,
-      "testCount": 2,
-      "flakyRate": 0.0675
-    },
-    "tests/e2e/workflows/editor/editor-after-route-changes.spec.ts": {
-      "avgDuration": 38517,
-      "testCount": 1,
-      "flakyRate": 0.0664
-    },
-    "tests/e2e/nodes/community-nodes.spec.ts": {
-      "avgDuration": 38333,
-      "testCount": 3,
-      "flakyRate": 0
-    },
-    "tests/e2e/scheduling/poll-trigger-cursor-migrated.spec.ts": {
-      "avgDuration": 38306,
-      "testCount": 3,
-      "flakyRate": 0.0095
-    },
-    "tests/e2e/capabilities/task-runner.spec.ts": {
-      "avgDuration": 38287,
-      "testCount": 2,
-      "flakyRate": 0.0085
-    },
-    "tests/e2e/ai/eval-collections-compare.spec.ts": {
-      "avgDuration": 37157,
-      "testCount": 2,
-      "flakyRate": 0.003
+      "flakyRate": 0.0068
     },
     "tests/e2e/settings/personal/personal.spec.ts": {
-      "avgDuration": 36741,
+      "avgDuration": 37156,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/workflows/list/import.spec.ts": {
-      "avgDuration": 36693,
+      "avgDuration": 36786,
       "testCount": 5,
       "flakyRate": 0
     },
-    "tests/e2e/api/wait-form-resume.spec.ts": {
-      "avgDuration": 36286,
-      "testCount": 3,
-      "flakyRate": 0.0434
-    },
-    "tests/e2e/settings/users/users.spec.ts": {
-      "avgDuration": 35203,
-      "testCount": 5,
-      "flakyRate": 0
-    },
-    "tests/e2e/chat-hub/chat-hub-settings.spec.ts": {
-      "avgDuration": 35102,
-      "testCount": 2,
-      "flakyRate": 0.0035
-    },
-    "tests/e2e/mcp-registry/mcp-registry.spec.ts": {
-      "avgDuration": 34813,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/push/sse-push-backend.spec.ts": {
-      "avgDuration": 34699,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/scheduling/poll-trigger-misfire-skip.spec.ts": {
-      "avgDuration": 34622,
-      "testCount": 1,
+    "tests/e2e/node-creator/actions.spec.ts": {
+      "avgDuration": 36530,
+      "testCount": 4,
       "flakyRate": 0
     },
     "tests/e2e/api/waiting-endpoint-security.spec.ts": {
-      "avgDuration": 34566,
+      "avgDuration": 36116,
       "testCount": 2,
-      "flakyRate": 0.0466
+      "flakyRate": 0.0347
     },
-    "tests/e2e/scheduling/schedule-trigger-misfire-coalesce.spec.ts": {
-      "avgDuration": 34344,
+    "tests/e2e/push/sse-push-backend.spec.ts": {
+      "avgDuration": 35918,
       "testCount": 1,
       "flakyRate": 0
+    },
+    "tests/e2e/settings/users/users.spec.ts": {
+      "avgDuration": 35640,
+      "testCount": 5,
+      "flakyRate": 0.007
     },
     "tests/e2e/sharing/access-control.spec.ts": {
-      "avgDuration": 33440,
+      "avgDuration": 35399,
       "testCount": 5,
-      "flakyRate": 0.0031
+      "flakyRate": 0.002
     },
-    "tests/e2e/app-config/demo.spec.ts": {
-      "avgDuration": 33117,
-      "testCount": 4,
-      "flakyRate": 0.0079
-    },
-    "tests/e2e/ai/chat-session.spec.ts": {
-      "avgDuration": 32752,
-      "testCount": 1,
-      "flakyRate": 0.1011
-    },
-    "tests/e2e/scheduling/poll-trigger-durable.spec.ts": {
-      "avgDuration": 32611,
-      "testCount": 4,
+    "tests/e2e/instance-ai/open-by-default.spec.ts": {
+      "avgDuration": 35358,
+      "testCount": 3,
       "flakyRate": 0.0032
     },
-    "tests/e2e/chat-hub/chat-hub-chat-user.spec.ts": {
-      "avgDuration": 32092,
-      "testCount": 1,
-      "flakyRate": 0.0045
-    },
-    "tests/e2e/instance-ai/instance-ai-confirmations.spec.ts": {
-      "avgDuration": 31920,
-      "testCount": 5,
+    "tests/e2e/ai/eval-collections-compare.spec.ts": {
+      "avgDuration": 34921,
+      "testCount": 2,
       "flakyRate": 0
     },
-    "tests/e2e/app-config/demo-reimport.spec.ts": {
-      "avgDuration": 31736,
-      "testCount": 3,
-      "flakyRate": 0.0182
+    "tests/e2e/scheduling/poll-trigger-misfire-skip.spec.ts": {
+      "avgDuration": 34893,
+      "testCount": 1,
+      "flakyRate": 0.0022
+    },
+    "tests/e2e/settings/external-secrets/aws-secrets-manager.spec.ts": {
+      "avgDuration": 34795,
+      "testCount": 1,
+      "flakyRate": 0.0388
+    },
+    "tests/e2e/workflows/editor/editor-after-route-changes.spec.ts": {
+      "avgDuration": 34601,
+      "testCount": 1,
+      "flakyRate": 0.0196
+    },
+    "tests/e2e/capabilities/task-runner.spec.ts": {
+      "avgDuration": 34325,
+      "testCount": 2,
+      "flakyRate": 0.0155
+    },
+    "tests/e2e/mcp-registry/mcp-registry.spec.ts": {
+      "avgDuration": 34248,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/scheduling/schedule-trigger-misfire-coalesce.spec.ts": {
+      "avgDuration": 34183,
+      "testCount": 1,
+      "flakyRate": 0
     },
     "tests/e2e/credentials/oauth.spec.ts": {
-      "avgDuration": 31378,
+      "avgDuration": 34136,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/sharing/workflow-sharing.spec.ts": {
-      "avgDuration": 31348,
+      "avgDuration": 33230,
       "testCount": 4,
-      "flakyRate": 0.0217
-    },
-    "tests/e2e/scheduling/poll-trigger-cursor-unmigrated.spec.ts": {
-      "avgDuration": 30925,
-      "testCount": 2,
-      "flakyRate": 0.0032
-    },
-    "tests/e2e/api/webhook-isolation.spec.ts": {
-      "avgDuration": 30684,
-      "testCount": 14,
-      "flakyRate": 0
-    },
-    "tests/e2e/scheduling/poll-trigger-backoff.spec.ts": {
-      "avgDuration": 30400,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/settings/log-streaming/log-streaming-delivery.spec.ts": {
-      "avgDuration": 30177,
-      "testCount": 5,
-      "flakyRate": 0.0025
-    },
-    "tests/e2e/workflows/editor/execution/inject-previous.spec.ts": {
-      "avgDuration": 30127,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/settings/external-secrets/aws-secrets-manager.spec.ts": {
-      "avgDuration": 29822,
-      "testCount": 1,
-      "flakyRate": 0.0161
-    },
-    "tests/e2e/instance-ai/instance-ai-out-of-credits.spec.ts": {
-      "avgDuration": 29620,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/api/form-endpoint-isolation.spec.ts": {
-      "avgDuration": 29345,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/node-creator/special-nodes.spec.ts": {
-      "avgDuration": 29256,
-      "testCount": 3,
-      "flakyRate": 0
-    },
-    "tests/e2e/nodes/email-send-node.spec.ts": {
-      "avgDuration": 28715,
-      "testCount": 1,
-      "flakyRate": 0.0023
+      "flakyRate": 0.0573
     },
     "tests/e2e/nodes/mcp-trigger.spec.ts": {
-      "avgDuration": 28662,
+      "avgDuration": 33004,
       "testCount": 23,
       "flakyRate": 0
     },
-    "tests/e2e/auth/token-exchange.spec.ts": {
-      "avgDuration": 28148,
-      "testCount": 9,
-      "flakyRate": 0.0282
+    "tests/e2e/scheduling/poll-trigger-durable.spec.ts": {
+      "avgDuration": 32757,
+      "testCount": 4,
+      "flakyRate": 0.0066
     },
-    "tests/e2e/auth/password-reset.spec.ts": {
-      "avgDuration": 28087,
+    "tests/e2e/instance-ai/instance-ai-multimain.spec.ts": {
+      "avgDuration": 32288,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/nodes/if-node.spec.ts": {
-      "avgDuration": 27660,
+    "tests/e2e/api/wait-form-resume.spec.ts": {
+      "avgDuration": 31656,
+      "testCount": 3,
+      "flakyRate": 0.0356
+    },
+    "tests/e2e/workflows/editor/execution/inject-previous.spec.ts": {
+      "avgDuration": 31654,
       "testCount": 2,
       "flakyRate": 0
     },
-    "tests/e2e/api/workflow-publication-service.spec.ts": {
-      "avgDuration": 27323,
+    "tests/e2e/scheduling/poll-trigger-cursor-unmigrated.spec.ts": {
+      "avgDuration": 31486,
+      "testCount": 2,
+      "flakyRate": 0.011
+    },
+    "tests/e2e/instance-ai/instance-ai-attachments.spec.ts": {
+      "avgDuration": 30985,
+      "testCount": 1,
+      "flakyRate": 0.0088
+    },
+    "tests/e2e/scheduling/poll-trigger-backoff.spec.ts": {
+      "avgDuration": 30863,
+      "testCount": 1,
+      "flakyRate": 0.0044
+    },
+    "tests/e2e/auth/token-exchange.spec.ts": {
+      "avgDuration": 30084,
+      "testCount": 9,
+      "flakyRate": 0.019
+    },
+    "tests/e2e/api/webhook-isolation.spec.ts": {
+      "avgDuration": 29905,
+      "testCount": 14,
+      "flakyRate": 0.0032
+    },
+    "tests/e2e/node-creator/special-nodes.spec.ts": {
+      "avgDuration": 29695,
+      "testCount": 3,
+      "flakyRate": 0
+    },
+    "tests/e2e/api/form-endpoint-isolation.spec.ts": {
+      "avgDuration": 28987,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/regression/PAY-4367-node-shifting-cyclic.spec.ts": {
-      "avgDuration": 27000,
+      "avgDuration": 28248,
       "testCount": 3,
       "flakyRate": 0
     },
-    "tests/e2e/node-creator/vector-stores.spec.ts": {
-      "avgDuration": 26801,
-      "testCount": 3,
+    "tests/e2e/api/workflow-publication-service.spec.ts": {
+      "avgDuration": 27529,
+      "testCount": 2,
       "flakyRate": 0
     },
-    "tests/e2e/scheduling/schedule-trigger-timezone.spec.ts": {
-      "avgDuration": 26032,
-      "testCount": 1,
-      "flakyRate": 0.003
-    },
-    "tests/e2e/scheduling/poll-trigger-legacy.spec.ts": {
-      "avgDuration": 25020,
+    "tests/e2e/auth/password-reset.spec.ts": {
+      "avgDuration": 27307,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/sharing/credential-sharing.spec.ts": {
-      "avgDuration": 24621,
-      "testCount": 3,
+    "tests/e2e/nodes/if-node.spec.ts": {
+      "avgDuration": 27209,
+      "testCount": 2,
+      "flakyRate": 0.0025
+    },
+    "tests/e2e/nodes/email-send-node.spec.ts": {
+      "avgDuration": 26577,
+      "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/scheduling/schedule-trigger-restart.spec.ts": {
-      "avgDuration": 24409,
+      "avgDuration": 26568,
+      "testCount": 1,
+      "flakyRate": 0.0065
+    },
+    "tests/e2e/ai/chat-session.spec.ts": {
+      "avgDuration": 26112,
+      "testCount": 1,
+      "flakyRate": 0.0197
+    },
+    "tests/e2e/scheduling/schedule-trigger-timezone.spec.ts": {
+      "avgDuration": 25935,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/api/discovery.spec.ts": {
-      "avgDuration": 23936,
-      "testCount": 4,
+    "tests/e2e/scheduling/poll-trigger-legacy.spec.ts": {
+      "avgDuration": 25846,
+      "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/workflows/executions/preview-isolation.spec.ts": {
-      "avgDuration": 23725,
-      "testCount": 2,
-      "flakyRate": 0.0175
-    },
-    "tests/e2e/workflows/executions/filter.spec.ts": {
-      "avgDuration": 23232,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/workflows/editor/execution/partial.spec.ts": {
-      "avgDuration": 23148,
+    "tests/e2e/node-creator/vector-stores.spec.ts": {
+      "avgDuration": 25369,
       "testCount": 3,
       "flakyRate": 0
     },
-    "tests/e2e/nodes/http-request-node.spec.ts": {
-      "avgDuration": 22512,
-      "testCount": 2,
-      "flakyRate": 0.0035
+    "tests/e2e/sharing/credential-sharing.spec.ts": {
+      "avgDuration": 24674,
+      "testCount": 3,
+      "flakyRate": 0.0021
     },
-    "tests/e2e/regression/AI-812-partial-execs-broken-when-using-chat-trigger.spec.ts": {
-      "avgDuration": 22497,
+    "tests/e2e/workflows/executions/preview-isolation.spec.ts": {
+      "avgDuration": 24420,
       "testCount": 2,
-      "flakyRate": 0
+      "flakyRate": 0.0262
     },
     "tests/e2e/workflows/editor/ndv/io-filter.spec.ts": {
-      "avgDuration": 22010,
+      "avgDuration": 23999,
       "testCount": 2,
       "flakyRate": 0
     },
-    "tests/e2e/app-config/env-feature-flags.spec.ts": {
-      "avgDuration": 21715,
+    "tests/e2e/app-config/versions.spec.ts": {
+      "avgDuration": 23737,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/workflows/editor/execution/partial.spec.ts": {
+      "avgDuration": 23708,
+      "testCount": 3,
+      "flakyRate": 0
+    },
+    "tests/e2e/app-config/demo-reimport.spec.ts": {
+      "avgDuration": 23407,
+      "testCount": 3,
+      "flakyRate": 0
+    },
+    "tests/e2e/workflows/executions/filter.spec.ts": {
+      "avgDuration": 23209,
+      "testCount": 2,
+      "flakyRate": 0
+    },
+    "tests/e2e/instance-ai/thread-launcher.spec.ts": {
+      "avgDuration": 22722,
+      "testCount": 2,
+      "flakyRate": 0.0022
+    },
+    "tests/e2e/regression/AI-812-partial-execs-broken-when-using-chat-trigger.spec.ts": {
+      "avgDuration": 22277,
+      "testCount": 2,
+      "flakyRate": 0.0018
+    },
+    "tests/e2e/settings/workers/workers.spec.ts": {
+      "avgDuration": 21479,
+      "testCount": 4,
+      "flakyRate": 0
+    },
+    "tests/e2e/nodes/http-request-node.spec.ts": {
+      "avgDuration": 21093,
+      "testCount": 2,
+      "flakyRate": 0.0025
+    },
+    "tests/e2e/node-creator/workflows.spec.ts": {
+      "avgDuration": 18117,
+      "testCount": 2,
+      "flakyRate": 0
+    },
+    "tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": {
+      "avgDuration": 17837,
+      "testCount": 2,
+      "flakyRate": 0
+    },
+    "tests/e2e/api/webhook-external.spec.ts": {
+      "avgDuration": 17386,
+      "testCount": 2,
+      "flakyRate": 0.0022
+    },
+    "tests/e2e/auth/signin.spec.ts": {
+      "avgDuration": 16507,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/settings/log-streaming/log-streaming-ui-e2e.spec.ts": {
+      "avgDuration": 16152,
+      "testCount": 1,
+      "flakyRate": 0.0027
+    },
+    "tests/e2e/dynamic-credentials/mcp-trigger-credential-gate.spec.ts": {
+      "avgDuration": 15776,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/api/webhook-isolate-skip.spec.ts": {
-      "avgDuration": 21111,
+      "avgDuration": 15341,
       "testCount": 7,
-      "flakyRate": 0.0498
-    },
-    "tests/e2e/settings/workers/workers.spec.ts": {
-      "avgDuration": 20940,
-      "testCount": 4,
-      "flakyRate": 0
-    },
-    "tests/e2e/api/webhook-external.spec.ts": {
-      "avgDuration": 20487,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/auth/admin-smoke.spec.ts": {
-      "avgDuration": 19525,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/node-creator/workflows.spec.ts": {
-      "avgDuration": 18443,
-      "testCount": 2,
-      "flakyRate": 0.0039
-    },
-    "tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": {
-      "avgDuration": 18027,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/auth/signin.spec.ts": {
-      "avgDuration": 17579,
-      "testCount": 1,
-      "flakyRate": 0.0039
-    },
-    "tests/e2e/settings/log-streaming/log-streaming-ui-e2e.spec.ts": {
-      "avgDuration": 17563,
-      "testCount": 1,
-      "flakyRate": 0.0113
-    },
-    "tests/e2e/mcp/mcp-service.spec.ts": {
-      "avgDuration": 15957,
-      "testCount": 26,
-      "flakyRate": 0
-    },
-    "tests/e2e/regression/AI-716-correctly-set-up-agent-model-shows-error.spec.ts": {
-      "avgDuration": 15759,
-      "testCount": 1,
-      "flakyRate": 0.0281
-    },
-    "tests/e2e/app-config/versions.spec.ts": {
-      "avgDuration": 14993,
-      "testCount": 1,
-      "flakyRate": 0.0038
+      "flakyRate": 0.02
     },
     "tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts": {
-      "avgDuration": 14822,
+      "avgDuration": 14642,
       "testCount": 10,
       "flakyRate": 0
     },
-    "tests/e2e/dynamic-credentials/mcp-trigger-credential-gate.spec.ts": {
-      "avgDuration": 14817,
+    "tests/e2e/workflows/editor/canvas/stickies.spec.ts": {
+      "avgDuration": 14541,
       "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/journeys/admin-views-executions-list.spec.ts": {
-      "avgDuration": 14436,
+      "avgDuration": 14240,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/workflows/editor/canvas/stickies.spec.ts": {
-      "avgDuration": 14093,
-      "testCount": 2,
-      "flakyRate": 0
-    },
-    "tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": {
-      "avgDuration": 13865,
+    "tests/e2e/auth/admin-smoke.spec.ts": {
+      "avgDuration": 13948,
       "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/regression/CAT-726-canvas-node-connectors-not-rendered-when-nodes-inserted.spec.ts": {
-      "avgDuration": 13492,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/nodes/pdf-node.spec.ts": {
-      "avgDuration": 13404,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/settings/community-nodes/community-nodes.spec.ts": {
-      "avgDuration": 13232,
-      "testCount": 1,
-      "flakyRate": 0
+      "flakyRate": 0.0062
     },
     "tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts": {
-      "avgDuration": 13108,
-      "testCount": 1,
-      "flakyRate": 0.0028
-    },
-    "tests/e2e/regression/ADO-5808-stale-node-execution-data.spec.ts": {
-      "avgDuration": 13054,
-      "testCount": 1,
-      "flakyRate": 0.0103
-    },
-    "tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": {
-      "avgDuration": 12921,
+      "avgDuration": 13809,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/regression/ADO-1338-ndv-missing-input-panel.spec.ts": {
-      "avgDuration": 12037,
+    "tests/e2e/regression/ADO-5808-stale-node-execution-data.spec.ts": {
+      "avgDuration": 13505,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/nodes/schedule-trigger-node.spec.ts": {
-      "avgDuration": 11536,
+      "avgDuration": 12651,
       "testCount": 1,
-      "flakyRate": 0.0031
+      "flakyRate": 0
+    },
+    "tests/e2e/regression/AI-716-correctly-set-up-agent-model-shows-error.spec.ts": {
+      "avgDuration": 12572,
+      "testCount": 1,
+      "flakyRate": 0.0212
+    },
+    "tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": {
+      "avgDuration": 12332,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/mcp/mcp-service.spec.ts": {
+      "avgDuration": 12135,
+      "testCount": 26,
+      "flakyRate": 0.0055
+    },
+    "tests/e2e/nodes/pdf-node.spec.ts": {
+      "avgDuration": 12065,
+      "testCount": 1,
+      "flakyRate": 0
     },
     "tests/e2e/regression/SUG-121-fields-reset-after-closing-ndv.spec.ts": {
-      "avgDuration": 11533,
+      "avgDuration": 11758,
       "testCount": 1,
-      "flakyRate": 0.023
+      "flakyRate": 0.0322
     },
-    "tests/e2e/regression/SUG-38-inline-expression-preview.spec.ts": {
-      "avgDuration": 10318,
-      "testCount": 1,
-      "flakyRate": 0
+    "tests/e2e/nodes/n8n-trigger.spec.ts": {
+      "avgDuration": 11476,
+      "testCount": 2,
+      "flakyRate": 0.0024
     },
     "tests/e2e/regression/ADO-2230-ndv-reset-data-pagination.spec.ts": {
-      "avgDuration": 10250,
+      "avgDuration": 11371,
       "testCount": 1,
       "flakyRate": 0
     },
-    "tests/e2e/api/binary-data-xss.spec.ts": {
-      "avgDuration": 9975,
+    "tests/e2e/instance-ai/instance-ai-out-of-credits.spec.ts": {
+      "avgDuration": 11346,
+      "testCount": 1,
+      "flakyRate": 0.0067
+    },
+    "tests/e2e/regression/CAT-726-canvas-node-connectors-not-rendered-when-nodes-inserted.spec.ts": {
+      "avgDuration": 11221,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/settings/community-nodes/community-nodes.spec.ts": {
+      "avgDuration": 11213,
+      "testCount": 1,
+      "flakyRate": 0.0027
+    },
+    "tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": {
+      "avgDuration": 10759,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/regression/ADO-1338-ndv-missing-input-panel.spec.ts": {
+      "avgDuration": 10740,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/regression/SUG-38-inline-expression-preview.spec.ts": {
+      "avgDuration": 10561,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/sharing/credential-picker-scope.spec.ts": {
-      "avgDuration": 9218,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/regression/CAT-2395-node-spacing.spec.ts": {
-      "avgDuration": 9013,
-      "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/workflows/demo-executable-chat-trigger.spec.ts": {
-      "avgDuration": 8816,
-      "testCount": 1,
-      "flakyRate": 0.0034
-    },
-    "tests/e2e/workflows/editor/canvas/focus-panel.spec.ts": {
-      "avgDuration": 7610,
+      "avgDuration": 9806,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/regression/ADO-2929-can-load-old-switch-node-workflows.spec.ts": {
-      "avgDuration": 7506,
+      "avgDuration": 9681,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/api/discovery.spec.ts": {
+      "avgDuration": 9566,
+      "testCount": 4,
+      "flakyRate": 0
+    },
+    "tests/e2e/regression/CAT-2395-node-spacing.spec.ts": {
+      "avgDuration": 9080,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/api/binary-data-xss.spec.ts": {
+      "avgDuration": 8899,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/workflows/demo-executable-chat-trigger.spec.ts": {
+      "avgDuration": 8137,
+      "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/workflows/editor/canvas/focus-panel.spec.ts": {
+      "avgDuration": 7770,
       "testCount": 1,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/subworkflows/wait.spec.ts": {
-      "avgDuration": 7178,
+      "avgDuration": 7607,
       "testCount": 5,
-      "flakyRate": 0.005
+      "flakyRate": 0.0044
+    },
+    "tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts": {
+      "avgDuration": 4674,
+      "testCount": 1,
+      "flakyRate": 0
     },
     "tests/e2e/webhooks/webhook-trigger-oauth2.spec.ts": {
-      "avgDuration": 5575,
+      "avgDuration": 4469,
       "testCount": 3,
       "flakyRate": 0
     },
     "tests/e2e/workflows/editor/execution/subworkflow-stop.spec.ts": {
-      "avgDuration": 4954,
+      "avgDuration": 3784,
       "testCount": 1,
-      "flakyRate": 0
-    },
-    "tests/e2e/credentials/api-operations.spec.ts": {
-      "avgDuration": 4384,
-      "testCount": 5,
-      "flakyRate": 0
+      "flakyRate": 0.0033
     },
     "tests/e2e/workflows/editor/subworkflows/subworkflow-version-resolution.spec.ts": {
-      "avgDuration": 3691,
+      "avgDuration": 3706,
       "testCount": 4,
       "flakyRate": 0
     },
-    "tests/e2e/nodes/n8n-trigger.spec.ts": {
-      "avgDuration": 3086,
-      "testCount": 2,
+    "tests/e2e/credentials/api-operations.spec.ts": {
+      "avgDuration": 2705,
+      "testCount": 5,
       "flakyRate": 0
     },
     "tests/e2e/scheduling/schedule-trigger-legacy.spec.ts": {
-      "avgDuration": 2238,
+      "avgDuration": 1496,
       "testCount": 1,
+      "flakyRate": 0
+    },
+    "tests/e2e/app-config/env-feature-flags.spec.ts": {
+      "avgDuration": 1043,
+      "testCount": 2,
       "flakyRate": 0
     },
     "tests/e2e/dynamic-credentials/resolver-deletion.spec.ts": {

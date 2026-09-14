@@ -1,4 +1,5 @@
 import {
+	type AgentMessageAuthor,
 	type APPROVAL_TOOL_NAME,
 	type AgentBackgroundTaskSignal,
 	type N8N_CHAT_ACTION_TOOL_NAME,
@@ -129,6 +130,8 @@ export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
+	/** Chat platform user who wrote a user turn in a shared integration thread. */
+	author?: AgentMessageAuthor;
 	renderParts?: ChatMessageRenderPart[];
 	thinkingSegments?: ThinkingSegment[];
 	/** Legacy aggregate kept for messages created before timed segments were added. */
