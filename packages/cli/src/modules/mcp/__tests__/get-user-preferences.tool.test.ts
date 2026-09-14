@@ -136,6 +136,70 @@ describe('get-user-preferences MCP tool', () => {
 
 			expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(2);
 		});
+
+		/**
+		 * Same decision table `ai-preference.service.test.ts` uses for `renderAiPreferences` and
+		 * `flattenAiPreferences`, applied here to the tool's own output: each group is either
+		 * absent or present, independently. Also pins the invariant between the two structured
+		 * fields — `hasPreferences` and `preferences` are built by separate code paths
+		 * (`renderAiPreferences` and `flattenAiPreferences`) and must agree in every class.
+		 */
+		describe('structured output (decision table over the three groups)', () => {
+			const MARKETING = { id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] };
+
+			it.each([
+				{ instance: false, personal: false, projects: false, expected: [] },
+				{ instance: true, personal: false, projects: false, expected: ['Use British English.'] },
+				{ instance: false, personal: true, projects: false, expected: ['Keep replies short.'] },
+				{
+					instance: false,
+					personal: false,
+					projects: true,
+					expected: ['Prefer HubSpot nodes.'],
+				},
+				{
+					instance: true,
+					personal: true,
+					projects: false,
+					expected: ['Use British English.', 'Keep replies short.'],
+				},
+				{
+					instance: true,
+					personal: false,
+					projects: true,
+					expected: ['Use British English.', 'Prefer HubSpot nodes.'],
+				},
+				{
+					instance: false,
+					personal: true,
+					projects: true,
+					expected: ['Keep replies short.', 'Prefer HubSpot nodes.'],
+				},
+				{
+					instance: true,
+					personal: true,
+					projects: true,
+					expected: ['Use British English.', 'Keep replies short.', 'Prefer HubSpot nodes.'],
+				},
+			])(
+				'instance=$instance personal=$personal projects=$projects',
+				async ({ instance, personal, projects, expected }) => {
+					const { aiPreferenceService, telemetry } = createMocks({
+						instance: instance ? ['Use British English.'] : [],
+						user: personal ? ['Keep replies short.'] : [],
+						projects: projects ? [MARKETING] : [],
+					});
+					const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+					const result = await tool.handler({});
+
+					expect(result.structuredContent).toEqual({
+						hasPreferences: expected.length > 0,
+						preferences: expected,
+					});
+				},
+			);
+		});
 	});
 
 	describe('permissions', () => {
