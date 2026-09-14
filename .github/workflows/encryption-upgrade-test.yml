@@ -1,4 +1,4 @@
-name: Encryption Test
+name: 'Test: Encryption Rollout'
 
 on:
   workflow_dispatch:
