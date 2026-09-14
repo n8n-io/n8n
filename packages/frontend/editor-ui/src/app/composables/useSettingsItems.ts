@@ -127,6 +127,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
 				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+				preview: true,
 			},
 			{
 				id: 'settings-sso',

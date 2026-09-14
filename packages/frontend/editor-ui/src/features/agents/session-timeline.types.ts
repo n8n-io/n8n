@@ -23,6 +23,8 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
+	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;

@@ -108,6 +108,9 @@ export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
 export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
+export { ChangeEmailRequestDto } from './user/change-email-request.dto';
+export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
+export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -128,6 +131,8 @@ export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
+	CreateCredentialPublicDto,
+	UpdateCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -275,6 +280,10 @@ export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto
 export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
 export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+export {
+	NodeTypePolicyEffectivePublicDto,
+	NodeTypePolicyEffectiveWriteResultPublicDto,
+} from './node-type-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -490,6 +499,7 @@ export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
 
 export {
+	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
