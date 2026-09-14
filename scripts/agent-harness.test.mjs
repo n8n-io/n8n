@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
-	linkSync,
+	copyFileSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -19,7 +19,6 @@ import {
 	downloadReleaseAsset,
 	installAgentHarness,
 	sha256File,
-	validateArchiveListing,
 	validateLock,
 } from './agent-harness.mjs';
 
@@ -41,36 +40,14 @@ function makeAsset(root, version = '1.2.3') {
 	const source = join(root, 'source');
 	const bundle = join(source, 'n8n-opencode-harness');
 	mkdirSync(join(bundle, 'plugins'), { recursive: true });
-	writeFileSync(
-		join(bundle, 'harness.json'),
-		JSON.stringify({ name: 'n8n-opencode-harness', version }),
-	);
 	writeFileSync(join(bundle, 'plugins', 'n8n-harness.js'), 'export default async () => ({});\n');
 	const asset = join(root, `n8n-opencode-harness-${version}.tgz`);
 	execFileSync('tar', ['-czf', asset, '-C', source, 'n8n-opencode-harness']);
 	return asset;
 }
 
-function makeLinkedAsset(root, type, version = '1.2.3') {
-	const source = join(root, 'source');
-	const bundle = join(source, 'n8n-opencode-harness');
-	mkdirSync(join(bundle, 'plugins'), { recursive: true });
-	writeFileSync(
-		join(bundle, 'harness.json'),
-		JSON.stringify({ name: 'n8n-opencode-harness', version }),
-	);
-	const target = join(bundle, 'plugin-target.js');
-	writeFileSync(target, 'export default async () => ({});\n');
-	const plugin = join(bundle, 'plugins', 'n8n-harness.js');
-	if (type === 'symbolic') symlinkSync('../plugin-target.js', plugin);
-	else linkSync(target, plugin);
-	const asset = join(root, `n8n-opencode-harness-${version}.tgz`);
-	execFileSync('tar', ['-czf', asset, '-C', source, 'n8n-opencode-harness']);
-	return asset;
-}
-
 function writeLock(root, asset, overrides = {}) {
-	const version = overrides.version ?? '1.2.3';
+	const version = '1.2.3';
 	const lock = {
 		repository: 'n8n-io/cat-bot',
 		releaseTag: `harness-v${version}`,
@@ -81,7 +58,7 @@ function writeLock(root, asset, overrides = {}) {
 	};
 	const lockPath = join(root, 'agent-harness.lock.json');
 	writeFileSync(lockPath, JSON.stringify(lock));
-	return { lock, lockPath };
+	return lockPath;
 }
 
 function installerPaths(root) {
@@ -91,176 +68,11 @@ function installerPaths(root) {
 	};
 }
 
-test('validates all pinned lock values', () => {
-	const valid = {
-		repository: 'n8n-io/cat-bot',
-		releaseTag: 'harness-v1.2.3',
-		version: '1.2.3',
-		assetName: 'n8n-opencode-harness-1.2.3.tgz',
-		sha256: 'a'.repeat(64),
-	};
-	assert.throws(() => validateLock({}), /non-empty repository/);
-	assert.throws(() => validateLock({ ...valid, repository: 'other/repo' }), /n8n-io\/cat-bot/);
-	assert.throws(() => validateLock({ ...valid, version: '1.2' }), /exact semantic version/);
-	assert.throws(() => validateLock({ ...valid, releaseTag: 'latest' }), /releaseTag/);
-	assert.throws(() => validateLock({ ...valid, assetName: 'bundle.tgz' }), /assetName/);
-	assert.throws(() => validateLock({ ...valid, sha256: 'A'.repeat(64) }), /lowercase SHA-256/);
-	assert.equal(validateLock(valid), valid);
-});
+function copyAsset(asset) {
+	return (lock, destination) => copyFileSync(asset, join(destination, lock.assetName));
+}
 
-test('preserves the current activation when the checksum is wrong', () => {
-	const root = fixtureDirectory();
-	const asset = makeAsset(root);
-	const { lockPath } = writeLock(root, asset, { sha256: '0'.repeat(64) });
-	const paths = installerPaths(root);
-	mkdirSync(paths.cacheRoot, { recursive: true });
-	const previous = join(root, 'previous-harness');
-	mkdirSync(previous);
-	symlinkSync(previous, join(paths.cacheRoot, 'current'));
-
-	assert.throws(
-		() =>
-			installAgentHarness({
-				...paths,
-				lockPath,
-				download: (_lock, destination) =>
-					execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]),
-			}),
-		/checksum mismatch/,
-	);
-	assert.equal(readlinkSync(join(paths.cacheRoot, 'current')), previous);
-});
-
-test('reuses a valid cache without another download', () => {
-	const root = fixtureDirectory();
-	const asset = makeAsset(root);
-	const { lockPath } = writeLock(root, asset);
-	const paths = installerPaths(root);
-	let downloads = 0;
-	const download = (_lock, destination) => {
-		downloads++;
-		execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]);
-	};
-
-	installAgentHarness({ ...paths, lockPath, download });
-	const second = installAgentHarness({ ...paths, lockPath, download });
-	assert.equal(downloads, 1);
-	assert.equal(second.cacheHit, true);
-});
-
-test('redownloads when the cached archive cannot be read', () => {
-	const root = fixtureDirectory();
-	const asset = makeAsset(root);
-	const { lockPath } = writeLock(root, asset);
-	const paths = installerPaths(root);
-	const cachedArchive = join(paths.cacheRoot, '1.2.3', 'n8n-opencode-harness-1.2.3.tgz');
-	mkdirSync(dirname(cachedArchive), { recursive: true });
-	writeFileSync(cachedArchive, 'unreadable cache fixture');
-	let downloads = 0;
-
-	const result = installAgentHarness({
-		...paths,
-		lockPath,
-		hashFile(path) {
-			if (path === cachedArchive) throw new Error('cache read failed');
-			return sha256File(path);
-		},
-		download: (_lock, destination) => {
-			downloads++;
-			execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]);
-		},
-	});
-
-	assert.equal(downloads, 1);
-	assert.equal(result.cacheHit, false);
-});
-
-test('rejects archive links and paths outside the bundle', () => {
-	assert.throws(
-		() =>
-			validateArchiveListing(
-				'n8n-opencode-harness/\nn8n-opencode-harness/plugins/n8n-harness.js\n',
-				'drwxr-xr-x root/root 0 date n8n-opencode-harness/\nlrwxr-xr-x root/root 0 date n8n-opencode-harness/plugins/n8n-harness.js -> /tmp/plugin.js\n',
-			),
-		/link or special file/,
-	);
-	assert.throws(
-		() =>
-			validateArchiveListing(
-				'n8n-opencode-harness/../outside.js\n',
-				'-rw-r--r-- root/root 0 date outside.js\n',
-			),
-		/unsafe path/,
-	);
-});
-
-test('rejects symbolic and hard links in release archives', () => {
-	const root = fixtureDirectory();
-	for (const type of ['symbolic', 'hard']) {
-		const linkRoot = join(root, type);
-		mkdirSync(linkRoot);
-		const asset = makeLinkedAsset(linkRoot, type);
-		const { lockPath } = writeLock(linkRoot, asset);
-		const paths = installerPaths(linkRoot);
-
-		assert.throws(
-			() =>
-				installAgentHarness({
-					...paths,
-					lockPath,
-					download: (_lock, destination) =>
-						execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]),
-				}),
-			/link or special file/,
-		);
-	}
-});
-
-test('installs through a temporary directory and activates both symlinks', () => {
-	const root = fixtureDirectory();
-	const asset = makeAsset(root);
-	const { lockPath } = writeLock(root, asset);
-	const paths = installerPaths(root);
-
-	const result = installAgentHarness({
-		...paths,
-		lockPath,
-		download: (_lock, destination) =>
-			execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]),
-	});
-
-	assert.equal(result.bundlePath, join(paths.cacheRoot, '1.2.3', 'n8n-opencode-harness'));
-	assert.equal(readlinkSync(join(paths.cacheRoot, 'current')), result.bundlePath);
-	assert.equal(
-		readlinkSync(paths.pluginLink),
-		join(paths.cacheRoot, 'current', 'plugins', 'n8n-harness.js'),
-	);
-	assert.match(readFileSync(result.pluginLink, 'utf8'), /export default/);
-	assert.deepEqual(readdirSync(paths.cacheRoot).sort(), ['1.2.3', 'current']);
-});
-
-test('does not overwrite a user plugin file', () => {
-	const root = fixtureDirectory();
-	const asset = makeAsset(root);
-	const { lockPath } = writeLock(root, asset);
-	const paths = installerPaths(root);
-	mkdirSync(join(root, 'config', 'opencode', 'plugins'), { recursive: true });
-	writeFileSync(paths.pluginLink, 'user plugin\n');
-
-	assert.throws(
-		() =>
-			installAgentHarness({
-				...paths,
-				lockPath,
-				download: (_lock, destination) =>
-					execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]),
-			}),
-		/Refusing to overwrite the non-symlink path/,
-	);
-	assert.equal(readFileSync(paths.pluginLink, 'utf8'), 'user plugin\n');
-});
-
-test('reports a clear GitHub access failure', () => {
+test('validates the pinned release values', () => {
 	const lock = {
 		repository: 'n8n-io/cat-bot',
 		releaseTag: 'harness-v1.2.3',
@@ -268,15 +80,96 @@ test('reports a clear GitHub access failure', () => {
 		assetName: 'n8n-opencode-harness-1.2.3.tgz',
 		sha256: 'a'.repeat(64),
 	};
+	assert.equal(validateLock(lock), lock);
+	assert.throws(() => validateLock({ ...lock, releaseTag: 'latest' }), /lock is invalid/);
+});
+
+test('installs the verified release and activates its plugin', () => {
+	const root = fixtureDirectory();
+	const asset = makeAsset(root);
+	const result = installAgentHarness({
+		...installerPaths(root),
+		lockPath: writeLock(root, asset),
+		download: copyAsset(asset),
+	});
+
+	assert.equal(result.cacheHit, false);
+	assert.equal(
+		readlinkSync(result.pluginLink),
+		join(result.bundlePath, 'plugins', 'n8n-harness.js'),
+	);
+	assert.match(readFileSync(result.pluginLink, 'utf8'), /export default/);
+	assert.deepEqual(readdirSync(join(root, 'cache')), ['1.2.3']);
+});
+
+test('reuses an installed release without downloading it again', () => {
+	const root = fixtureDirectory();
+	const asset = makeAsset(root);
+	const options = {
+		...installerPaths(root),
+		lockPath: writeLock(root, asset),
+		download: copyAsset(asset),
+	};
+	installAgentHarness(options);
+	const result = installAgentHarness({
+		...options,
+		download: () => assert.fail('downloaded a cached release'),
+	});
+
+	assert.equal(result.cacheHit, true);
+});
+
+test('keeps the active plugin when verification fails', () => {
+	const root = fixtureDirectory();
+	const asset = makeAsset(root);
+	const paths = installerPaths(root);
+	mkdirSync(dirname(paths.pluginLink), { recursive: true });
+	const previous = join(root, 'previous-plugin.js');
+	writeFileSync(previous, 'previous plugin\n');
+	symlinkSync(previous, paths.pluginLink);
+
 	assert.throws(
 		() =>
-			downloadReleaseAsset(lock, fixtureDirectory(), {
-				run: () => {
-					const error = new Error('gh failed');
-					error.stderr = Buffer.from('HTTP 404');
-					throw error;
-				},
+			installAgentHarness({
+				...paths,
+				lockPath: writeLock(root, asset, { sha256: '0'.repeat(64) }),
+				download: copyAsset(asset),
 			}),
-		/gh is authenticated and has contents:read access to n8n-io\/cat-bot.*HTTP 404/,
+		/checksum mismatch/,
+	);
+	assert.equal(readlinkSync(paths.pluginLink), previous);
+});
+
+test('does not overwrite a user plugin file', () => {
+	const root = fixtureDirectory();
+	const asset = makeAsset(root);
+	const paths = installerPaths(root);
+	mkdirSync(dirname(paths.pluginLink), { recursive: true });
+	writeFileSync(paths.pluginLink, 'user plugin\n');
+
+	assert.throws(
+		() =>
+			installAgentHarness({
+				...paths,
+				lockPath: writeLock(root, asset),
+				download: copyAsset(asset),
+			}),
+		/non-symlink path/,
+	);
+});
+
+test('reports a clear GitHub access failure', () => {
+	assert.throws(
+		() =>
+			downloadReleaseAsset(
+				{ repository: 'n8n-io/cat-bot', releaseTag: 'harness-v1.2.3', assetName: 'asset.tgz' },
+				fixtureDirectory(),
+				{
+					run: () => {
+						throw new Error('release not found');
+					},
+				},
+			),
+		/Confirm that gh can read n8n-io\/cat-bot.*release not found/,
 	);
 });

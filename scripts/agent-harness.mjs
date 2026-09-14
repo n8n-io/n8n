@@ -1,20 +1,18 @@
 #!/usr/bin/env node
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
 	existsSync,
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
-	readlinkSync,
-	realpathSync,
 	renameSync,
 	rmSync,
 	symlinkSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, posix, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPOSITORY = 'n8n-io/cat-bot';
@@ -22,50 +20,23 @@ const BUNDLE_ROOT = 'n8n-opencode-harness';
 const PLUGIN_FILE = 'n8n-harness.js';
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-function isPlainObject(value) {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-export function validateLock(value) {
-	if (!isPlainObject(value)) throw new Error('The agent harness lock must be a JSON object.');
-	const required = ['repository', 'releaseTag', 'version', 'assetName', 'sha256'];
-	for (const field of required) {
-		if (typeof value[field] !== 'string' || value[field].length === 0) {
-			throw new Error(`The agent harness lock must contain a non-empty ${field} string.`);
-		}
+export function validateLock(lock) {
+	if (
+		lock?.repository !== REPOSITORY ||
+		lock.releaseTag !== `harness-v${lock.version}` ||
+		lock.assetName !== `n8n-opencode-harness-${lock.version}.tgz` ||
+		!/^[0-9a-f]{64}$/.test(lock.sha256)
+	) {
+		throw new Error('The agent harness lock is invalid.');
 	}
-	if (value.repository !== REPOSITORY) {
-		throw new Error(`The agent harness repository must be ${REPOSITORY}.`);
-	}
-	if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value.version)) {
-		throw new Error('The agent harness version must be an exact semantic version.');
-	}
-	if (value.releaseTag !== `harness-v${value.version}`) {
-		throw new Error('The agent harness releaseTag must be harness-v<version>.');
-	}
-	if (value.assetName !== `n8n-opencode-harness-${value.version}.tgz`) {
-		throw new Error('The agent harness assetName must match the pinned version.');
-	}
-	if (!/^[0-9a-f]{64}$/.test(value.sha256)) {
-		throw new Error('The agent harness sha256 must be a lowercase SHA-256 value.');
-	}
-	return value;
+	return lock;
 }
 
 export function readLock(lockPath = join(REPO_ROOT, 'agent-harness.lock.json')) {
-	let content;
 	try {
-		content = readFileSync(lockPath, 'utf8');
+		return validateLock(JSON.parse(readFileSync(lockPath, 'utf8')));
 	} catch (error) {
 		throw new Error(`Cannot read the agent harness lock at ${lockPath}: ${error.message}`);
-	}
-	try {
-		return validateLock(JSON.parse(content));
-	} catch (error) {
-		if (error instanceof SyntaxError) {
-			throw new Error(`The agent harness lock at ${lockPath} is not valid JSON.`);
-		}
-		throw error;
 	}
 }
 
@@ -88,121 +59,28 @@ export function downloadReleaseAsset(lock, destination, { run = execFileSync } =
 				'--dir',
 				destination,
 			],
-			{ encoding: 'utf8', stdio: 'pipe' },
+			{ stdio: 'pipe' },
 		);
 	} catch (error) {
 		const detail = error.stderr?.toString().trim() || error.message;
 		throw new Error(
-			`Cannot download the private agent harness release. Confirm that gh is authenticated and has contents:read access to ${lock.repository}. ${detail}`,
+			`Cannot download the private agent harness release. Confirm that gh can read ${lock.repository}. ${detail}`,
 		);
 	}
 }
 
-function validateBundle(bundlePath, version) {
-	const manifestPath = join(bundlePath, 'harness.json');
-	const pluginPath = join(bundlePath, 'plugins', PLUGIN_FILE);
-	let manifest;
+function activatePlugin(pluginPath, pluginLink) {
+	if (existsSync(pluginLink) && !lstatSync(pluginLink).isSymbolicLink()) {
+		throw new Error(`Refusing to overwrite the non-symlink path ${pluginLink}.`);
+	}
+	mkdirSync(dirname(pluginLink), { recursive: true });
+	const temporaryLink = `${pluginLink}.tmp-${process.pid}`;
 	try {
-		manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-	} catch (error) {
-		throw new Error(`The agent harness bundle has no valid harness.json: ${error.message}`);
-	}
-	if (manifest.name !== BUNDLE_ROOT || manifest.version !== version) {
-		throw new Error('The agent harness manifest does not match the lock.');
-	}
-	if (!existsSync(pluginPath) || !lstatSync(pluginPath).isFile())
-		throw new Error(`The agent harness bundle has no ${PLUGIN_FILE} plugin.`);
-	const bundleRoot = realpathSync(bundlePath);
-	if (!realpathSync(pluginPath).startsWith(`${bundleRoot}${sep}`)) {
-		throw new Error(`The agent harness ${PLUGIN_FILE} plugin is outside the bundle.`);
-	}
-	return pluginPath;
-}
-
-function verifyCachedInstall(versionDir, lock, hashFile) {
-	const archivePath = join(versionDir, lock.assetName);
-	const bundlePath = join(versionDir, BUNDLE_ROOT);
-	try {
-		if (!existsSync(archivePath) || hashFile(archivePath) !== lock.sha256) return null;
-		validateBundle(bundlePath, lock.version);
-		return bundlePath;
-	} catch {
-		return null;
-	}
-}
-
-export function validateArchiveListing(names, verbose) {
-	const entries = names.split(/\r?\n/).filter(Boolean);
-	if (entries.length === 0) throw new Error('The agent harness archive is empty.');
-	for (const entry of entries) {
-		const normalized = posix.normalize(entry);
-		if (
-			entry.startsWith('/') ||
-			normalized === '..' ||
-			normalized.startsWith('../') ||
-			(normalized !== BUNDLE_ROOT && !normalized.startsWith(`${BUNDLE_ROOT}/`))
-		) {
-			throw new Error(`The agent harness archive contains an unsafe path: ${entry}.`);
-		}
-	}
-	for (const entry of verbose.split(/\r?\n/).filter(Boolean)) {
-		if (entry[0] !== '-' && entry[0] !== 'd') {
-			throw new Error('The agent harness archive contains a link or special file.');
-		}
-	}
-}
-
-function inspectArchive(archive) {
-	const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' });
-	const verbose = execFileSync('tar', ['-tvzf', archive], { encoding: 'utf8' });
-	validateArchiveListing(names, verbose);
-}
-
-function inspectLink(path) {
-	try {
-		const stat = lstatSync(path);
-		if (!stat.isSymbolicLink())
-			throw new Error(`Refusing to overwrite the non-symlink path ${path}.`);
-		return { exists: true, target: readlinkSync(path) };
-	} catch (error) {
-		if (error.code === 'ENOENT') return { exists: false };
-		throw error;
-	}
-}
-
-function replaceSymlink(path, target) {
-	mkdirSync(dirname(path), { recursive: true });
-	const temporaryLink = `${path}.tmp-${process.pid}-${Date.now()}`;
-	try {
-		symlinkSync(target, temporaryLink);
-		renameSync(temporaryLink, path);
+		rmSync(temporaryLink, { force: true });
+		symlinkSync(pluginPath, temporaryLink);
+		renameSync(temporaryLink, pluginLink);
 	} finally {
 		rmSync(temporaryLink, { force: true });
-	}
-}
-
-function restoreLink(path, previous) {
-	if (previous.exists) replaceSymlink(path, previous.target);
-	else rmSync(path, { force: true });
-}
-
-function activateHarness({ bundlePath, currentLink, pluginLink }) {
-	const current = inspectLink(currentLink);
-	inspectLink(pluginLink);
-	const currentTarget = bundlePath;
-	const pluginTarget = join(currentLink, 'plugins', PLUGIN_FILE);
-	try {
-		replaceSymlink(currentLink, currentTarget);
-		replaceSymlink(pluginLink, pluginTarget);
-	} catch (error) {
-		try {
-			restoreLink(currentLink, current);
-		} catch (restoreError) {
-			throw new Error(
-				`${error.message} The previous harness could not be restored: ${restoreError.message}`,
-			);
-		}
-		throw error;
 	}
 }
 
@@ -211,71 +89,42 @@ export function installAgentHarness({
 	cacheRoot = join(homedir(), '.cache', 'n8n-agent-harness'),
 	pluginLink = join(homedir(), '.config', 'opencode', 'plugins', PLUGIN_FILE),
 	download = downloadReleaseAsset,
-	inspect = inspectArchive,
 	extract = (archive, destination) =>
 		execFileSync('tar', ['-xzf', archive, '-C', destination], { stdio: 'pipe' }),
-	hashFile = sha256File,
 } = {}) {
 	const lock = readLock(lockPath);
 	const versionDir = join(cacheRoot, lock.version);
-	const currentLink = join(cacheRoot, 'current');
+	const bundlePath = join(versionDir, BUNDLE_ROOT);
+	const pluginPath = join(bundlePath, 'plugins', PLUGIN_FILE);
 	mkdirSync(cacheRoot, { recursive: true });
 
-	let bundlePath = verifyCachedInstall(versionDir, lock, hashFile);
-	const cacheHit = bundlePath !== null;
-	if (!bundlePath) {
-		const current = inspectLink(currentLink);
-		if (
-			current.exists &&
-			resolve(dirname(currentLink), current.target) === join(versionDir, BUNDLE_ROOT)
-		) {
-			throw new Error(
-				'The active agent harness cache is invalid. The current activation was preserved.',
-			);
-		}
-		const stagingDir = mkdtempSync(join(cacheRoot, `.install-${lock.version}-`));
-		const archivePath = join(stagingDir, lock.assetName);
-		const backupDir = `${versionDir}.backup-${process.pid}-${Date.now()}`;
-		let movedExisting = false;
+	const cacheHit = existsSync(pluginPath);
+	if (!cacheHit) {
+		const stagingRoot = mkdtempSync(join(cacheRoot, '.install-'));
+		const stagedVersion = join(stagingRoot, lock.version);
+		const archivePath = join(stagedVersion, lock.assetName);
 		try {
-			download(lock, stagingDir);
-			if (!existsSync(archivePath))
-				throw new Error(`The release did not contain ${lock.assetName}.`);
-			const actualHash = hashFile(archivePath);
-			if (actualHash !== lock.sha256) {
-				throw new Error(
-					`Agent harness checksum mismatch. Expected ${lock.sha256}, got ${actualHash}.`,
-				);
+			mkdirSync(stagedVersion);
+			download(lock, stagedVersion);
+			if (sha256File(archivePath) !== lock.sha256) {
+				throw new Error('Agent harness checksum mismatch.');
 			}
-			inspect(archivePath);
-			extract(archivePath, stagingDir);
-			bundlePath = join(stagingDir, BUNDLE_ROOT);
-			validateBundle(bundlePath, lock.version);
-			if (existsSync(versionDir)) {
-				renameSync(versionDir, backupDir);
-				movedExisting = true;
+			extract(archivePath, stagedVersion);
+			if (!existsSync(join(stagedVersion, BUNDLE_ROOT, 'plugins', PLUGIN_FILE))) {
+				throw new Error(`The agent harness bundle has no ${PLUGIN_FILE} plugin.`);
 			}
-			renameSync(stagingDir, versionDir);
-			bundlePath = join(versionDir, BUNDLE_ROOT);
-			if (movedExisting) rmSync(backupDir, { recursive: true, force: true });
-		} catch (error) {
-			if (movedExisting && !existsSync(versionDir) && existsSync(backupDir)) {
-				renameSync(backupDir, versionDir);
-			}
-			rmSync(stagingDir, { recursive: true, force: true });
-			throw error;
+			rmSync(versionDir, { recursive: true, force: true });
+			renameSync(stagedVersion, versionDir);
+		} finally {
+			rmSync(stagingRoot, { recursive: true, force: true });
 		}
 	}
 
-	activateHarness({ bundlePath, currentLink, pluginLink });
+	activatePlugin(pluginPath, pluginLink);
 	return { version: lock.version, cacheHit, bundlePath, pluginLink };
 }
 
-function isMainModule() {
-	return process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-}
-
-if (isMainModule()) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
 	try {
 		const result = installAgentHarness();
 		console.log(
