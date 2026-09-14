@@ -1,8 +1,9 @@
+import { useUsersStore } from '@n8n/stores/users.store';
+
 import { MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MCP_JSON_NUDGE_CALLOUT } from '@/experiments/mcpJsonNudge/constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 
 const IMPRESSION_CAP = 2;
 
@@ -16,7 +17,10 @@ export function useMcpJsonNudgeEligibility() {
 
 		return (
 			!mcpStore.mcpAccessEnabled &&
-			posthogStore.isFeatureEnabled(MCP_JSON_NUDGE_EXPERIMENT.name) &&
+			posthogStore.isVariantEnabled(
+				MCP_JSON_NUDGE_EXPERIMENT.name,
+				MCP_JSON_NUDGE_EXPERIMENT.variant,
+			) &&
 			impressions < IMPRESSION_CAP &&
 			!usersStore.isCalloutDismissed(MCP_JSON_NUDGE_CALLOUT)
 		);

@@ -2,7 +2,7 @@ import { EXPERIMENTS_TO_TRACK, MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants
 import { MCP_JSON_NUDGE_CALLOUT } from '@/experiments/mcpJsonNudge/constants';
 
 const mockMcpStore = vi.hoisted(() => ({ mcpAccessEnabled: false }));
-const mockIsFeatureEnabled = vi.hoisted(() => vi.fn());
+const mockIsVariantEnabled = vi.hoisted(() => vi.fn());
 const mockIsCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockSetCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockCurrentUser = vi.hoisted<{ settings: Record<string, unknown> }>(() => ({ settings: {} }));
@@ -13,7 +13,7 @@ vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 }));
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: mockIsFeatureEnabled }),
+	usePostHog: () => ({ isVariantEnabled: mockIsVariantEnabled }),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -30,7 +30,7 @@ import { useMcpJsonNudgeEligibility } from './useMcpJsonNudgeEligibility';
 describe('useMcpJsonNudgeEligibility', () => {
 	beforeEach(() => {
 		mockMcpStore.mcpAccessEnabled = false;
-		mockIsFeatureEnabled.mockReset().mockReturnValue(true);
+		mockIsVariantEnabled.mockReset().mockReturnValue(true);
 		mockIsCalloutDismissed.mockReset().mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
 		mockCurrentUser.settings = {};
@@ -39,6 +39,13 @@ describe('useMcpJsonNudgeEligibility', () => {
 
 	it('is registered in EXPERIMENTS_TO_TRACK', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(MCP_JSON_NUDGE_EXPERIMENT.name);
+	});
+
+	// The PostHog flag is multivariate and, like 110_instance_ai_folder_exploration,
+	// spells its enabled arm `test`, not the `variant` the createExperiment default
+	// assumes. A drift here would make the nudge unreachable for every user.
+	it("names the flag's enabled arm `test`", () => {
+		expect(MCP_JSON_NUDGE_EXPERIMENT.variant).toBe('test');
 	});
 
 	describe('canShow', () => {
@@ -55,8 +62,19 @@ describe('useMcpJsonNudgeEligibility', () => {
 			expect(canShow()).toBe(false);
 		});
 
-		it('returns false when the feature flag is off', () => {
-			mockIsFeatureEnabled.mockReturnValue(false);
+		it('asks PostHog whether the user is in the enabled variant of the flag', () => {
+			const { canShow } = useMcpJsonNudgeEligibility();
+
+			canShow();
+
+			expect(mockIsVariantEnabled).toHaveBeenCalledWith(
+				MCP_JSON_NUDGE_EXPERIMENT.name,
+				MCP_JSON_NUDGE_EXPERIMENT.variant,
+			);
+		});
+
+		it('returns false when the user is not in the enabled variant (control or unassigned)', () => {
+			mockIsVariantEnabled.mockReturnValue(false);
 			const { canShow } = useMcpJsonNudgeEligibility();
 
 			expect(canShow()).toBe(false);
