@@ -69,6 +69,7 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
@@ -89,6 +90,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	modalName: string;
 	data: {
+		mode?: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
 		projectId?: string;
@@ -777,12 +779,15 @@ const n8nConnectItems = computed<NodeConnectionItem[]>(() =>
  * it — only when the gateway actually offers something to show.
  */
 const categories = computed<ToolCategoryKey[]>(() => {
-	if (n8nConnectItems.value.length === 0) return BASE_CATEGORIES;
-	const [all, ...rest] = BASE_CATEGORIES;
+	if (props.data.mode === 'workflows') return ['workflows'];
+
+	const baseCategories = BASE_CATEGORIES.filter((category) => category !== 'workflows');
+	if (n8nConnectItems.value.length === 0) return baseCategories;
+	const [all, ...rest] = baseCategories;
 	return [all, 'n8n-connect', ...rest];
 });
 
-const items = computed<ToolConnectionItem[]>(() => {
+const allItems = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [];
 
 	for (const item of n8nConnectItems.value) {
@@ -813,6 +818,12 @@ const items = computed<ToolConnectionItem[]>(() => {
 
 	return out;
 });
+
+const items = computed<ToolConnectionItem[]>(() =>
+	allItems.value.filter((item) =>
+		props.data.mode === 'workflows' ? item.category === 'workflows' : item.category !== 'workflows',
+	),
+);
 
 function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
@@ -887,9 +898,15 @@ function handleRowActivate(item: ToolConnectionItem) {
 		v-model:open="isOpen"
 		:items="items"
 		:categories="categories"
+		:title="props.data.mode === 'workflows' ? i18n.baseText('generic.workflows') : undefined"
+		:search-placeholder="
+			props.data.mode === 'workflows'
+				? i18n.baseText('agents.tools.workflow.search.placeholder')
+				: undefined
+		"
 		size="2xlarge"
 		:detail-item="null"
-		:allow-workflow-creation="canCreateWorkflow"
+		:allow-workflow-creation="props.data.mode === 'workflows' && canCreateWorkflow"
 		:workflow-creation-loading="isCreatingWorkflow"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"

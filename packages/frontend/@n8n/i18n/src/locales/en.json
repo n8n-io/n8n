@@ -7699,6 +7699,7 @@
 	"agents.tools.workflow.disabled.incompatibleNodes": "Contains nodes that aren't supported as agent tools (Wait, Form)",
 	"agents.tools.workflow.disabled.noSupportedTrigger": "Needs a '{trigger}' trigger",
 	"agents.tools.workflow.notPublished": "Not published",
+	"agents.tools.workflow.search.placeholder": "Search workflows",
 	"agents.tools.workflow.createFailed.title": "Couldn't create workflow",
 	"agents.tools.workflow.createFailed.message": "Try creating the workflow again.",
 	"agents.tools.workflow.fetchFailed.title": "Couldn't check workflow compatibility",

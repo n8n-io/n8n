@@ -11,7 +11,7 @@ import type {
 	AgentResource,
 	AgentSkill,
 } from '../types';
-import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -68,7 +68,7 @@ const emit = defineEmits<{
 	'update:config': [updates: Partial<AgentJsonConfig>];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'add-tool': [];
+	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
@@ -178,7 +178,7 @@ const i18n = useI18n();
 							:agent-unsaved="agentUnsaved"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
-							@add-tool="emit('add-tool')"
+							@add-tool="emit('add-tool', $event)"
 							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
