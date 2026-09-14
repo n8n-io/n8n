@@ -1,6 +1,5 @@
 import {
 	createWriteTodosTool,
-	sanitizeToolName as sanitizeMcpToolName,
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -251,7 +250,7 @@ export class AgentRuntimeReconstructionService {
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
-		mcpToolAttributions: Map<string, string>;
+		mcpServerAttributions: Map<string, string>;
 		userToolAccessSnapshot?: UserToolAccessSnapshot;
 	}> {
 		let config = agentEntity.schema;
@@ -461,7 +460,7 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromResolvedSource(params: ReconstructAgentRuntimeParams): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
-		mcpToolAttributions: Map<string, string>;
+		mcpServerAttributions: Map<string, string>;
 	}> {
 		let config = params.config;
 		let unavailableTools: UnavailableTool[] = [];
@@ -516,7 +515,7 @@ export class AgentRuntimeReconstructionService {
 	}): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
-		mcpToolAttributions: Map<string, string>;
+		mcpServerAttributions: Map<string, string>;
 	}> {
 		const {
 			config,
@@ -578,9 +577,8 @@ export class AgentRuntimeReconstructionService {
 			unavailable,
 		);
 		const resolvedTools: BuiltTool[] = [];
-		// Sanitized MCP server name -> attribution text the registry row requires
-		// on replies produced with its tools (see McpRegistryConnection.attribution).
-		const mcpToolAttributions = new Map<string, string>();
+		// See AgentRuntime.mcpServerAttributions
+		const mcpServerAttributions = new Map<string, string>();
 
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
@@ -599,7 +597,7 @@ export class AgentRuntimeReconstructionService {
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {
-						mcpToolAttributions.set(sanitizeMcpToolName(server.name), connection.attribution);
+						mcpServerAttributions.set(server.name, connection.attribution);
 					}
 					return connection;
 				},
@@ -671,7 +669,7 @@ export class AgentRuntimeReconstructionService {
 		return {
 			agent: reconstructed,
 			toolRegistry: buildToolRegistry(resolvedTools),
-			mcpToolAttributions,
+			mcpServerAttributions,
 		};
 	}
 

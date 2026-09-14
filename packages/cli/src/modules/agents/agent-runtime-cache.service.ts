@@ -63,8 +63,8 @@ export interface AgentRuntime {
 	agent: RuntimeAgent;
 	agentId: string;
 	toolRegistry: ToolRegistry;
-	/** Sanitized MCP server name -> attribution text appended to replies that used its tools. */
-	mcpToolAttributions: Map<string, string>;
+	/** MCP server name -> registry attribution appended to replies that used its tools. */
+	mcpServerAttributions: Map<string, string>;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
@@ -397,7 +397,7 @@ export class AgentRuntimeCacheService {
 		const {
 			agent: agentInstance,
 			toolRegistry,
-			mcpToolAttributions,
+			mcpServerAttributions,
 			userToolAccessSnapshot,
 		} = await reconstruction;
 
@@ -405,7 +405,7 @@ export class AgentRuntimeCacheService {
 			agent: agentInstance,
 			agentId,
 			toolRegistry,
-			mcpToolAttributions,
+			mcpServerAttributions,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

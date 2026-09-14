@@ -99,7 +99,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			structuredOutput: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
-		mcpToolAttributions: new Map<string, string>(),
+		mcpServerAttributions: new Map<string, string>(),
 		projectId,
 		agentId,
 		telemetryConfiguration: {
