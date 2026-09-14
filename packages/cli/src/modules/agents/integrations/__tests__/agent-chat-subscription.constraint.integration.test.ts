@@ -23,7 +23,10 @@ beforeAll(async () => {
 let agentId: string;
 
 beforeEach(async () => {
-	await testDb.truncate(['AgentChatSubscription', 'Agent']);
+	// The agents module owns these tables, so they are not in testDb's entity
+	// list — clear them through their own repositories.
+	await Container.get(AgentChatSubscriptionRepository).delete({});
+	await Container.get(AgentRepository).delete({});
 	const project = await createTeamProject();
 	const agent = await Container.get(AgentRepository).save(
 		Container.get(AgentRepository).create({

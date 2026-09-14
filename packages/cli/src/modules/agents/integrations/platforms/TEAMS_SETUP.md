@@ -42,9 +42,11 @@ publicly reachable over HTTPS, so a local instance needs a tunnel.
 Paste it into the bot resource under **Settings → Configuration → Messaging
 endpoint**.
 
-Unlike Telegram, n8n cannot register this for you: Teams has no API to set a
-messaging endpoint, so this step is manual and is why the channel waits on a
-setup stepper before it goes public.
+Unlike Telegram, n8n cannot register this for you. The endpoint lives on the
+Azure Bot resource, so setting it needs Azure management credentials rather
+than the bot credential n8n holds — there is an ARM API for it, but nothing the
+bot identity can call. Hence the manual step, and hence the setup stepper the
+channel waits on before it goes public.
 
 ## 4. Enable the Teams channel
 
@@ -79,6 +81,6 @@ Publish the agent, then message the bot in Teams.
   there, but none of it is tested.
 - Streaming (NODE-5967). Replies arrive as one buffered message.
 - A setup stepper (NODE-5966), which is what makes step 3 self-service.
-- Multi-tenant bots, certificate authentication, and sovereign clouds. The
-  credential's Graph base URL is ignored: the adapter always talks to the
-  global Bot Framework endpoint.
+- Multi-tenant bots, certificate authentication, and sovereign clouds. Each is
+  rejected at connect with a message naming the problem, rather than failing
+  later against the wrong endpoint.

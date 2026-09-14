@@ -40,9 +40,12 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	chat: ChatInstance;
 	apiCalls: ReplayApiCall[];
 	sendWebhook: (payload: unknown) => Promise<Response>;
+	/** Same payload, no Authorization header — proves the token check is live. */
+	sendUnauthenticatedWebhook: (payload: unknown) => Promise<Response>;
 	latestContext: () => ReturnType<ReplayContextSetup['messageContextStore']['latest']>;
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
+	lastEdit: () => ReplayApiCall | undefined;
 }
 
 /**
@@ -215,16 +218,19 @@ export async function createTeamsReplayContext(
 	await chat.initialize();
 
 	const webhooks = chat.webhooks as unknown as Record<string, ReplayWebhookHandler>;
-	const sendWebhook = async (payload: unknown) => {
-		const activity = payload as TeamsActivityFixture;
-		const headers = new Headers();
-		headers.set('authorization', `Bearer ${signer.sign(activity.serviceUrl)}`);
-		return await sendJsonWebhook(
+	const post = async (payload: unknown, headers: Headers) =>
+		await sendJsonWebhook(
 			async (request, requestOptions) => await webhooks.teams(request, requestOptions),
 			'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/teams',
 			payload,
 			headers,
 		);
+
+	const sendWebhook = async (payload: unknown) => {
+		const activity = payload as TeamsActivityFixture;
+		const headers = new Headers();
+		headers.set('authorization', `Bearer ${signer.sign(activity.serviceUrl)}`);
+		return await post(payload, headers);
 	};
 
 	return {
@@ -232,9 +238,11 @@ export async function createTeamsReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
+		sendUnauthenticatedWebhook: async (payload: unknown) => await post(payload, new Headers()),
 		latestContext: () => setup.messageContextStore.latest(),
 		latestThreadId: () => setup.messageContextStore.latestThreadId(),
 		lastPost: () => [...stub.apiCalls].reverse().find((call) => call.method === 'sendActivity'),
+		lastEdit: () => [...stub.apiCalls].reverse().find((call) => call.method === 'updateActivity'),
 		shutdown: async () => {
 			stub.restore();
 			await setup.shutdown();

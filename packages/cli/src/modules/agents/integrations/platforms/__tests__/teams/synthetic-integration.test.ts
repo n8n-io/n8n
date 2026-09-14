@@ -49,7 +49,22 @@ function cardActions(card: Record<string, unknown> | undefined): Array<Record<st
 	return [...collect(card?.actions), ...collect(card?.body)];
 }
 
+/** First id the replay context's Bot Connector stub hands back for a post. */
+const POSTED_CARD_MESSAGE_ID = 'message-1000';
+
 describe('Microsoft Teams integration scenarios', () => {
+	it('rejects an activity that carries no Bot Framework token', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			const response = await ctx.sendUnauthenticatedWebhook(dmMessage);
+
+			expect(response.status).toBe(401);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
 	it('routes a Teams direct message to the agent and replies in the same conversation', async () => {
 		const ctx = await createTeamsReplayContext();
 		try {
@@ -165,7 +180,8 @@ describe('Microsoft Teams integration scenarios', () => {
 		try {
 			await ctx.sendWebhook(dmMessage);
 
-			const actions = cardActions(adaptiveCardFrom(ctx.lastPost()?.body));
+			const cardPost = ctx.lastPost();
+			const actions = cardActions(adaptiveCardFrom(cardPost?.body));
 			const approve = actions[0];
 			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
 
@@ -173,7 +189,9 @@ describe('Microsoft Teams integration scenarios', () => {
 				{ type: 'text-delta', id: 'resume-text', delta: 'Card handled' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
-			await ctx.sendWebhook(cardAction(approve.data as Record<string, unknown>));
+			await ctx.sendWebhook(
+				cardAction(approve.data as Record<string, unknown>, POSTED_CARD_MESSAGE_ID),
+			);
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -182,6 +200,13 @@ describe('Microsoft Teams integration scenarios', () => {
 					integrationType: 'teams',
 				}),
 			);
+
+			// The answered card is settled in place rather than deleted. The wording
+			// is generic because the decision only reaches the formatter through the
+			// CallbackStore, which this channel does not use.
+			expect(ctx.lastEdit()?.body).toMatchObject({
+				text: '✅ Action selected by Alice',
+			});
 		} finally {
 			await ctx.shutdown();
 		}
