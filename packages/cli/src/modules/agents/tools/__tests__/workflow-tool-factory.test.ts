@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -762,6 +763,26 @@ describe('workflow tool → parentAgentRun stamping', () => {
 			toolCallId: 'call-1',
 			integrationType: 'slack',
 		});
+	});
+
+	// The preview marker cannot be inferred on wake-up: MCP and AI Assistant test
+	// runs are `n8n_chat` too, so it has to travel on the marker itself.
+	it('stamps the preview marker so the wake-up resumes in preview mode', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE, previewChat: true },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
+	});
+
+	it('omits the preview marker for every other draft surface', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).not.toHaveProperty('previewChat');
 	});
 
 	it('omits the integration type for a run with no chat platform', async () => {

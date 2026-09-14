@@ -5,7 +5,6 @@ import {
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
 import {
-	GROUPING_GUIDANCE,
 	NODE_GROUPS_REFERENCE,
 	SDK_LANGUAGE_REFERENCE,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
@@ -173,9 +172,9 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'node-groups',
 		description:
-			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid, when to group',
+			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid',
 		fileName: 'node-groups.md',
-		content: `${NODE_GROUPS_REFERENCE}\n\n${GROUPING_GUIDANCE}`,
+		content: NODE_GROUPS_REFERENCE,
 	},
 ];
 

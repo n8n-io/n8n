@@ -66,7 +66,7 @@ conversation.
 splitting fragments by stability:
 
 - **Stable** (base tools, the deferred-tool controllers `search_tools` /
-  `load_tool`, the episodic-recall tool) stay in the cached instructions
+  `load_tool`, the episodic-memory tools) stay in the cached instructions
   message — this set never changes for the life of a run.
 - **Volatile** (tools loaded via `load_tool` during the conversation) are
   routed into the same uncached second system message that observation-log
@@ -77,13 +77,13 @@ splitting fragments by stability:
 Other prefix-stability hygiene, already true or verified: tool ordering is
 append-only (`getCurrentTools()` only ever appends), and none of the current
 built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,
-`recall_memory`) interpolate timestamps, run IDs, or other per-request
-nondeterminism into their text. Hosts can rename the delegate tool and replace
-its description / system instruction (`createDelegateSubAgentTool({ name,
-description, systemInstruction })`, mirrored into `write_todos` via
-`createWriteTodosTool({ delegateToolName })`), but those values are fixed at
-tool-build time, so the instructions prefix stays byte-stable for the life of
-a run.
+`recall_memory`, `flag_memory`) interpolate timestamps, run IDs, or other
+per-request nondeterminism into their text. Hosts can rename the delegate tool
+and replace its description / system instruction
+(`createDelegateSubAgentTool({ name, description, systemInstruction })`,
+mirrored into `write_todos` via `createWriteTodosTool({ delegateToolName })`),
+but those values are fixed at tool-build time, so the instructions prefix stays
+byte-stable for the life of a run.
 
 ## Anthropic: instruction-level cache breakpoint
 
@@ -126,9 +126,9 @@ back to memory, checkpoints, or `AgentMessageList`):
   system-message churn). Deferred / MCP-loaded tool sets are skipped — the
   tool list can change mid-conversation via `load_tool`, and caching a block
   that gets invalidated would just pay the write premium for no read. The
-  episodic-recall tool does **not** disqualify this breakpoint: its definition
-  is static and calling it only appends tool output to the conversation, never
-  changing the tool set.
+  episodic-memory tools do **not** disqualify this breakpoint. Their definitions
+  are static. Calling them only appends tool output to the conversation and
+  never changes the tool set.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 
@@ -189,8 +189,8 @@ are billed at the catalog's 5-minute rate.
 
 - The tool-definitions breakpoint only ever covers a **single, static**
   snapshot of the tool set (see above) — deferred/loaded tool sets get no
-  automatic tool caching in v1 (the episodic-recall tool is fine, since it is
-  static within a run). Mark deferred tools explicitly with
+  automatic tool caching in v1 (the episodic-memory tools are static within a
+  run). Mark deferred tools explicitly with
   `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
   if needed.
 - Only one moving conversation-history breakpoint is added per call — there

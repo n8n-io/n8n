@@ -2537,7 +2537,7 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('user events', () => {
-		it('should track on `user-updated` event', () => {
+		describe('on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
 				user: {
 					id: 'user123',
@@ -2549,18 +2549,31 @@ describe('TelemetryEventRelay', () => {
 				fieldsChanged: ['firstName', 'lastName'],
 			};
 
-			eventService.emit('user-updated', event);
+			it('should track without `user_email` on a self-hosted deployment', () => {
+				eventService.emit('user-updated', event);
 
-			expect(telemetry.identify).toHaveBeenCalledWith(
-				{
-					user_role: GLOBAL_OWNER_ROLE.slug,
-					user_email: 'user@example.com',
-				},
-				'user123',
-			);
-			expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
-				user_id: 'user123',
-				fields_changed: ['firstName', 'lastName'],
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug },
+					'user123',
+				);
+				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
+					user_id: 'user123',
+					fields_changed: ['firstName', 'lastName'],
+				});
+			});
+
+			it('should track with `user_email` on a cloud deployment', () => {
+				globalConfig.deployment.type = 'cloud';
+				try {
+					eventService.emit('user-updated', event);
+				} finally {
+					globalConfig.deployment.type = 'default';
+				}
+
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug, user_email: 'user@example.com' },
+					'user123',
+				);
 			});
 		});
 
