@@ -43,9 +43,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/inquirer": "^7.0.1",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "dependencies": {
     "@n8n/di": "workspace:*",
