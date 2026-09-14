@@ -123,14 +123,18 @@ deadline, or accept a resume request, or do both.
   execution looks the same as a finished one. To prune a paused execution
   destroys a workflow run.
 - The `specificTime` mode of the Wait node resolves its target time in the
-  timezone of the workflow. The shim does not yet receive that timezone, so the
-  mode resolves the time in the default timezone. This does not affect
-  durations. The gap closes when the workflow settings reach the data plane.
+  timezone of the workflow. The shim does not receive that timezone, so the mode
+  resolves the time in the default timezone. This does not affect durations. The
+  execution row now holds a workflow snapshot
+  (ADR-20260904-store-the-workflow-with-the-execution), so the data is in the
+  data plane. The gap closes when the executor request carries the settings from
+  that snapshot.
 
 ## Links
 
 RFC: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc (§3.3)
 Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
 Related ADRs: ADR-20260828-trigger-settlement-before-execution,
+ADR-20260904-store-the-workflow-with-the-execution,
 ADR-20260904-resume-urls-carry-a-derived-token,
 ADR-20260904-timeout-excludes-waiting-time
