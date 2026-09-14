@@ -145,6 +145,10 @@ const config: KnipConfig = {
 				'vue-tsc',
 			],
 		}),
+		'packages/frontend/@n8n/design-system': pkg({
+			// The compiled .mdx pages import storybook-addon-vue-mdx/jsx-runtime from this package.
+			ignoreDependencies: ['storybook-addon-vue-mdx'],
+		}),
 		'packages/@n8n/stylelint-config': pkg({
 			// The exported config names plugins and syntaxes as strings.
 			ignoreDependencies: ['stylelint-scss', 'postcss-html', 'postcss-scss'],
