@@ -62,7 +62,6 @@ export const workflowSettingsFieldDocs = {
 		description:
 			'Controls which workflows are allowed to call this workflow using the Execute Workflow ' +
 			'node. Defaults to workflowsFromSameOwner.\n\nAvailable options:\n' +
-			'- `any`: Any workflow can call this workflow (no restrictions)\n' +
 			'- `none`: No other workflows can call this workflow (completely blocked)\n' +
 			'- `workflowsFromSameOwner` (default): Only workflows owned by the same project can ' +
 			'call this workflow\n' +
@@ -260,7 +259,7 @@ export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 		engineType: { type: 'string', nullable: true, ...workflowSettingsFieldDocs.engineType },
 		callerPolicy: {
 			type: 'string',
-			enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'],
+			enum: ['none', 'workflowsFromAList', 'workflowsFromSameOwner'],
 			...workflowSettingsFieldDocs.callerPolicy,
 		},
 		callerIds: { type: 'string', ...workflowSettingsFieldDocs.callerIds },

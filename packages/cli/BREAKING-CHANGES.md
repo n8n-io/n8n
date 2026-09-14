@@ -60,6 +60,14 @@ Chat hub is off by default. `chat-hub` is no longer a default module, so the **C
 
 If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn it on again for the 3.x line. n8n then prints a deprecation warning at startup. The migration report on v2 lists this change for every instance that uses chat hub.
 
+### What changed?
+
+The "Any workflow" caller policy (`any`) was removed. Calls to a sub-workflow that still stores this value fail until you select a supported policy in the workflow settings. If you set `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION=any`, n8n logs a warning and uses the default value (`workflowsFromSameOwner`). The public API rejects `any` as a value for `settings.callerPolicy`.
+
+### When is action necessary?
+
+If any of your workflows store the "Any workflow" caller policy. Open the workflow settings and select a supported policy, or list the allowed callers with the `workflowsFromAList` policy. The migration report on version 2 lists every affected workflow.
+
 # 2.0.0
 
 ### What changed?
