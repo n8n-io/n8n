@@ -5,7 +5,7 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
@@ -48,6 +48,7 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
+import { createAttributionTracker } from './utils/mcp-attribution';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 export interface AgentMemoryScope {
@@ -72,6 +73,12 @@ export interface ExecuteForChatConfig {
 	attachments?: StoredAttachmentRef[];
 	/** Identifies the surface that started the draft test run. */
 	source?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -80,7 +87,12 @@ export interface ExecuteForChatConfig {
 export interface ExecuteForChatPublishedConfig {
 	agentId: string;
 	projectId: string;
+	/** What the user wrote; recorded in the execution transcript. */
 	message: string;
+	/** What the model receives when it differs from `message`, e.g. with an author label or thread history. */
+	modelMessage?: string;
+	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
+	author?: AgentMessageAuthor;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	attachments?: StoredAttachmentRef[];
@@ -119,6 +131,12 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -172,9 +190,16 @@ export interface ExecuteForWakeConfig {
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** See `AgentRuntime.mcpServerAttributions`. */
+	mcpServerAttributions: Map<string, string>;
 	agentId: string;
 	userId?: string;
+	/** What the user wrote; recorded in the execution transcript. */
 	message: string;
+	/** What the model receives when it differs from `message`. */
+	modelMessage?: string;
+	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
+	author?: AgentMessageAuthor;
 	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;
@@ -436,6 +461,7 @@ export class AgentExecutionOrchestratorService {
 			// `user` actually reach the cache/reconstruction layer.
 			user: usePublishedVersion ? undefined : user,
 			...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
+			previewChat: config.previewChat,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -509,9 +535,14 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
+				}
 				yield chunk;
 			}
 		} catch (error) {
@@ -567,6 +598,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			attachments,
 			source,
+			previewChat,
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -583,6 +615,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
 			sandboxPrincipalHash,
+			previewChat,
 		});
 
 		try {
@@ -597,6 +630,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -630,6 +664,8 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			projectId,
 			message,
+			modelMessage,
+			author,
 			memory,
 			integrationType,
 			attachments,
@@ -647,15 +683,24 @@ export class AgentExecutionOrchestratorService {
 				usePublishedVersion: true,
 				sandboxPrincipalHash,
 			},
-			{ threadId: memory.threadId, userMessage: message, attachments, source: integrationType },
+			{
+				threadId: memory.threadId,
+				userMessage: message,
+				author,
+				attachments,
+				source: integrationType,
+			},
 		);
 
 		try {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
+				modelMessage,
+				author,
 				attachments,
 				memory,
 				projectId: runtime.projectId,
@@ -699,6 +744,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
 				memory,
@@ -743,6 +789,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -785,6 +832,7 @@ export class AgentExecutionOrchestratorService {
 			const stream = this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				...(isDraft ? { userId: identity.user.id } : {}),
 				message,
@@ -856,9 +904,12 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentInstance,
 			toolRegistry,
+			mcpServerAttributions,
 			agentId,
 			userId,
 			message,
+			modelMessage = message,
+			author,
 			attachments,
 			memory,
 			projectId,
@@ -893,7 +944,9 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
-			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const input = attachments?.length
+				? buildInboundUserMessage(modelMessage, attachments)
+				: modelMessage;
 			const hostMetadata = encodeAgentSandboxHostMetadata({
 				projectId,
 				principalHash: sandboxPrincipalHash,
@@ -915,6 +968,7 @@ export class AgentExecutionOrchestratorService {
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: hideUserMessageFromTranscript ? null : message,
+				author,
 				attachments,
 				source,
 				taskId,
@@ -926,6 +980,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);
@@ -941,6 +996,10 @@ export class AgentExecutionOrchestratorService {
 						recorder.record(chunk);
 						yield chunk;
 					}
+				}
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
 				}
 				yield chunk;
 			}
@@ -962,6 +1021,7 @@ export class AgentExecutionOrchestratorService {
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: hideUserMessageFromTranscript ? null : message,
+					author,
 					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
@@ -994,7 +1054,7 @@ export class AgentExecutionOrchestratorService {
 		params: GetRuntimeParams,
 		session: Pick<
 			StartExecutionParams,
-			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+			'threadId' | 'userMessage' | 'author' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
 		>,
 	): Promise<AgentRuntime> {
 		try {
@@ -1017,7 +1077,7 @@ export class AgentExecutionOrchestratorService {
 		{ agentId, projectId }: GetRuntimeParams,
 		session: Pick<
 			StartExecutionParams,
-			'threadId' | 'userMessage' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
+			'threadId' | 'userMessage' | 'author' | 'attachments' | 'source' | 'taskId' | 'taskVersionId'
 		>,
 		error: unknown,
 	): Promise<void> {

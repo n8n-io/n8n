@@ -45,7 +45,6 @@
     "@types/supertest": "^6.0.3",
     "n8n-containers": "workspace:*",
     "supertest": "^7.1.1",
-    "testcontainers": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

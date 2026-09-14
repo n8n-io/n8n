@@ -72,7 +72,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
-	it.each(['add', 'getAll'])(
+	it.each(['add', 'getAll', 'remove'])(
 		'chatMember:%s throws a static error and issues no request under SP',
 		async (operation) => {
 			selectSp({
@@ -80,6 +80,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				operation,
 				chatId: 'chatID',
 				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
+				membershipId: 'MCMjMiMj',
 				returnAll: true,
 				options: {},
 			});
@@ -95,9 +96,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	);
 
 	it.each([
-		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
-		['createOrGet', { externalId: 'order-4711', options: {} }],
-		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
 		[
 			'update',
 			{
@@ -414,5 +412,44 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				1,
 			);
 		});
+	});
+
+	describe('chatMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'chatMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'chatMessage',
+					operation,
+					chatId: 'chatID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Chat messages are not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('channelMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage'])(
+			'channelMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'channelMessage',
+					operation,
+					teamId: 'teamID',
+					channelId: 'channelID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Deleting and restoring channel messages is not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

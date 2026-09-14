@@ -21,6 +21,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
@@ -184,7 +185,9 @@ const outputSchema = {
 			}),
 		)
 		.optional()
-		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. Repair them with update_workflow before you report the workflow as done.',
+		),
 	hint: z
 		.string()
 		.optional()
@@ -461,11 +464,22 @@ export const createCreateWorkflowFromCodeTool = (
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
+
+			// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+			const ceilingWarning = options.canvasGroupsEnabled
+				? topLevelItemsWarning(savedWorkflow)
+				: undefined;
+
 			const uninstalledWarnings = await buildUninstalledNodeWarnings(
 				savedWorkflow.nodes,
 				options.findUninstalledNodeTypes,
 			);
-			const warnings = [...result.warnings, ...uninstalledWarnings];
+
+			const warnings = [
+				...result.warnings,
+				...(ceilingWarning ? [ceilingWarning] : []),
+				...uninstalledWarnings,
+			];
 			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
 
 			return {

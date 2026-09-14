@@ -4,7 +4,7 @@ test.use({ capability: 'external-secrets' });
 test.setTimeout(180_000);
 
 test.describe(
-	'AWS Secrets Manager with LocalStack @capability:external-secrets @licensed',
+	'AWS Secrets Manager with LocalStack @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
