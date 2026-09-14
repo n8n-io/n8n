@@ -15,6 +15,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
 		agent: {},
 		aiAssistant: {},
+		aiPreference: {},
 		workflow: {},
 		tag: {},
 		annotationTag: {},
