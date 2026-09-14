@@ -368,6 +368,7 @@ function onFallbackCredentialChange(value: string) {
 }
 
 function onCreateFallbackCredential() {
+	if (props.disabled || !credentialPermissions.value.create) return;
 	uiStore.openNewCredential(
 		fallbackCredentialType.value,
 		false,

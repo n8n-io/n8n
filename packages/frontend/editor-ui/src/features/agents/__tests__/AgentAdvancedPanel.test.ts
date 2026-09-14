@@ -13,6 +13,15 @@ const ensureLoadedMock = vi.fn();
 const openNewCredentialMock = vi.hoisted(() => vi.fn());
 const modelCatalog = ref<ProviderCatalog>({});
 
+type MockProject = { id: string; scopes: string[] };
+const CREDENTIAL_CREATE_SCOPES = ['credential:create'];
+// Mutable per test (reset in beforeEach) so the project → permission resolution can be exercised.
+const projectsStoreState = vi.hoisted(() => ({
+	currentProject: null as MockProject | null,
+	personalProject: null as MockProject | null,
+	myProjects: [] as MockProject[],
+}));
+
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
 		catalog: modelCatalog,
@@ -28,6 +37,9 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.advanced.reasoning.unsupportedHint':
 					'This model does not support reasoning',
 				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+				'nodeCredentials.createNew': 'Create new credential',
+				'nodeCredentials.createNew.permissionDenied':
+					'Your current role does not allow you to create credentials',
 			})[key] ?? key,
 	}),
 }));
@@ -43,11 +55,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
-	useProjectsStore: () => ({
-		currentProject: { id: 'project-1', scopes: ['credential:create'] },
-		personalProject: null,
-		myProjects: [],
-	}),
+	useProjectsStore: () => projectsStoreState,
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -72,11 +80,18 @@ const globalStubs = {
 		template:
 			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
+	// Keep <select> as the single root so `findComponent('[data-testid=…]')` matches the stub;
+	// the footer slot is where CredentialsDropdown renders "Create new credential".
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template:
-			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /><slot name="footer" /></select>',
+	},
+	N8nTooltip: {
+		props: ['disabled', 'content'],
+		template:
+			'<span :data-tooltip-disabled="String(disabled)" :data-tooltip-content="content"><slot /></span>',
 	},
 	N8nOption: {
 		name: 'N8nOption',
@@ -191,11 +206,44 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 	)?.webSearch;
 }
 
+/** Mounts the panel with the Brave fallback picker visible for `projectId`. */
+function mountWithFallbackPicker({
+	projectId = 'project-1',
+	disabled = false,
+}: { projectId?: string; disabled?: boolean } = {}) {
+	return mount(AgentAdvancedPanel, {
+		props: {
+			config: makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave' } },
+			} as Partial<AgentJsonConfig>),
+			projectId,
+			disabled,
+		},
+		global: { stubs: globalStubs },
+	});
+}
+
+function findCreateCredentialButton(wrapper: ReturnType<typeof mount>) {
+	return wrapper.find('[data-test-id="node-credentials-select-item-new"]');
+}
+
+function getCreateCredentialTooltip(wrapper: ReturnType<typeof mount>) {
+	const tooltip = findCreateCredentialButton(wrapper).element.closest('[data-tooltip-disabled]');
+	return {
+		disabled: tooltip?.getAttribute('data-tooltip-disabled'),
+		content: tooltip?.getAttribute('data-tooltip-content'),
+	};
+}
+
 describe('AgentAdvancedPanel', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
 		openNewCredentialMock.mockReset();
 		modelCatalog.value = makeCatalog();
+		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
+		projectsStoreState.personalProject = null;
+		projectsStoreState.myProjects = [];
 	});
 
 	it('renders both advanced sections without a collapsible heading', () => {
@@ -348,6 +396,117 @@ describe('AgentAdvancedPanel', () => {
 			});
 		},
 	);
+
+	it('offers an enabled "Create new credential" action without the permission tooltip when the user can create credentials in the project', () => {
+		const wrapper = mountWithFallbackPicker();
+
+		const createButton = findCreateCredentialButton(wrapper);
+		expect(createButton.text()).toBe('Create new credential');
+		expect(createButton.attributes()).not.toHaveProperty('disabled');
+		expect(getCreateCredentialTooltip(wrapper).disabled).toBe('true');
+	});
+
+	it('disables "Create new credential" with the permission tooltip and does not open the credential modal when the user cannot create credentials in the project', () => {
+		projectsStoreState.currentProject = { id: 'project-1', scopes: ['credential:read'] };
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(
+			wrapper.findComponent(AgentCredentialSelect).props('credentialPermissions'),
+		).toMatchObject({ create: false });
+		expect(findCreateCredentialButton(wrapper).attributes()).toHaveProperty('disabled');
+		expect(getCreateCredentialTooltip(wrapper)).toEqual({
+			disabled: 'false',
+			content: 'Your current role does not allow you to create credentials',
+		});
+
+		// Even if the dropdown emits `create` anyway, the panel must not open the modal.
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+		expect(openNewCredentialMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('does not open the credential modal from the fallback picker while the panel is disabled', () => {
+		const wrapper = mountWithFallbackPicker({ disabled: true });
+
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+
+		expect(openNewCredentialMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	describe('resolving the project whose scopes decide whether a credential can be created', () => {
+		const canCreate = CREDENTIAL_CREATE_SCOPES;
+		const cannotCreate = ['credential:read'];
+
+		it.each<{
+			name: string;
+			projectId: string;
+			currentProject: MockProject;
+			personalProject: MockProject;
+			myProjects: MockProject[];
+			expectedCreate: boolean;
+		}>([
+			{
+				name: 'uses the current project when it matches the panel project',
+				projectId: 'project-1',
+				currentProject: { id: 'project-1', scopes: canCreate },
+				personalProject: { id: 'project-2', scopes: cannotCreate },
+				myProjects: [{ id: 'project-3', scopes: cannotCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'falls back to the personal project when the current project does not match',
+				projectId: 'project-2',
+				currentProject: { id: 'project-1', scopes: cannotCreate },
+				personalProject: { id: 'project-2', scopes: canCreate },
+				myProjects: [{ id: 'project-3', scopes: cannotCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'falls back to the matching entry in myProjects when neither the current nor the personal project match',
+				projectId: 'project-3',
+				currentProject: { id: 'project-1', scopes: cannotCreate },
+				personalProject: { id: 'project-2', scopes: cannotCreate },
+				myProjects: [{ id: 'project-3', scopes: canCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'denies creating credentials when no known project matches the panel project',
+				projectId: 'project-unknown',
+				currentProject: { id: 'project-1', scopes: canCreate },
+				personalProject: { id: 'project-2', scopes: canCreate },
+				myProjects: [{ id: 'project-3', scopes: canCreate }],
+				expectedCreate: false,
+			},
+		])('$name', ({ projectId, currentProject, personalProject, myProjects, expectedCreate }) => {
+			projectsStoreState.currentProject = currentProject;
+			projectsStoreState.personalProject = personalProject;
+			projectsStoreState.myProjects = myProjects;
+
+			const wrapper = mountWithFallbackPicker({ projectId });
+
+			expect(
+				wrapper.findComponent(AgentCredentialSelect).props('credentialPermissions'),
+			).toMatchObject({ create: expectedCreate });
+
+			wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+			if (expectedCreate) {
+				expect(openNewCredentialMock).toHaveBeenCalledWith(
+					'braveSearchApi',
+					false,
+					false,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					expect.objectContaining({ hideAskAssistant: true }),
+				);
+			} else {
+				expect(openNewCredentialMock).not.toHaveBeenCalled();
+			}
+		});
+	});
 
 	it('switches fallback web search to native and emits native provider tools', async () => {
 		const config = makeConfig({
