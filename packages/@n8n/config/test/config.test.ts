@@ -602,7 +602,6 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
-			preExecuteErrorCreatesExecution: false,
 		},
 		memoryGuard: {
 			enabled: false,
