@@ -1,0 +1,101 @@
+operationId: getUsers
+tags:
+  - User
+summary: Retrieve all users
+description: Retrieve all users from your instance. Only available for the instance owner.
+x-required-scope: user:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    name: includeRole
+    in: query
+  - schema:
+      type: string
+    required: false
+    name: projectId
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    readOnly: true
+                    example: 123e4567-e89b-12d3-a456-426614174000
+                  email:
+                    type: string
+                    format: email
+                    example: john.doe@company.com
+                  firstName:
+                    type: string
+                    nullable: true
+                    readOnly: true
+                    example: john
+                  lastName:
+                    type: string
+                    nullable: true
+                    readOnly: true
+                    example: Doe
+                  isPending:
+                    type: boolean
+                    description: Whether the user finished setting up their account in response to the invitation (true) or not (false).
+                    readOnly: true
+                  createdAt:
+                    type: string
+                    format: date-time
+                    readOnly: true
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    readOnly: true
+                  mfaEnabled:
+                    type: boolean
+                    description: Whether the user has multi-factor authentication (MFA/2FA) enabled.
+                    readOnly: true
+                    example: false
+                  role:
+                    type: string
+                    readOnly: true
+                    example: global:owner
+                required:
+                  - id
+                  - email
+                  - firstName
+                  - lastName
+                  - isPending
+                  - createdAt
+                  - updatedAt
+                  - mfaEnabled
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through users by setting the cursor parameter to a nextCursor attribute returned by a previous request. Default value fetches the first page of the collection.
+              example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

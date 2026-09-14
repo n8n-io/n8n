@@ -211,7 +211,7 @@
 		"POST /users": {
 			"status": "gap"
 		},
-		"GET /users/{id}": {
+		"GET /users/{userId}": {
 			"status": "gap"
 		},
 		"DELETE /users/{id}": {
