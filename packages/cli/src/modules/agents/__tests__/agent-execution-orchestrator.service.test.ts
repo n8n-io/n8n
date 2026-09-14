@@ -99,9 +99,13 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 	});
 }
 
-function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
+function makeRuntime(
+	chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }],
+	mcpToolAttributions = new Map<string, string>(),
+) {
 	const toolRegistry: ToolRegistry = new Map();
 	return {
+		mcpToolAttributions,
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
@@ -280,6 +284,118 @@ describe('AgentExecutionOrchestratorService', () => {
 		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
+	it('appends the MCP registry attribution when a tool of that server was called', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'databricksGenie_ask', input: {} },
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			new Map([['databricksGenie', 'Powered by Genie']]),
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		const attributionIndex = chunks.findIndex(
+			(chunk) => chunk.type === 'text-delta' && chunk.delta === 'Powered by Genie',
+		);
+		const finishIndex = chunks.findIndex((chunk) => chunk.type === 'finish');
+		expect(attributionIndex).toBeGreaterThan(-1);
+		expect(attributionIndex).toBeLessThan(finishIndex);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					assistantResponse: expect.stringContaining('Powered by Genie'),
+				}),
+			}),
+		);
+	});
+
+	it('appends no attribution when no tool of that server was called', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			new Map([['databricksGenie', 'Powered by Genie']]),
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		expect(chunks.filter((chunk) => chunk.type === 'text-delta')).toHaveLength(1);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Answer' }),
+			}),
+		);
+	});
+
+	it('skips the attribution the model already echoed into its reply', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'databricksGenie_ask', input: {} },
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer\n\nPowered by Genie' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			new Map([['databricksGenie', 'Powered by Genie']]),
+		);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(finalizedRecord.assistantResponse).toBe('Answer\n\nPowered by Genie');
 	});
 
 	it('streams chat responses and records suspended executions', async () => {

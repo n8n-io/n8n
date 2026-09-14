@@ -148,6 +148,7 @@ describe('SubAgentRunner', () => {
 		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
 			agent: childAgent as never,
 			toolRegistry: new Map(),
+			mcpToolAttributions: new Map(),
 		});
 
 		credentialProvider = mock<CredentialProvider>();

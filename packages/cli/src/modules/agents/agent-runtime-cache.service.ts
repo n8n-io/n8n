@@ -63,6 +63,8 @@ export interface AgentRuntime {
 	agent: RuntimeAgent;
 	agentId: string;
 	toolRegistry: ToolRegistry;
+	/** Sanitized MCP server name -> attribution text appended to replies that used its tools. */
+	mcpToolAttributions: Map<string, string>;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
@@ -392,12 +394,18 @@ export class AgentRuntimeCacheService {
 			sandboxPrincipalHash,
 			{ previewChat, allowBackgroundTasks },
 		);
-		const { agent: agentInstance, toolRegistry, userToolAccessSnapshot } = await reconstruction;
+		const {
+			agent: agentInstance,
+			toolRegistry,
+			mcpToolAttributions,
+			userToolAccessSnapshot,
+		} = await reconstruction;
 
 		return {
 			agent: agentInstance,
 			agentId,
 			toolRegistry,
+			mcpToolAttributions,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

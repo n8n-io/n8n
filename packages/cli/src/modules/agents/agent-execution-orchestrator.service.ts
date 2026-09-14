@@ -189,6 +189,8 @@ export interface ExecuteForWakeConfig {
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** Sanitized MCP server name -> attribution text appended to replies that used its tools. */
+	mcpToolAttributions?: Map<string, string>;
 	agentId: string;
 	userId?: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -246,6 +248,40 @@ function getMaxIterationsChunks(): StreamChunk[] {
 		},
 		{ type: 'text-end', id },
 	];
+}
+
+/**
+ * Watches a run's chunks and, on completion, produces the text chunks carrying
+ * the registry attribution of every MCP server whose tools were called (see
+ * `McpRegistryConnection.attribution`). Appended in code, after the model, so
+ * the label does not depend on the model honouring an instruction.
+ */
+function createAttributionTracker(attributions?: Map<string, string>) {
+	const pending = new Set<string>();
+	let text = '';
+	return {
+		observe(chunk: StreamChunk) {
+			if (!attributions?.size) return;
+			if (chunk.type === 'text-delta') text += chunk.delta;
+			if (chunk.type !== 'tool-call') return;
+			for (const [serverName, attribution] of attributions) {
+				// MCP tool names are `sanitizeToolName(`${serverName}_${toolName}`)`
+				if (chunk.toolName.startsWith(`${serverName}_`)) pending.add(attribution);
+			}
+		},
+		/** Chunks to splice in before a completed `finish` - empty when nothing to attribute. */
+		getChunks(): StreamChunk[] {
+			// Skip an attribution the model already echoed into its reply
+			const lines = [...pending].filter((attribution) => !text.includes(attribution));
+			if (lines.length === 0) return [];
+			const id = crypto.randomUUID();
+			return [
+				{ type: 'text-start', id },
+				{ type: 'text-delta', id, delta: lines.join('\n') },
+				{ type: 'text-end', id },
+			];
+		},
+	};
 }
 
 function normalizeAbortedMessageRecord(
@@ -532,9 +568,19 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			// Only sees post-resume chunks, so an MCP tool called before the
+			// suspension is not attributed on the resumed segment.
+			const attributionTracker = createAttributionTracker(runtime.mcpToolAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
+				attributionTracker.observe(chunk);
+				if (chunk.type === 'finish' && chunk.finishReason !== 'error') {
+					for (const chunk of attributionTracker.getChunks()) {
+						recorder.record(chunk);
+						yield chunk;
+					}
+				}
 				yield chunk;
 			}
 		} catch (error) {
@@ -622,6 +668,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -687,6 +734,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
 				agentId,
 				message,
 				modelMessage,
@@ -734,6 +782,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
 				agentId,
 				message,
 				memory,
@@ -778,6 +827,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -820,6 +870,7 @@ export class AgentExecutionOrchestratorService {
 			const stream = this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpToolAttributions: runtime.mcpToolAttributions,
 				agentId,
 				...(isDraft ? { userId: identity.user.id } : {}),
 				message,
@@ -891,6 +942,7 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentInstance,
 			toolRegistry,
+			mcpToolAttributions,
 			agentId,
 			userId,
 			message,
@@ -966,9 +1018,11 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(mcpToolAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);
+				attributionTracker.observe(chunk);
 				if (chunk.type === 'tool-call-suspended') {
 					this.logger.info('Chat: tool-call-suspended chunk received', {
 						agentId,
@@ -978,6 +1032,12 @@ export class AgentExecutionOrchestratorService {
 				}
 				if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
 					for (const chunk of getMaxIterationsChunks()) {
+						recorder.record(chunk);
+						yield chunk;
+					}
+				}
+				if (chunk.type === 'finish' && chunk.finishReason !== 'error') {
+					for (const chunk of attributionTracker.getChunks()) {
 						recorder.record(chunk);
 						yield chunk;
 					}
