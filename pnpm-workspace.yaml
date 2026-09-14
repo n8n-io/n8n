@@ -199,7 +199,7 @@ catalog:
   electron: 41.10.4
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-n8n-nodes-base: ^2.0.0
   eslint-plugin-oxlint: 1.78.0
   express: 5.1.0
   fast-check: ^3.23.2
