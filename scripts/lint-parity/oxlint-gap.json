@@ -4,49 +4,160 @@
 		"`oxlint-parity.mjs` fails on any rule missing from oxlint that is absent here,",
 		"so every drop is a deliberate, reviewed entry. Measured against oxlint 1.78.0.",
 		"`layer` is the ESLint layer the rule is at error in. `native` names the oxlint",
-		"rule id when one exists but we still do not enable it."
+		"rule id when one exists but we still do not enable it. `replacement` records",
+		"the intended migration path for each gap."
 	],
 	"no-restricted-syntax": {
 		"layer": "base",
 		"native": null,
 		"reason": "oxlint 1.78 has no AST-selector rule and no equivalent. It is an ESLint core rule, so a jsPlugin cannot host it either: `Rule 'no-restricted-syntax' not found in plugin 'eslint'`. base uses it for the raw-enum ban; editor-ui uses it for store-migration ratchets, and editor-ui keeps ESLint.",
-		"impact": "The const-enum ban is unenforced in migrated packages."
+		"impact": "The const-enum ban is unenforced in migrated packages.",
+		"replacement": "Add a native selector rule, or replace each selector use with a purpose-built syntactic rule."
 	},
 	"no-octal": {
 		"layer": "base",
 		"native": null,
 		"reason": "No oxlint rule. Largely covered incidentally: the oxc parser rejects legacy `0`-prefixed octal literals in strict-mode and module code, which is all of our source.",
-		"impact": "Near zero."
+		"impact": "Near zero.",
+		"replacement": "No action unless non-module source becomes supported."
 	},
 	"import-x/no-extraneous-dependencies": {
 		"layer": "base",
 		"native": null,
 		"reason": "`import-x` is a reserved plugin name in oxlint, so `eslint-plugin-import-x` cannot load as a jsPlugin under its own name (`Plugin name 'import-x' is reserved`). An alias would permanently change the rule ids, and these rules are the slowest in ESLint and unvalidated through the alpha bridge.",
-		"impact": "A package can import a dependency it does not declare. Left out of the spike deliberately."
+		"impact": "A package can import a dependency it does not declare. Left out of the spike deliberately.",
+		"replacement": "Validate eslint-plugin-import-x with an alias, or replace the dependency check with a native package-manifest rule."
 	},
 	"typescript/prefer-optional-chain": {
 		"layer": "base",
 		"native": "typescript/prefer-optional-chain",
 		"reason": "Native but `nursery`, and it diverges. It reports `typeof crypto !== 'undefined' && crypto.randomUUID` in @n8n/crdt where ESLint does not, and its fix is wrong: `crypto?.randomUUID` still throws a ReferenceError when the global is undeclared, which is what the typeof guard prevents.",
-		"impact": "Re-evaluate when the rule leaves nursery."
+		"impact": "Re-evaluate when the rule leaves nursery.",
+		"replacement": "Re-evaluate after the rule leaves nursery and its undeclared-global fix is corrected."
 	},
 	"import/export": {
 		"layer": "base",
 		"native": "import/export",
 		"reason": "Native but `nursery`. Not enabling a pre-release rule silently; no divergence observed yet.",
-		"impact": "Re-evaluate when the rule leaves nursery."
+		"impact": "Re-evaluate when the rule leaves nursery.",
+		"replacement": "Enable after the rule leaves nursery and parity remains clean."
 	},
 	"typescript/consistent-type-imports": {
 		"layer": "base",
 		"native": "typescript/consistent-type-imports",
 		"reason": "oxlint's rule has no `emitDecoratorMetadata` carve-out. typescript-eslint goes silent in any file containing a decorator when `experimentalDecorators` + `emitDecoratorMetadata` are set, because converting such an import to `import type` erases the `design:paramtypes` metadata that DI resolves. oxlint reads no compiler options in this rule and offers no option to declare them, so it reported 3488 false positives across packages/cli/src, all in decorated files. Its fixer also fights n8n-local-rules/no-type-only-import-in-di: one adds `type`, the other removes it, so `oxlint --fix` does not converge.",
 		"impact": "Low at runtime. The direction that breaks DI stays guarded by no-type-only-import-in-di, and these packages leave `verbatimModuleSyntax` off, so TypeScript elides a type-only-used import at emit. The cost is drift from a clean baseline.",
+		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
 	},
 	"n8n-local-rules/no-unsealed-workflow-entity-write": {
 		"layer": "base",
 		"native": null,
 		"reason": "Needs type information. oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws and the rule reports `Error running JS plugin` on any file that calls a checked method. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
-		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does."
+		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+	},
+	"n8n-local-rules/no-legacy-cipher-methods": {
+		"layer": "backend",
+		"native": null,
+		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve a Cipher receiver.",
+		"impact": "The deprecated Cipher.encrypt and Cipher.decrypt APIs are not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+	},
+	"n8n-local-rules/no-misplaced-cipher-primitives": {
+		"layer": "backend",
+		"native": null,
+		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve the imported cipher primitive.",
+		"impact": "Raw cipher primitive placement is not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+	},
+	"n8n-local-rules/no-deployment-key-delete": {
+		"layer": "backend",
+		"native": null,
+		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot identify DeploymentKey repository receivers.",
+		"impact": "Deployment-key deletion is not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+	},
+	"frontend/vue-template-rules": {
+		"layer": "frontend",
+		"native": null,
+		"reason": "Oxlint extracts a Vue SFC script block but does not expose a template AST.",
+		"rules": [
+			"vue/block-order",
+			"vue/comment-directive",
+			"vue/component-name-in-template-casing",
+			"vue/jsx-uses-vars",
+			"vue/no-child-content",
+			"vue/no-deprecated-dollar-listeners-api",
+			"vue/no-deprecated-dollar-scopedslots-api",
+			"vue/no-deprecated-filter",
+			"vue/no-deprecated-functional-template",
+			"vue/no-deprecated-html-element-is",
+			"vue/no-deprecated-inline-template",
+			"vue/no-deprecated-router-link-tag-prop",
+			"vue/no-deprecated-scope-attribute",
+			"vue/no-deprecated-slot-attribute",
+			"vue/no-deprecated-slot-scope-attribute",
+			"vue/no-deprecated-v-bind-sync",
+			"vue/no-deprecated-v-is",
+			"vue/no-deprecated-v-on-native-modifier",
+			"vue/no-deprecated-v-on-number-modifiers",
+			"vue/no-dupe-v-else-if",
+			"vue/no-duplicate-attributes",
+			"vue/no-multiple-template-root",
+			"vue/no-parsing-error",
+			"vue/no-ref-as-operand",
+			"vue/no-template-key",
+			"vue/no-textarea-mustache",
+			"vue/no-undef-components",
+			"vue/no-unused-components",
+			"vue/no-unused-vars",
+			"vue/no-use-computed-property-like-method",
+			"vue/no-use-v-if-with-v-for",
+			"vue/no-useless-template-attributes",
+			"vue/no-v-for-template-key-on-child",
+			"vue/no-v-html",
+			"vue/require-component-is",
+			"vue/require-macro-variable-name",
+			"vue/require-toggle-inside-transition",
+			"vue/require-v-for-key",
+			"vue/require-valid-default-prop",
+			"vue/use-v-on-exact",
+			"vue/v-slot-style",
+			"vue/valid-attribute-name",
+			"vue/valid-template-root",
+			"vue/valid-v-bind",
+			"vue/valid-v-cloak",
+			"vue/valid-v-else",
+			"vue/valid-v-else-if",
+			"vue/valid-v-for",
+			"vue/valid-v-html",
+			"vue/valid-v-if",
+			"vue/valid-v-is",
+			"vue/valid-v-memo",
+			"vue/valid-v-model",
+			"vue/valid-v-on",
+			"vue/valid-v-once",
+			"vue/valid-v-pre",
+			"vue/valid-v-show",
+			"vue/valid-v-slot",
+			"vue/valid-v-text"
+		],
+		"impact": "An Oxlint-only frontend package would lose template and SFC-structure checks.",
+		"replacement": "Keep eslint-plugin-vue for .vue files, or replace these rules with a template-aware native linter."
+	},
+	"n8n-nodes-base/*": {
+		"layer": "nodes",
+		"native": null,
+		"reason": "The node and credential format rules come from eslint-plugin-n8n-nodes-base. They need a JS-plugin compatibility probe before they can be moved into the shared Oxlint layer.",
+		"impact": "An Oxlint-only nodes package would lose 82 node and 12 credential format checks.",
+		"replacement": "Verify the plugin through Oxlint's JS-plugin bridge, then translate its file-scoped rule tables."
+	},
+	"@n8n/design-system/require-teleported-tooltip-in-dropdown": {
+		"layer": "frontend",
+		"native": null,
+		"reason": "The rule uses vue-eslint-parser's defineTemplateBodyVisitor. Oxlint does not expose Vue template parser services to JS plugins.",
+		"impact": "An Oxlint-only frontend package would lose the dropdown tooltip teleportation guard.",
+		"replacement": "Keep this ESLint rule for Vue files, or add a native template-aware Oxlint rule."
 	}
 }
