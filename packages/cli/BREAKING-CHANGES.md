@@ -14,6 +14,14 @@ If you set `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION=true` to keep the old persis
 
 ### What changed?
 
+The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start.
+
+### When is action necessary?
+
+If you mount a volume at `~/.n8n/binaryData`, n8n does not start: mount it at `~/.n8n/storage` instead, or set `N8N_STORAGE_PATH` to the old path to keep it. If both directories exist, n8n does not start. Move the contents of `~/.n8n/binaryData` into `~/.n8n/storage`, remove `~/.n8n/binaryData`, then start n8n again.
+
+### What changed?
+
 n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
 
 ### When is action necessary?
