@@ -226,6 +226,11 @@ export class AgentChatController {
 				send({ type: 'error', message: 'Session not found' });
 				return;
 			}
+			if (submitted.status === 'queued') {
+				const { sessionId, executionId: queuedId } = submitted;
+				send({ type: 'queued', sessionId, executionId: queuedId });
+				return;
+			}
 			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });

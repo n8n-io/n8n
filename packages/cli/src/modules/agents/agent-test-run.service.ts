@@ -88,12 +88,14 @@ interface ResumeDraftRunInput extends DraftResumeInput {
 	response: string;
 }
 
-/** A turn that claimed its session and can stream its answer. */
-export type DraftTurnSubmission = {
-	status: 'claimed';
-	sessionId: string;
-	stream: AsyncGenerator<StreamChunk>;
-};
+/**
+ * A turn the queue accepted: `claimed` runs now and streams its answer;
+ * `queued` waits behind the session's running turn and runs headless once it
+ * ends, so the answer arrives through the execution update push and history.
+ */
+export type DraftTurnSubmission =
+	| { status: 'claimed'; sessionId: string; stream: AsyncGenerator<StreamChunk> }
+	| { status: 'queued'; sessionId: string; executionId: string };
 
 export const agentTestRunContinuationSchema = z
 	.object({
@@ -210,7 +212,9 @@ export class AgentTestRunService {
 	}
 
 	/** Store the message as the session's next turn; see {@link DraftTurnSubmission}. */
-	async submitDraftRun(input: DraftRunInput): Promise<DraftTurnSubmission> {
+	async submitDraftRun(
+		input: DraftRunInput,
+	): Promise<Extract<DraftTurnSubmission, { status: 'claimed' }>> {
 		const claim = await this.agentTurnQueueService.tryRunNow(this.messageTurn(input));
 		if (!claim) throw new AgentThreadBusyError();
 		return {
@@ -229,13 +233,17 @@ export class AgentTestRunService {
 	): Promise<DraftTurnSubmission | { status: 'session_not_found' }> {
 		const prepared = await this.prepareDraftResume(input);
 		if (prepared.status !== 'ready') return prepared;
-		const claim = await this.agentTurnQueueService.tryRunNow(prepared.turn);
-		if (!claim) throw new AgentThreadBusyError();
-		return {
-			status: 'claimed',
-			sessionId: prepared.sessionId,
-			stream: this.agentExecutionOrchestratorService.resumeForChat(prepared.config, claim),
-		};
+		const submitted = await this.agentTurnQueueService.submit(prepared.turn);
+		return submitted.status === 'queued'
+			? { ...submitted, sessionId: prepared.sessionId }
+			: {
+					status: 'claimed',
+					sessionId: prepared.sessionId,
+					stream: this.agentExecutionOrchestratorService.resumeForChat(
+						prepared.config,
+						submitted.claim,
+					),
+				};
 	}
 
 	/**
@@ -376,6 +384,7 @@ export class AgentTestRunService {
 				projectId,
 				userMessage: null,
 				source,
+				resourceId,
 				runContext: { kind: 'resume', runId, toolCallId, resumeData },
 			},
 		};

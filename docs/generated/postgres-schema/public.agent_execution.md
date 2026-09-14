@@ -10,12 +10,14 @@
 | cost | double precision |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | duration | integer | 0 | false |  |  |  |
+| enqueueSequence | integer |  | true |  |  | Per-thread order assigned when an agent turn enters the durable queue |
 | error | text |  | true |  |  |  |
 | failureSummary | json |  | true |  |  | Execution failure projection as {count, latest} for session list queries |
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
+| resourceId | varchar(255) |  | true |  |  | Memory resource id of the sender, so a queued turn later runs as that user |
 | runContext | json |  | true |  |  | Top-level turn context; null for internal runs and after the turn ends |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -33,7 +35,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
-| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
+| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -52,6 +54,7 @@
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON public.agent_execution USING btree ("threadId", "createdAt") |
 | IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON public.agent_execution USING btree (status) WHERE ((status)::text = 'running'::text) |
 | IDX_agent_execution_threadId | CREATE UNIQUE INDEX "IDX_agent_execution_threadId" ON public.agent_execution USING btree ("threadId") WHERE (("runContext" IS NOT NULL) AND ((status)::text = 'running'::text)) |
+| IDX_agent_execution_threadId_enqueueSequence | CREATE UNIQUE INDEX "IDX_agent_execution_threadId_enqueueSequence" ON public.agent_execution USING btree ("threadId", "enqueueSequence") |
 | PK_ba438acc8532addc12d1ef17049 | CREATE UNIQUE INDEX "PK_ba438acc8532addc12d1ef17049" ON public.agent_execution USING btree (id) |
 
 ## Relations
@@ -68,12 +71,14 @@ erDiagram
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
+  integer enqueueSequence
   text error
   json failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ resourceId
   json runContext
   varchar_32_ source
   timestamp_3__with_time_zone startedAt

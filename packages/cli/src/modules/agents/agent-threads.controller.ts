@@ -49,7 +49,13 @@ export class AgentThreadsController {
 		}
 		return {
 			...result,
-			executions: result.executions.map(({ runContext: _runContext, ...execution }) => execution),
+			executions: result.executions.map((execution) => {
+				const publicExecution = { ...execution };
+				Reflect.deleteProperty(publicExecution, 'runContext');
+				Reflect.deleteProperty(publicExecution, 'resourceId');
+				Reflect.deleteProperty(publicExecution, 'enqueueSequence');
+				return publicExecution;
+			}),
 		};
 	}
 

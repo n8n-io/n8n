@@ -6,13 +6,39 @@ import {
 	WithTimestampsAndStringId,
 } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import type { SerializedThread } from 'chat';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'queued'
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted';
 
+/** The Chat SDK thread at arrival and the n8n connection it came in on. */
+export interface QueuedChannelTurn {
+	integrationType: string;
+	credentialId?: string;
+	/** `thread.toJSON()`; includes the inbound message when the turn came from one. */
+	thread: SerializedThread;
+}
+
+/** The action-only data not already included in `QueuedChannelTurn.thread.currentMessage`. */
+export interface QueuedChannelAction {
+	actionId: string;
+	kind?: 'approval';
+	label?: string;
+}
+
+/**
+ * What a queued row needs to run later: the turn kind and the inbound context
+ * no column holds. Cleared when the run ends.
+ */
 export type AgentTurnRunContext =
 	| { kind: 'message' }
 	| {
@@ -20,6 +46,7 @@ export type AgentTurnRunContext =
 			runId: string;
 			toolCallId: string;
 			resumeData: unknown;
+			channel?: QueuedChannelTurn & { action?: QueuedChannelAction };
 	  };
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
@@ -37,6 +64,7 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
+@Index(['threadId', 'enqueueSequence'], { unique: true })
 @Index(['threadId'], {
 	unique: true,
 	where: '"runContext" IS NOT NULL AND "status" = \'running\'',
@@ -55,7 +83,15 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
-	/** Set while a top-level turn owns the thread; null once the run ends. */
+	/** Per-thread order assigned when this turn enters the queue. */
+	@Column({ type: 'int', nullable: true })
+	enqueueSequence: number | null;
+
+	/** Memory resource id of the sender, so a queued turn later runs as that user. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	resourceId: string | null;
+
+	/** Set while the row waits in the turn queue; null once the run ends. */
 	@JsonColumn({ nullable: true })
 	runContext: AgentTurnRunContext | null;
 

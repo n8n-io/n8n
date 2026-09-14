@@ -75,8 +75,8 @@ export type StartExecutionParams = Omit<
 	agentName: string;
 };
 
-/** Claim context stored before the runtime starts. */
-export type TurnRowValues = {
+/** Queue-managed fields stored before the runtime starts. */
+export type TurnRowValues = Pick<AgentExecution, 'resourceId'> & {
 	runContext: AgentTurnRunContext;
 };
 
@@ -156,6 +156,7 @@ export class AgentExecutionService {
 		const executionId = await this.insertExecution(params, {
 			status: 'running',
 			startedAt,
+			resourceId: null,
 			runContext: null,
 		});
 		this.startHeartbeat(executionId);
@@ -175,9 +176,49 @@ export class AgentExecutionService {
 		const executionId = await this.insertExecution(params, {
 			status: 'running',
 			startedAt,
+			resourceId: params.resourceId,
 			runContext: params.runContext,
 		});
 		return this.holdClaim(executionId, params.threadId);
+	}
+
+	/** Record a turn that waits for the thread's running turn to end. */
+	async recordQueuedExecution(params: StartExecutionParams & TurnRowValues): Promise<string> {
+		return await this.insertExecution(params, {
+			status: 'queued',
+			startedAt: null,
+			resourceId: params.resourceId,
+			runContext: params.runContext,
+		});
+	}
+
+	/**
+	 * Promote a queued row to the thread's claimed running row. Null when the
+	 * row already left `queued`; throws {@link AgentThreadClaimConflictError}
+	 * while another claimed run holds the thread.
+	 */
+	async claimQueuedExecution(
+		executionId: string,
+		threadId: string,
+		startedAt: Date,
+	): Promise<ClaimedExecutionRecording | null> {
+		const promoted = await this.agentExecutionRepository.promoteQueuedToRunning(
+			executionId,
+			threadId,
+			startedAt,
+		);
+		return promoted ? this.holdClaim(executionId, threadId) : null;
+	}
+
+	/** End a queued row that cannot run, so the queue moves on and the sender sees why. */
+	async failQueuedExecution(scope: ExecutionScope, error: string): Promise<void> {
+		const failed = await this.agentExecutionRepository.failQueued(
+			scope.executionId,
+			error,
+			new Date(),
+		);
+		this.executionsNeedingTitleSync.delete(scope.executionId);
+		if (failed) this.executionUpdateBroadcaster.notify(scope);
 	}
 
 	/**
@@ -221,7 +262,7 @@ export class AgentExecutionService {
 
 	private async insertExecution(
 		params: StartExecutionParams,
-		row: Pick<AgentExecution, 'status' | 'startedAt' | 'runContext'>,
+		row: Pick<AgentExecution, 'status' | 'startedAt' | 'resourceId' | 'runContext'>,
 	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
 		const inserted = await this.agentExecutionRepository.insertExecution(
@@ -761,7 +802,7 @@ export class AgentExecutionService {
 }
 
 function toSessionStatus(
-	latestStatus: AgentExecutionStatus | undefined,
+	latestStatus: Exclude<AgentExecutionStatus, 'queued'> | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;

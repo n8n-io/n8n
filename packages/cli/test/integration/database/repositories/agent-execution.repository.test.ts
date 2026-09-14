@@ -12,7 +12,10 @@ import type { AgentExecution } from '@/modules/agents/entities/agent-execution.e
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentTurnQueueService } from '@/modules/agents/agent-turn-queue.service';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	AgentThreadClaimConflictError,
+} from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentExecutionRepository', () => {
@@ -87,6 +90,8 @@ describe('AgentExecutionRepository', () => {
 			agentId,
 			projectId,
 			userMessage: 'hello',
+			source: 'n8n-chat',
+			resourceId: 'draft-chat:user-1',
 			runContext: { kind: 'message' as const },
 		};
 
@@ -456,5 +461,73 @@ describe('AgentExecutionRepository', () => {
 			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
 			expect(secondPage.nextCursor).toBeNull();
 		});
+	});
+
+	it('orders, promotes, and fails blocked resumptions', async () => {
+		const thread = await createThread();
+		const resumeValues = (runId: string) => ({
+			threadId: thread.id,
+			status: 'queued' as const,
+			startedAt: null,
+			stoppedAt: null,
+			duration: 0,
+			userMessage: null,
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: 'n8n-chat',
+			attachments: null,
+			resourceId: 'draft-chat:user-1',
+			runContext: {
+				kind: 'resume' as const,
+				runId,
+				toolCallId: 'tool-1',
+				resumeData: { approved: true },
+			},
+		});
+		const running = await repository.insertExecution({
+			...resumeValues('running'),
+			status: 'running',
+			startedAt: new Date(),
+			userMessage: 'running',
+			resourceId: null,
+			runContext: { kind: 'message' },
+		});
+		const first = await repository.insertExecution(resumeValues('run-1'));
+		const second = await repository.insertExecution(resumeValues('run-2'));
+
+		expect(
+			(await repository.findQueuedByThread(thread.id)).map((row) => ({
+				sequence: row.enqueueSequence,
+				runId: row.runContext?.kind === 'resume' ? row.runContext.runId : null,
+			})),
+		).toEqual([
+			{ sequence: 1, runId: 'run-1' },
+			{ sequence: 2, runId: 'run-2' },
+		]);
+		await expect(
+			repository.promoteQueuedToRunning(first.id, thread.id, new Date()),
+		).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
+
+		await repository.updateIfRunning(running.id, {
+			status: 'success',
+			stoppedAt: new Date(),
+			duration: 1,
+			timeline: null,
+			storedAt: 'db',
+			error: null,
+			failureSummary: null,
+		});
+		expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(true);
+		expect(await repository.failQueued(second.id, 'resume unavailable', new Date())).toBe(true);
+		expect(await repository.findThreadIdsWithQueued()).toEqual([]);
 	});
 });

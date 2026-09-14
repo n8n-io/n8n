@@ -3,7 +3,6 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
-import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
@@ -41,18 +40,20 @@ describe('AgentThreadsController route access scopes', () => {
 });
 
 describe('AgentThreadsController.getThread', () => {
-	it('does not expose the internal turn claim context', async () => {
+	it('does not expose internal turn queue fields', async () => {
 		const executionService = mock<AgentExecutionService>();
 		executionService.getThreadDetail.mockResolvedValue({
-			thread: { id: 'thread-1' } as never,
+			thread: { id: 'thread-1' },
 			executions: [
 				{
 					id: 'execution-1',
-					status: 'running',
+					status: 'queued',
 					runContext: { kind: 'resume' },
-				} as AgentExecution,
+					resourceId: 'draft-chat:user-1',
+					enqueueSequence: 1,
+				},
 			],
-		});
+		} as never);
 		const controller = new AgentThreadsController(
 			executionService,
 			mock<AgentSessionLangSmithExportService>(),
@@ -62,7 +63,6 @@ describe('AgentThreadsController.getThread', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as never);
 
-		expect(result.executions[0]).toMatchObject({ id: 'execution-1', status: 'running' });
-		expect(result.executions[0]).not.toHaveProperty('runContext');
+		expect(result.executions).toEqual([{ id: 'execution-1', status: 'queued' }]);
 	});
 });

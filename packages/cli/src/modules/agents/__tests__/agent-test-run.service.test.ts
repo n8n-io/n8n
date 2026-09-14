@@ -147,6 +147,38 @@ describe('AgentTestRunService', () => {
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
 
+	it('stores a blocked draft resume for the queue drain', async () => {
+		const { service, agentTurnQueueService, agentExecutionOrchestratorService } = makeService();
+		agentTurnQueueService.submit.mockResolvedValue({
+			status: 'queued',
+			executionId: 'execution-2',
+		});
+
+		const result = await service.submitDraftResume({
+			agentId,
+			projectId,
+			sessionId: 'session-1',
+			runId: 'run-1',
+			toolCallId: 'tool-call-1',
+			resumeData: { approved: true },
+			user,
+		});
+
+		expect(result).toEqual({
+			status: 'queued',
+			sessionId: 'session-1',
+			executionId: 'execution-2',
+		});
+		expect(agentTurnQueueService.submit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'session-1',
+				resourceId: 'draft-chat:user-1',
+				runContext: expect.objectContaining({ kind: 'resume', runId: 'run-1' }),
+			}),
+		);
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+	});
+
 	it('returns partial text and every suspension for a continued session', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		const chunks: StreamChunk[] = [

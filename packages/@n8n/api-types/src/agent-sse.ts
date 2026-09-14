@@ -149,4 +149,14 @@ export type AgentSseEvent =
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
 	  }
-	| { type: 'done'; sessionId?: string; executionId?: string };
+	| { type: 'done'; sessionId?: string; executionId?: string }
+	| {
+			/**
+			 * This turn waits behind the active turn on this session and runs
+			 * once that turn ends. Terminal: the stream closes after it, and the
+			 * answer arrives through the execution update push and history.
+			 */
+			type: 'queued';
+			sessionId: string;
+			executionId: string;
+	  };

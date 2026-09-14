@@ -167,6 +167,7 @@ describe('AgentExecutionService', () => {
 					agentName: 'Agent',
 					projectId: 'project-1',
 					userMessage: 'Run',
+					resourceId: null,
 					runContext: { kind: 'message' },
 				},
 				new Date(),

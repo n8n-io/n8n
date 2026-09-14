@@ -10,7 +10,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { AgentTurnQueueService } from '../../agent-turn-queue.service';
+import { AgentTurnQueueService, type AgentTurnClaim } from '../../agent-turn-queue.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -36,6 +36,7 @@ interface FakeThread {
 	subscribe: Mock;
 	post: Mock;
 	startTyping: Mock;
+	toJSON: Mock;
 	messages?: AsyncIterable<unknown>;
 }
 
@@ -80,6 +81,7 @@ function makeThread(
 		subscribe: vi.fn().mockResolvedValue(undefined),
 		post: vi.fn().mockResolvedValue(undefined),
 		startTyping: vi.fn().mockResolvedValue(undefined),
+		toJSON: vi.fn(() => ({ id, channelId: 'channel-1', isDM: false })),
 		...(messages ? { messages } : {}),
 	};
 }
@@ -108,6 +110,16 @@ function throwingAsyncIterable(error: Error): AsyncIterable<never> {
 
 async function* toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	for (const c of chunks) yield c;
+}
+
+function claimFor(threadId: string): AgentTurnClaim {
+	return {
+		executionId: 'execution-1',
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
 }
 
 function makeAgentExecutor(chunks: StreamChunk[]) {
@@ -279,12 +291,10 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 		Container.set(AgentTurnQueueService, {
-			tryRunNow: vi.fn(async ({ threadId }) => ({
-				executionId: 'execution-1',
-				threadId,
-				abortSignal: new AbortController().signal,
-				release: vi.fn(async () => {}),
-				fail: vi.fn(async () => {}),
+			tryRunNow: vi.fn(async ({ threadId }) => claimFor(threadId)),
+			submit: vi.fn(async ({ threadId }) => ({
+				status: 'claimed',
+				claim: claimFor(threadId),
 			})),
 		} as never);
 	});

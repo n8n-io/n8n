@@ -9,8 +9,8 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTestRunService } from './agent-test-run.service';
+import { consumeStream } from './agent-turn-queue.service';
 import {
 	AgentBackgroundJobService,
 	collectResultData,
@@ -35,7 +35,6 @@ export class AgentWorkflowToolResumeService {
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly messageContextService: IntegrationMessageContextService,
-		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
@@ -205,8 +204,8 @@ export class AgentWorkflowToolResumeService {
 
 	/**
 	 * The preview's SSE stream closed when the run suspended, so there is nothing to
-	 * stream into: draining headlessly is what records the turn, and the push then
-	 * tells an open chat to re-read it.
+	 * stream into: the resume runs headless, now or once the session's running
+	 * turn ends, and the execution update push tells an open chat to re-read it.
 	 */
 	private async resumeInPreviewChat(agentRun: RelatedAgentRun, resumeData: unknown): Promise<void> {
 		// The draft version gates node and workflow tools by the user's access, so
@@ -223,7 +222,7 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		const result = await this.agentTestRunService.resumeDraftRun({
+		const submitted = await this.agentTestRunService.submitDraftResume({
 			agentId: agentRun.agentId,
 			projectId: agentRun.projectId,
 			sessionId: agentRun.threadId,
@@ -232,24 +231,16 @@ export class AgentWorkflowToolResumeService {
 			resumeData,
 			user,
 			previewChat: agentRun.previewChat,
-			response: '',
 		});
-
-		// `suspended` is chained HITL — recorded either way; anything else never ran.
-		if (result.status !== 'completed' && result.status !== 'suspended') {
+		if (submitted.status === 'session_not_found') {
 			this.logger.warn('Preview chat run could not be resumed', {
 				agentId: agentRun.agentId,
 				runId: agentRun.runId,
-				status: result.status,
+				status: submitted.status,
 			});
 			return;
 		}
-
-		this.executionUpdateBroadcaster.notify({
-			projectId: agentRun.projectId,
-			agentId: agentRun.agentId,
-			threadId: agentRun.threadId,
-			executionId: result.executionId ?? '',
-		});
+		// A queued resume runs from the turn queue; a claimed one runs here.
+		if (submitted.status === 'claimed') await consumeStream(submitted.stream);
 	}
 }

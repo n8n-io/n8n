@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { OperationalError, UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -31,6 +31,7 @@ import {
 	AgentTurnQueueService,
 	type AgentTurnClaim,
 } from '../agent-turn-queue.service';
+import type { AgentExecution, QueuedChannelTurn } from '../entities/agent-execution.entity';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
@@ -229,6 +230,7 @@ export class AgentChatBridge {
 			integration,
 			agentService,
 			turnQueueService: this.turnQueueService,
+			channelTurn: (thread) => this.channelTurn(thread),
 			logger,
 			callbackStore: this.callbackStore,
 			deleteActionMessageBeforeResume:
@@ -449,6 +451,7 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
+			{ notifyOnDuplicate: false },
 		);
 	}
 
@@ -720,10 +723,81 @@ export class AgentChatBridge {
 		await this.runTurn(thread, message, turn, claim);
 	}
 
+	/** Run a queued channel resume headless in its rebuilt thread. */
+	async runQueuedResume(row: AgentExecution, claim: AgentTurnClaim): Promise<void> {
+		const context = row.runContext;
+		if (context?.kind !== 'resume' || !context.channel) {
+			throw new UnexpectedError('Queued agent turn is not a channel resume');
+		}
+		const { thread, currentMessage } = await this.rebuildThread(context.channel);
+		const action = context.channel.action;
+		if (action && !currentMessage) {
+			throw new UnexpectedError('Queued channel action has no message context');
+		}
+		await this.hitlResumeHandler.runResume(
+			thread,
+			{
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				runId: context.runId,
+				toolCallId: context.toolCallId,
+				resumeData: context.resumeData,
+				integrationType: this.integration.type,
+				...(action && currentMessage
+					? {
+							beforeResume: async (abortSignal: AbortSignal) =>
+								await this.hitlResumeHandler.runActionBeforeResume(
+									thread,
+									action,
+									currentMessage,
+									context.resumeData,
+									undefined,
+									abortSignal,
+								),
+						}
+					: {}),
+			},
+			claim,
+		);
+	}
+
+	private channelTurn(thread: Thread<unknown, unknown>): QueuedChannelTurn {
+		return {
+			integrationType: this.integration.type,
+			credentialId: this.integration.credentialId,
+			thread: thread.toJSON(),
+		};
+	}
+
+	private async rebuildThread(
+		channel: QueuedChannelTurn,
+	): Promise<{ thread: Thread; currentMessage?: Message }> {
+		const { Message, ThreadImpl } = await loadChatSdk();
+		const adapter = this.chat.getAdapter(channel.integrationType);
+		if (!adapter) {
+			throw new UnexpectedError(`Chat adapter "${channel.integrationType}" is not available`);
+		}
+		const currentMessage = channel.thread.currentMessage
+			? Message.fromJSON(channel.thread.currentMessage)
+			: undefined;
+		return {
+			thread: new ThreadImpl({
+				adapter,
+				stateAdapter: this.chat.getState(),
+				logger: this.chat.getLogger(),
+				id: channel.thread.id,
+				channelId: channel.thread.channelId,
+				isDM: channel.thread.isDM,
+				channelVisibility: channel.thread.channelVisibility,
+				...(currentMessage ? { currentMessage, initialMessage: currentMessage } : {}),
+			}),
+			currentMessage,
+		};
+	}
+
 	/**
-	 * Run the claimed turn and stream the reply into `thread`. Shared by the live
-	 * path and the headless drain, which rebuilds `thread` and `message` from the
-	 * row. A failure before the run started ends the row through the claim.
+	 * Run the claimed turn and stream the reply into `thread`. A failure before
+	 * the run started ends the row through the claim.
 	 */
 	private async runTurn(
 		thread: Thread,

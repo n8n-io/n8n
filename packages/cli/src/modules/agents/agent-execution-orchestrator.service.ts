@@ -17,6 +17,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { AgentActionAlreadyHandledError } from './agent-action-already-handled.error';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -390,8 +391,10 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
-	 * Validate a resume request before it claims the thread and return the
-	 * thread the suspended run belongs to.
+	 * Validate a resume request before it enters the turn queue and return the
+	 * thread the suspended run belongs to. Throws
+	 * {@link AgentActionAlreadyHandledError} once the checkpoint is no longer
+	 * suspended, and a `UserError` for a checkpoint the caller may not resume.
 	 */
 	async resolveResumeThread(config: ResumeForChatConfig): Promise<string> {
 		return (await this.loadResumableCheckpoint(config)).threadId;
@@ -443,7 +446,7 @@ export class AgentExecutionOrchestratorService {
 		// A second click, or a run that already moved on. Checked last: the
 		// scope errors above say why the resume can never run.
 		if (checkpointStatus.checkpoint.status !== 'suspended') {
-			throw new UserError('This action has already been handled');
+			throw new AgentActionAlreadyHandledError();
 		}
 
 		return { threadId: memoryScope.threadId, sandboxPrincipalHash };
@@ -626,7 +629,8 @@ export class AgentExecutionOrchestratorService {
 					previewChat,
 				});
 				try {
-					// Message context is written only after this turn claims the thread.
+					// The claimed turn writes message context. Another turn cannot
+					// redirect the running turn's replies.
 					await this.integrationMessageContextService.setLatest(
 						memory.threadId,
 						memory.resourceId,
@@ -1011,8 +1015,8 @@ export class AgentExecutionOrchestratorService {
 
 	/**
 	 * Finalize the claimed row with the turn's record, release the runtime lease,
-	 * then release the claim. A turn that failed before it had a runtime reports
-	 * the stored agent configuration instead.
+	 * then release the claim so the thread's queued rows run. A turn that failed
+	 * before it had a runtime reports the stored agent configuration instead.
 	 */
 	private async finishTurn(args: {
 		claim: AgentTurnClaim;

@@ -268,6 +268,32 @@ describe('AgentChatController SSE done payload', () => {
 		});
 	});
 
+	it('ends a blocked resume with its queued execution', async () => {
+		const { controller, agentTestRunService } = makeController();
+		agentTestRunService.submitDraftResume.mockResolvedValue({
+			status: 'queued',
+			sessionId: 'thread-1',
+			executionId: 'exec-queued-resume',
+		});
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()));
+		expect(events).toEqual([
+			{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-resume' },
+		]);
+		expect(res.end).toHaveBeenCalled();
+	});
+
 	it.each([
 		{
 			name: 'new chat',
