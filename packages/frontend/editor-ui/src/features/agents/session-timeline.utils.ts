@@ -1,4 +1,4 @@
-import { WORKFLOW_WAIT_SUSPEND_TYPE } from '@n8n/api-types';
+import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundTaskSignal } from '@n8n/api-types';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -11,6 +11,7 @@ import type {
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from './utils/background-task-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
 	formatToolNameForDisplay,
@@ -127,6 +128,14 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 }
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+export function backgroundTaskSignalSummary(item: TimelineItem, i18n: TimelineI18n): string {
+	return (item.backgroundTaskSignal?.tasks ?? [])
+		.map(
+			(task) => `${task.title} — ${i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status])}`,
+		)
+		.join(', ');
+}
 
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
 	return i18n.baseText(
@@ -269,6 +278,10 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('error'));
 	}
 
+	for (const task of item.backgroundTaskSignal?.tasks ?? []) {
+		parts.push(task.title, labelForKey(`background-task-${task.status}`));
+	}
+
 	parts.push(
 		item.content,
 		item.toolName,
@@ -338,6 +351,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	'execution-error': 'var(--color--danger)',
 	suspension: 'var(--color--warning)',
 	'hitl-response': 'var(--color--blue-400)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function kindColorToken(kind: EventKind): string {
@@ -353,6 +367,7 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	'execution-error': 'var(--color--red-600)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
+	'background-task-signal': 'var(--color--mint-600)',
 };
 
 export function chartBlockColor(kind: EventKind): string {
@@ -421,7 +436,18 @@ interface RawHitlResponseEvent {
 	timestamp: number;
 }
 
-type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent | RawHitlResponseEvent;
+interface RawBackgroundTaskSignalEvent {
+	type: 'background-task-signal';
+	timestamp: number;
+	signal: AgentBackgroundTaskSignal;
+}
+
+type RawEvent =
+	| RawToolCallEvent
+	| RawTextEvent
+	| RawSuspensionEvent
+	| RawHitlResponseEvent
+	| RawBackgroundTaskSignalEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -586,7 +612,14 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 		}
 
 		for (const event of timelineEvents(exec)) {
-			if (event.type === 'text') {
+			if (event.type === 'background-task-signal') {
+				items.push({
+					kind: 'background-task-signal',
+					executionId: exec.id,
+					timestamp: event.timestamp,
+					backgroundTaskSignal: event.signal,
+				});
+			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
 				const startTs = event.timestamp ?? 0;

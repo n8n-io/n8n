@@ -12,6 +12,22 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	it('scrubs titles in the initial signal', () => {
+		const recorder = new ExecutionRecorder(undefined, undefined, {
+			tasks: [
+				{
+					id: 'job-1',
+					title: 'Check api_key=example-value',
+					kind: 'subagent',
+					status: 'completed',
+				},
+			],
+		});
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			signal: { tasks: [{ title: 'Check [REDACTED]' }] },
+		});
+	});
+
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {

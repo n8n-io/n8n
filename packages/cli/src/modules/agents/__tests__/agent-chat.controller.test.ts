@@ -126,6 +126,24 @@ describe('AgentChatController background tasks', () => {
 	});
 	const request = { params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' } };
 
+	it('scrubs task titles in the response', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				title: 'Check api_key=example-value',
+				kind: 'subagent',
+				status: 'running',
+				createdAt: new Date(),
+			},
+		] as never);
+		const response = await controller.getBackgroundTasks(request as never);
+		expect(response.tasks[0].title).toBe('Check [REDACTED]');
+	});
+
 	it('returns current group statuses without consuming results', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();

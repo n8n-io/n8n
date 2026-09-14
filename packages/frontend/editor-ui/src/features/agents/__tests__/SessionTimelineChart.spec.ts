@@ -278,3 +278,24 @@ describe('SessionTimelineChart', () => {
 		}
 	});
 });
+
+it('shows the signal label and task status in the chart popover', async () => {
+	vi.useFakeTimers();
+	const wrapper = mountChart({
+		items: [
+			item({
+				kind: 'background-task-signal',
+				timestamp: 1000,
+				backgroundTaskSignal: {
+					tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
+				},
+			}),
+		],
+	});
+	await wrapper.get('[data-test-id="timeline-block"]').trigger('focus');
+	await vi.runAllTimersAsync();
+	expect(wrapper.text()).toContain('Background task results received');
+	expect(wrapper.text()).toContain('Check invoices — Failed');
+	wrapper.unmount();
+	vi.useRealTimers();
+});

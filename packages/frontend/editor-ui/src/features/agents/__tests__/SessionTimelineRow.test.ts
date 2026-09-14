@@ -104,3 +104,16 @@ describe('SessionTimelineRow', () => {
 		expect(wrapper.find('[data-test-id="timeline-tool-error-badge"]').exists()).toBe(false);
 	});
 });
+
+it('shows task titles and translated statuses in a signal row', async () => {
+	const wrapper = await renderComponent(
+		item({
+			kind: 'background-task-signal',
+			backgroundTaskSignal: {
+				tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
+			},
+		}),
+	);
+	expect(wrapper.text()).toContain('Check invoices — agents.chat.backgroundTasks.status.failed');
+	expect(wrapper.find('[data-kind="background-task-signal"]').exists()).toBe(true);
+});

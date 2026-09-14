@@ -14,6 +14,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -61,6 +62,7 @@ export class AgentWakeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -219,7 +221,7 @@ export class AgentWakeService {
 			}
 
 			if (signal.aborted) return;
-			await this.jobRepository.markMailConsumed(
+			await this.backgroundJobService.markMailConsumed(
 				threadId,
 				jobs.map((job) => job.id),
 			);

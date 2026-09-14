@@ -706,12 +706,10 @@ onBeforeUnmount(() => {
 	border-bottom: var(--border);
 	min-width: 0;
 
-	button {
-		height: auto;
-		min-height: var(--height--xl);
-		padding: var(--spacing--xs) var(--spacing--sm);
-		color: var(--text-color);
-	}
+	--ai-activity-step--height: auto;
+	--ai-activity-step--min-height: var(--height--xl);
+	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--ai-activity-step--color: var(--text-color);
 }
 
 .backgroundTaskDetails {
@@ -773,9 +771,6 @@ onBeforeUnmount(() => {
 .taskSpinner {
 	flex-shrink: 0;
 	color: var(--color--primary);
-	@media (prefers-reduced-motion: reduce) {
-		animation: none;
-	}
 }
 
 .taskTimer {

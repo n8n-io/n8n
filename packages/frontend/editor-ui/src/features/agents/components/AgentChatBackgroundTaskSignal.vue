@@ -2,15 +2,10 @@
 import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
 import { N8nAiActivityStep, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from '../utils/background-task-labels';
 
 const props = defineProps<{ signal: AgentBackgroundTaskSignal }>();
 const i18n = useI18n();
-
-const statusLabels = {
-	completed: 'agents.chat.backgroundTasks.status.completed',
-	failed: 'agents.chat.backgroundTasks.status.failed',
-	cancelled: 'agents.chat.backgroundTasks.status.cancelled',
-} as const;
 </script>
 
 <template>
@@ -30,7 +25,7 @@ const statusLabels = {
 						size="small"
 					/>
 					<N8nText size="small" color="text-base">{{
-						i18n.baseText(statusLabels[task.status])
+						i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status])
 					}}</N8nText>
 				</span>
 			</li>

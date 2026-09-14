@@ -6,7 +6,6 @@ import { aiActivityStepGroupContext } from '../N8nAiActivityStep/context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
-import N8nIcon from '../N8nIcon';
 
 withDefaults(
 	defineProps<{
@@ -54,13 +53,10 @@ provide(aiActivityStepGroupContext, true);
 				{{ label }}
 				<template #suffix>
 					<slot name="header-trailing" />
-					<N8nIcon
-						v-if="contentPosition === 'above'"
-						:icon="isOpen ? 'chevron-up' : 'chevron-down'"
-						size="large"
-						aria-hidden="true"
+					<N8nAiActivityStepChevron
+						:open="isOpen"
+						:direction="contentPosition === 'above' ? 'down' : 'right'"
 					/>
-					<N8nAiActivityStepChevron v-else :open="isOpen" />
 				</template>
 			</N8nAiActivityStepButton>
 		</CollapsibleTrigger>

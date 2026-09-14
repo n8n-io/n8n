@@ -211,6 +211,12 @@ BackgroundTasks.args = {
 	contentPosition: 'above',
 };
 
+export const LongBackgroundTaskHeader = BackgroundTasks.bind({});
+LongBackgroundTaskHeader.args = {
+	...BackgroundTasks.args,
+	label: 'Running background tasks to check outstanding invoices and reply to requests',
+};
+
 const Template: StoryFn = (args) => ({
 	components: { N8nAiActivityStep, ...storyComponents },
 	setup: () => ({ args, jsonTextStyle }),

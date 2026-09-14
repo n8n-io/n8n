@@ -958,7 +958,9 @@ export class AgentExecutionOrchestratorService {
 				...(abortSignal ? { abortSignal } : {}),
 			});
 			const startParams: StartExecutionParams = {
-				...(backgroundTaskSignal ? { initialTimeline: recorder.getMessageRecord().timeline } : {}),
+				...(backgroundTaskSignal
+					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
+					: {}),
 				threadId,
 				agentId,
 				agentName: agentInstance.name,

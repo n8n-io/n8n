@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
@@ -285,7 +286,7 @@ export class AgentChatController {
 				.map((job) => job.id),
 			tasks: jobs.map((job) => ({
 				id: job.id,
-				title: job.title,
+				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
 				startedAt: job.createdAt.toISOString(),

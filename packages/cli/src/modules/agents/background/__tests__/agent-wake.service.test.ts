@@ -21,6 +21,7 @@ import {
 	MAX_CONSECUTIVE_FAILED_WAKES,
 	WAKE_DEBOUNCE_MS,
 } from '../agent-wake.service';
+import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -59,6 +60,10 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 
 function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
+	const backgroundJobService = mock<AgentBackgroundJobService>();
+	backgroundJobService.markMailConsumed.mockImplementation(
+		async (...args) => await jobRepository.markMailConsumed(...args),
+	);
 	const executionRepository = mock<AgentExecutionRepository>();
 	const agentRepository = mock<AgentRepository>();
 	const userRepository = mock<UserRepository>();
@@ -96,10 +101,12 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		instanceSettings,
 		agentsConfig,
 		logger,
+		backgroundJobService,
 	);
 
 	return {
 		service,
+		backgroundJobService,
 		jobRepository,
 		executionRepository,
 		agentRepository,
@@ -294,7 +301,11 @@ describe('AgentWakeService', () => {
 	});
 
 	it('delivers pending job results and marks them as delivered', async () => {
-		const { service, orchestrator, jobRepository } = setup();
+		const { service, orchestrator, jobRepository, backgroundJobService } = setup();
+		backgroundJobService.markMailConsumed.mockImplementation(async (...args) => {
+			expect(service.isWakeActive('thread-1')).toBe(false);
+			return await jobRepository.markMailConsumed(...args);
+		});
 
 		await service.attemptWake('thread-1');
 

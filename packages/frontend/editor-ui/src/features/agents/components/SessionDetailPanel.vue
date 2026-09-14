@@ -37,6 +37,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from '../utils/background-task-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -198,6 +199,8 @@ const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
+	if (item.kind === 'background-task-signal')
+		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
@@ -218,6 +221,7 @@ const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
+	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
@@ -328,7 +332,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<template v-if="item.kind === 'execution-error'">
+					<template v-if="item.kind === 'background-task-signal'">
+						<ul :class="$style.backgroundTasks" data-testid="background-task-signal-details">
+							<li v-for="task in item.backgroundTaskSignal?.tasks" :key="task.id">
+								{{ task.title }} —
+								{{ i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status]) }}
+							</li>
+						</ul>
+					</template>
+					<template v-else-if="item.kind === 'execution-error'">
 						<N8nCallout theme="danger" data-testid="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
@@ -461,6 +473,11 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/markdown';
+
+.backgroundTasks {
+	padding-inline-start: var(--spacing--md);
+	overflow-wrap: anywhere;
+}
 
 .panel {
 	display: flex;

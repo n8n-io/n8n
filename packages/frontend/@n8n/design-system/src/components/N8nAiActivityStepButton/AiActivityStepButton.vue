@@ -58,10 +58,13 @@ function handleClick(event: MouseEvent) {
 .button {
 	max-width: 90%;
 	justify-content: flex-start;
-	color: var(--text-color--subtler);
+	color: var(--ai-activity-step--color, var(--text-color--subtler));
 	font-size: var(--font-size--sm);
 	position: relative;
-	padding-inline: 0;
+	// Inherit header styles through the group without selecting nested buttons.
+	padding: var(--ai-activity-step--padding, 0);
+	height: var(--ai-activity-step--height, var(--button--height));
+	min-height: var(--ai-activity-step--min-height, 0);
 
 	--button--padding: 0;
 	--button--font-size: var(--font-size--sm);
@@ -69,7 +72,7 @@ function handleClick(event: MouseEvent) {
 	--button--color--background-hover: transparent;
 
 	&:hover {
-		color: var(--text-color--subtle);
+		color: var(--ai-activity-step--color, var(--text-color--subtle));
 	}
 
 	&.nonInteractive {
@@ -106,7 +109,6 @@ function handleClick(event: MouseEvent) {
 
 	> * {
 		min-width: 0;
-		width: 100%;
 	}
 
 	.label {

@@ -191,8 +191,11 @@ export class AgentBackgroundJobService {
 		try {
 			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
 			if (settled) {
-				await this.notifyTaskUpdate(jobId);
-				await this.requestWakeSafely(jobId);
+				const job = await this.findJobForUpdate(jobId);
+				if (job) {
+					this.notifyJobUpdate(job);
+					await this.requestWakeSafely(job.parentThreadId);
+				}
 			}
 			return settled;
 		} finally {
@@ -234,7 +237,11 @@ export class AgentBackgroundJobService {
 			jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
 		}
 
-		return jobs.map((job) => ({
+		return jobs.map((job) => this.toJobView(job));
+	}
+
+	private toJobView(job: AgentBackgroundJob): BackgroundJobView {
+		return {
 			id: job.id,
 			kind: job.kind,
 			title: job.title,
@@ -246,13 +253,13 @@ export class AgentBackgroundJobService {
 			settledAt: job.settledAt,
 			notifiedAt: job.notifiedAt,
 			childExecutionId: job.childExecutionId,
-		}));
+		};
 	}
 
 	async listCurrentGroupForThread(parentThreadId: string): Promise<BackgroundJobView[]> {
-		const jobs = (await this.listForThread(parentThreadId)).sort(
-			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
-		);
+		const jobs = (await this.jobRepository.findByParentThread(parentThreadId))
+			.map((job) => this.toJobView(job))
+			.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
 		let group: BackgroundJobView[] = [];
 		let groupEndsAt = Number.NEGATIVE_INFINITY;
 		for (const job of jobs) {
@@ -315,26 +322,37 @@ export class AgentBackgroundJobService {
 		return 'cancelled';
 	}
 
-	private async notifyTaskUpdate(jobId: string): Promise<void> {
+	private async findJobForUpdate(jobId: string): Promise<AgentBackgroundJob | null> {
 		try {
-			const job = await this.jobRepository.findById(jobId);
-			if (job) this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+			return await this.jobRepository.findById(jobId);
 		} catch (error) {
 			this.logger.warn('Failed to resolve background task update', { jobId, error });
+			return null;
 		}
 	}
 
-	private async requestWakeSafely(jobId: string): Promise<void> {
+	private notifyJobUpdate(job: AgentBackgroundJob): void {
+		try {
+			this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+		} catch (error) {
+			this.logger.warn('Failed to notify background task update', { jobId: job.id, error });
+		}
+	}
+
+	private async notifyTaskUpdate(jobId: string): Promise<void> {
+		const job = await this.findJobForUpdate(jobId);
+		if (job) this.notifyJobUpdate(job);
+	}
+
+	private async requestWakeSafely(parentThreadId: string): Promise<void> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
-			const job = await this.jobRepository.findById(jobId);
-			if (!job) return;
 			const { AgentWakeService } = await import('./agent-wake.service.js');
-			await Container.get(AgentWakeService).requestWake(job.parentThreadId);
+			await Container.get(AgentWakeService).requestWake(parentThreadId);
 		} catch (error) {
 			this.logger.warn('Failed to request a parent wake for a settled background job', {
-				jobId,
+				parentThreadId,
 				error,
 			});
 		}

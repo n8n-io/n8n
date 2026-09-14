@@ -91,6 +91,22 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		},
 	);
 
+	it('sends task updates without a relay on a single main', async () => {
+		broadcaster.notifyBackgroundTasks('agent-1', 'thread-1');
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalledOnce());
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('skips task updates for projects without members', async () => {
+		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue([]);
+		broadcaster.notifyBackgroundTasks('agent-1', 'thread-1');
+		await vi.waitFor(() =>
+			expect(projectRelationRepository.findUserIdsByProjectId).toHaveBeenCalledWith('project-1'),
+		);
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
 	it('delivers relayed task updates without another relay', () => {
 		const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
 		broadcaster.handleBackgroundTasksRelay({ data, userIds: ['user-2'] });

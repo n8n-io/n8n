@@ -345,19 +345,25 @@ describe('listCurrentGroupForThread', () => {
 	it.each(['completed', 'failed', 'cancelled'] as const)(
 		'keeps a %s job until every job is terminal and its results are consumed',
 		async (status) => {
-			const { service } = setup();
+			const { service, jobRepository } = setup();
 			const finished = makeJob({
 				status,
 				createdAt: new Date(1000),
 				settledAt: new Date(3000),
 			});
 			const running = makeJob({ id: 'job-2', createdAt: new Date(2000) });
-			const list = vi.spyOn(service, 'listForThread').mockResolvedValue([running, finished]);
-			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([finished, running]);
+			const list = jobRepository.findByParentThread.mockResolvedValue([running, finished]);
+			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+				expect.objectContaining({ id: finished.id }),
+				expect.objectContaining({ id: running.id }),
+			]);
 			expect(list).toHaveBeenCalledWith('thread-1');
 			const terminal = { ...running, status, settledAt: new Date(4000) };
 			list.mockResolvedValue([finished, terminal]);
-			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([finished, terminal]);
+			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+				expect.objectContaining({ id: finished.id, status }),
+				expect.objectContaining({ id: terminal.id, status }),
+			]);
 			list.mockResolvedValue(
 				[finished, terminal].map((job) => ({ ...job, notifiedAt: new Date(5000) })),
 			);
@@ -366,7 +372,7 @@ describe('listCurrentGroupForThread', () => {
 	);
 
 	it('restores all overlapping jobs in the current group and excludes an earlier group', async () => {
-		const { service } = setup();
+		const { service, jobRepository } = setup();
 		const earlier = makeJob({
 			id: 'earlier',
 			status: 'completed',
@@ -386,20 +392,24 @@ describe('listCurrentGroupForThread', () => {
 			settledAt: new Date(7000),
 		});
 		const running = makeWorkflowJob({ id: 'running', createdAt: new Date(6000) });
-		vi.spyOn(service, 'listForThread').mockResolvedValue([running, earlier, second, first]);
-		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([first, second, running]);
+		jobRepository.findByParentThread.mockResolvedValue([running, earlier, second, first]);
+		expect(await service.listCurrentGroupForThread('thread-1')).toEqual(
+			[first, second, running].map(({ id }) => expect.objectContaining({ id })),
+		);
 	});
 
 	it('starts a fresh group after a gap with no running jobs', async () => {
-		const { service } = setup();
+		const { service, jobRepository } = setup();
 		const finished = makeJob({
 			status: 'completed',
 			createdAt: new Date(1000),
 			settledAt: new Date(2000),
 		});
 		const next = makeJob({ id: 'next', createdAt: new Date(3000) });
-		vi.spyOn(service, 'listForThread').mockResolvedValue([finished, next]);
-		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([next]);
+		jobRepository.findByParentThread.mockResolvedValue([finished, next]);
+		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+			expect.objectContaining({ id: next.id }),
+		]);
 	});
 
 	it('returns no group when the thread has no jobs', async () => {
@@ -920,4 +930,99 @@ describe('serializeWorkflowJobResult', () => {
 			`${overCapSerialized.slice(0, WORKFLOW_JOB_RESULT_MAX_CHARS)}… [truncated, full data on execution]`,
 		);
 	});
+});
+
+describe('background task update failures', () => {
+	afterEach(() => Container.reset());
+
+	it('reads orphan candidates without reconciliation or notifications', async () => {
+		const { service, jobRepository, executionRepository, executionPersistence, updateBroadcaster } =
+			setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findByParentThread.mockResolvedValue([makeJob(), makeWorkflowJob()]);
+		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
+			new Map([['child-thread-1', 'error']]),
+		);
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
+
+		expect(await service.listCurrentGroupForThread('thread-1')).toHaveLength(2);
+		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
+		expect(executionPersistence.findStatusesByIds).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(wake.requestWake).not.toHaveBeenCalled();
+	});
+
+	it('uses the start time when a terminal job has no settlement time and orders ties by ID', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([
+			makeJob({ id: 'b', createdAt: new Date(1000), status: 'completed' }),
+			makeJob({ id: 'a', createdAt: new Date(1000), status: 'failed' }),
+		]);
+		expect((await service.listCurrentGroupForThread('thread-1')).map(({ id }) => id)).toEqual([
+			'a',
+			'b',
+		]);
+		jobRepository.findByParentThread.mockResolvedValue([
+			makeJob({ id: 'a', createdAt: new Date(1000), status: 'completed' }),
+			makeJob({ id: 'b', createdAt: new Date(2000), status: 'completed' }),
+		]);
+		expect((await service.listCurrentGroupForThread('thread-1')).map(({ id }) => id)).toEqual([
+			'b',
+		]);
+	});
+
+	it('preserves settlement when the job lookup fails', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
+		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
+		expect(jobRepository.findById).toHaveBeenCalledOnce();
+		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(wake.requestWake).not.toHaveBeenCalled();
+	});
+
+	it('requests a wake when notification fails after a successful lookup', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findById.mockResolvedValue(makeJob());
+		updateBroadcaster.notifyBackgroundTasks.mockImplementation(() => {
+			throw new Error('notification failed');
+		});
+		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
+		expect(jobRepository.findById).toHaveBeenCalledOnce();
+		expect(wake.requestWake).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('skips notification when no results are consumed', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		jobRepository.markMailConsumed.mockResolvedValue(0);
+		await expect(service.markMailConsumed('thread-1', ['job-1'])).resolves.toBe(0);
+		expect(jobRepository.findById).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+	});
+
+	it.each(['success', 'zero', 'consume-error', 'lookup-error'] as const)(
+		'notifies workflow cancellation when consumption has outcome %s',
+		async (outcome) => {
+			const { service, jobRepository, updateBroadcaster } = setup();
+			const job = makeWorkflowJob();
+			Container.set(ExecutionService, mock<ExecutionService>());
+			jobRepository.findByParentThread.mockResolvedValue([job]);
+			jobRepository.findById.mockResolvedValue(job);
+			jobRepository.markMailConsumed.mockResolvedValue(outcome === 'zero' ? 0 : 1);
+			if (outcome === 'consume-error')
+				jobRepository.markMailConsumed.mockRejectedValue(new Error('consume failed'));
+			if (outcome === 'lookup-error')
+				jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
+			await expect(service.cancel('thread-1', job.id)).resolves.toBe('cancelled');
+			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledTimes(
+				outcome === 'success' ? 2 : 1,
+			);
+		},
+	);
 });

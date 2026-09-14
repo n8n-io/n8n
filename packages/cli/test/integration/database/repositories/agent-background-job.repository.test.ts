@@ -201,6 +201,15 @@ describe('AgentBackgroundJobRepository', () => {
 				mailConsumed();
 				return affected;
 			});
+			const jobService = new AgentBackgroundJobService(
+				repository,
+				executionRepository,
+				mock<ExecutionPersistence>(),
+				publisher,
+				logger,
+				agentsConfig,
+				mock<AgentExecutionUpdateBroadcaster>(),
+			);
 			const wakeService = new AgentWakeService(
 				repository,
 				executionRepository,
@@ -214,17 +223,9 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<InstanceSettings>({ isWorker: false }),
 				agentsConfig,
 				logger,
+				jobService,
 			);
 			Container.set(AgentWakeService, wakeService);
-			const jobService = new AgentBackgroundJobService(
-				repository,
-				executionRepository,
-				mock<ExecutionPersistence>(),
-				publisher,
-				logger,
-				agentsConfig,
-				mock<AgentExecutionUpdateBroadcaster>(),
-			);
 
 			await jobService.settle(jobId, { status: 'completed', result: 'Done' });
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);

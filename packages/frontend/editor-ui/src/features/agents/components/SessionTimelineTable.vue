@@ -28,6 +28,14 @@ let scrollContainer: HTMLElement | null = null;
 
 function labelForKey(key: string): string {
 	switch (key) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
+		case 'background-task-completed':
+			return i18n.baseText('agents.chat.backgroundTasks.status.completed');
+		case 'background-task-failed':
+			return i18n.baseText('agents.chat.backgroundTasks.status.failed');
+		case 'background-task-cancelled':
+			return i18n.baseText('agents.chat.backgroundTasks.status.cancelled');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':

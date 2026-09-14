@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
+	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
@@ -191,14 +192,6 @@ function getAssistantGroupContent(group: DisplayGroup): string {
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(
-	group: DisplayGroup,
-): group is Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }> {
-	return (
-		group.kind === 'toolRun' || (group.kind === 'message' && group.message.role === 'assistant')
-	);
 }
 
 function getAssistantRunContent(groupId: string): string {

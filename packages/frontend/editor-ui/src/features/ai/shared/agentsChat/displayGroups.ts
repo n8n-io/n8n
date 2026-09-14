@@ -52,29 +52,27 @@ export type DisplayGroup =
 			executionId?: string;
 	  };
 
+export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>;
+
 export function isGroupable(message: AgentsChatMessage): boolean {
 	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
 }
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
 
-function isAssistantGroup(
-	group: DisplayGroup,
-): group is Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }> {
+export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
 		group.kind === 'toolRun' || (group.kind === 'message' && group.message.role === 'assistant')
 	);
 }
 
-function executionIdForGroup(
-	group: Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>,
-): string | undefined {
+function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
 	return group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 }
 
 /** Keep one reasoning block at the tail of each assistant run, below its final output. */
 function moveThinkingToRunTail(groups: DisplayGroup[]): void {
-	let run: Array<Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>> = [];
+	let run: TurnDisplayGroup[] = [];
 	let executionId: string | undefined;
 
 	const flush = () => {
