@@ -189,7 +189,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
+		`The workflow with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
 	//
@@ -270,7 +270,63 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	});
 });
 
-test('`import:workflow --projectId ...` should fail if the credential already exists and is owned by another project', async () => {
+test('`import:workflow --userId ...` should succeed if the workflow already exists and is owned by the same user', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	// Import workflow the first time, assigning it to the owner.
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+
+	//
+	// ACT
+	//
+	// Import the same workflow again with updated content, for the same user.
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+		`--userId=${owner.id}`,
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow updated' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('`import:workflow --projectId ...` should fail if the workflow already exists and is owned by another project', async () => {
 	//
 	// ARRANGE
 	//
@@ -312,7 +368,7 @@ test('`import:workflow --projectId ...` should fail if the credential already ex
 			`--projectId=${memberProject.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
+		`The workflow with ID "998" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}"`,
 	);
 
 	//
