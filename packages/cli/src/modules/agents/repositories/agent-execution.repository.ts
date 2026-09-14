@@ -1,6 +1,11 @@
-import { isUniqueConstraintError } from '@n8n/db';
+import {
+	BaseRepository,
+	isUniqueConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { OperationalError, UserError } from 'n8n-workflow';
 
@@ -51,9 +56,9 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
@@ -74,10 +79,13 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	 * {@link AgentThreadClaimConflictError}. Queued message rows enforce the
 	 * per-thread cap in the same critical section that assigns their sequence.
 	 */
-	async insertExecution(values: NewAgentExecution): Promise<AgentExecution> {
+	async insertExecution(
+		values: NewAgentExecution,
+		ctx: OperationContext = {},
+	): Promise<AgentExecution> {
 		try {
 			if (values.status === 'queued') {
-				return await this.manager.transaction(async (entityManager) => {
+				return await this.runInTransaction(ctx, async (entityManager) => {
 					// Serialize allocations on the durable thread row before reading the prior sequence.
 					await entityManager
 						.getRepository(AgentExecutionThread)

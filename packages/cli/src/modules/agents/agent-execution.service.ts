@@ -256,26 +256,29 @@ export class AgentExecutionService {
 		row: Pick<AgentExecution, 'status' | 'startedAt' | 'resourceId' | 'runContext'>,
 	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.insertExecution({
-			threadId: params.threadId,
-			...row,
-			stoppedAt: null,
-			duration: 0,
-			userMessage,
-			author: params.author ?? null,
-			model: null,
-			promptTokens: null,
-			completionTokens: null,
-			totalTokens: null,
-			cost: null,
-			timeline: null,
-			storedAt: 'db',
-			error: null,
-			failureSummary: null,
-			hitlStatus: null,
-			source: params.source ?? null,
-			attachments: params.attachments?.length ? params.attachments : null,
-		});
+		const inserted = await this.agentExecutionRepository.insertExecution(
+			{
+				threadId: params.threadId,
+				...row,
+				stoppedAt: null,
+				duration: 0,
+				userMessage,
+				author: params.author ?? null,
+				model: null,
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+				cost: null,
+				timeline: null,
+				storedAt: 'db',
+				error: null,
+				failureSummary: null,
+				hitlStatus: null,
+				source: params.source ?? null,
+				attachments: params.attachments?.length ? params.attachments : null,
+			},
+			{},
+		);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
