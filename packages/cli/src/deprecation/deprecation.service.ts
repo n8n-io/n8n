@@ -80,7 +80,7 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_RUNNERS_MODE',
 			message:
-				'Task runners run in `internal` mode, which is deprecated and will be removed in a future version. For isolation and scaling, run the task runner launcher as a separate process, set this variable to `external` and share `N8N_RUNNERS_AUTH_TOKEN` with the launcher.',
+				'Internal task runner mode is deprecated and will be removed in a future version. For isolation and scaling, run the task runner launcher as a separate process, set this variable to `external` and share `N8N_RUNNERS_AUTH_TOKEN` with the launcher.',
 			// Unset means the default, which is still `internal`, so most instances are affected without knowing it.
 			checkValue: (value?: string) => (value ?? this.globalConfig.taskRunners.mode) === 'internal',
 		},
