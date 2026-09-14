@@ -22,6 +22,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
+import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import AgentToolsConnectionModalWrapper from '../components/AgentToolsConnectionModalWrapper.vue';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 
@@ -267,7 +268,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		onConfirm = vi.fn(),
 		mcpServers: AgentJsonMcpServerConfig[] = [],
 		projectId?: string,
-		mode?: 'tools' | 'workflows',
+		mode: ToolPickerMode = 'tools',
 	) {
 		return renderComponent({
 			props: {
@@ -292,7 +293,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		renderComponent({
 			props: {
 				modalName: MODAL_NAME,
-				data: { tools: [], onConfirm: vi.fn() },
+				data: { mode: 'tools', tools: [], onConfirm: vi.fn() },
 			},
 			attrs: { open: true, active: true, mode: '', activeId: '' },
 		});

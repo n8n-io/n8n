@@ -22,6 +22,7 @@ import type {
 	ToolOpenTarget,
 	ToolPickerMode,
 	ToolRow,
+	SingleToolRow,
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
@@ -382,12 +383,12 @@ const toolRows = computed<ToolRow[]>(() =>
 	),
 );
 
-const workflowRows = computed<ToolRow[]>(() =>
+const workflowRows = computed<SingleToolRow[]>(() =>
 	buildCapabilityToolRows(
 		capabilityTools.value.filter(
 			(entry) => entry.kind === 'tool' && entry.tool.type === 'workflow',
 		),
-	),
+	).filter((row): row is SingleToolRow => !row.isGrouped),
 );
 
 const capabilityRowItemCounts = computed<Record<CapabilityRow, number>>(() => ({
@@ -650,7 +651,7 @@ function openExistingSubAgentModal(subAgent: {
 							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-workflow-row"
-							@click="!workflow.isGrouped && emit('open-tool', workflow.tool.openTarget)"
+							@click="emit('open-tool', workflow.tool.openTarget)"
 						>
 							{{ workflow.label }}
 						</AgentChipButton>
