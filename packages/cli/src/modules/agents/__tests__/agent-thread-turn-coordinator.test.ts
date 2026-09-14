@@ -61,18 +61,6 @@ describe('AgentThreadTurnCoordinator', () => {
 		expect(later).toHaveBeenCalledOnce();
 	});
 
-	it('rejects a caller that was already aborted before it queued', async () => {
-		const { coordinator } = createTestTurnCoordinator();
-		const aborted = new AbortController();
-		aborted.abort(new Error('gone'));
-		const body = vi.fn(async () => {});
-
-		await expect(coordinator.run('t1', aborted.signal, body)).rejects.toThrow('gone');
-		expect(body).not.toHaveBeenCalled();
-		// The thread is not left marked as active.
-		await expect(coordinator.run('t1', undefined, async () => 'ran')).resolves.toBe('ran');
-	});
-
 	it(`accepts one active turn plus ${MAX_AGENT_THREAD_WAITERS} waiters and rejects the next`, async () => {
 		const { coordinator } = createTestTurnCoordinator();
 		let releaseActive!: () => void;

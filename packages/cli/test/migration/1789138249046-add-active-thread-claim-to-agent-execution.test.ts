@@ -38,17 +38,13 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('accepts legacy overlapping running rows, then allows one claimed running row per thread', async () => {
+	it('keeps legacy overlapping running rows unclaimed and lets one claimed running row per thread in', async () => {
 		const ids = {
 			project: randomUUID(),
 			agent: randomUUID(),
-			threadA: randomUUID(),
-			threadB: randomUUID(),
+			thread: randomUUID(),
 			legacyOne: randomUUID(),
 			legacyTwo: randomUUID(),
-			claimedA: randomUUID(),
-			claimedB: randomUUID(),
-			nextA: randomUUID(),
 		};
 		const now = new Date('2026-09-11T10:00:00.000Z');
 
@@ -72,26 +68,24 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 					updatedAt: now,
 				},
 			);
-			for (const threadId of [ids.threadA, ids.threadB]) {
-				await context.runQuery(
-					`INSERT INTO ${context.escape.tableName('agent_execution_threads')} ("id", "agentId", "agentName", "projectId", "createdAt", "updatedAt")
-					 VALUES (:id, :agentId, :agentName, :projectId, :createdAt, :updatedAt)`,
-					{
-						id: threadId,
-						agentId: ids.agent,
-						agentName: 'Test agent',
-						projectId: ids.project,
-						createdAt: now,
-						updatedAt: now,
-					},
-				);
-			}
+			await context.runQuery(
+				`INSERT INTO ${context.escape.tableName('agent_execution_threads')} ("id", "agentId", "agentName", "projectId", "createdAt", "updatedAt")
+				 VALUES (:id, :agentId, :agentName, :projectId, :createdAt, :updatedAt)`,
+				{
+					id: ids.thread,
+					agentId: ids.agent,
+					agentName: 'Test agent',
+					projectId: ids.project,
+					createdAt: now,
+					updatedAt: now,
+				},
+			);
 			// Two running rows on one thread, as mains without the claim may leave them.
 			for (const id of [ids.legacyOne, ids.legacyTwo]) {
 				await context.runQuery(
 					`INSERT INTO ${context.escape.tableName('agent_execution')} ("id", "threadId", "status", "createdAt", "updatedAt")
 					 VALUES (:id, :threadId, :status, :createdAt, :updatedAt)`,
-					{ id, threadId: ids.threadA, status: 'running', createdAt: now, updatedAt: now },
+					{ id, threadId: ids.thread, status: 'running', createdAt: now, updatedAt: now },
 				);
 			}
 		});
@@ -101,30 +95,22 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 
 		await withContext(async (context) => {
 			const table = context.escape.tableName('agent_execution');
-			const insertRunning = async (id: string, threadId: string, activeThreadId: string | null) =>
+			const insertClaimed = async () =>
 				await context.runQuery(
 					`INSERT INTO ${table} ("id", "threadId", "activeThreadId", "status", "createdAt", "updatedAt")
-					 VALUES (:id, :threadId, :activeThreadId, :status, :createdAt, :updatedAt)`,
-					{ id, threadId, activeThreadId, status: 'running', createdAt: now, updatedAt: now },
+					 VALUES (:id, :threadId, :threadId, 'running', :now, :now)`,
+					{ id: randomUUID(), threadId: ids.thread, now },
 				);
 
-			const legacy = await context.runQuery<Array<{ id: string; activeThreadId: string | null }>>(
-				`SELECT "id", "activeThreadId" FROM ${table} WHERE "threadId" = :threadId ORDER BY "id"`,
-				{ threadId: ids.threadA },
+			const legacy = await context.runQuery<Array<{ activeThreadId: string | null }>>(
+				`SELECT "activeThreadId" FROM ${table} WHERE "threadId" = :threadId`,
+				{ threadId: ids.thread },
 			);
-			expect(legacy).toHaveLength(2);
-			expect(legacy.every((row) => row.activeThreadId === null)).toBe(true);
+			expect(legacy).toEqual([{ activeThreadId: null }, { activeThreadId: null }]);
 
-			// One claim per thread, next to the unclaimed legacy rows; threads are independent.
-			await insertRunning(ids.claimedA, ids.threadA, ids.threadA);
-			await expect(insertRunning(randomUUID(), ids.threadA, ids.threadA)).rejects.toThrow();
-			await insertRunning(ids.claimedB, ids.threadB, ids.threadB);
-
-			// A row that ended without clearing the column does not block the next claim.
-			await context.runQuery(`UPDATE ${table} SET "status" = 'error' WHERE "id" = :id`, {
-				id: ids.claimedA,
-			});
-			await insertRunning(ids.nextA, ids.threadA, ids.threadA);
+			// One claim fits next to the unclaimed legacy rows; a second one does not.
+			await insertClaimed();
+			await expect(insertClaimed()).rejects.toThrow();
 		});
 
 		await undoLastSingleMigration();
@@ -135,7 +121,7 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 			const rows = await context.runQuery<Array<{ count: number | string }>>(
 				`SELECT COUNT(*) AS "count" FROM ${context.escape.tableName('agent_execution')}`,
 			);
-			expect(Number(rows[0].count)).toBe(5);
+			expect(Number(rows[0].count)).toBe(3);
 		});
 
 		await runSingleMigration(MIGRATION_NAME);

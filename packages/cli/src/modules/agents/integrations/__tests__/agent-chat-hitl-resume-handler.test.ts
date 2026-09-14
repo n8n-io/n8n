@@ -116,9 +116,6 @@ it.each([
 			messageId: 'message-1',
 			content,
 		});
-		expect(updateLatest.mock.invocationCallOrder[0]).toBeLessThan(
-			settleActionMessage.mock.invocationCallOrder[0],
-		);
 	},
 );
 

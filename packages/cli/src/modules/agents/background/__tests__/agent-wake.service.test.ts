@@ -346,25 +346,21 @@ describe('AgentWakeService', () => {
 		}
 	});
 
-	it('leaves results pending without recording a failure when the admitted wake is skipped', async () => {
+	it.each([
+		['is skipped', async () => 'skipped' as const],
+		[
+			'finds the thread queue full',
+			async () => await Promise.reject(new AgentThreadQueueFullError()),
+		],
+	])('leaves results pending without counting a failure when the wake %s', async (_, outcome) => {
 		const { service, orchestrator, jobRepository, logger } = setup();
-		orchestrator.executeForWake.mockResolvedValue('skipped');
-
-		await service.attemptWake('thread-1');
-
-		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
-		expect(logger.warn).not.toHaveBeenCalled();
-	});
-
-	it('leaves results pending without counting a failure when the thread queue is full', async () => {
-		const { service, orchestrator, jobRepository, logger } = setup();
-		orchestrator.executeForWake.mockRejectedValue(new AgentThreadQueueFullError());
+		orchestrator.executeForWake.mockImplementation(outcome);
 
 		for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES + 1; attempt++) {
 			await service.attemptWake('thread-1');
 		}
 
-		// Every attempt still reaches the orchestrator: a full queue is not a failed wake.
+		// Every attempt still reaches the orchestrator: neither outcome is a failed wake.
 		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_WAKES + 1);
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		expect(logger.warn).not.toHaveBeenCalled();

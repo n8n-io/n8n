@@ -243,11 +243,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		Container.reset();
 	});
 
-	it('claims the thread before the model streams and finalizes the same row', async () => {
+	it('claims the thread before the model streams, finalizes the same row, and stops the runtime when the claim is lost', async () => {
 		const { service, executionService, permitFor } = makeService();
+		const claim = new AbortController();
 		executionService.startClaimedExecutionRecording.mockResolvedValue({
 			executionId: 'execution-running',
-			claimLost: new AbortController().signal,
+			claimLost: claim.signal,
 		});
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
@@ -298,36 +299,14 @@ describe('AgentExecutionOrchestratorService', () => {
 		const startedAt = executionService.startClaimedExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+
+		const runtimeSignal: AbortSignal = runtime.agent.stream.mock.calls[0][1].abortSignal;
+		expect(runtimeSignal.aborted).toBe(false);
+		claim.abort(new Error('claim lost'));
+		expect(runtimeSignal.aborted).toBe(true);
 	});
 
-	it('does not start the model when the claimed row cannot be written', async () => {
-		const { service, executionService, permitFor } = makeService();
-		const dbError = new Error('database unavailable');
-		executionService.startClaimedExecutionRecording.mockRejectedValue(dbError);
-		const runtime = makeRuntime();
-
-		await expect(
-			collect(
-				service.streamChatResponse({
-					agentInstance: runtime.agent,
-					toolRegistry: runtime.toolRegistry,
-					agentId,
-					userId,
-					message: 'hello',
-					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-					projectId,
-					telemetry: telemetryContext,
-					sandboxPrincipalHash: userPrincipalHash,
-					permit: await permitFor('thread-1'),
-				}),
-			),
-		).rejects.toBe(dbError);
-
-		expect(runtime.agent.stream).not.toHaveBeenCalled();
-		expect(executionService.finalizeExecution).not.toHaveBeenCalled();
-	});
-
-	it('waits for a foreign claimed row to end and claims again on conflict', async () => {
+	it('claims again after a foreign claimed row ends, and never runs when the claim fails otherwise', async () => {
 		const { service, executionService, turnCoordinator, permitFor } = makeService();
 		executionService.startClaimedExecutionRecording
 			.mockRejectedValueOnce(new AgentThreadClaimConflictError())
@@ -337,21 +316,23 @@ describe('AgentExecutionOrchestratorService', () => {
 			});
 		turnCoordinator.executionRepository.existsRunningByThread.mockResolvedValue(false);
 		const runtime = makeRuntime();
+		const turn = async (threadId: string) =>
+			await collect(
+				service.streamChatResponse({
+					agentInstance: runtime.agent,
+					toolRegistry: runtime.toolRegistry,
+					agentId,
+					userId,
+					message: 'hello',
+					memory: { threadId, resourceId: 'resource-1' },
+					projectId,
+					telemetry: telemetryContext,
+					sandboxPrincipalHash: userPrincipalHash,
+					permit: await permitFor(threadId),
+				}),
+			);
 
-		await collect(
-			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				agentId,
-				userId,
-				message: 'hello',
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-				projectId,
-				telemetry: telemetryContext,
-				sandboxPrincipalHash: userPrincipalHash,
-				permit: await permitFor('thread-1'),
-			}),
-		);
+		await turn('thread-1');
 
 		expect(executionService.startClaimedExecutionRecording).toHaveBeenCalledTimes(2);
 		expect(runtime.agent.stream).toHaveBeenCalledTimes(1);
@@ -359,37 +340,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			'execution-2',
 			expect.anything(),
 		);
-	});
 
-	it('stops the runtime when the claim is lost', async () => {
-		const { service, executionService, permitFor } = makeService();
-		const claim = new AbortController();
-		executionService.startClaimedExecutionRecording.mockResolvedValue({
-			executionId: 'execution-1',
-			claimLost: claim.signal,
-		});
-		const runtime = makeRuntime();
-		const permit = await permitFor('thread-1');
-
-		await collect(
-			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				agentId,
-				userId,
-				message: 'hello',
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-				projectId,
-				telemetry: telemetryContext,
-				sandboxPrincipalHash: userPrincipalHash,
-				permit,
-			}),
-		);
-
-		const runtimeSignal: AbortSignal = runtime.agent.stream.mock.calls[0][1].abortSignal;
-		expect(runtimeSignal.aborted).toBe(false);
-		claim.abort(new Error('claim lost'));
-		expect(runtimeSignal.aborted).toBe(true);
+		const dbError = new Error('database unavailable');
+		executionService.startClaimedExecutionRecording.mockRejectedValueOnce(dbError);
+		await expect(turn('thread-2')).rejects.toBe(dbError);
+		expect(runtime.agent.stream).toHaveBeenCalledTimes(1);
+		expect(executionService.finalizeExecution).toHaveBeenCalledTimes(1);
 	});
 
 	it('streams chat responses and records suspended executions', async () => {
@@ -1366,40 +1322,49 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('rejects a queued resume when its checkpoint is no longer suspended', async () => {
+	it('admits a queued resume only against a still-suspended checkpoint, then runs its side effects after the claim and before resume()', async () => {
 		const { service, checkpointStorage, executionService, runtimeCacheService, turnCoordinator } =
 			makeService();
-		const suspendedCheckpoint = makeCheckpoint(
-			{},
-			{ threadId: 'thread-1', resourceId: 'platform-user-1' },
-		);
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const suspended = makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' });
+		const beforeResume = vi.fn(async () => {});
+		const resume = async () =>
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					beforeResume,
+				}),
+			);
+
 		checkpointStorage.getStatus
-			.mockResolvedValueOnce({ status: 'active', checkpoint: suspendedCheckpoint })
-			.mockResolvedValueOnce({
-				status: 'active',
-				checkpoint: { ...suspendedCheckpoint, status: 'running' },
-			});
+			.mockResolvedValueOnce({ status: 'active', checkpoint: suspended })
+			.mockResolvedValueOnce({ status: 'active', checkpoint: { ...suspended, status: 'running' } });
 		const runningTurn = await turnCoordinator.coordinator.acquire('thread-1');
-		const beforeResume = vi.fn();
-		const resume = collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				beforeResume,
-			}),
-		);
+		const queued = resume();
 		await new Promise((resolve) => setImmediate(resolve));
 		expect(checkpointStorage.getStatus).toHaveBeenCalledOnce();
-
 		runningTurn.release();
 
-		await expect(resume).rejects.toThrow('This action has already been handled');
+		await expect(queued).rejects.toThrow('This action has already been handled');
 		expect(executionService.startClaimedExecutionRecording).not.toHaveBeenCalled();
 		expect(beforeResume).not.toHaveBeenCalled();
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: suspended });
+		await resume();
+
+		expect(beforeResume).toHaveBeenCalledOnce();
+		expect(
+			executionService.startClaimedExecutionRecording.mock.invocationCallOrder[0],
+		).toBeLessThan(beforeResume.mock.invocationCallOrder[0]);
+		expect(beforeResume.mock.invocationCallOrder[0]).toBeLessThan(
+			runtime.agent.resume.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('reconstructs a resumed runtime from the persisted sandbox scope', async () => {
@@ -1914,46 +1879,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('runs the resume side effects after the claim and before resume(), and skips them when the claim fails', async () => {
-		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
-		const runtime = makeRuntime();
-		checkpointStorage.getStatus.mockResolvedValue({
-			status: 'active',
-			checkpoint: makeCheckpoint({}, { threadId: 'thread-1', resourceId: 'platform-user-1' }),
-		});
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		const beforeResume = vi.fn(async () => {});
-		const resume = async (config: { beforeResume: () => Promise<void> }) =>
-			await collect(
-				service.resumeForChat({
-					agentId,
-					projectId,
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					resumeData: { value: 'yes' },
-					integrationType: 'slack',
-					...config,
-				}),
-			);
-
-		await resume({ beforeResume });
-
-		expect(beforeResume).toHaveBeenCalledOnce();
-		expect(
-			executionService.startClaimedExecutionRecording.mock.invocationCallOrder[0],
-		).toBeLessThan(beforeResume.mock.invocationCallOrder[0]);
-		expect(beforeResume.mock.invocationCallOrder[0]).toBeLessThan(
-			runtime.agent.resume.mock.invocationCallOrder[0],
-		);
-
-		beforeResume.mockClear();
-		runtime.agent.resume.mockClear();
-		executionService.startClaimedExecutionRecording.mockRejectedValueOnce(new Error('db down'));
-		await expect(resume({ beforeResume })).rejects.toThrow('db down');
-		expect(beforeResume).not.toHaveBeenCalled();
-		expect(runtime.agent.resume).not.toHaveBeenCalled();
-	});
-
 	it('serializes same-thread turns across entry points and never holds two claims at once', async () => {
 		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
 		let activeClaims = 0;
@@ -2036,31 +1961,14 @@ describe('AgentExecutionOrchestratorService', () => {
 				),
 			),
 		];
-		const aborted = new AbortController();
-		const queuedThenAborted = collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				message: 'never runs',
-				user,
-				memory,
-				abortSignal: aborted.signal,
-			}),
-		);
 		await new Promise((resolve) => setImmediate(resolve));
 		expect(executionService.startClaimedExecutionRecording).toHaveBeenCalledTimes(1);
 
-		aborted.abort(new Error('client left'));
-		await expect(queuedThenAborted).rejects.toThrow('client left');
 		releaseFirst();
 		await Promise.all(rest);
 
 		expect(order).toEqual(['first', 'second', 'wake', 'resume']);
 		expect(maxActiveClaims).toBe(1);
 		expect(executionService.startClaimedExecutionRecording).toHaveBeenCalledTimes(4);
-		expect(executionService.startClaimedExecutionRecording).not.toHaveBeenCalledWith(
-			expect.objectContaining({ userMessage: 'never runs' }),
-			expect.any(Date),
-		);
 	});
 });

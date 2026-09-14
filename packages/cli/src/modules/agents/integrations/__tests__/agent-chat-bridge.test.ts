@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
-import { LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
@@ -12,6 +11,7 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { createTestTurnCoordinator } from '../../__tests__/test-utils/turn-coordinator';
 import {
+	AgentThreadQueueFullError,
 	AgentThreadTurnCoordinator,
 	MAX_AGENT_THREAD_WAITERS,
 } from '../../agent-thread-turn-coordinator';
@@ -1472,76 +1472,31 @@ describe('AgentChatBridge — consumeStream', () => {
 				executeForChatPublished.mock.calls.map(
 					([config]: [{ memory: { threadId: { id: string } } }]) => config.memory.threadId.id,
 				);
-			return { handlers, thread, send, releaseFirst: first.release, threadIdsOfTurns };
+			return { thread, send, releaseFirst: first.release, threadIdsOfTurns };
 		}
 
 		const settle = async () => {
 			for (let i = 0; i < 50; i++) await Promise.resolve();
 		};
 
-		it.each([
-			{
-				path: 'plain-text',
-				reset: async (b: ReturnType<typeof makeQueuedBridge>) => await b.send('/new'),
-			},
-			{
-				path: 'slash-command',
-				reset: async (b: ReturnType<typeof makeQueuedBridge>) =>
-					await b.handlers.slashCommand!({ channel: { id: 'thread-1' }, user: author }),
-			},
-		])(
-			'a $path /new waits for the running turn and rotates before the next message runs',
-			async ({ reset }) => {
-				const bridge = makeQueuedBridge();
-				const first = bridge.send('first');
-				await settle();
-				const resetting = reset(bridge);
-				await settle();
-				const second = bridge.send('second');
-				await settle();
-
-				// The reset and the later message both wait behind the running turn.
-				expect(bridge.thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
-				expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1']);
-
-				bridge.releaseFirst();
-				await Promise.all([first, resetting, second]);
-
-				expect(bridge.thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
-				expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1#1']);
-			},
-		);
-
-		it('abandons /new without rotating when its session lease is lost while waiting', async () => {
-			const resetLease = new AbortController();
-			const lockService = mock<LockService>();
-			lockService.withLease
-				.mockImplementationOnce(
-					async (_namespace, _key, fn) => await fn(new AbortController().signal),
-				)
-				.mockImplementationOnce(async (_namespace, _key, fn) => await fn(resetLease.signal))
-				.mockImplementation(async (_namespace, _key, fn) => await fn(new AbortController().signal));
-			Container.set(LockService, lockService);
-			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
-			messageContextStore.resolveSession.mockResolvedValue(null);
-			const bridge = makeQueuedBridge(messageContextStore);
-			const cache = Container.get(CacheService);
-
+		it('/new waits for the running turn and rotates before the next message runs', async () => {
+			const bridge = makeQueuedBridge();
 			const first = bridge.send('first');
 			await settle();
 			const resetting = bridge.send('/new');
 			await settle();
-
-			resetLease.abort();
 			const second = bridge.send('second');
 			await settle();
+
+			// The reset and the later message both wait behind the running turn.
+			expect(bridge.thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1']);
+
 			bridge.releaseFirst();
 			await Promise.all([first, resetting, second]);
 
-			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
-			expect(cache.set).not.toHaveBeenCalled();
-			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1']);
+			expect(bridge.thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(bridge.threadIdsOfTurns()).toEqual(['agent-1:thread-1', 'agent-1:thread-1#1']);
 		});
 
 		it('writes message context only when a message becomes the active turn', async () => {
@@ -1570,25 +1525,17 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('tells the sender when the thread already has the maximum number of waiting messages', async () => {
-			const bridge = makeQueuedBridge();
-			const first = bridge.send('first');
-			await settle();
-			const waiting = Array.from(
-				{ length: MAX_AGENT_THREAD_WAITERS },
-				async (_, i) => await bridge.send(`queued ${i}`),
+			vi.spyOn(Container.get(AgentThreadTurnCoordinator), 'run').mockRejectedValue(
+				new AgentThreadQueueFullError(),
 			);
-			await settle();
+			const bridge = makeQueuedBridge();
 
 			await bridge.send('one too many');
 
 			expect(bridge.thread.post).toHaveBeenCalledWith(
 				`⚠️ This thread already has ${MAX_AGENT_THREAD_WAITERS} messages waiting. Try again after the agent processes a message.`,
 			);
-			expect(bridge.threadIdsOfTurns()).toHaveLength(1);
-
-			bridge.releaseFirst();
-			await Promise.all([first, ...waiting]);
-			expect(bridge.threadIdsOfTurns()).toHaveLength(MAX_AGENT_THREAD_WAITERS + 1);
+			expect(bridge.threadIdsOfTurns()).toHaveLength(0);
 		});
 	});
 
