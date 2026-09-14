@@ -1,0 +1,47 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fd53f87975be69::t_1cdc5c2ccd6d8a 7498
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_fd53f87975be69::t_1cdc5c2ccd6d8a 281-283,290
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fd53f87975be69::t_1cdc5c2ccd6d8a 42,211-218,247,270-271,431
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_fd53f87975be69::t_b61befe39e8dfb 670-673
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fd53f87975be69::t_f30302e692f72c 39-42,49-50,301-316,320-326
+  s_fd53f87975be69::t_b61befe39e8dfb 317-319
+  s_fd53f87975be69::t_59b07178da55ae 327-329
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_fd53f87975be69::t_7c497218a49597 155-156,164,172,176,198
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fd53f87975be69::t_7c497218a49597 35
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fd53f87975be69::t_7c497218a49597 346,358-363
+  s_fd53f87975be69::t_0fae1ffe4336ee 411-437
+packages/@n8n/api-types/src/agents/background-task.ts
+  s_fd53f87975be69::t_1cdc5c2ccd6d8a 9-10,22,24-25
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundTasks.test.ts
+  s_fd53f87975be69::t_f30302e692f72c 160-162,175-176,186-187
+  s_fd53f87975be69::t_7c497218a49597 3,49,53,63
+  s_fd53f87975be69::t_0fae1ffe4336ee 132-159,163-174,177-185,188-198
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundTasks.ts
+  s_fd53f87975be69::t_1cdc5c2ccd6d8a 1-5,20,29-39,82-87,144
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fd53f87975be69::t_aac9934d8fec3d 81-105,114-116,118-123,183,196-197,583-584,586
+  s_fd53f87975be69::t_f30302e692f72c 111-112,198-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8a847640ece1de27a590b90a979b03c09f27f52",
+  "prompts": {},
+  "sessions": {
+    "s_fd53f87975be69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0865b-9b93-72e3-987a-3508c786fce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
