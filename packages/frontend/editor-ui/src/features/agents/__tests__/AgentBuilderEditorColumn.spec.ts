@@ -194,6 +194,7 @@ async function mountColumn(
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
 					props: ['showModel', 'showInstructions'],
+					emits: ['update:config'],
 				},
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
@@ -274,6 +275,29 @@ describe('AgentBuilderEditorColumn', () => {
 		wrapper.getComponent({ name: 'AgentEvalsSection' }).vm.$emit('generate');
 
 		expect(wrapper.emitted('generate-eval-cases')).toHaveLength(1);
+	});
+
+	it('forwards the auto-applied-default meta from AgentInfoPanel to the host', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([
+			{ model: 'openai/gpt-5-mini' },
+			{ source: 'auto' },
+		]);
+	});
+
+	it('forwards a user-driven AgentInfoPanel config change without meta', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper
+			.getComponent({ name: 'AgentInfoPanel' })
+			.vm.$emit('update:config', { instructions: 'x' });
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
 	});
 
 	it('disables the evals CTA for a read-only agent', async () => {
