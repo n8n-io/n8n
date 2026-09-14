@@ -140,6 +140,31 @@ describe('TeamsIntegration', () => {
 			expect(createTeamsAdapter).not.toHaveBeenCalled();
 		});
 
+		it('pins the Bot Connector host instead of letting an env var choose it', async () => {
+			const { integration } = createIntegration();
+
+			await integration.createAdapter(connectionContext());
+
+			expect(createTeamsAdapter).toHaveBeenCalledWith(
+				expect.objectContaining({ apiUrl: 'https://smba.trafficmanager.net/teams' }),
+			);
+		});
+
+		it.each([
+			'https://graph.microsoft.us',
+			'https://dod-graph.microsoft.us',
+			'https://microsoftgraph.chinacloudapi.cn',
+		])('rejects the sovereign cloud %s', async (graphApiBaseUrl) => {
+			const { integration } = createIntegration();
+
+			await expect(
+				integration.createAdapter(
+					connectionContext(servicePrincipalCredential({ graphApiBaseUrl })),
+				),
+			).rejects.toThrow(/global Microsoft cloud/);
+			expect(createTeamsAdapter).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			['clientId', /Application \(client\) ID/],
 			['clientSecret', /Client Secret/],
@@ -172,6 +197,36 @@ describe('TeamsIntegration', () => {
 					connectionContext(servicePrincipalCredential({ tenantId: '' })),
 				),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('formatActionDecisionMessage', () => {
+		const user = { userId: 'u-1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false };
+
+		it('names the decision when one was resolved', () => {
+			const { integration } = createIntegration();
+
+			expect(
+				integration.formatActionDecisionMessage({
+					approved: false,
+					raw: {},
+					user,
+				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
+			).toBe('🚫 Declined by Alice');
+		});
+
+		// Without the CallbackStore the resume handler resolves neither the
+		// decision nor the label, so this generic wording is what a Teams
+		// approval actually settles to today.
+		it('falls back to a generic outcome when no decision reaches it', () => {
+			const { integration } = createIntegration();
+
+			expect(
+				integration.formatActionDecisionMessage({
+					raw: {},
+					user,
+				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
+			).toBe('✅ Action selected by Alice');
 		});
 	});
 

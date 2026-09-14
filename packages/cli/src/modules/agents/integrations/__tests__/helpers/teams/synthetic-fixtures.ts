@@ -67,7 +67,7 @@ export const selfMessage: TeamsActivityFixture = baseActivity({
  * An Adaptive Card button click. Teams delivers `Action.Submit` as a message
  * activity carrying `value` and no text.
  */
-export function cardAction(value: Record<string, unknown>, replyToId = 'activity-card-1') {
+export function cardAction(value: Record<string, unknown>, replyToId: string) {
 	return baseActivity({
 		id: 'activity-action-1',
 		replyToId,

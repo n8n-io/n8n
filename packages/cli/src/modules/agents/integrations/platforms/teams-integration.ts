@@ -38,6 +38,17 @@ import { resolveIntegrationActionDefinitions } from '../integration-tool-definit
  * blocked, but they are untested: without RSC permissions Teams only delivers an
  * @-mention there, so nothing arrives ambiently.
  */
+/**
+ * Pinned rather than left to the adapter's env fallback. Omitting it lets
+ * `TEAMS_API_URL` — and below that the Teams SDK's own `SERVICE_URL` — choose the
+ * Bot Connector host that proactive sends carry the bot token to. On a
+ * multi-tenant instance a stray host variable must not redirect those.
+ */
+const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
+
+/** The only Microsoft cloud this channel reaches. See {@link TEAMS_API_URL}. */
+const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
 	readonly type = 'teams';
@@ -107,6 +118,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			appId,
 			appPassword,
 			appTenantId,
+			apiUrl: TEAMS_API_URL,
 			// The credential always carries a tenant ID, which is what single-tenant
 			// means here. A multi-tenant bot omits it and is not supported yet.
 			appType: 'SingleTenant',
@@ -130,7 +142,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 		this.extractBotCredentials(ctx.credential);
 	}
 
-	/** Teams has no select menus, so options become individual buttons. */
+	/**
+	 * Adaptive Cards do render a select as `Input.ChoiceSet`, but the adapter
+	 * submits one through a `__auto_submit` sentinel that fans every input out as
+	 * its own action event. A suspended tool call expects a single action to
+	 * resume it, and there is no tenant to verify the fan-out against yet, so
+	 * options become individual buttons — the path HITL resume already uses.
+	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		const normalized: SuspendComponent[] = [];
 		for (const c of components) {
@@ -148,6 +166,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 		return normalized;
 	}
 
+	/**
+	 * Settling replaces the card, so this is all the user is left with.
+	 *
+	 * Two limits worth knowing, both from flags above rather than from Teams:
+	 * `approved` and `selectedLabel` only arrive via the CallbackStore, which
+	 * {@link needsShortCallbackData} turns off, so an approval settles as the
+	 * generic "Action selected" rather than "Approved". And a Teams card's text
+	 * lives in its Adaptive Card attachment, not in `raw.text`, so there is
+	 * nothing to carry over the way Telegram and Discord do.
+	 */
 	formatActionDecisionMessage({
 		approved,
 		selectedLabel,
@@ -178,6 +206,14 @@ export class TeamsIntegration extends AgentChatIntegration {
 			throw new UserError(
 				'Microsoft Teams channels cannot use certificate authentication. ' +
 					'Switch the credential to Client Secret, or create a credential that uses one.',
+			);
+		}
+
+		const graphApiBaseUrl = this.readField(credential, 'graphApiBaseUrl');
+		if (graphApiBaseUrl && graphApiBaseUrl.replace(/\/+$/, '') !== GLOBAL_GRAPH_API_BASE_URL) {
+			throw new UserError(
+				'Microsoft Teams channels only reach the global Microsoft cloud. ' +
+					"Set the credential's Microsoft Graph API base URL back to https://graph.microsoft.com.",
 			);
 		}
 

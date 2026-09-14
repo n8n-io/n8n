@@ -25,8 +25,7 @@ describe('agent channel platform registry', () => {
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
 	});
 
-	// Teams ships without a setup stepper, so it rides the generic fallback view
-	// until NODE-5966 registers a dedicated component.
+	// Teams ships without a setup stepper, so it rides the generic fallback view.
 	it('serves Microsoft Teams from the fallback view', () => {
 		expect(isRegisteredAgentChannelPlatform('teams')).toBe(false);
 		expect(getAgentChannelPlatform('teams').type).toBe('unknown');
