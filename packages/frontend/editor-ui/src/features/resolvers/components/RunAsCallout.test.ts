@@ -61,7 +61,7 @@ const renderComponent = createComponentRenderer(RunAsCallout, {
 				props: ['modelValue'],
 				emits: ['update:modelValue'],
 				template:
-					'<button type="button" :data-test-id="$attrs[\'data-test-id\']" role="switch" :aria-checked="!!modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
+					'<button type="button" :data-test-id="$attrs[\'data-test-id\']" role="switch" :aria-checked="!!modelValue" :aria-label="$attrs[\'aria-label\']" @click="$emit(\'update:modelValue\', !modelValue)" />',
 			},
 		},
 	},
@@ -166,6 +166,16 @@ describe('RunAsCallout', () => {
 
 			expect(getByText('Scheduled executions run as you once published.')).toBeInTheDocument();
 			expect(getByTestId('run-as-switch')).toHaveAttribute('aria-checked', 'true');
+			expect(getByTestId('run-as-switch')).toHaveAttribute('aria-label', 'Run as me');
+		});
+
+		it('hides the switch for a non-publisher', () => {
+			mockDocumentStore.scopes = [];
+
+			const { getByText, queryByTestId } = renderComponent();
+
+			expect(getByText('Scheduled executions run as you once published.')).toBeInTheDocument();
+			expect(queryByTestId('run-as-switch')).not.toBeInTheDocument();
 		});
 
 		it('turns the switch off, clearing the run-as user', async () => {
@@ -239,6 +249,26 @@ describe('RunAsCallout', () => {
 			await waitFor(() => {
 				expect(fetchUsers).toHaveBeenCalledWith({ filter: { ids: [OTHER_USER_ID] } });
 			});
+		});
+	});
+
+	describe('read-only', () => {
+		beforeEach(() => {
+			// A publisher, so the only thing hiding the controls is `readOnly`.
+			mockDocumentStore.scopes = ['workflow:publish'];
+		});
+
+		it.each<[string, IWorkflowSettings]>([
+			['off', {}],
+			['you', { runAsUserId: CURRENT_USER_ID }],
+			['other', { runAsUserId: OTHER_USER_ID }],
+		])('hides the switch and the button in state "%s"', (_state, settings) => {
+			mockDocumentStore.settings = settings;
+
+			const { queryByTestId } = renderComponent({ props: { readOnly: true } });
+
+			expect(queryByTestId('run-as-switch')).not.toBeInTheDocument();
+			expect(queryByTestId('run-as-switch-to-me')).not.toBeInTheDocument();
 		});
 	});
 });

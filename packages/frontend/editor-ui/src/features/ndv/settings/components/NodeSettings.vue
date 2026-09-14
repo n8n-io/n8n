@@ -733,7 +733,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
-			<RunAsCallout v-if="node.type === SCHEDULE_TRIGGER_NODE_TYPE" />
+			<RunAsCallout v-if="node.type === SCHEDULE_TRIGGER_NODE_TYPE" :read-only="isReadOnly" />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"

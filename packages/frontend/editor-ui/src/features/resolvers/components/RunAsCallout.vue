@@ -11,6 +11,14 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useRunAsHolderName } from '@/features/resolvers/composables/useRunAsHolderName';
 
+interface Props {
+	readOnly?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	readOnly: false,
+});
+
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
@@ -31,6 +39,12 @@ const runAsUserId = computed(() => workflowDocumentStore.value.settings?.runAsUs
 const canPublish = computed(
 	() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow.publish === true,
 );
+
+// `canPublish` only reflects RBAC scopes. The NDV's own read-only reasons (demo
+// route, protected branch, missing workflow:update, archived, AI-builder
+// streaming, an embedding host's override, …) are the caller's to know, so
+// `readOnly` folds in here rather than being re-derived.
+const canControl = computed(() => canPublish.value && !props.readOnly);
 
 const state = computed<'off' | 'you' | 'other'>(() => {
 	if (!runAsUserId.value) return 'off';
@@ -62,10 +76,11 @@ async function setRunAs(on: boolean) {
 				i18n.baseText('runAs.callout.other', { interpolate: { name: holderName } })
 			}}</N8nText>
 		</template>
-		<template v-if="canPublish" #trailingContent>
+		<template v-if="canControl" #trailingContent>
 			<ElSwitch
 				v-if="state !== 'other'"
 				:model-value="state === 'you'"
+				:aria-label="i18n.baseText('runAs.callout.switch')"
 				data-test-id="run-as-switch"
 				@update:model-value="setRunAs(state !== 'you')"
 			/>
