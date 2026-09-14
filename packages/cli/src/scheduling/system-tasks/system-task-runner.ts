@@ -133,7 +133,7 @@ export class SystemTaskRunner {
 					payload,
 				});
 				if (removed > 0) {
-					this.logger.info('Removed the stale durable job of a system task', { name, removed });
+					this.logger.info('Removed the stale durable job of a system task', { name });
 				} else {
 					this.logger.debug('Found no durable job to remove for a stale system task', { name });
 				}

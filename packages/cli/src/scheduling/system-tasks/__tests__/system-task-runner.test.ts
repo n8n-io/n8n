@@ -754,7 +754,6 @@ describe('SystemTaskRunner', () => {
 
 			expect(logger.info).toHaveBeenCalledWith('Removed the stale durable job of a system task', {
 				name: 'gone',
-				removed: 1,
 			});
 		});
 
