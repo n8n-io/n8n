@@ -1,25 +1,24 @@
+import type {
+	AiPreferenceCountDto,
+	AiPreferenceListDto,
+	AiPreferenceRequestDto,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import type {
-	Preference,
-	PreferenceCountResponse,
-	PreferenceListQuery,
-	PreferenceListResponse,
-	PreferencePayload,
-} from './context.types';
+import type { Preference, PreferenceListQuery } from './context.types';
 
 const ENDPOINT = '/ai-preferences';
 
 export async function getPreferences(
 	context: IRestApiContext,
 	query: PreferenceListQuery = {},
-): Promise<PreferenceListResponse> {
-	return await makeRestApiRequest<PreferenceListResponse>(context, 'GET', ENDPOINT, query);
+): Promise<AiPreferenceListDto> {
+	return await makeRestApiRequest<AiPreferenceListDto>(context, 'GET', ENDPOINT, query);
 }
 
 export async function getPreferenceCount(context: IRestApiContext): Promise<number> {
-	const response = await makeRestApiRequest<PreferenceCountResponse>(
+	const response = await makeRestApiRequest<AiPreferenceCountDto>(
 		context,
 		'GET',
 		`${ENDPOINT}/count`,
@@ -29,7 +28,7 @@ export async function getPreferenceCount(context: IRestApiContext): Promise<numb
 
 export async function createPreference(
 	context: IRestApiContext,
-	payload: PreferencePayload,
+	payload: AiPreferenceRequestDto,
 ): Promise<Preference> {
 	return await makeRestApiRequest<Preference>(context, 'POST', ENDPOINT, payload);
 }
@@ -37,7 +36,7 @@ export async function createPreference(
 export async function updatePreference(
 	context: IRestApiContext,
 	id: string,
-	payload: PreferencePayload,
+	payload: AiPreferenceRequestDto,
 ): Promise<Preference> {
 	return await makeRestApiRequest<Preference>(context, 'PATCH', `${ENDPOINT}/${id}`, payload);
 }

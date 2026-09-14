@@ -3,11 +3,10 @@ import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 
 import { isContextPreferencesEnabled } from './context.utils';
-import { CONTEXT_MODALS } from './modals';
 
 /**
- * Carries the routes and the preference modal. The shell's modal catalogue is
- * ratcheted closed, so a modal registers through its own feature instead.
+ * Carries the routes. The preference dialog is local to the preferences page, so
+ * nothing registers with the shell's modal root.
  *
  * The routes list no `custom` middleware on purpose: the module initializer would
  * then gate them on a backend module of this id being active, and preferences have
@@ -48,5 +47,4 @@ export const ContextModule: FrontendModuleDescription = {
 			beforeEnter: () => isContextPreferencesEnabled() || { name: VIEWS.HOMEPAGE },
 		},
 	],
-	modals: CONTEXT_MODALS,
 };

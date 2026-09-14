@@ -1,7 +1,5 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCES_DEFAULT_PAGE_SIZE } from '@n8n/api-types';
 
-export const PREFERENCE_MODAL_KEY = 'preference';
-
 /**
  * Single-sourced with the request schema, so the editor refuses the content the API
  * would refuse. A text column has no length of its own: the cap guards the AI prompt

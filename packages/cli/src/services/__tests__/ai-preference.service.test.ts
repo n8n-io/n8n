@@ -11,7 +11,6 @@ import type {
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
 import {
 	AiPreferenceService,
 	groupAiPreferences,
@@ -30,13 +29,11 @@ describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
-	const roleService = mock<RoleService>();
 	const userRepository = mock<UserRepository>();
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
 		projectRelationRepository,
-		roleService,
 		userRepository,
 	);
 
@@ -166,17 +163,14 @@ describe('AiPreferenceService', () => {
 		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 		const teamProject = mock<Project>({ id: 'p-1', name: 'Marketing', type: 'team' });
 
-		/**
-		 * Gives the member one role in the project, and lets that role grant the named
-		 * operations only.
-		 */
+		/** Gives the member one role in the project that grants the named scopes only. */
 		function allowProjectOperations(...allowed: string[]) {
 			projectRelationRepository.findAllByUser.mockResolvedValue([
-				mock<ProjectRelation>({ projectId: 'p-1', role: { slug: 'project:custom' } }),
+				{
+					projectId: 'p-1',
+					role: { slug: 'project:custom', scopes: allowed.map((slug) => ({ slug })) },
+				} as unknown as ProjectRelation,
 			]);
-			roleService.rolesWithScope.mockImplementation(async (_namespace, scopes) =>
-				[scopes].flat().some((scope) => allowed.includes(scope)) ? ['project:custom'] : [],
-			);
 			projectRepository.findOneBy.mockResolvedValue(teamProject);
 		}
 

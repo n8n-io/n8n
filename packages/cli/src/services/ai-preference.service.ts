@@ -21,7 +21,6 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
 
 /** `type` lets the prompt name a personal project without quoting its owner's name. */
 export type AiPreferenceProjectRef = { id: string; name: string; type?: Project['type'] };
@@ -36,9 +35,9 @@ type AllowedProjects = Set<string> | 'all';
 
 /**
  * Which projects one caller may run each operation in, for the length of one
- * request. The relations are read once and only when an operation is not granted
- * globally; the role lists come from the role cache. A request that touches the
- * same project five times therefore costs one query, not five.
+ * request. The relations are read once, with the scopes of their roles, and only
+ * when an operation is not granted globally. A request that touches the same
+ * project five times therefore costs one query, not five.
  */
 class ProjectAccess {
 	private relations: Promise<ProjectRelation[]> | undefined;
@@ -48,7 +47,6 @@ class ProjectAccess {
 	constructor(
 		private readonly user: User,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly roleService: RoleService,
 	) {}
 
 	async allowed(operation: ProjectOperation): Promise<AllowedProjects> {
@@ -69,15 +67,12 @@ class ProjectAccess {
 		const scope: Scope = `projectAiPreference:${operation}`;
 		if (hasGlobalScope(this.user, scope)) return 'all';
 
+		// The role's scopes travel with the relation, so no second lookup is needed.
 		this.relations ??= this.projectRelationRepository.findAllByUser(this.user.id);
-		const [relations, roles] = await Promise.all([
-			this.relations,
-			this.roleService.rolesWithScope('project', [scope]),
-		]);
-		const granting = new Set(roles);
+		const relations = await this.relations;
 		return new Set(
 			relations
-				.filter((relation) => granting.has(relation.role.slug))
+				.filter((relation) => relation.role.scopes.some((granted) => granted.slug === scope))
 				.map((relation) => relation.projectId),
 		);
 	}
@@ -116,7 +111,6 @@ export class AiPreferenceService {
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
 	) {}
 
@@ -171,7 +165,7 @@ export class AiPreferenceService {
 	 */
 	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
 		const access = this.projectAccess(user);
-		const [rows, count] = await this.aiPreferenceRepository.findPageApplicable({
+		const [rows, count] = await this.aiPreferenceRepository.findPageVisible({
 			...(await this.visibleTo(user, access)),
 			...page,
 		});
@@ -241,7 +235,7 @@ export class AiPreferenceService {
 	}
 
 	private projectAccess(user: User): ProjectAccess {
-		return new ProjectAccess(user, this.projectRelationRepository, this.roleService);
+		return new ProjectAccess(user, this.projectRelationRepository);
 	}
 
 	/** The filter for the rows the user may see in settings. */

@@ -148,52 +148,12 @@ describe('context.store', () => {
 		expect(store.count).toBe(9);
 	});
 
-	// The list watches this, because the modal cannot reach it to say it saved.
-	it.each([
-		[
-			'createPreference',
-			async (s: ReturnType<typeof useContextStore>) =>
-				await s.createPreference({ content: 'x', scope: 'user' }),
-		],
-		[
-			'updatePreference',
-			async (s: ReturnType<typeof useContextStore>) =>
-				await s.updatePreference('p1', { content: 'x', scope: 'user' }),
-		],
-		[
-			'deletePreference',
-			async (s: ReturnType<typeof useContextStore>) => await s.deletePreference('p1'),
-		],
-		[
-			'deletePreferences',
-			async (s: ReturnType<typeof useContextStore>) => await s.deletePreferences(['p1', 'p2']),
-		],
-	])('bumps changeVersion after %s', async (_name, run) => {
-		const store = useContextStore();
-		const before = store.changeVersion;
-
-		await run(store);
-
-		expect(store.changeVersion).toBe(before + 1);
-	});
-
-	it('does not bump changeVersion when a write fails', async () => {
-		create.mockRejectedValue(new Error('nope'));
-		const store = useContextStore();
-		const before = store.changeVersion;
-
-		await expect(store.createPreference({ content: 'x', scope: 'user' })).rejects.toThrow();
-
-		expect(store.changeVersion).toBe(before);
-	});
-
 	it('deletes the rest and reports the failures when a bulk delete fails part way', async () => {
 		remove
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('gone'))
 			.mockResolvedValueOnce(undefined);
 		const store = useContextStore();
-		const before = store.changeVersion;
 
 		const result = await store.deletePreferences(['a', 'b', 'c']);
 
@@ -201,28 +161,15 @@ describe('context.store', () => {
 		expect(remove).toHaveBeenCalledTimes(3);
 		expect(result.deleted).toEqual(['a', 'c']);
 		expect(result.failed).toEqual([{ id: 'b', error: new Error('gone') }]);
-		expect(store.changeVersion).toBe(before + 1);
 	});
 
-	it('does not signal a change when every delete of a bulk run fails', async () => {
+	it('reports every row as failed when every delete of a bulk run fails', async () => {
 		remove.mockRejectedValue(new Error('gone'));
 		const store = useContextStore();
-		const before = store.changeVersion;
 
 		const result = await store.deletePreferences(['a', 'b']);
 
 		expect(result.deleted).toEqual([]);
 		expect(result.failed).toHaveLength(2);
-		expect(store.changeVersion).toBe(before);
-	});
-
-	it('bumps changeVersion once for a bulk delete', async () => {
-		const store = useContextStore();
-		const before = store.changeVersion;
-
-		await store.deletePreferences(['a', 'b', 'c']);
-
-		expect(remove).toHaveBeenCalledTimes(3);
-		expect(store.changeVersion).toBe(before + 1);
 	});
 });

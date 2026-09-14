@@ -1,5 +1,9 @@
-import { aiPreferenceScopeOf } from '@n8n/api-types';
-import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
+import type { AiPreferenceScope, AiPreferenceUserDto } from '@n8n/api-types';
+import {
+	aiPreferenceScopeOf,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+} from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -7,12 +11,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import type {
-	Preference,
-	PreferencePermissions,
-	PreferenceScopeType,
-	PreferenceUserRef,
-} from './context.types';
+import type { Preference, PreferencePermissions } from './context.types';
 
 /**
  * Gate for the Context settings surface.
@@ -34,9 +33,7 @@ export function isContextPreferencesEnabled(): boolean {
 }
 
 /** The same decode the backend runs when it groups rows for a prompt. */
-export function preferenceScope(
-	row: Pick<Preference, 'userId' | 'projectId'>,
-): PreferenceScopeType {
+export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
 	return aiPreferenceScopeOf(row);
 }
 
@@ -47,7 +44,7 @@ export function preferenceScope(
  */
 export type PreferenceAudience =
 	| { kind: 'instance' }
-	| { kind: 'user'; own: boolean; user: PreferenceUserRef | null }
+	| { kind: 'user'; own: boolean; user: AiPreferenceUserDto | null }
 	| { kind: 'personalProject'; own: boolean; ownerName: string }
 	| { kind: 'project'; name: string | null };
 
@@ -75,7 +72,7 @@ export function preferenceAudience(
 }
 
 /** The display name of a user row's owner: the full name when set, else the email. */
-export function preferenceUserName(user: PreferenceUserRef | null): string {
+export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	if (!user) return '';
 	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 	return fullName || user.email;

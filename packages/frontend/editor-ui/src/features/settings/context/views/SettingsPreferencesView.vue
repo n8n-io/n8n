@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -17,12 +17,14 @@ import type { TableOptions } from '@n8n/design-system';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { useUIStore } from '@/app/stores/ui.store';
 
+import PreferenceModal from '../components/PreferenceModal.vue';
 import PreferencesTable from '../components/PreferencesTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE, PREFERENCE_MODAL_KEY } from '../context.constants';
+import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { useContextStore } from '../context.store';
-import type { Preference, PreferenceScopeType } from '../context.types';
+import type { AiPreferenceScope } from '@n8n/api-types';
+
+import type { Preference } from '../context.types';
 import { preferenceScope } from '../context.utils';
 
 const i18n = useI18n();
@@ -30,7 +32,6 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
 const telemetry = useTelemetry();
-const uiStore = useUIStore();
 const contextStore = useContextStore();
 const { showError, showMessage } = useToast();
 
@@ -41,6 +42,9 @@ const tableOptions = ref<TableOptions>({
 });
 const selection = ref<string[]>([]);
 const loadFailed = ref(false);
+
+/** The dialog is local to this page: `null` closed, a row for edit, `'new'` for create. */
+const dialogTarget = ref<Preference | 'new' | null>(null);
 
 // A failed load also reports zero rows, so the empty state must not stand in for it.
 const showEmptyState = computed(
@@ -71,24 +75,22 @@ async function load() {
 	}
 }
 
-// The create/edit modal lives in the global modal root, so it cannot tell this view
-// that it saved. Every successful write bumps the store instead.
-watch(
-	() => contextStore.changeVersion,
-	async () => await load(),
-);
-
 async function onOptionsUpdate(options: TableOptions) {
 	tableOptions.value = options;
 	await load();
 }
 
 function openCreateModal() {
-	uiStore.openModalWithData({ name: PREFERENCE_MODAL_KEY, data: { mode: 'new' } });
+	dialogTarget.value = 'new';
 }
 
 function openEditModal(preference: Preference) {
-	uiStore.openModalWithData({ name: PREFERENCE_MODAL_KEY, data: { mode: 'edit', preference } });
+	dialogTarget.value = preference;
+}
+
+async function onSaved() {
+	dialogTarget.value = null;
+	await load();
 }
 
 async function confirmDelete(count: number) {
@@ -111,8 +113,8 @@ async function confirmDelete(count: number) {
 }
 
 /** One event per delete operation; `count` covers a bulk run. */
-function trackDelete(source: 'row' | 'bulk', scopeTypes: Array<PreferenceScopeType | undefined>) {
-	const present = scopeTypes.filter((scope): scope is PreferenceScopeType => scope !== undefined);
+function trackDelete(source: 'row' | 'bulk', scopeTypes: Array<AiPreferenceScope | undefined>) {
+	const present = scopeTypes.filter((scope): scope is AiPreferenceScope => scope !== undefined);
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
 		count: scopeTypes.length,
 		source,
@@ -127,6 +129,7 @@ async function onDelete(preference: Preference) {
 		await contextStore.deletePreference(preference.id);
 		trackDelete('row', [preferenceScope(preference)]);
 		selection.value = selection.value.filter((id) => id !== preference.id);
+		await load();
 		showMessage({
 			title: i18n.baseText('settings.context.preferences.delete.success'),
 			type: 'success',
@@ -145,6 +148,7 @@ async function onDeleteSelected() {
 	// selection, or the toolbar would count them and a retry would hit a 404.
 	const gone = new Set(deleted);
 	selection.value = selection.value.filter((id) => !gone.has(id));
+	if (deleted.length > 0) await load();
 
 	if (deleted.length > 0) {
 		trackDelete(
@@ -240,6 +244,13 @@ onMounted(async () => {
 				</div>
 			</template>
 		</PreferencesTable>
+
+		<PreferenceModal
+			:open="dialogTarget !== null"
+			:preference="dialogTarget === 'new' ? null : dialogTarget"
+			@update:open="(open) => (dialogTarget = open ? dialogTarget : null)"
+			@saved="onSaved"
+		/>
 	</N8nSettingsLayout>
 </template>
 

@@ -9,8 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import PreferenceModal from './PreferenceModal.vue';
-import { PREFERENCE_MODAL_KEY, PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
-import { useUIStore } from '@/app/stores/ui.store';
+import { PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
 
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
@@ -22,28 +21,31 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
+// N8nDialog teleports out of the tree (Reka UI's DialogPortal), so replace it
+// with a render-inline pass-through that keeps the open state and the header.
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	const N8nDialog = {
+		name: 'N8nDialog',
+		props: ['open', 'size', 'header'],
+		emits: ['update:open'],
+		template: `
+			<div v-if="open" role="dialog" data-test-id="preference-modal">
+				<h2>{{ header }}</h2>
+				<slot />
+			</div>
+		`,
+	};
+	return { ...actual, N8nDialog };
+});
+
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: vi.fn() }),
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: vi.fn(),
 }));
 
-const ModalStub = {
-	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
-		</div>
-	`,
-};
-
 const initialState = {
-	[STORES.UI]: {
-		modalStateById: { [PREFERENCE_MODAL_KEY]: { open: true } },
-		modalStack: [PREFERENCE_MODAL_KEY],
-	},
 	[STORES.PROJECTS]: {
 		personalProject: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal' },
 		myProjects: [
@@ -71,8 +73,6 @@ const initialState = {
 	},
 };
 
-const global = { stubs: { Modal: ModalStub } };
-
 /** The instance scope is gated on the global `aiPreference:create` scope. */
 function currentUser(globalScopes: Scope[]) {
 	return mock<IUser>({ id: 'user-1', globalScopes });
@@ -82,7 +82,6 @@ const renderModal = createComponentRenderer(PreferenceModal);
 let pinia: ReturnType<typeof createTestingPinia>;
 let contextStore: MockedStore<typeof useContextStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
-let uiStore: MockedStore<typeof useUIStore>;
 
 function scopeOptions() {
 	return Array.from(document.querySelectorAll('li.el-select-dropdown__item'));
@@ -97,20 +96,19 @@ describe('PreferenceModal', () => {
 		pinia = createTestingPinia({ initialState });
 		contextStore = mockedStore(useContextStore);
 		usersStore = mockedStore(useUsersStore);
-		uiStore = mockedStore(useUIStore);
 		usersStore.currentUser = currentUser([]);
 		trackMock.mockReset();
 	});
 
 	describe('scope options', () => {
 		it('always offers the user scope, which follows the user into every project', () => {
-			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(findOption('Just you · All projects')).toBeDefined();
 		});
 
 		it('offers the personal project next to it, for preferences that apply only there', () => {
-			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(findOption('Just you · Personal project')).toBeDefined();
 		});
@@ -118,7 +116,7 @@ describe('PreferenceModal', () => {
 		it('hides "Everyone" from a user who is not an instance owner or admin', () => {
 			usersStore.currentUser = currentUser([]);
 
-			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(findOption('Everyone')).toBeUndefined();
 		});
@@ -126,13 +124,13 @@ describe('PreferenceModal', () => {
 		it('offers "Everyone" to an instance owner or admin', () => {
 			usersStore.currentUser = currentUser(['aiPreference:create']);
 
-			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(findOption('Everyone')).toBeDefined();
 		});
 
 		it('offers only the projects the user may write', () => {
-			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(findOption('Writable Project')).toBeDefined();
 			expect(findOption('Read Only Project')).toBeUndefined();
@@ -152,7 +150,7 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+			renderModal({ props: { open: true, preference }, pinia });
 
 			expect(findOption('Read Only Project')).toBeDefined();
 		});
@@ -170,7 +168,7 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+			renderModal({ props: { open: true, preference }, pinia });
 
 			// The row stays where it is; the content is still editable.
 			expect(scopeOptions()).toHaveLength(1);
@@ -191,7 +189,7 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+			renderModal({ props: { open: true, preference }, pinia });
 
 			expect(findOption('Jane Doe · All projects')).toBeDefined();
 		});
@@ -199,13 +197,13 @@ describe('PreferenceModal', () => {
 
 	describe('validation', () => {
 		it('keeps Save disabled while the text is empty', () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			expect(getByTestId('preference-modal-save-button')).toBeDisabled();
 		});
 
 		it('enables Save once the text is filled', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -216,7 +214,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('keeps Save disabled for whitespace-only text', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -228,7 +226,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('trims the text it sends', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -244,7 +242,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('caps the text at the injection budget', () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			const textarea = getByTestId('preference-modal-text-input').querySelector('textarea');
 			expect(textarea).toHaveAttribute('maxlength', String(PREFERENCE_TEXT_MAX_LENGTH));
@@ -253,7 +251,7 @@ describe('PreferenceModal', () => {
 
 	describe('submitting', () => {
 		it('creates a user-scoped preference by default', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -269,7 +267,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('reports a created preference without its text', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -295,7 +293,7 @@ describe('PreferenceModal', () => {
 			updatedAt: '2026-09-08T00:00:00.000Z',
 		};
 
-		it('does not close the dialog after its own instance is gone', async () => {
+		it('does not close a dialog that was reopened during a slow save', async () => {
 			let settle: (value: Preference) => void = () => {};
 			contextStore.createPreference.mockReturnValue(
 				new Promise<Preference>((resolve) => {
@@ -303,9 +301,8 @@ describe('PreferenceModal', () => {
 				}),
 			);
 
-			const { getByTestId, unmount } = renderModal({
-				props: { data: { mode: 'new' } },
-				global,
+			const { getByTestId, rerender, emitted } = renderModal({
+				props: { open: true, preference: null },
 				pinia,
 			});
 			await userEvent.type(
@@ -314,13 +311,30 @@ describe('PreferenceModal', () => {
 			);
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
-			// The modal root unmounts on close and mounts a fresh instance on reopen, so
-			// a late close here would shut whichever dialog is open by then.
-			unmount();
+			// The page closed and reopened the dialog while the save was in flight, so
+			// the late completion must not report as the new dialog's save.
+			await rerender({ open: false, preference: null });
+			await rerender({ open: true, preference: null });
 			settle(pendingSaveResult);
 			await new Promise(process.nextTick);
 
-			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(emitted('saved')).toBeUndefined();
+		});
+
+		it('reports the save to the page, which closes the dialog and reloads', async () => {
+			const { getByTestId, emitted } = renderModal({
+				props: { open: true, preference: null },
+				pinia,
+			});
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+			await new Promise(process.nextTick);
+
+			expect(emitted('saved')).toHaveLength(1);
 		});
 
 		it('keeps the project scope when editing a project preference', async () => {
@@ -337,8 +351,7 @@ describe('PreferenceModal', () => {
 			};
 
 			const { getByTestId } = renderModal({
-				props: { data: { mode: 'edit', preference } },
-				global,
+				props: { open: true, preference },
 				pinia,
 			});
 
@@ -366,8 +379,7 @@ describe('PreferenceModal', () => {
 			};
 
 			const { getByTestId } = renderModal({
-				props: { data: { mode: 'edit', preference } },
-				global,
+				props: { open: true, preference },
 				pinia,
 			});
 
@@ -383,7 +395,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('creates a preference for the personal project when that scope is picked', async () => {
-			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -413,8 +425,7 @@ describe('PreferenceModal', () => {
 			};
 
 			const { getByTestId } = renderModal({
-				props: { data: { mode: 'edit', preference } },
-				global,
+				props: { open: true, preference },
 				pinia,
 			});
 

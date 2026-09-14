@@ -3,12 +3,9 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
-import { useUIStore } from '@/app/stores/ui.store';
-
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import SettingsPreferencesView from './SettingsPreferencesView.vue';
-import { PREFERENCE_MODAL_KEY } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
 
@@ -45,16 +42,35 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 	};
 }
 
-const renderView = createComponentRenderer(SettingsPreferencesView);
+/**
+ * The dialog is a page-local child. The stub exposes what the page hands it and
+ * a button that plays the dialog's `saved` event back to the page.
+ */
+const PreferenceModalStub = {
+	props: ['open', 'preference'],
+	emits: ['saved', 'update:open'],
+	template: `
+		<div
+			data-test-id="preference-modal-stub"
+			:data-open="String(open)"
+			:data-preference-id="preference?.id ?? ''"
+		>
+			<button data-test-id="preference-modal-stub-saved" @click="$emit('saved')" />
+		</div>
+	`,
+};
+
+const renderComponent = createComponentRenderer(SettingsPreferencesView, {
+	global: { stubs: { PreferenceModal: PreferenceModalStub } },
+});
+const renderView = () => renderComponent();
 
 let contextStore: MockedStore<typeof useContextStore>;
-let uiStore: MockedStore<typeof useUIStore>;
 
 describe('SettingsPreferencesView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		contextStore = mockedStore(useContextStore);
-		uiStore = mockedStore(useUIStore);
 		contextStore.loading = false;
 		push.mockClear();
 		trackMock.mockReset();
@@ -102,10 +118,8 @@ describe('SettingsPreferencesView', () => {
 
 		await userEvent.click(getByTestId('preferences-create-button'));
 
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: PREFERENCE_MODAL_KEY,
-			data: { mode: 'new' },
-		});
+		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
+		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', '');
 	});
 
 	it('opens the edit modal with the row it was triggered from', async () => {
@@ -118,10 +132,24 @@ describe('SettingsPreferencesView', () => {
 
 		await userEvent.click(getByTestId('preference-edit-button'));
 
-		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-			name: PREFERENCE_MODAL_KEY,
-			data: { mode: 'edit', preference: row },
-		});
+		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
+		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', row.id);
+	});
+
+	it('closes the dialog and reloads the page when it saves', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		const { getByTestId } = renderView();
+		await new Promise(process.nextTick);
+		await userEvent.click(getByTestId('preferences-create-button'));
+		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(1);
+
+		await userEvent.click(getByTestId('preference-modal-stub-saved'));
+		await new Promise(process.nextTick);
+
+		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'false');
+		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(2);
 	});
 
 	it('reports a single-row delete', async () => {
@@ -188,13 +216,11 @@ describe('SettingsPreferencesView', () => {
 		contextStore.preferences = [];
 		contextStore.count = 0;
 
-		renderView();
+		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(1);
 
-		// The modal lives in the global modal root, so a save reaches the list only
-		// through the store's change signal.
-		contextStore.changeVersion = 1;
+		await userEvent.click(getByTestId('preference-modal-stub-saved'));
 		await new Promise(process.nextTick);
 
 		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(2);
@@ -217,11 +243,11 @@ describe('SettingsPreferencesView', () => {
 		contextStore.count = 0;
 		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
 
-		const { queryByTestId } = renderView();
+		const { queryByTestId, getByTestId } = renderView();
 		await new Promise(process.nextTick);
 		expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
 
-		contextStore.changeVersion = 1;
+		await userEvent.click(getByTestId('preference-modal-stub-saved'));
 		await new Promise(process.nextTick);
 
 		expect(queryByTestId('preferences-empty-state')).toBeInTheDocument();
@@ -240,7 +266,7 @@ describe('SettingsPreferencesView', () => {
 
 		// Everything on the second page goes; page 1 no longer exists.
 		contextStore.count = 5;
-		contextStore.changeVersion = 1;
+		await userEvent.click(getByTestId('preference-modal-stub-saved'));
 		await new Promise(process.nextTick);
 
 		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 0, take: 50 });

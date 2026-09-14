@@ -1,10 +1,11 @@
+import type { AiPreferenceRequestDto } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as api from './context.api';
-import type { Preference, PreferenceListQuery, PreferencePayload } from './context.types';
+import type { Preference, PreferenceListQuery } from './context.types';
 
 export type BulkDeleteResult = {
 	deleted: string[];
@@ -18,13 +19,6 @@ export const useContextStore = defineStore('context', () => {
 	const preferences = ref<Preference[]>([]);
 	const count = ref(0);
 	const loading = ref(false);
-
-	/**
-	 * Bumped after every successful write. The create/edit modal is mounted by the
-	 * global modal root rather than by the list, so it cannot emit to the list. The
-	 * list watches this instead and reloads the page it is showing.
-	 */
-	const changeVersion = ref(0);
 
 	/*
 	 * Reads land in completion order, not the order they were asked for, so a slow
@@ -64,21 +58,16 @@ export const useContextStore = defineStore('context', () => {
 		return total;
 	}
 
-	async function createPreference(payload: PreferencePayload) {
-		const created = await api.createPreference(rootStore.restApiContext, payload);
-		changeVersion.value += 1;
-		return created;
+	async function createPreference(payload: AiPreferenceRequestDto) {
+		return await api.createPreference(rootStore.restApiContext, payload);
 	}
 
-	async function updatePreference(id: string, payload: PreferencePayload) {
-		const updated = await api.updatePreference(rootStore.restApiContext, id, payload);
-		changeVersion.value += 1;
-		return updated;
+	async function updatePreference(id: string, payload: AiPreferenceRequestDto) {
+		return await api.updatePreference(rootStore.restApiContext, id, payload);
 	}
 
 	async function deletePreference(id: string) {
 		await api.deletePreference(rootStore.restApiContext, id);
-		changeVersion.value += 1;
 	}
 
 	/**
@@ -95,8 +84,6 @@ export const useContextStore = defineStore('context', () => {
 			if (outcome.status === 'fulfilled') result.deleted.push(id);
 			else result.failed.push({ id, error: outcome.reason });
 		});
-		// Signal once for the run, never per row, and only when the collection changed.
-		if (result.deleted.length > 0) changeVersion.value += 1;
 		return result;
 	}
 
@@ -104,7 +91,6 @@ export const useContextStore = defineStore('context', () => {
 		preferences,
 		count,
 		loading,
-		changeVersion,
 		fetchPreferences,
 		fetchPreferenceCount,
 		createPreference,

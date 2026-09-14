@@ -48,10 +48,11 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	}
 
 	/**
-	 * One page of the same set, with the total, for the settings list. The page keeps
-	 * the order the preferences reach a prompt in.
+	 * One page of the rows the caller may see in settings, with the total. Wider than
+	 * `findApplicable`: an admin sees other users' rows, which never reach their own
+	 * prompts. The page keeps the order the preferences reach a prompt in.
 	 */
-	async findPageApplicable(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
+	async findPageVisible(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
 		return await this.findAndCount({
 			where: visibleTo(query, query.allUsers),
 			relations: RELATIONS,
