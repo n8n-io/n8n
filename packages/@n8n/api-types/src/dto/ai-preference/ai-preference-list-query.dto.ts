@@ -6,8 +6,7 @@ export const AI_PREFERENCES_DEFAULT_PAGE_SIZE = 50;
 
 export class AiPreferenceListQueryDto extends Z.class({
 	skip: paginationSchema.skip,
-	// A page of no rows is not a page: TypeORM drops a `take` of 0 and reads the whole
-	// collection, so the request is refused rather than quietly widened.
+	// TypeORM reads the whole table for a `take` of 0.
 	take: createTakeValidator(
 		AI_PREFERENCES_MAX_PAGE_SIZE,
 		false,

@@ -6,11 +6,7 @@ import { AiPreference } from '../entities';
 import { BaseRepository } from './base-repository';
 import { TransactionRunner } from '../services/transaction';
 
-/**
- * The projects whose preferences the caller may read. `'all'` skips the filter
- * instead of listing every project id, which would outgrow the bound-parameter
- * limit of SQLite on a large instance.
- */
+/** `'all'` skips the filter. A full id list could exceed SQLite's bound-parameter limit. */
 export type ReadableProjects = string[] | 'all';
 
 export type ApplicableAiPreferencesQuery = {
@@ -18,12 +14,8 @@ export type ApplicableAiPreferencesQuery = {
 	projectIds: ReadableProjects;
 };
 
-/** The settings view of the collection: what the caller may see, not what applies to them. */
 export type VisibleAiPreferencesQuery = ApplicableAiPreferencesQuery & {
-	/**
-	 * Include the rows of every user, not only the caller's. For admins in settings;
-	 * a prompt never sets it, because another user's rows do not apply to the caller.
-	 */
+	/** For admins in settings. A prompt never sets it. */
 	allUsers: boolean;
 };
 
@@ -38,20 +30,12 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		super(AiPreference, dataSource.manager, transactionRunner);
 	}
 
-	/**
-	 * Every preference that applies to one user: the instance-wide rows, the user's
-	 * own rows, and the rows of the given projects. Oldest first, so the prompt text
-	 * built from them is stable across reads.
-	 */
+	/** Oldest first, so the prompt text is stable across reads. */
 	async findApplicable(query: ApplicableAiPreferencesQuery): Promise<AiPreference[]> {
 		return await this.find({ where: visibleTo(query, false), order: ORDER });
 	}
 
-	/**
-	 * One page of the rows the caller may see in settings, with the total. Wider than
-	 * `findApplicable`: an admin sees other users' rows, which never reach their own
-	 * prompts. The page keeps the order the preferences reach a prompt in.
-	 */
+	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */
 	async findPageVisible(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
 		return await this.findAndCount({
 			where: visibleTo(query, query.allUsers),
@@ -62,17 +46,11 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		});
 	}
 
-	/** The size of the same set, for a page that shows the number and no rows. */
 	async countVisible(query: VisibleAiPreferencesQuery): Promise<number> {
 		return await this.count({ where: visibleTo(query, query.allUsers) });
 	}
 
-	/**
-	 * One row by id, with no visibility filter: who may see it depends on project
-	 * scopes this layer cannot resolve. Callers must authorize the row before they
-	 * return it or act on it — `AiPreferenceService.requireVisible` is the one path
-	 * that does, and it answers a row the caller may not see as a missing row.
-	 */
+	/** No visibility filter. The service authorizes the row before it returns or acts on it. */
 	async findByIdWithRelations(id: string): Promise<AiPreference | null> {
 		return await this.findOne({ where: { id }, relations: RELATIONS });
 	}
@@ -80,7 +58,6 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 
 const ORDER = { createdAt: 'ASC', id: 'ASC' } as const;
 
-/** The settings list names the owner of every row, so it loads both relations. */
 const RELATIONS = { project: true, user: true } as const;
 
 function visibleTo(

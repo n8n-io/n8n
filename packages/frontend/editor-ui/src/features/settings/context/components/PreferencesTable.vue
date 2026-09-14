@@ -14,11 +14,7 @@ const props = defineProps<{
 	preferences: Preference[];
 	itemsLength: number;
 	loading?: boolean;
-	/**
-	 * The data table renders its cover row whenever the slot exists, so the slot is
-	 * withheld rather than emptied. Passing content but no flag would leave a blank
-	 * row above the data.
-	 */
+	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 }>();
 
@@ -44,14 +40,7 @@ function isSelectable(preference: Preference) {
 
 const readOnlyHint = computed(() => i18n.baseText('settings.context.preferences.readOnly.tooltip'));
 
-/*
- * Sorting is off until the endpoints support an ORDER BY.
- *
- * The table stretches its columns proportionally to fill the container, so these
- * widths act as ratios rather than pixels. They are written as the widths the design
- * asks for at the settings container's own width, which keeps the proportions right
- * at any viewport.
- */
+// Sorting is off until the endpoints support ORDER BY. The widths act as ratios.
 const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),

@@ -35,11 +35,7 @@ import {
 	toPreferencePermissions,
 } from '../context.utils';
 
-/**
- * The create and edit dialog of the preferences page. The page owns it: `open`
- * shows it, `preference` names the row to edit or is null for a new one, and
- * `saved` tells the page to reload.
- */
+/** Owned by the preferences page: `open`, the row to edit or null, and `saved` to reload. */
 const props = defineProps<{
 	open: boolean;
 	preference: Preference | null;
@@ -62,17 +58,9 @@ const contextStore = useContextStore();
 
 const loading = ref(false);
 
-/**
- * The component stays mounted between openings, so a slow save can outlive the
- * dialog it started in. Each opening gets a new token, and a save reports back
- * only when its token is still current, so it never closes a newer dialog.
- */
+/** A save reports back only while its opening is current, so it never closes a newer dialog. */
 let openToken = 0;
 
-/*
- * The select holds one string per target. A user row follows its user into every
- * project; a project row, personal project included, applies only there.
- */
 const USER_SCOPE_VALUE = 'user';
 const INSTANCE_SCOPE_VALUE = 'instance';
 const USER_SCOPE_PREFIX = 'user:';
@@ -106,7 +94,6 @@ const form = reactive({
 	scope: initialScope.value,
 });
 
-/** Every opening starts from the row it was opened for, not from the last edit. */
 function resetForm() {
 	initialScope.value = initialScopeValue();
 	form.content = preference.value?.content ?? '';
@@ -121,20 +108,12 @@ const contentValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: PREFERENCE_TEXT_MAX_LENGTH } },
 ];
 
-/**
- * Stored and injected trimmed: the prompt renderer drops a blank preference, so
- * whitespace-only text would save and then never reach the AI.
- */
+// Trimmed: the prompt renderer drops blank preferences.
 const trimmedContent = computed(() => form.content.trim());
 
-/** `usable` says whether the caller may create a preference at that target. */
 type ScopeOption = { value: string; label: string; icon: IconOrEmoji; usable: boolean };
 
-/**
- * The option for the row's current target when the caller's own list lacks it: an
- * admin editing another user's row or personal project, or a project they are not
- * listed in.
- */
+/** The current target when the caller's own list lacks it, such as another user's row. */
 function currentTargetOption(editing: Preference): ScopeOption {
 	const audience = preferenceAudience(editing, currentUserId.value);
 	if (audience.kind === 'user') {
@@ -175,8 +154,6 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 		},
 	];
 
-	// The caller's personal project sits next to the user scope: both reach one user,
-	// but this one applies only when that project is in scope.
 	const personal = projectsStore.myProjects.find((project) => project.type === 'personal');
 	if (personal) {
 		options.push({
@@ -210,11 +187,8 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 		options.unshift(currentTargetOption(editing));
 	}
 
-	// Targets the caller cannot use are left out rather than greyed out. A move
-	// deletes the row where it is and creates it at the target, so it needs the
-	// delete right on the row and the create right at the target. Staying put needs
-	// only the update right the Edit button already checked, so the current target
-	// always stays.
+	// Unusable targets are left out. A move needs the delete right on the row and the
+	// create right at the target. The current target always stays.
 	const canLeave = !editing || toPreferencePermissions(editing).delete;
 	return options.filter(
 		(option) => option.value === initialScope.value || (canLeave && option.usable),
@@ -263,7 +237,7 @@ async function handleSubmit() {
 
 	const { scope, projectId, userId } = parseScope();
 	const content = trimmedContent.value;
-	// The owner travels only when it is not the caller, so an own row stays a plain `user` scope.
+	// The owner travels only when it is not the caller.
 	const payload = { content, scope, projectId, ...(userId ? { userId } : {}) };
 
 	try {
@@ -284,8 +258,6 @@ async function handleSubmit() {
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		}
-		// The write and its telemetry still count when the dialog was closed meanwhile;
-		// only telling the page to close is unsafe, and an error is still worth reporting.
 		if (token === openToken) emit('saved');
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.preferences.error.save'));
@@ -331,7 +303,6 @@ watch(
 				data-test-id="preference-modal-text-input"
 				@validate="(value: boolean) => (contentValid = value)"
 			/>
-			<!-- The form input has no counter of its own, and the cap is worth seeing. -->
 			<N8nText
 				:class="$style.counter"
 				size="small"
@@ -394,8 +365,6 @@ watch(
 </template>
 
 <style lang="scss" module>
-// The dialog header and footer bring their own spacing; the body sets the gap
-// to both, as the design system's dialog examples do.
 .form {
 	display: flex;
 	flex-direction: column;

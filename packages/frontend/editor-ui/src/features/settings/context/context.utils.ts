@@ -14,16 +14,8 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { Preference, PreferencePermissions } from './context.types';
 
 /**
- * Gate for the Context settings surface.
- *
- * The flag is the only signal, because there is no backend module to deliver an
- * operator override in the settings payload yet. Add that second signal alongside the
- * real endpoints, so instances with telemetry switched off can still opt in.
- *
- * The flag is multivariate, so only the `variant` arm enables the surface.
- *
- * Override locally with:
- *   window.featureFlags.override('111_context_preferences', 'variant')
+ * Multivariate flag: only `variant` enables the surface.
+ * Local override: `window.featureFlags.override('111_context_preferences', 'variant')`
  */
 export function isContextPreferencesEnabled(): boolean {
 	return usePostHog().isVariantEnabled(
@@ -32,14 +24,9 @@ export function isContextPreferencesEnabled(): boolean {
 	);
 }
 
-/** How long a deep link waits for client-side flag evaluation before it fails closed. */
 const FLAG_WAIT_TIMEOUT_MS = 3000;
 
-/**
- * The flag gate for a route. When the server delivered no flags and the client is
- * still evaluating them, a deep link waits for that first evaluation, so an
- * enrolled user is not bounced to the homepage by an unset value.
- */
+/** Waits for a pending client-side flag evaluation before a deep link fails closed. */
 export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
 	const posthog = usePostHog();
 	if (posthog.hasPendingFeatureFlags()) {
@@ -55,16 +42,11 @@ export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolea
 	return isContextPreferencesEnabled();
 }
 
-/** The same decode the backend runs when it groups rows for a prompt. */
 export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
 	return aiPreferenceScopeOf(row);
 }
 
-/**
- * How the badge and the scope picker name a row. A user row follows its user into
- * every project; a personal project row applies only there. Both belong to one
- * user, so the label says whose they are when that user is not the viewer.
- */
+/** How the badge and the picker name a row. */
 export type PreferenceAudience =
 	| { kind: 'instance' }
 	| { kind: 'user'; own: boolean; user: AiPreferenceUserDto | null }
@@ -94,18 +76,13 @@ export function preferenceAudience(
 	}
 }
 
-/** The display name of a user row's owner: the full name, else the email, else nothing. */
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	if (!user) return '';
 	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 	return fullName || user.email || '';
 }
 
-/**
- * Maps the row-level scopes the API sends onto the two actions the table offers.
- * The API reports them in the `aiPreference` namespace whatever granted them, so
- * one check covers a personal, a project and an instance row alike.
- */
+/** The API reports row scopes in the `aiPreference` namespace whatever granted them. */
 export function toPreferencePermissions(row: Preference): PreferencePermissions {
 	const permissions = getResourcePermissions(row.scopes).aiPreference;
 	return {
@@ -114,10 +91,7 @@ export function toPreferencePermissions(row: Preference): PreferencePermissions 
 	};
 }
 
-/*
- * Write checks for the scope picker. The rows the list shows carry their own
- * permissions; these answer the question the picker asks before a row exists.
- */
+/* Write checks for the scope picker, before a row exists. */
 
 export function canWriteProjectScope(projectId: string | null | undefined): boolean {
 	if (!projectId) return false;

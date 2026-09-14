@@ -43,7 +43,6 @@ const tableOptions = ref<TableOptions>({
 const selection = ref<string[]>([]);
 const loadFailed = ref(false);
 
-/** The dialog is local to this page: `null` closed, a row for edit, `'new'` for create. */
 const dialogTarget = ref<Preference | 'new' | null>(null);
 
 // A failed load also reports zero rows, so the empty state must not stand in for it.
@@ -58,9 +57,7 @@ async function load() {
 		await contextStore.fetchPreferences({ skip: page * itemsPerPage, take: itemsPerPage });
 		loadFailed.value = false;
 
-		// Deleting the last rows of a page can leave the current page past the end,
-		// which would show neither rows nor the empty state. Checked against the count
-		// the fetch just stored, so one correction is always enough.
+		// Deleting the last rows of a page can leave the page past the end.
 		const lastPage = Math.max(0, Math.ceil(contextStore.count / itemsPerPage) - 1);
 		if (page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
@@ -112,7 +109,6 @@ async function confirmDelete(count: number) {
 	return confirmed === MODAL_CONFIRM;
 }
 
-/** One event per delete operation; `count` covers a bulk run. */
 function trackDelete(source: 'row' | 'bulk', scopeTypes: Array<AiPreferenceScope | undefined>) {
 	const present = scopeTypes.filter((scope): scope is AiPreferenceScope => scope !== undefined);
 	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
@@ -143,14 +139,12 @@ async function onDeleteSelected() {
 	const ids = [...selection.value];
 	if (ids.length === 0 || !(await confirmDelete(ids.length))) return;
 
-	// The reload after the delete drops the rows from the page, so their scopes are
-	// read before the call, while the rows are still here.
+	// Read the scopes before the reload removes the rows.
 	const scopeById = new Map(
 		contextStore.preferences.map((row) => [row.id, preferenceScope(row)] as const),
 	);
 	const { deleted, failed } = await contextStore.deletePreferences(ids);
-	// The rows that went are gone from the table too, so they must leave the
-	// selection, or the toolbar would count them and a retry would hit a 404.
+	// Deleted rows leave the selection, or a retry would hit a 404.
 	const gone = new Set(deleted);
 	selection.value = selection.value.filter((id) => !gone.has(id));
 	if (deleted.length > 0) await load();
@@ -257,12 +251,7 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/*
- * The settings shell already insets the page, so the layout's own padding is dropped
- * and `full-width` lets the table span the shell's container. The page header caps its
- * own width and the layout centres every child, so it is pulled back to the table's
- * left edge.
- */
+/* The settings shell insets the page; the header is pulled to the table's left edge. */
 .layout {
 	padding: 0;
 

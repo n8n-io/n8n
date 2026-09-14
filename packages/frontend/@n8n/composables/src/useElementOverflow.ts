@@ -2,12 +2,7 @@ import { onBeforeUnmount, onMounted, ref, watch, type Ref, type WatchSource } fr
 
 export type OverflowAxis = 'x' | 'y';
 
-/**
- * Whether an element's content is clipped along one axis. A table cell uses it to
- * offer a tooltip with the full text only when an ellipsis or a line clamp hides
- * some of it. The check runs on mount, on every resize, and whenever the given
- * sources change, because the content can change without a resize.
- */
+/** Whether the content is clipped along one axis. Re-checks on resize and when `sources` change. */
 export function useElementOverflow(
 	element: Ref<HTMLElement | null>,
 	axis: OverflowAxis,

@@ -211,12 +211,8 @@ export function useSettingsItems() {
 			moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)),
 		);
 
-		// Context belongs directly after Instance-level MCP. That entry is registered by
-		// the MCP module, so it lands after every core item and Context cannot simply be
-		// pushed with the rest. Falls back to the end when the module is inactive.
-		//
-		// The Context routes come from their module descriptor and gate on the flag in
-		// `beforeEnter`, which the middleware check does not run, so the flag is read here.
+		// After Instance-level MCP, which the MCP module appends late. The flag is read here
+		// because the middleware check does not run route guards.
 		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
 		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
 			id: 'settings-context',

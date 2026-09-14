@@ -53,7 +53,6 @@ const label = computed(() => {
 	}
 });
 
-/** Rows that reach only one user read as plain; shared ones stand out. */
 const theme = computed(() =>
 	audience.value.kind === 'user' || audience.value.kind === 'personalProject'
 		? 'default'
@@ -63,11 +62,7 @@ const theme = computed(() =>
 
 <template>
 	<N8nBadge :theme="theme" :class="$style.badge" data-test-id="preference-scope-badge">
-		<!--
-			The badge wraps its slot in a text span, so the flex row that spaces the icon
-			from the label has to live inside the slot. The variables table and the project
-			card badge lay theirs out the same way.
-		-->
+		<!-- The badge wraps its slot in a text span, so the flex row has to live inside the slot. -->
 		<span :class="$style.content">
 			<N8nText v-if="icon?.type === 'emoji'" :class="$style.emoji">{{ icon.value }}</N8nText>
 			<N8nIcon v-else-if="icon" :icon="icon.value" size="small" />

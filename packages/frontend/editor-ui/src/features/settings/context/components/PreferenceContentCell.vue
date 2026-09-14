@@ -3,12 +3,7 @@ import { ref } from 'vue';
 import { useElementOverflow } from '@n8n/composables/useElementOverflow';
 import { N8nTooltip } from '@n8n/design-system';
 
-/**
- * The preference text, clamped to two lines. The full text opens in a tooltip
- * only when the clamp hides some of it, the way the API key table treats a long
- * label. The tooltip renders the text through a slot, so user text is never
- * parsed as HTML.
- */
+/** Two-line clamp. The tooltip renders through a slot, so user text is never parsed as HTML. */
 const props = defineProps<{
 	content: string;
 }>();
@@ -32,8 +27,7 @@ const { isOverflowing: isClamped } = useElementOverflow(textEl, 'y', [() => prop
 </template>
 
 <style lang="scss" module>
-// Line clamping only works on inline content, so it has to live on the text
-// element itself rather than on a wrapper with non-inline children.
+// Line clamping needs the text element itself, not a wrapper.
 .text {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;

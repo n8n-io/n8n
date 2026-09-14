@@ -2,19 +2,12 @@ import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
 
-/**
- * Who a preference applies to. The scope decides both who may edit it and who
- * receives it, so it is the primary segmentation for adoption.
- */
+/** The scope decides who edits a preference and who receives it. */
 const scopeType = z
 	.enum(['user', 'project', 'instance'])
 	.describe('Who the preference applies to: only its author, one project, or the whole instance');
 
-/**
- * The preference text is free-form user writing and never leaves the instance.
- * Length stands in for it, because the open question is whether people write
- * usable guidance or one-word notes.
- */
+/** Length only. The text is free-form user writing. */
 const textLength = z
 	.number()
 	.describe('Character count of the preference text. The text itself is never reported');

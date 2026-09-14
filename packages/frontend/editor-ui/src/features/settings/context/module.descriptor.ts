@@ -5,16 +5,9 @@ import { VIEWS } from '@/app/constants';
 import { isContextPreferencesEnabledOnceEvaluated } from './context.utils';
 
 /**
- * Carries the routes. The preference dialog is local to the preferences page, so
- * nothing registers with the shell's modal root.
- *
- * The routes list no `custom` middleware on purpose: the module initializer would
- * then gate them on a backend module of this id being active, and preferences have
- * no backend module. The flag check runs in `beforeEnter` instead. There is no RBAC
- * gate either, because every user reaches these pages for their own preferences.
- *
- * The sidebar entry stays with the shell: the settings sidebar hides the pages of
- * a module whose backend counterpart is not active. Move it here once one exists.
+ * No `custom` middleware: the initializer would gate the routes on a backend module,
+ * which preferences do not have. The flag check runs in `beforeEnter`. The sidebar
+ * entry stays with the shell, which hides module pages without a backend module.
  */
 export const ContextModule: FrontendModuleDescription = {
 	id: 'context',
