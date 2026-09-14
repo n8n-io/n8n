@@ -23,9 +23,9 @@ This package provides a secure runtime for evaluating expressions in isolated co
 
 Currently supports:
 - **Node.js Backend**: Uses `isolated-vm` for V8 isolate-based isolation with lazy data loading
+- **Browser Frontend**: Uses `QuickJsBridge` (QuickJS compiled to WASM); `N8N_EXPRESSION_ENGINE_FRONTEND=quickjs` opts in
 
 Future support (Phase 2+):
-- **Browser Frontend**: Will use Web Workers for browser-based isolation
 - **Task Runners**: Will use IPC for separate process isolation
 
 ## Features
@@ -170,7 +170,7 @@ interface RuntimeBridge {
   - Synchronous callbacks via ivm.Reference
   - Security wrappers (SafeObject, SafeError)
   - `E()` error handler for tournament-generated try-catch code
-- **WebWorkerBridge**: 🚧 For browser frontend (Web Workers) - Phase 2+
+- **QuickJsBridge**: ✅ QuickJS in WASM, for the Node.js backend and the browser frontend
 - **Task Runner Integration**: 🚧 TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
 
 ## Configuration

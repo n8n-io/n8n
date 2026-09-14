@@ -1,6 +1,6 @@
 # Expression Runtime Architecture
 
-This package provides a secure, isolated expression evaluation runtime that works across multiple execution environments (isolated-vm, Web Workers, and task runners).
+This package provides a secure, isolated expression evaluation runtime that works across multiple execution environments (isolated-vm, QuickJS in WASM, and task runners).
 
 ## Design Goals
 
@@ -29,7 +29,7 @@ The architecture is split into three distinct layers:
 │  ┌────────────────▼───────────────────────────────┐     │
 │  │           Bridge (Layer 2)                     │     │
 │  │  - IsolatedVmBridge (Phase 1.1)                │     │
-│  │  - WebWorkerBridge (Phase 2+)                  │     │
+│  │  - QuickJsBridge (WASM)                        │     │
 │  │  - Task Runner Integration (TBD)               │     │
 │  └────────────────┬───────────────────────────────┘     │
 │                   │ IPC/Message Passing                 │
@@ -62,7 +62,7 @@ The architecture is split into three distinct layers:
 - **Libraries**: lodash, Luxon (bundled)
 - **No Node.js APIs**: Pure JavaScript only
 
-**Bundle**: IIFE format for isolated-vm, ESM for Web Workers
+**Bundle**: IIFE format for both isolated-vm and QuickJS
 
 ### Layer 2: Bridge (Host Process)
 
@@ -177,7 +177,7 @@ class IsolatedVmBridge implements RuntimeBridge {
 
 ### QuickJsBridge (Browser Frontend)
 
-The editor runs the same `QuickJsBridge` as Node. It does not use a Web Worker.
+The editor runs the same `QuickJsBridge` as Node.
 The browser has no filesystem, so the host passes the runtime bundle in with the
 `runtimeBundle` option. The vite stub in `packages/frontend/editor-ui/vite/` maps
 `@n8n/expression-runtime` to the real bridge for the browser build.
@@ -282,7 +282,7 @@ packages/@n8n/expression-runtime/
 **Limitation**: Lazy loading requires **synchronous** callbacks from runtime to host. This works for:
 - ✅ **isolated-vm**: Uses `ivm.Reference` for true synchronous callbacks
 - ✅ **Node.js vm**: Direct synchronous function calls
-- ❌ **Web Workers**: postMessage is always async (see Known Limitations below)
+- ✅ **QuickJS**: host functions are plain synchronous calls in the WASM context
 
 ### 3. Why Bundle the Runtime?
 
@@ -292,7 +292,7 @@ packages/@n8n/expression-runtime/
 
 ### 4. Why Abstract Bridge?
 
-**Future-Proofing**: Frontend will use Web Workers. Backend uses isolated-vm. Abstract bridge allows adding new environments without changing other layers.
+**Portability**: The backend uses isolated-vm. The browser uses QuickJS in WASM. The abstract bridge allows adding new environments without changing other layers.
 
 **Testing**: Integration tests use `IsolatedVmBridge` directly (see `src/__tests__/integration.test.ts`).
 
@@ -322,23 +322,9 @@ const proxy = new Proxy({}, {
    - Direct synchronous function calls
    - Full lazy loading support (used for testing)
 
-3. **Web Workers** ❌
-   - `postMessage` is always async
-   - **Phase 1 Limitation**: No lazy loading, must pre-fetch all data before evaluation
-   - **Future Enhancement (Phase 2+)**: Explore `SharedArrayBuffer` + `Atomics` for synchronous data access
-
-### Web Worker Support Roadmap
-
-**Phase 1** (Initial implementation):
-- WebWorkerBridge will pre-fetch all workflow data
-- Transfer complete data object to worker before evaluation
-- Works for small/medium datasets (< 50MB)
-- No lazy loading benefit
-
-**Phase 2+** (Future enhancement):
-- Investigate `SharedArrayBuffer` + `Atomics` for sync access
-- Or accept pre-fetching as the Web Worker approach
-- Decision based on real-world usage patterns
+3. **QuickJS (WASM)** ✅
+   - Host functions are plain synchronous calls in the QuickJS context
+   - Full lazy loading support, in Node.js and in the browser
 
 ### Security Boundaries
 
@@ -410,5 +396,5 @@ See observability package documentation for details.
 ## References
 
 - [isolated-vm GitHub](https://github.com/laverdet/isolated-vm)
-- [Web Workers MDN](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+- [quickjs-emscripten GitHub](https://github.com/justjake/quickjs-emscripten)
 - [n8n workflow package](../workflow/)
