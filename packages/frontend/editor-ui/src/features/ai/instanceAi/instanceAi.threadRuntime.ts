@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
+	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -639,7 +640,8 @@ export function createThreadRuntime(
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
 	// runtime is disposed and recreated. Prefer shared builders from
 	// `@n8n/api-types` so UI keys match persisted thread grants:
-	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// `executions:run:<id>`, `executions:run-step:<id>:<node>`,
+	// `workflows:update:<id>`, `data-tables:<action>`.
 	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
@@ -677,6 +679,14 @@ export function createThreadRuntime(
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Running one node grants "always allow" per node, so a debug loop on one
+		// node stops prompting while the rest of the workflow still asks. Without
+		// a node name the key cannot be scoped — refuse to store one (fail closed).
+		if (toolName === 'executions' && action === 'run-step') {
+			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
+			if (!workflowId || !nodeName) return null;
+			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
 		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
 		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow

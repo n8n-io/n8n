@@ -170,6 +170,27 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+/** How a step run produced the target node's input. */
+export type StepRunInputMode = 'chain' | 'reused-execution' | 'mocked';
+
+export interface StepExecutionResult extends ExecutionResult {
+	/** The node the step targeted. */
+	nodeName: string;
+	/**
+	 * Where the target node's input came from. `mocked` is never evidence that
+	 * the workflow works: the items, and the placeholder items on the nodes
+	 * above them, are invented.
+	 */
+	inputMode: StepRunInputMode;
+	/**
+	 * Nodes whose output was invented so the run could reach the target. Empty
+	 * unless `inputMode` is `mocked`.
+	 */
+	fabricatedNodeNames: string[];
+	/** Execution the replayed run data came from. */
+	reusedFromExecutionId?: string;
+}
+
 export interface NodeOutputBranch {
 	/** Position of the output on the node; 0 is the first output. */
 	index: number;
@@ -562,6 +583,39 @@ export interface InstanceAiExecutionService {
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
+	/**
+	 * Run one node of a saved workflow — the canvas "Execute step".
+	 *
+	 * The run happens on the real workflow, so expressions that reference other
+	 * nodes resolve, sub-nodes come along, and the execution lands in the
+	 * workflow's history where `getNodeOutput` and the user's canvas can see it.
+	 *
+	 * The target's input comes from one of three places, in descending order of
+	 * how much the result proves:
+	 * 1. `reuseExecutionId` — replay a past run's data and re-run only the target.
+	 * 2. neither option — run every ancestor that has no data yet, then the target.
+	 * 3. `mockInput` — invent the input and skip the ancestors entirely.
+	 */
+	runStep?(
+		workflowId: string,
+		nodeName: string,
+		options?: {
+			/**
+			 * Replay this execution's run data instead of running the ancestors
+			 * again. The execution must belong to the same workflow.
+			 */
+			reuseExecutionId?: string;
+			/**
+			 * Items to feed the target node, which skips every node above it.
+			 * Applied to each of the target's direct inputs.
+			 */
+			mockInput?: Array<Record<string, unknown>>;
+			/** Run a past version's graph instead of the current draft. */
+			versionId?: string;
+			timeout?: number;
+			abortSignal?: AbortSignal;
+		},
+	): Promise<StepExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
 	stop(executionId: string): Promise<{ success: boolean; message: string }>;

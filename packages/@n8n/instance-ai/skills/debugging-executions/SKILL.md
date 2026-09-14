@@ -47,6 +47,30 @@ they reference variables we don't reconstruct in replay (`$vars`, `$secrets`,
 `$response`, `$request`, `$pageCount`, `$ai`). The value existed at execution
 time; we just don't have it here.
 
+## Confirming a fix on the node that failed
+
+`executions(action="debug")` tells you what the node received. It does not tell
+you whether your fix works. To learn that, run the node itself:
+
+```
+executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
+```
+
+`reuseExecutionId` replays the data the node really received and re-runs only
+that node, so the fix meets the same input that broke it. This is the right
+first move whenever the user is debugging a node that already failed a real
+execution: the node ran for real once already, and a mock-only check is what
+sends the user back for a second session.
+
+Use `mockInput` only when the upstream nodes cannot run. It proves the node
+accepts the input you invented, nothing more — the result carries
+`inputMode: "mocked"` and a `fabricatedNodeNames` list, and you must say so
+instead of reporting the workflow as working.
+
+A node that only partly succeeded before it failed — a send that delivered some
+messages and then hit a rate limit — will repeat that effect. Prefer
+`get-resolved-node-parameters` there, and ask the user before you re-run it.
+
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call

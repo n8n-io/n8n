@@ -18,7 +18,7 @@ live in `src/tools/tool-ids.ts`.
 | `workflows` | 12 |
 | `data-tables` | 11 |
 | `workspace` | 8 |
-| `executions` | 7 |
+| `executions` | 8 |
 | `credentials` | 6 |
 | `nodes` | 6 |
 | `mcp-servers` | 4 |
@@ -526,7 +526,7 @@ Update a version's name or description.
 
 ---
 
-## `executions` (7 actions)
+## `executions` (8 actions)
 
 ### `executions(action="list")`
 
@@ -560,6 +560,47 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 - **Webhook trigger**: flat `inputData` → `{ headers: {}, query: {}, params: {}, body: inputData }`; an envelope whose keys are only `body`/`query`/`headers`/`params` is passed through, so query- and header-driven expressions can be exercised
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
+
+### `executions(action="run-step")`
+
+Run ONE node of a saved workflow and return its real output — the canvas
+"Execute step". The node runs inside the real workflow, so expressions that
+reference other nodes resolve, sub-nodes (model, memory, tools) come along, and
+the run lands in the workflow's execution history. The execution is always
+manual: `WorkflowRunner.resolvePinData` returns pin data only for manual and
+evaluation mode, so any other mode would drop the workflow's pins.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `workflowId` | string | yes | — | Workflow that owns the node |
+| `nodeName` | string | yes | — | Node to run |
+| `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
+| `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `versionId` | string | no | current draft | Run a past version's graph |
+| `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
+
+**Returns**: `{ executionId, status, nodeName, inputMode, fabricatedNodeNames, reusedFromExecutionId?, data?, error?, ... }`
+
+**Input modes**, in descending order of what the result proves:
+
+| `inputMode` | Set by | What it proves |
+|-------------|--------|----------------|
+| `reused-execution` | `reuseExecutionId` | The node ran on data the workflow really produced |
+| `chain` | neither option | The node ran on data its ancestors really produced in this run |
+| `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
+
+`mocked` also fabricates a placeholder item for every node between the trigger
+and the target, because `findStartNodes` walks down from the trigger and stops
+at the first node with no run data. `fabricatedNodeNames` lists them. A
+placeholder on an upstream IF or Switch picks a branch that real data may pick
+differently, which is why a mocked step is never evidence that the workflow
+works.
+
+**Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
+the pre-authorized workflow list, and session grants. The session grant is per
+node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
+node stops prompting while the rest of the workflow still asks. A whole-workflow
+run grant covers a step of that workflow too.
 
 ### `executions(action="get")`
 

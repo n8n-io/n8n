@@ -322,6 +322,7 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildRunStepSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
