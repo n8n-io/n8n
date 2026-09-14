@@ -7,13 +7,15 @@ import {
 	type DatabricksContext,
 	type DatabricksCredentialType,
 } from '../actions/helpers';
+import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
 
-const DEFAULT_MAX_PAGES = 40;
+export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
 const PIPELINE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 
 export const PIPELINE_EVENT_LEVELS = ['INFO', 'WARN', 'ERROR', 'METRICS'] as const;
 export type PipelineEventLevel = (typeof PIPELINE_EVENT_LEVELS)[number];
+export type IsoUtcTimestamp = string;
 
 export type PipelineEvent = {
 	id?: string;
@@ -21,8 +23,7 @@ export type PipelineEvent = {
 	event_type?: string;
 	level?: PipelineEventLevel;
 	message?: string;
-	/** ISO 8601 timestamp of the event. */
-	timestamp?: string;
+	timestamp?: IsoUtcTimestamp;
 	maturity_level?: string;
 	origin?: {
 		pipeline_id?: string;
@@ -48,27 +49,22 @@ export type PipelineEvent = {
 			}>;
 		}>;
 	};
+	truncation?: { truncated_fields?: Array<{ field_name?: string }> };
 };
 
 export interface ListPipelineEventsParams {
 	pipelineId: string;
-	/** ISO 8601 UTC timestamp; only events strictly after this instant. */
-	after?: string;
-	levels?: PipelineEventLevel[];
+	after?: IsoUtcTimestamp;
+	levels?: readonly string[];
 	order?: 'asc' | 'desc';
-	maxResults?: number;
+	pageSize?: number;
 	pageToken?: string;
-}
-
-export interface PipelineEventsPage {
-	events: PipelineEvent[];
-	nextPageToken?: string;
 }
 
 type PipelineEventsResponse = { events?: PipelineEvent[]; next_page_token?: string };
 
 function isPipelineEventLevel(level: string): level is PipelineEventLevel {
-	return (PIPELINE_EVENT_LEVELS as readonly string[]).includes(level);
+	return PIPELINE_EVENT_LEVELS.some((known) => known === level);
 }
 
 function isIsoUtcTimestamp(value: string): boolean {
@@ -104,7 +100,8 @@ export function buildPipelineEventsFilter(
 // The API rejects any field other than max_results next to page_token
 function toQuery(params: ListPipelineEventsParams): IDataObject {
 	const qs: IDataObject = {};
-	if (params.maxResults !== undefined) qs.max_results = params.maxResults;
+	const pageSize = clampPageSize(params.pageSize, PIPELINE_EVENTS_MAX_PAGE_SIZE);
+	if (pageSize !== undefined) qs.max_results = pageSize;
 	if (params.pageToken !== undefined) {
 		qs.page_token = params.pageToken;
 		return qs;
@@ -119,7 +116,7 @@ export async function listPipelineEvents(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
 	params: ListPipelineEventsParams,
-): Promise<PipelineEventsPage> {
+): Promise<Page<PipelineEvent>> {
 	if (!PIPELINE_ID_PATTERN.test(params.pipelineId)) {
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
@@ -131,7 +128,7 @@ export async function listPipelineEvents(
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
-	return { events: response.events ?? [], nextPageToken: response.next_page_token || undefined };
+	return toPage(response.events, response.next_page_token);
 }
 
 export async function listAllPipelineEvents(
@@ -139,14 +136,11 @@ export async function listAllPipelineEvents(
 	credentialType: DatabricksCredentialType,
 	params: ListPipelineEventsParams,
 	maxPages = DEFAULT_MAX_PAGES,
-): Promise<PipelineEventsPage> {
-	const events: PipelineEvent[] = [];
-	let pageToken = params.pageToken;
-	for (let page = 0; page < maxPages; page++) {
-		const result = await listPipelineEvents(context, credentialType, { ...params, pageToken });
-		events.push(...result.events);
-		pageToken = result.nextPageToken;
-		if (pageToken === undefined) break;
-	}
-	return { events, nextPageToken: pageToken };
+): Promise<Page<PipelineEvent>> {
+	return await collectPages(
+		async (pageToken) =>
+			await listPipelineEvents(context, credentialType, { ...params, pageToken }),
+		params.pageToken,
+		maxPages,
+	);
 }

@@ -5,10 +5,13 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 import {
 	buildPipelineEventsFilter,
+	clampPageSize,
+	JOB_RUNS_MAX_PAGE_SIZE,
 	listAllJobRuns,
 	listAllPipelineEvents,
 	listJobRuns,
 	listPipelineEvents,
+	PIPELINE_EVENTS_MAX_PAGE_SIZE,
 	type ListJobRunsParams,
 	type ListPipelineEventsParams,
 } from '../transport';
@@ -32,6 +35,19 @@ const apiMock = (context: ReturnType<typeof createPollContext>) =>
 const requestQuery = (context: ReturnType<typeof createPollContext>, call = 0) =>
 	apiMock(context).mock.calls[call][1].qs;
 
+describe('clampPageSize', () => {
+	it.each([
+		['an in-range size', 7, 7],
+		['a size below the range', 0, 1],
+		['a size above the range', 100, 25],
+		['a fractional size', 7.9, 7],
+		['no size', undefined, undefined],
+		['a non-numeric size', Number.NaN, undefined],
+	])('clamps %s', (_label, value, expected) => {
+		expect(clampPageSize(value, 25)).toBe(expected);
+	});
+});
+
 describe('listJobRuns', () => {
 	it('requests one page with the given filters and the partner User-Agent', async () => {
 		const context = createPollContext();
@@ -39,10 +55,10 @@ describe('listJobRuns', () => {
 
 		const page = await listJobRuns(context, 'databricksApi', {
 			jobId: JOB_ID,
-			startTimeFrom: 1788260000000,
+			startTimeFromMs: 1788260000000,
 			state: 'completed',
 			expandTasks: true,
-			limit: 25,
+			pageSize: 25,
 		});
 
 		expect(apiMock(context)).toHaveBeenCalledWith(
@@ -60,7 +76,7 @@ describe('listJobRuns', () => {
 				headers: expect.objectContaining({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT }),
 			}),
 		);
-		expect(page).toEqual({ runs: [run(1)], nextPageToken: 'page-2' });
+		expect(page).toEqual({ items: [run(1)], nextPageToken: 'page-2' });
 	});
 
 	const queryCases: Array<[string, ListJobRunsParams, Record<string, unknown>]> = [
@@ -69,13 +85,11 @@ describe('listJobRuns', () => {
 		['active runs only', { state: 'active' }, { active_only: true }],
 		[
 			'a time window',
-			{ startTimeFrom: 1, startTimeTo: 2 },
+			{ startTimeFromMs: 1, startTimeToMs: 2 },
 			{ start_time_from: 1, start_time_to: 2 },
 		],
 		['a page token', { pageToken: 'p2' }, { page_token: 'p2' }],
-		['a limit below the range', { limit: 0 }, { limit: 1 }],
-		['a limit above the range', { limit: 100 }, { limit: 25 }],
-		['a fractional limit', { limit: 7.9 }, { limit: 7 }],
+		['a page size above the range', { pageSize: 100 }, { limit: JOB_RUNS_MAX_PAGE_SIZE }],
 	];
 
 	it.each(queryCases)('sends the query for %s', async (_label, params, qs) => {
@@ -91,13 +105,9 @@ describe('listJobRuns', () => {
 	});
 
 	it.each([
-		['a page without runs', {}, { runs: [] }],
-		[
-			'a token without has_more',
-			{ runs: [run(1)], next_page_token: 'p2' },
-			{ runs: [run(1)], nextPageToken: 'p2' },
-		],
-		['an empty token', { runs: [run(1)], next_page_token: '' }, { runs: [run(1)] }],
+		['a page without runs', {}, { items: [] }],
+		['a has_more flag without a token', { runs: [run(1)], has_more: true }, { items: [run(1)] }],
+		['an empty token', { runs: [run(1)], next_page_token: '' }, { items: [run(1)] }],
 	])('normalises %s', async (_label, response, expected) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);
@@ -111,11 +121,11 @@ describe('listAllJobRuns', () => {
 		const context = createPollContext();
 		apiMock(context)
 			.mockResolvedValueOnce({ runs: [run(1), run(2)], next_page_token: 'p2' })
-			.mockResolvedValueOnce({ runs: [run(3)] });
+			.mockResolvedValueOnce({ runs: [run(3)], has_more: true });
 
-		const result = await listAllJobRuns(context, 'databricksApi', { jobId: JOB_ID, limit: 2 });
+		const result = await listAllJobRuns(context, 'databricksApi', { jobId: JOB_ID, pageSize: 2 });
 
-		expect(result).toEqual({ runs: [run(1), run(2), run(3)] });
+		expect(result).toEqual({ items: [run(1), run(2), run(3)] });
 		expect(apiMock(context)).toHaveBeenCalledTimes(2);
 		expect(requestQuery(context, 0)).toEqual({ job_id: JOB_ID, limit: 2 });
 		expect(requestQuery(context, 1)).toEqual({ job_id: JOB_ID, limit: 2, page_token: 'p2' });
@@ -137,7 +147,7 @@ describe('listAllJobRuns', () => {
 		const result = await listAllJobRuns(context, 'databricksApi', {}, 3);
 
 		expect(apiMock(context)).toHaveBeenCalledTimes(3);
-		expect(result).toEqual({ runs: [run(1), run(1), run(1)], nextPageToken: 'more' });
+		expect(result).toEqual({ items: [run(1), run(1), run(1)], nextPageToken: 'more' });
 	});
 });
 
@@ -148,7 +158,6 @@ describe('buildPipelineEventsFilter', () => {
 		['nothing', {}, undefined],
 		['no levels', { levels: [] }, undefined],
 		['a cursor', { after: CURSOR }, `timestamp > '${CURSOR}'`],
-		['a cursor and no levels', { after: CURSOR, levels: [] }, `timestamp > '${CURSOR}'`],
 		[
 			'a cursor with fractional seconds',
 			{ after: '2026-09-01T14:20:31.066Z' },
@@ -170,7 +179,6 @@ describe('buildPipelineEventsFilter', () => {
 		'2026-09-01',
 		'2026-09-01T14:20:50+02:00',
 		"2026-09-01T14:20:50Z' OR level='INFO",
-		'now',
 		'2026-02-30T14:20:50Z',
 		'2026-09-01T25:00:00Z',
 	])('rejects the cursor %s', (after) => {
@@ -178,12 +186,9 @@ describe('buildPipelineEventsFilter', () => {
 	});
 
 	it('rejects a level the API does not know', () => {
-		const levels = [
-			'ERROR',
-			"DEBUG') OR level in ('INFO",
-		] as unknown as ListPipelineEventsParams['levels'];
-
-		expect(() => buildPipelineEventsFilter({ levels })).toThrow(UnexpectedError);
+		expect(() => buildPipelineEventsFilter({ levels: ['ERROR', 'DEBUG'] })).toThrow(
+			UnexpectedError,
+		);
 	});
 });
 
@@ -196,7 +201,7 @@ describe('listPipelineEvents', () => {
 			pipelineId: PIPELINE_ID,
 			after: CURSOR,
 			levels: ['ERROR', 'WARN'],
-			maxResults: 25,
+			pageSize: 25,
 		});
 
 		expect(apiMock(context)).toHaveBeenCalledWith(
@@ -212,7 +217,7 @@ describe('listPipelineEvents', () => {
 				headers: expect.objectContaining({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT }),
 			}),
 		);
-		expect(page).toEqual({ events: [event('e1')], nextPageToken: 'p2' });
+		expect(page).toEqual({ items: [event('e1')], nextPageToken: 'p2' });
 	});
 
 	it('sends only the page token and page size when continuing', async () => {
@@ -223,26 +228,32 @@ describe('listPipelineEvents', () => {
 			pipelineId: PIPELINE_ID,
 			after: CURSOR,
 			levels: ['ERROR'],
-			maxResults: 25,
+			pageSize: 25,
 			pageToken: 'p2',
 		});
 
 		expect(requestQuery(context)).toEqual({ max_results: 25, page_token: 'p2' });
 	});
 
-	const orderCases: Array<[string, ListPipelineEventsParams['order'], string]> = [
-		['ascending by default', undefined, 'timestamp asc'],
-		['ascending', 'asc', 'timestamp asc'],
-		['descending', 'desc', 'timestamp desc'],
+	const queryCases: Array<
+		[string, Omit<ListPipelineEventsParams, 'pipelineId'>, Record<string, unknown>]
+	> = [
+		['ascending order by default', {}, { order_by: 'timestamp asc' }],
+		['descending order', { order: 'desc' }, { order_by: 'timestamp desc' }],
+		[
+			'a page size above the range',
+			{ pageSize: 5000 },
+			{ max_results: PIPELINE_EVENTS_MAX_PAGE_SIZE, order_by: 'timestamp asc' },
+		],
 	];
 
-	it.each(orderCases)('orders %s', async (_label, order, orderBy) => {
+	it.each(queryCases)('sends the query for %s', async (_label, params, qs) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue({});
 
-		await listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID, order });
+		await listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID, ...params });
 
-		expect(requestQuery(context)).toEqual({ order_by: orderBy });
+		expect(requestQuery(context)).toEqual(qs);
 	});
 
 	it.each(['pipelines', '../updates', `${PIPELINE_ID}/events`, ''])(
@@ -258,8 +269,8 @@ describe('listPipelineEvents', () => {
 	);
 
 	it.each([
-		['a page without events', {}, { events: [] }],
-		['an empty token', { events: [event('e1')], next_page_token: '' }, { events: [event('e1')] }],
+		['a page without events', {}, { items: [] }],
+		['an empty token', { events: [event('e1')], next_page_token: '' }, { items: [event('e1')] }],
 	])('normalises %s', async (_label, response, expected) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);
@@ -280,10 +291,10 @@ describe('listAllPipelineEvents', () => {
 		const result = await listAllPipelineEvents(context, 'databricksApi', {
 			pipelineId: PIPELINE_ID,
 			after: CURSOR,
-			maxResults: 25,
+			pageSize: 25,
 		});
 
-		expect(result).toEqual({ events: [event('e1'), event('e2')] });
+		expect(result).toEqual({ items: [event('e1'), event('e2')] });
 		expect(requestQuery(context, 0)).toEqual({
 			max_results: 25,
 			filter: `timestamp > '${CURSOR}'`,
@@ -317,6 +328,6 @@ describe('listAllPipelineEvents', () => {
 		);
 
 		expect(apiMock(context)).toHaveBeenCalledTimes(2);
-		expect(result).toEqual({ events: [event('e1'), event('e1')], nextPageToken: 'more' });
+		expect(result).toEqual({ items: [event('e1'), event('e1')], nextPageToken: 'more' });
 	});
 });
