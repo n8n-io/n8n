@@ -1,33 +1,3 @@
-get:
-  x-eov-operation-id: getUsers
-  x-required-scope: user:list
-  x-eov-operation-handler: v1/handlers/users/users.handler.ee
-  tags:
-    - User
-  summary: Retrieve all users
-  description: Retrieve all users from your instance. Only available for the instance owner.
-  parameters:
-    - $ref: '../../../../shared/spec/parameters/limit.yml'
-    - $ref: '../../../../shared/spec/parameters/offset.yml'
-    - $ref: '../../../../shared/spec/parameters/cursor.yml'
-    - $ref: '../schemas/parameters/includeRole.yml'
-    - name: projectId
-      in: query
-      required: false
-      explode: false
-      allowReserved: true
-      schema:
-        type: string
-        example: VmwOO9HeTEj20kxM
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/userList.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
 post:
   x-eov-operation-id: createUser
   x-required-scope: user:create

@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
 import { License } from '@/license';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/v1/shared/middlewares/global.middleware';
 
 import {
 	createMember,
@@ -297,11 +298,31 @@ describe('With license without quota:users', () => {
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
 	});
 
+	// Headline demonstration for the `@RequiresUserQuota` gate: an owner API key that has every
+	// scope it needs still gets the licence 403, with the same message body as the legacy
+	// `validLicenseWithUserQuota` middleware.
 	test('GET /users should fail due to invalid license', async () => {
-		await authOwnerAgent.get('/users').expect(403);
+		const response = await authOwnerAgent.get('/users').expect(403);
+
+		expect(response.body).toHaveProperty('message', USER_QUOTA_FORBIDDEN_MESSAGE);
 	});
 
 	test('GET /users/:id should fail due to invalid license', async () => {
-		await authOwnerAgent.get(`/users/${uuid()}`).expect(403);
+		const response = await authOwnerAgent.get(`/users/${uuid()}`).expect(403);
+
+		expect(response.body).toHaveProperty('message', USER_QUOTA_FORBIDDEN_MESSAGE);
+	});
+
+	// Known, accepted behavior change: `PublicApiControllerRegistry` always checks the API-key
+	// scope before `@RequiresUserQuota`. The legacy `getUser` handler ran the checks in the
+	// opposite order, so a caller that fails both checks used to see the licence message here.
+	// Both outcomes are a 403; only the message body changes when both checks fail at once.
+	test('GET /users/:id answers the generic Forbidden message when scope and license both fail', async () => {
+		const member = await createMemberWithApiKey();
+
+		const response = await testServer.publicApiAgentFor(member).get(`/users/${member.id}`);
+
+		expect(response.status).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
 	});
 });
