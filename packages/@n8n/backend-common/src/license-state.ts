@@ -102,10 +102,6 @@ export class LicenseState {
 		return this.isLicensed('feat:aiAssistant');
 	}
 
-	isAskAiLicensed() {
-		return this.isLicensed('feat:askAi');
-	}
-
 	isAiCreditsLicensed() {
 		return this.isLicensed('feat:aiCredits');
 	}
