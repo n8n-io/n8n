@@ -32,6 +32,21 @@ from you.
 | `app-section` | a wrapper around several blocks | Vertical stack with a medium gap. |
 | `app-grid-2`, `app-grid-3` | a wrapper around cards | Two or three equal columns; one column below `40rem`. |
 | `app-muted`, `app-link`, `app-text` | any element | Muted text color, primary link color, theme text color and font. |
+| `app-image` | an `img` | Fits the column and takes the theme radius. |
+
+Controls. They carry the design system's control scale (36px tall, one radius,
+one focus ring), so a hand-written form matches the `form` and `table` blocks.
+
+| Class | Use it on | What it does |
+| --- | --- | --- |
+| `app-btn` | a `button` or an `a` | Primary action: brand background (the theme primary color), inverse text. |
+| `app-btn--secondary` | with `app-btn` | Secondary action: surface background with a border. |
+| `app-input` | an `input`, `select` or `textarea` | Full-width control with a border and the theme radius. |
+| `app-label` | a `label` above a control | Control label. |
+| `app-field` | a `div` around a label and its control | Stacks them with a small gap. |
+| `app-check` | a `label` around a checkbox or radio | Puts the box and its text on one line. |
+| `app-notice` | a `div` | A message above the content: surface, border, theme radius. Add `app-notice--success` or `app-notice--danger` for the state colors. |
+| `app-table-wrap` + `app-table` | a `div` around a `table`, and the `table` | Bordered, scrollable table with a subtle header row and row separators. No classes on `th` or `td`. |
 
 The page content (the `slot`) renders inside `main.app-main`: a surface card
 centered at the content width, with padding. Content blocks need no container.
@@ -170,12 +185,12 @@ export async function render(ctx: PageContext) {
 
 | Theme field | Custom property | Read by |
 | --- | --- | --- |
-| `colors.primary` | `--app-color-primary` | `app-link`, `app-nav` current and hover |
+| `colors.primary` | `--app-color-primary` | `app-link`, `app-nav` current and hover, `app-btn` |
 | `colors.background` | `--app-color-background` | `app-canvas` (the page background) |
 | `colors.surface` | `--app-color-surface` | `app-main`, `app-header`, `app-card`, `app-menu` |
 | `colors.text` | `--app-color-text` | `app-text` (the page text) |
 | `colors.muted` | `--app-color-muted` | `app-muted`, `app-footer`, `app-nav` links, `app-hero p` |
-| `radius` | `--app-radius` | `app-main`, `app-card`, `app-menu` (`none` → `0px`, else `var(--radius--sm\|md\|lg)`) |
+| `radius` | `--app-radius` | `app-main`, `app-card`, `app-menu`, `app-notice`, `app-image`, `app-table-wrap` (`none` → `0px`, else `var(--radius--sm\|md\|lg)`) |
 | `fontFamily` | `--app-font-family` | `app-text` |
 | `contentWidth` | `--app-content-width` | `app-container`, `app-main` (a length in `px` or `rem`, e.g. `72rem`) |
 
@@ -232,11 +247,11 @@ Root element of each typed block inside `main`:
 | `header` | `h1`–`h6` (`text-2xl` … `text-xs`, `font-bold mb-md`) |
 | `paragraph` | `p.text-text.mb-md` |
 | `list` | `ol.list-decimal` or `ul.list-disc` (`pl-lg mb-md text-text`) |
-| `image` | `figure.mb-md` > `img.rounded-lg.max-w-full` + `figcaption` |
+| `image` | `figure.mb-md` > `img.app-image` + `figcaption` |
 | `divider` | `hr.my-md.border-border` |
-| `table` | `div.overflow-x-auto.rounded-lg.border` > `table.w-full.text-sm` |
-| `form` | `div.rounded-lg.border.bg-surface.p-md` > `form.flex.flex-col` |
-| `button` | `form.mb-md` > `button[type=submit]` |
+| `table` | `div.app-table-wrap` > `table.app-table` |
+| `form` | `div.app-card.mb-md` > `form.flex.flex-col` with `app-field` rows |
+| `button` | `form.mb-md` > `button.app-btn[type=submit]` |
 | `html` | `div.app-block-html.mb-md` |
 | `code` | no wrapper; the returned HTML is inserted as-is |
 
@@ -248,16 +263,18 @@ class name has no effect. Prefer the `app-*` vocabulary; use a utility only for
 a one-off tweak inside one block.
 
 ```
-bg-background-danger bg-background-success bg-brand bg-subtle bg-surface block
-border border-border border-border-danger border-border-success border-t
-flex flex-col font-bold font-medium font-semibold gap-2xs gap-3xs gap-sm
-hover:bg-brand-hover hover:bg-hover hover:underline inline items-center
-list-decimal list-disc list-none max-w-full mb-md mb-sm mb-xs min-h-screen
-mr-xs mt-xs my-md no-underline overflow-x-auto p-md p-sm p-xs pl-lg pl-sm
-py-2xs rounded-lg rounded-md rounded-sm text-2xl text-2xs text-left text-lg
-text-md text-right text-sm text-text text-text-danger text-text-disabled
-text-text-inverse text-text-subtle text-text-success text-xl text-xs
-uppercase w-full whitespace-nowrap
+bg-background-danger bg-background-info bg-background-success
+bg-background-warning bg-brand bg-subtle bg-surface block border border-border
+border-border-danger border-border-info border-border-success
+border-border-warning border-t flex flex-col font-bold font-medium
+font-semibold gap-3xs gap-2xs gap-xs gap-sm gap-md hover:bg-brand-hover
+hover:bg-hover hover:underline inline items-center list-decimal list-disc
+list-none max-w-full mb-xs mb-sm mb-md min-h-screen mr-xs mt-xs mt-sm my-md
+no-underline overflow-x-auto p-xs p-sm p-md pl-sm pl-lg py-2xs rounded-sm
+rounded-md rounded-lg self-start text-left text-right text-2xs text-xs text-sm
+text-md text-lg text-xl text-2xl text-text text-text-danger text-text-disabled
+text-text-inverse text-text-subtle text-text-success uppercase w-full
+whitespace-nowrap whitespace-pre-line
 ```
 
 Rules for block output:

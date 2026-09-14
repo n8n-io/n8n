@@ -43,6 +43,9 @@ support agent", or a help widget backed by an agent that already exists.
 - **Agents module.** If the instance has agents disabled, the block renders a
   muted "Chat is not available on this instance." notice. Do not add the block
   when the user has no agents.
+- **Markdown in replies.** The widget renders the reply as markdown while it
+  streams: headings, lists, quotes, rules, bold, italic, links, inline code and
+  fenced code. Tables and images are not rendered. `welcome` stays plain text.
 
 ## Styling
 

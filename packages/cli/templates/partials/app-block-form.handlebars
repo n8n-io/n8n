@@ -1,24 +1,24 @@
 {{#if showSuccess}}
-<div class='rounded-lg border border-border-success bg-background-success p-md mb-md text-text-success'>
+<div class='app-notice app-notice--success'>
 	{{successMessage}}
 </div>
 {{else if stepError}}
-<div class='rounded-lg border border-border-danger bg-background-danger p-md mb-md text-text-danger'>
+<div class='app-notice app-notice--danger'>
 	{{stepError}} <a class='app-link' href='{{restartUrl}}'>Start over</a>
 </div>
 {{else if processing}}
-<div class='rounded-lg border border-border bg-surface p-md mb-md text-text-subtle'>
+<div class='app-notice app-muted'>
 	Processing your response… <a class='app-link' href='{{refreshUrl}}'>Refresh</a>
 </div>
 {{else if completion}}
-<div class='rounded-lg border border-border-success bg-background-success p-md mb-md'>
-	{{#if completion.title}}<h3 class='text-lg font-medium text-text mb-xs'>{{completion.title}}</h3>{{/if}}
-	{{#if completion.message}}<p class='text-sm text-text whitespace-pre-line'>{{{completion.message}}}</p>{{/if}}
-	{{#if completion.responseText}}<div class='text-sm text-text mt-sm'>{{{completion.responseText}}}</div>{{/if}}
+<div class='app-notice app-notice--success'>
+	{{#if completion.title}}<h3 class='text-lg font-medium mb-xs'>{{completion.title}}</h3>{{/if}}
+	{{#if completion.message}}<p class='text-sm whitespace-pre-line'>{{{completion.message}}}</p>{{/if}}
+	{{#if completion.responseText}}<div class='text-sm mt-sm'>{{{completion.responseText}}}</div>{{/if}}
 	{{#if completion.redirectUrl}}<p class='text-sm mt-sm'><a class='app-link' href='{{completion.redirectUrl}}' rel='noopener'>Continue</a></p>{{/if}}
 </div>
 {{else}}
-<div class='rounded-lg border border-border bg-surface p-md mb-md'>
+<div class='app-card mb-md'>
 	{{#if title}}<h3 class='text-lg font-medium text-text mb-xs'>{{title}}</h3>{{/if}}
 	{{#if description}}<p class='text-sm text-text-subtle mb-sm whitespace-pre-line'>{{{description}}}</p>{{/if}}
 	<form method='POST' action='{{actionUrl}}' class='flex flex-col gap-sm'>
@@ -27,41 +27,41 @@
 		<input type='hidden' name='_sig' value='{{step.token}}' />
 		{{/if}}
 		{{#each fields}}
-		<div class='flex flex-col gap-3xs'>
+		<div class='app-field'>
 			{{#if isHidden}}
 			<input type='hidden' name='{{name}}' value='{{defaultValue}}' />
 			{{else if isHtml}}
 			<div class='text-sm text-text'>{{{html}}}</div>
 			<input type='hidden' name='{{name}}' value='{{html}}' />
 			{{else if isFileDisabled}}
-			<label class='text-sm text-text-subtle'>{{label}} (file uploads are not supported here)</label>
-			<input type='file' disabled class='text-sm text-text-disabled' />
+			<label class='app-label app-muted'>{{label}} (file uploads are not supported here)</label>
+			<input type='file' disabled class='app-input text-text-disabled' />
 			{{else if isTextarea}}
-			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
-			<textarea id='{{name}}' name='{{name}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm'>{{defaultValue}}</textarea>
+			<label class='app-label' for='{{name}}'>{{label}}</label>
+			<textarea id='{{name}}' name='{{name}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='app-input'>{{defaultValue}}</textarea>
 			{{else if isSelect}}
-			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
-			<select id='{{name}}' name='{{name}}' {{#if multiple}}multiple{{/if}} {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm'>
+			<label class='app-label' for='{{name}}'>{{label}}</label>
+			<select id='{{name}}' name='{{name}}' {{#if multiple}}multiple{{/if}} {{#if required}}required{{/if}} class='app-input'>
 				{{#each options}}<option value='{{this}}'>{{this}}</option>{{/each}}
 			</select>
 			{{else if isChoice}}
-			<span class='text-sm text-text'>{{label}}</span>
+			<span class='app-label'>{{label}}</span>
 			{{#each options}}
-			<label class='text-sm text-text flex items-center gap-2xs'>
+			<label class='app-check'>
 				<input type='{{#if ../radio}}radio{{else}}checkbox{{/if}}' name='{{../name}}' value='{{this}}' /> {{this}}
 			</label>
 			{{/each}}
 			{{else if isCheckbox}}
-			<label class='text-sm text-text flex items-center gap-2xs'>
+			<label class='app-check'>
 				<input type='checkbox' name='{{name}}' {{#if required}}required{{/if}} /> {{label}}
 			</label>
 			{{else}}
-			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
-			<input id='{{name}}' type='{{inputType}}' name='{{name}}' value='{{defaultValue}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm' />
+			<label class='app-label' for='{{name}}'>{{label}}</label>
+			<input id='{{name}}' type='{{inputType}}' name='{{name}}' value='{{defaultValue}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='app-input' />
 			{{/if}}
 		</div>
 		{{/each}}
-		<button type='submit' class='bg-brand hover:bg-brand-hover text-text-inverse rounded-md p-sm'>{{submitLabel}}</button>
+		<button type='submit' class='app-btn self-start'>{{submitLabel}}</button>
 	</form>
 </div>
 {{/if}}

@@ -54,7 +54,7 @@
 
 	const notice = (response) => {
 		const card = document.createElement('div');
-		card.className = 'app-notice';
+		card.className = 'app-notice app-notice--danger';
 		if (response.status === 401) {
 			const link = document.createElement('a');
 			link.href = location.href;

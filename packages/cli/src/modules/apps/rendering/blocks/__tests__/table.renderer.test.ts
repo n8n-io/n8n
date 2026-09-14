@@ -126,7 +126,7 @@ describe('tableBlockRenderer', () => {
 
 		expect(html).not.toContain('<form');
 		expect(html).not.toContain('<a ');
-		expect(html.match(/<th /g)).toHaveLength(4);
+		expect(html.match(/<th>/g)).toHaveLength(4);
 	});
 
 	it('renders a delete form per row when deletable', async () => {
@@ -203,7 +203,7 @@ describe('tableBlockRenderer', () => {
 		);
 
 		expect(html).toContain('Invalid value for &quot;amount&quot;');
-		expect(html).toContain('text-text-danger');
+		expect(html).toContain('app-notice--danger');
 	});
 
 	it("does not show another block's error message", async () => {
