@@ -8,13 +8,13 @@
 export function getErrorCode(error: unknown): string {
 	if (typeof error === 'object' && error !== null) {
 		if ('httpStatusCode' in error) {
-			const value = (error as { httpStatusCode: unknown }).httpStatusCode;
+			const value = error.httpStatusCode;
 			if (typeof value === 'number' || typeof value === 'string') {
 				return `HTTP_${value}`;
 			}
 		}
 		if ('errorCode' in error) {
-			const value = (error as { errorCode: unknown }).errorCode;
+			const value = error.errorCode;
 			if (typeof value === 'number') return String(value);
 			if (typeof value === 'string') return value;
 		}

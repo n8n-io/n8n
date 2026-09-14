@@ -4,7 +4,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import { deepCopy, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -61,7 +61,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
-const normalize = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
+const normalize = (value: unknown) => deepCopy(value ?? null);
 const baseOperationTypes = [
 	'updateNodeParameters',
 	'setNodeParameter',
