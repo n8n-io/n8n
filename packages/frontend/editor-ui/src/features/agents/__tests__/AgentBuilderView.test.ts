@@ -2593,6 +2593,27 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 	});
 
+	it('opens the AI panel and skips the fetch when the switcher hands off a pending agent in place', async () => {
+		// Mounted on an existing, non-pending agent A.
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		getAgentMock.mockClear();
+
+		// "New agent" from the switcher (`useCreateAgent`) writes the new pending
+		// marker to `history.state` and changes `agentId` in place — the same
+		// component instance keeps running, so `routePendingAgentId` (read once
+		// at setup) must be refreshed from the now-current `history.state`.
+		history.replaceState({ instanceAiPendingAgentId: 'b' }, '');
+		routeParams.agentId = 'b';
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalledWith(expect.anything(), 'p1', 'b');
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
 	it('hides the embedded AI panel dock in artifact mode', async () => {
 		const wrapper = await renderView({
 			props: {
