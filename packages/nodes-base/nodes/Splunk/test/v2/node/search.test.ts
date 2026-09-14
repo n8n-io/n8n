@@ -42,6 +42,52 @@ describe('Splunk, search resource', () => {
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
 
+	test('create operation with exec_mode oneshot returns the search output', async () => {
+		// `oneshot` answers with the search output instead of creating a job, so
+		// there is no sid. Reading it unconditionally threw
+		// `Cannot read properties of undefined (reading 'sid')` (#38527).
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNodeParameter
+			.calledWith('search', 0)
+			.mockReturnValue('search index=_internal | head 3');
+		executeFunctions.getNodeParameter
+			.calledWith('additionalFields', 0)
+			.mockReturnValue({ exec_mode: 'oneshot' });
+		const oneshotResponse = { results: [{ _raw: 'first' }, { _raw: 'second' }] };
+		(transport.splunkApiRequest as Mock).mockReturnValue(oneshotResponse);
+
+		const responseData = await search.create.execute.call(executeFunctions, 0);
+
+		expect(transport.splunkApiRequest).toHaveBeenCalledWith('POST', '/services/search/jobs', {
+			exec_mode: 'oneshot',
+			search: 'search index=_internal | head 3',
+		});
+		// No job was created, so no job lookup is made…
+		expect(transport.splunkApiJsonRequest).not.toHaveBeenCalled();
+		// …and the search output reaches the caller instead of an exception.
+		expect(responseData).toEqual(oneshotResponse);
+	});
+
+	test('create operation still follows the sid when the API returns a job', async () => {
+		// The control for the guard above: a response that DOES carry a sid must
+		// still be looked up, or the guard would swallow every normal search.
+		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNodeParameter
+			.calledWith('search', 0)
+			.mockReturnValue('search index=_internal');
+		executeFunctions.getNodeParameter.calledWith('additionalFields', 0).mockReturnValue({});
+		(transport.splunkApiRequest as Mock).mockReturnValue({ response: { sid: '67890' } });
+		(transport.splunkApiJsonRequest as Mock).mockReturnValue([{ dispatchState: 'DONE' }]);
+
+		const responseData = await search.create.execute.call(executeFunctions, 0);
+
+		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
+			'GET',
+			'/services/search/jobs/67890',
+		);
+		expect(responseData).toEqual([{ dispatchState: 'DONE' }]);
+	});
+
 	test('deleteJob operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.mockReturnValue('12345');
