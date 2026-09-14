@@ -50,8 +50,6 @@
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "@types/lodash": "catalog:",
-    "@vitejs/plugin-vue": "catalog:frontend",
-    "@vue/tsconfig": "catalog:frontend",
     "pinia": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",

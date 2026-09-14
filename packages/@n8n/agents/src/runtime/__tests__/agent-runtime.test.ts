@@ -9493,3 +9493,85 @@ describe('AgentRuntime — model stream stall handling', () => {
 		expect(runtime.getState().status).toBe('failed');
 	});
 });
+
+describe('AgentRuntime — MCP tool provenance', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('stamps the MCP server name on the tool-result chunk', async () => {
+		const mcpTool: BuiltTool = {
+			...makeMockTool('genie_ask', async () => 'rows'),
+			mcpTool: true,
+			mcpServerName: 'Genie',
+			mcpToolName: 'ask',
+		};
+		const { runtime } = createRuntimeWithTools(
+			[mcpTool, makeMockTool('plain', async () => 'ok')],
+			2,
+		);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-mcp', toolName: 'genie_ask', args: {} },
+								{ type: 'tool-call', toolCallId: 'tc-plain', toolName: 'plain', args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-mcp', toolName: 'genie_ask', input: {} },
+					{ toolCallId: 'tc-plain', toolName: 'plain', input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const result = await runtime.stream('go');
+		const chunks = await collectChunks(result.stream);
+		const toolResults = chunks.filter(
+			(c): c is Extract<StreamChunk, { type: 'tool-result' }> => c.type === 'tool-result',
+		);
+
+		expect(toolResults.find((c) => c.toolCallId === 'tc-mcp')?.mcpServerName).toBe('Genie');
+		expect(toolResults.find((c) => c.toolCallId === 'tc-plain')).not.toHaveProperty(
+			'mcpServerName',
+		);
+	});
+
+	it('stamps the MCP server name on the tool-result chunk of a resumed tool', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return 'rows';
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const mcpTool: BuiltTool = {
+			...makeSuspendingTool('genie_ask', handler),
+			mcpTool: true,
+			mcpServerName: 'Genie',
+			mcpToolName: 'ask',
+		};
+		const { runtime } = createRuntimeWithTools([mcpTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'genie_ask', args: {} }]),
+		);
+
+		const first = await runtime.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const resumed = await runtime.resume('stream', { approved: true }, { runId, toolCallId });
+		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'tool-result', toolCallId, mcpServerName: 'Genie' }),
+			]),
+		);
+	});
+});

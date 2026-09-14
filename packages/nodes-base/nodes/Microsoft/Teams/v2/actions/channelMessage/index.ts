@@ -5,9 +5,10 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as getAllReplies from './getAllReplies.operation';
 import * as reply from './reply.operation';
+import * as softDeleteMessage from './softDeleteMessage.operation';
 import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
-export { create, get, getAll, getAllReplies, reply };
+export { create, get, getAll, getAllReplies, reply, softDeleteMessage };
 
 export const description: INodeProperties[] = [
 	{
@@ -26,6 +27,12 @@ export const description: INodeProperties[] = [
 				value: 'create',
 				description: 'Create a message in a channel',
 				action: 'Create message',
+			},
+			{
+				name: 'Delete',
+				value: 'softDeleteMessage',
+				description: 'Delete a message from a channel',
+				action: 'Delete message',
 			},
 			{
 				name: 'Get',
@@ -82,10 +89,25 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName:
+			'Deleting and restoring channel messages is not available with the Service Principal credential. Microsoft Graph offers these actions only for a signed-in user; use an OAuth2 credential.',
+		name: 'channelMessageDeleteServicePrincipalNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['channelMessage'],
+				operation: ['softDeleteMessage'],
+				authentication: [SERVICE_PRINCIPAL_AUTH],
+			},
+		},
+	},
 
 	...create.description,
 	...get.description,
 	...getAll.description,
 	...getAllReplies.description,
 	...reply.description,
+	...softDeleteMessage.description,
 ];
