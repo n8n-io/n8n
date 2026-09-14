@@ -20,6 +20,8 @@ import {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
 	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -351,7 +353,6 @@ describe('McpService', () => {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
 			mcpCanvasGroupsEnabled?: boolean;
-			mcpUserPreferencesEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -368,7 +369,6 @@ describe('McpService', () => {
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
 						mcpCanvasGroupsEnabled: opts.mcpCanvasGroupsEnabled ?? false,
-						mcpUserPreferencesEnabled: opts.mcpUserPreferencesEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -466,9 +466,11 @@ describe('McpService', () => {
 		});
 
 		describe('user preferences', () => {
-			it('enables the tool for users with the flag set', async () => {
+			it('enables the tool for users in the enabled variant', async () => {
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+				});
 				const service = buildResolutionService({ postHogClient });
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
@@ -486,10 +488,10 @@ describe('McpService', () => {
 				});
 			});
 
-			it('treats non-boolean flag values as disabled', async () => {
+			it('keeps the tool disabled for users in the control variant', async () => {
 				const postHogClient = mockInstance(PostHogClient);
 				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: 'variant',
+					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 				});
 				const service = buildResolutionService({ postHogClient });
 
@@ -498,14 +500,14 @@ describe('McpService', () => {
 				});
 			});
 
-			// Without this an instance with no PostHog cannot exercise the tool at all.
-			it('enables the tool when the operator force-enables it', async () => {
+			// The flag is multivariate, so a boolean `true` is a misconfigured flag.
+			it('treats a boolean flag value as disabled', async () => {
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient, mcpUserPreferencesEnabled: true });
+				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
+				const service = buildResolutionService({ postHogClient });
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					aiPreferencesEnabled: true,
+					aiPreferencesEnabled: false,
 				});
 			});
 		});
@@ -568,7 +570,9 @@ describe('McpService', () => {
 
 		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			});
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
