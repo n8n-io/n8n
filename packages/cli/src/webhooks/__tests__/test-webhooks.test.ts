@@ -127,7 +127,7 @@ describe('TestWebhooks', () => {
 			});
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			const cancelSpy = vi.spyOn(testWebhooks, 'cancelWebhook').mockResolvedValue(undefined);
+			const cancelSpy = vi.spyOn(testWebhooks, 'cancelWebhook').mockResolvedValue(false);
 
 			await testWebhooks.needsWebhook(args);
 			await testWebhooks.needsWebhook({ ...args, timeoutMs: TEST_WEBHOOK_MAX_TIMEOUT });
