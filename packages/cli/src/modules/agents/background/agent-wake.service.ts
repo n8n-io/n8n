@@ -220,7 +220,8 @@ export class AgentWakeService {
 			);
 			this.failures.delete(threadId);
 
-			if (jobs.length < pending.length) this.scheduleLocal(threadId);
+			// Check for results that arrived during this reply; an empty queue stops further checks.
+			this.scheduleLocal(threadId);
 		} catch {
 			if (signal.aborted) return;
 			// Keep provider and tool error details in the execution record.

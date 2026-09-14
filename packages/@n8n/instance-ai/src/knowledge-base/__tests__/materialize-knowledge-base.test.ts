@@ -110,12 +110,13 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
 		).toContain('# Workflow SDK language reference');
 
-		// Generated from two constants: the rules, then the when-to-group guidance.
+		// Rules only: the when-to-group guidance already lives in the skill's
+		// always-loaded "## Node Groups" section, so it is not repeated here.
 		const nodeGroupsReference = bundle.files.get(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`,
 		);
 		expect(nodeGroupsReference).toContain('## Node groups');
-		expect(nodeGroupsReference).toContain('## Grouping');
+		expect(nodeGroupsReference).not.toContain('## Grouping');
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };

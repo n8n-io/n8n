@@ -83,6 +83,14 @@ export {
 	DeleteProjectQueryPublicDto,
 } from './project/project-public.dto';
 export type { ProjectPublic } from './project/project-public.dto';
+export {
+	projectMemberPublicSchema,
+	ProjectMemberPublicDto,
+	ProjectMemberListPublicDto,
+	ListProjectMembersQueryPublicDto,
+	AddProjectMembersPublicDto,
+	ChangeProjectMemberRolePublicDto,
+} from './project/project-member-public.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -100,6 +108,9 @@ export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
 export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
+export { ChangeEmailRequestDto } from './user/change-email-request.dto';
+export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
+export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -120,6 +131,8 @@ export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
+	CreateCredentialPublicDto,
+	UpdateCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -128,7 +141,11 @@ export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
-export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
+export {
+	TYPE_DEFAULT as VARIABLE_TYPE_DEFAULT,
+	variableTypeSchema,
+	variableValueSchema,
+} from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export {
 	GLOBAL_PROJECT_ID_FILTER,
@@ -136,6 +153,10 @@ export {
 } from './variables/list-variables-query.dto';
 export { VariableListPublicDto, variablePublicSchema } from './variables/variable-public.dto';
 export type { VariablePublic } from './variables/variable-public.dto';
+export {
+	CreateVariablePublicDto,
+	UpdateVariablePublicDto,
+} from './variables/variable-write-public.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
@@ -202,7 +223,12 @@ export {
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
-export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
+export {
+	CreateTagPublicDto,
+	TagPublicDto,
+	TagListPublicDto,
+	tagPublicSchema,
+} from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -259,6 +285,10 @@ export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto
 export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
 export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+export {
+	NodeTypePolicyEffectivePublicDto,
+	NodeTypePolicyEffectiveWriteResultPublicDto,
+} from './node-type-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -474,6 +504,7 @@ export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
 
 export {
+	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
