@@ -457,6 +457,7 @@ export function useNodeHelpers() {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
+				{ runAsUserId: workflowDocumentStore.value.settings?.runAsUserId },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		};

@@ -1456,6 +1456,33 @@ describe('useNodeHelpers()', () => {
 				);
 			});
 
+			it('warns when a private credential is used under a schedule trigger with no run-as user set', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode('n8n-nodes-base.scheduleTrigger'),
+				];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result?.credentials?.[NOTION_API]).toEqual([
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+				]);
+			});
+
+			it('does not warn when a private credential is used under a schedule trigger with a run-as user set', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [
+					buildTriggerNode('n8n-nodes-base.scheduleTrigger'),
+				];
+				mockDocumentStore.settings = { runAsUserId: 'run-as-user-id' };
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
 			it('does not warn when dynamic credentials feature is disabled', () => {
 				mockedUseDynamicCredentials.mockReturnValue({
 					isEnabled: computed(() => false),

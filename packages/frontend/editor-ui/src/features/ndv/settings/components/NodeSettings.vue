@@ -11,7 +11,13 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	deepCopy,
+	isCommunityPackageName,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
@@ -40,6 +46,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
+import RunAsCallout from '@/features/resolvers/components/RunAsCallout.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -726,6 +733,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<RunAsCallout v-if="node.type === SCHEDULE_TRIGGER_NODE_TYPE" />
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
