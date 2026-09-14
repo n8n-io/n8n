@@ -18,7 +18,9 @@ function hasId(value: unknown): value is { id: string } {
 	);
 }
 
-async function resolveSignedInUserId(this: IExecuteFunctions): Promise<string> {
+const signedInUserIdByExecution = new WeakMap<IExecuteFunctions, string>();
+
+async function fetchSignedInUserId(this: IExecuteFunctions): Promise<string> {
 	const user: unknown = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -32,6 +34,16 @@ async function resolveSignedInUserId(this: IExecuteFunctions): Promise<string> {
 		});
 	}
 	return user.id;
+}
+
+async function resolveSignedInUserId(this: IExecuteFunctions): Promise<string> {
+	const cached = signedInUserIdByExecution.get(this);
+	if (cached !== undefined) {
+		return cached;
+	}
+	const userId = await fetchSignedInUserId.call(this);
+	signedInUserIdByExecution.set(this, userId);
+	return userId;
 }
 
 export function messageActionProperties(messageDescription: string): INodeProperties[] {

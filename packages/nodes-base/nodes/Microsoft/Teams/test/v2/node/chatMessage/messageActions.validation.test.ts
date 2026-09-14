@@ -70,8 +70,22 @@ describe.each<[string, string]>([['softDeleteMessage', 'softDelete']])(
 			expect(apiRequest).toHaveBeenNthCalledWith(2, 'POST', actionPath);
 		});
 
-		it('resolves the signed-in user once for each input item', async () => {
+		it('resolves the signed-in user once for all input items of an execution', async () => {
 			ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			apiRequest
+				.mockResolvedValueOnce({ id: userId })
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce(undefined);
+
+			await run();
+
+			expect(apiRequest).toHaveBeenCalledTimes(3);
+			expectMeCall(1);
+			expect(apiRequest).toHaveBeenNthCalledWith(2, 'POST', actionPath);
+			expect(apiRequest).toHaveBeenNthCalledWith(3, 'POST', actionPath);
+		});
+
+		it('resolves the signed-in user again in a new execution', async () => {
 			apiRequest
 				.mockResolvedValueOnce({ id: userId })
 				.mockResolvedValueOnce(undefined)
@@ -79,12 +93,56 @@ describe.each<[string, string]>([['softDeleteMessage', 'softDelete']])(
 				.mockResolvedValueOnce(undefined);
 
 			await run();
+			ctx = createExecuteContext();
+			await run();
 
 			expect(apiRequest).toHaveBeenCalledTimes(4);
 			expectMeCall(1);
-			expect(apiRequest).toHaveBeenNthCalledWith(2, 'POST', actionPath);
 			expectMeCall(3);
-			expect(apiRequest).toHaveBeenNthCalledWith(4, 'POST', actionPath);
+		});
+
+		it('reuses the signed-in user after a failed action on an earlier item', async () => {
+			ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			ctx.continueOnFail.mockReturnValue(true);
+			apiRequest
+				.mockResolvedValueOnce({ id: userId })
+				.mockRejectedValueOnce(new Error('Not Found'))
+				.mockResolvedValueOnce(undefined);
+
+			const result = await run();
+
+			expect(apiRequest).toHaveBeenCalledTimes(3);
+			expectMeCall(1);
+			expect(apiRequest).toHaveBeenNthCalledWith(2, 'POST', actionPath);
+			expect(apiRequest).toHaveBeenNthCalledWith(3, 'POST', actionPath);
+			expect(result).toEqual([
+				[
+					{ json: { error: 'Not Found' }, pairedItem: { item: 0 } },
+					{ json: { success: true }, pairedItem: { item: 1 } },
+				],
+			]);
+		});
+
+		it('retries the signed-in user lookup on the next item after it fails', async () => {
+			ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			ctx.continueOnFail.mockReturnValue(true);
+			apiRequest
+				.mockRejectedValueOnce(new Error('Service unavailable'))
+				.mockResolvedValueOnce({ id: userId })
+				.mockResolvedValueOnce(undefined);
+
+			const result = await run();
+
+			expect(apiRequest).toHaveBeenCalledTimes(3);
+			expectMeCall(1);
+			expectMeCall(2);
+			expect(apiRequest).toHaveBeenNthCalledWith(3, 'POST', actionPath);
+			expect(result).toEqual([
+				[
+					{ json: { error: 'Service unavailable' }, pairedItem: { item: 0 } },
+					{ json: { success: true }, pairedItem: { item: 1 } },
+				],
+			]);
 		});
 
 		it.each([
