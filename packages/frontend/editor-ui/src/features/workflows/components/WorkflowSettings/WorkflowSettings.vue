@@ -229,6 +229,7 @@ const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.va
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
+
 const workflowOwnerName = computed(() => {
 	const fallback = i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromSameProject');
 
@@ -459,10 +460,6 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		{
 			key: 'workflowsFromAList',
 			value: i18n.baseText('workflowSettings.callerPolicy.options.workflowsFromAList'),
-		},
-		{
-			key: 'any',
-			value: i18n.baseText('workflowSettings.callerPolicy.options.any'),
 		},
 	];
 };
@@ -909,7 +906,13 @@ onMounted(async () => {
 	if (workflowSettingsData.saveManualExecutions === undefined) {
 		workflowSettingsData.saveManualExecutions = 'DEFAULT';
 	}
-	if (workflowSettingsData.callerPolicy === undefined) {
+	// A stored policy outside the supported options, e.g. the removed `any`, denies every
+	// caller at runtime. Show the instance default so saving persists a supported policy.
+	const validCallerPolicies: string[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
+	if (
+		workflowSettingsData.callerPolicy === undefined ||
+		!validCallerPolicies.includes(workflowSettingsData.callerPolicy)
+	) {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}

@@ -19,7 +19,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, type WorkflowSettings } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -252,6 +252,29 @@ describe('WorkflowSettingsVue', () => {
 			within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'),
 		).toBeDisabled();
 		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
+	});
+
+	// A workflow can still store the removed `any` policy, which denies every caller at
+	// runtime. The dialog shows the instance default, and saving persists it as the fix.
+	it('should open with the instance default when the stored policy is the removed `any`', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		settingsStore.settings.workflowCallerPolicyDefaultOption = 'workflowsFromSameOwner';
+		workflowDocumentStore.setSettings({
+			executionOrder: 'v1',
+			callerPolicy: 'any' as WorkflowSettings.CallerPolicy,
+		});
+
+		const { getByRole } = createComponent({ pinia });
+		await flushPromises();
+
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			'1',
+			expect.objectContaining({
+				settings: expect.objectContaining({ callerPolicy: 'workflowsFromSameOwner' }),
+			}),
+		);
 	});
 
 	describe('Custom span attributes', () => {

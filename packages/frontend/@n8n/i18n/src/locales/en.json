@@ -4765,7 +4765,6 @@
 	"workflowSettings.callerIds": "IDs of workflows that can call this one",
 	"workflowSettings.callerIds.placeholder": "e.g. 14, 18",
 	"workflowSettings.callerPolicy": "This workflow can be called by",
-	"workflowSettings.callerPolicy.options.any": "Any workflow",
 	"workflowSettings.callerPolicy.options.workflowsFromPersonalProject": "Workflows created by {projectName}",
 	"workflowSettings.callerPolicy.options.workflowsFromTeamProject": "Only workflows in {projectName}",
 	"workflowSettings.callerPolicy.options.workflowsFromSameProject": "Only workflows in the same project",
