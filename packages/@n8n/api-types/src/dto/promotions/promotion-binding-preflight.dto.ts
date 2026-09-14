@@ -81,9 +81,13 @@ export const promotionBindingIssueSchema = z.enum([
 	'unavailable',
 	/** The files do not say which project owns the item. */
 	'unknown-owner',
+	/** The project that owns the item does not exist on the destination yet. */
 	'owner-project-absent',
+	/** The project id that owns the item belongs to a personal project on the destination. */
 	'owner-project-not-team',
+	/** A project that uses the item does not exist on the destination yet. */
 	'consuming-project-absent',
+	/** A project id that uses the item belongs to a personal project on the destination. */
 	'consuming-project-not-team',
 	/** The item is owned by one project and used in others. Creation alone does not grant access there. */
 	'sharing-required',
