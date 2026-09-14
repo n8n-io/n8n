@@ -192,16 +192,22 @@ export class PromotionsGitService {
 		credentials,
 		paths,
 		branchName,
+		targetBranchName,
 		configId,
 		author,
 		commitMessage,
 		force,
 		stagePathspec,
+		onCheckoutRestored,
 	}: GitOperation & {
+		/** Push to this new branch instead of the configured base branch. */
+		targetBranchName?: string;
 		author: { name: string; email: string };
 		commitMessage: string;
 		force: boolean;
 		stagePathspec: string;
+		/** Called only after the checkout returns to its base commit. */
+		onCheckoutRestored: () => Promise<void>;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.withGit(
@@ -214,9 +220,20 @@ export class PromotionsGitService {
 					config: [`user.name=${author.name}`, `user.email=${author.email}`],
 				},
 				async (git) => {
+					if (targetBranchName) {
+						return await this.commitAndPushToTargetBranch(git, {
+							branchName,
+							targetBranchName,
+							commitMessage,
+							stagePathspec,
+							onCheckoutRestored,
+						});
+					}
+
 					// Scope staging to the package while including removed entities.
 					await git.add(['--all', '--', stagePathspec]);
 					await git.commit(commitMessage);
+					const commitSha = (await git.revparse(['HEAD'])).trim();
 
 					if (force) {
 						await git.push('origin', branchName, ['-f']);
@@ -224,11 +241,113 @@ export class PromotionsGitService {
 						await git.push('origin', branchName);
 					}
 
-					return { commitSha: (await git.revparse(['HEAD'])).trim() };
+					return { commitSha };
+				},
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName: targetBranchName ?? branchName });
+		}
+	}
+
+	/** Reset the checkout to the latest base branch before one branched promotion. */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+		const { remoteUrl, credentials, paths, branchName, configId } = operation;
+		try {
+			await this.withGit(
+				{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+				async (git) => {
+					const branchRefs = await git.listRemote([
+						'--heads',
+						'origin',
+						`refs/heads/${branchName}`,
+					]);
+					if (!branchRefs.trim()) {
+						throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+					}
+
+					await git.fetch('origin', `+refs/heads/${branchName}:refs/remotes/origin/${branchName}`, [
+						'--progress',
+					]);
+					await git.raw(['reset', '--hard', `origin/${branchName}`]);
 				},
 			);
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	/** Push one commit to a new branch and restore the local base branch. */
+	private async commitAndPushToTargetBranch(
+		git: SimpleGit,
+		{
+			branchName,
+			targetBranchName,
+			commitMessage,
+			stagePathspec,
+			onCheckoutRestored,
+		}: {
+			branchName: string;
+			targetBranchName: string;
+			commitMessage: string;
+			stagePathspec: string;
+			onCheckoutRestored: () => Promise<void>;
+		},
+	): Promise<{ commitSha: string }> {
+		const preCommitHead = (
+			await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
+		).trim();
+		if (!preCommitHead) {
+			throw new BadRequestError(`Local branch does not exist: ${branchName}`);
+		}
+
+		try {
+			await git.add(['--all', '--', stagePathspec]);
+			await git.commit(commitMessage);
+			const commitSha = (await git.revparse(['HEAD'])).trim();
+			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
+			return { commitSha };
+		} finally {
+			await this.restorePromotionBase(git, {
+				branchName,
+				targetBranchName,
+				preCommitHead,
+				onCheckoutRestored,
+			});
+		}
+	}
+
+	private async restorePromotionBase(
+		git: SimpleGit,
+		{
+			branchName,
+			targetBranchName,
+			preCommitHead,
+			onCheckoutRestored,
+		}: {
+			branchName: string;
+			targetBranchName: string;
+			preCommitHead: string;
+			onCheckoutRestored: () => Promise<void>;
+		},
+	): Promise<void> {
+		try {
+			await git.raw(['reset', '--hard', preCommitHead]);
+		} catch {
+			this.logger.warn('Failed to restore Git checkout after promotion', {
+				branchName,
+				targetBranchName,
+			});
+			return;
+		}
+
+		try {
+			await onCheckoutRestored();
+		} catch {
+			// The checkout is usable, but it stays untrusted until the next clone.
+			this.logger.warn('Failed to trust the Git checkout after promotion', {
+				branchName,
+				targetBranchName,
+			});
 		}
 	}
 
