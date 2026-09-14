@@ -662,6 +662,9 @@ catalogs:
     testcontainers:
       specifier: ^11.13.0
       version: 11.13.0
+    tmp-promise:
+      specifier: 3.0.3
+      version: 3.0.3
     ts-morph:
       specifier: ^27.0.2
       version: 27.0.2
@@ -1303,7 +1306,7 @@ importers:
         specifier: 2.4.5
         version: 2.4.5
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       undici:
         specifier: catalog:undici-v7
@@ -6750,7 +6753,7 @@ importers:
         specifier: ^6.0.0
         version: 6.3.5
       tmp-promise:
-        specifier: ^3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
     devDependencies:
       '@n8n/eslint-config':
@@ -7018,7 +7021,7 @@ importers:
         specifier: 7.5.21
         version: 7.5.21
       tmp-promise:
-        specifier: 3.0.3
+        specifier: 'catalog:'
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2
