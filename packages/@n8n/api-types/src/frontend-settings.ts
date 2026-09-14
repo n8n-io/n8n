@@ -201,13 +201,6 @@ export interface FrontendSettings {
 		setup: boolean;
 		cloudUbbEnabled: boolean;
 	};
-	/**
-	 * @deprecated Gates the AI Transform node's code generation. No longer gates
-	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
-	 */
-	askAi: {
-		enabled: boolean;
-	};
 	aiBuilder: {
 		enabled: boolean;
 		setup: boolean;
