@@ -16,13 +16,8 @@ on:
         type: string
         default: ''
   schedule:
-    - cron: '30 4 * * 1-5'
-  # PR events use the workflow file from the branch, so changes to the test
-  # verify themselves before the merge.
-  pull_request:
-    paths:
-      - 'scripts/encryption-upgrade-test/**'
-      - '.github/workflows/encryption-upgrade-test.yml'
+    # Twice a day, 09:00 and 21:00 UTC.
+    - cron: '0 9,21 * * *'
 
 permissions:
   contents: read
