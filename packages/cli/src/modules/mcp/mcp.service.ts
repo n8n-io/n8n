@@ -462,7 +462,6 @@ export class McpService {
 				instructions: getMcpInstructions({
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
-					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
 					aiPreferences: await aiPreferences,
 				}),
@@ -703,9 +702,7 @@ export class McpService {
 		);
 		registerIfAllowed(getNodeTypesTool);
 
-		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
@@ -715,9 +712,7 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -734,7 +729,6 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -839,7 +833,6 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -868,9 +861,7 @@ export class McpService {
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(undefined, {
-							includeGroups: featureFlags.canvasGroupsEnabled,
-						}),
+						text: getSdkReferenceContent(),
 					},
 				],
 			}),
@@ -878,9 +869,7 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
 		registerIfAllowed(sdkRefTool);
 	}
 

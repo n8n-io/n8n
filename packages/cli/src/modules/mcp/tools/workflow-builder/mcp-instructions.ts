@@ -34,12 +34,6 @@ export type McpInstructionsOptions = {
 	isN8nConnectAvailable?: boolean;
 
 	/**
-	 * Whether canvas node groups are enabled for this user.
-	 * If true, the builder instructions point the client at the groups docs.
-	 */
-	canvasGroupsEnabled?: boolean;
-
-	/**
 	 * Whether first-class Agent tools are enabled on this MCP server.
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
@@ -55,18 +49,14 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
 		isBuilderEnabled,
 		isN8nConnectAvailable = false,
-		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
 		aiPreferences,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
-	// Only appended when the flag is on; keeps the paid-per-session string short.
-	const GROUPS_HINT = canvasGroupsEnabled
-		? `
+	const GROUPS_HINT = `
 
-Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`
-		: '';
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`;
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
