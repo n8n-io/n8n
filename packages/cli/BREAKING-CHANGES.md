@@ -18,7 +18,7 @@ The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/stora
 
 ### When is action necessary?
 
-If you mount a volume at `~/.n8n/binaryData`, n8n does not start: mount it at `~/.n8n/storage` instead, or set `N8N_STORAGE_PATH` to the old path to keep it. If both directories exist, n8n does not start: move or remove `~/.n8n/storage` before you update.
+If you mount a volume at `~/.n8n/binaryData`, n8n does not start: mount it at `~/.n8n/storage` instead, or set `N8N_STORAGE_PATH` to the old path to keep it. If both directories exist, n8n does not start. Move the contents of `~/.n8n/binaryData` into `~/.n8n/storage`, remove `~/.n8n/binaryData`, then start n8n again.
 
 ### What changed?
 
