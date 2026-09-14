@@ -75,7 +75,7 @@ describe('SessionTimelineRow', () => {
 		const wrapper = await renderComponent(item({ kind: 'skill', skillName: 'Triage' }));
 
 		expect(wrapper.text()).toContain('Triage');
-		expect(wrapper.get('[data-kind="skill"]').exists()).toBe(true);
+		expect(wrapper.find('[data-kind="skill"]').exists()).toBe(true);
 	});
 
 	it('renders the node icon when the node type is available', async () => {
@@ -90,7 +90,7 @@ describe('SessionTimelineRow', () => {
 	it('renders the pill when the node type is unavailable', async () => {
 		const wrapper = await renderComponent(item({ kind: 'node', nodeType: 'unknown' }));
 
-		expect(wrapper.get('[data-kind="node"]').exists()).toBe(true);
+		expect(wrapper.find('[data-kind="node"]').exists()).toBe(true);
 	});
 
 	it('renders the failure icon for a generic tool soft-failure', async () => {
