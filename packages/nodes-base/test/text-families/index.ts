@@ -42,7 +42,7 @@ export interface Family {
 	readonly description: string;
 	/** Named cases worth reading, passed as fast-check examples by callers. */
 	readonly examples: readonly string[];
-	/** Generates one word of this family. `stringFrom` joins words into phrases. */
+	/** Generates one word of this family. */
 	readonly word: fc.Arbitrary<string>;
 }
 
@@ -340,22 +340,9 @@ export const families = [
 
 export type FamilyName = (typeof families)[number]['name'];
 
-export const familyByName = (name: FamilyName): Family => {
+/** One word from the family. */
+export const wordFrom = (name: FamilyName): fc.Arbitrary<string> => {
 	const family = families.find((candidate) => candidate.name === name);
 	if (!family) throw new Error(`Unknown string family: ${name}`);
-	return family;
-};
-
-/**
- * Up to `words` words from the given families, joined by spaces. With no
- * family every family contributes. `{ words: 1 }` gives a single word.
- */
-export const stringFrom = (
-	family: FamilyName | FamilyName[] = [],
-	{ words = 3 }: { words?: number } = {},
-): fc.Arbitrary<string> => {
-	const names = Array.isArray(family) ? family : [family];
-	const selected = names.length > 0 ? names.map(familyByName) : families;
-	const word = fc.oneof(...selected.map((f) => f.word));
-	return fc.array(word, { minLength: 1, maxLength: words }).map((w) => w.join(' '));
+	return family.word;
 };

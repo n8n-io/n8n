@@ -24,7 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
-import { stringFrom } from '@test/text-families';
+import { wordFrom } from '@test/text-families';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -619,7 +619,7 @@ describe('Test Notion, simplifyObjects', () => {
 
 		it('keeps accented words as lowercase keys', () => {
 			// Lowercase İ carries a combining dot, which the caser reads as a separator.
-			const accentedWord = stringFrom('latin-accented', { words: 1 })
+			const accentedWord = wordFrom('latin-accented')
 				.map((name) => name.toLowerCase())
 				.filter((name) => !/\p{M}/u.test(name));
 
@@ -659,7 +659,7 @@ describe('Test Notion, simplifyObjects', () => {
 
 		it('folds every accented letter to a separator', () => {
 			fc.assert(
-				fc.property(stringFrom('latin-accented'), (name) => {
+				fc.property(wordFrom('latin-accented'), (name) => {
 					const words = name
 						.replace(/\P{ASCII}/gu, ' ')
 						.toLowerCase()
