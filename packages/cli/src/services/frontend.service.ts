@@ -372,9 +372,6 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
-			askAi: {
-				enabled: false,
-			},
 			aiBuilder: {
 				enabled: false,
 				setup: false,
@@ -503,7 +500,6 @@ export class FrontendService {
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
-		const isAskAiEnabled = this.license.isAskAiEnabled();
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -577,10 +573,6 @@ export class FrontendService {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
-		}
-
-		if (isAskAiEnabled) {
-			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		if (isAiCreditsEnabled) {

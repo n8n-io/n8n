@@ -98,7 +98,7 @@ describe('BreakingChangeMigrationService', () => {
 		const error = await service.migrateWorkflow(RULE_ID, 'wf-1', user).catch((e: unknown) => e);
 		// Carries the offending node so the UI can link to it.
 		expect(error).toMatchObject({
-			message: expect.stringContaining('no generated code yet'),
+			message: expect.stringContaining('never generated any code'),
 			meta: { nodeId: aiNode.id, nodeName: 'Transform' },
 		});
 		expect(workflowService.update).not.toHaveBeenCalled();
