@@ -38,7 +38,6 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
-import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
