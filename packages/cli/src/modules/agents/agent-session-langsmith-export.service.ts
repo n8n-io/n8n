@@ -157,7 +157,9 @@ export class AgentSessionLangSmithExportService {
 			children.push(await this.loadSessionTree(child.id, projectId, child.agentId, visited));
 		}
 
-		return { ...detail, children };
+		// Queued messages have not run, so they have no trace.
+		const executions = detail.executions.filter((execution) => execution.status !== 'queued');
+		return { ...detail, executions, children };
 	}
 
 	private ensureSettled(detail: ThreadDetail) {

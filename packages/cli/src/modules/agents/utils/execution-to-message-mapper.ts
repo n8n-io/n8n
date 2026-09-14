@@ -164,6 +164,8 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			content: userContent,
 			...(execution.author ? { author: execution.author } : {}),
 			executionId: execution.id,
+			// The status tells the client which user turns still wait or run.
+			...(execution.status ? { executionStatus: execution.status } : {}),
 		});
 	}
 

@@ -143,11 +143,14 @@ const {
 	isStreaming,
 	refresh,
 	isCancelling,
+	threadBusy,
 	messagingState,
 	fatalError,
 	warnings,
 	loadHistory,
 	sendMessage,
+	editQueuedMessage,
+	removeQueuedMessage,
 	stopGenerating,
 	resume,
 	cancelAndSteer,
@@ -239,15 +242,18 @@ const hasInFlightToolCalls = computed(() =>
 		),
 	),
 );
-const showSuspensionStopAlongsideSend = computed(
-	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
+// The composer stays live while a turn streams: a new message queues behind
+// it, so Stop moves beside Send instead of replacing it.
+const showStopAlongsideSend = computed(
+	() => (isStreaming.value || hasOpenInteractiveQuestion.value) && !isCancelling.value,
 );
+// A turn that runs elsewhere (queued row, other tab) also leaves tool calls
+// in flight; only a thread with no running turn is a desync.
 const showStopAsPrimaryAction = computed(
 	() =>
-		isStreaming.value ||
 		isCancelling.value ||
 		inputBlockedBySuspension.value ||
-		(!isStreaming.value && hasInFlightToolCalls.value),
+		(hasInFlightToolCalls.value && !threadBusy.value),
 );
 
 const chatPlaceholder = computed(() => {
@@ -282,7 +288,6 @@ async function onSubmit() {
 	const files = attachedFiles.value;
 	if (
 		(!text && files.length === 0) ||
-		isStreaming.value ||
 		isCancelling.value ||
 		isPreparingToSend.value ||
 		inputBlockedBySuspension.value
@@ -297,6 +302,23 @@ async function onSubmit() {
 		return;
 	}
 
+	if (!(await prepareToSend())) return;
+
+	inputText.value = '';
+	attachedFiles.value = [];
+	if (files.length > 0) {
+		await sendMessage(text, files);
+	} else {
+		await sendMessage(text);
+	}
+}
+
+/**
+ * Runs the pre-send hook and telemetry. Guards double submits only for this
+ * long: the send itself must not block the composer, as it may stream for a while.
+ * Returns false when the draft must stay in the composer.
+ */
+async function prepareToSend(): Promise<boolean> {
 	isPreparingToSend.value = true;
 	try {
 		const target = {
@@ -312,31 +334,24 @@ async function onSubmit() {
 		try {
 			await props.beforeSend?.();
 		} catch {
-			return;
+			return false;
 		}
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget()) return false;
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
-		if (!isCurrentTarget()) return;
-		// Keep the draft if a local resume or cancellation started during preparation.
-		if (isStreaming.value || isCancelling.value) return;
+		if (!isCurrentTarget()) return false;
+		// Keep the draft if a cancellation started during preparation.
+		if (isCancelling.value) return false;
 
-		inputText.value = '';
-		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
-
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
-		}
+		return true;
 	} finally {
 		isPreparingToSend.value = false;
 	}
@@ -435,6 +450,8 @@ onBeforeUnmount(() => {
 			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
+			@edit-queued="editQueuedMessage"
+			@remove-queued="removeQueuedMessage"
 		/>
 
 		<div :class="$style.inputArea">
@@ -448,17 +465,11 @@ onBeforeUnmount(() => {
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
 					!inputBlockedBySuspension &&
-					!isStreaming &&
 					!isCancelling &&
 					!isPreparingToSend &&
 					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:disabled="inputBlockedBySuspension || isCancelling || isPreparingToSend"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
@@ -478,7 +489,7 @@ onBeforeUnmount(() => {
 				<template #footer-start>
 					<slot name="footer-start" />
 					<N8nSendStopButton
-						v-if="showSuspensionStopAlongsideSend"
+						v-if="showStopAlongsideSend"
 						streaming
 						stop-button-test-id="agent-chat-suspended-stop-button"
 						@stop="stopGenerating"

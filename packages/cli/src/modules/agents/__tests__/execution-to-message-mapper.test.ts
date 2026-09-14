@@ -30,6 +30,22 @@ describe('execution-to-message-mapper', () => {
 		});
 	});
 
+	it('marks a queued turn on its user message and gives it no assistant message', () => {
+		const result = executionsToMessagesDto([
+			execution({ status: 'queued', userMessage: 'Later', timeline: null, error: null }),
+		]);
+
+		expect(result).toEqual([
+			{
+				id: 'execution-1:user',
+				role: 'user',
+				content: [{ type: 'text', text: 'Later' }],
+				executionId: 'execution-1',
+				executionStatus: 'queued',
+			},
+		]);
+	});
+
 	it('carries the integration author on the user message and omits it when absent', () => {
 		const author = { id: 'U1', name: 'alice' };
 

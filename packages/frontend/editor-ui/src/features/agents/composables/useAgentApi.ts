@@ -1,5 +1,6 @@
 import type {
 	AgentCapabilitySummary,
+	AgentChatAttachmentPayload,
 	AgentChatMessagesResponse,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
@@ -574,6 +575,49 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
+/** Store a message that runs after the session's running turn ends. */
+export const queueAgentChatMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: { message: string; sessionId: string; attachments?: AgentChatAttachmentPayload[] },
+): Promise<{ executionId: string }> => {
+	return await makeRestApiRequest<{ executionId: string }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/queue`,
+		payload,
+	);
+};
+
+export const editQueuedAgentChatMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	executionId: string,
+	message: string,
+): Promise<{ executionId: string }> => {
+	return await makeRestApiRequest<{ executionId: string }>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/queue/${executionId}`,
+		{ message },
+	);
+};
+
+export const removeQueuedAgentChatMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	executionId: string,
+): Promise<{ removed: true }> => {
+	return await makeRestApiRequest<{ removed: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/queue/${executionId}`,
 	);
 };
 

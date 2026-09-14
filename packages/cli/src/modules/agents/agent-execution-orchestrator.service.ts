@@ -205,6 +205,17 @@ export interface ExecuteForWakeConfig {
 		  };
 }
 
+export interface ExecuteForQueuedConfig {
+	agentId: string;
+	projectId: string;
+	/** The queued execution row to run. */
+	executionId: string;
+	threadId: string;
+	/** The sender, resolved from the row's `resourceId`. */
+	user: User;
+	resourceId: string;
+}
+
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -238,6 +249,8 @@ export interface StreamChatResponseConfig {
 	isWakeRun?: boolean;
 	/** The admitted turn for `memory.threadId`; the run claims the thread under it. */
 	permit: AgentThreadTurnPermit;
+	/** A queued row the caller already promoted to the claimed running row; skips the insert. */
+	claimedExecution?: { executionId: string; abortSignal: AbortSignal };
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -610,8 +623,12 @@ export class AgentExecutionOrchestratorService {
 						},
 					},
 				});
-				// After the resumed turn, request any job results that arrived during the approval wait.
-				if (!recorder.suspended) await this.requestPendingBackgroundWake(threadId);
+				// After the resumed turn, run the messages queued during the approval wait,
+				// then request any job results that arrived meanwhile.
+				if (!recorder.suspended) {
+					await this.requestQueueDrain(threadId);
+					await this.requestPendingBackgroundWake(threadId);
+				}
 			} finally {
 				this.runtimeCacheService.releaseRuntimeLease(agentInstance);
 			}
@@ -645,35 +662,15 @@ export class AgentExecutionOrchestratorService {
 		yield* this.streamAdmittedTurn(
 			memory.threadId,
 			abortSignal,
-			async () => {
-				const runtime = await this.runtimeCacheService.getRuntime({
+			async () =>
+				await this.getDraftChatRuntime({
 					agentId,
 					projectId,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
 					user,
 					sandboxPrincipalHash,
+					memory,
 					previewChat,
-				});
-				try {
-					// Message context is written by the admitted turn only, so a
-					// waiting message never redirects the running turn's replies.
-					await this.integrationMessageContextService.setLatest(
-						memory.threadId,
-						memory.resourceId,
-						{
-							integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
-							platform: N8N_CHAT_INTEGRATION_TYPE,
-							target: { type: 'dm', userId: user.id, threadId: memory.threadId },
-							interactingUserId: user.id,
-							updatedAt: new Date().toISOString(),
-						},
-					);
-					return runtime;
-				} catch (error) {
-					this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
-					throw error;
-				}
-			},
+				}),
 			(runtime, permit) => ({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
@@ -694,6 +691,129 @@ export class AgentExecutionOrchestratorService {
 				sandboxPrincipalHash,
 				permit,
 			}),
+		);
+	}
+
+	/** Build the draft runtime for an n8n user and point the in-app chat's message context at them. */
+	private async getDraftChatRuntime(params: {
+		agentId: string;
+		projectId: string;
+		user: User;
+		sandboxPrincipalHash: AgentSandboxPrincipalHash;
+		memory: AgentMemoryScope;
+		previewChat?: boolean;
+	}): Promise<AgentRuntime> {
+		const { agentId, projectId, user, sandboxPrincipalHash, memory, previewChat } = params;
+		const runtime = await this.runtimeCacheService.getRuntime({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			user,
+			sandboxPrincipalHash,
+			previewChat,
+		});
+		try {
+			// Message context is written by the admitted turn only, so a
+			// waiting message never redirects the running turn's replies.
+			await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+				integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+				platform: N8N_CHAT_INTEGRATION_TYPE,
+				target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+				interactingUserId: user.id,
+				updatedAt: new Date().toISOString(),
+			});
+			return runtime;
+		} catch (error) {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+			throw error;
+		}
+	}
+
+	/**
+	 * Run one queued preview-chat message as the thread's next turn, after any
+	 * running turn. `skipped`: the row left `queued` before pickup (removed, or
+	 * taken by another main) or cannot start, so the drain moves on. `deferred`:
+	 * the thread waits for a human response; the row stays queued and the drain
+	 * stops. Progress reaches every tab through the timeline snapshot pushes.
+	 */
+	async executeForQueued(config: ExecuteForQueuedConfig): Promise<'ran' | 'skipped' | 'deferred'> {
+		const { agentId, projectId, executionId, threadId, user, resourceId } = config;
+		const memory = { threadId, resourceId };
+		const ref = { id: executionId, threadId, agentId, projectId };
+		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id });
+
+		return await this.turnCoordinator.run(threadId, undefined, async (permit) => {
+			if (await this.awaitsHumanResponse(agentId, threadId)) return 'deferred';
+			if (!(await this.agentExecutionService.isQueued(executionId))) return 'skipped';
+
+			let runtime: AgentRuntime;
+			try {
+				runtime = await this.getDraftChatRuntime({
+					agentId,
+					projectId,
+					user,
+					sandboxPrincipalHash,
+					memory,
+					previewChat: true,
+				});
+			} catch (error) {
+				await this.agentExecutionService.failQueuedExecution(ref, error);
+				return 'skipped';
+			}
+			try {
+				// The claim makes the row final: later edits and removals answer 409,
+				// so the text read with it is what the model receives.
+				const startedAt = new Date();
+				const claimed = await this.retryWhileThreadClaimed(
+					threadId,
+					agentId,
+					undefined,
+					async () => await this.agentExecutionService.claimQueuedExecution(ref, startedAt),
+				);
+				if (!claimed) return 'skipped';
+				const stream = this.streamChatResponse({
+					agentInstance: runtime.agent,
+					toolRegistry: runtime.toolRegistry,
+					agentId,
+					userId: user.id,
+					message: claimed.userMessage ?? '',
+					attachments: claimed.attachments ?? undefined,
+					memory,
+					projectId: runtime.projectId,
+					telemetry: { runType: 'test', configuration: runtime.telemetryConfiguration },
+					includeHitlToolDetails: true,
+					sandboxPrincipalHash,
+					claimedExecution: { executionId, abortSignal: claimed.claimLost },
+					permit,
+				});
+				try {
+					for await (const _chunk of stream) {
+						// No client listens; the recorded run is the result.
+					}
+				} catch (error) {
+					// The row already carries the failure; the next message still runs.
+					this.logger.warn('Queued agent chat message failed', {
+						agentId,
+						threadId,
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+				return 'ran';
+			} finally {
+				this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+			}
+		});
+	}
+
+	/**
+	 * A thread with an open checkpoint belongs to its pending resume. Execution
+	 * rows keep `suspended` after a resume, so the checkpoint store decides.
+	 */
+	private async awaitsHumanResponse(agentId: string, threadId: string): Promise<boolean> {
+		return (
+			(await this.agentExecutionService.hasSuspendedRun(threadId)) &&
+			(await this.n8nCheckpointStorage.findSuspendedForThread(agentId, threadId)) !== null
 		);
 	}
 
@@ -902,15 +1022,8 @@ export class AgentExecutionOrchestratorService {
 
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		return await this.turnCoordinator.run(memory.threadId, abortSignal, async (permit) => {
-			// A suspended thread belongs to its pending resume, which may have
-			// started while this wake waited. Execution rows keep `suspended`
-			// after a resume, so the checkpoint store decides.
-			if (
-				(await this.agentExecutionService.hasSuspendedRun(memory.threadId)) &&
-				(await this.n8nCheckpointStorage.findSuspendedForThread(agentId, memory.threadId)) !== null
-			) {
-				return 'skipped';
-			}
+			// The pending resume may have started while this wake waited.
+			if (await this.awaitsHumanResponse(agentId, memory.threadId)) return 'skipped';
 
 			const delivery = isDraft
 				? undefined
@@ -1020,13 +1133,14 @@ export class AgentExecutionOrchestratorService {
 			hideUserMessageFromTranscript,
 			isWakeRun,
 			permit,
+			claimedExecution,
 		} = config;
 		const { threadId, resourceId } = memory;
 		if (permit.threadId !== threadId) {
 			throw new UnexpectedError('Agent turn permit does not belong to this thread');
 		}
 
-		let executionId: string | undefined;
+		let executionId = claimedExecution?.executionId;
 		const recorder = this.createRecorder(toolRegistry, () => executionId, {
 			projectId,
 			agentId,
@@ -1065,7 +1179,8 @@ export class AgentExecutionOrchestratorService {
 				telemetry: { ...telemetry, userId },
 			};
 			// The claimed running row is the fail-closed fence: no row, no turn.
-			const claimed = await this.claimTurn(startParams, startedAt, abortSignal);
+			const claimed =
+				claimedExecution ?? (await this.claimTurn(startParams, startedAt, abortSignal));
 			executionId = claimed.executionId;
 			const resultStream = await agentInstance.stream(input, {
 				persistence: { threadId, resourceId, hostMetadata },
@@ -1124,7 +1239,18 @@ export class AgentExecutionOrchestratorService {
 					telemetry: { ...telemetry, userId },
 				},
 			});
+			// Queued user messages run before background job results.
+			await this.requestQueueDrain(threadId);
 			if (!isWakeRun) await this.requestPendingBackgroundWake(threadId);
+		}
+	}
+
+	private async requestQueueDrain(threadId: string): Promise<void> {
+		try {
+			const { AgentChatQueueService } = await import('./agent-chat-queue.service.js');
+			Container.get(AgentChatQueueService).requestDrain(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to request the run of queued chat messages', { threadId, error });
 		}
 	}
 
@@ -1238,22 +1364,37 @@ export class AgentExecutionOrchestratorService {
 		startedAt: Date,
 		abortSignal?: AbortSignal,
 	): Promise<{ executionId: string; abortSignal: AbortSignal }> {
+		const { executionId, claimLost } = await this.retryWhileThreadClaimed(
+			params.threadId,
+			params.agentId,
+			abortSignal,
+			async () =>
+				await this.agentExecutionService.startClaimedExecutionRecording(params, startedAt),
+		);
+		return {
+			executionId,
+			abortSignal: AbortSignal.any([abortSignal, claimLost].filter((s) => s !== undefined)),
+		};
+	}
+
+	/** Retry `claim` each time another run's claimed row on the thread ends. */
+	private async retryWhileThreadClaimed<T>(
+		threadId: string,
+		agentId: string,
+		abortSignal: AbortSignal | undefined,
+		claim: () => Promise<T>,
+	): Promise<T> {
 		for (;;) {
 			abortSignal?.throwIfAborted();
 			try {
-				const { executionId, claimLost } =
-					await this.agentExecutionService.startClaimedExecutionRecording(params, startedAt);
-				return {
-					executionId,
-					abortSignal: AbortSignal.any([abortSignal, claimLost].filter((s) => s !== undefined)),
-				};
+				return await claim();
 			} catch (error) {
 				if (!(error instanceof AgentThreadClaimConflictError)) throw error;
 				this.logger.info('Agent thread is claimed by another run, waiting for it to end', {
-					agentId: params.agentId,
-					threadId: params.threadId,
+					agentId,
+					threadId,
 				});
-				await this.turnCoordinator.waitUntilThreadIdle(params.threadId, abortSignal);
+				await this.turnCoordinator.waitUntilThreadIdle(threadId, abortSignal);
 			}
 		}
 	}

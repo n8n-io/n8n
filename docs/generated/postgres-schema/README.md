@@ -19,7 +19,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 23 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 24 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
@@ -525,6 +525,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ resourceId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

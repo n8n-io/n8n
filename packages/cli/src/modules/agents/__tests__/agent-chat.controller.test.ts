@@ -5,9 +5,11 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentChatQueueService } from '../agent-chat-queue.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { FlushableResponse } from '../agent-sse-stream';
@@ -31,6 +33,7 @@ function makeController() {
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
+	const agentChatQueueService = mock<AgentChatQueueService>();
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
 		sessionId: 'thread-1',
@@ -53,6 +56,7 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
+		agentChatQueueService,
 	);
 
 	return {
@@ -60,6 +64,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		agentChatQueueService,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -104,6 +109,9 @@ describe('AgentChatController route access scopes', () => {
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
+		['queueChatMessage', 'agent:execute'],
+		['editQueuedChatMessage', 'agent:execute'],
+		['removeQueuedChatMessage', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
@@ -356,6 +364,74 @@ describe('AgentChatController full thread queue', () => {
 				errorCode: 'agent_turn_queue_full',
 			},
 		]);
+	});
+});
+
+describe('AgentChatController queued messages', () => {
+	const req = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+	it('stores the message for the session as the sender and returns the queued row id', async () => {
+		const { controller, agentsService, agentChatQueueService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1', name: 'Agent' } as never);
+		agentChatQueueService.enqueue.mockResolvedValue('queued-1');
+
+		await expect(
+			controller.queueChatMessage(req, {} as never, 'agent-1', {
+				message: 'later',
+				sessionId: 'thread-1',
+			} as never),
+		).resolves.toEqual({ executionId: 'queued-1' });
+
+		expect(agentChatQueueService.enqueue).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			agentName: 'Agent',
+			projectId: 'project-1',
+			threadId: 'thread-1',
+			message: 'later',
+			attachments: undefined,
+			resourceId: 'draft-chat:user-1',
+		});
+	});
+
+	it('answers 404 for a session that is not the sender’s and stores nothing', async () => {
+		const { controller, agentsService, agentTestRunService, agentChatQueueService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1', name: 'Agent' } as never);
+		agentTestRunService.prepareDraftRun.mockResolvedValue({ status: 'session_not_found' });
+
+		await expect(
+			controller.queueChatMessage(req, {} as never, 'agent-1', {
+				message: 'later',
+				sessionId: 'someone-elses-thread',
+			} as never),
+		).rejects.toBeInstanceOf(NotFoundError);
+		expect(agentChatQueueService.enqueue).not.toHaveBeenCalled();
+	});
+
+	it('drops the stored attachments when the queue rejects the message', async () => {
+		const { controller, agentsService, agentChatQueueService, agentChatAttachmentService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1', name: 'Agent' } as never);
+		agentChatAttachmentService.storeInbound.mockResolvedValue({ id: 'att-1' } as never);
+		agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
+		const full = new ConflictError(new AgentThreadQueueFullError().message);
+		agentChatQueueService.enqueue.mockRejectedValue(full);
+
+		await expect(
+			controller.queueChatMessage(req, {} as never, 'agent-1', {
+				message: 'one too many',
+				sessionId: 'thread-1',
+				attachments: [
+					{
+						fileName: 'notes.txt',
+						mimeType: 'text/plain',
+						data: Buffer.from('hi').toString('base64'),
+					},
+				],
+			} as never),
+		).rejects.toBe(full);
+
+		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 });
 

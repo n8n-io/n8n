@@ -145,11 +145,14 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isCancelling: isCancellingMock,
+			threadBusy: computed(() => isStreamingMock.value),
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
 			loadHistory: loadHistoryMock,
 			refresh: refreshMock,
 			sendMessage: sendMessageMock,
+			editQueuedMessage: vi.fn(),
+			removeQueuedMessage: vi.fn(),
 			stopGenerating: stopGeneratingMock,
 			resume: vi.fn(),
 			cancelAndSteer: cancelAndSteerMock,
@@ -415,10 +418,19 @@ describe('AgentChatPanel', () => {
 		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		{ state: 'streaming', busy: isStreamingMock },
-		{ state: 'cancellation', busy: isCancellingMock },
-	])('keeps the draft when $state starts during telemetry preparation', async ({ busy }) => {
+	const preparedFingerprint: AgentConfigFingerprint = {
+		instructions: '',
+		tools: [],
+		skills: [],
+		tasks: [],
+		triggers: [],
+		vector_stores: [],
+		memory: null,
+		model: null,
+		config_version: 'test-version',
+	};
+
+	it('keeps the draft when cancellation starts during telemetry preparation', async () => {
 		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
 		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
 		const wrapper = mountPanel();
@@ -430,30 +442,66 @@ describe('AgentChatPanel', () => {
 		chatInput.vm.$emit('submit');
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 
-		busy.value = true;
-		fingerprint.resolve({
-			instructions: '',
-			tools: [],
-			skills: [],
-			tasks: [],
-			triggers: [],
-			vector_stores: [],
-			memory: null,
-			model: null,
-			config_version: 'test-version',
-		});
+		isCancellingMock.value = true;
+		fingerprint.resolve(preparedFingerprint);
 		await flushPromises();
 		expect(sendMessageMock).not.toHaveBeenCalled();
 		expect(chatInput.props('modelValue')).toBe(draft);
 		expect(chatInput.props('canSubmit')).toBe(false);
 
-		busy.value = false;
+		isCancellingMock.value = false;
 		await flushPromises();
 		expect(chatInput.props('canSubmit')).toBe(true);
 		chatInput.vm.$emit('submit');
 		await flushPromises();
 		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(draft.trim(), [file]);
 		expect(chatInput.props('modelValue')).toBe('');
+		wrapper.unmount();
+	});
+
+	// The thread got busy while the send was being prepared: the message queues
+	// behind the running turn instead of staying in the composer.
+	it('still sends when streaming starts during telemetry preparation', async () => {
+		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
+		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		chatInput.vm.$emit('update:modelValue', 'queue this');
+		chatInput.vm.$emit('files-selected', [file]);
+		chatInput.vm.$emit('submit');
+		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
+
+		isStreamingMock.value = true;
+		fingerprint.resolve(preparedFingerprint);
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('queue this', [file]);
+		expect(chatInput.props('modelValue')).toBe('');
+		isStreamingMock.value = false;
+		wrapper.unmount();
+	});
+
+	it('accepts a submit while streaming and shows Stop beside Send', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'next question');
+		await flushPromises();
+
+		expect(chatInput.props('isStreaming')).toBe(false);
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('canSubmit')).toBe(true);
+		const stopButton = wrapper.find('[data-test-id="agent-chat-suspended-stop-button"]');
+		expect(stopButton.exists()).toBe(true);
+
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('next question');
+		expect(chatInput.props('modelValue')).toBe('');
+
+		await stopButton.trigger('click');
+		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
+		isStreamingMock.value = false;
 		wrapper.unmount();
 	});
 

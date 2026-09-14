@@ -228,12 +228,16 @@ const agentChatMessageShape = {
 		.optional(),
 };
 
+const hasTextOrAttachment = (value: { message: string; attachments?: unknown[] }) =>
+	value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0;
+const textOrAttachmentIssue = {
+	message: 'Message text or at least one attachment is required',
+	path: ['message'],
+};
+
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
-	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
-		message: 'Message text or at least one attachment is required',
-		path: ['message'],
-	});
+	.refine(hasTextOrAttachment, textOrAttachmentIssue);
 
 /**
  * Validate via `parse`/`safeParse` (what the controller registry's `@Body`
@@ -254,6 +258,32 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 		return agentChatMessageSchema.parse(data);
 	}
 }
+
+// A message queues behind the running turn of an existing thread only.
+const agentChatQueueMessageShape = { ...agentChatMessageShape, sessionId: z.string().min(1) };
+
+const agentChatQueueMessageSchema = z
+	.object(agentChatQueueMessageShape)
+	.refine(hasTextOrAttachment, textOrAttachmentIssue);
+
+/** See {@link AgentChatMessageDto} for why `parse`/`safeParse` are overridden. */
+export class AgentChatQueueMessageDto extends Z.class(agentChatQueueMessageShape) {
+	constructor(data: z.infer<typeof agentChatQueueMessageSchema>) {
+		super(agentChatQueueMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentChatQueueMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentChatQueueMessageSchema.parse(data);
+	}
+}
+
+export class AgentChatEditQueuedMessageDto extends Z.class({
+	message: z.string().trim().min(1),
+}) {}
 
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),

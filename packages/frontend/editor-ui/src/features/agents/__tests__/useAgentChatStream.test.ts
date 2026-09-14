@@ -17,13 +17,18 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+const showErrorMock = vi.fn();
+const showMessageMock = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+const queueAgentChatMessageMock = vi.fn();
+const editQueuedAgentChatMessageMock = vi.fn();
+const removeQueuedAgentChatMessageMock = vi.fn();
 
 const pushListeners: Array<(event: unknown) => void> = [];
 const pushConnectMock = vi.fn();
@@ -52,6 +57,9 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
+		queueAgentChatMessage: (...args: unknown[]) => queueAgentChatMessageMock(...args),
+		editQueuedAgentChatMessage: (...args: unknown[]) => editQueuedAgentChatMessageMock(...args),
+		removeQueuedAgentChatMessage: (...args: unknown[]) => removeQueuedAgentChatMessageMock(...args),
 	};
 });
 
@@ -2737,5 +2745,125 @@ describe('useAgentChatStream — transcript push', () => {
 		dispose();
 
 		expect(pushListeners).toHaveLength(0);
+	});
+});
+
+describe('useAgentChatStream — queued messages', () => {
+	const conflict = () => Object.assign(new Error('conflict'), { httpStatusCode: 409 });
+
+	beforeEach(() => {
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+		getChatMessagesMock.mockReset();
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		queueAgentChatMessageMock.mockReset();
+		editQueuedAgentChatMessageMock.mockReset();
+		removeQueuedAgentChatMessageMock.mockReset();
+		showErrorMock.mockReset();
+		showMessageMock.mockReset();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('queues a message sent while streaming and keeps it below the streamed reply', async () => {
+		const stream = makeControllableSseResponse(
+			[{ type: 'text-delta', id: 'reply', delta: 'reply' }],
+			null,
+		);
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		queueAgentChatMessageMock.mockResolvedValue({ executionId: 'exec-q1' });
+		const hook = buildHook('thread-1');
+
+		const sending = hook.sendMessage('hello');
+		await flushPromises();
+		expect(hook.threadBusy.value).toBe(true);
+
+		await hook.sendMessage('later');
+
+		expect(queueAgentChatMessageMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			message: 'later',
+			sessionId: 'thread-1',
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(hook.messages.value.at(-1)).toMatchObject({
+			id: 'exec-q1:user',
+			role: 'user',
+			content: 'later',
+			status: 'queued',
+		});
+
+		stream.close([{ type: 'done' }]);
+		await sending;
+		expect(hook.messages.value.map((message) => message.content)).toEqual([
+			'hello',
+			'reply',
+			'later',
+		]);
+		expect(hook.threadBusy.value).toBe(true);
+	});
+
+	it('toasts a full queue and adds no bubble', async () => {
+		const stream = makeControllableSseResponse([], null);
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		queueAgentChatMessageMock.mockRejectedValue(conflict());
+		const hook = buildHook('thread-1');
+		const sending = hook.sendMessage('hello');
+		await flushPromises();
+
+		await hook.sendMessage('one too many');
+
+		expect(showErrorMock).toHaveBeenCalledWith(expect.anything(), 'agents.chat.queue.error');
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['hello']);
+		stream.close([{ type: 'done' }]);
+		await sending;
+	});
+
+	it('edits and removes queued bubbles, and re-reads history once a row was picked up', async () => {
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'exec-q1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'first' }],
+					executionId: 'exec-q1',
+					executionStatus: 'queued',
+				},
+				{
+					id: 'exec-q2:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'second' }],
+					executionId: 'exec-q2',
+					executionStatus: 'queued',
+				},
+			],
+			openSuspensions: [],
+		});
+		editQueuedAgentChatMessageMock.mockResolvedValue({ executionId: 'exec-q1' });
+		removeQueuedAgentChatMessageMock.mockResolvedValue({ removed: true });
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		expect(hook.threadBusy.value).toBe(true);
+
+		await hook.editQueuedMessage('exec-q1', ' first, revised ');
+		expect(editQueuedAgentChatMessageMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'exec-q1',
+			'first, revised',
+		);
+		expect(hook.messages.value[0].content).toBe('first, revised');
+
+		await hook.removeQueuedMessage('exec-q2');
+		expect(hook.messages.value.map((message) => message.id)).toEqual(['exec-q1:user']);
+
+		getChatMessagesMock.mockClear();
+		editQueuedAgentChatMessageMock.mockRejectedValue(conflict());
+		await hook.editQueuedMessage('exec-q1', 'too late');
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'agents.chat.queue.alreadyStarted' }),
+		);
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
 	});
 });
