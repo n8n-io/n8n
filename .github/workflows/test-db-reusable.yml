@@ -22,7 +22,7 @@ env:
 
 jobs:
   integration:
-    name: Integration / ${{ matrix.name }}
+    name: ${{ matrix.name }} Integration
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -65,7 +65,7 @@ jobs:
           fail_ci_if_error: false
 
   migration:
-    name: Migrations / ${{ matrix.name }}
+    name: ${{ matrix.name }} Migrations
     if: inputs.run-migrations
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
