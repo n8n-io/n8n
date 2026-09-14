@@ -29,8 +29,6 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 		const store = useTypeAvailabilityPoliciesStore();
 		store.setNodeTypeAvailability('project-1', [denied]);
 
-		// An unlicensed or disabled instance must look exactly like one with no policies.
-		// Any other default hides nodes from every user of every instance.
 		expect(store.isEnabled).toBe(false);
 		expect(store.isNodeTypeAvailable(SLACK)).toBe(true);
 		expect(store.getNodeTypeAvailability(SLACK)).toEqual({ name: SLACK, available: true });

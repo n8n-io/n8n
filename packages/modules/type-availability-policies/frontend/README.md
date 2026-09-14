@@ -9,11 +9,7 @@ summary only.
 
 ## Status
 
-Store skeleton only. The descriptor registers the module with the shell and declares no
-surface, so nothing changes for a user yet.
-
-- GOV-49 adds the `available-types` client, the fetch path and the refetch on project change.
-- GOV-56 adds `routes` and `settingsPages` for Settings → Security & policies.
+Store skeleton only. The descriptor declares no surface, so nothing renders yet.
 
 The module id must stay the same as the backend module id
 (`packages/cli/src/modules/type-availability-policies`). The module is license-gated on
