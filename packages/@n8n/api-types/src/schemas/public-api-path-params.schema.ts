@@ -32,4 +32,13 @@ export const promotionDirectionParamSchema = z
 	.string()
 	.openapi({ param: { description: 'The direction of the promotion: apply or promote.' } });
 export const credentialIdParamSchema = stringIdParamSchema('The ID of the credential.');
+
+/**
+ * The hand-written data-tables spec declared `format: nanoid`, which the legacy validator enforced
+ * as a 16-character alphanumeric id. The pattern keeps that rejection, the metadata keeps the format.
+ */
+export const dataTableIdParamSchema = z
+	.string()
+	.regex(/^[A-Za-z0-9]{16}$/, 'must match format "nanoid"')
+	.openapi({ format: 'nanoid', param: { description: 'The ID of the data table' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');

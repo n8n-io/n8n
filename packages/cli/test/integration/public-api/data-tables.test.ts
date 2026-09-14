@@ -597,6 +597,157 @@ describe('DELETE /data-tables/:dataTableId', () => {
 	});
 });
 
+describe('table endpoints without the required API key scope', () => {
+	let unscopedAgent: SuperAgentTest;
+	let dataTable: DataTable;
+
+	beforeEach(async () => {
+		// The API key scope check runs before RBAC, so a key scoped to an unrelated resource
+		// is rejected even for an instance owner.
+		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
+		unscopedAgent = testServer.publicApiAgentFor(unscopedOwner);
+
+		dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'scope-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+	});
+
+	test('should reject listing without dataTable:list', async () => {
+		const response = await unscopedAgent.get('/data-tables');
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject creating without dataTable:create', async () => {
+		const response = await unscopedAgent
+			.post('/data-tables')
+			.send({ name: 'blocked', columns: [{ name: 'col1', type: 'string' }] });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject reading without dataTable:read', async () => {
+		const response = await unscopedAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject updating without dataTable:update', async () => {
+		const response = await unscopedAgent
+			.patch(`/data-tables/${dataTable.id}`)
+			.send({ name: 'blocked' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject deleting without dataTable:delete', async () => {
+		const response = await unscopedAgent.delete(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('table endpoint response fields', () => {
+	const DOCUMENTED_TABLE_FIELDS = [
+		'columns',
+		'createdAt',
+		'id',
+		'name',
+		'projectId',
+		'sizeBytes',
+		'updatedAt',
+	];
+	const DOCUMENTED_COLUMN_FIELDS = ['id', 'index', 'name', 'type'];
+
+	test('should expose only the documented fields on every table response', async () => {
+		const created = await authOwnerAgent
+			.post('/data-tables')
+			.send({ name: 'fields-table', columns: [{ name: 'col1', type: 'string' }] });
+		expect(created.statusCode).toBe(201);
+
+		const read = await authOwnerAgent.get(`/data-tables/${created.body.id}`);
+		expect(read.statusCode).toBe(200);
+
+		const updated = await authOwnerAgent
+			.patch(`/data-tables/${created.body.id}`)
+			.send({ name: 'fields-table-renamed' });
+		expect(updated.statusCode).toBe(200);
+
+		const listed = await authOwnerAgent.get('/data-tables');
+		expect(listed.statusCode).toBe(200);
+
+		for (const body of [created.body, read.body, updated.body, ...listed.body.data]) {
+			expect(Object.keys(body).sort()).toEqual(DOCUMENTED_TABLE_FIELDS);
+			for (const column of body.columns) {
+				expect(Object.keys(column).sort()).toEqual(DOCUMENTED_COLUMN_FIELDS);
+			}
+		}
+
+		expect(Object.keys(listed.body).sort()).toEqual(['data', 'nextCursor']);
+	});
+});
+
+describe('table endpoint request validation', () => {
+	test('should reject an undecodable cursor', async () => {
+		const response = await authOwnerAgent.get('/data-tables').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+	});
+
+	test('should reject a filter that is not valid JSON', async () => {
+		const response = await authOwnerAgent.get('/data-tables').query({ filter: '{not json' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should reject a create body with no name', async () => {
+		const response = await authOwnerAgent
+			.post('/data-tables')
+			.send({ columns: [{ name: 'col1', type: 'string' }] });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain("request/body must have required property 'name'");
+	});
+
+	test('should reject a create body with an unknown property', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'unknown-prop-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			unknownProperty: true,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('unknownProperty');
+	});
+
+	test('should reject an update body with an empty name', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'validation-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}`).send({ name: '' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test.each(['get', 'patch', 'delete'] as const)(
+		'should reject a malformed data table id on %s',
+		async (method) => {
+			const response = await authOwnerAgent[method]('/data-tables/not-a-nanoid').send({
+				name: 'whatever',
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toHaveProperty('message');
+		},
+	);
+});
+
 describe('GET /data-tables/:dataTableId/rows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/data-tables/123/rows', null));
 
