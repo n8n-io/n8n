@@ -130,11 +130,7 @@ last accepted a report, or `null` when it never did:
 { "lastSuccessfulReport": "2026-03-25T07:42:13.000Z" }
 ```
 
-Each request reads the database, which is what the client settings above cannot
-do: they are cached, and in multi-main only the leader delivers, so every other
-main would serve a value it never sees change. The route exists whenever the
-module is loaded, including without a receiver — the client decides whether to
-ask by reading `enabled` from the client settings.
+The route exists whenever the module is loaded, including without a receiver — the client decides whether to ask by reading `enabled` from the client settings.
 
 See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
 for the full design.

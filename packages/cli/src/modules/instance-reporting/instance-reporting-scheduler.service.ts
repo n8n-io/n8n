@@ -69,10 +69,6 @@ export class InstanceReportingScheduler {
 		}
 	}
 
-	/**
-	 * Whether this instance may hold the timer. The receiver being configured is
-	 * not checked here: the module never loads this class without one.
-	 */
 	get isEnabled(): boolean {
 		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
 	}

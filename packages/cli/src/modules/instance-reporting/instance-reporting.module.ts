@@ -62,9 +62,6 @@ export class InstanceReportingModule implements ModuleInterface {
 			'./instance-reporting-settings.service.js'
 		);
 
-		// Resolved on every main, not only the leader. The claim is conditional
-		// and the compaction heal is derived from the stored value, so concurrent
-		// mains settle on one time.
 		const reportTime = await Container.get(InstanceReportingSettingsService).getReportTime();
 
 		return { enabled: true, reportTime };
