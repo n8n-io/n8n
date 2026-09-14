@@ -1,3 +1,4 @@
+import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { CompletionContext, CompletionResult, CompletionSource } from '@codemirror/autocomplete';
 import { html } from '../dist/index.js';
@@ -6,11 +7,17 @@ import ist from 'ist';
 function get(doc: string, conf: { explicit?: boolean } = {}) {
 	let cur = doc.indexOf('|');
 	doc = doc.slice(0, cur) + doc.slice(cur + 1);
-	let state = EditorState.create({
+	let initialState = EditorState.create({
 		doc,
 		selection: { anchor: cur },
 		extensions: [html()],
 	});
+	// `EditorState.create` only parses within a 20ms wall-clock budget, which a
+	// contended CI runner can starve, leaving a truncated tree with no language
+	// data so `languageDataAt` returns []. Fully parse and commit the tree into
+	// the language state field via an empty transaction for determinism.
+	ensureSyntaxTree(initialState, initialState.doc.length, 1e9);
+	let state = initialState.update({}).state;
 	let result = state.languageDataAt<CompletionSource>('autocomplete', cur)[0](
 		new CompletionContext(state, cur, !!conf.explicit),
 	);

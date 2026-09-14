@@ -1,5 +1,6 @@
 patch:
   x-eov-operation-id: changeRole
+  x-required-scope: user:changeRole
   x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User

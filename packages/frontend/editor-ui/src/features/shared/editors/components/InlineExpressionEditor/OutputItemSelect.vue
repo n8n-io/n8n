@@ -1,39 +1,40 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { computed } from 'vue';
 
 import { N8nIconButton, N8nInputNumber, N8nText, N8nTooltip } from '@n8n/design-system';
 const i18n = useI18n();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
-const hoveringItem = computed(() => ndvStore.getHoveringItem);
+const hoveringItem = computed(() => ndvStore.value.getHoveringItem);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
-const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const itemsLength = computed(() => ndvStore.value.ndvInputDataWithPinnedData.length);
 const itemIndex = computed(
-	() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex ?? 0,
+	() => hoveringItemIndex.value ?? ndvStore.value.expressionOutputItemIndex ?? 0,
 );
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
 const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
-const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
+const hideTableHoverHint = computed(() => ndvStore.value.isTableHoverOnboarded);
 const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.value !== 0);
 const canSelectNextItem = computed(
 	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
 );
 
 const inputCharWidth = computed(() => itemIndex.value.toString().length);
+const inputWidth = computed(() => `calc(${inputCharWidth.value}ch + var(--spacing--sm))`);
 
 function updateItemIndex(index: number) {
-	ndvStore.expressionOutputItemIndex = index;
+	ndvStore.value.expressionOutputItemIndex = index;
 }
 
 function nextItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+	ndvStore.value.expressionOutputItemIndex = ndvStore.value.expressionOutputItemIndex + 1;
 }
 
 function prevItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+	ndvStore.value.expressionOutputItemIndex = ndvStore.value.expressionOutputItemIndex - 1;
 }
 </script>
 
@@ -52,7 +53,7 @@ function prevItem() {
 				:min="0"
 				:max="max"
 				:model-value="itemIndex"
-				:style="{ '--output-item-select--width': `calc(${inputCharWidth}ch + var(--spacing--sm))` }"
+				:style="{ width: inputWidth, maxWidth: inputWidth, minWidth: inputWidth }"
 				@update:model-value="updateItemIndex"
 			></N8nInputNumber>
 			<N8nIconButton
@@ -85,12 +86,14 @@ function prevItem() {
 .item {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
 	gap: var(--spacing--4xs);
 }
 
 .controls {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
 }
 
 .controls .input {
@@ -99,19 +102,17 @@ function prevItem() {
 	--input--radius--bottom-left: var(--radius);
 	--input-triple--radius--top-right: var(--radius);
 	--input-triple--radius--bottom-right: var(--radius);
+	--input--padding: var(--spacing--4xs);
+	flex: 0 0 auto;
+	box-sizing: border-box;
 	line-height: calc(var(--input--height) - var(--spacing--4xs));
 
 	&.hovering {
 		--input--color--text: var(--color--secondary);
 	}
 
-	:global(.el-input__inner) {
-		height: var(--input--height);
-		min-height: var(--input--height);
-		line-height: var(--input--height);
+	:global(input) {
 		text-align: center;
-		padding: 0 var(--spacing--4xs);
-		max-width: var(--output-item-select--width);
 	}
 }
 </style>

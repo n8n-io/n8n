@@ -1,0 +1,136 @@
+import { isTriggerNodeType } from './workflow-json-utils';
+import type {
+	WorkflowBuildOutcome,
+	WorkflowSetupRequirement,
+	WorkflowVerificationReadiness,
+} from '../../workflow-loop/workflow-loop-state';
+
+type WorkflowBuildRoutingInput = Omit<
+	WorkflowBuildOutcome,
+	'verificationReadiness' | 'setupRequirement'
+> & {
+	workflowNeedsSetup?: boolean;
+	/** True when everything still needing setup belongs to a credential the user already
+	 *  skipped in this thread. Routing setup then would re-open the card they dismissed. */
+	onlySkippedSetupRemains?: boolean;
+};
+
+function hasSetupCredentials(
+	outcome: Pick<
+		WorkflowBuildOutcome,
+		'mockedCredentialTypes' | 'mockedCredentialsByNode' | 'changedNodeNames'
+	>,
+): boolean {
+	const mockedNodeNames = Object.keys(outcome.mockedCredentialsByNode ?? {});
+	// Scope to nodes this build changed: a pre-existing node with a broken or
+	// missing credential must not route an unrelated edit into setup.
+	if (mockedNodeNames.length > 0) {
+		const scope = outcome.changedNodeNames;
+		return mockedNodeNames.some((nodeName) => !scope || scope.includes(nodeName));
+	}
+	return (outcome.mockedCredentialTypes?.length ?? 0) > 0;
+}
+
+function determineVerificationReadiness(
+	outcome: Pick<WorkflowBuildRoutingInput, 'submitted' | 'workflowId' | 'triggerNodes'>,
+): WorkflowVerificationReadiness {
+	if (!outcome.submitted) {
+		return {
+			status: 'not_verifiable',
+			reason: 'not-submitted',
+			guidance: 'The build did not submit a workflow, so there is nothing to verify.',
+		};
+	}
+
+	if (!outcome.workflowId) {
+		return {
+			status: 'not_verifiable',
+			reason: 'missing-workflow-id',
+			guidance: 'The build outcome does not include a workflow ID.',
+		};
+	}
+
+	// Any trigger type is verifiable: deterministic triggers get shaped input
+	// (getPinDataForTrigger), every other trigger gets a simulated fixture from
+	// the build outcome sidecar (planVerificationSimulation), so the trigger
+	// never really fires. Only a workflow with no trigger at all can't run.
+	if (!outcome.triggerNodes?.some((node) => isTriggerNodeType(node.nodeType))) {
+		return {
+			status: 'not_verifiable',
+			reason: 'no-trigger-node',
+			guidance: 'The workflow does not have a trigger node the post-build verifier can start from.',
+		};
+	}
+
+	// One-off intent does NOT get its own readiness status: readiness is
+	// persisted inside the build outcome, and previously deployed readers
+	// hard-fail on unknown union variants (which would wipe the whole per-thread
+	// loop map on rollback). The obligation derivation reads
+	// `outcome.executionIntent` instead — see verification-obligation.ts.
+	return { status: 'ready' };
+}
+
+function determineSetupRequirement(
+	outcome: Pick<
+		WorkflowBuildRoutingInput,
+		| 'submitted'
+		| 'workflowId'
+		| 'mockedCredentialTypes'
+		| 'mockedCredentialsByNode'
+		| 'hasUnresolvedPlaceholders'
+		| 'workflowNeedsSetup'
+		| 'onlySkippedSetupRemains'
+		| 'changedNodeNames'
+	>,
+): WorkflowSetupRequirement {
+	if (!outcome.submitted || !outcome.workflowId) {
+		return { status: 'not_required' };
+	}
+
+	// Checked before the reason-specific branches: a mocked credential or an unresolved
+	// placeholder on a node the user skipped is still a skipped node. The setup follow-up
+	// re-arms on every build, so without this gate any later edit re-opens the card.
+	if (outcome.onlySkippedSetupRemains) {
+		return {
+			status: 'not_required',
+			reason: 'skipped-by-user',
+			guidance:
+				'The only remaining setup is for credentials the user skipped earlier in this conversation. Do not open the setup card: say what stays unconfigured and what that means at runtime, and offer to set it up when they want.',
+		};
+	}
+
+	if (outcome.hasUnresolvedPlaceholders) {
+		return {
+			status: 'required',
+			reason: 'unresolved-placeholders',
+			guidance: 'Route the workflow through setup so the user can fill unresolved values.',
+		};
+	}
+
+	if (hasSetupCredentials(outcome)) {
+		return {
+			status: 'required',
+			reason: 'mocked-credentials',
+			guidance: 'Route the workflow through setup so the user can add real credentials.',
+		};
+	}
+
+	if (outcome.workflowNeedsSetup) {
+		return {
+			status: 'required',
+			reason: 'workflow-needs-setup',
+			guidance: 'Route the workflow through setup so the user can fill pending node setup fields.',
+		};
+	}
+
+	return { status: 'not_required' };
+}
+
+export function withDeterministicRouting(outcome: WorkflowBuildRoutingInput): WorkflowBuildOutcome {
+	const { workflowNeedsSetup, onlySkippedSetupRemains, ...buildOutcome } = outcome;
+	return {
+		...buildOutcome,
+		verificationReadiness: determineVerificationReadiness(outcome),
+		setupRequirement: determineSetupRequirement(outcome),
+	};
+}

@@ -1,34 +1,46 @@
 // Import zod alias support before importing Start command
 import '@/zod-alias-support';
 
+import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { AuthRolesService, DbConnection } from '@n8n/db';
+import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import http from 'node:http';
+import https from 'node:https';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { License } from '@/license';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
-import { ErrorReporter } from 'n8n-core';
-import { NodeTypes } from '@/node-types';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { mock } from 'vitest-mock-extended';
+
 import type { AbstractServer } from '@/abstract-server';
-import { PostHogClient } from '@/posthog';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { JwtService } from '@/services/jwt.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -57,11 +69,15 @@ const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
 mockInstance(TelemetryEventRelay);
+mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
 const communityPackagesService = mockInstance(CommunityPackagesService);
 communityPackagesService.init.mockResolvedValue(undefined);
+const taskRunnerModule = mockInstance(TaskRunnerModule);
+taskRunnerModule.start.mockResolvedValue(undefined);
+const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
 
@@ -76,17 +92,17 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Read-only property, but needed for testing
 		instanceSettings.instanceType = instanceType;
 		Object.defineProperty(instanceSettings, 'isMultiMain', {
-			get: jest.fn(() => isMultiMain),
+			get: vi.fn(() => isMultiMain),
 			configurable: true,
 		});
 		Object.defineProperty(instanceSettings, 'isLeader', {
-			get: jest.fn(() => isLeader),
+			get: vi.fn(() => isLeader),
 			configurable: true,
 		});
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 
 		// Re-register all mocks
@@ -106,6 +122,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
+		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
 			WorkflowFailureNotificationEventRelay,
 			mockInstance(WorkflowFailureNotificationEventRelay),
@@ -113,6 +130,17 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
+		Container.set(TaskRunnerModule, taskRunnerModule);
+		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
+		Container.set(
+			JwtService,
+			mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) }),
+		);
+		Container.set(
+			BinaryDataConfig,
+			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
+		);
+		Container.set(PollJobProvider, pollJobProvider);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
@@ -130,28 +158,33 @@ describe('Start - AuthRolesService initialization', () => {
 				eventLoopBlockThreshold: 0,
 			},
 			cache: { backend: 'memory' },
-			taskRunners: { enabled: false },
-		} as never;
+			taskRunners: {},
+			outboundProxy: { mode: 'all' },
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			workflows: { useWorkflowPublicationService: false },
+		};
 		// @ts-expect-error - Accessing protected method for testing
-		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
-		start.initLicense = jest.fn().mockResolvedValue(undefined);
-		start.initOrchestration = jest.fn().mockResolvedValue(undefined);
-		start.initBinaryDataService = jest.fn().mockResolvedValue(undefined);
+		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
+		start.initLicense = vi.fn().mockResolvedValue(undefined);
+		start.initOrchestration = vi.fn().mockResolvedValue(undefined);
+		start.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected method for testing
-		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
-		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = jest.fn();
-		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
+		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
-		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
+		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
+		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);
+		// @ts-expect-error - Accessing private method for testing
+		start.generateStaticAssets = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected property for testing
-		start.moduleRegistry = { initModules: jest.fn().mockResolvedValue(undefined) };
+		start.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
-		start.executionContextHookRegistry = { init: jest.fn().mockResolvedValue(undefined) };
+		start.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
 		start.license = license;
 		// @ts-expect-error - Accessing protected property for testing
-		start.server = mock<AbstractServer>({ init: jest.fn().mockResolvedValue(undefined) });
+		start.server = mock<AbstractServer>({ init: vi.fn().mockResolvedValue(undefined) });
 	});
 
 	describe('init - conditional initialization based on instance type and leader status', () => {
@@ -161,6 +194,7 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+			expect(pollJobProvider.init).toHaveBeenCalledTimes(1);
 		});
 
 		it('should initialize AuthRolesService when instanceType is main, multi-main enabled, and is leader', async () => {
@@ -169,6 +203,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -180,8 +215,11 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
-				taskRunners: { enabled: false },
-			} as never;
+				taskRunners: {},
+				outboundProxy: { mode: 'all' },
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				workflows: { useWorkflowPublicationService: false },
+			};
 
 			await start.init();
 
@@ -202,6 +240,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -213,12 +252,179 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
-				taskRunners: { enabled: false },
-			} as never;
+				taskRunners: {},
+				outboundProxy: { mode: 'all' },
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				workflows: { useWorkflowPublicationService: false },
+			};
 
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('init - instance settings loader initialization', () => {
+		it('should initialize instance settings loader when instanceType is main', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+		});
+
+		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
+			setupInstanceSettings('worker', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('init - multi-main follower license retry', () => {
+		const multiMainConfig = {
+			executions: { mode: 'queue' as const },
+			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
+			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' },
+			sentry: {
+				backendDsn: '',
+				environment: 'test',
+				deploymentName: 'test',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eventLoopBlockThreshold: 0,
+			},
+			cache: { backend: 'memory' },
+			taskRunners: {},
+			outboundProxy: { mode: 'all' },
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
+			workflows: { useWorkflowPublicationService: false },
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			// Restore original mock so other tests aren't affected
+			license.isMultiMainLicensed = (() => true) as unknown as typeof license.isMultiMainLicensed;
+		});
+
+		it('should retry and succeed when follower finds license cert on retry', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			// First call returns false (no cert yet), second call returns true (leader wrote cert)
+			license.isMultiMainLicensed = vi
+				.fn()
+				.mockReturnValueOnce(false)
+				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init();
+
+			// Advance past the first retry delay (2s)
+			await vi.advanceTimersByTimeAsync(2_000);
+
+			await initPromise;
+
+			expect(license.reload).toHaveBeenCalledTimes(1);
+		});
+
+		it('should throw FeatureNotLicensedError when follower exhausts all retries', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = vi
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			const initPromise = start.init().catch((error) => {
+				expect(error).toBeInstanceOf(FeatureNotLicensedError);
+				return 'rejected';
+			});
+
+			// Advance past all retry delays: 2s + 4s + 8s + 16s + 32s = 62s
+			await vi.advanceTimersByTimeAsync(62_000);
+
+			const result = await initPromise;
+			expect(result).toBe('rejected');
+			// 5 retries = 5 reload calls
+			expect(license.reload).toHaveBeenCalledTimes(5);
+		});
+
+		it('should not retry when leader fails the license check', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = multiMainConfig;
+
+			license.isMultiMainLicensed = vi
+				.fn()
+				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
+
+			await expect(start.init()).rejects.toThrow(FeatureNotLicensedError);
+
+			// Followers only retry via reload; leaders should fail immediately
+			expect(license.reload).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('init - env-proxy global agents', () => {
+		afterEach(() => {
+			uninstallGlobalProxyAgent();
+			vi.unstubAllEnvs();
+		});
+
+		it('should install env-proxy global agents before any outbound request', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should install env-proxy global agents in main-only mode, as start runs the main server', async () => {
+			setupInstanceSettings('main', false, false);
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig.outboundProxy = { mode: 'main-only' };
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should keep plain global agents when no proxy env var is set', async () => {
+			setupInstanceSettings('main', false, false);
+			for (const envVar of [
+				'HTTP_PROXY',
+				'http_proxy',
+				'HTTPS_PROXY',
+				'https_proxy',
+				'ALL_PROXY',
+				'all_proxy',
+			]) {
+				vi.stubEnv(envVar, undefined);
+			}
+
+			await start.init();
+
+			expect(http.globalAgent.constructor.name).toBe('Agent');
+			expect(https.globalAgent.constructor.name).toBe('Agent');
+		});
+	});
+});
+
+test('start needs the expression engine', () => {
+	expect(new Start().needsExpressionEngine).toBe(true);
 });

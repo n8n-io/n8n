@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getDataTable
+  x-required-scope: dataTable:read
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
   tags:
     - DataTable
@@ -24,6 +25,7 @@ get:
 
 patch:
   x-eov-operation-id: updateDataTable
+  x-required-scope: dataTable:update
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
   tags:
     - DataTable
@@ -60,6 +62,7 @@ patch:
 
 delete:
   x-eov-operation-id: deleteDataTable
+  x-required-scope: dataTable:delete
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
   tags:
     - DataTable

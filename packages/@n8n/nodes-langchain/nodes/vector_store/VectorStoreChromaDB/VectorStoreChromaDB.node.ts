@@ -9,12 +9,11 @@ import {
 	type ILoadOptionsFunctions,
 	type ISupplyDataFunctions,
 	NodeApiError,
-	ApplicationError,
+	OperationalError,
 } from 'n8n-workflow';
 
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { chromaCollectionRLC } from '../shared/descriptions';
 
 interface ChromaError extends Error {
@@ -220,12 +219,12 @@ class ExtendedChroma extends Chroma {
 				});
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
-				throw new ApplicationError(`Chroma getOrCreateCollection error: ${message}`);
+				throw new OperationalError(`Chroma getOrCreateCollection error: ${message}`);
 			}
 		}
 
 		if (!this.collection) {
-			throw new ApplicationError('Failed to initialize Chroma collection');
+			throw new OperationalError('Failed to initialize Chroma collection');
 		}
 
 		return this.collection;

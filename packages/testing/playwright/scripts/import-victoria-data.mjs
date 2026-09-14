@@ -20,10 +20,16 @@ const logsFile = args[1] ?? 'victoria-logs-export.jsonl';
 
 if (startContainers) {
 	try {
-		execSync(`docker run -d --name victoria-metrics-local -p ${VM_PORT}:8428 victoriametrics/victoria-metrics:v1.115.0 -storageDataPath=/victoria-metrics-data -retentionPeriod=7d`, { stdio: 'ignore' });
+		execSync(
+			`docker run -d --name victoria-metrics-local -p ${VM_PORT}:8428 victoriametrics/victoria-metrics:v1.115.0 -storageDataPath=/victoria-metrics-data -retentionPeriod=7d`,
+			{ stdio: 'ignore' },
+		);
 	} catch {}
 	try {
-		execSync(`docker run -d --name victoria-logs-local -p ${VL_PORT}:9428 victoriametrics/victoria-logs:v1.21.0-victorialogs -storageDataPath=/victoria-logs-data -retentionPeriod=7d`, { stdio: 'ignore' });
+		execSync(
+			`docker run -d --name victoria-logs-local -p ${VL_PORT}:9428 victoriametrics/victoria-logs:v1.21.0-victorialogs -storageDataPath=/victoria-logs-data -retentionPeriod=7d`,
+			{ stdio: 'ignore' },
+		);
 	} catch {}
 	await setTimeout(2000);
 }

@@ -15,7 +15,7 @@ import {
 	OPEN_AI_NODE_TYPE,
 } from '@/app/constants';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import { useActions } from '../../composables/useActions';
@@ -25,7 +25,7 @@ import { useViewStacks } from '../../composables/useViewStacks';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import type { IDataObject } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
@@ -44,7 +44,7 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const { userActivated, isInstanceOwner } = useUsersStore();
+const usersStore = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
@@ -273,7 +273,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
 		<div :class="$style.banner" v-if="quickConnect">
-			<QuickConnectBanner :text="quickConnect.text" />
+			<QuickConnectBanner :text="quickConnect.text" :disclaimer="quickConnect.disclaimer" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>
@@ -327,7 +327,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 					@selected="onSelected"
 				>
 					<N8nCallout
-						v-if="!userActivated && isTriggerRootView"
+						v-if="!usersStore.userActivated && isTriggerRootView"
 						theme="info"
 						iconless
 						slim
@@ -371,7 +371,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
-			:show-manage="communityNodeDetails.installed && isInstanceOwner"
+			:show-manage="communityNodeDetails.installed && usersStore.isAdminOrOwner"
 		/>
 	</div>
 </template>

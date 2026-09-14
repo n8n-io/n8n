@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { PasswordConfig } from './password.config';
 
 @Config
 class SmtpAuth {
@@ -76,6 +77,22 @@ export class TemplateConfig {
 	/** Overrides default HTML template for notifying that a workflow failed in production (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_FAILURE')
 	'workflow-failure': string = '';
+
+	/** Overrides default HTML template for notifying a user that their public API key was revoked by an admin (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_API_KEY_REVOKED')
+	'api-key-revoked': string = '';
+
+	/** Overrides default HTML template for notifying a user that their connected MCP client was revoked by an admin (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_MCP_CLIENT_REVOKED')
+	'mcp-client-revoked': string = '';
+
+	/** Overrides default HTML template for confirming an email change (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_EMAIL_CHANGE_REQUESTED')
+	'email-change-requested': string = '';
+
+	/** Overrides default HTML template for the email-change completion notice (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_EMAIL_CHANGE_COMPLETED')
+	'email-change-completed': string = '';
 }
 
 const emailModeSchema = z.enum(['', 'smtp']);
@@ -83,7 +100,7 @@ type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** How to send emails */
+	/** Email delivery method: `smtp` or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 
@@ -101,6 +118,9 @@ const INVALID_JWT_REFRESH_TIMEOUT_WARNING =
 export class UserManagementConfig {
 	@Nested
 	emails: EmailConfig;
+
+	@Nested
+	password: PasswordConfig;
 
 	/** JWT secret to use. If unset, n8n will generate its own. */
 	@Env('N8N_USER_MANAGEMENT_JWT_SECRET')

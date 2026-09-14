@@ -712,10 +712,24 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i);
+						const filters = this.getNodeParameter('filters', i) as {
+							filter?: string;
+							sort_by?: string;
+							updated_since?: string;
+						};
 
-						if (Object.keys(filters).length) {
-							Object.assign(qs, formatFilters(filters));
+						// the changes endpoint rejects these fields inside the `query` param,
+						// it expects dedicated view/order_type/updated_since params instead
+						if (filters.filter) {
+							qs.view = filters.filter;
+						}
+
+						if (filters.sort_by) {
+							qs.order_type = filters.sort_by;
+						}
+
+						if (filters.updated_since) {
+							qs.updated_since = filters.updated_since;
 						}
 
 						responseData = await handleListing.call(this, 'GET', '/changes', {}, qs);

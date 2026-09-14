@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import * as run from '../../../actions/agent/run.operation';
 import { ERROR_MESSAGES, BASE_URL_V2, AIRTOP_HOOKS_BASE_URL } from '../../../constants';
@@ -67,7 +68,7 @@ const createMockLoadOptionsFunction = (
 		getCurrentNodeParameter(parameterName: string) {
 			return nodeParameters[parameterName];
 		},
-		getCredentials: jest.fn(),
+		getCredentials: vi.fn(),
 		getNode: () => ({
 			id: '1',
 			name: 'Airtop node',
@@ -79,25 +80,21 @@ const createMockLoadOptionsFunction = (
 	} as unknown as ILoadOptionsFunctions;
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
 describe('Test Airtop, agent run operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should list available agents', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentsListResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -121,7 +118,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should get agent input parameters schema for selected agent ID', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction({
@@ -164,7 +161,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should validate required agent parameters', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 
 		const nodeParameters = {
@@ -191,7 +188,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return invocationId without waiting for agent completion', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		// First call: getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		// Second call: invoke agent webhook
@@ -224,6 +221,7 @@ describe('Test Airtop, agent run operation', () => {
 			'POST',
 			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
+			{},
 		);
 
 		expect(result).toEqual([
@@ -236,7 +234,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should wait for agent until response contains an output', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 
 		// Mock getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
@@ -279,6 +277,7 @@ describe('Test Airtop, agent run operation', () => {
 			'POST',
 			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
+			{},
 		);
 
 		// Third and fourth calls should be status checks
@@ -320,7 +319,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return empty results when no agents are available', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce({ agents: [] });
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -330,7 +329,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should return empty fields when agent has no parameters schema', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce({
 			id: 'test-agent-123',
 			name: 'Test Agent',
@@ -350,7 +349,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should filter agents by name when search filter is provided', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentsListResponse);
 
 		const mockLoadOptions = createMockLoadOptionsFunction();
@@ -365,7 +364,7 @@ describe('Test Airtop, agent run operation', () => {
 	});
 
 	it('should wrap agent parameters in configVars when executing', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		// First call: getAgentDetails
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		// Second call: invoke agent webhook
@@ -409,11 +408,12 @@ describe('Test Airtop, agent run operation', () => {
 					maxResults: 10,
 				},
 			},
+			{},
 		);
 	});
 
 	it('should pass all required parameters successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
 		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
 		apiRequestMock.mockResolvedValueOnce(mockAgentStatusResponseWithOutput);
@@ -459,5 +459,141 @@ describe('Test Airtop, agent run operation', () => {
 				},
 			},
 		]);
+	});
+
+	it('should send the selected browser profile as a profileId query param', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: 'my-profile',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'my-profile' },
+		);
+	});
+
+	it('should trim the browser profile before sending it', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: '  my-profile  ',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'my-profile' },
+		);
+	});
+
+	it('should not send a profileId query param when no browser profile is set', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{},
+		);
+	});
+
+	it('should treat a null browser profile (e.g. from an expression) as empty', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: null,
+		};
+
+		// A null value must not throw; it is normalized to empty and no profileId is sent.
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{},
+		);
+	});
+
+	it('should accept a UUID-style browser profile id', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224' },
+		);
+	});
+
+	it('should throw an error referencing the item when the browser profile contains invalid characters', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			profileName: 'invalid profile!',
+		};
+
+		await expect(
+			run.execute.call(createMockExecuteFunction(nodeParameters), 1),
+		).rejects.toMatchObject({
+			message: ERROR_MESSAGES.PROFILE_NAME_INVALID,
+			context: { itemIndex: 1 },
+		});
 	});
 });

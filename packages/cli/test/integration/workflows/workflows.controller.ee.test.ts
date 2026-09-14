@@ -18,13 +18,14 @@ import {
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import {
-	ApplicationError,
+	UnexpectedError,
 	WorkflowActivationError,
 	calculateWorkflowChecksum,
 	type INode,
@@ -36,6 +37,7 @@ import config from '@/config';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 
 import {
 	affixRoleToSaveCredential,
@@ -110,7 +112,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('router should switch based on flag', () => {
@@ -908,6 +910,7 @@ describe('POST /workflows', () => {
 			.post('/workflows')
 			.send({ ...makeWorkflow(), projectId: teamProject.id });
 
+		expect(response.statusCode).toBe(400);
 		expect(response.body).toMatchObject({
 			code: 400,
 			message: "You don't have the permissions to save the workflow in this project.",
@@ -1341,8 +1344,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1379,8 +1382,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1410,8 +1413,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: ownerChecksum,
 			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1450,8 +1453,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1483,8 +1486,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1516,8 +1519,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 
@@ -1537,7 +1540,7 @@ describe('PATCH /workflows/:workflowId', () => {
 						position: [240, 300],
 					},
 					{
-						id: 'uuid-1234',
+						id: 'uuid-5678',
 						parameters: {},
 						name: 'Cron',
 						type: 'n8n-nodes-base.cron',
@@ -2279,7 +2282,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflow = await createActiveWorkflow({}, member);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
 
 		//
 		// ACT & ASSERT
@@ -2307,5 +2310,133 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
 		});
+	});
+
+	test('should always load the workflow from the database, ignoring request workflowData', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const dbNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			parameters: {},
+			typeVersion: 1,
+			position: [240, 300],
+		};
+
+		const workflow = await createWorkflow({ nodes: [dbNode], connections: {} }, teamProject);
+
+		// Send tampered workflowData with an injected node
+		const tamperedWorkflowData = {
+			...workflow,
+			nodes: [
+				dbNode,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should NOT reject (the DB workflow exists and user has execute scope)
+		// It should use the DB version, not the tampered one
+		expect(response.status).not.toBe(403);
+		expect(response.status).not.toBe(404);
+	});
+});
+
+// The editor saves through PATCH /workflows/:id, which never asks for publication, so an editor
+// holding workflow:update but not workflow:publish keeps working. Guards the editor against the
+// publish-on-save rules the public API needs.
+describe('PATCH /workflows/:workflowId as an editor who may not publish', () => {
+	const publishedWorkflowIds: string[] = [];
+
+	afterEach(async () => {
+		// The published-version row references the workflow, so it has to go before the next truncate.
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		for (const workflowId of publishedWorkflowIds) {
+			await publishedVersionRepository.removePublishedVersion(workflowId);
+		}
+		publishedWorkflowIds.length = 0;
+	});
+
+	// One role for the whole block: the roles table is not truncated between tests, so creating one
+	// per test would leave a row behind each time. It outlives the block rather than being deleted,
+	// because the last test's project relation still references it when a suite teardown would run.
+	let editorWithoutPublishSlug: string;
+
+	beforeAll(async () => {
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Editor without publish',
+			description: 'Can edit workflows but not publish them',
+		});
+		editorWithoutPublishSlug = role.slug;
+	});
+
+	const publishedWorkflowMemberCanOnlyEdit = async (label: string) => {
+		const project = await createTeamProject(`Project ${label}`, owner);
+		await linkUserToProject(member, project, editorWithoutPublishSlug);
+
+		const workflow = await createActiveWorkflow({}, project);
+		await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+			workflow.id,
+			workflow.versionId,
+		);
+		publishedWorkflowIds.push(workflow.id);
+
+		return workflow;
+	};
+
+	test('saves a content change on a published workflow as a draft', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('content');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			nodes: workflow.nodes.map((node) =>
+				node.type === 'n8n-nodes-base.cron'
+					? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+					: node,
+			),
+			connections: workflow.connections,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.versionId).not.toBe(workflow.versionId);
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('saves a settings change on a published workflow', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('settings');
+
+		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: { ...(workflow.settings ?? {}), timezone: 'America/New_York' },
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(stored?.settings?.timezone).toBe('America/New_York');
+		expect(stored?.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('is still refused when it explicitly asks to publish', async () => {
+		const workflow = await publishedWorkflowMemberCanOnlyEdit('publish');
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).send({});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

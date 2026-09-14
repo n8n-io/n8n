@@ -155,69 +155,73 @@ describe('new command', () => {
 		}
 	});
 
-	tmpdirTest('creates new node project with custom template', async ({ tmpdir }) => {
-		MockPrompt.setup([
-			{
-				question: 'What kind of node are you building?',
-				answer: 'declarative',
-			},
-			{
-				question: 'What template do you want to use?',
-				answer: 'custom',
-			},
-			{
-				question: "What's the base URL of the API?",
-				answer: 'https://api.custom-service.com',
-			},
-			{
-				question: 'What type of authentication does your API use?',
-				answer: 'apiKey',
-			},
-		]);
+	tmpdirTest(
+		'creates new node project with custom template',
+		async ({ tmpdir }) => {
+			MockPrompt.setup([
+				{
+					question: 'What kind of node are you building?',
+					answer: 'declarative',
+				},
+				{
+					question: 'What template do you want to use?',
+					answer: 'custom',
+				},
+				{
+					question: "What's the base URL of the API?",
+					answer: 'https://api.custom-service.com',
+				},
+				{
+					question: 'What type of authentication does your API use?',
+					answer: 'apiKey',
+				},
+			]);
 
-		mockExecSync([
-			{ command: 'git config --get user.name', result: 'Custom User\n' },
-			{ command: 'git config --get user.email', result: 'custom@test.com\n' },
-		]);
+			mockExecSync([
+				{ command: 'git config --get user.name', result: 'Custom User\n' },
+				{ command: 'git config --get user.email', result: 'custom@test.com\n' },
+			]);
 
-		mockSpawn([
-			{
-				command: 'git',
-				args: ['init', '-b', 'main'],
-				options: { exitCode: 0 },
-			},
-		]);
+			mockSpawn([
+				{
+					command: 'git',
+					args: ['init', '-b', 'main'],
+					options: { exitCode: 0 },
+				},
+			]);
 
-		await CommandTester.run('new n8n-nodes-custom-api --skip-install');
+			await CommandTester.run('new n8n-nodes-custom-api --skip-install');
 
-		expect(MockPrompt).toHaveAskedAllQuestions();
+			expect(MockPrompt).toHaveAskedAllQuestions();
 
-		const projectName = 'n8n-nodes-custom-api';
-		expect(tmpdir).toHaveFile(projectName);
+			const projectName = 'n8n-nodes-custom-api';
+			expect(tmpdir).toHaveFile(projectName);
 
-		await expect(tmpdir).toHaveFileContaining(
-			`${projectName}/package.json`,
-			'"name": "n8n-nodes-custom-api"',
-		);
-		await expect(tmpdir).toHaveFileContaining(
-			`${projectName}/package.json`,
-			'"name": "Custom User"',
-		);
-		await expect(tmpdir).toHaveFileContaining(
-			`${projectName}/package.json`,
-			'"email": "custom@test.com"',
-		);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/package.json`,
+				'"name": "n8n-nodes-custom-api"',
+			);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/package.json`,
+				'"name": "Custom User"',
+			);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/package.json`,
+				'"email": "custom@test.com"',
+			);
 
-		await expect(tmpdir).toHaveFileContaining(
-			`${projectName}/nodes/CustomApi/CustomApi.node.ts`,
-			'implements INodeType',
-		);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/nodes/CustomApi/CustomApi.node.ts`,
+				'implements INodeType',
+			);
 
-		await expect(tmpdir).toHaveFileContaining(
-			`${projectName}/credentials/CustomApiApi.credentials.ts`,
-			'implements ICredentialType',
-		);
-	});
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/credentials/CustomApiApi.credentials.ts`,
+				'implements ICredentialType',
+			);
+		},
+		30_000,
+	);
 
 	test('handles prompt cancellation gracefully', async () => {
 		MockPrompt.setup([
@@ -538,6 +542,52 @@ describe('new command', () => {
 			await expect(tmpdir).toHaveFileContaining(
 				`${projectName}/nodes/ExampleChatMemory/ExampleChatMemory.node.ts`,
 				'export class ExampleChatMemory implements INodeType',
+			);
+		},
+	);
+
+	tmpdirTest(
+		'keeps GitHub Actions expressions in the generated workflows intact',
+		async ({ tmpdir }) => {
+			MockPrompt.setup([]);
+
+			mockExecSync([
+				{ command: 'git config --get user.name', result: 'Workflow User\n' },
+				{ command: 'git config --get user.email', result: 'workflow@example.com\n' },
+			]);
+
+			mockSpawn([
+				{
+					command: 'git',
+					args: ['init', '-b', 'main'],
+					options: { exitCode: 0 },
+				},
+			]);
+
+			await CommandTester.run(
+				'new n8n-nodes-workflow-expressions --template declarative/github-issues --skip-install',
+			);
+
+			const projectName = 'n8n-nodes-workflow-expressions';
+
+			// Handlebars shares its `{{ ... }}` delimiters with GitHub Actions expression syntax, so
+			// an unescaped `${{ secrets.NPM_TOKEN }}` resolves against the render context, finds
+			// nothing, and collapses to a bare `$` — leaving a workflow that never forwards the secret.
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/.github/workflows/publish.yml`,
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal GitHub Actions expression, not a JS template
+				'NPM_TOKEN: ${{ secrets.NPM_TOKEN }}',
+			);
+			await expect(tmpdir).toHaveFileContaining(
+				`${projectName}/.github/workflows/ci.yml`,
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal GitHub Actions expression, not a JS template
+				'group: ci-${{ github.ref }}',
+			);
+
+			// Escaping must stay surgical: the Handlebars placeholders in the same files still render.
+			await expect(tmpdir).toHaveFileMatchingPattern(
+				`${projectName}/.github/workflows/ci.yml`,
+				/run: '(npm|pnpm|yarn) [^{]+'/,
 			);
 		},
 	);

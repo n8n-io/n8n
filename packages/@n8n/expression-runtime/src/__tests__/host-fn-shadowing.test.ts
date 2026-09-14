@@ -1,0 +1,126 @@
+/**
+ * Regression test: in the VM engine, helper functions resolve from the
+ * in-isolate runtime — they MUST NOT fall through to host-side `data`
+ * properties of the same name. Tournament's `VariablePolyfill` rewrites a
+ * bare identifier `extend(...)` to `("extend" in this ? this : global).extend`
+ * where `this` is the in-isolate context proxy. The proxy's `has` trap finds
+ * `target.<name>` (set in `runtime/context.ts`) and returns the in-isolate
+ * copy before any host lookup happens.
+ *
+ * Why this matters under the threat model: function-typed bindings on
+ * `data` are now structurally unreachable — `getValueAtPath` returns
+ * `undefined` for any function-typed value and there is no `__isFunction`
+ * wrapper path. Confirming that helpers resolve in-isolate also lets us
+ * safely strip them from the VM-path `data` object (see `expression.ts`
+ * `shouldUseVm` guard) without losing functionality.
+ *
+ * If this test ever fails, one of the following changed:
+ *   - Tournament's polyfill no longer rewrites bare identifiers to context-first
+ *   - The corresponding `target.<name>` was removed from `context.ts`
+ *   - A new resolution path was added that prefers host `data` over context
+ * Any of these is a meaningful security regression — investigate before
+ * "fixing" the test.
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
+import { createBridge } from './test-bridge';
+
+describe('Host-fn shadowing: data.extend / data.extendOptional must not be invoked in VM mode', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge,
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('does NOT invoke host-side data.extend when expression calls extend(...)', () => {
+		let hostExtendCalls = 0;
+		const data: Record<string, unknown> = {
+			$json: { items: [3, 1, 2] },
+			extend: (...args: unknown[]) => {
+				hostExtendCalls++;
+				throw new Error(`host-side data.extend was invoked with: ${JSON.stringify(args)}`);
+			},
+			extendOptional: (...args: unknown[]) => {
+				hostExtendCalls++;
+				throw new Error(`host-side data.extendOptional was invoked with: ${JSON.stringify(args)}`);
+			},
+		};
+
+		// Direct invocation of `extend()` from the expression.
+		// Tournament's polyfill rewrites bare `extend` to
+		// `("extend" in this ? this : global).extend`.
+		// `this` is the in-isolate context (target), where target.extend is
+		// the in-isolate extend function. Host-side data.extend should never run.
+		const result = evaluator.evaluate('{{ extend([3, 1, 2], "first", []) }}', data, caller);
+
+		expect(result).toBe(3);
+		expect(hostExtendCalls).toBe(0);
+	});
+
+	it('does NOT invoke host-side data.extendOptional when expression calls extendOptional(...)', () => {
+		let hostExtendOptionalCalls = 0;
+		const data: Record<string, unknown> = {
+			$json: { x: 'abc' },
+			extend: (...args: unknown[]) => {
+				throw new Error(`host-side data.extend was invoked with: ${JSON.stringify(args)}`);
+			},
+			extendOptional: (...args: unknown[]) => {
+				hostExtendOptionalCalls++;
+				throw new Error(`host-side data.extendOptional was invoked with: ${JSON.stringify(args)}`);
+			},
+		};
+
+		// extendOptional returns the function (or undefined) — call it then.
+		const result = evaluator.evaluate('{{ extendOptional("hello", "isEmpty")() }}', data, caller);
+
+		// "hello".isEmpty() should be false (non-empty string)
+		expect(result).toBe(false);
+		expect(hostExtendOptionalCalls).toBe(0);
+	});
+
+	it('does NOT invoke host-side data.$jmespath / data.$jmesPath for either casing', () => {
+		let hostJmespathCalls = 0;
+		const data: Record<string, unknown> = {
+			$json: { users: [{ name: 'a' }, { name: 'b' }] },
+			$jmespath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmespath was invoked with: ${JSON.stringify(args)}`);
+			},
+			$jmesPath: (...args: unknown[]) => {
+				hostJmespathCalls++;
+				throw new Error(`host-side data.$jmesPath was invoked with: ${JSON.stringify(args)}`);
+			},
+		};
+
+		expect(
+			evaluator.evaluate(
+				'{{ $jmespath({users: [{name: "a"}, {name: "b"}]}, "users[*].name") }}',
+				data,
+				caller,
+			),
+		).toEqual(['a', 'b']);
+		expect(evaluator.evaluate('{{ $jmesPath({a: 1, b: 2}, "a") }}', data, caller)).toBe(1);
+		expect(hostJmespathCalls).toBe(0);
+	});
+
+	it('resolves function-typed data properties as undefined (no marker object)', () => {
+		const data: Record<string, unknown> = {
+			$json: { weirdFn: (x: number) => x + 1, value: 42 },
+		};
+
+		expect(evaluator.evaluate('{{ typeof $json.weirdFn }}', data, caller)).toBe('undefined');
+		expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe(42);
+	});
+});

@@ -9,16 +9,16 @@ export interface PushResult {
 export class SourceControlPushModal {
 	constructor(private readonly page: Page) {}
 
-	getModal() {
+	get container() {
 		return this.page.getByTestId('sourceControlPush-modal');
 	}
 
 	getSubmitButton(): Locator {
-		return this.page.getByTestId('source-control-push-modal-submit');
+		return this.container.getByTestId('source-control-push-modal-submit');
 	}
 
 	async push(commitMessage: string): Promise<PushResult> {
-		await this.page.getByTestId('source-control-push-modal-commit').fill(commitMessage);
+		await this.container.getByTestId('source-control-push-modal-commit').fill(commitMessage);
 
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
@@ -35,11 +35,11 @@ export class SourceControlPushModal {
 
 	// Tabs
 	getWorkflowsTab(): Locator {
-		return this.page.getByTestId('source-control-push-modal-tab-workflow');
+		return this.container.getByTestId('source-control-push-modal-tab-workflow');
 	}
 
 	getCredentialsTab(): Locator {
-		return this.page.getByTestId('source-control-push-modal-tab-credential');
+		return this.container.getByTestId('source-control-push-modal-tab-credential');
 	}
 
 	async selectWorkflowsTab(): Promise<void> {
@@ -58,18 +58,17 @@ export class SourceControlPushModal {
 
 	// File items
 	getFileInModal(fileName: string): Locator {
-		return this.getModal().getByTestId('push-modal-item').filter({ hasText: fileName }).first();
+		return this.container.getByTestId('push-modal-item').filter({ hasText: fileName }).first();
 	}
 
 	getFileCheckboxByName(fileName: string): Locator {
-		// Find the checkbox that is associated with the file name
-		return this.getModal()
+		return this.container
 			.locator('[data-test-id="source-control-push-modal-file-checkbox"]')
-			.filter({ has: this.page.getByText(fileName, { exact: true }) });
+			.filter({ has: this.container.getByText(fileName, { exact: true }) });
 	}
 
 	async selectAllFilesInModal(): Promise<void> {
-		const toggleAll = this.getModal().getByTestId('source-control-push-modal-toggle-all');
+		const toggleAll = this.container.getByTestId('source-control-push-modal-toggle-all');
 		const isChecked = await toggleAll.isChecked();
 		if (!isChecked) {
 			await toggleAll.click();
@@ -77,7 +76,7 @@ export class SourceControlPushModal {
 	}
 
 	getNotice(): Locator {
-		return this.page.locator('#source-control-push-modal-notice.notice[role="alert"]');
+		return this.container.locator('#source-control-push-modal-notice.notice[role="alert"]');
 	}
 
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted'): Locator {

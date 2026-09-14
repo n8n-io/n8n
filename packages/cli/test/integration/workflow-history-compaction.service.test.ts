@@ -3,9 +3,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import repeat from 'lodash/repeat';
 import { InstanceSettings } from 'n8n-core';
-import { sleep, type INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { EventService } from '@/events/event.service';
@@ -122,7 +123,7 @@ describe('compacting cycle', () => {
 		}
 
 		// ACT
-		await compactionService['optimizeHistories']();
+		await compactionService['optimizeHistories'](new AbortController().signal);
 
 		// ASSERT
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
@@ -205,7 +206,7 @@ describe('compacting cycle', () => {
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching
-		void compactionService['optimizeHistories']();
+		void compactionService['optimizeHistories'](new AbortController().signal);
 		await sleep(500);
 
 		// ASSERT
@@ -229,7 +230,7 @@ describe('compacting cycle', () => {
 		expect(0 + +includesWf1 + +includesWf2 + +includesWf3).toBe(1);
 	});
 	describe('long term compaction', () => {
-		it('leaves one version every four hours for >10000 characters', async () => {
+		it('leaves one version every ten hours for >10000 characters', async () => {
 			// ARRANGE
 			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
 
@@ -258,16 +259,19 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
+			// All versions span ~9.6 hours which is under the 10-hour threshold,
+			// so the algorithm merges all earlier versions into the last one
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
-			const expectedVersions = [wf1_history[0], wf1_history[2], wf1_history[5]].map((x) => x[1]);
+			const expectedVersions = [wf1_history[5]].map((x) => x[1]);
 			expect(allHistories.map((x) => x.versionId)).toEqual(
 				expect.arrayContaining(expectedVersions),
 			);
+			expect(allHistories).toHaveLength(1);
 		});
-		it('leaves one version every hour for >5000 characters', async () => {
+		it('leaves one version every five hours for >5000 characters', async () => {
 			// ARRANGE
 			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
 
@@ -296,20 +300,18 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
+			// Total span is ~9.6 hours with a 5-hour threshold.
+			// The algorithm iterates backwards, merging consecutive pairs closer than 5 hours,
+			// leaving the first (lastWeekA) and last (lastWeekF) which are 9.6 hours apart.
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
-			const expectedVersions = [
-				wf1_history[0],
-				wf1_history[2],
-				wf1_history[3],
-				wf1_history[4],
-				wf1_history[5],
-			].map((x) => x[1]);
+			const expectedVersions = [wf1_history[0], wf1_history[5]].map((x) => x[1]);
 			expect(allHistories.map((x) => x.versionId)).toEqual(
 				expect.arrayContaining(expectedVersions),
 			);
+			expect(allHistories).toHaveLength(2);
 		});
 
 		it('leaves one version every five minutes for >100 characters', async () => {
@@ -341,7 +343,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});

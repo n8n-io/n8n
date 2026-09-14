@@ -5,6 +5,7 @@ declare global {
 		context: C;
 		item: N8nItem<J, B>;
 		params: P;
+		first(branchIndex?: number, runIndex?: number): J & N8nJson;
 	}
 
 	// @ts-expect-error N8nInputJson is populated dynamically

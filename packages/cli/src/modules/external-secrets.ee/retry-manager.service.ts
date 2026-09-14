@@ -1,9 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { LogMetadata } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 
-type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
+export type RetryOperation = () => Promise<{ success: boolean; error?: Error }>;
+type LogMethod = (message: string, metadata?: LogMetadata) => void;
 
 interface RetryInfo {
 	timeout: NodeJS.Timeout;
@@ -20,8 +22,21 @@ interface RetryInfo {
 export class ExternalSecretsRetryManager {
 	private retries = new Map<string, RetryInfo>();
 
-	constructor(private readonly logger: Logger) {
-		this.logger = this.logger.scoped('external-secrets');
+	private readonly logger: Record<'debug' | 'error' | 'warn' | 'info', LogMethod>;
+
+	constructor(logger: Logger) {
+		const scopedLogger = logger.scoped('external-secrets');
+		const withPrefix =
+			(level: 'debug' | 'error' | 'warn' | 'info'): LogMethod =>
+			(message, metadata?) =>
+				scopedLogger[level](`External secrets: ${message}`, metadata);
+
+		this.logger = {
+			debug: withPrefix('debug'),
+			error: withPrefix('error'),
+			warn: withPrefix('warn'),
+			info: withPrefix('info'),
+		};
 	}
 
 	async runWithRetry(
@@ -52,6 +67,11 @@ export class ExternalSecretsRetryManager {
 	): void {
 		const nextBackoff = Math.min(currentBackoff * 2, EXTERNAL_SECRETS_MAX_BACKOFF);
 
+		// De-phase the fleet: a reload broadcast makes every process fail in the same instant, so
+		// without jitter they all retry in the same instant too. Downward only, so the nominal
+		// backoff stays the ceiling.
+		const delay = Math.round(currentBackoff * (0.5 + Math.random() / 2));
+
 		const timeout = setTimeout(async () => {
 			this.logger.debug(`Retrying operation for ${key} (attempt ${attempt + 1})`);
 			this.retries.delete(key);
@@ -64,7 +84,7 @@ export class ExternalSecretsRetryManager {
 
 			this.logger.error(`Retry failed for ${key}`, { error: result.error });
 			this.scheduleRetry(key, operation, nextBackoff, attempt + 1);
-		}, currentBackoff);
+		}, delay);
 
 		this.retries.set(key, {
 			timeout,
@@ -73,7 +93,7 @@ export class ExternalSecretsRetryManager {
 			nextBackoff,
 		});
 
-		this.logger.debug(`Scheduled retry for ${key} in ${currentBackoff}ms (attempt ${attempt + 1})`);
+		this.logger.debug(`Scheduled retry for ${key} in ${delay}ms (attempt ${attempt + 1})`);
 	}
 
 	/**

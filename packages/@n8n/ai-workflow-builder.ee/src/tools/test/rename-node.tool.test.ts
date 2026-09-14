@@ -1,4 +1,5 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
+import type { MockedFunction } from 'vitest';
 
 import {
 	createNode,
@@ -16,26 +17,24 @@ import {
 import { createRenameNodeTool } from '../rename-node.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('RenameNodeTool', () => {
 	let renameNodeTool: ReturnType<typeof createRenameNodeTool>['tool'];
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		renameNodeTool = createRenameNodeTool().tool;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {

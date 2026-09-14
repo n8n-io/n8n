@@ -1,12 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
 
 describe('N8nStructuredOutputParser', () => {
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	beforeEach(() => {
 		mockContext = mock<ISupplyDataFunctions>();
@@ -276,7 +277,7 @@ describe('N8nStructuredOutputParser', () => {
 			);
 		});
 
-		it('should handle empty output', async () => {
+		it.each(['{}', ''])('should handle empty output %j', async (emptyOutput) => {
 			const schema = z.object({
 				output: z.object({
 					message: z.string(),
@@ -285,10 +286,8 @@ describe('N8nStructuredOutputParser', () => {
 
 			const parser = new N8nStructuredOutputParser(mockContext, schema);
 
-			const emptyOutput = '{}';
-
 			await expect(parser.parse(emptyOutput)).rejects.toThrow(
-				"Model output doesn't fit required format",
+				'The AI model returned an empty response to the Structured Output Parser',
 			);
 		});
 

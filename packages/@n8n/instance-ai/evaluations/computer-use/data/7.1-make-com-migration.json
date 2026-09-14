@@ -1,0 +1,33 @@
+{
+	"id": "7.1-make-com-migration",
+	"category": "browser",
+	"prompt": "I have a Make.com scenario I want to recreate in n8n. Can go to my Make.com account and look at the scenario called 'Lead Processing' so you can help me rebuild it?",
+	"budgets": { "maxToolCalls": 80, "maxDurationMs": 900000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 80,
+			"maxToolResultTokensEst": 300000,
+			"maxSingleToolResultTokensEst": 80000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["make\\.com|scenario|module"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": [
+		"browser",
+		"migration",
+		"requires:browser-bootstrap",
+		"requires:third-party-account:make"
+	]
+}

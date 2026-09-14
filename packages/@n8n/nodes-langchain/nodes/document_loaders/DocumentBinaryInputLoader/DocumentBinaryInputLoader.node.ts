@@ -7,16 +7,18 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper, N8nBinaryLoader } from '@n8n/ai-utilities';
-
-import { getConnectionHintNoticeField, metadataFilterField } from '@utils/sharedFields';
+import {
+	logWrapper,
+	N8nBinaryLoader,
+	getConnectionHintNoticeField,
+	metadataFilterField,
+} from '@n8n/ai-utilities';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-import 'pdf-parse'; // for pdf
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onMounted, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '../projects.store';
 import { useSecretsProvidersList } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProvidersList.ee';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRouter } from 'vue-router';
 
 import {
@@ -15,14 +15,14 @@ import {
 	N8nIconButton,
 	N8nIcon,
 	N8nInput,
-	N8nActionBox,
+	N8nEmptyState,
 	N8nHeading,
 	N8nText,
 	N8nDataTableServer,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -32,7 +32,7 @@ const uiStore = useUIStore();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
-const secretsProviderConnection = useSecretsProviderConnection();
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 
 interface ConnectionRow {
 	id: string;
@@ -115,7 +115,7 @@ const emptyStateConfig = computed(() => {
 });
 
 const sortedConnections = computed(() =>
-	[...projectSecretConnections.value].sort((a, b) => b.secretsCount - a.secretsCount),
+	[...projectSecretConnections.value].sort((a, b) => a.name.localeCompare(b.name)),
 );
 
 const filteredConnections = computed(() => {
@@ -259,27 +259,31 @@ watch([currentPage, itemsPerPage], async () => {
 	await fetchSecretsForCurrentPage();
 });
 
-// Fetch project secret providers when currentProjectId is available
+// Fetch project secret providers when currentProjectId is available and section is visible
 watch(
-	() => projectsStore.currentProjectId,
-	async (newProjectId) => {
-		if (newProjectId && showExternalSecretsSection.value) {
+	[() => projectsStore.currentProjectId, showExternalSecretsSection],
+	async ([newProjectId, showSection]) => {
+		if (newProjectId && showSection) {
 			await fetchProjectSecretConnections();
 		}
 	},
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	if (!showExternalSecretsSection.value) return;
-	await Promise.all([
-		secretsProviders.fetchProviderTypes(),
-		secretsProviders.fetchActiveConnections(),
-	]);
-	if (canCreateGlobalSecretsStore.value) {
-		await projectsStore.getAllProjects();
-	}
-});
+watch(
+	showExternalSecretsSection,
+	async (showSection) => {
+		if (!showSection) return;
+		await Promise.allSettled([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+		]);
+		if (canCreateGlobalSecretsStore.value) {
+			await projectsStore.getAllProjects();
+		}
+	},
+	{ immediate: true },
+);
 
 defineExpose({
 	fetchProjectSecretConnections,
@@ -295,7 +299,11 @@ defineExpose({
 		</h3>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
-		<N8nActionBox v-if="emptyStateConfig" :data-test-id="emptyStateConfig.testId" description="yes">
+		<N8nEmptyState
+			v-if="emptyStateConfig"
+			:data-test-id="emptyStateConfig.testId"
+			description="yes"
+		>
 			<template #description>
 				<N8nHeading tag="h3" size="small" class="mb-2xs">
 					{{ emptyStateConfig.heading }}
@@ -325,7 +333,7 @@ defineExpose({
 					{{ emptyStateConfig.buttonText }}
 				</N8nButton>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 
 		<!-- Table View: Show when there are providers -->
 		<div v-else-if="projectSecretConnections.length > 0" :class="$style.secretProvidersContainer">
@@ -513,7 +521,7 @@ defineExpose({
 .secretName {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	background-color: var(--color--neutral-125);
+	background-color: var(--code--color--background--readonly);
 	padding: var(--spacing--4xs);
 }
 

@@ -1,0 +1,301 @@
+import { Time } from '@n8n/constants';
+
+import { Config, Env } from '../decorators';
+import { concurrencyLimitSchema } from '../schemas';
+
+@Config
+export class InstanceAiConfig {
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
+	@Env('N8N_INSTANCE_AI_MODEL')
+	model: string = 'anthropic/claude-opus-4-8';
+
+	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
+	@Env('N8N_INSTANCE_AI_MODEL_URL')
+	modelUrl: string = '';
+
+	/** API key for the custom model endpoint (optional — some local servers don't require one). */
+	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
+	modelApiKey: string = '';
+
+	/**
+	 * Google Cloud project for `google-vertex-anthropic/*` models.
+	 * Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT_ID')
+	vertexProjectId: string = '';
+
+	/**
+	 * Vertex location for `google-vertex-anthropic/*` models (e.g. `global`, `us-east5`).
+	 * Empty falls back to `GOOGLE_VERTEX_LOCATION`, then `global`.
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
+	vertexLocation: string = '';
+
+	/**
+	 * Service-account JSON for `google-vertex-anthropic/*` models.
+	 * Omit to use ADC (`gcloud auth application-default login`).
+	 */
+	@Env('N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON')
+	vertexServiceAccountJson: string = '';
+
+	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
+	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
+	mcpServers: string = '';
+
+	/** Token threshold for Observer to trigger compression of message history. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
+	observerMessageTokens: number = 30_000;
+
+	/** Token threshold for Reflector to condense observations. */
+	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
+	reflectorObservationTokens: number = 40_000;
+
+	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
+	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
+	localGatewayDisabled: boolean = false;
+
+	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
+	browserUseEnabled: boolean = true;
+
+	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
+	sandboxEnabled: boolean = false;
+
+	/** Sandbox provider: 'n8n-sandbox' for n8n sandbox service, 'daytona' for Daytona-backed containers. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = 'n8n-sandbox';
+
+	/** Daytona API URL (e.g. "http://localhost:3000/api"). */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for authentication. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
+
+	/** n8n sandbox service base URL. */
+	@Env('N8N_SANDBOX_SERVICE_URL')
+	n8nSandboxServiceUrl: string = '';
+
+	/** n8n sandbox service API key. */
+	@Env('N8N_SANDBOX_SERVICE_API_KEY')
+	n8nSandboxServiceApiKey: string = '';
+
+	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
+	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
+	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/**
+	 * Overrides the full Daytona snapshot name used to create sandboxes (e.g.
+	 * `n8n/instance-ai:2.27.3`). Defaults to the versioned snapshot derived from the running
+	 * n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back
+	 * to building from the base image.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_SNAPSHOT')
+	sandboxSnapshot: string = '';
+
+	/** Default command timeout in the sandbox (milliseconds). */
+	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
+	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
+	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
+	sandboxNamePrefix: string = '';
+
+	/**
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
+	 * `0` disables auto-stop (the sandbox stays running).
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES')
+	sandboxAutoStopMinutes: number = 15;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
+	 * Default 1 hour. `0` uses Daytona's maximum interval.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
+	sandboxAutoArchiveMinutes: number = 60;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 7 days. A negative
+	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
+	sandboxAutoDeleteMinutes: number = 7 * 24 * 60;
+
+	/**
+	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
+	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
+	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
+	 */
+	@Env('N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS')
+	daytonaTokenRefreshSkewMs: number = 5 * Time.minutes.toMilliseconds;
+
+	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
+	builderSandboxTtlMs: number = 15 * Time.minutes.toMilliseconds;
+
+	/** Brave Search API key for web search. No key = search + research agent disabled. */
+	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
+	braveSearchApiKey: string = '';
+
+	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
+	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
+	searxngUrl: string = '';
+
+	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
+	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
+	gatewayApiKey: string = '';
+
+	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
+	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
+	threadTtlDays: number = 30;
+
+	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
+	pruneInterval: number = 1 * Time.hours.toMilliseconds;
+
+	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
+	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
+	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
+
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
+
+	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
+	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
+	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
+
+	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
+	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
+	runDebugEnabled: boolean = false;
+
+	/** Enable extended thinking / reasoning for the orchestrator agent. */
+	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
+	thinkingEnabled: boolean = true;
+
+	/**
+	 * Let the assistant discover and connect MCP registry servers.
+	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
+	 */
+	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
+	mcpConnectionsEnabled: boolean = false;
+
+	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
+
+	/**
+	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
+	 * the chat input replaces the suspending setup wizard. Env-settable so eval
+	 * lanes can exercise both paths; a managed rollout flag may layer on top
+	 * later behind the same accessors.
+	 */
+	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
+	instanceAiSetupPanelEnabled: boolean = false;
+
+	/**
+	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
+	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 *
+	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
+	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
+	 * with any other context surface, so a measurement can tell which one moved a result.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
+	nodeUsageEnabled: boolean = false;
+
+	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
+	 * Activation-capped trial variant for n8n cloud experiment.
+	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
+	activationCapped: boolean = false;
+
+	/**
+	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
+	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Max orchestrator runs executing concurrently on this process. A new user turn over
+	 * the cap is refused with HTTP 429; resumes and internal follow-up runs are always
+	 * admitted so an in-flight conversation is never stranded.
+	 *
+	 * `-1` (the default) means unlimited
+	 *
+	 * Size it against memory rather than throughput: measured peak is ~600MB
+	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
+	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
+	maxConcurrentRuns: number = -1;
+
+	/**
+	 * Max orchestrator runs one user may have executing at once, across all their threads.
+	 * Bounds credit overshoot: usage is only claimed when a run segment ends, so every run
+	 * a user can start in parallel is one more run's worth of spend that can land after
+	 * they cross quota.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * Counts executing runs only, a HITL-suspended run spends nothing while it waits,
+	 * and counting those would lock a user out for the whole confirmation timeout.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS_PER_USER', concurrencyLimitSchema)
+	maxConcurrentRunsPerUser: number = -1;
+
+	/**
+	 * Max background sub-agent tasks running concurrently on this process, across all
+	 * threads. Guards the fan-out case the per-thread limit misses: a handful of runs each
+	 * spawning their full complement of sub-agents. A spawn over the cap fails as a tool
+	 * error, which the orchestrator handles by doing the work inline or retrying later.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * The per-thread constant limit of MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD (5) applies regardless.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
+	maxConcurrentSubAgents: number = -1;
+
+	/**
+	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
+	 * changed recently, and what has run — plus the tool to read further back.
+	 *
+	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
+	 * The record is core and has other potential consumers; this flag gates one consumer's read.
+	 * Two of the three sources are not the activity log in the first place: what exists comes from
+	 * the workflows themselves, and runs come from `execution_entity`.
+	 *
+	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
+	 * the edit history stays empty, since no entry was ever written.
+	 */
+	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
+	instanceContextEnabled: boolean = false;
+}

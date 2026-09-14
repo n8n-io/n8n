@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BaseModal } from './components/BaseModal';
 import { FloatingUiHelper } from './components/FloatingUiHelper';
@@ -9,6 +9,22 @@ export abstract class BasePage extends FloatingUiHelper {
 	constructor(protected readonly page: Page) {
 		super(page);
 		this.baseModal = new BaseModal(this.page);
+	}
+
+	/**
+	 * Search input on the shared resources-list layout used across list pages
+	 * (workflows, credentials, variables, etc.).
+	 */
+	protected getResourcesListSearch(): Locator {
+		return this.page.getByTestId('resources-list-search');
+	}
+
+	/**
+	 * Root of the shared empty-state box rendered on the list pages
+	 * (workflows, credentials, variables, data tables, executions).
+	 */
+	protected getResourcesListEmptyState(): Locator {
+		return this.page.getByTestId('empty-resources-list');
 	}
 
 	protected async clickByTestId(testId: string) {

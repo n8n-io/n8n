@@ -8,7 +8,7 @@ import type {
 export class CohereApi implements ICredentialType {
 	name = 'cohereApi';
 
-	displayName = 'CohereApi';
+	displayName = 'Cohere API';
 
 	documentationUrl = 'cohere';
 

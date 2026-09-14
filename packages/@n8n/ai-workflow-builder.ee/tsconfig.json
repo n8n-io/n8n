@@ -1,20 +1,17 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
 	],
 	"compilerOptions": {
 		"target": "es2023",
 		"lib": ["es2023"],
-		"rootDir": ".",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./src/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"types": ["node", "jest"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts", "scripts/**/*.ts"]
 }

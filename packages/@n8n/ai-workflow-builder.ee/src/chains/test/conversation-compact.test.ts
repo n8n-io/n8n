@@ -26,7 +26,7 @@ describe('conversationCompactChain', () => {
 	let fakeLLM: BaseChatModel;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Basic functionality', () => {

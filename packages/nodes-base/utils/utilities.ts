@@ -13,13 +13,7 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	jsonParse,
-	MYSQL_NODE_TYPE,
-	POSTGRES_NODE_TYPE,
-	randomInt,
-} from 'n8n-workflow';
+import { jsonParse, MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE, randomInt, UserError } from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -159,12 +153,12 @@ export function processJsonInput<T>(jsonData: T, inputName?: string) {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+			throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+		throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;
@@ -286,37 +280,6 @@ export const keysToLowercase = <T>(headers: T) => {
 		return acc;
 	}, {} as IDataObject);
 };
-
-/**
- * Formats a private key by removing unnecessary whitespace and adding line breaks.
- * @param privateKey - The private key to format.
- * @returns The formatted private key.
- */
-export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
-	let regex = /(PRIVATE KEY|CERTIFICATE)/;
-	if (keyIsPublic) {
-		regex = /(PUBLIC KEY)/;
-	}
-	if (!privateKey || /\n/.test(privateKey)) {
-		return privateKey;
-	}
-	let formattedPrivateKey = '';
-	const parts = privateKey.split('-----').filter((item) => item !== '');
-	parts.forEach((part) => {
-		if (regex.test(part)) {
-			formattedPrivateKey += `-----${part}-----`;
-		} else {
-			const passRegex = /Proc-Type|DEK-Info/;
-			if (passRegex.test(part)) {
-				part = part.replace(/:\s+/g, ':');
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
-			} else {
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
-			}
-		}
-	});
-	return formattedPrivateKey;
-}
 
 /**
  * @TECH_DEBT Explore replacing with handlebars

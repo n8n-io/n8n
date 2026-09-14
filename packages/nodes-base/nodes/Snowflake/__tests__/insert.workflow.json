@@ -1,0 +1,65 @@
+{
+	"name": "Snowflake insert - parameter binding",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{ "name": "name", "stringValue": "Alice" },
+						{ "name": "status", "stringValue": "active" }
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [680, 460]
+		},
+		{
+			"parameters": {
+				"operation": "insert",
+				"table": "orders",
+				"columns": "name,status"
+			},
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+			"name": "Snowflake Insert",
+			"type": "n8n-nodes-base.snowflake",
+			"typeVersion": 1,
+			"position": [900, 460],
+			"credentials": {
+				"snowflake": {
+					"id": "1",
+					"name": "Snowflake account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "Snowflake Insert", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "d4e5f6a7-b8c9-0123-defa-234567890123",
+	"id": "SnowflakeInsertParameterBinding",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

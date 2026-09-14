@@ -1,5 +1,5 @@
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { isCommunityPackageName } from 'n8n-workflow';
 import {
 	type ExtendedPublicInstalledPackage,
@@ -51,7 +51,7 @@ export function useInstalledCommunityPackage(nodeTypeName?: MaybeRefOrGetter<str
 	const isUpdateCheckAvailable = computed(() => {
 		return (
 			isCommunityNode.value &&
-			usersStore.isInstanceOwner &&
+			usersStore.isAdminOrOwner &&
 			!installedPackage.value?.unverifiedUpdate
 		);
 	});

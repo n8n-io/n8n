@@ -1,31 +1,20 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import {
-	Post,
-	GlobalScope,
-	RestController,
-	Body,
-	Param,
-	createBodyKeyedRateLimiter,
-} from '@n8n/decorators';
+import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { Time } from '@n8n/constants';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -34,12 +23,10 @@ export class InvitationController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
-		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
-		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -53,47 +40,7 @@ export class InvitationController {
 		_res: Response,
 		@Body invitations: InviteUsersRequestDto,
 	) {
-		if (invitations.length === 0) return [];
-
-		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-			throw new BadRequestError(
-				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
-			);
-		}
-
-		if (!isWithinUsersLimit) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
-			);
-			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (!(await this.ownershipService.hasInstanceOwner())) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
-			);
-			throw new BadRequestError('You must set up your own account before inviting others');
-		}
-
-		const attributes = invitations.map(({ email, role }) => {
-			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
-				throw new ForbiddenError(
-					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
-				);
-			}
-			return { email, role };
-		});
-
-		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);
-
-		await this.externalHooks.run('user.invited', [usersCreated]);
-
-		return usersInvited;
+		return await this.userService.inviteUser(req.user, invitations);
 	}
 
 	/**
@@ -190,60 +137,9 @@ export class InvitationController {
 		const { firstName, lastName, password } = payload;
 
 		// Extract inviterId and inviteeId from JWT token
-		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
-			token: payload.token,
-		});
-
-		return await this.processInvitationAcceptance(
-			inviterId,
-			inviteeId,
-			firstName,
-			lastName,
-			password,
-			req,
-			res,
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
+			payload.token,
 		);
-	}
-
-	/**
-	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
-	 */
-	@Post('/:id/accept', {
-		skipAuth: true,
-		// Two layered rate limit to ensure multiple users can accept an invitation from
-		// the same IP address but aggressive per inviteeId limit.
-		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
-		keyedRateLimit: createBodyKeyedRateLimiter<AcceptInvitationRequestDto>({
-			limit: 10,
-			windowMs: 1 * Time.minutes.toMilliseconds,
-			field: 'inviterId',
-		}),
-	})
-	async acceptInvitation(
-		req: AuthlessRequest,
-		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		if (!payload.inviterId || !inviteeId) {
-			this.logger.debug(
-				'Request to accept invitation failed because inviterId or inviteeId is missing',
-			);
-			throw new BadRequestError('InviterId and inviteeId are required');
-		}
-
-		const { firstName, lastName, password } = payload;
-
-		const inviterId = payload.inviterId;
 
 		return await this.processInvitationAcceptance(
 			inviterId,

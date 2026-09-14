@@ -1,0 +1,33 @@
+{
+	"id": "5.1-form-trigger-fill",
+	"category": "browser",
+	"prompt": "I have an active workflow called 'CU Eval — Form Trigger Test' that has a Form trigger. Open its production form URL and fill it out with test data (name 'Test User', email 'test@example.com') so I can see if the workflow runs.",
+	"setup": {
+		"seedWorkflow": "form-trigger-workflow.json",
+		"activateSeededWorkflow": true
+	},
+	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "browser_type" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 50,
+			"maxToolResultTokensEst": 200000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["submitted|filled|test user"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": ["browser", "form", "requires:browser-bootstrap"]
+}

@@ -12,6 +12,14 @@ export function isObject(maybeObject: unknown): maybeObject is Record<string, un
 	return isObjectOrArray(maybeObject) && !Array.isArray(maybeObject);
 }
 
+export function isStringArray(maybeArray: unknown): maybeArray is string[] {
+	return Array.isArray(maybeArray) && maybeArray.every((item) => typeof item === 'string');
+}
+
+export function isStringArrayRecord(value: unknown): value is Record<string, string[]> {
+	return isObject(value) && Object.values(value).every(isStringArray);
+}
+
 export const searchInObject = (obj: ObjectOrArray, searchString: string): boolean =>
 	(Array.isArray(obj) ? obj : Object.entries(obj)).some((entry) =>
 		isObjectOrArray(entry)

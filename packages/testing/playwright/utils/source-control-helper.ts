@@ -1,8 +1,24 @@
 import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import { expect } from '@playwright/test';
 import type { GiteaHelper } from 'n8n-containers';
+import { createHash } from 'node:crypto';
 
 import type { n8nPage } from '../pages/n8nPage';
+import type { ApiHelpers } from '../services/api-helper';
+
+async function getSourceControlPreferences(api: ApiHelpers) {
+	const response = await api.request.get('/rest/source-control/preferences');
+	const contentType = response.headers()['content-type'] ?? '';
+
+	if (!contentType.includes('application/json')) {
+		throw new Error(
+			`Expected source-control preferences JSON, got ${response.status()} ${contentType}. ` +
+				'Ensure the test is tagged @licensed and N8N_LICENSE_TENANT_ID/N8N_LICENSE_ACTIVATION_KEY are available so source-control routes are registered at startup.',
+		);
+	}
+
+	return await response.json();
+}
 
 async function waitForCommitOnGitea(
 	gitea: GiteaHelper,
@@ -24,16 +40,15 @@ async function waitForCommitOnGitea(
 	throw new Error(`Commit ${commitHash} not found on Gitea repo ${repoName} after ${timeout}ms`);
 }
 
-const waitForDisconnected = async (n8n: n8nPage, timeout = 30000) => {
+const waitForDisconnected = async (api: ApiHelpers, timeout = 30000) => {
 	await expect(async () => {
-		const response = await n8n.page.request.get('/rest/source-control/preferences');
-		const preferences = await response.json();
+		const preferences = await getSourceControlPreferences(api);
 		expect(preferences.data?.connected).toBe(false);
 	}).toPass({ timeout });
 };
 
-const initSourceControlPreferences = async (n8n: n8nPage) => {
-	await n8n.page.request.post('/rest/source-control/preferences', {
+const initSourceControlPreferences = async (api: ApiHelpers) => {
+	await api.request.post('/rest/source-control/preferences', {
 		data: {
 			connectionType: 'ssh',
 			keyGeneratorType: 'ed25519',
@@ -43,28 +58,35 @@ const initSourceControlPreferences = async (n8n: n8nPage) => {
 	});
 };
 
-const initSourceControlSSHKey = async ({ n8n, gitea }: { n8n: n8nPage; gitea: GiteaHelper }) => {
-	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-	const preferences = await preferencesResponse.json();
+const initSourceControlSSHKey = async ({ api, gitea }: { api: ApiHelpers; gitea: GiteaHelper }) => {
+	const preferences = await getSourceControlPreferences(api);
 	const sshKey = preferences.data.publicKey;
+	const sshKeyHash = createHash('sha256').update(sshKey).digest('hex').slice(0, 12);
 
 	try {
-		await gitea.addSSHKey('n8n-source-control', sshKey);
+		await gitea.addSSHKey(`n8n-source-control-${sshKeyHash}`, sshKey);
 	} catch {
 		// Key might already exist in Gitea - this is fine if we're reusing keys
 	}
 };
 
-export const initSourceControl = async ({ n8n, gitea }: { n8n: n8nPage; gitea: GiteaHelper }) => {
-	const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-	const preferences = await preferencesResponse.json();
+export const initSourceControl = async ({
+	n8n,
+	api = n8n.api,
+	gitea,
+}: {
+	n8n: n8nPage;
+	api?: ApiHelpers;
+	gitea: GiteaHelper;
+}) => {
+	const preferences = await getSourceControlPreferences(api);
 	if (preferences.data?.connected) {
-		await n8n.api.sourceControl.disconnect({ keepKeyPair: true });
-		await waitForDisconnected(n8n);
+		await api.sourceControl.disconnect({ keepKeyPair: true });
+		await waitForDisconnected(api);
 	}
 
-	await initSourceControlPreferences(n8n);
-	await initSourceControlSSHKey({ n8n, gitea });
+	await initSourceControlPreferences(api);
+	await initSourceControlSSHKey({ api, gitea });
 };
 
 export function generateUniqueRepoName(): string {
@@ -89,14 +111,18 @@ export interface GitRepoHelper {
 	}>;
 }
 
-export async function setupGitRepo(n8n: n8nPage, gitea: GiteaHelper): Promise<GitRepoHelper> {
-	await initSourceControl({ n8n, gitea });
+export async function setupGitRepo(
+	n8n: n8nPage,
+	gitea: GiteaHelper,
+	api: ApiHelpers = n8n.api,
+): Promise<GitRepoHelper> {
+	await initSourceControl({ n8n, api, gitea });
 	const repoName = generateUniqueRepoName();
 
 	await gitea.createRepo(repoName);
 
 	const repoUrl = buildRepoUrl(repoName);
-	await n8n.api.sourceControl.connect({ repositoryUrl: repoUrl });
+	await api.sourceControl.connect({ repositoryUrl: repoUrl });
 
 	return {
 		repoName,

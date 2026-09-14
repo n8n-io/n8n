@@ -57,6 +57,10 @@ export class AgentToolV3 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					builderHint: {
+						propertyHint:
+							'Set to `true` when you need structured JSON output. The agent then requires an `outputParser` entry in its `subnodes` config (typically an `outputParserStructured` node defined via the `outputParser({...})` SDK factory). With `hasOutputParser: false` the agent returns a plain string in `$json.output`.',
+					},
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,

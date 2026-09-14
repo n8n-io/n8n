@@ -9,6 +9,7 @@ export const sampleConfig: SamlPreferences = {
 		lastName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 		userPrincipalName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
 		n8nInstanceRole: 'n8n_instance_role',
+		n8nProjectRoles: [],
 	},
 	metadata: sampleMetadata,
 	metadataUrl: '',
@@ -20,6 +21,8 @@ export const sampleConfig: SamlPreferences = {
 	loginLabel: 'SAML Login',
 	wantAssertionsSigned: true,
 	wantMessageSigned: true,
+	signingPrivateKey: '',
+	signingCertificate: '',
 	signatureConfig: {
 		prefix: 'ds',
 		location: {

@@ -16,15 +16,21 @@ import {
 	disconnectedNodeValidator,
 	expressionPathValidator,
 	expressionPrefixValidator,
+	executeWorkflowValidator,
+	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
+	duplicateNodeIdValidator,
 	maxNodesValidator,
+	memorySessionKeyValidator,
 	mergeNodeValidator,
 	missingTriggerValidator,
 	noNodesValidator,
 	setNodeValidator,
+	structuredOutputParserValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
+	unknownConfigKeysValidator,
 } from './validators';
 
 // Note: Core composite handlers are now imported from ./composite-handlers
@@ -43,17 +49,23 @@ const coreValidators: ValidatorPlugin[] = [
 	noNodesValidator, // Check if workflow has any nodes
 	missingTriggerValidator, // Check if workflow has a trigger
 	maxNodesValidator, // Check max nodes per type constraint
+	duplicateNodeIdValidator, // Two nodes may not claim one stable node id
 
 	// Node-specific validators (high priority)
 	agentValidator,
 	chainLlmValidator,
 	httpRequestValidator,
+	structuredOutputParserValidator,
 	toolNodeValidator,
 	fromAiValidator,
+	memorySessionKeyValidator,
+	unknownConfigKeysValidator,
 
 	// Node-type validators (medium priority)
 	setNodeValidator,
 	mergeNodeValidator,
+	filterNodeValidator,
+	executeWorkflowValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,

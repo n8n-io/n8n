@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -16,7 +17,7 @@ const mockDateFactory = (currentDate: string) => {
 
 describe('CollaborationState', () => {
 	let collaborationState: CollaborationState;
-	let mockCacheService: jest.Mocked<CacheService>;
+	let mockCacheService: Mocked<CacheService>;
 
 	beforeEach(() => {
 		mockCacheService = mock<CacheService>();
@@ -118,6 +119,33 @@ describe('CollaborationState', () => {
 				lastSeen: recentTime,
 				userId: 'user1',
 			});
+		});
+
+		it('should gracefully ignore old cache format and clean it up', async () => {
+			// Arrange
+			const now = new Date().toISOString();
+
+			mockCacheService.getHash.mockResolvedValueOnce({
+				'old-user-uuid': '2026-02-26T21:23:36.318Z',
+				newClientId: `new-user-uuid|${now}`,
+			});
+
+			// Act
+			const users = await collaborationState.getCollaborators(workflowId);
+
+			// Assert
+			expect(users).toEqual([
+				{
+					clientId: 'newClientId',
+					lastSeen: now,
+					userId: 'new-user-uuid',
+				},
+			]);
+
+			expect(mockCacheService.deleteFromHash).toHaveBeenCalledWith(
+				'collaboration:workflow',
+				'old-user-uuid',
+			);
 		});
 	});
 });

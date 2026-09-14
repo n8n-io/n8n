@@ -63,9 +63,9 @@ export function toITaskData(taskData: TaskData[], overrides?: Partial<ITaskData>
 }
 
 export const nodeTypes = {
-	getByName: jest.fn(),
-	getByNameAndVersion: jest.fn(),
-	getKnownTypes: jest.fn(),
+	getByName: vi.fn(),
+	getByNameAndVersion: vi.fn(),
+	getKnownTypes: vi.fn(),
 };
 
 export const defaultWorkflowParameter = {

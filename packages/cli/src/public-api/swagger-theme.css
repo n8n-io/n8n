@@ -24,3 +24,17 @@
 .swagger-ui select {
 	border-color: #ff6d5a;
 }
+
+.swagger-ui .x-scope-badge {
+	display: inline-block;
+	margin-left: 12px;
+	padding: 2px 10px;
+	background: #ff6d5a;
+	color: #fff;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 600;
+	font-family: monospace;
+	letter-spacing: 0.3px;
+	vertical-align: middle;
+}

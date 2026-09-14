@@ -1,9 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { configure, render } from '@testing-library/vue';
 
-import type { IMenuItem } from '@n8n/design-system/types';
-
 import N8nMenuItem from './MenuItem.vue';
+import type { IMenuItem } from '../../types';
 
 configure({ testIdAttribute: 'data-test-id' });
 
@@ -144,15 +143,15 @@ describe('N8nMenuItem', () => {
 			expect(menuItem.textContent).not.toContain('Hidden Label');
 		});
 
-		it('should not render BetaTag when compact is true', () => {
+		it('should not render PreviewTag when compact is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
-					item: createMenuItem({ beta: true }),
+					item: createMenuItem({ preview: true }),
 					compact: true,
 				},
-				global: { stubs: { ...stubs, BetaTag: true } },
+				global: { stubs: { ...stubs, PreviewTag: true } },
 			});
-			expect(html()).not.toContain('beta-tag');
+			expect(html()).not.toContain('preview-tag');
 		});
 	});
 
@@ -206,25 +205,25 @@ describe('N8nMenuItem', () => {
 		});
 	});
 
-	describe('beta prop', () => {
-		it('should render BetaTag when beta is true', () => {
+	describe('preview prop', () => {
+		it('should render PreviewTag when preview is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
-					item: createMenuItem({ beta: true }),
+					item: createMenuItem({ preview: true }),
 				},
-				global: { stubs: { ...stubs, BetaTag: true } },
+				global: { stubs: { ...stubs, PreviewTag: true } },
 			});
-			expect(html()).toContain('beta-tag-stub');
+			expect(html()).toContain('preview-tag-stub');
 		});
 
-		it('should not render BetaTag when beta is false', () => {
+		it('should not render PreviewTag when preview is false', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
-					item: createMenuItem({ beta: false }),
+					item: createMenuItem({ preview: false }),
 				},
-				global: { stubs: { ...stubs, BetaTag: true } },
+				global: { stubs: { ...stubs, PreviewTag: true } },
 			});
-			expect(html()).not.toContain('beta-tag-stub');
+			expect(html()).not.toContain('preview-tag-stub');
 		});
 	});
 

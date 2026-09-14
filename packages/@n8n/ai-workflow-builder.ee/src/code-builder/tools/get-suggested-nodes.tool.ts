@@ -1,12 +1,16 @@
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { z } from 'zod';
+/**
+ * LangChain `tool()` wrapper for "suggested nodes by category". The actual
+ * lookup logic lives in `@n8n/ai-utilities/node-catalog` so non-LangChain
+ * callers can re-use it.
+ */
 
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import {
-	suggestedNodesData,
+	getSuggestedNodes,
 	categoryList,
-	type CategorySuggestedNode,
-} from './suggested-nodes-data';
-import type { NodeTypeParser } from '../utils/node-type-parser';
+	type NodeTypeParser,
+} from '@n8n/ai-utilities/node-catalog';
+import { z } from 'zod';
 
 const GetSuggestedNodesSchema = z.object({
 	categories: z
@@ -16,80 +20,6 @@ const GetSuggestedNodesSchema = z.object({
 
 type GetSuggestedNodesInput = z.infer<typeof GetSuggestedNodesSchema>;
 
-interface FormattedCategoryResult {
-	category: string;
-	patternHint: string;
-	nodes: Array<{
-		name: string;
-		displayName: string;
-		description: string;
-		note?: string;
-	}>;
-}
-
-function formatCategoryResult(
-	nodeTypeParser: NodeTypeParser,
-	category: string,
-): FormattedCategoryResult | null {
-	const categoryData = suggestedNodesData[category];
-	if (!categoryData) {
-		return null;
-	}
-
-	const nodes = categoryData.nodes.map((node: CategorySuggestedNode) => {
-		const nodeType = nodeTypeParser.getNodeType(node.name);
-		if (nodeType) {
-			return {
-				name: node.name,
-				displayName: nodeType.displayName,
-				description: nodeType.description,
-				note: node.note,
-			};
-		}
-		return {
-			name: node.name,
-			displayName: '(not found)',
-			description: '(not found)',
-			note: node.note,
-		};
-	});
-
-	return {
-		category,
-		patternHint: categoryData.patternHint,
-		nodes,
-	};
-}
-
-function formatOutput(results: Array<FormattedCategoryResult | null>): string {
-	const lines: string[] = [];
-
-	for (const result of results) {
-		if (!result) {
-			lines.push('Category not found\n');
-			continue;
-		}
-
-		lines.push(`## ${result.category}`);
-		lines.push(`patternHint: ${result.patternHint}`);
-		lines.push('');
-		lines.push('Suggested nodes:');
-
-		for (const node of result.nodes) {
-			lines.push(`- ${node.name}`);
-			lines.push(`  displayName: ${node.displayName}`);
-			lines.push(`  description: ${node.description}`);
-			if (node.note) {
-				lines.push(`  note: ${node.note}`);
-			}
-		}
-
-		lines.push('');
-	}
-
-	return lines.join('\n');
-}
-
 export function createGetSuggestedNodesTool(nodeTypeParser: NodeTypeParser) {
 	return new DynamicStructuredTool({
 		name: 'get_suggested_nodes',
@@ -98,23 +28,7 @@ export function createGetSuggestedNodesTool(nodeTypeParser: NodeTypeParser) {
 Available categories: ${categoryList.join(', ')}`,
 		schema: GetSuggestedNodesSchema,
 		func: async (input: GetSuggestedNodesInput): Promise<string> => {
-			const results: Array<FormattedCategoryResult | null> = [];
-
-			for (const category of input.categories) {
-				const result = formatCategoryResult(nodeTypeParser, category);
-				if (result) {
-					results.push(result);
-				} else {
-					// Unknown category - return error message
-					results.push({
-						category,
-						patternHint: 'Category not found',
-						nodes: [],
-					});
-				}
-			}
-
-			return formatOutput(results);
+			return getSuggestedNodes(nodeTypeParser, input.categories);
 		},
 	});
 }

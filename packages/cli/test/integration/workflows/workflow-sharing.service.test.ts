@@ -2,7 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { createWorkflow, shareWorkflowWithUsers, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -114,6 +114,67 @@ describe('WorkflowSharingService', () => {
 			//
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
+		});
+	});
+
+	describe('getUserIdsWithAccessToWorkflow', () => {
+		it('includes the global owner and the owning member, and excludes an unrelated member', async () => {
+			const workflow = await createWorkflow({}, member);
+
+			const userIds = await workflowSharingService.getUserIdsWithAccessToWorkflow(workflow.id);
+
+			expect(userIds).toContain(owner.id);
+			expect(userIds).toContain(member.id);
+			expect(userIds).not.toContain(anotherMember.id);
+		});
+
+		it('excludes a project member whose role does not grant workflow:read', async () => {
+			const project = await projectService.createTeamProject(member, { name: 'Team Project' });
+			const workflow = await createWorkflow(undefined, project);
+			await projectService.addUser(project.id, {
+				userId: anotherMember.id,
+				role: 'project:chatUser',
+			});
+
+			const userIds = await workflowSharingService.getUserIdsWithAccessToWorkflow(workflow.id);
+
+			expect(userIds).toContain(member.id);
+			expect(userIds).not.toContain(anotherMember.id);
+		});
+
+		it('includes a project member whose role grants workflow:read', async () => {
+			const project = await projectService.createTeamProject(member, { name: 'Team Project' });
+			const workflow = await createWorkflow(undefined, project);
+			await projectService.addUser(project.id, {
+				userId: anotherMember.id,
+				role: 'project:viewer',
+			});
+
+			const userIds = await workflowSharingService.getUserIdsWithAccessToWorkflow(workflow.id);
+
+			expect(userIds).toContain(anotherMember.id);
+		});
+	});
+
+	describe('rolesGrantingScope', () => {
+		it('should return no options for users holding the scope globally', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(owner, 'workflow:read');
+
+			expect(options).toBeUndefined();
+		});
+
+		it('should return the roles granting the scope for other users', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:read');
+
+			expect(options?.projectRoles).toContain('project:viewer');
+			expect(options?.workflowRoles).toContain('workflow:owner');
+		});
+
+		it('should return only the roles granting the requested scope', async () => {
+			const options = await workflowSharingService.rolesGrantingScope(member, 'workflow:update');
+
+			expect(options?.projectRoles).not.toContain('project:viewer');
+			expect(options?.projectRoles).toContain('project:admin');
 		});
 	});
 });

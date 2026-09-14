@@ -1,0 +1,250 @@
+import type { Mock } from 'vitest';
+
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
+import type { OrchestrationContext } from '../../types';
+import { createTaskControlTool } from '../task-control.tool';
+
+// ── Mock helpers ───────────────────────────────────────────────────────────────
+
+function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
+	return {
+		threadId: 'thread-1',
+		runId: 'run-1',
+		userId: 'user-1',
+		orchestratorAgentId: 'orchestrator-1',
+		modelId: 'test-model',
+		eventBus: {
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+		},
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
+		abortSignal: new AbortController().signal,
+		taskStorage: {
+			get: vi.fn(),
+			save: vi.fn(),
+		},
+		cancelBackgroundTask: vi.fn(),
+		sendCorrectionToTask: vi.fn(),
+		...overrides,
+	} as unknown as OrchestrationContext;
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
+describe('task-control tool', () => {
+	it('describes update-checklist as lightweight and non-scheduler', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		expect(tool.description).toContain('update-checklist');
+		expect(tool.description).toContain('lightweight visible checklists');
+		expect(tool.description).toContain('do not need scheduler-driven execution');
+		expect(tool.description).toContain('create-tasks');
+	});
+
+	// ── update-checklist ────────────────────────────────────────────────────
+
+	describe('update-checklist action', () => {
+		it('should save tasks to taskStorage and publish event', async () => {
+			const context = createMockContext();
+			const tasks = [
+				{ id: 'task-1', description: 'Build workflow', status: 'in_progress' as const },
+				{ id: 'task-2', description: 'Test workflow', status: 'todo' as const },
+			];
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'update-checklist' as const, tasks },
+				{} as never,
+			);
+
+			expect(context.taskStorage.save).toHaveBeenCalledWith('thread-1', { tasks });
+			expect(context.eventBus.publish).toHaveBeenCalledWith('thread-1', {
+				type: 'tasks-update',
+				runId: 'run-1',
+				agentId: 'orchestrator-1',
+				payload: { tasks: { tasks } },
+			});
+			expect(result).toEqual({ saved: true });
+		});
+
+		it('should handle empty tasks list', async () => {
+			const context = createMockContext();
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'update-checklist' as const, tasks: [] },
+				{} as never,
+			);
+
+			expect(context.taskStorage.save).toHaveBeenCalledWith('thread-1', { tasks: [] });
+			expect(context.eventBus.publish).toHaveBeenCalled();
+			expect(result).toEqual({ saved: true });
+		});
+	});
+
+	// ── cancel-task ────────────────────────────────────────────────────────
+
+	describe('cancel-task action', () => {
+		it('should call cancelBackgroundTask and return success message', async () => {
+			const context = createMockContext();
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'cancel-task' as const, taskId: 'build-ABC123' },
+				{} as never,
+			);
+
+			expect(context.cancelBackgroundTask).toHaveBeenCalledWith('build-ABC123');
+			expect(result).toEqual({ result: 'Background task build-ABC123 cancelled.' });
+		});
+
+		it('should return error when cancelBackgroundTask is not available', async () => {
+			const context = createMockContext({
+				cancelBackgroundTask: undefined,
+			});
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'cancel-task' as const, taskId: 'build-XYZ' },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				result: 'Error: background task cancellation not available.',
+			});
+		});
+	});
+
+	// ── correct-task ───────────────────────────────────────────────────────
+
+	describe('correct-task action', () => {
+		it('should send correction and return success message', async () => {
+			const context = createMockContext();
+			(context.sendCorrectionToTask as Mock).mockReturnValue('queued');
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'correct-task' as const,
+					taskId: 'build-ABC',
+					correction: 'use the Projects database',
+				},
+				{} as never,
+			);
+
+			expect(context.sendCorrectionToTask).toHaveBeenCalledWith(
+				'build-ABC',
+				'use the Projects database',
+			);
+			expect(result).toEqual({
+				result:
+					'Correction sent to task build-ABC: "use the Projects database". ' +
+					'The builder will see this on its next step.',
+			});
+		});
+
+		it('should return task-not-found message when task does not exist', async () => {
+			const context = createMockContext();
+			(context.sendCorrectionToTask as Mock).mockReturnValue('task-not-found');
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'correct-task' as const,
+					taskId: 'build-GONE',
+					correction: 'fix the trigger',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				result: 'Task build-GONE not found. It may have already been cleaned up.',
+			});
+		});
+
+		it('should return task-completed message when task has finished', async () => {
+			const context = createMockContext();
+			(context.sendCorrectionToTask as Mock).mockReturnValue('task-completed');
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'correct-task' as const,
+					taskId: 'build-DONE',
+					correction: 'add error handling',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				result:
+					'Task build-DONE has already completed. The correction was not delivered. ' +
+					'Incorporate "add error handling" into a new follow-up task instead.',
+			});
+		});
+
+		it('should return error when sendCorrectionToTask is not available', async () => {
+			const context = createMockContext({
+				sendCorrectionToTask: undefined,
+			});
+
+			const tool = createTaskControlTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'correct-task' as const,
+					taskId: 'build-ABC',
+					correction: 'fix it',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				result: 'Error: correction delivery not available.',
+			});
+		});
+	});
+});
+
+describe('task-control tool — checklist item contract', () => {
+	function checklistInput(description: string) {
+		return {
+			action: 'update-checklist',
+			tasks: [{ id: 'task-1', description, status: 'todo' }],
+		};
+	}
+
+	it('accepts a checklist item with a description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('Create the Users data table'));
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects a checklist item whose description is blank', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('  '));
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('trims surrounding whitespace off the description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('\nCreate the Users data table\n'));
+
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data).toMatchObject({
+			tasks: [{ description: 'Create the Users data table' }],
+		});
+	});
+});

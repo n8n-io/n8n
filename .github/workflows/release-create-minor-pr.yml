@@ -1,0 +1,69 @@
+name: 'Release: Create Minor Release PR'
+run-name: 'Release: Create Minor Release PR (force=${{ inputs.force }})'
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Create the release PR even if a minor release already went live this week.'
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: 0 8 * * 2 # 9am CET (UTC+1), Tuesday
+
+permissions:
+  contents: read
+
+jobs:
+  check-cadence:
+    name: Check release cadence
+    runs-on: ubuntu-latest
+    steps:
+      # Guards against a misbehaving scheduler dispatching this workflow more than once a week.
+      - name: Fail if a minor release already went live this week
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            echo "Force input set, skipping cadence check."
+            exit 0
+          fi
+          LAST_LIVE=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,publishedAt \
+            --jq '[.[] | select(.publishedAt != null and (.tagName | test("^n8n@[0-9]+\\.[0-9]+\\.0$")))] | max_by(.publishedAt).publishedAt // empty')
+          if [ -n "$LAST_LIVE" ] && [ "$(date -u -d "$LAST_LIVE" +%G-%V)" = "$(date -u +%G-%V)" ]; then
+            echo "::error::A minor release already went live this week ($LAST_LIVE). Re-run with the 'force' input to override."
+            exit 1
+          fi
+          echo "No minor release this week yet (last went live: ${LAST_LIVE:-never}), proceeding."
+
+  create-release-pr:
+    name: Create release PR
+    needs: [check-cadence]
+    # The called workflow requires these; a caller cannot grant less than it requests.
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
+    with:
+      base-branch: master
+      release-type: minor
+
+  notify-slack:
+    name: Notify Slack
+    needs: [create-release-pr]
+    if: needs.create-release-pr.result == 'success' && needs.create-release-pr.outputs.pull-request-number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text ':rocket: Minor release PR created. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release.'

@@ -1,5 +1,4 @@
 diff --git a/es/hooks/use-lockscreen/index.mjs b/es/hooks/use-lockscreen/index.mjs
-index 482516a6c59f8dcf0caba62b7482f63f126c2280..82a37f344bd650e9d514397b4531c0ff36487c70 100644
 --- a/es/hooks/use-lockscreen/index.mjs
 +++ b/es/hooks/use-lockscreen/index.mjs
 @@ -21,6 +21,8 @@ const useLockscreen = (trigger, options = {}) => {
@@ -12,7 +11,6 @@ index 482516a6c59f8dcf0caba62b7482f63f126c2280..82a37f344bd650e9d514397b4531c0ff
        if (withoutHiddenClass && document) {
          document.body.style.width = bodyWidth;
 diff --git a/lib/hooks/use-lockscreen/index.js b/lib/hooks/use-lockscreen/index.js
-index ce7bd581a57cd0d7e834c42a954b48d148578ef5..496e4dc07bae546bea037cedb23ea0ee7b3a7955 100644
 --- a/lib/hooks/use-lockscreen/index.js
 +++ b/lib/hooks/use-lockscreen/index.js
 @@ -25,6 +25,8 @@ const useLockscreen = (trigger, options = {}) => {

@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
 import {
@@ -9,17 +10,21 @@ import {
 } from './__tests__/fixtures-download';
 import { generateWorkflowCode } from './codegen';
 import type { WorkflowJSON } from './types/base';
+import { foldLegacyErrorConnections, normalizeConnections } from './types/base';
 import { workflow } from './workflow-builder';
 
 /**
- * Writes a .generated.ts file next to the original JSON fixture.
+ * Writes a .generated.ts.txt file next to the original JSON fixture.
  * These files are gitignored and provide a TypeScript SDK representation
- * of each workflow for inspection/debugging.
+ * of each workflow for inspection/debugging. The .txt suffix keeps Vitest's
+ * Rolldown-based loader from ever attempting to parse them as source —
+ * the generated code can include placeholder/unfinished constructs while
+ * tests run in parallel.
  */
 function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
 	try {
 		const code = generateWorkflowCode(json);
-		const generatedPath = path.join(DOWNLOADED_FIXTURES_DIR, `${id}.generated.ts`);
+		const generatedPath = path.join(DOWNLOADED_FIXTURES_DIR, `${id}.generated.ts.txt`);
 		fs.writeFileSync(generatedPath, code, 'utf-8');
 	} catch {
 		// Don't fail the test if code generation fails
@@ -41,11 +46,18 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 
 	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Manifest is controlled fixture file
 	const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-		workflows: Array<{ id: string | number; name: string; success: boolean }>;
+		workflows: Array<{
+			id: string | number;
+			name: string;
+			success: boolean;
+			skip?: boolean;
+			skipReason?: string;
+		}>;
 	};
 
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
+		if (entry.skip) continue;
 
 		const filePath = path.join(dir, `${entry.id}.json`);
 		if (fs.existsSync(filePath)) {
@@ -77,7 +89,9 @@ function loadTestWorkflows(): TestWorkflow[] {
 const workflows = loadTestWorkflows();
 
 describe('Real Workflow Round-Trip', () => {
-	// Download fixtures if needed
+	// Download fixtures if needed. Unpacking ~2000 workflow files is IO-bound and
+	// can take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
@@ -90,24 +104,26 @@ describe('Real Workflow Round-Trip', () => {
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {
 			expect(workflows.length).toBeGreaterThan(0);
 		});
 	} else {
-		// Helper function for filtering empty connections
+		// Helper function for filtering empty connections and normalizing null slots to []
 		const filterEmptyConnections = (conns: Record<string, unknown>) => {
 			const result: Record<string, unknown> = {};
 			for (const [nodeName, nodeConns] of Object.entries(conns)) {
 				const nonEmptyTypes: Record<string, unknown> = {};
 				for (const [connType, outputs] of Object.entries(nodeConns as Record<string, unknown[]>)) {
-					const nonEmptyOutputs = (outputs ?? []).filter(
+					// Normalize null slots to [] for consistent comparison
+					const normalized = (outputs ?? []).map((slot: unknown) => (slot === null ? [] : slot));
+					const nonEmptyOutputs = normalized.filter(
 						(arr: unknown) => Array.isArray(arr) && arr.length > 0,
 					);
 					if (nonEmptyOutputs.length > 0) {
-						nonEmptyTypes[connType] = outputs;
+						nonEmptyTypes[connType] = normalized;
 					}
 				}
 				if (Object.keys(nonEmptyTypes).length > 0) {
@@ -127,23 +143,24 @@ describe('Real Workflow Round-Trip', () => {
 
 					expect(exported.nodes.length).toBe(json.nodes.length);
 
-					const idCounts = new Map<string, number>();
-					for (const node of json.nodes) {
-						idCounts.set(node.id, (idCounts.get(node.id) ?? 0) + 1);
-					}
-					const hasDuplicateIds = [...idCounts.values()].some((count) => count > 1);
-
+					// Use greedy matching to handle workflows with duplicate node names
+					const matchedIndices = new Set<number>();
 					for (const originalNode of json.nodes) {
-						const exportedNode = hasDuplicateIds
-							? exported.nodes.find((n) => n.name === originalNode.name)
-							: exported.nodes.find((n) => n.id === originalNode.id);
+						const exportedNode = exported.nodes.find(
+							(n, i) => !matchedIndices.has(i) && n.name === originalNode.name,
+						);
 						expect(exportedNode).toBeDefined();
 
 						if (exportedNode) {
+							matchedIndices.add(exported.nodes.indexOf(exportedNode));
 							expect(exportedNode.type).toBe(originalNode.type);
 							expect(exportedNode.name).toBe(originalNode.name);
 							expect(exportedNode.position).toEqual(originalNode.position);
-							expect(exportedNode.typeVersion).toBe(originalNode.typeVersion);
+							// SDK defaults undefined typeVersion to 1
+							// Compare as numbers since string typeVersions are normalized to numbers
+							if (originalNode.typeVersion !== undefined) {
+								expect(exportedNode.typeVersion).toBe(Number(originalNode.typeVersion));
+							}
 							expect(exportedNode.parameters).toEqual(originalNode.parameters);
 
 							if (originalNode.credentials) {
@@ -152,7 +169,15 @@ describe('Real Workflow Round-Trip', () => {
 						}
 					}
 
-					const filteredOriginal = filterEmptyConnections(json.connections);
+					// Normalize original connections (clone first to avoid mutating input)
+					// since the original JSON may have flat tuple connections. Also fold
+					// legacy top-level `error` keys into the modern main[last] shape that
+					// the SDK now always emits — older templates are kept untouched, so
+					// the comparison itself handles the old/new equivalence.
+					const normalizedOriginalConns = deepCopy(json.connections);
+					normalizeConnections(normalizedOriginalConns);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
+					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns);
 					const filteredExported = filterEmptyConnections(exported.connections);
 
 					const nodeNames = new Set(json.nodes.map((n) => n.name));
@@ -230,9 +255,11 @@ describe('Real Workflow Round-Trip', () => {
 });
 
 describe('Real Workflow Patterns', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	it('should handle AI agent workflows with subnodes', () => {
 		expect(workflows.length).toBeGreaterThan(0);
@@ -310,9 +337,11 @@ describe('Real Workflow Patterns', () => {
 });
 
 describe('Expression Preservation', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	function extractExpressions(json: WorkflowJSON): string[] {
 		const expressions: string[] = [];

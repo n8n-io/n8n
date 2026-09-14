@@ -1,6 +1,6 @@
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from 'n8n-workflow';
 
-export class ExecutionError extends ApplicationError {
+export class ExecutionError extends UserError {
 	description: string | null = null;
 
 	itemIndex: number | undefined = undefined;

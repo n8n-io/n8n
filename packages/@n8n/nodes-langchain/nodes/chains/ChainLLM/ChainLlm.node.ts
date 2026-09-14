@@ -4,8 +4,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 // Import from centralized module
@@ -16,6 +18,8 @@ import {
 	isOpenAiError,
 } from '../../vendors/OpenAi/helpers/error-handling';
 
+const CHAIN_FAILURE_FALLBACK_MESSAGE = 'Model execution failed';
+
 /**
  * Basic LLM Chain Node Implementation
  * Allows connecting to language models with optional structured output parsing
@@ -24,14 +28,13 @@ export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
-		icon: 'fa:link',
+		icon: 'node:basic-llm-chain',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
-			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -106,14 +109,19 @@ export class ChainLlm implements INodeType {
 							}
 						}
 
+						const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+							enrichNonParserErrors: true,
+							fallbackMessage: CHAIN_FAILURE_FALLBACK_MESSAGE,
+						});
+
 						if (this.continueOnFail()) {
 							returnData.push({
-								json: { error: error.message },
+								json: { error: executionError.message },
 								pairedItem: { item: itemIndex },
 							});
 							return;
 						}
-						throw new NodeOperationError(this.getNode(), error);
+						throw new NodeOperationError(this.getNode(), executionError);
 					}
 
 					const responses = promiseResult.value;
@@ -152,13 +160,21 @@ export class ChainLlm implements INodeType {
 						}
 					}
 
+					const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex, {
+						enrichNonParserErrors: true,
+						fallbackMessage: CHAIN_FAILURE_FALLBACK_MESSAGE,
+					});
+
 					// Continue on failure if configured
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+						returnData.push({
+							json: { error: executionError.message },
+							pairedItem: { item: itemIndex },
+						});
 						continue;
 					}
 
-					throw error;
+					throw executionError;
 				}
 			}
 		}

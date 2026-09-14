@@ -5,6 +5,7 @@ import {
 	linkUserToProject,
 	createWorkflowWithHistory,
 	randomCredentialPayload,
+	setActiveVersion,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -12,10 +13,12 @@ import {
 	type CredentialsEntity,
 	CredentialsRepository,
 	type Folder,
+	generateNanoId,
 	type Project,
 	type TagEntity,
 	TagRepository,
 	type User,
+	VariablesRepository,
 	type WorkflowEntity,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
@@ -27,29 +30,44 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import fsp from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { IWorkflowToImport } from '@/interfaces';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
-import type { IWorkflowToImport } from '@/interfaces';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
+import { createVariable } from '@test-integration/db/variables';
 
 import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
+
+// `readFile` must be mocked at the module level: the service imports it as a named binding
+// (`import { readFile } from 'node:fs/promises'`), which `vi.spyOn` on a default/namespace import
+// can't intercept under Vitest. Keep the other fs/promises exports real.
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	const readFile = vi.fn(actual.readFile);
+	return { ...actual, readFile, default: { ...actual, readFile } };
+});
 
 describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
@@ -58,13 +76,16 @@ describe('SourceControlImportService', () => {
 	let sharedWorkflowRepository: SharedWorkflowRepository;
 	let userRepository: UserRepository;
 	let folderRepository: FolderRepository;
+	let variablesRepository: VariablesRepository;
 	let service: SourceControlImportService;
 	let workflowRepository: WorkflowRepository;
 	let tagRepository: TagRepository;
 	let workflowTagMappingRepository: WorkflowTagMappingRepository;
 	let workflowHistoryRepository: WorkflowHistoryRepository;
 	let workflowHistoryService: WorkflowHistoryService;
+	let sourceControlContextFactory: SourceControlContextFactory;
 	let sourceControlScopedService: SourceControlScopedService;
+	let mockPolicyEnforcementService: Mocked<PolicyEnforcementService>;
 
 	const cipher = mockInstance(Cipher);
 	const mockFileData = new Map<string, string>();
@@ -78,12 +99,22 @@ describe('SourceControlImportService', () => {
 		sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		userRepository = Container.get(UserRepository);
 		folderRepository = Container.get(FolderRepository);
+		variablesRepository = Container.get(VariablesRepository);
 		workflowRepository = Container.get(WorkflowRepository);
 		tagRepository = Container.get(TagRepository);
 		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
 		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 		workflowHistoryService = Container.get(WorkflowHistoryService);
+		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 		sourceControlScopedService = Container.get(SourceControlScopedService);
+		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
+		// The repository verifies the token, so it has to be a real one. With no backend
+		// registered the real service clears everything, which is what a default pull does.
+		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
+			async (context) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+		);
 		service = new SourceControlImportService(
 			mock(),
 			mock(),
@@ -95,7 +126,7 @@ describe('SourceControlImportService', () => {
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
-			mock(),
+			variablesRepository,
 			workflowRepository,
 			workflowTagMappingRepository,
 			mock(),
@@ -103,11 +134,20 @@ describe('SourceControlImportService', () => {
 			mock(),
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
+			sourceControlContextFactory,
 			sourceControlScopedService,
 			workflowHistoryService,
 			mock(),
 			mock(),
 			mock(),
+			mock(), // redactionEnforcementService
+			mockPolicyEnforcementService,
+			mock(), // dataTableSizeValidator
+			Container.get(WorkflowPublishedVersionRepository),
+			mock(), // executionPersistence
+			mock(), // workflowPublishGuard
+			mock(), // workflowMutationHooks
+			Container.get(WorkflowFinderService),
 		);
 	});
 
@@ -121,9 +161,10 @@ describe('SourceControlImportService', () => {
 			'WorkflowEntity',
 			'CredentialsEntity',
 			'TagEntity',
+			'Variables',
 		]);
 
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	afterAll(async () => {
@@ -186,8 +227,8 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -261,7 +302,7 @@ describe('SourceControlImportService', () => {
 
 		it('should show all remote workflows for instance admins', async () => {
 			const result = await service.getRemoteVersionIdsFromFiles(
-				new SourceControlContext(globalAdmin),
+				await sourceControlContextFactory.createContext(globalAdmin),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -279,7 +320,7 @@ describe('SourceControlImportService', () => {
 
 		it('should show all remote workflows for instance owners', async () => {
 			const result = await service.getRemoteVersionIdsFromFiles(
-				new SourceControlContext(globalOwner),
+				await sourceControlContextFactory.createContext(globalOwner),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -297,7 +338,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return no remote workflows for instance members', async () => {
 			const result = await service.getRemoteVersionIdsFromFiles(
-				new SourceControlContext(globalMember),
+				await sourceControlContextFactory.createContext(globalMember),
 			);
 
 			expect(result).toBeEmptyArray();
@@ -305,7 +346,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return only remote workflows that belong to team project', async () => {
 			const result = await service.getRemoteVersionIdsFromFiles(
-				new SourceControlContext(teamAdmin),
+				await sourceControlContextFactory.createContext(teamAdmin),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -340,41 +381,41 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			teamAWorkflows = await Promise.all([
+			teamAWorkflows = [
 				await createWorkflowWithHistory({}, teamProjectA),
 				await createWorkflowWithHistory({}, teamProjectA),
 				await createWorkflowWithHistory({}, teamProjectA),
-			]);
+			];
 
-			teamBWorkflows = await Promise.all([
+			teamBWorkflows = [
 				await createWorkflowWithHistory({}, teamProjectB),
 				await createWorkflowWithHistory({}, teamProjectB),
 				await createWorkflowWithHistory({}, teamProjectB),
-			]);
+			];
 
-			instanceOwnerWorkflows = await Promise.all([
+			instanceOwnerWorkflows = [
 				await createWorkflowWithHistory({}, instanceOwner),
 				await createWorkflowWithHistory({}, instanceOwner),
 				await createWorkflowWithHistory({}, instanceOwner),
-			]);
+			];
 
-			projectAdminWorkflows = await Promise.all([
+			projectAdminWorkflows = [
 				await createWorkflowWithHistory({}, projectAdmin),
 				await createWorkflowWithHistory({}, projectAdmin),
 				await createWorkflowWithHistory({}, projectAdmin),
-			]);
+			];
 
-			projectMemberWorkflows = await Promise.all([
+			projectMemberWorkflows = [
 				await createWorkflowWithHistory({}, projectMember),
 				await createWorkflowWithHistory({}, projectMember),
 				await createWorkflowWithHistory({}, projectMember),
-			]);
+			];
 		});
 
 		describe('if user is an instance owner', () => {
 			it('should get all available workflows on the instance', async () => {
 				const versions = await service.getLocalVersionIdsFromDb(
-					new SourceControlContext(instanceOwner),
+					await sourceControlContextFactory.createContext(instanceOwner),
 				);
 
 				expect(new Set(versions.map((v) => v.id))).toEqual(
@@ -392,7 +433,7 @@ describe('SourceControlImportService', () => {
 		describe('if user is a project admin of a team project', () => {
 			it('should only get all available workflows from the team project', async () => {
 				const versions = await service.getLocalVersionIdsFromDb(
-					new SourceControlContext(projectAdmin),
+					await sourceControlContextFactory.createContext(projectAdmin),
 				);
 
 				expect(new Set(versions.map((v) => v.id))).toEqual(
@@ -404,7 +445,7 @@ describe('SourceControlImportService', () => {
 		describe('if user is a project member of a team project', () => {
 			it('should not get any workflows', async () => {
 				const versions = await service.getLocalVersionIdsFromDb(
-					new SourceControlContext(projectMember),
+					await sourceControlContextFactory.createContext(projectMember),
 				);
 
 				expect(versions).toBeEmptyArray();
@@ -463,8 +504,8 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -531,7 +572,7 @@ describe('SourceControlImportService', () => {
 
 		it('should show all remote credentials for instance admins', async () => {
 			const result = await service.getRemoteCredentialsFromFiles(
-				new SourceControlContext(globalAdmin),
+				await sourceControlContextFactory.createContext(globalAdmin),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -549,7 +590,7 @@ describe('SourceControlImportService', () => {
 
 		it('should show all remote credentials for instance owners', async () => {
 			const result = await service.getRemoteCredentialsFromFiles(
-				new SourceControlContext(globalOwner),
+				await sourceControlContextFactory.createContext(globalOwner),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -567,7 +608,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return no remote credentials for instance members', async () => {
 			const result = await service.getRemoteCredentialsFromFiles(
-				new SourceControlContext(globalMember),
+				await sourceControlContextFactory.createContext(globalMember),
 			);
 
 			expect(result).toBeEmptyArray();
@@ -575,7 +616,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return only remote credentials that belong to team project', async () => {
 			const result = await service.getRemoteCredentialsFromFiles(
-				new SourceControlContext(teamAdmin),
+				await sourceControlContextFactory.createContext(teamAdmin),
 			);
 
 			expect(new Set(result.map((r) => r.id))).toEqual(
@@ -607,7 +648,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			teamACredentials = await Promise.all([
+			teamACredentials = [
 				await createCredentials(
 					{
 						name: 'credential1',
@@ -632,9 +673,9 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectA,
 				),
-			]);
+			];
 
-			teamBCredentials = await Promise.all([
+			teamBCredentials = [
 				await createCredentials(
 					{
 						name: 'credential4',
@@ -659,12 +700,12 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectB,
 				),
-			]);
+			];
 		});
 
 		it('should get all available credentials on the instance, for an instance owner', async () => {
 			const versions = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			expect(new Set(versions.map((v) => v.id))).toEqual(
@@ -674,7 +715,7 @@ describe('SourceControlImportService', () => {
 
 		it('should only get all available credentials from the team project, for a project admin', async () => {
 			const versions = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(projectAdmin),
+				await sourceControlContextFactory.createContext(projectAdmin),
 			);
 
 			expect(new Set(versions.map((v) => v.id))).toEqual(
@@ -684,7 +725,7 @@ describe('SourceControlImportService', () => {
 
 		it('should not get any workflows, for a project member', async () => {
 			const versions = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(projectMember),
+				await sourceControlContextFactory.createContext(projectMember),
 			);
 
 			expect(versions).toBeEmptyArray();
@@ -714,7 +755,7 @@ describe('SourceControlImportService', () => {
 			);
 
 			const credentials = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			const globalCred = credentials.find((c) => c.id === globalCredential.id);
@@ -739,7 +780,7 @@ describe('SourceControlImportService', () => {
 			);
 
 			const credentials = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			const cred = credentials.find((c) => c.id === credential.id);
@@ -748,9 +789,44 @@ describe('SourceControlImportService', () => {
 			expect(cred?.isGlobal).toBe(false);
 		});
 
+		it('should include resolvable fields in returned credentials', async () => {
+			const resolvableCredential = await createCredentials(
+				{
+					name: 'resolvable-credential',
+					data: '',
+					type: 'test',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				},
+				teamProjectA,
+			);
+
+			const staticCredential = await createCredentials(
+				{
+					name: 'static-credential',
+					data: '',
+					type: 'test',
+				},
+				teamProjectA,
+			);
+
+			const credentials = await service.getLocalCredentialsFromDb(
+				await sourceControlContextFactory.createContext(instanceOwner),
+			);
+
+			const resolvableCred = credentials.find((c) => c.id === resolvableCredential.id);
+			const staticCred = credentials.find((c) => c.id === staticCredential.id);
+
+			expect(resolvableCred?.isResolvable).toBe(true);
+			expect(resolvableCred?.resolvableAllowFallback).toBe(true);
+
+			expect(staticCred?.isResolvable).toBe(false);
+			expect(staticCred?.resolvableAllowFallback).toBe(false);
+		});
+
 		it('should include required properties in returned credentials', async () => {
 			const credentials = await service.getLocalCredentialsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			expect(credentials.length).toBeGreaterThan(0);
@@ -790,7 +866,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			foldersProjectA = await Promise.all([
+			foldersProjectA = [
 				await createFolder(teamProjectA, {
 					name: 'folder1',
 				}),
@@ -800,7 +876,7 @@ describe('SourceControlImportService', () => {
 				await createFolder(teamProjectA, {
 					name: 'folder3',
 				}),
-			]);
+			];
 
 			foldersProjectA.push(
 				await createFolder(teamProjectA, {
@@ -809,7 +885,7 @@ describe('SourceControlImportService', () => {
 				}),
 			);
 
-			foldersProjectB = await Promise.all([
+			foldersProjectB = [
 				await createFolder(teamProjectB, {
 					name: 'folder1',
 				}),
@@ -819,12 +895,12 @@ describe('SourceControlImportService', () => {
 				await createFolder(teamProjectB, {
 					name: 'folder3',
 				}),
-			]);
+			];
 		});
 
 		it('should get all available folders on the instance, for an instance owner', async () => {
 			const folders = await service.getLocalFoldersAndMappingsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			expect(new Set(folders.folders.map((v) => v.id))).toEqual(
@@ -834,7 +910,7 @@ describe('SourceControlImportService', () => {
 
 		it('should only get all available folders from the team project, for a project admin', async () => {
 			const versions = await service.getLocalFoldersAndMappingsFromDb(
-				new SourceControlContext(projectAdmin),
+				await sourceControlContextFactory.createContext(projectAdmin),
 			);
 
 			expect(new Set(versions.folders.map((v) => v.id))).toEqual(
@@ -844,7 +920,7 @@ describe('SourceControlImportService', () => {
 
 		it('should not get any folders, for a project member', async () => {
 			const versions = await service.getLocalFoldersAndMappingsFromDb(
-				new SourceControlContext(projectMember),
+				await sourceControlContextFactory.createContext(projectMember),
 			);
 
 			expect(versions.folders).toBeEmptyArray();
@@ -896,8 +972,8 @@ describe('SourceControlImportService', () => {
 			],
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		let globalAdmin: User;
 		let globalOwner: User;
@@ -919,12 +995,12 @@ describe('SourceControlImportService', () => {
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockTagData));
 
-			[team1, team2] = await Promise.all([
+			[team1, team2] = [
 				await createTeamProject('Team 1', teamAdmin),
 				await createTeamProject('Team 2'),
-			]);
+			];
 
-			workflowTeam1 = await Promise.all([
+			workflowTeam1 = [
 				await createWorkflowWithHistory(
 					{
 						id: 'wf1',
@@ -946,9 +1022,9 @@ describe('SourceControlImportService', () => {
 					},
 					team1,
 				),
-			]);
+			];
 
-			await Promise.all([
+			[
 				await createWorkflowWithHistory(
 					{
 						id: 'wf4',
@@ -970,12 +1046,12 @@ describe('SourceControlImportService', () => {
 					},
 					team2,
 				),
-			]);
+			];
 		});
 
 		it('should show all remote tags and all remote mappings for instance admins', async () => {
 			const result = await service.getRemoteTagsAndMappingsFromFile(
-				new SourceControlContext(globalAdmin),
+				await sourceControlContextFactory.createContext(globalAdmin),
 			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
@@ -986,7 +1062,7 @@ describe('SourceControlImportService', () => {
 
 		it('should show all remote tags and all remote mappings for instance owners', async () => {
 			const result = await service.getRemoteTagsAndMappingsFromFile(
-				new SourceControlContext(globalOwner),
+				await sourceControlContextFactory.createContext(globalOwner),
 			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
@@ -997,7 +1073,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return all remote tags and no remote mappings for instance members', async () => {
 			const result = await service.getRemoteTagsAndMappingsFromFile(
-				new SourceControlContext(globalMember),
+				await sourceControlContextFactory.createContext(globalMember),
 			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
@@ -1008,7 +1084,7 @@ describe('SourceControlImportService', () => {
 
 		it('should return all remote tags and only remote mappings for in scope team for team admin', async () => {
 			const result = await service.getRemoteTagsAndMappingsFromFile(
-				new SourceControlContext(teamAdmin),
+				await sourceControlContextFactory.createContext(teamAdmin),
 			);
 
 			expect(new Set(result.tags.map((r) => r.id))).toEqual(
@@ -1049,7 +1125,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			tags = await Promise.all([
+			tags = [
 				await createTag({
 					name: 'tag1',
 				}),
@@ -1059,9 +1135,9 @@ describe('SourceControlImportService', () => {
 				await createTag({
 					name: 'tag3',
 				}),
-			]);
+			];
 
-			workflowsProjectA = await Promise.all([
+			workflowsProjectA = [
 				await createWorkflowWithHistory(
 					{
 						id: 'workflow1',
@@ -1083,9 +1159,9 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectA,
 				),
-			]);
+			];
 
-			workflowsProjectB = await Promise.all([
+			workflowsProjectB = [
 				await createWorkflowWithHistory(
 					{
 						id: 'workflow4',
@@ -1107,7 +1183,7 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectB,
 				),
-			]);
+			];
 
 			mappings = [
 				[tags[0], workflowsProjectA[0]],
@@ -1125,7 +1201,7 @@ describe('SourceControlImportService', () => {
 
 		it('should get all available tags and mappings on the instance, for an instance owner', async () => {
 			const result = await service.getLocalTagsAndMappingsFromDb(
-				new SourceControlContext(instanceOwner),
+				await sourceControlContextFactory.createContext(instanceOwner),
 			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
@@ -1146,7 +1222,7 @@ describe('SourceControlImportService', () => {
 
 		it('should only get all available tags and only mappings from the team project, for a project admin', async () => {
 			const result = await service.getLocalTagsAndMappingsFromDb(
-				new SourceControlContext(projectAdmin),
+				await sourceControlContextFactory.createContext(projectAdmin),
 			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
@@ -1170,7 +1246,7 @@ describe('SourceControlImportService', () => {
 
 		it('should get all available tags but no mappings, for a project member', async () => {
 			const result = await service.getLocalTagsAndMappingsFromDb(
-				new SourceControlContext(projectMember),
+				await sourceControlContextFactory.createContext(projectMember),
 			);
 
 			expect(new Set(result.tags.map((v) => v.id))).toEqual(new Set([...tags.map((w) => w.id)]));
@@ -1180,8 +1256,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importTagsFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 		const mockTagsFile = '/mock/tags.json';
 
 		const standardTags = [
@@ -1301,12 +1377,37 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('importVariables()', () => {
+		it('creates a brand-new variable with an empty value, not NULL', async () => {
+			// A remote stub never carries the real value (source control never syncs
+			// values), and this key has no matching local row, e.g. after a push
+			// followed by a local delete.
+			const id = generateNanoId();
+
+			await service.importVariables([{ id, key: 'NEW_VAR', type: 'string', value: '' }]);
+
+			const variable = await variablesRepository.findOneByOrFail({ id });
+			expect(variable.value).toBe('');
+		});
+
+		it('does not overwrite an existing variable value with an empty remote stub', async () => {
+			const existing = await createVariable('EXISTING_VAR', 'keep-me');
+
+			await service.importVariables([
+				{ id: existing.id, key: existing.key, type: existing.type, value: '' },
+			]);
+
+			const variable = await variablesRepository.findOneByOrFail({ id: existing.id });
+			expect(variable.value).toBe('keep-me');
+		});
+	});
+
 	describe('importCredentialsFromWorkFolder()', () => {
 		describe('if user email specified by `ownedBy` exists at target instance', () => {
 			it('should assign credential ownership to original user', async () => {
 				const [importingUser, member] = await Promise.all([getGlobalOwner(), createMember()]);
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1318,9 +1419,9 @@ describe('SourceControlImportService', () => {
 					ownedBy: member.email, // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1343,7 +1444,7 @@ describe('SourceControlImportService', () => {
 			it('should assign credential ownership to importing user', async () => {
 				const importingUser = await getGlobalOwner();
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1355,9 +1456,9 @@ describe('SourceControlImportService', () => {
 					ownedBy: null,
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1380,7 +1481,7 @@ describe('SourceControlImportService', () => {
 			it('should assign credential ownership to importing user', async () => {
 				const importingUser = await getGlobalOwner();
 
-				jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 				const CREDENTIAL_ID = nanoid();
 
@@ -1392,9 +1493,9 @@ describe('SourceControlImportService', () => {
 					ownedBy: 'user@test.com', // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-				cipher.encrypt.mockReturnValue('some-encrypted-data');
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 				await service.importCredentialsFromWorkFolder(
 					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1418,7 +1519,7 @@ describe('SourceControlImportService', () => {
 		it('should assign the credential ownership to the importing user if it was owned by a personal project in the source instance', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1433,9 +1534,9 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1456,7 +1557,7 @@ describe('SourceControlImportService', () => {
 		it('should create a new team project if the credential was owned by a team project in the source instance', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1472,9 +1573,9 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			{
 				const project = await projectRepository.findOne({
@@ -1515,7 +1616,7 @@ describe('SourceControlImportService', () => {
 		it('should use the existing team project if credential owning project is found', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1533,9 +1634,9 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1552,11 +1653,11 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should change the owner to match source control when credential is owned by somebody else on the target instance', async () => {
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const targetProject = await createTeamProject('Marketing');
 			const credential = await saveCredential(randomCredentialPayload(), {
@@ -1578,7 +1679,7 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: credential.id })],
@@ -1620,7 +1721,7 @@ describe('SourceControlImportService', () => {
 		it('should import global credentials with isGlobal flag set to true', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1633,9 +1734,9 @@ describe('SourceControlImportService', () => {
 				isGlobal: true,
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1655,7 +1756,7 @@ describe('SourceControlImportService', () => {
 		it('should import non-global credentials with isGlobal flag set to false', async () => {
 			const importingUser = await getGlobalOwner();
 
-			jest.spyOn(fsp, 'readFile').mockResolvedValue(Buffer.from('some-content'));
+			vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
 
 			const CREDENTIAL_ID = nanoid();
 
@@ -1668,9 +1769,9 @@ describe('SourceControlImportService', () => {
 				isGlobal: false,
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
 
-			cipher.encrypt.mockReturnValue('some-encrypted-data');
+			cipher.encryptV2.mockResolvedValue('some-encrypted-data');
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
@@ -1689,8 +1790,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importWorkflowFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+		const fsReadFile = vi.mocked(readFile);
 
 		const putWorkflowFile = (workflowId: string, workflow: IWorkflowToImport) => {
 			const file = `/mock/${workflowId}.json`;
@@ -1926,6 +2027,117 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+		});
+
+		describe('archived workflows', () => {
+			it('should not preserve active state when existing workflow is archived', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+
+				await createWorkflowWithHistory(
+					{
+						id: workflowId,
+						name: 'Archived Workflow',
+						versionId,
+						active: true,
+						isArchived: true,
+					},
+					importingUser,
+				);
+				await setActiveVersion(workflowId, versionId);
+
+				const imported = makeWorkflowImport({ id: workflowId, isArchived: false });
+				const file = putWorkflowFile(workflowId, imported);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const post = await workflowRepository.findOne({ where: { id: workflowId } });
+				expect(post?.active).toBe(false);
+				expect(post?.activeVersionId).toBeNull();
+			});
+		});
+
+		describe('content-import policy', () => {
+			beforeEach(() => {
+				mockPolicyEnforcementService.enforceContentImport.mockClear();
+			});
+
+			it('enforces content-import policy once per imported workflow, with the resolved target project', async () => {
+				const importingUser = await getGlobalOwner();
+				const importingUserProject = await getPersonalProject(importingUser);
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(1);
+				expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
+					workflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+					projectId: importingUserProject.id,
+					transport: 'source-control',
+				});
+			});
+
+			it('skips a blocked workflow, attaches the reason, and persists nothing', async () => {
+				const importingUser = await getGlobalOwner();
+				const violation = {
+					kind: 'node-type-unavailable',
+					checkId: 'test.check',
+					message: 'not allowed',
+				};
+				mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new PolicyViolationError([violation]),
+				);
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				expect(result).toEqual([
+					{
+						id: workflow.id,
+						name: file,
+						contentImportPolicy: { violations: [violation], checkErrors: [] },
+					},
+				]);
+				await expect(
+					workflowRepository.findOne({ where: { id: workflow.id } }),
+				).resolves.toBeNull();
+			});
+
+			// A check that cannot answer is an infrastructure fault, not a property of one workflow.
+			it('fails the pull when the policy layer errors', async () => {
+				const importingUser = await getGlobalOwner();
+				mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+					new Error('backend unavailable'),
+				);
+
+				const workflow = makeWorkflowImport();
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await expect(
+					service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ id: workflow.id, file })],
+						importingUser.id,
+					),
+				).rejects.toThrow('backend unavailable');
+
+				await expect(
+					workflowRepository.findOne({ where: { id: workflow.id } }),
+				).resolves.toBeNull();
 			});
 		});
 	});

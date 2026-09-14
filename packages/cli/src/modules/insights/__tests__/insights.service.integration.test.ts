@@ -2,29 +2,33 @@ import type { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockLogger,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
-import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { MockInstance, Mocked } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { createMember } from '@test-integration/db/users';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
+import type { InsightsByPeriod } from '../database/entities/insights-by-period';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
-	const today = new Date();
-
 	beforeAll(async () => {
 		await testModules.loadModules(['insights']);
 		await testDb.init();
@@ -35,8 +39,11 @@ describe('InsightsService (Integration)', () => {
 			'InsightsRaw',
 			'InsightsByPeriod',
 			'InsightsMetadata',
+			'SharedWorkflow',
 			'WorkflowEntity',
+			'ProjectRelation',
 			'Project',
+			'User',
 		]);
 	});
 
@@ -45,36 +52,31 @@ describe('InsightsService (Integration)', () => {
 		await testDb.terminate();
 	});
 
-	describe('startTimers', () => {
+	describe('collection lifecycle', () => {
 		let insightsService: InsightsService;
-		let compactionService: InsightsCompactionService;
-		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
 		let realCollectionService: InsightsCollectionService;
-		let initSpy: jest.SpyInstance;
-		let shutdownSpy: jest.SpyInstance;
+		let initSpy: MockInstance;
+		let shutdownSpy: MockInstance;
 
 		beforeEach(() => {
-			compactionService = mock<InsightsCompactionService>();
-			pruningService = mock<InsightsPruningService>();
 			instanceSettings = mock<InstanceSettings>({
 				instanceType: 'main',
 			});
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				compactionService,
-				pruningService,
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 
 			// Get the real service from the container and spy on it
 			realCollectionService = Container.get(InsightsCollectionService);
-			initSpy = jest.spyOn(realCollectionService, 'init');
-			shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			initSpy = vi.spyOn(realCollectionService, 'init');
+			shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(async () => {
@@ -85,68 +87,32 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (
-			instanceType: InstanceType,
-			isLeader: boolean = false,
-			isPruningEnabled: boolean = false,
-		) => {
+		const setupMocks = (instanceType: InstanceType) => {
 			(instanceSettings as any).instanceType = instanceType;
-			Object.defineProperty(instanceSettings, 'isLeader', {
-				get: jest.fn(() => isLeader),
-			});
-			Object.defineProperty(pruningService, 'isPruningEnabled', {
-				get: jest.fn(() => isPruningEnabled),
-			});
 		};
 
-		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false, false);
+		test('starts collection for main instance', async () => {
+			setupMocks('main');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', async () => {
-			setupMocks('main', true, false);
+		test('starts collection for webhook instance', async () => {
+			setupMocks('webhook');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
-			setupMocks('main', true, true);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).toHaveBeenCalled();
-		});
-
-		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false, false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false, false);
+		test('does not start collection for non-main instances', async () => {
+			setupMocks('worker');
 
 			await insightsService.init();
 
 			expect(initSpy).not.toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 	});
 
@@ -158,6 +124,10 @@ describe('InsightsService (Integration)', () => {
 
 		let project: Project;
 		let workflow: IWorkflowDb & WorkflowEntity;
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
 
 		beforeEach(async () => {
 			project = await createTeamProject();
@@ -213,6 +183,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
 				startDate: startDate.toJSDate(),
 				endDate: endDate.toJSDate(),
 			});
@@ -225,6 +196,71 @@ describe('InsightsService (Integration)', () => {
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 				total: { deviation: -6, unit: 'count', value: 12 },
 			});
+		});
+
+		test('does not expose stored billable rows on the summary', async () => {
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 10,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 9,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 4,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(12);
+			expect(summary).not.toHaveProperty('billable');
+		});
+
+		test('does not count billable rows toward total', async () => {
+			const now = DateTime.utc();
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 7,
+				periodUnit: 'day',
+				periodStart: now.minus({ day: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(0);
+			expect(summary).not.toHaveProperty('billable');
 		});
 
 		test('no data for previous period should return null deviation', async () => {
@@ -241,7 +277,11 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 7 }).toJSDate();
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate,
+				endDate: now.toJSDate(),
+			});
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
@@ -306,6 +346,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
 				startDate: startDate.toJSDate(),
 				endDate: endDate.toJSDate(),
 				projectId: project.id,
@@ -320,10 +361,157 @@ describe('InsightsService (Integration)', () => {
 				total: { value: 10, unit: 'count', deviation: -5 },
 			});
 		});
+
+		describe('project scoping', () => {
+			let member: User;
+			let otherProject: Project;
+			let startDate: Date;
+			let endDate: Date;
+
+			let workflowInsights: InsightsByPeriod;
+			let otherWorkflowInsights: InsightsByPeriod;
+
+			beforeEach(async () => {
+				member = await createMember();
+				otherProject = await createTeamProject();
+				const otherWorkflow = await createWorkflow({}, otherProject);
+
+				const now = DateTime.utc();
+				startDate = now.minus({ days: 6 }).toJSDate();
+				endDate = now.toJSDate();
+
+				// 4 successes in `project`, 10 in `otherProject`
+				[workflowInsights, otherWorkflowInsights] = await Promise.all([
+					createCompactedInsightsEvent(workflow, {
+						type: 'success',
+						value: 4,
+						periodUnit: 'day',
+						periodStart: now.minus({ days: 1 }),
+					}),
+					createCompactedInsightsEvent(otherWorkflow, {
+						type: 'success',
+						value: 10,
+						periodUnit: 'day',
+						periodStart: now.minus({ days: 1 }),
+					}),
+				]);
+			});
+
+			test('should aggregate only accessible projects when no project is requested', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const summary = await insightsService.getInsightsSummary({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(summary.total.value).toBe(workflowInsights.value);
+			});
+
+			test('should return no results for a user with no accessible projects', async () => {
+				const summary = await insightsService.getInsightsSummary({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(summary.total.value).toBe(0);
+				expect(summary.failed.value).toBe(0);
+			});
+
+			test('should aggregate all projects for users with the global workflow read scope', async () => {
+				const summary = await insightsService.getInsightsSummary({
+					user: globalWorkflowReadUser,
+					startDate,
+					endDate,
+				});
+
+				expect(summary.total.value).toBe(workflowInsights.value + otherWorkflowInsights.value);
+			});
+
+			test('should aggregate the requested project when it is accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const summary = await insightsService.getInsightsSummary({
+					user: member,
+					startDate,
+					endDate,
+					projectId: project.id,
+				});
+
+				expect(summary.total.value).toBe(workflowInsights.value);
+			});
+
+			test('should throw a forbidden error when the requested project is not accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				await expect(
+					insightsService.getInsightsSummary({
+						user: member,
+						startDate,
+						endDate,
+						projectId: otherProject.id,
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should throw a forbidden error when the requested project does not exist', async () => {
+				await expect(
+					insightsService.getInsightsSummary({
+						user: member,
+						startDate,
+						endDate,
+						projectId: 'non-existing-project-id',
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should retain history from deleted workflows for users with the global workflow read scope', async () => {
+				// Deleting a workflow nulls the insights metadata FK but keeps the row
+				await Container.get(WorkflowRepository).delete({ id: workflow.id });
+
+				const summary = await insightsService.getInsightsSummary({
+					user: globalWorkflowReadUser,
+					startDate,
+					endDate,
+				});
+
+				expect(summary.total.value).toBe(workflowInsights.value + otherWorkflowInsights.value);
+			});
+
+			test('should exclude deleted workflow history when scoped to the requested project', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const deletedWorkflow = await createWorkflow({}, project);
+				await createCompactedInsightsEvent(deletedWorkflow, {
+					type: 'success',
+					value: 5,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 1 }),
+				});
+
+				await Container.get(WorkflowRepository).delete({ id: deletedWorkflow.id });
+
+				const summary = await insightsService.getInsightsSummary({
+					user: member,
+					startDate,
+					endDate,
+					projectId: project.id,
+				});
+
+				// Only the live workflow's 4 successes; the deleted workflows are excluded
+				expect(summary.total.value).toBe(workflowInsights.value);
+			});
+		});
 	});
 
 	describe('getInsightsByWorkflow', () => {
 		let insightsService: InsightsService;
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
 
 		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
@@ -388,7 +576,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
@@ -419,11 +607,12 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 			const endDate = now.minus({ days: 1 }).toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
 				startDate,
 				endDate,
 			});
@@ -486,10 +675,11 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'runTime:desc',
@@ -513,12 +703,13 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				sortBy: 'succeeded:desc',
 				skip: 1,
 				take: 1,
@@ -528,6 +719,31 @@ describe('InsightsService (Integration)', () => {
 			expect(byWorkflow.count).toEqual(3);
 			expect(byWorkflow.data).toHaveLength(1);
 			expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
+		});
+
+		test('returns total count when page is past the end', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2, workflow3]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
+				startDate,
+				endDate: now.toJSDate(),
+				skip: 10,
+				take: 10,
+			});
+
+			expect(byWorkflow.count).toEqual(3);
+			expect(byWorkflow.data).toHaveLength(0);
 		});
 
 		test('compacted data are grouped by workflow correctly with projectId filter', async () => {
@@ -572,7 +788,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -585,10 +801,11 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
 				startDate,
 				endDate: now.toJSDate(),
 				projectId: project.id,
@@ -630,17 +847,161 @@ describe('InsightsService (Integration)', () => {
 
 		test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
 			// ARRANGE
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
 			expect(byWorkflow.count).toEqual(0);
 			expect(byWorkflow.data).toHaveLength(0);
+		});
+
+		describe('project scoping', () => {
+			let member: User;
+			let startDate: Date;
+			let endDate: Date;
+
+			beforeEach(async () => {
+				member = await createMember();
+
+				const now = DateTime.utc();
+				startDate = now.minus({ days: 6 }).toJSDate();
+				endDate = now.toJSDate();
+
+				// workflow1 (in `project`) is accessible; workflow4 (in `project2`) is not
+				await createCompactedInsightsEvent(workflow1, {
+					type: 'success',
+					value: 4,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				});
+				await createCompactedInsightsEvent(workflow4, {
+					type: 'success',
+					value: 10,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 1 }),
+				});
+			});
+
+			test('should list only workflows in projects the caller can read when no project is requested', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(byWorkflow.count).toBe(1);
+				expect(byWorkflow.data.map((row) => row.workflowId)).toEqual([workflow1.id]);
+			});
+
+			test('should list no workflows for a user with no accessible projects', async () => {
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(byWorkflow.count).toBe(0);
+				expect(byWorkflow.data).toEqual([]);
+			});
+
+			test('should list workflows for the requested project when it is accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: member,
+					startDate,
+					endDate,
+					projectId: project.id,
+				});
+
+				expect(byWorkflow.count).toBe(1);
+				expect(byWorkflow.data.map((row) => row.workflowId)).toEqual([workflow1.id]);
+			});
+
+			test('should throw a forbidden error when the requested project is not accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				await expect(
+					insightsService.getInsightsByWorkflow({
+						user: member,
+						startDate,
+						endDate,
+						projectId: project2.id,
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should throw a forbidden error when the requested project does not exist', async () => {
+				await expect(
+					insightsService.getInsightsByWorkflow({
+						user: member,
+						startDate,
+						endDate,
+						projectId: 'non-existing-project-id',
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should report a count consistent with the returned rows when results are scoped', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				// A second accessible workflow, so pagination has something to page through
+				await createCompactedInsightsEvent(workflow2, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: DateTime.utc().minus({ days: 1 }),
+				});
+
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: member,
+					startDate,
+					endDate,
+					take: 1,
+				});
+
+				// The inaccessible workflow4 must not inflate the count
+				expect(byWorkflow.count).toBe(2);
+				expect(byWorkflow.data).toHaveLength(1);
+			});
+
+			test('should retain a row for a deleted workflow when the caller has the global workflow read scope', async () => {
+				await Container.get(WorkflowRepository).delete({ id: workflow4.id });
+
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: globalWorkflowReadUser,
+					startDate,
+					endDate,
+				});
+
+				expect(byWorkflow.data.find((row) => row.workflowId === null)).toMatchObject({
+					total: 10,
+					hasReadAccess: false,
+				});
+			});
+
+			test('should exclude a row for a deleted workflow when the caller is scoped to its project', async () => {
+				await linkUserToProject(member, project2, 'project:viewer');
+				await Container.get(WorkflowRepository).delete({ id: workflow4.id });
+
+				const byWorkflow = await insightsService.getInsightsByWorkflow({
+					user: member,
+					startDate,
+					endDate,
+					projectId: project2.id,
+				});
+
+				expect(byWorkflow.data).toHaveLength(0);
+			});
 		});
 	});
 
@@ -649,6 +1010,10 @@ describe('InsightsService (Integration)', () => {
 		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
 		});
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
 
 		let project: Project;
 		let otherProject: Project;
@@ -666,12 +1031,42 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('returns empty array when no insights exist', async () => {
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
+		});
+
+		test('does not include billable in by-time values', async () => {
+			const now = DateTime.utc();
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'success',
+				value: 3,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'billable',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+
+			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime.length).toBeGreaterThan(0);
+			for (const row of byTime) {
+				expect(row.values).not.toHaveProperty('billable');
+				expect(row.values).not.toHaveProperty('undefined');
+			}
 		});
 
 		test('returns empty array when no insights in the time range exists', async () => {
@@ -683,11 +1078,12 @@ describe('InsightsService (Integration)', () => {
 				periodStart: now.minus({ days: 30 }),
 			});
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -733,7 +1129,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -746,12 +1142,13 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
@@ -800,7 +1197,7 @@ describe('InsightsService (Integration)', () => {
 			});
 		});
 
-		test('compacted data with limited insight types are grouped by time correctly', async () => {
+		test('compacted data are grouped by time with failed and time saved', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
 			for (const workflow of [workflow1, workflow2]) {
@@ -824,29 +1221,36 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
-				insightTypes: ['time_saved_min', 'failure'],
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
 			expect(byTime).toHaveLength(2);
 
-			// expect results to contain only failure and time saved insights
 			expect(byTime[0].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
 			expect(byTime[0].values).toEqual({
-				timeSaved: 30,
+				total: 0,
+				succeeded: 0,
 				failed: 0,
+				failureRate: 0,
+				averageRunTime: 0,
+				timeSaved: 30,
 			});
 
 			expect(byTime[1].date).toEqual(now.startOf('day').toISO());
 			expect(byTime[1].values).toEqual({
-				timeSaved: 0,
+				total: 7,
+				succeeded: 3,
 				failed: 4,
+				failureRate: 4 / 7,
+				averageRunTime: 0,
+				timeSaved: 0,
 			});
 		});
 
@@ -891,7 +1295,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -904,12 +1308,13 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				projectId: project.id,
 			});
 
@@ -962,21 +1367,212 @@ describe('InsightsService (Integration)', () => {
 				]),
 			);
 		});
+
+		describe('project scoping', () => {
+			let member: User;
+			let startDate: Date;
+			let endDate: Date;
+
+			let workflowInsights: InsightsByPeriod;
+			let otherWorkflowInsights: InsightsByPeriod;
+
+			beforeEach(async () => {
+				member = await createMember();
+
+				const now = DateTime.utc();
+				startDate = now.minus({ days: 6 }).toJSDate();
+				endDate = now.toJSDate();
+
+				// 4 successes in `project`, 10 in `otherProject`
+				[workflowInsights, otherWorkflowInsights] = await Promise.all([
+					createCompactedInsightsEvent(workflow1, {
+						type: 'success',
+						value: 4,
+						periodUnit: 'day',
+						periodStart: now.minus({ days: 1 }),
+					}),
+					createCompactedInsightsEvent(workflow3, {
+						type: 'success',
+						value: 10,
+						periodUnit: 'day',
+						periodStart: now.minus({ days: 1 }),
+					}),
+				]);
+			});
+
+			test('should aggregate only accessible projects when no project is requested', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const byTime = await insightsService.getInsightsByTime({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(byTime).toHaveLength(1);
+				expect(byTime[0].values.succeeded).toBe(workflowInsights.value);
+			});
+
+			test('should return no results for a user with no accessible projects', async () => {
+				const byTime = await insightsService.getInsightsByTime({
+					user: member,
+					startDate,
+					endDate,
+				});
+
+				expect(byTime).toHaveLength(0);
+			});
+
+			test('should aggregate the requested project when it is accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				const byTime = await insightsService.getInsightsByTime({
+					user: member,
+					startDate,
+					endDate,
+					projectId: project.id,
+				});
+
+				expect(byTime).toHaveLength(1);
+				expect(byTime[0].values.succeeded).toBe(workflowInsights.value);
+			});
+
+			test('should throw a forbidden error when the requested project is not accessible', async () => {
+				await linkUserToProject(member, project, 'project:viewer');
+
+				await expect(
+					insightsService.getInsightsByTime({
+						user: member,
+						startDate,
+						endDate,
+						projectId: otherProject.id,
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should throw a forbidden error when the requested project does not exist', async () => {
+				await expect(
+					insightsService.getInsightsByTime({
+						user: member,
+						startDate,
+						endDate,
+						projectId: 'non-existing-project-id',
+					}),
+				).rejects.toThrow(ForbiddenError);
+			});
+
+			test('should aggregate all projects for users with the global workflow read scope', async () => {
+				const byTime = await insightsService.getInsightsByTime({
+					user: globalWorkflowReadUser,
+					startDate,
+					endDate,
+				});
+
+				expect(byTime).toHaveLength(1);
+				expect(byTime[0].values.succeeded).toBe(
+					workflowInsights.value + otherWorkflowInsights.value,
+				);
+			});
+
+			test('should retain deleted workflow history for users with the global workflow read scope', async () => {
+				await Container.get(WorkflowRepository).delete({ id: workflow3.id });
+
+				const byTime = await insightsService.getInsightsByTime({
+					user: globalWorkflowReadUser,
+					startDate,
+					endDate,
+				});
+
+				expect(byTime[0].values.succeeded).toBe(
+					workflowInsights.value + otherWorkflowInsights.value,
+				);
+			});
+
+			test('should exclude deleted workflow history when scoped to the requested project', async () => {
+				await linkUserToProject(member, otherProject, 'project:viewer');
+				await Container.get(WorkflowRepository).delete({ id: workflow3.id });
+
+				const byTime = await insightsService.getInsightsByTime({
+					user: member,
+					startDate,
+					endDate,
+					projectId: otherProject.id,
+				});
+
+				expect(byTime).toHaveLength(0);
+			});
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		let insightsService: InsightsService;
+		beforeAll(() => {
+			insightsService = Container.get(InsightsService);
+		});
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
+
+		let project: Project;
+		let workflow1: IWorkflowDb & WorkflowEntity;
+		let workflow2: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			project = await createTeamProject();
+			workflow1 = await createWorkflow({}, project);
+			workflow2 = await createWorkflow({}, project);
+		});
+
+		test('returns only time saved', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: workflow === workflow1 ? 1 : 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'failure',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'time_saved_min',
+					value: workflow === workflow1 ? 10 : 20,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 10 }),
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byTime = await insightsService.getTimeSavedInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate,
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime).toHaveLength(2);
+			expect(byTime[0].values).toEqual({ timeSaved: 30 });
+			expect(byTime[1].values).toEqual({ timeSaved: 0 });
+		});
 	});
 
 	describe('validateDateFiltersLicense', () => {
-		let licenseStateMock: jest.Mocked<LicenseState>;
+		let licenseStateMock: Mocked<LicenseState>;
 		let insightsService: InsightsService;
 
 		beforeEach(() => {
 			licenseStateMock = mock<LicenseState>();
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mock<InsightsCompactionService>(),
-				mock<InsightsPruningService>(),
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 
@@ -987,12 +1583,13 @@ describe('InsightsService (Integration)', () => {
 			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
 			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() =>
+			const execution = () =>
 				insightsService.validateDateFiltersLicense({
 					startDate: startDate.toJSDate(),
 					endDate: endDate.toJSDate(),
-				}),
-			).toThrowError(new UserError('Hourly data is not available with your current license'));
+				});
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow('Hourly data is not available with your current license');
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
@@ -1018,10 +1615,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = today.minus({ days: 8 }).toJSDate();
 			const endDate = today.toJSDate();
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError(
-					'The selected date range exceeds the maximum history allowed by your license',
-				),
+			const execution = () => insightsService.validateDateFiltersLicense({ startDate, endDate });
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow(
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		});
 
@@ -1068,38 +1665,27 @@ describe('InsightsService (Integration)', () => {
 	describe('shutdown', () => {
 		let insightsService: InsightsService;
 
-		const mockCompactionService = mock<InsightsCompactionService>({
-			stopCompactionTimer: jest.fn(),
-		});
-
-		const mockPruningService = mock<InsightsPruningService>({
-			stopPruningTimer: jest.fn(),
-		});
-
 		beforeAll(() => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mockCompactionService,
-				mockPruningService,
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 
-		test('shutdown stops timers and shuts down services', async () => {
+		test('shutdown stops the collection service', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
 			const realCollectionService = Container.get(InsightsCollectionService);
-			const shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			const shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
 			// ACT
 			await insightsService.shutdown();
 
 			// ASSERT
 			expect(shutdownSpy).toHaveBeenCalled();
-			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
 		});
 	});
 });

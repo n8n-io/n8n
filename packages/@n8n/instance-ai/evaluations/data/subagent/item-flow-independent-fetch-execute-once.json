@@ -1,0 +1,9 @@
+{
+	"id": "item-flow-independent-fetch-execute-once",
+	"prompt": "Every weekday morning, fetch open launch tasks from GET https://ops.example.com/api/launch-tasks, keep only tasks due in the next 7 days, fetch current product releases from GET https://ops.example.com/api/releases, and post one Slack digest to #release-readiness. The release list is shared context for the digest and must be fetched only once, not once for each launch task.",
+	"annotations": {
+		"itemFlow": {
+			"singleExecutionNodes": ["Fetch Current Product Releases", "Fetch Releases"]
+		}
+	}
+}

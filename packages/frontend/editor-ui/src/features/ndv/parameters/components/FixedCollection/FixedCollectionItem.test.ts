@@ -367,6 +367,55 @@ describe('FixedCollectionItem.vue', () => {
 		});
 	});
 
+	describe('inline layout', () => {
+		it('renders inline layout instead of collapsible panel', () => {
+			const { container, getByTestId, queryByText } = renderComponent({
+				props: { ...defaultProps, layout: 'inline' },
+			});
+
+			expect(getByTestId('parameter-input-list')).toBeInTheDocument();
+			// No collapsible panel title should be rendered
+			expect(queryByText('Rule 1')).not.toBeInTheDocument();
+			// The inline wrapper div should have data-item-key
+			expect(container.querySelector('[data-item-key="test-item-1"]')).toBeInTheDocument();
+		});
+
+		it('shows inline delete button when not readonly', () => {
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps, layout: 'inline', isReadOnly: false },
+			});
+
+			expect(getByTestId('fixed-collection-item-delete-inline')).toBeInTheDocument();
+		});
+
+		it('hides inline delete button when readonly', () => {
+			const { queryByTestId } = renderComponent({
+				props: { ...defaultProps, layout: 'inline', isReadOnly: true },
+			});
+
+			expect(queryByTestId('fixed-collection-item-delete-inline')).not.toBeInTheDocument();
+		});
+
+		it('emits delete event when inline delete is clicked', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { ...defaultProps, layout: 'inline' },
+			});
+
+			await userEvent.click(getByTestId('fixed-collection-item-delete-inline'));
+
+			expect(emitted('delete')).toHaveLength(1);
+		});
+
+		it('does not render drag handle or collapsible actions', () => {
+			const { queryByTestId } = renderComponent({
+				props: { ...defaultProps, layout: 'inline', sortable: true },
+			});
+
+			expect(queryByTestId('fixed-collection-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('fixed-collection-item-drag')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('edge cases', () => {
 		it('handles empty item data', () => {
 			const { getByText } = renderComponent({

@@ -32,6 +32,22 @@ export interface UserKeyedRateLimiterConfig extends RateLimiterLimits {
 export type KeyedRateLimiterConfig = BodyKeyedRateLimiterConfig | UserKeyedRateLimiterConfig;
 
 /**
+ * Build an IP-based rate limit option from a configured limit. A limit of `0`
+ * (or any non-positive value) returns `false`, which leaves the route without
+ * IP rate limiting. A positive limit returns the matching `RateLimiterLimits`
+ * config.
+ *
+ * @example
+ * createIpRateLimit(100);             // { limit: 100 }
+ * createIpRateLimit(50, 60000);       // { limit: 50, windowMs: 60000 }
+ * createIpRateLimit(0);               // false
+ */
+export const createIpRateLimit = (limit: number, windowMs?: number): false | RateLimiterLimits => {
+	if (limit <= 0) return false;
+	return windowMs === undefined ? { limit } : { limit, windowMs };
+};
+
+/**
  * Create a body keyed rate limiter configuration. This ends up creating
  * a rate limiter that is keyed by the value of the specified field in the
  * request body.

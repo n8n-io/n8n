@@ -1,11 +1,14 @@
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	getNodeCredentialTypes,
+	getNodeParametersIssues,
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
+	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 
@@ -30,6 +33,8 @@ const mockNodeTypeProvider = { getNodeType: vi.fn() };
 describe('setupPanel.utils', () => {
 	beforeEach(() => {
 		mockGetNodeTypeDisplayableCredentials.mockReset().mockReturnValue([]);
+		// Reset so a node type set by one test can't leak into the next
+		mockNodeTypeProvider.getNodeType.mockReset();
 	});
 
 	describe('getNodeCredentialTypes', () => {
@@ -45,7 +50,22 @@ describe('setupPanel.utils', () => {
 			expect(result).toEqual(['openAiApi', 'slackApi']);
 		});
 
-		it('should include credential types from node issues', () => {
+		it('should include credential types from node issues when displayable', () => {
+			const node = createNode({
+				issues: {
+					credentials: {
+						httpHeaderAuth: ['Credentials not set'],
+					},
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('httpHeaderAuth');
+		});
+
+		it('should include credential types from node issues even when not in displayable list', () => {
 			const node = createNode({
 				issues: {
 					credentials: {
@@ -59,7 +79,20 @@ describe('setupPanel.utils', () => {
 			expect(result).toContain('httpHeaderAuth');
 		});
 
-		it('should include credential types from assigned credentials', () => {
+		it('should include credential types from assigned credentials when displayable', () => {
+			const node = createNode({
+				credentials: {
+					slackApi: { id: 'cred-1', name: 'My Slack' },
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('slackApi');
+		});
+
+		it('should include credential types from assigned credentials even when not in displayable list', () => {
 			const node = createNode({
 				credentials: {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
@@ -95,6 +128,38 @@ describe('setupPanel.utils', () => {
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
 			expect(result).toEqual([]);
+		});
+
+		it('should skip an assigned credential type the node no longer uses', () => {
+			// The stale type is removed when the workflow is saved, so a card for it would
+			// let the user connect a credential that silently disappears.
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: {
+					httpHeaderAuth: { id: 'cred-1', name: 'Header Auth' },
+					slackApi: { id: 'cred-2', name: 'Stale Slack' },
+				},
+			});
+			mockNodeTypeProvider.getNodeType.mockReturnValue({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				version: 1,
+				description: '',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				group: [],
+				properties: [],
+				credentials: [],
+			});
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toEqual(['httpHeaderAuth']);
 		});
 	});
 
@@ -550,7 +615,24 @@ describe('setupPanel.utils', () => {
 	});
 
 	describe('isCredentialCardComplete', () => {
-		const isTrigger = (type: string) => type.includes('Trigger');
+		const isTriggerNode = (type: string) => type.includes('Trigger');
+		const noUnfilledParams = () => false;
+
+		function makeCtx(
+			overrides: {
+				hasTriggerExecuted?: (name: string) => boolean;
+				isCredentialTestedOk?: (id: string) => boolean;
+				firstTriggerName?: string | null;
+			} = {},
+		): CompletionContext {
+			return {
+				firstTriggerName: overrides.firstTriggerName ?? null,
+				hasTriggerExecuted: overrides.hasTriggerExecuted ?? (() => false),
+				isTriggerNode,
+				isCredentialTestedOk: overrides.isCredentialTestedOk,
+				hasUnfilledTemplateParams: noUnfilledParams,
+			};
+		}
 
 		it('should return true when credential is set, no issues, and no triggers', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
@@ -563,7 +645,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
 		});
 
 		it('should return false when credential is missing', () => {
@@ -577,7 +659,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when there are issues', () => {
@@ -591,7 +673,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when trigger has not executed', () => {
@@ -605,7 +687,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(false);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => false,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(false);
 		});
 
 		it('should return true when credential is set and all triggers have executed', () => {
@@ -619,7 +709,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return true when single embedded trigger has executed', () => {
@@ -633,7 +731,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'Trigger1',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return false when credential test has not passed', () => {
@@ -650,9 +756,9 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => false,
+					makeCtx({
+						isCredentialTestedOk: () => false,
+					}),
 				),
 			).toBe(false);
 		});
@@ -671,14 +777,14 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => true,
+					makeCtx({
+						isCredentialTestedOk: () => true,
+					}),
 				),
 			).toBe(true);
 		});
 
-		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+		it('should complete when isCredentialTestedOk is not provided (non-testable type)', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
@@ -689,7 +795,163 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
+		});
+	});
+
+	describe('getNodeParametersIssues', () => {
+		it('should detect issues for the active variant when a parameter name has multiple displayOptions', () => {
+			// Simulates node types like Google Drive Trigger that define multiple
+			// properties with the same name (e.g. "event") for different triggerOn values.
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: '',
+						options: [
+							{ name: 'Specific File', value: 'specificFile' },
+							{ name: 'Specific Folder', value: 'specificFolder' },
+							{ name: 'Any File/Folder', value: 'anyFileFolder' },
+						],
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileUpdated',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFolder'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileCreated',
+						displayOptions: { show: { triggerOn: ['anyFileFolder'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.googleDriveTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).toHaveProperty('event');
+		});
+
+		it('should detect required parameter issues when a controlling default has same-named siblings', () => {
+			// Mirrors OpenAI v2's shape: a single `resource` parameter controls
+			// which `operation` (and which `modelId`) is displayed. Naively
+			// filling defaults picks the first `operation` regardless of resource.
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						default: 'text',
+						options: [
+							{ name: 'Audio', value: 'audio' },
+							{ name: 'Text', value: 'text' },
+						],
+					}),
+					createTestNodeProperties({
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						default: 'generate',
+						displayOptions: { show: { resource: ['audio'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						default: 'response',
+						displayOptions: { show: { resource: ['text'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Model',
+						name: 'modelId',
+						type: 'resourceLocator',
+						required: true,
+						default: { mode: 'list', value: '' },
+						modes: [
+							{ displayName: 'From List', name: 'list', type: 'list' },
+							{ displayName: 'ID', name: 'id', type: 'string' },
+						],
+						displayOptions: { show: { resource: ['text'], operation: ['response'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: '@n8n/n8n-nodes-langchain.openAi',
+				parameters: {
+					modelId: { __rl: true, value: '', mode: 'id' },
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).toHaveProperty('modelId');
+		});
+
+		it('should not include issues for parameter variants that are not displayed', () => {
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: 'specificFolder',
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.testTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).not.toHaveProperty('event');
 		});
 	});
 

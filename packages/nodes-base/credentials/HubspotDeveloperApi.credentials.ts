@@ -7,6 +7,8 @@ const scopes = [
 	'crm.schemas.companies.read',
 	'crm.objects.deals.read',
 	'crm.schemas.deals.read',
+	'conversations.read',
+	'tickets',
 ];
 
 // eslint-disable-next-line n8n-nodes-base/cred-class-name-missing-oauth2-suffix

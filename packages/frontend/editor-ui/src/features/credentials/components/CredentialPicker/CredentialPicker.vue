@@ -8,10 +8,10 @@ import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import type { ButtonProps } from '@n8n/design-system';
+import type { ButtonProps, SelectSize } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -24,6 +24,12 @@ const props = defineProps<{
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 	createButtonVariant?: ButtonProps['variant'];
+	projectId?: string;
+	suggestedCredentialName?: string;
+	teleported?: boolean;
+	credentialModalAppendToBody?: boolean;
+	size?: SelectSize;
+	buttonSize?: ButtonProps['size'];
 }>();
 
 const emit = defineEmits<{
@@ -109,13 +115,29 @@ const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
-	uiStore.openNewCredential(props.credentialType, true);
+	uiStore.openNewCredential(
+		props.credentialType,
+		true,
+		false,
+		props.projectId,
+		props.suggestedCredentialName,
+		undefined,
+		undefined,
+		{
+			closeOnSave: true,
+			...(props.credentialModalAppendToBody ? { appendToBody: true } : {}),
+		},
+	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
-	uiStore.openExistingCredential(props.selectedCredentialId);
+	if (props.credentialModalAppendToBody) {
+		uiStore.openExistingCredential(props.selectedCredentialId, { appendToBody: true });
+	} else {
+		uiStore.openExistingCredential(props.selectedCredentialId);
+	}
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', props.selectedCredentialId);
 };
@@ -211,8 +233,10 @@ watch(
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
 				:selected-credential-id="props.selectedCredentialId"
+				:size="props.size"
 				data-test-id="credential-dropdown"
 				:permissions="credentialPermissions"
+				:teleported="props.teleported"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>
@@ -225,6 +249,7 @@ watch(
 			>
 				<N8nIconButton
 					variant="subtle"
+					:size="props.buttonSize ?? undefined"
 					icon="pen"
 					:class="{
 						[$style.edit]: true,
@@ -270,6 +295,7 @@ watch(
 <style lang="scss" module>
 .dropdown {
 	display: flex;
+	align-items: flex-end;
 	gap: var(--spacing--2xs);
 }
 

@@ -1,0 +1,4 @@
+{
+	"id": "webhook-to-slack",
+	"prompt": "Build a workflow that receives a webhook POST with a JSON body containing 'name' and 'message' fields, formats them into a Slack message like 'New message from {name}: {message}', and sends it to the #general channel. Configure all nodes completely and don't ask for credentials."
+}

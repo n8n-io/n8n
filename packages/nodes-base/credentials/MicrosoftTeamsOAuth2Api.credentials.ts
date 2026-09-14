@@ -1,5 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+// Group.ReadWrite.All covers channel create/update/delete, channel-message send and
+// Planner task writes — downgrading it to Group.Read.All breaks those operations (#35992).
 const defaultScopes = [
 	'openid',
 	'offline_access',
@@ -7,6 +9,8 @@ const defaultScopes = [
 	'Group.ReadWrite.All',
 	'Chat.ReadWrite',
 	'ChannelMessage.Read.All',
+	'OnlineMeetings.ReadWrite',
+	'ChannelMessage.ReadWrite',
 ];
 
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
@@ -63,7 +67,7 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
       <br><code>ChannelMessage.Read.All</code>
       <br><code>Chat.Read.All</code>
       <br><code>Team.ReadBasic.All</code>
-      <br><code>Subscription.ReadWrite.All</code>
+      <br><code>Subscription.Read.All</code>
       <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
     `,
 			name: 'notice',

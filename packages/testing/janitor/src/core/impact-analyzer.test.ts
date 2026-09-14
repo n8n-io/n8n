@@ -1,7 +1,9 @@
 import { Project } from 'ts-morph';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+import type { FileDiffResult } from './ast-diff-analyzer.js';
 import { ImpactAnalyzer } from './impact-analyzer.js';
+import type { MethodUsageIndex } from './method-usage-analyzer.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 
 /**
@@ -27,9 +29,9 @@ vi.mock('../utils/paths.js', async () => {
 	};
 });
 
-// Mock fs for file reading in findTestsUsingProperties
-vi.mock('fs', async () => {
-	const actual = await vi.importActual('fs');
+// Mock node:fs for file reading in findConsumersUsingProperties
+vi.mock('node:fs', async () => {
+	const actual = await vi.importActual('node:fs');
 	return {
 		...actual,
 		readFileSync: (filePath: string) => mockReadFileSync(filePath),
@@ -540,6 +542,256 @@ test('standalone', () => {});
 			expect(result.affectedTests).not.toContain('tests/standalone.spec.ts');
 		});
 
+		it('resolves multi-hop chain through composable (page → facade → composable → facade → test)', () => {
+			// The MFA case: MfaLoginPage → facade(mfaLogin) → MfaComposer uses .mfaLogin.*
+			// → facade(mfaComposer) → test uses .mfaComposer.*
+
+			// Page being changed
+			project.createSourceFile(
+				'/test-root/pages/MfaLoginPage.ts',
+				`
+export class MfaLoginPage {
+  async enterCode(code: string) {}
+}
+`,
+			);
+
+			// Composable that uses the page via facade property
+			project.createSourceFile(
+				'/test-root/composables/MfaComposer.ts',
+				`
+export class MfaComposer {
+  async loginWithMfa() {
+    await this.n8n.mfaLogin.enterCode('123456');
+  }
+}
+`,
+			);
+
+			// Facade exposes both the page and the composable
+			project.createSourceFile(
+				'/test-root/pages/AppPage.ts',
+				`
+import { Page } from '@playwright/test';
+import { MfaLoginPage } from './MfaLoginPage';
+import { MfaComposer } from '../composables/MfaComposer';
+
+export class AppPage {
+  readonly page: Page;
+  readonly mfaLogin: MfaLoginPage;
+  readonly mfaComposer: MfaComposer;
+}
+`,
+			);
+
+			// Mock: return composable + test files when searching all .ts files
+			mockFindFilesRecursive.mockReturnValue([
+				'/test-root/composables/MfaComposer.ts',
+				'/test-root/tests/mfa.spec.ts',
+				'/test-root/tests/login.spec.ts',
+			]);
+
+			mockReadFileSync.mockImplementation((filePath) => {
+				const p = String(filePath);
+				if (p.includes('MfaComposer.ts')) {
+					return 'await this.n8n.mfaLogin.enterCode("123456");';
+				}
+				if (p.includes('mfa.spec.ts')) {
+					return 'await n8n.mfaComposer.loginWithMfa();';
+				}
+				if (p.includes('login.spec.ts')) {
+					return 'await n8n.login.signIn();'; // unrelated
+				}
+				return '';
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/MfaLoginPage.ts']);
+
+			// mfa.spec.ts should be found via the multi-hop chain
+			expect(result.affectedTests).toContain('tests/mfa.spec.ts');
+			// login.spec.ts doesn't use mfaLogin or mfaComposer
+			expect(result.affectedTests).not.toContain('tests/login.spec.ts');
+		});
+
+		it('finds tests via both direct property usage and indirect composable chain', () => {
+			// Same page used directly by one test AND through a composable by another
+
+			project.createSourceFile(
+				'/test-root/pages/SettingsPage.ts',
+				`
+export class SettingsPage {
+  async openApiKeys() {}
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/composables/SetupComposer.ts',
+				`
+export class SetupComposer {
+  async completeSetup() {
+    await this.n8n.settings.openApiKeys();
+  }
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/pages/AppPage.ts',
+				`
+import { Page } from '@playwright/test';
+import { SettingsPage } from './SettingsPage';
+import { SetupComposer } from '../composables/SetupComposer';
+
+export class AppPage {
+  readonly page: Page;
+  readonly settings: SettingsPage;
+  readonly setupComposer: SetupComposer;
+}
+`,
+			);
+
+			mockFindFilesRecursive.mockReturnValue([
+				'/test-root/composables/SetupComposer.ts',
+				'/test-root/tests/settings-direct.spec.ts',
+				'/test-root/tests/setup-flow.spec.ts',
+				'/test-root/tests/unrelated.spec.ts',
+			]);
+
+			mockReadFileSync.mockImplementation((filePath) => {
+				const p = String(filePath);
+				if (p.includes('SetupComposer.ts')) {
+					return 'await this.n8n.settings.openApiKeys();';
+				}
+				if (p.includes('settings-direct.spec.ts')) {
+					return 'await n8n.settings.openApiKeys();'; // direct usage
+				}
+				if (p.includes('setup-flow.spec.ts')) {
+					return 'await n8n.setupComposer.completeSetup();'; // indirect via composable
+				}
+				return '';
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/SettingsPage.ts']);
+
+			// Both direct and indirect consumers found
+			expect(result.affectedTests).toContain('tests/settings-direct.spec.ts');
+			expect(result.affectedTests).toContain('tests/setup-flow.spec.ts');
+			expect(result.affectedTests).not.toContain('tests/unrelated.spec.ts');
+		});
+
+		it('traces non-facade intermediary via import graph', () => {
+			// Helper file not on the facade — should fall back to import tracing
+
+			project.createSourceFile(
+				'/test-root/pages/NodePage.ts',
+				`
+export class NodePage {
+  async configureNode() {}
+}
+`,
+			);
+
+			// Helper that uses NodePage via facade property but is NOT on the facade itself
+			project.createSourceFile(
+				'/test-root/helpers/nodeHelper.ts',
+				`
+export function setupNode(n8n: any) {
+  return n8n.node.configureNode();
+}
+`,
+			);
+
+			// Test imports the helper directly
+			project.createSourceFile(
+				'/test-root/tests/node-helper.spec.ts',
+				`
+import { setupNode } from '../helpers/nodeHelper';
+test('configures node', () => {});
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/pages/AppPage.ts',
+				`
+import { Page } from '@playwright/test';
+import { NodePage } from './NodePage';
+
+export class AppPage {
+  readonly page: Page;
+  readonly node: NodePage;
+}
+`,
+			);
+
+			// findConsumersUsingProperties finds the helper (it references .node.)
+			mockFindFilesRecursive.mockReturnValue(['/test-root/helpers/nodeHelper.ts']);
+
+			mockReadFileSync.mockImplementation((filePath) => {
+				const p = String(filePath);
+				if (p.includes('nodeHelper.ts')) {
+					return 'return n8n.node.configureNode();';
+				}
+				return '';
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/NodePage.ts']);
+
+			// Helper is not on facade, so import-trace picks up the test
+			expect(result.affectedTests).toContain('tests/node-helper.spec.ts');
+		});
+
+		it('does not match unrelated composables with similar but distinct property names', () => {
+			// Ensure .node doesn't match .nodePanel (word boundary check)
+
+			project.createSourceFile(
+				'/test-root/pages/NodePage.ts',
+				`
+export class NodePage {
+  async openNode() {}
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/pages/AppPage.ts',
+				`
+import { Page } from '@playwright/test';
+import { NodePage } from './NodePage';
+
+export class AppPage {
+  readonly page: Page;
+  readonly node: NodePage;
+}
+`,
+			);
+
+			mockFindFilesRecursive.mockReturnValue([
+				'/test-root/tests/node-panel.spec.ts',
+				'/test-root/tests/node.spec.ts',
+			]);
+
+			mockReadFileSync.mockImplementation((filePath) => {
+				const p = String(filePath);
+				if (p.includes('node-panel.spec.ts')) {
+					return 'await n8n.nodePanel.search("HTTP");'; // nodePanel, not node
+				}
+				if (p.includes('node.spec.ts')) {
+					return 'await n8n.node.openNode();';
+				}
+				return '';
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/NodePage.ts']);
+
+			expect(result.affectedTests).toContain('tests/node.spec.ts');
+			expect(result.affectedTests).not.toContain('tests/node-panel.spec.ts');
+		});
+
 		it('handles page not exposed on facade (falls back to camelCase)', () => {
 			// If a page isn't in the facade, we fall back to camelCase property name
 			project.createSourceFile(
@@ -568,6 +820,634 @@ export class AppPage {
 
 			// Should still work - falls back to camelCase: newFeaturePage
 			expect(result.changedFiles).toContain('pages/NewFeaturePage.ts');
+		});
+	});
+
+	describe('Additive-Only Narrowing', () => {
+		it('skips dependency tracing when all changes are additive', () => {
+			// Shared service imported by a test — but only new methods were added
+			project.createSourceFile(
+				'/test-root/services/api-helper.ts',
+				`
+export class ApiHelper {
+  async getWorkflows() {}
+  async newMethod() {}
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/api.spec.ts',
+				`
+import { ApiHelper } from '../services/api-helper';
+test('uses api', () => {});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/services/api-helper.ts',
+					changedMethods: [
+						{ className: 'ApiHelper', methodName: 'newMethod', changeType: 'added' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs });
+
+			// No transitive tests affected — the change is purely additive
+			expect(result.affectedTests).toEqual([]);
+		});
+
+		it('skips dependency tracing when all changes are additive property declarations', () => {
+			project.createSourceFile(
+				'/test-root/pages/AppFacade.ts',
+				`
+export class AppFacade {
+  readonly canvas: CanvasPage;
+  readonly chatHubChat: ChatHubChatPage;
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { AppFacade } from '../pages/AppFacade';
+test('uses canvas', () => {});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/AppFacade.ts',
+					changedMethods: [
+						{ className: 'AppFacade', methodName: 'chatHubChat', changeType: 'added' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/AppFacade.ts'], { diffs });
+
+			// Purely additive property → skipped, no transitive tests
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/AppFacade.ts']).toBe('skipped');
+		});
+
+		it('finds affected tests via method-level when a method is modified', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/services/api-helper.ts',
+					changedMethods: [
+						{ className: 'ApiHelper', methodName: 'getWorkflows', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodUsageIndex: MethodUsageIndex = {
+				methods: {
+					'ApiHelper.getWorkflows': [
+						{
+							testFile: 'tests/api.spec.ts',
+							line: 1,
+							column: 1,
+							fullCall: 'ApiHelper.getWorkflows()',
+						},
+					],
+				},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 1,
+			};
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs, methodUsageIndex });
+
+			expect(result.affectedTests).toContain('tests/api.spec.ts');
+			expect(result.strategies['services/api-helper.ts']).toBe('method-level');
+		});
+
+		it('finds affected tests via method-level when changes are mixed (added + modified)', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/services/api-helper.ts',
+					changedMethods: [
+						{ className: 'ApiHelper', methodName: 'newMethod', changeType: 'added' },
+						{ className: 'ApiHelper', methodName: 'getWorkflows', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodUsageIndex: MethodUsageIndex = {
+				methods: {
+					'ApiHelper.getWorkflows': [
+						{
+							testFile: 'tests/api.spec.ts',
+							line: 1,
+							column: 1,
+							fullCall: 'ApiHelper.getWorkflows()',
+						},
+					],
+				},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 1,
+			};
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs, methodUsageIndex });
+
+			expect(result.affectedTests).toContain('tests/api.spec.ts');
+			expect(result.strategies['services/api-helper.ts']).toBe('method-level');
+		});
+
+		it('traces normally when no diffs are provided (backwards-compatible)', () => {
+			project.createSourceFile(
+				'/test-root/services/api-helper.ts',
+				`
+export class ApiHelper {
+  async getWorkflows() {}
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/api.spec.ts',
+				`
+import { ApiHelper } from '../services/api-helper';
+test('uses api', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+			// No diffs parameter — full tracing as before
+			const result = analyzer.analyze(['services/api-helper.ts']);
+
+			expect(result.affectedTests).toContain('tests/api.spec.ts');
+		});
+
+		it('traces conservatively when changedMethods is empty', () => {
+			// Empty changedMethods means the file changed but no method-level changes detected
+			// (e.g., import reordering, comments). We should still trace conservatively.
+			project.createSourceFile(
+				'/test-root/services/api-helper.ts',
+				`
+export class ApiHelper {
+  async getWorkflows() {}
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/api.spec.ts',
+				`
+import { ApiHelper } from '../services/api-helper';
+test('uses api', () => {});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/services/api-helper.ts',
+					changedMethods: [],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs });
+
+			// Empty changedMethods = conservative, still traces
+			expect(result.affectedTests).toContain('tests/api.spec.ts');
+		});
+	});
+
+	describe('Method-Level Resolution', () => {
+		function createMethodUsageIndex(
+			methods: Record<string, Array<{ testFile: string }>>,
+		): MethodUsageIndex {
+			const index: MethodUsageIndex = {
+				methods: {},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 0,
+			};
+
+			for (const [key, usages] of Object.entries(methods)) {
+				index.methods[key] = usages.map((u) => ({
+					testFile: u.testFile,
+					line: 1,
+					column: 1,
+					fullCall: `${key}()`,
+				}));
+			}
+
+			return index;
+		}
+
+		it('returns 0 affected tests for removed unused method', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/SomePage.ts',
+					changedMethods: [
+						{ className: 'SomePage', methodName: 'unusedMethod', changeType: 'removed' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/SomePage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/SomePage.ts']).toBe('method-level');
+		});
+
+		it('returns exactly the tests using a modified method', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [
+					{ testFile: 'tests/canvas-crud.spec.ts' },
+					{ testFile: 'tests/canvas-drag.spec.ts' },
+				],
+				'CanvasPage.deleteNode': [{ testFile: 'tests/canvas-delete.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([
+				'tests/canvas-crud.spec.ts',
+				'tests/canvas-drag.spec.ts',
+			]);
+			expect(result.affectedFiles).toContain('tests/canvas-crud.spec.ts');
+			expect(result.affectedFiles).toContain('tests/canvas-drag.spec.ts');
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+		});
+
+		it('only returns tests using modified methods when changes are mixed', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'newMethod', changeType: 'added' },
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+				'CanvasPage.deleteNode': [{ testFile: 'tests/canvas-delete.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual(['tests/canvas.spec.ts']);
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+		});
+
+		it('includes changed test file alongside method-level results', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts', 'tests/other.spec.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			expect(result.affectedTests).toContain('tests/other.spec.ts');
+		});
+
+		it('skips new files (cannot break existing tests)', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/BrandNewPage.ts',
+					changedMethods: [
+						{ className: 'BrandNewPage', methodName: 'doThing', changeType: 'added' },
+					],
+					isNewFile: true,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/BrandNewPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/BrandNewPage.ts']).toBe('skipped');
+		});
+
+		it('unions affected tests from multiple files with different strategies', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+				{
+					filePath: '/test-root/pages/NewPage.ts',
+					changedMethods: [{ className: 'NewPage', methodName: 'newMethod', changeType: 'added' }],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(
+				['pages/CanvasPage.ts', 'pages/NewPage.ts', 'tests/direct.spec.ts'],
+				{ diffs, methodUsageIndex: methodIndex },
+			);
+
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			expect(result.affectedTests).toContain('tests/direct.spec.ts');
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+			expect(result.strategies['pages/NewPage.ts']).toBe('skipped');
+		});
+
+		it('falls back to property-level for deleted files', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/DeletedPage.ts',
+					changedMethods: [],
+					isNewFile: false,
+					isDeletedFile: true,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/DeletedPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.strategies['pages/DeletedPage.ts']).toBe('property-level');
+		});
+
+		it('includes changed test file that references a newly added method', () => {
+			project.createSourceFile(
+				'/test-root/tests/new-feature.spec.ts',
+				`
+test('uses new method', async ({ app }) => {
+  await app.canvas.brandNewMethod();
+});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'brandNewMethod', changeType: 'added' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts', 'tests/new-feature.spec.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toContain('tests/new-feature.spec.ts');
+		});
+	});
+
+	describe('Regex Escaping', () => {
+		function emptyMethodIndex(): MethodUsageIndex {
+			return {
+				methods: {},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 0,
+			};
+		}
+
+		it('does not throw on method names with regex metacharacters', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [
+						{ className: 'StorePage', methodName: '$reset', changeType: 'added' },
+						{ className: 'StorePage', methodName: '$patch', changeType: 'added' },
+					],
+					isNewFile: true,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			expect(() =>
+				analyzer.analyze(['pages/StorePage.ts'], {
+					diffs,
+					methodUsageIndex: emptyMethodIndex(),
+				}),
+			).not.toThrow();
+		});
+
+		it('matches method names containing $ when properly escaped', () => {
+			project.createSourceFile(
+				'/test-root/tests/pinia.spec.ts',
+				`
+test('uses pinia store', async ({ app }) => {
+  await app.store.$reset();
+});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [{ className: 'StorePage', methodName: '$reset', changeType: 'added' }],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			// tests/pinia.spec.ts is both a changed test file AND references .$reset()
+			// Without escaping, $ would be treated as end-of-line anchor and fail to match
+			const result = analyzer.analyze(['pages/StorePage.ts', 'tests/pinia.spec.ts'], {
+				diffs,
+				methodUsageIndex: emptyMethodIndex(),
+			});
+
+			expect(result.affectedTests).toContain('tests/pinia.spec.ts');
+			expect(result.strategies['pages/StorePage.ts']).toBe('skipped');
+		});
+	});
+
+	describe('Path Normalization', () => {
+		it('normalizes absolute paths to rootDir-relative in results', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+			// Pass absolute paths (as getChangedFiles returns)
+			const result = analyzer.analyze(['/test-root/pages/CanvasPage.ts']);
+
+			expect(result.changedFiles).toContain('pages/CanvasPage.ts');
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			// Must not contain absolute paths
+			expect(result.changedFiles.every((f) => !f.startsWith('/'))).toBe(true);
+			expect(result.affectedTests.every((f) => !f.startsWith('/'))).toBe(true);
+		});
+
+		it('normalizes rootDir-relative paths consistently', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+			// Pass rootDir-relative paths (existing convention)
+			const result = analyzer.analyze(['pages/CanvasPage.ts']);
+
+			expect(result.changedFiles).toContain('pages/CanvasPage.ts');
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+		});
+
+		it('produces same output format regardless of absolute vs relative input', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			const resultAbsolute = analyzer.analyze(['/test-root/pages/CanvasPage.ts']);
+			const resultRelative = analyzer.analyze(['pages/CanvasPage.ts']);
+
+			expect(resultAbsolute.changedFiles).toEqual(resultRelative.changedFiles);
+			expect(resultAbsolute.affectedTests).toEqual(resultRelative.affectedTests);
+		});
+
+		it('normalizes absolute test file paths in affectedTests', () => {
+			project.createSourceFile('/test-root/tests/example.spec.ts', "test('example', () => {});");
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['/test-root/tests/example.spec.ts']);
+
+			expect(result.changedFiles).toContain('tests/example.spec.ts');
+			expect(result.affectedTests).toContain('tests/example.spec.ts');
 		});
 	});
 

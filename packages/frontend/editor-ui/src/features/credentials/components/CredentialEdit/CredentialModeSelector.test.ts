@@ -8,6 +8,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
 
@@ -130,7 +132,9 @@ function setupStores(opts: {
 }) {
 	const pinia = createTestingPinia({ stubActions: false });
 
-	const ndvStore = mockedStore(useNDVStore);
+	const workflowsStore = useWorkflowsStore();
+	workflowsStore.setWorkflowId('test-workflow-id');
+	const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 	ndvStore.activeNode = opts.node;
 
 	const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -155,76 +159,7 @@ function makeNode(nodeTypeName: string, authValue: string): INodeUi {
 }
 
 describe('CredentialModeSelector', () => {
-	describe('2 auth options (switch link)', () => {
-		it('should show switch link when there are exactly 2 options', () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxApiType,
-				},
-			});
-
-			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
-			expect(screen.getByTestId('credential-mode-switch-link')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
-		});
-
-		it('should emit authTypeChanged when clicking switch link', async () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			const { emitted } = renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxApiType,
-				},
-			});
-
-			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2' }]);
-		});
-
-		it('should emit the other auth type when switch link is clicked from OAuth2', async () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			const { emitted } = renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxOAuth2ApiType,
-				},
-			});
-
-			// From OAuth2, switch to Access Token
-			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-			expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
-		});
-	});
-
-	describe('3+ auth options (dropdown menu)', () => {
+	describe('dropdown menu', () => {
 		it('should show dropdown trigger when there are 3+ options', () => {
 			const pinia = setupStores({
 				nodeType: threeAuthNodeType,
@@ -245,7 +180,6 @@ describe('CredentialModeSelector', () => {
 
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
@@ -308,6 +242,50 @@ describe('CredentialModeSelector', () => {
 	});
 
 	describe('managed OAuth options', () => {
+		const googleSheetsTriggerOAuth2ApiType: ICredentialType = {
+			name: 'googleSheetsTriggerOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Google Sheets Trigger OAuth2 API',
+			properties: [
+				{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+				{
+					displayName: 'Client Secret',
+					name: 'clientSecret',
+					type: 'string',
+					default: '',
+					required: true,
+				},
+			],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const triggerOnlyOAuthNodeType = {
+			displayName: 'Google Sheets Trigger',
+			name: 'n8n-nodes-base.googleSheetsTrigger',
+			group: ['trigger'],
+			version: 1,
+			description: 'Starts the workflow when Google Sheets events occur',
+			defaults: { name: 'Google Sheets Trigger' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'googleSheetsTriggerOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['triggerOAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [{ name: 'OAuth2 (recommended)', value: 'triggerOAuth2' }],
+					default: 'triggerOAuth2',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
 		it('should split OAuth option into managed and custom when showManagedOauthOptions is true', () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
@@ -331,7 +309,6 @@ describe('CredentialModeSelector', () => {
 			// plus the Access Token option = 3 total, so dropdown should appear
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
@@ -433,6 +410,244 @@ describe('CredentialModeSelector', () => {
 				expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
 			});
 		});
+
+		it('should split managed OAuth options for auth values other than oAuth2', async () => {
+			const pinia = setupStores({
+				nodeType: triggerOnlyOAuthNodeType,
+				node: makeNode('n8n-nodes-base.googleSheetsTrigger', 'triggerOAuth2'),
+				credentialTypes: {
+					googleSheetsTriggerOAuth2Api: googleSheetsTriggerOAuth2ApiType,
+				},
+			});
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: googleSheetsTriggerOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(screen.getByRole('menuitem', { name: /Managed OAuth2/ })).toBeInTheDocument();
+			expect(screen.getByRole('menuitem', { name: /Custom OAuth2/ })).toBeInTheDocument();
+
+			await userEvent.click(screen.getByRole('menuitem', { name: /Custom OAuth2/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([
+					{ type: 'triggerOAuth2', customOauth: true },
+				]);
+			});
+		});
+
+		it('keeps plain managed labels when only one auth option is managed', async () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(
+				screen.getByRole('menuitem', { name: 'Managed OAuth2 (recommended)' }),
+			).toBeInTheDocument();
+			expect(screen.getByRole('menuitem', { name: 'Custom OAuth2' })).toBeInTheDocument();
+		});
+
+		it('selects the managed option when no node context is available', async () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+			mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id')).activeNode = null;
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toHaveTextContent(
+				'Managed OAuth2 (recommended)',
+			);
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(document.querySelectorAll('[role="menuitem"] [data-icon="check"]')).toHaveLength(1);
+
+			await userEvent.click(screen.getByRole('menuitem', { name: 'Custom OAuth2' }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', customOauth: true }]);
+			});
+		});
+	});
+
+	describe('multiple managed OAuth pairs', () => {
+		const microsoftOutlookOAuth2ApiType: ICredentialType = {
+			name: 'microsoftOutlookOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Microsoft Outlook OAuth2 API',
+			properties: [],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const microsoftOAuth2ApiType: ICredentialType = {
+			name: 'microsoftOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Microsoft OAuth2 API',
+			properties: [],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const outlookNodeType = {
+			displayName: 'Microsoft Outlook',
+			name: 'n8n-nodes-base.microsoftOutlook',
+			group: ['input'],
+			version: 1,
+			description: 'Access data on Microsoft Outlook',
+			defaults: { name: 'Microsoft Outlook' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'microsoftOutlookOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['microsoftOutlookOAuth2Api'] } },
+				},
+				{
+					name: 'microsoftOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['microsoftOAuth2Api'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Outlook OAuth2', value: 'microsoftOutlookOAuth2Api' },
+						{ name: 'Microsoft OAuth2 (Graph)', value: 'microsoftOAuth2Api' },
+					],
+					default: 'microsoftOutlookOAuth2Api',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		const setupOutlookStores = () =>
+			setupStores({
+				nodeType: outlookNodeType,
+				node: makeNode('n8n-nodes-base.microsoftOutlook', 'microsoftOutlookOAuth2Api'),
+				credentialTypes: {
+					microsoftOutlookOAuth2Api: microsoftOutlookOAuth2ApiType,
+					microsoftOAuth2Api: microsoftOAuth2ApiType,
+				},
+			});
+
+		it('renders disambiguated labels with exactly one checked row', async () => {
+			const pinia = setupOutlookStores();
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: microsoftOutlookOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(screen.getAllByRole('menuitem').map((el) => el.textContent?.trim())).toEqual([
+				'Managed OAuth2 - Outlook OAuth2',
+				'Custom OAuth2 - Outlook OAuth2',
+				'Managed OAuth2 - Microsoft OAuth2 (Graph)',
+				'Custom OAuth2 - Microsoft OAuth2 (Graph)',
+			]);
+
+			const checkedIcons = document.querySelectorAll('[role="menuitem"] [data-icon="check"]');
+			expect(checkedIcons).toHaveLength(1);
+			expect(checkedIcons[0].closest('[role="menuitem"]')).toHaveTextContent(
+				'Managed OAuth2 - Outlook OAuth2',
+			);
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toHaveTextContent(
+				'Managed OAuth2 - Outlook OAuth2',
+			);
+		});
+
+		it('emits update:authType when selecting the managed option of the other auth type', async () => {
+			const pinia = setupOutlookStores();
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: microsoftOutlookOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			await userEvent.click(
+				screen.getByRole('menuitem', { name: 'Managed OAuth2 - Microsoft OAuth2 (Graph)' }),
+			);
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([
+					{ type: 'microsoftOAuth2Api', customOauth: false },
+				]);
+			});
+		});
 	});
 
 	describe('quick connect options', () => {
@@ -446,6 +661,26 @@ describe('CredentialModeSelector', () => {
 					name: 'apiKey',
 					type: 'string',
 					default: '',
+				},
+			],
+		};
+
+		const nonConfigurableOAuthType: ICredentialType = {
+			name: 'mcpOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'MCP OAuth2 API',
+			properties: [
+				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: true,
+				},
+				{
+					displayName: 'Server URL',
+					name: 'serverURL',
+					type: 'hidden',
+					default: 'https://mcp.example.com/mcp',
 				},
 			],
 		};
@@ -468,7 +703,25 @@ describe('CredentialModeSelector', () => {
 			properties: [],
 		} as unknown as INodeTypeDescription;
 
-		it('should show "Use quick connect" link in manual mode and emit quickConnectEnabled on click', async () => {
+		const singleCredMcpNodeType = {
+			displayName: 'Notion MCP',
+			name: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			group: ['transform'],
+			version: 1,
+			description: 'MCP tool node',
+			defaults: { name: 'Notion MCP' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'mcpOAuth2Api',
+					required: true,
+				},
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+
+		it('should emit quickConnectEnabled when selecting quick connect from dropdown', async () => {
 			const pinia = setupStores({
 				nodeType: singleCredNodeType,
 				node: makeNode('n8n-nodes-base.firecrawl', ''),
@@ -484,17 +737,23 @@ describe('CredentialModeSelector', () => {
 				},
 			});
 
-			const link = screen.getByTestId('credential-mode-switch-link');
-			expect(link).toHaveTextContent('Use quick connect');
-			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
 
-			await userEvent.click(link);
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
 
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: '', quickConnectEnabled: true }]);
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByRole('menuitem', { name: /Use quick connect/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: '', quickConnectEnabled: true }]);
+			});
 		});
 
-		it('should show "Set up manually" link in QC mode and emit manual fallback on click', async () => {
+		it('should emit manual fallback when selecting set up manually from dropdown in QC mode', async () => {
 			const pinia = setupStores({
 				nodeType: singleCredNodeType,
 				node: makeNode('n8n-nodes-base.firecrawl', ''),
@@ -510,13 +769,39 @@ describe('CredentialModeSelector', () => {
 				},
 			});
 
-			const link = screen.getByTestId('credential-mode-switch-link');
-			expect(link).toHaveTextContent('Set up manually');
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
 
-			await userEvent.click(link);
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
 
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
+			await userEvent.click(screen.getByRole('menuitem', { name: /Set up manually/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
+			});
+		});
+
+		it('should not show selector when there are no configurable credential fields', () => {
+			const pinia = setupStores({
+				nodeType: singleCredMcpNodeType,
+				node: makeNode('@n8n/n8n-nodes-langchain.mcpClientTool', ''),
+				credentialTypes: {
+					mcpOAuth2Api: nonConfigurableOAuthType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: nonConfigurableOAuthType,
+					quickConnectAvailable: true,
+					isQuickConnectMode: true,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
 		});
 
 		it('should not show selector when quickConnectAvailable is false for single-cred nodes', () => {
@@ -559,7 +844,6 @@ describe('CredentialModeSelector', () => {
 			// QC + Access Token + OAuth2 = 3 options → dropdown
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 		});
 	});
 

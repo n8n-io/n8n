@@ -63,6 +63,25 @@ describe('components', () => {
 			expect(wrapper.emitted()).toBeDefined();
 		});
 
+		it('emits update:open when opened via Cmd+K and when closed via Escape', async () => {
+			const wrapper = render(N8nCommandBar, {
+				props: { items: createSampleItems() },
+			});
+
+			await openCommandBar();
+
+			const openEvents = wrapper.emitted('update:open') ?? [];
+			expect(openEvents.length).toBeGreaterThanOrEqual(1);
+			expect(openEvents[openEvents.length - 1]).toEqual([true]);
+
+			document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+			await waitFor(() => {
+				const events = wrapper.emitted('update:open') ?? [];
+				expect(events[events.length - 1]).toEqual([false]);
+			});
+		});
+
 		it('emits inputChange and filters results as user types', async () => {
 			const wrapper = render(N8nCommandBar, {
 				props: { items: createSampleItems() },

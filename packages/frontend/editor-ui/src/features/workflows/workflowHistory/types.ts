@@ -9,3 +9,5 @@ export type WorkflowHistoryAction = {
 		description?: string | null;
 	};
 };
+
+export type WorkflowHistoryVersionStatus = 'published' | 'latest' | 'default';

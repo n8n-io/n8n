@@ -55,3 +55,9 @@ skip:
       # Permission-gated: only maintainers (admin/write/maintain) can trigger
       # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
       - .github/workflows/test-workflows-callable.yml
+      # Reusable workflow reachable only via workflow_dispatch (manual) or from
+      # ci-mcp-evals.yml, which is itself workflow_dispatch-only — never from a
+      # pull_request / fork. The flagged step (`npm install -g
+      # @anthropic-ai/claude-code`) installs a fixed package from the npm
+      # registry, not the checked-out code.
+      - .github/workflows/test-evals-mcp.yml

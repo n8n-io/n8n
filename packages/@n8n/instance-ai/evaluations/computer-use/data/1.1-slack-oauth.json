@@ -1,0 +1,28 @@
+{
+	"id": "1.1-slack-oauth",
+	"category": "browser",
+	"prompt": "Help me set up a Slack credential. I need to create a new Slack App with OAuth scopes for reading and sending messages, then get the client ID and secret into n8n.",
+	"budgets": { "maxToolCalls": 60, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 60,
+			"maxToolResultTokensEst": 200000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["slack|api\\.slack\\.com"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
+		}
+	],
+	"tags": ["browser", "oauth", "requires:browser-bootstrap", "requires:third-party-account:slack"]
+}

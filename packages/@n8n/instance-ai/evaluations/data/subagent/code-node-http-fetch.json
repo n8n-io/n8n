@@ -1,0 +1,4 @@
+{
+	"id": "code-node-http-fetch",
+	"prompt": "Build a workflow that runs manually and uses a Code node to fetch the JSON from https://api.example.com/v1/products with fetch(), then keeps only the products with a price above 100. Configure all nodes completely and don't ask me for credentials — I'll set them up later."
+}

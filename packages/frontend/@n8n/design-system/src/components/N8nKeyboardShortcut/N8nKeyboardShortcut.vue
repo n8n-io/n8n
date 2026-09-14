@@ -8,19 +8,21 @@ const props = defineProps<KeyboardShortcut>();
 const { isMacOs, controlKeyText } = useDeviceSupport();
 
 const keys = computed(() => {
-	const allKeys = props.keys.map((key) => key.charAt(0).toUpperCase() + key.slice(1));
+	const allKeys: string[] = [];
 
 	if (props.metaKey) {
-		allKeys.unshift(controlKeyText.value);
-	}
-
-	if (props.altKey) {
-		allKeys.unshift(isMacOs ? '⌥' : 'Alt');
+		allKeys.push(controlKeyText.value);
 	}
 
 	if (props.shiftKey) {
-		allKeys.unshift('⇧');
+		allKeys.push('⇧');
 	}
+
+	if (props.altKey) {
+		allKeys.push(isMacOs ? '⌥' : 'Alt');
+	}
+
+	allKeys.push(...props.keys.map((key) => key.charAt(0).toUpperCase() + key.slice(1)));
 
 	return allKeys;
 });
@@ -48,12 +50,12 @@ const keys = computed(() => {
 	height: 18px;
 	min-width: 18px;
 	padding: 0 var(--spacing--4xs);
-	border: solid 1px var(--color--foreground);
-	background: var(--color--background);
+	border: solid 1px var(--n8n--kbd-border, var(--color--foreground));
+	background: var(--n8n--kbd-bg, var(--color--background));
 }
 
 .key {
-	color: var(--color--text);
+	color: var(--n8n--kbd-text, var(--color--text));
 	font-size: var(--font-size--3xs);
 }
 </style>

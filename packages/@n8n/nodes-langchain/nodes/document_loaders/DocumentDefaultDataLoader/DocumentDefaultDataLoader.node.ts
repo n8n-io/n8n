@@ -9,16 +9,13 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
-import { logWrapper, N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
-
-import { metadataFilterField } from '@utils/sharedFields';
+import { logWrapper, N8nBinaryLoader, N8nJsonLoader, metadataFilterField } from '@n8n/ai-utilities';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-import 'pdf-parse'; // for pdf
 
 /* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
@@ -42,7 +39,8 @@ export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Default Data Loader',
 		name: 'documentDefaultDataLoader',
-		icon: 'file:binary.svg',
+		icon: 'node:default-data-loader',
+		iconColor: 'gray',
 		group: ['transform'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,

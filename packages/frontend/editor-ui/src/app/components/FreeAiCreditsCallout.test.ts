@@ -2,25 +2,26 @@
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(),
 }));
 
@@ -28,13 +29,17 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const useNDVStore = vi.fn();
+	return {
+		useNDVStore,
+		injectNDVStore: vi.fn(() => ({ value: useNDVStore() })),
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: vi.fn(),
@@ -57,13 +62,7 @@ const assertUserCanClaimCredits = () => {
 const assertUserClaimedCredits = () => {
 	expect(
 		screen.getByText(
-			'Claimed 100 free OpenAI API credits! Please note these free credits are only for the following models:',
-		),
-	).toBeInTheDocument();
-
-	expect(
-		screen.getByText(
-			'gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
+			'Claimed 100 free OpenAI API credits! They cover a limited set of OpenAI models — check the model dropdown to see which.',
 		),
 	).toBeInTheDocument();
 };
@@ -75,6 +74,7 @@ describe('FreeAiCreditsCallout', () => {
 		(useSettingsStore as any).mockReturnValue({
 			isAiCreditsEnabled: true,
 			aiCreditsQuota: 100,
+			isAiGatewayEnabled: false,
 		});
 
 		(useCredentialsStore as any).mockReturnValue({
@@ -110,6 +110,8 @@ describe('FreeAiCreditsCallout', () => {
 		(useTelemetry as any).mockReturnValue({
 			track: vi.fn(),
 		});
+
+		useFreeAiCredits().showSuccessCallout.value = false;
 	});
 
 	it('should shows the claim callout when the user can claim credits', () => {
@@ -163,6 +165,18 @@ describe('FreeAiCreditsCallout', () => {
 		assertUserCannotClaimCredits();
 	});
 
+	it('should not be able to claim credits if AI gateway is enabled', async () => {
+		(useSettingsStore as any).mockReturnValue({
+			isAiCreditsEnabled: true,
+			aiCreditsQuota: 100,
+			isAiGatewayEnabled: true,
+		});
+
+		renderComponent(FreeAiCreditsCallout);
+
+		assertUserCannotClaimCredits();
+	});
+
 	it('should not be able to claim credits if user already has OpenAiApi credential', async () => {
 		(useCredentialsStore as any).mockReturnValue({
 			allCredentials: [
@@ -176,6 +190,44 @@ describe('FreeAiCreditsCallout', () => {
 		renderComponent(FreeAiCreditsCallout);
 
 		assertUserCannotClaimCredits();
+	});
+
+	it('should emit "claimed" after a successful claim', async () => {
+		const { emitted } = renderComponent(FreeAiCreditsCallout);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(emitted()).toHaveProperty('claimed');
+		});
+	});
+
+	it('should not emit "claimed" when the claim fails', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.claimFreeAiCredits.mockRejectedValueOnce(new Error('boom'));
+
+		const { emitted } = renderComponent(FreeAiCreditsCallout);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalled();
+		});
+		expect(emitted()).not.toHaveProperty('claimed');
+	});
+
+	it('should use the telemetrySource prop value when tracking the claim', async () => {
+		renderComponent(FreeAiCreditsCallout, {
+			props: { telemetrySource: 'instanceAiWorkflowSetup' },
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Claim credits' }));
+
+		await waitFor(() => {
+			expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits', {
+				source: 'instanceAiWorkflowSetup',
+			});
+		});
 	});
 
 	it('should not be able to claim credits if active node it is not a valid node', async () => {

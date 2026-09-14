@@ -8,16 +8,17 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { extractSharedFields } from './shared-fields';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { CredentialStorageError } from '../errors/credential-storage.error';
-
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
 } from '@/credentials/dynamic-credential-storage.interface';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { extractSharedFields } from './shared-fields';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { CredentialStorageError } from '../errors/credential-storage.error';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -27,6 +28,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	async storeIfNeeded(
@@ -35,6 +37,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		try {
 			if (!credentialStoreMetadata.isResolvable) {
@@ -43,8 +46,10 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 			}
 
 			// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+			// (explicit workflow override, or the seeded system resolver looked up via the proxy).
 			const resolverId =
-				credentialStoreMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+				credentialStoreMetadata.resolverId ??
+				this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 
 			// Not resolvable - return static credentials
 			if (!resolverId) {
@@ -67,7 +72,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				return this.handleMissingResolver(credentialStoreMetadata, resolverId);
 			}
 
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			const credentialType = this.loadNodesAndCredentials.getCredential(
@@ -88,21 +93,31 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				}
 			}
 
-			await resolver.setSecret(credentialStoreMetadata.id, credentialContext, mergedDynamicData, {
-				configuration: resolverConfig,
-				resolverName: resolverEntity.name,
-				resolverId: resolverEntity.id,
-			});
+			await resolver.setSecret(
+				credentialStoreMetadata.id,
+				credentialContext,
+				mergedDynamicData,
+				{
+					configuration: resolverConfig,
+					resolverName: resolverEntity.name,
+					resolverId: resolverEntity.id,
+				},
+				executionId,
+			);
 
 			this.logger.debug('Successfully stored dynamic credentials', {
 				credentialId: credentialStoreMetadata.id,
 				resolverId,
 				resolverSource: credentialStoreMetadata.resolverId ? 'credential' : 'workflow',
-				identity: credentialContext.identity,
 			});
 		} catch (error) {
+			this.logger.error('Failed to store dynamic credentials data', {
+				credentialId: credentialStoreMetadata.id,
+				credentialType: credentialStoreMetadata.type,
+				error,
+			});
 			throw new CredentialStorageError(
-				`Failed to store dynamic credentials data for "${credentialStoreMetadata.name}"`,
+				`Failed to store end-user credential data for "${credentialStoreMetadata.name}"`,
 				{ cause: error },
 			);
 		}

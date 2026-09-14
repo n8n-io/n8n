@@ -6,7 +6,7 @@ import { mockedStore } from '@/__tests__/utils';
 
 import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { ExtendedPublicInstalledPackage } from '../communityNodes.utils';
 import type * as n8nWorkflow from 'n8n-workflow';
 
@@ -74,7 +74,7 @@ describe('useInstalledCommunityPackage', () => {
 
 		it('should compute isUpdateCheckAvailable correctly when user is instance owner and node is community', () => {
 			const usersStore = mockedStore(useUsersStore);
-			usersStore.isInstanceOwner = true;
+			usersStore.isAdminOrOwner = true;
 			mockIsCommunityPackageName.mockReturnValue(true);
 
 			const { isUpdateCheckAvailable } = useInstalledCommunityPackage(
@@ -86,7 +86,7 @@ describe('useInstalledCommunityPackage', () => {
 
 		it('should compute isUpdateCheckAvailable as false when user is not instance owner', () => {
 			const usersStore = mockedStore(useUsersStore);
-			usersStore.isInstanceOwner = false;
+			usersStore.isAdminOrOwner = false;
 			mockIsCommunityPackageName.mockReturnValue(true);
 
 			const { isUpdateCheckAvailable } = useInstalledCommunityPackage(
@@ -98,7 +98,7 @@ describe('useInstalledCommunityPackage', () => {
 
 		it('should compute isUpdateCheckAvailable as false when node is not community', () => {
 			const usersStore = mockedStore(useUsersStore);
-			usersStore.isInstanceOwner = true;
+			usersStore.isAdminOrOwner = true;
 			mockIsCommunityPackageName.mockReturnValue(false);
 
 			const { isUpdateCheckAvailable } = useInstalledCommunityPackage('n8n-nodes-base.HttpRequest');

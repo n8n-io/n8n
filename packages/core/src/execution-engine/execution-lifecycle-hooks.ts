@@ -42,7 +42,7 @@ export type ExecutionLifecycleHookHandlers = {
 		(
 			this: ExecutionLifecycleHooks,
 			workflow: Workflow,
-			data?: IRunExecutionData,
+			data: IRunExecutionData,
 		) => Promise<void> | void
 	>;
 
@@ -104,6 +104,7 @@ export class ExecutionLifecycleHooks {
 		readonly mode: WorkflowExecuteMode,
 		readonly executionId: string,
 		readonly workflowData: IWorkflowBase,
+		readonly retryOf?: string,
 	) {}
 
 	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(

@@ -1,7 +1,11 @@
-import { describe, it, expect } from '@jest/globals';
 import type { IDataObject } from 'n8n-workflow';
 
-import { generateSubnodeCall, generateSubnodesConfig, formatValue } from './subnode-generator';
+import {
+	formatCredentials,
+	generateSubnodeCall,
+	generateSubnodesConfig,
+	formatValue,
+} from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 
 /**
@@ -10,7 +14,7 @@ import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 function createSemanticNode(
 	name: string,
 	type: string,
-	subnodes: Array<{ connectionType: AiConnectionType; subnodeName: string }> = [],
+	subnodes: Array<{ connectionType: AiConnectionType; subnodeName: string; index: number }> = [],
 	parameters?: IDataObject,
 	position?: [number, number],
 ): SemanticNode {
@@ -126,7 +130,7 @@ describe('generateSubnodeCall', () => {
 			'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 		);
 		const parentSubnode = createSemanticNode('Tool', '@n8n/n8n-nodes-langchain.toolWorkflow', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'NestedModel' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'NestedModel', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -153,7 +157,7 @@ describe('generateSubnodesConfig', () => {
 	it('generates config for single subnode', () => {
 		const subnode = createSemanticNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'Model' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'Model', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -177,8 +181,8 @@ describe('generateSubnodesConfig', () => {
 		const tool1 = createSemanticNode('Tool1', '@n8n/n8n-nodes-langchain.toolWorkflow');
 		const tool2 = createSemanticNode('Tool2', '@n8n/n8n-nodes-langchain.toolWorkflow');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_tool', subnodeName: 'Tool1' },
-			{ connectionType: 'ai_tool', subnodeName: 'Tool2' },
+			{ connectionType: 'ai_tool', subnodeName: 'Tool1', index: 0 },
+			{ connectionType: 'ai_tool', subnodeName: 'Tool2', index: 1 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -216,7 +220,7 @@ describe('generateSubnodesConfig', () => {
 	it('uses variable names when useVarRefs=true', () => {
 		const subnode = createSemanticNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi');
 		const parent = createSemanticNode('Agent', '@n8n/n8n-nodes-langchain.agent', [
-			{ connectionType: 'ai_languageModel', subnodeName: 'Model' },
+			{ connectionType: 'ai_languageModel', subnodeName: 'Model', index: 0 },
 		]);
 
 		const graph: SemanticGraph = {
@@ -237,6 +241,32 @@ describe('generateSubnodesConfig', () => {
 		expect(result).toContain('model: model');
 		// Should NOT contain inline languageModel call
 		expect(result).not.toContain('languageModel({');
+	});
+});
+
+describe('formatCredentials', () => {
+	it('preserves a bare null credential ID as a literal', () => {
+		const result = formatCredentials({
+			openAiApi: { id: null, name: 'OpenAI API' },
+		});
+
+		expect(result).toBe("{ openAiApi: { id: null, name: 'OpenAI API' } }");
+	});
+
+	it('keeps string credential IDs in the existing two-argument form', () => {
+		const result = formatCredentials({
+			slackApi: { id: 'cred-123', name: 'My Slack' },
+		});
+
+		expect(result).toBe("{ slackApi: newCredential('My Slack', 'cred-123') }");
+	});
+
+	it('keeps name-only credentials in the existing one-argument form', () => {
+		const result = formatCredentials({
+			slackApi: { name: 'My Slack' },
+		});
+
+		expect(result).toBe("{ slackApi: newCredential('My Slack') }");
 	});
 });
 

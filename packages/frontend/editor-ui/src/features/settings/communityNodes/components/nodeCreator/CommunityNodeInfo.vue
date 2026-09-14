@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ContactAdministratorToInstall from '../ContactAdministratorToInstall.vue';
 import { useInstalledCommunityPackage } from '../../composables/useInstalledCommunityPackage';
 
@@ -37,7 +36,8 @@ const quickConnect = computed(() => {
 
 const nodeTypesStore = useNodeTypesStore();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const usersStore = useUsersStore();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -132,7 +132,7 @@ onMounted(async () => {
 						: i18n.baseText('communityNodeInfo.approved')
 				}}</template>
 				<div>
-					<ShieldIcon :class="$style.tooltipIcon" />
+					<N8nIcon :class="$style.tooltipIcon" icon="shield-half" />
 					<N8nText color="text-light" size="xsmall" bold data-test-id="verified-tag">
 						{{ i18n.baseText('communityNodeInfo.approved.label') }}
 					</N8nText>
@@ -174,8 +174,12 @@ onMounted(async () => {
 			</N8nTooltip>
 		</div>
 
-		<QuickConnectBanner v-if="quickConnect" :text="quickConnect?.text" />
-		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
+		<QuickConnectBanner
+			v-if="quickConnect"
+			:text="quickConnect?.text"
+			:disclaimer="quickConnect?.disclaimer"
+		/>
+		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 

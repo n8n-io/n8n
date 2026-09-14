@@ -9,10 +9,12 @@ import {
 
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { lemonadeDescription, lemonadeModel, lemonadeOptions } from './description';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmLemonade implements INodeType {
 	description: INodeTypeDescription = {

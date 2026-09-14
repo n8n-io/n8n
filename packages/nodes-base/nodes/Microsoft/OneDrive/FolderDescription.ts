@@ -31,6 +31,12 @@ export const folderOperations: INodeProperties[] = [
 				action: 'Get items in a folder',
 			},
 			{
+				name: 'Move',
+				value: 'move',
+				description: 'Move a folder',
+				action: 'Move a folder',
+			},
+			{
 				name: 'Rename',
 				value: 'rename',
 				description: 'Rename a folder',
@@ -101,6 +107,7 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['delete', 'getChildren'],
@@ -108,6 +115,62 @@ export const folderFields: INodeProperties[] = [
 			},
 		},
 		default: '',
+		description: 'The ID of the folder. Use `root` for the top-level folder.',
+		hint: 'Use `root` for the top-level folder of the drive',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                               folder:move                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Folder ID',
+		name: 'folderId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['folder'],
+			},
+		},
+		default: '',
+		description: 'ID of the folder to move',
+	},
+	{
+		displayName: 'Destination Folder ID',
+		name: 'destinationFolderId',
+		type: 'string',
+		default: '',
+		placeholder: 'root',
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['folder'],
+			},
+		},
+		description:
+			"ID of the destination folder to move the item into. Use `root` for the drive's top-level folder.",
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['move'],
+				resource: ['folder'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'New Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'A new name for the folder. If omitted, the existing name is kept.',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                               folder:rename                                */
@@ -142,6 +205,20 @@ export const folderFields: INodeProperties[] = [
 	/*                                 folder:search                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName:
+			'Search is not available with the Service Principal credential. App-only Microsoft Graph cannot search a drive — use Folder: Get Children, or switch to an OAuth2 credential.',
+		name: 'searchUnsupportedNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['search'],
+				resource: ['folder'],
+				authentication: ['microsoftEntraServicePrincipalApi'],
+			},
+		},
+	},
+	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
@@ -149,6 +226,9 @@ export const folderFields: INodeProperties[] = [
 			show: {
 				operation: ['search'],
 				resource: ['folder'],
+			},
+			hide: {
+				authentication: ['microsoftEntraServicePrincipalApi'],
 			},
 		},
 		default: '',
@@ -158,6 +238,20 @@ export const folderFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:share                               */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName:
+			'With the Service Principal credential, creating a sharing link uses application permissions and may require additional tenant or admin configuration to succeed.',
+		name: 'shareServicePrincipalNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['share'],
+				resource: ['folder'],
+				authentication: ['microsoftEntraServicePrincipalApi'],
+			},
+		},
+	},
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',

@@ -135,6 +135,23 @@ describe('CanvasRunWorkflowButton', () => {
 		expect(menuItems[3]).toHaveTextContent('from A');
 	});
 
+	it('should show keyboard shortcut tooltip when disabled', async () => {
+		const wrapper = renderComponent({
+			props: {
+				disabled: true,
+				triggerNodes: [createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE })],
+			},
+		});
+
+		const button = wrapper.getByRole('button');
+		expect(button).toBeDisabled();
+
+		// Should show the keyboard shortcut tooltip, not a disabled reason
+		await hoverTooltipTrigger(button);
+		await new Promise((r) => setTimeout(r, 600));
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute workflow'));
+	});
+
 	it('should allow to select and execute a different trigger', async () => {
 		const wrapper = renderComponent({
 			props: {

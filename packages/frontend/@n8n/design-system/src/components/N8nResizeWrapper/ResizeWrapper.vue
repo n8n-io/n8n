@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
@@ -42,7 +42,6 @@ interface ResizeProps {
 	scale?: number;
 	gridSize?: number;
 	supportedDirections?: Direction[];
-	outset?: boolean;
 	window?: Window;
 }
 
@@ -56,12 +55,9 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	maxWidth: Number.POSITIVE_INFINITY,
 	scale: 1,
 	gridSize: 20,
-	outset: false,
 	window: undefined,
 	supportedDirections: () => [],
 });
-
-const $style = useCssModule();
 
 const emit = defineEmits<{
 	resizestart: [];
@@ -88,10 +84,9 @@ const state = {
 	y: ref(0),
 };
 
-const classes = computed(() => ({
-	[$style.resize]: true,
-	[$style.outset]: props.outset,
-}));
+// Keeps the active handle's indicator visible while dragging, even when the
+// pointer drifts off the handle. state.dir is lowercased on mousedown.
+const activeDirection = computed(() => state.dir.value);
 
 const mouseMove = (event: MouseEvent) => {
 	event.preventDefault();
@@ -135,15 +130,38 @@ const mouseMove = (event: MouseEvent) => {
 	state.dWidth.value = dWidth;
 };
 
+// Idempotent — safe to call from mouseup, blur, unmount, or any abort path.
+// Returns whether a drag was actually in progress, so callers can decide
+// whether to emit resizeend without risk of double-emitting.
+const cleanupResize = (): boolean => {
+	if (state.dir.value === '') return false;
+	const w = props.window ?? window;
+	w.removeEventListener('mousemove', mouseMove);
+	w.removeEventListener('mouseup', mouseUp);
+	w.removeEventListener('blur', onBlur);
+	document.body.style.cursor = 'unset';
+	document.body.classList.remove('n8n-resizing');
+	state.dir.value = '';
+	return true;
+};
+
+// Tab switch, OS notification, alt-tab — any focus loss aborts the drag so
+// the body class doesn't stick when mouseup never fires on this window.
+const onBlur = () => {
+	if (cleanupResize()) emit('resizeend');
+};
+
 const mouseUp = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
-	emit('resizeend');
-	(props.window ?? window).removeEventListener('mousemove', mouseMove);
-	(props.window ?? window).removeEventListener('mouseup', mouseUp);
-	document.body.style.cursor = 'unset';
-	state.dir.value = '';
+	// Clean up before emitting so a throwing parent handler can't leave the
+	// body in a stuck-resizing state.
+	if (cleanupResize()) emit('resizeend');
 };
+
+onBeforeUnmount(() => {
+	cleanupResize();
+});
 
 const resizerMove = (event: MouseEvent) => {
 	event.preventDefault();
@@ -155,6 +173,7 @@ const resizerMove = (event: MouseEvent) => {
 	}
 
 	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
+	document.body.classList.add('n8n-resizing');
 
 	state.x.value = event.pageX;
 	state.y.value = event.pageY;
@@ -163,19 +182,25 @@ const resizerMove = (event: MouseEvent) => {
 	state.vHeight.value = props.height;
 	state.vWidth.value = props.width;
 
-	(props.window ?? window).addEventListener('mousemove', mouseMove);
-	(props.window ?? window).addEventListener('mouseup', mouseUp);
+	const w = props.window ?? window;
+	w.addEventListener('mousemove', mouseMove);
+	w.addEventListener('mouseup', mouseUp);
+	w.addEventListener('blur', onBlur);
 	emit('resizestart');
 };
 </script>
 
 <template>
-	<div :class="classes">
+	<div :class="$style.resize">
 		<div
 			v-for="direction in enabledDirections"
 			:key="direction"
 			:data-dir="direction"
-			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
+			:class="{
+				[$style.resizer]: true,
+				[$style[direction]]: true,
+				[$style.active]: activeDirection === direction.toLowerCase(),
+			}"
 			data-test-id="resize-handle"
 			@mousedown="resizerMove"
 		/>
@@ -186,8 +211,10 @@ const resizerMove = (event: MouseEvent) => {
 <style lang="scss" module>
 .resize {
 	--resizer--size: 4px;
-	--resizer--spacing--side: -2px;
+	--resizer--spacing--side: calc(var(--resizer--size) / -2);
 	--resizer--spacing--corner: -3px;
+	--resizer--indicator--thickness: var(--spacing--4xs);
+	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
 
 	position: relative;
 	width: 100%;
@@ -205,7 +232,9 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	right: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
+	border-color: var(--border-color);
+	border-color: var(--color--neutral-400);
 }
 
 .top {
@@ -213,7 +242,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .bottom {
@@ -221,7 +250,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	bottom: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .left {
@@ -229,7 +258,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
 }
 
 .topLeft {
@@ -264,8 +293,56 @@ const resizerMove = (event: MouseEvent) => {
 	cursor: se-resize;
 }
 
-.outset {
-	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
-	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
+.right,
+.left {
+	top: 0;
+}
+
+.top,
+.bottom {
+	left: 0;
+}
+
+.right,
+.left,
+.top,
+.bottom {
+	&::after {
+		content: '';
+		position: absolute;
+		background-color: var(--resizer--indicator--color);
+		opacity: 0;
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+		pointer-events: none;
+	}
+
+	&:hover::after,
+	&.active::after {
+		opacity: 1;
+	}
+}
+
+.right::after,
+.left::after {
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: var(--resizer--indicator--thickness);
+}
+
+.top::after,
+.bottom::after {
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: var(--resizer--indicator--thickness);
+}
+</style>
+
+<style lang="scss">
+body.n8n-resizing iframe {
+	pointer-events: none;
 }
 </style>

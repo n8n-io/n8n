@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nSwitch, N8nText } from '@n8n/design-system';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 
 const i18n = useI18n();
@@ -15,7 +15,7 @@ const showCompleted = ref(true);
 		</div>
 		<footer :class="$style.footer" data-test-id="setup-panel-footer">
 			<N8nText :class="$style['toggle-label']" tag="label" size="small">
-				<N8nSwitch2 v-model="showCompleted" size="small" />
+				<N8nSwitch v-model="showCompleted" size="small" />
 				{{ i18n.baseText('setupPanel.showCompleted') }}
 			</N8nText>
 		</footer>

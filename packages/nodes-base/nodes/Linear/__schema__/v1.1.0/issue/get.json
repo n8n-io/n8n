@@ -1,6 +1,17 @@
 {
     "type": "object",
     "properties": {
+        "assignee": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "createdAt": {
             "type": "string"
         },
@@ -8,6 +19,9 @@
             "type": "object",
             "properties": {
                 "displayName": {
+                    "type": "string"
+                },
+                "email": {
                     "type": "string"
                 },
                 "id": {
@@ -35,9 +49,20 @@
                 }
             }
         },
+        "team": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "title": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

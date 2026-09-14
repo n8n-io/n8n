@@ -71,8 +71,8 @@ describe('useWorkflowsListStore', () => {
 			workflowsListStore.addWorkflow(workflow);
 
 			const result = workflowsListStore.getWorkflowById('123');
-			expect(result.id).toBe('123');
-			expect(result.name).toBe('Test Workflow');
+			expect(result?.id).toBe('123');
+			expect(result?.name).toBe('Test Workflow');
 		});
 
 		it('should return undefined for non-existent workflow', () => {
@@ -395,6 +395,20 @@ describe('useWorkflowsListStore', () => {
 
 			expect(result).toEqual(mockWorkflows);
 			expect(Object.values(workflowsListStore.workflowsById)).toEqual(mockWorkflows);
+		});
+
+		it('should track fetched state per project scope', async () => {
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: [],
+			});
+
+			await workflowsListStore.fetchAllWorkflows('project-1');
+
+			expect(workflowsListStore.allWorkflowsFetched).toBe(true);
+			expect(workflowsListStore.hasFetchedAllWorkflows('project-1')).toBe(true);
+			expect(workflowsListStore.hasFetchedAllWorkflows('project-2')).toBe(false);
+			expect(workflowsListStore.hasFetchedAllWorkflows()).toBe(false);
 		});
 	});
 

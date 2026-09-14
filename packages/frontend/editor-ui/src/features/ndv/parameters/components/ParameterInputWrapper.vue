@@ -14,7 +14,7 @@ import {
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -44,6 +44,8 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	hideLabel?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,7 +63,7 @@ const emit = defineEmits<{
 	textInput: [value: IUpdateInformation];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
 const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
@@ -98,9 +100,11 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.expressionTargetItem);
+const targetItem = computed(() => ndvStore.value?.expressionTargetItem ?? null);
 
-const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
+const isInputParentOfActiveNode = computed(
+	() => ndvStore.value?.isInputParentOfActiveNode ?? false,
+);
 
 const expression = computed(() => {
 	if (!isExpression.value) return '';
@@ -187,6 +191,7 @@ defineExpose({
 				:documentation-url="documentationUrl"
 				:error-highlight="errorHighlight"
 				:is-for-credential="isForCredential"
+				:hide-label="hideLabel"
 				:event-source="eventSource"
 				:expression-evaluated="resolvedExpression"
 				:additional-expression-data="resolvedAdditionalExpressionData"
@@ -195,6 +200,7 @@ defineExpose({
 				:data-test-id="`parameter-input-${parsedParameterName}`"
 				:event-bus="eventBus"
 				:can-be-overridden="canBeOverridden"
+				:external-issues="externalIssues"
 				@focus="onFocus"
 				@blur="onBlur"
 				@drop="onDrop"

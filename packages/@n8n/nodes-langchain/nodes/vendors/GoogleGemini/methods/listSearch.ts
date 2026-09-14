@@ -66,6 +66,10 @@ export async function imageGenerationModelSearch(
 ): Promise<INodeListSearchResult> {
 	const rawResult = await baseModelSearch.call(this, (model) => model.includes('image'));
 	let results = rawResult.results.map((r) => {
+		if (r.name.includes('gemini-3.1-flash-image')) {
+			return { name: `${r.name} (Nano Banana 2)`, value: r.value };
+		}
+
 		if (r.name.includes('gemini-2.5-flash-image')) {
 			return { name: `${r.name} (Nano Banana)`, value: r.value };
 		}

@@ -1,0 +1,27 @@
+{
+	"type": "object",
+	"description": "The input item's original fields passed through unchanged, plus the added sentimentAnalysis object",
+	"required": ["sentimentAnalysis"],
+	"properties": {
+		"sentimentAnalysis": {
+			"type": "object",
+			"required": ["category"],
+			"properties": {
+				"category": {
+					"type": "string",
+					"description": "The detected sentiment category, e.g. Positive/Neutral/Negative"
+				},
+				"strength": {
+					"type": "number",
+					"description": "Present only when detailed results are enabled"
+				},
+				"confidence": {
+					"type": "number",
+					"description": "Present only when detailed results are enabled"
+				}
+			}
+		}
+	},
+	"additionalProperties": true,
+	"version": 1
+}

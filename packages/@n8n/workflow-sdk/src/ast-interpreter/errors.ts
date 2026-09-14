@@ -80,8 +80,9 @@ export class UnsupportedNodeError extends InterpreterError {
 export class SecurityError extends InterpreterError {
 	readonly pattern: string;
 
-	constructor(pattern: string, location?: SourceLocation, sourceCode?: string) {
-		super(`Security violation: '${pattern}' is not allowed`, location, sourceCode);
+	/** Pass `detail` for sentence-style messages to avoid double-wrapping `pattern`. */
+	constructor(pattern: string, location?: SourceLocation, sourceCode?: string, detail?: string) {
+		super(detail ?? `Security violation: '${pattern}' is not allowed`, location, sourceCode);
 		this.name = 'SecurityError';
 		this.pattern = pattern;
 	}
@@ -98,5 +99,20 @@ export class UnknownIdentifierError extends InterpreterError {
 		super(`Unknown identifier: '${identifier}' is not defined`, location, sourceCode);
 		this.name = 'UnknownIdentifierError';
 		this.identifier = identifier;
+	}
+}
+
+/**
+ * Error thrown when interpretation exceeds a bound on statement count,
+ * total produced data, or expression nesting depth.
+ */
+export class ResourceLimitError extends InterpreterError {
+	readonly limitType: string;
+
+	/** Pass `detail` for sentence-style messages to avoid double-wrapping `limitType`. */
+	constructor(limitType: string, location?: SourceLocation, sourceCode?: string, detail?: string) {
+		super(detail ?? `Resource limit exceeded: '${limitType}'`, location, sourceCode);
+		this.name = 'ResourceLimitError';
+		this.limitType = limitType;
 	}
 }

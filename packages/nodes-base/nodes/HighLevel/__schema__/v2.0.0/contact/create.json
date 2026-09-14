@@ -1,6 +1,20 @@
 {
     "type": "object",
     "properties": {
+        "additionalEmails": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "validEmailDate": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "additionalPhones": {
             "type": "array",
             "items": {
@@ -85,6 +99,12 @@
         "locationId": {
             "type": "string"
         },
+        "phone": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string"
+        },
         "tags": {
             "type": "array",
             "items": {
@@ -95,5 +115,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 5
 }

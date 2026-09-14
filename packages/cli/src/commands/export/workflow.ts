@@ -7,11 +7,12 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 
+import { BaseCommand } from '../base-command';
+
 import '../../zod-alias-support';
+import { EventService } from '@/events/event.service';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),
@@ -22,6 +23,7 @@ const flagsSchema = z.object({
 		)
 		.optional(),
 	id: z.string().describe('The ID of the workflow to export').optional(),
+	projectId: z.string().describe('Export all workflows in the specified project').optional(),
 	output: z
 		.string()
 		.alias('o')
@@ -43,6 +45,7 @@ const flagsSchema = z.object({
 	description: 'Export workflows',
 	examples: [
 		'--all',
+		'--projectId=Ox8O54VQrmBrb4qL',
 		'--id=5 --output=file.json',
 		'--id=5 --version=abc-123-def',
 		'--id=5 --published',
@@ -73,13 +76,15 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			return;
 		}
 
-		if (!flags.all && !flags.id) {
-			this.logger.info('Either option "--all" or "--id" have to be set!');
+		const selectorCount = [flags.all, flags.id, flags.projectId].filter(Boolean).length;
+
+		if (selectorCount === 0) {
+			this.logger.info('One of "--all", "--id", or "--projectId" has to be set!');
 			return;
 		}
 
-		if (flags.all && flags.id) {
-			this.logger.info('You should either use "--all" or "--id" but never both!');
+		if (selectorCount > 1) {
+			this.logger.info('Use exactly one of "--all", "--id", or "--projectId".');
 			return;
 		}
 
@@ -115,7 +120,7 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		}
 
 		const workflows = await Container.get(WorkflowRepository).find({
-			where: flags.id ? { id: flags.id } : {},
+			where: this.getWhereFilter(flags),
 			relations: ['tags', 'shared', 'shared.project'],
 		});
 
@@ -166,11 +171,33 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				this.logger.info(fileContents);
 			}
 		}
+
+		const selector = flags.all ? 'all' : flags.id ? 'id' : 'projectId';
+
+		Container.get(EventService).emit('server-cli-export', {
+			selector,
+			published: flags.published ?? false,
+			separate: flags.separate ?? false,
+			backup: flags.backup ?? false,
+			workflowCount: workflowsToExport.length,
+		});
 	}
 
 	async catch(error: Error) {
 		this.logger.error('Error exporting workflows. See log messages for details.');
 		this.logger.debug(error.message);
+	}
+
+	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
+		if (flags.id) {
+			return { id: flags.id };
+		}
+
+		if (flags.projectId) {
+			return { shared: { projectId: flags.projectId } };
+		}
+
+		return {};
 	}
 }
 
@@ -236,6 +263,7 @@ function mergeHistoriesIntoWorkflows(
 					...workflow,
 					nodes: history.nodes,
 					connections: history.connections,
+					nodeGroups: history.nodeGroups,
 					versionId: history.versionId,
 					versionMetadata: {
 						name: history.name,

@@ -1,0 +1,228 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
+import type { BuiltTool } from '@n8n/agents';
+
+import { isParseableAttachment } from '../parsers/structured-file-parser';
+import { createToolRegistry } from '../tool-registry';
+import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+
+const lazyMod = <T>(loader: () => T): (() => T) => {
+	let cached: T | undefined;
+	return () => (cached ??= loader());
+};
+
+const loadParseFileTool = lazyMod(
+	() => require('./attachments/parse-file.tool') as typeof import('./attachments/parse-file.tool'),
+);
+const loadCredentialsTool = lazyMod(
+	() => require('./credentials.tool') as typeof import('./credentials.tool'),
+);
+const loadConversationHistoryTool = lazyMod(
+	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
+);
+const loadDataTablesTool = lazyMod(
+	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+);
+const loadEvalConfigTool = lazyMod(
+	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
+);
+const loadExecutionsTool = lazyMod(
+	() => require('./executions.tool') as typeof import('./executions.tool'),
+);
+const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadMcpServersTool = lazyMod(
+	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
+);
+const loadActivityTool = lazyMod(
+	() => require('./activity.tool') as typeof import('./activity.tool'),
+);
+const loadN8nDocsTool = lazyMod(
+	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
+);
+const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadBuildAgentTool = lazyMod(
+	() =>
+		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+);
+const loadListAgentCapabilitiesTool = lazyMod(
+	() =>
+		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
+);
+const loadGetSessionTool = lazyMod(
+	() =>
+		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
+);
+const loadCompleteCheckpointTool = lazyMod(
+	() =>
+		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
+);
+const loadPlanTool = lazyMod(
+	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
+);
+const loadReportVerificationVerdictTool = lazyMod(
+	() =>
+		require('./orchestration/report-verification-verdict.tool') as typeof import('./orchestration/report-verification-verdict.tool'),
+);
+const loadVerifyBuiltWorkflowTool = lazyMod(
+	() =>
+		require('./orchestration/verify-built-workflow.tool') as typeof import('./orchestration/verify-built-workflow.tool'),
+);
+const loadResearchTool = lazyMod(
+	() => require('./research.tool') as typeof import('./research.tool'),
+);
+const loadAskUserTool = lazyMod(
+	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
+);
+const loadTaskControlTool = lazyMod(
+	() => require('./task-control.tool') as typeof import('./task-control.tool'),
+);
+const loadApplyWorkflowCredentialsTool = lazyMod(
+	() =>
+		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
+);
+const loadBuildWorkflowTool = lazyMod(
+	() =>
+		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+);
+const loadWorkflowsTool = lazyMod(
+	() => require('./workflows.tool') as typeof import('./workflows.tool'),
+);
+const loadWorkspaceTool = lazyMod(
+	() => require('./workspace.tool') as typeof import('./workspace.tool'),
+);
+
+type DomainToolFactory = () => BuiltTool;
+
+function getOrchestratorDomainToolFactories(
+	context: InstanceAiContext,
+): Array<[string, DomainToolFactory]> {
+	const tools: Array<[string, DomainToolFactory]> = [
+		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
+		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
+		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
+		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
+		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
+		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
+		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
+		],
+	];
+
+	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// when `088_config_evaluations` is on, so presence = expose the tool.
+	if (context.evaluationConfigService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.EVAL_CONFIG,
+			() => loadEvalConfigTool().createEvalConfigTool(context),
+		]);
+	}
+
+	// Same pattern: the adapter only wires mcpService when MCP access is enabled
+	// instance-wide and the user is in the MCP-connections experiment. Orchestrator
+	// only — sub-agents can't offer the user a connection.
+	if (context.mcpService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.MCP_SERVERS,
+			() => loadMcpServersTool().createMcpServersTool(context),
+		]);
+	}
+
+	// Orchestrator-only: sub-agents receive context via briefings, and cross-thread
+	// reads stay with the agent the user talks to. The adapter only wires
+	// conversationHistoryService when the run has a bound project.
+	if (context.conversationHistoryService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
+			() => loadConversationHistoryTool().createConversationHistoryTool(context),
+		]);
+	}
+
+	// Same pattern: the adapter wires `activityService` only when the reader is enabled, so
+	// presence is the flag as far as the tool layer is concerned. Orchestrator only, because the
+	// block that hands the agent ids to expand rides the orchestrator's turn.
+	if (context.activityService) {
+		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
+	}
+
+	if (context.currentUserAttachments?.some(isParseableAttachment)) {
+		tools.push([
+			DOMAIN_TOOL_IDS.PARSE_FILE,
+			() => loadParseFileTool().createParseFileTool(context),
+		]);
+	}
+
+	return tools;
+}
+
+/** Returns only the native domain tool names active for this request. */
+export function getActiveOrchestratorDomainToolNames(context: InstanceAiContext): Set<string> {
+	return new Set(getOrchestratorDomainToolFactories(context).map(([name]) => name));
+}
+
+/** Creates the native n8n domain tools available to the orchestrator. */
+export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = getOrchestratorDomainToolFactories(context).map(
+		([name, createTool]) => [name, createTool()],
+	);
+
+	return createToolRegistry(tools);
+}
+
+/**
+ * Creates orchestration-only tools (task planning, task control).
+ * These tools are given to the orchestrator agent but never to sub-agents.
+ */
+export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
+	const tools: Array<[string, BuiltTool]> = [];
+	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
+	tools.push(
+		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
+		[
+			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
+			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
+		],
+	);
+
+	if (context.workflowTaskService) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
+			loadReportVerificationVerdictTool().createReportVerificationVerdictTool(context),
+		]);
+	}
+
+	if (context.workflowTaskService && context.domainContext) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+			loadVerifyBuiltWorkflowTool().createVerifyBuiltWorkflowTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
+			loadApplyWorkflowCredentialsTool().createApplyWorkflowCredentialsTool(context),
+		]);
+	}
+
+	if (context.domainContext?.builderDelegate) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
+			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
+			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
+		]);
+		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
+	}
+
+	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.GET_SESSION,
+			loadGetSessionTool().createGetSessionTool(context),
+		]);
+	}
+
+	return createToolRegistry(tools);
+}

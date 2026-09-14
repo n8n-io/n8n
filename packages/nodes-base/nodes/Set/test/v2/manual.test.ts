@@ -77,7 +77,7 @@ describe('test Set2, manual Mode', () => {
 		},
 	};
 
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('fixed mode', () => {
 		const assignments = {

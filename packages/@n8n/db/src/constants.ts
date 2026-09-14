@@ -10,7 +10,7 @@ import {
 	type Role as RoleDTO,
 } from '@n8n/permissions';
 
-import type { Role } from 'entities';
+import type { Role } from './entities';
 
 export function builtInRoleToRoleObject(
 	role: RoleDTO,

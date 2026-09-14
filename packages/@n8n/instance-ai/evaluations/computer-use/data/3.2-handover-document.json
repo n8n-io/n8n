@@ -1,0 +1,27 @@
+{
+	"id": "3.2-handover-document",
+	"category": "filesystem-write",
+	"prompt": "I'm handing the workflow 'CU Eval — Sample Workflow' off to a client. Write a handover document explaining what it does, how to use it, and any configuration they need to know about. Save it on my computer.",
+	"setup": {
+		"seedWorkflow": "sample-workflow.json"
+	},
+	"budgets": { "maxToolCalls": 30, "maxDurationMs": 300000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "write_file" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 30,
+			"maxToolResultTokensEst": 50000,
+			"maxSingleToolResultTokensEst": 20000
+		},
+		{
+			"type": "fs.fileMatches",
+			"glob": "**/*",
+			"anyOf": ["handover|overview|how to|getting started"],
+			"allOf": ["schedule|http|slack"]
+		}
+	],
+	"tags": ["filesystem-write", "regression"]
+}

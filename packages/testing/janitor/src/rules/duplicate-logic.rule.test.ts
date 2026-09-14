@@ -58,7 +58,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			expect(violations.length).toBe(1);
 			expect(violations[0].message).toContain('Duplicate method logic');
@@ -91,7 +91,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			expect(violations.length).toBe(0);
 		});
@@ -116,7 +116,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			// Same file duplicates are allowed (may be intentional)
 			expect(violations.length).toBe(0);
@@ -144,7 +144,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			expect(violations.length).toBe(1);
 			expect(violations[0].message).toContain('Duplicate test logic');
@@ -175,7 +175,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			// Should detect that test duplicates HomePage.login()
 			expect(violations.length).toBe(1);
@@ -204,7 +204,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			// Only 1 statement, below threshold of 2
 			expect(violations.length).toBe(0);
@@ -231,7 +231,7 @@ describe('DuplicateLogicRule', () => {
 			});
 
 			const files = project.getSourceFiles();
-			const violations = rule.analyze(project, files);
+			const violations = rule.analyzeProject(project, files);
 
 			// 2 statements meets the threshold
 			expect(violations.length).toBe(1);

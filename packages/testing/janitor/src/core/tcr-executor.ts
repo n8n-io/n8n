@@ -6,16 +6,18 @@ import { execFileSync } from 'node:child_process';
 import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
-import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
+import { type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
 import { loadBaseline, filterNewViolations } from './baseline.js';
+import { extractDiffs } from './extract-diffs.js';
+import { ImpactAnalyzer } from './impact-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
-import { createProject } from './project-loader.js';
 import { RuleRunner } from './rule-runner.js';
 import { ApiPurityRule } from '../rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from '../rules/boundary-protection.rule.js';
 import { DeadCodeRule } from '../rules/dead-code.rule.js';
 import { DeduplicationRule } from '../rules/deduplication.rule.js';
 import { NoPageInFlowRule } from '../rules/no-page-in-flow.rule.js';
+import { NoRawEditorNavigationRule } from '../rules/no-raw-editor-navigation.rule.js';
 import { ScopeLockdownRule } from '../rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from '../rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from '../rules/test-data-hygiene.rule.js';
@@ -122,7 +124,8 @@ export class TcrExecutor {
 		this.logger.debugList(changedFiles);
 
 		// Analyze changed methods early (useful for understanding the change even if later checks fail)
-		const changedMethods = this.extractChangedMethods(changedFiles, baseRef);
+		const diffs = extractDiffs(changedFiles, baseRef);
+		const changedMethods = diffs.flatMap((d) => d.changedMethods);
 		this.logChangedMethods(changedMethods);
 
 		// Validation: rules
@@ -165,7 +168,7 @@ export class TcrExecutor {
 		this.logger.debug('\u2713 Typecheck passed');
 
 		// Find affected tests
-		const affectedTests = this.findAffectedTests(changedFiles, changedMethods);
+		const affectedTests = this.findAffectedTests(changedFiles, diffs);
 		this.logger.debug(`\nAffected tests: ${affectedTests.length}`);
 		this.logger.debugList(affectedTests);
 
@@ -351,17 +354,6 @@ export class TcrExecutor {
 
 	// --- Method Analysis ---
 
-	private extractChangedMethods(changedFiles: string[], baseRef: string): MethodChange[] {
-		const changedMethods: MethodChange[] = [];
-		for (const file of changedFiles) {
-			if (file.endsWith('.ts') && !file.endsWith('.spec.ts')) {
-				const diff = diffFileMethods(file, baseRef);
-				changedMethods.push(...diff.changedMethods);
-			}
-		}
-		return changedMethods;
-	}
-
 	private logChangedMethods(changedMethods: MethodChange[]): void {
 		if (changedMethods.length === 0) return;
 		this.logger.debug(`\nChanged methods: ${changedMethods.length}`);
@@ -374,7 +366,6 @@ export class TcrExecutor {
 
 	private runRules(changedFiles: string[]): number {
 		const runner = this.createRuleRunner();
-		const { project } = createProject(this.root);
 
 		const tsFiles = changedFiles
 			.filter((f) => f.endsWith('.ts'))
@@ -382,7 +373,7 @@ export class TcrExecutor {
 
 		if (tsFiles.length === 0) return 0;
 
-		const report = runner.run(project, this.root, { files: tsFiles });
+		const report = runner.run({ rootDir: this.root }, { files: tsFiles });
 		return this.countNewViolations(report);
 	}
 
@@ -396,6 +387,7 @@ export class TcrExecutor {
 		runner.registerRule(new DeadCodeRule());
 		runner.registerRule(new DeduplicationRule());
 		runner.registerRule(new TestDataHygieneRule());
+		runner.registerRule(new NoRawEditorNavigationRule());
 		return runner;
 	}
 
@@ -461,38 +453,13 @@ export class TcrExecutor {
 		return gitGetChangedFiles({ targetBranch, scopeDir: this.root, extensions: ['.ts'] });
 	}
 
-	private findAffectedTests(changedFiles: string[], changedMethods: MethodChange[]): string[] {
-		const affectedTests = new Set<string>();
-
-		const changedTestFiles = this.getChangedTestFiles(changedFiles);
-		const methodIndex = this.getMethodUsageIndex();
-
-		// Find tests using modified/removed methods
-		this.addTestsUsingMethods(
-			changedMethods.filter((m) => m.changeType !== 'added'),
-			methodIndex,
-			affectedTests,
-		);
-
-		// Find tests using newly added methods
-		this.addTestsUsingNewMethods(
-			changedMethods.filter((m) => m.changeType === 'added'),
-			changedTestFiles,
-			affectedTests,
-		);
-
-		// Include directly changed test files
-		for (const testFile of changedTestFiles) {
-			affectedTests.add(testFile);
-		}
-
-		return Array.from(affectedTests).sort((a, b) => a.localeCompare(b));
-	}
-
-	private getChangedTestFiles(changedFiles: string[]): string[] {
-		return changedFiles
-			.filter((f) => f.endsWith('.spec.ts'))
-			.map((f) => path.relative(this.root, f));
+	private findAffectedTests(changedFiles: string[], diffs: FileDiffResult[]): string[] {
+		const analyzer = new ImpactAnalyzer(this.project);
+		const result = analyzer.analyze(changedFiles, {
+			diffs,
+			methodUsageIndex: this.getMethodUsageIndex(),
+		});
+		return result.affectedTests;
 	}
 
 	private getMethodUsageIndex(): MethodUsageIndex {
@@ -501,43 +468,6 @@ export class TcrExecutor {
 			this.methodUsageIndex = analyzer.buildIndex();
 		}
 		return this.methodUsageIndex;
-	}
-
-	private addTestsUsingMethods(
-		methods: MethodChange[],
-		methodIndex: MethodUsageIndex,
-		affectedTests: Set<string>,
-	): void {
-		for (const change of methods) {
-			const key = `${change.className}.${change.methodName}`;
-			const usages = methodIndex.methods[key] ?? [];
-			for (const usage of usages) {
-				affectedTests.add(usage.testFile);
-			}
-		}
-	}
-
-	private addTestsUsingNewMethods(
-		addedMethods: MethodChange[],
-		changedTestFiles: string[],
-		affectedTests: Set<string>,
-	): void {
-		if (addedMethods.length === 0 || changedTestFiles.length === 0) return;
-
-		for (const testFile of changedTestFiles) {
-			const fullPath = path.join(this.root, testFile);
-			const sourceFile = this.project.getSourceFile(fullPath);
-			if (!sourceFile) continue;
-
-			const content = sourceFile.getFullText();
-			for (const method of addedMethods) {
-				const methodPattern = new RegExp(`\\.${method.methodName}\\s*\\(`);
-				if (methodPattern.test(content)) {
-					affectedTests.add(testFile);
-					break;
-				}
-			}
-		}
 	}
 
 	private runTests(testFiles: string[], testCommand?: string): boolean {

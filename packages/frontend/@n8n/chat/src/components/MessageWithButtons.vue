@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
+import { useOptions } from '@n8n/chat/composables';
+
 import Button from './Button.vue';
 import MarkdownRenderer from './MarkdownRenderer.vue';
 
@@ -13,7 +15,21 @@ defineProps<{
 	}>;
 }>();
 
+const chatOptions = useOptions();
 const clickedButtonIndex = ref<number | null>(null);
+
+const isButtonVisible = (link: string, index: number): boolean => {
+	try {
+		const validOrigin = new URL(chatOptions.options.webhookUrl).origin;
+		const url = new URL(link, window.location.href);
+		if (url.origin !== validOrigin) {
+			return false;
+		}
+		return clickedButtonIndex.value === null || index === clickedButtonIndex.value;
+	} catch {
+		return false;
+	}
+};
 
 const onClick = async (link: string, index: number) => {
 	if (clickedButtonIndex.value !== null) {
@@ -33,7 +49,7 @@ const onClick = async (link: string, index: number) => {
 		<div :class="$style.buttons">
 			<template v-for="(button, index) in buttons" :key="button.text">
 				<Button
-					v-if="clickedButtonIndex === null || index === clickedButtonIndex"
+					v-if="isButtonVisible(button.link, index)"
 					element="button"
 					:type="button.type"
 					:disabled="index === clickedButtonIndex"

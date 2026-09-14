@@ -2,8 +2,8 @@ import type { SecretProviderTypeResponse, SecretsProviderType } from '@n8n/api-t
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'superagent';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -78,9 +78,9 @@ describe('Secret Providers Types API', () => {
 				expect(response.status).toBe(200);
 			});
 
-			it('should refuse member to list provider types', async () => {
+			it('should authorize member to list provider types', async () => {
 				const response = await memberAgent.get('/secret-providers/types');
-				expect(response.status).toBe(403);
+				expect(response.status).toBe(200);
 			});
 		});
 
@@ -201,9 +201,9 @@ describe('Secret Providers Types API', () => {
 				expect(response.status).toBe(200);
 			});
 
-			it('should refuse member to get provider type', async () => {
+			it('should authorize member to get provider type', async () => {
 				const response = await memberAgent.get('/secret-providers/types/dummy');
-				expect(response.status).toBe(403);
+				expect(response.status).toBe(200);
 			});
 		});
 

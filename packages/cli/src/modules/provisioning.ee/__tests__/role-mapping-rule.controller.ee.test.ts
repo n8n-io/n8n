@@ -1,0 +1,237 @@
+import type { LicenseState } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { Response } from 'express';
+import { mock } from 'vitest-mock-extended';
+
+import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
+import type {
+	RoleMappingRuleListResponse,
+	RoleMappingRuleResponse,
+	RoleMappingRuleService,
+} from '../role-mapping-rule.service.ee';
+
+const roleMappingRuleService = mock<RoleMappingRuleService>();
+const licenseState = mock<LicenseState>();
+
+const controller = new RoleMappingRuleController(roleMappingRuleService, licenseState);
+
+describe('RoleMappingRuleController', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('list', () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>({
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+		});
+
+		const query = { skip: 0, take: 10 };
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.list(req, res, query);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should list role mapping rules when provisioning is licensed', async () => {
+			const payload: RoleMappingRuleListResponse = {
+				count: 1,
+				items: [
+					{
+						id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+						expression: 'true',
+						role: 'global:member',
+						type: 'instance',
+						order: 0,
+						projectIds: [],
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					},
+				],
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.list.mockResolvedValue(payload);
+
+			const result = await controller.list(req, res, query);
+
+			expect(result).toEqual(payload);
+			expect(roleMappingRuleService.list).toHaveBeenCalledWith(query);
+		});
+	});
+
+	describe('create', () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>({
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+		});
+
+		const body = {
+			expression: 'groups.includes("admins")',
+			role: 'global:admin',
+			type: 'instance' as const,
+			order: 0,
+		};
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.create(req, res, body);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should create a role mapping rule when provisioning is licensed', async () => {
+			const created: RoleMappingRuleResponse = {
+				id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+				expression: body.expression,
+				role: body.role,
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.create.mockResolvedValue(created);
+
+			const result = await controller.create(req, res, body);
+
+			expect(result).toEqual(created);
+			expect(roleMappingRuleService.create).toHaveBeenCalledWith(body, req.user);
+		});
+	});
+
+	describe('patch', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const patchBody = { expression: 'claims.updated === true' };
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		req.body = patchBody;
+		const res = mock<Response>({
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.patch(req, res, patchBody, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should patch a role mapping rule when provisioning is licensed', async () => {
+			const updated: RoleMappingRuleResponse = {
+				id: ruleId,
+				expression: patchBody.expression,
+				role: 'global:admin',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.patch.mockResolvedValue(updated);
+
+			const result = await controller.patch(req, res, patchBody, ruleId);
+
+			expect(result).toEqual(updated);
+			expect(roleMappingRuleService.patch).toHaveBeenCalledWith({
+				id: ruleId,
+				dto: patchBody,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
+		});
+	});
+
+	describe('move', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const moveBody = { targetIndex: 2 };
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		const res = mock<Response>({
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.move(req, res, moveBody, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should move a role mapping rule when provisioning is licensed', async () => {
+			const moved: RoleMappingRuleResponse = {
+				id: ruleId,
+				expression: 'true',
+				role: 'global:admin',
+				type: 'instance',
+				order: 2,
+				projectIds: [],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.move.mockResolvedValue(moved);
+
+			const result = await controller.move(req, res, moveBody, ruleId);
+
+			expect(result).toEqual(moved);
+			expect(roleMappingRuleService.move).toHaveBeenCalledWith({
+				id: ruleId,
+				targetIndex: moveBody.targetIndex,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
+		});
+	});
+
+	describe('delete', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		const res = mock<Response>({
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.delete(req, res, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should delete a role mapping rule when provisioning is licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.delete.mockResolvedValue({
+				id: ruleId,
+				expression: 'claims.group === "admins"',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
+
+			const result = await controller.delete(req, res, ruleId);
+
+			expect(result).toEqual({ success: true });
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith({
+				id: ruleId,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
+		});
+	});
+});

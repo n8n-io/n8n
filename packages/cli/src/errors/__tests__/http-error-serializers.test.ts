@@ -1,0 +1,216 @@
+import type { SourceControlledFile } from '@n8n/api-types';
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
+import { classifyHttpError } from '@/errors/http-error-classifier';
+import {
+	serializeInternalRestError,
+	serializePublicApiError,
+} from '@/errors/http-error-serializers';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
+import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+
+describe('http-error-serializers', () => {
+	it('serializePublicApiError: minimal message for ResponseError', () => {
+		const descriptor = classifyHttpError(new NotFoundError('x'));
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 404,
+			body: { message: 'x' },
+		});
+	});
+
+	it('serializeInternalRestError: includes code for ResponseError', () => {
+		const descriptor = classifyHttpError(new NotFoundError('x'));
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 404,
+			body: {
+				code: 404,
+				message: 'x',
+			},
+		});
+	});
+
+	it('serializePublicApiError: does not expose internal-only response error meta', () => {
+		const descriptor = classifyHttpError(
+			new LicenseEulaRequiredError('License activation requires EULA acceptance', {
+				eulaUrl: 'https://n8n.io/legal/eula/',
+			}),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 400,
+			body: { message: 'License activation requires EULA acceptance' },
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 400,
+			body: {
+				code: 400,
+				message: 'License activation requires EULA acceptance',
+				meta: { eulaUrl: 'https://n8n.io/legal/eula/' },
+			},
+		});
+	});
+
+	it('returns review details publicly while keeping editor-only validation metadata internal', () => {
+		const descriptor = classifyHttpError(
+			new WorkflowPublishBlockedError({
+				reason: 'changes_requested',
+				workflowReviewRequestId: 'review-1',
+			}),
+		);
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				message: expect.stringContaining('requested changes'),
+				reason: 'changes_requested',
+				workflowReviewRequestId: 'review-1',
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: expect.stringContaining('requested changes'),
+				meta: {
+					reason: 'changes_requested',
+					workflowReviewRequestId: 'review-1',
+					validationError: true,
+				},
+			},
+		});
+	});
+
+	it('serializePublicApiError: 422 with issues when only credentials are unresolved', () => {
+		const issues = [
+			{
+				type: 'credential-unresolved' as const,
+				kind: 'not_found' as const,
+				sourceId: 'cred-1',
+				usedByWorkflows: ['wf-1'],
+			},
+		];
+		const descriptor = classifyHttpError(toImportBlockedError(issues));
+
+		const result = serializePublicApiError(descriptor);
+		expect(result.status).toBe(422);
+		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
+	});
+
+	it('serializePublicApiError: 409 with issues when a workflow conflicts', () => {
+		const issues = [
+			{
+				type: 'workflow-conflict' as const,
+				sourceWorkflowId: 'wf-1',
+				existingWorkflowId: 'local-1',
+				name: 'Existing',
+			},
+			{
+				type: 'credential-unresolved' as const,
+				kind: 'not_found' as const,
+				sourceId: 'cred-1',
+				usedByWorkflows: ['wf-1'],
+			},
+		];
+		const descriptor = classifyHttpError(toImportBlockedError(issues));
+
+		const result = serializePublicApiError(descriptor);
+		expect(result.status).toBe(409);
+		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
+	});
+
+	it('both serializers expose policy violations on a 403', () => {
+		const violations = [
+			{
+				kind: 'node-type-unavailable',
+				checkId: 'node-type-availability',
+				message: 'Slack is not available in this project',
+				subject: 'n8n-nodes-base.slack',
+				subjectType: 'nodeType',
+			},
+		];
+		const descriptor = classifyHttpError(new PolicyViolationError([violations[0]]));
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				message: 'Slack is not available in this project',
+				violations,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				code: 403,
+				message: 'Slack is not available in this project',
+				meta: { violations },
+			},
+		});
+	});
+
+	it('both serializers expose source control push conflicts on a 409', () => {
+		const conflicts: SourceControlledFile[] = [
+			{
+				file: 'workflows/wf-1.json',
+				id: 'wf-1',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: true,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		];
+		const descriptor = classifyHttpError(
+			new ConflictError(
+				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
+				undefined,
+				{
+					conflicts,
+				},
+			),
+		);
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				message: expect.stringContaining('conflicting files'),
+				conflicts,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: expect.stringContaining('conflicting files'),
+				meta: { conflicts },
+			},
+		});
+	});
+
+	it('both serializers map UserError to 400', () => {
+		const descriptor = classifyHttpError(new UserError('bad input'));
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 400,
+			body: { message: 'bad input' },
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 400,
+			body: { code: 0, message: 'bad input' },
+		});
+	});
+
+	it('public sanitizes UnexpectedError; internal keeps message', () => {
+		const descriptor = classifyHttpError(new UnexpectedError('secret'));
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 500,
+			body: { message: 'Internal server error' },
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 500,
+			body: { code: 0, message: 'secret' },
+		});
+	});
+});

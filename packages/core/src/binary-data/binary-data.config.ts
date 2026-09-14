@@ -2,10 +2,10 @@ import { Config, Env, ExecutionsConfig } from '@n8n/config';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { InstanceSettings } from '@/instance-settings';
+import { InstanceSettings, type DeploymentStateRepo } from '@/instance-settings';
 import { StorageConfig } from '@/storage.config';
 
-export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'database'] as const;
+export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'azure', 'database'] as const;
 
 const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
 
@@ -62,5 +62,32 @@ export class BinaryDataConfig {
 			.digest('base64');
 
 		this.mode ??= executionsConfig.mode === 'queue' ? 'database' : 'filesystem';
+	}
+
+	/**
+	 * Two-phase init: reads or creates the signing.binary_data deployment-key row.
+	 * Must be called after DB migrations complete, before any signed-URL generation.
+	 * Precedence: N8N_BINARY_DATA_SIGNING_SECRET env → DB active row → derive-from-key (and persist)
+	 */
+	async initialize(
+		repo: Pick<DeploymentStateRepo, 'findActiveSigningSecret' | 'seedSigningSecret'>,
+	): Promise<void> {
+		if (process.env.N8N_BINARY_DATA_SIGNING_SECRET) {
+			return;
+		}
+		const existing = await repo.findActiveSigningSecret('signing.binary_data', {
+			rewrapLegacy: true,
+		});
+		if (existing !== null) {
+			this.signingSecret = existing;
+			return;
+		}
+		await repo.seedSigningSecret('signing.binary_data', this.signingSecret);
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret('signing.binary_data', {
+			rewrapLegacy: true,
+		});
+		if (winner !== null) this.signingSecret = winner;
 	}
 }

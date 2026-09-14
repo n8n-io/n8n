@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -698,7 +698,7 @@ describe('Google Sheet - Append or Update', () => {
 
 		// Mock the checkForSchemaChanges import to verify it's called
 		const GoogleSheetsUtils = await import('../../../v2/helpers/GoogleSheets.utils');
-		jest.spyOn(GoogleSheetsUtils, 'checkForSchemaChanges').mockImplementation(() => {});
+		vi.spyOn(GoogleSheetsUtils, 'checkForSchemaChanges').mockImplementation(() => {});
 
 		await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1', '1234');
 
@@ -715,7 +715,7 @@ describe('Google Sheet - Append or Update v4.6 vs v4.7 Behavior', () => {
 	let mockGoogleSheet: MockProxy<GoogleSheet>;
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('v4.6: empty string in UI gets filtered out, field not sent to backend', async () => {

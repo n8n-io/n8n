@@ -75,6 +75,40 @@ const responderContextSchema = z.object({
  * Build internal context message from coordination log and state.
  * This is called by the middleware to inject context into the message stream.
  */
+function buildErrorContext(coordinationLog: CoordinationLogEntry[], nodeCount: number): string[] {
+	const errorEntry = getErrorEntry(coordinationLog);
+	if (!errorEntry || hasRecursionErrorsCleared(coordinationLog)) return [];
+
+	const errorMessage = errorEntry.summary.toLowerCase();
+	const isRecursionError =
+		errorMessage.includes('recursion') ||
+		errorMessage.includes('maximum number of steps') ||
+		errorMessage.includes('iteration limit');
+
+	if (!isRecursionError) return [];
+
+	const parts = [
+		`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
+	];
+
+	// AI-1812: Provide better guidance based on workflow state and error type
+	const guidance =
+		nodeCount > 0
+			? buildRecursionErrorWithWorkflowGuidance(nodeCount)
+			: buildRecursionErrorNoWorkflowGuidance();
+	parts.push(...guidance);
+
+	return parts;
+}
+
+function buildFetchedUrlContentBlock(discoveryContext?: DiscoveryContext | null): string | null {
+	const items = discoveryContext?.fetchedUrlContent;
+	if (!items?.length) return null;
+
+	const lines = items.map((u) => `- ${u.url} (status: ${u.status}) ${u.title}`);
+	return `**Fetched URL Content:**\n${lines.join('\n')}`;
+}
+
 function buildContextContent(context: ResponderContext): string | null {
 	const contextParts: string[] = [];
 
@@ -89,50 +123,28 @@ function buildContextContent(context: ResponderContext): string | null {
 		contextParts.push(`**State Management:** ${stateManagementEntry.summary}`);
 	}
 
-	// Check for errors - provide context-aware guidance (AI-1812)
-	// Skip errors that have been cleared (AI-1812)
-	const errorEntry = getErrorEntry(context.coordinationLog);
-	const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
-
 	// Selected nodes context (for deictic resolution)
 	const selectedNodesBlock = buildSelectedNodesContextBlock(context.workflowContext);
 	if (selectedNodesBlock) {
 		contextParts.push(`=== SELECTED NODES ===\n${selectedNodesBlock}`);
 	}
 
-	if (errorEntry && !errorsCleared) {
-		const hasWorkflow = context.workflowJSON.nodes.length > 0;
-		const errorMessage = errorEntry.summary.toLowerCase();
-		const isRecursionError =
-			errorMessage.includes('recursion') ||
-			errorMessage.includes('maximum number of steps') ||
-			errorMessage.includes('iteration limit');
-
-		if (isRecursionError) {
-			contextParts.push(
-				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
-			);
-
-			// AI-1812: Provide better guidance based on workflow state and error type
-			if (hasWorkflow) {
-				// Recursion error but workflow was created
-				const guidance = buildRecursionErrorWithWorkflowGuidance(context.workflowJSON.nodes.length);
-				contextParts.push(...guidance);
-			} else {
-				// Recursion error and no workflow created
-				const guidance = buildRecursionErrorNoWorkflowGuidance();
-				contextParts.push(...guidance);
-			}
-		}
-		// For non-recursion errors, don't inject any error context.
-		// The responder will respond naturally to the user's message.
-	}
+	// Error context with recursion-specific guidance (AI-1812)
+	contextParts.push(
+		...buildErrorContext(context.coordinationLog, context.workflowJSON.nodes.length),
+	);
 
 	// Discovery context
 	if (context.discoveryContext?.nodesFound.length) {
 		contextParts.push(
 			`**Discovery:** Found ${context.discoveryContext.nodesFound.length} relevant nodes`,
 		);
+	}
+
+	// Fetched URL content during discovery
+	const fetchedContent = buildFetchedUrlContentBlock(context.discoveryContext);
+	if (fetchedContent) {
+		contextParts.push(fetchedContent);
 	}
 
 	// Builder output (handles both node creation and parameter configuration)
@@ -145,11 +157,9 @@ function buildContextContent(context: ResponderContext): string | null {
 	}
 
 	// Data Table creation guidance
-	// If the workflow contains Data Table nodes, inform user they need to create tables manually
 	const dataTableInfo = extractDataTableInfo(context.workflowJSON);
 	if (dataTableInfo.length > 0) {
-		const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
-		contextParts.push(dataTableGuidance);
+		contextParts.push(buildDataTableCreationGuidance(dataTableInfo));
 	}
 
 	// Execution status (simplified error info for user explanations)
@@ -161,9 +171,7 @@ function buildContextContent(context: ResponderContext): string | null {
 		contextParts.push(`**Execution Status:**\n${executionStatus}`);
 	}
 
-	if (contextParts.length === 0) {
-		return null;
-	}
+	if (contextParts.length === 0) return null;
 
 	return `[Internal Context - Use this to craft your response]\n${contextParts.join('\n\n')}`;
 }

@@ -1,23 +1,22 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
@@ -31,7 +30,7 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
+	return !!workflowDocumentStore?.value?.meta?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -39,7 +38,9 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowsStore.getNodes();
+	// Disabled nodes are skipped during execution, so their unfilled
+	// credentials must not keep the setup button visible.
+	const nodes = (workflowDocumentStore?.value?.allNodes ?? []).filter((node) => !node.disabled);
 	if (!nodes.length) {
 		return true;
 	}
@@ -58,13 +59,13 @@ const isSetupPanelFeatureEnabled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
+	const isCreatedFromTemplate = !!workflowDocumentStore?.value?.meta?.templateId;
 	if (!isCreatedFromTemplate) {
 		return false;
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return workflowsStore.getNodes().length > 0;
+		return (workflowDocumentStore?.value?.allNodes ?? []).length > 0 && !allCredentialsFilled.value;
 	}
 
 	if (isTemplateSetupCompleted.value) {
@@ -84,7 +85,7 @@ const isButtonDisabled = computed(() => {
 
 const unsubscribe = watch(allCredentialsFilled, (newValue) => {
 	if (newValue) {
-		workflowState.addToWorkflowMetadata({
+		workflowDocumentStore?.value?.addToMeta({
 			templateCredsSetupCompleted: true,
 		});
 
@@ -113,23 +114,30 @@ onBeforeUnmount(() => {
 	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
 });
 
-onMounted(async () => {
-	// Wait for all reactive updates to settle before checking conditions
-	// This ensures workflow.meta.templateId is available after initialization
-	await nextTick();
-
-	const templateId = workflowsStore.workflow?.meta?.templateId;
-	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
-
-	if (
+const shouldAutoOpenSetup = computed(() => {
+	const templateId = workflowDocumentStore?.value?.meta?.templateId;
+	return (
 		isNewTemplatesSetupEnabled.value &&
+		!readyToRunStore.isReadyToRunTemplateId(templateId) &&
 		showButton.value &&
-		!isReadyToRunWorkflow &&
 		isTemplateImportRoute.value
-	) {
-		handleTemplateSetup();
-	}
+	);
 });
+
+// Auto-open the setup the first time all conditions hold. They may only become
+// true after nodes and node types finish loading (an unloaded node type reports
+// its credentials as filled), so react to the change rather than sampling once
+// on mount. The guard ensures we never re-open once the user closes it.
+let hasAutoOpened = false;
+watch(
+	shouldAutoOpenSetup,
+	(shouldOpen) => {
+		if (hasAutoOpened || !shouldOpen) return;
+		hasAutoOpened = true;
+		handleTemplateSetup();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

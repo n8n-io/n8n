@@ -19,9 +19,8 @@ export async function nextCloudApiRequest(
 	headers?: IDataObject,
 	encoding?: null,
 	query?: IDataObject,
+	useWebDavEndpoint: boolean = true,
 ) {
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	let credentials;
@@ -30,6 +29,15 @@ export async function nextCloudApiRequest(
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudApi');
 	} else {
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
+	}
+
+	// Validate webDavUrl to catch credential corruption (empty, malformed, or no hostname etc.)
+	const webDavUrl = credentials.webDavUrl ?? '';
+	if (!URL.canParse(webDavUrl) || !/^https?:\/\//.test(webDavUrl)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid WebDAV URL in credentials: "${webDavUrl}". The URL must start with https:// or http://. Please check your Nextcloud credentials.`,
+		);
 	}
 
 	const options: IRequestOptions = {
@@ -45,15 +53,11 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
-
-	if (resource === 'user' && operation === 'create') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
-
-	if (resource === 'file' && operation === 'share') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
+	// Preserve the existing WebDAV path behavior: endpoints may start with '/', producing '//'.
+	// For non-WebDAV requests, strip the WebDAV suffix while preserving any subpath prefix.
+	options.uri = useWebDavEndpoint
+		? `${webDavUrl}/${encodeURI(endpoint)}`
+		: `${webDavUrl.replace(/\/remote\.php\/webdav\/?$/, '')}/${encodeURI(endpoint)}`;
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';

@@ -9,19 +9,19 @@ describe('Google Sheet - Clear', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNodeParameter: vi.fn(),
 		} as Partial<IExecuteFunctions>;
 
 		mockSheet = {
-			clearData: jest.fn(),
-			getData: jest.fn().mockResolvedValue([['Header1', 'Header2']]), // Mock first-row data
-			updateRows: jest.fn(),
+			clearData: vi.fn(),
+			getData: vi.fn().mockResolvedValue([['Header1', 'Header2']]), // Mock first-row data
+			updateRows: vi.fn(),
 		} as Partial<GoogleSheet>;
 	});
 
 	test('should clear the whole sheet', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'clear') return 'wholeSheet';
 			return false;
 		}) as unknown as IExecuteFunctions['getNodeParameter'];
@@ -36,7 +36,7 @@ describe('Google Sheet - Clear', () => {
 	});
 
 	test('should clear specific rows', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'clear') return 'specificRows';
 			if (param === 'startIndex') return 2;
 			if (param === 'rowsToDelete') return 3;
@@ -53,7 +53,7 @@ describe('Google Sheet - Clear', () => {
 	});
 
 	test('should clear specific columns', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'clear') return 'specificColumns';
 			if (param === 'startIndex') return 'B';
 			if (param === 'columnsToDelete') return 2;
@@ -70,7 +70,7 @@ describe('Google Sheet - Clear', () => {
 	});
 
 	test('should clear a specific range', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'clear') return 'specificRange';
 			if (param === 'range') return 'A1:C5';
 			return false;
@@ -86,7 +86,7 @@ describe('Google Sheet - Clear', () => {
 	});
 
 	test('should keep the first row when clearing the whole sheet', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'clear') return 'wholeSheet';
 			if (param === 'keepFirstRow') return true;
 			return false;

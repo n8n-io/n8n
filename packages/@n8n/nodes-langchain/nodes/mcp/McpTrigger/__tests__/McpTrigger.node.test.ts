@@ -1,32 +1,57 @@
-import { mock } from 'jest-mock-extended';
-import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { Tool } from '@langchain/core/tools';
+import type {
+	CredentialCheckResult,
+	INode,
+	INodePropertyOptions,
+	IWebhookFunctions,
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
+import { recordConsumedAuth, REDACTED } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
-import { McpTrigger } from '../McpTrigger.node';
+import { getConnectedTools } from '@utils/helpers';
+
+import {
+	createMockLogger,
+	createMockRequest,
+	createMockResponse,
+	createListToolsMessage,
+	createValidToolCallMessage,
+} from './helpers';
+import { CONNECT_CREDENTIALS_TOOL_NAME } from '../CredentialGateTool';
 import { McpServer } from '../McpServer';
+import { McpTrigger } from '../McpTrigger.node';
+
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
 
 // Mock the McpServer
-jest.mock('../McpServer', () => ({
+vi.mock('../McpServer', () => ({
 	McpServer: {
-		instance: jest.fn(),
+		instance: vi.fn(),
 	},
 	MCP_LIST_TOOLS_REQUEST_MARKER: 'mcp_list_tools_request',
 }));
 
+const { validateWebhookAuthenticationMock } = vi.hoisted(() => ({
+	validateWebhookAuthenticationMock: vi.fn(),
+}));
+
 // Mock webhook utils from nodes-base
-jest.mock('n8n-nodes-base/dist/nodes/Webhook/utils', () => ({
-	validateWebhookAuthentication: jest.fn(),
+vi.mock('n8n-nodes-base/dist/nodes/Webhook/utils', () => ({
+	validateWebhookAuthentication: validateWebhookAuthenticationMock,
 }));
 
 // Mock getConnectedTools from utils
-jest.mock('@utils/helpers', () => ({
-	getConnectedTools: jest.fn().mockResolvedValue([]),
+vi.mock('@utils/helpers', () => ({
+	getConnectedTools: vi.fn().mockResolvedValue([]),
 }));
 
 describe('McpTrigger', () => {
 	let mcpTrigger: McpTrigger;
-	let mockMcpServer: jest.Mocked<McpServer>;
-	let mockContext: jest.Mocked<IWebhookFunctions>;
+	let mockMcpServer: Mocked<McpServer>;
+	let mockContext: Mocked<IWebhookFunctions>;
 	let mockLogger: ReturnType<typeof createMockLogger>;
 
 	beforeEach(() => {
@@ -34,34 +59,40 @@ describe('McpTrigger', () => {
 		mockLogger = createMockLogger();
 
 		mockMcpServer = {
-			handleSetupRequest: jest.fn().mockResolvedValue(undefined),
-			handlePostMessage: jest.fn().mockResolvedValue({
+			handleSetupRequest: vi.fn().mockResolvedValue(undefined),
+			handlePostMessage: vi.fn().mockResolvedValue({
 				wasToolCall: false,
 				toolCallInfo: undefined,
 				messageId: undefined,
 				relaySessionId: undefined,
 				needsListToolsRelay: false,
 			}),
-			handleDeleteRequest: jest.fn().mockResolvedValue(undefined),
-			handleStreamableHttpSetup: jest.fn().mockResolvedValue(undefined),
-			getSessionId: jest.fn().mockReturnValue(undefined),
-		} as unknown as jest.Mocked<McpServer>;
+			handleDeleteRequest: vi.fn().mockResolvedValue(undefined),
+			handleStreamableHttpSetup: vi.fn().mockResolvedValue(undefined),
+			getSessionId: vi.fn().mockReturnValue(undefined),
+		} as unknown as Mocked<McpServer>;
 
-		(McpServer.instance as jest.Mock).mockReturnValue(mockMcpServer);
+		(McpServer.instance as Mock).mockReturnValue(mockMcpServer);
 
 		mockContext = mock<IWebhookFunctions>({
-			getWebhookName: jest.fn().mockReturnValue('setup'),
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getNode: jest.fn(),
+			getWebhookName: vi.fn().mockReturnValue('setup'),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getNode: vi.fn(),
 			logger: mockLogger,
-			getCredentials: jest.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
+			getCredentials: vi.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
+			checkTriggerCredentialStatus: vi.fn().mockResolvedValue(undefined),
 		});
+
+		(getConnectedTools as Mock).mockResolvedValue([]);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
+
+	const toolInputPassedToSubNodes = () =>
+		vi.mocked(getConnectedTools).mock.calls.at(-1)?.[4]?.inputData;
 
 	describe('description', () => {
 		it('should have the correct node metadata', () => {
@@ -71,14 +102,27 @@ describe('McpTrigger', () => {
 		});
 
 		it('should support multiple versions', () => {
-			expect(mcpTrigger.description.version).toEqual([1, 1.1, 2]);
+			expect(mcpTrigger.description.version).toEqual([1, 1.1, 2, 2.1]);
 		});
 
 		it('should have authentication options', () => {
 			const authParam = mcpTrigger.description.properties?.find((p) => p.name === 'authentication');
 			expect(authParam).toBeDefined();
 			expect(authParam?.type).toBe('options');
-			expect(authParam?.options).toHaveLength(3);
+			expect(authParam?.default).toBe('none');
+			expect(authParam?.options).toHaveLength(4);
+			expect(authParam?.builderHint).toEqual({
+				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+			});
+		});
+
+		it('should gate the n8nOAuth2 option to node version 2 and above', () => {
+			const authParam = mcpTrigger.description.properties?.find((p) => p.name === 'authentication');
+			const options = authParam?.options as INodePropertyOptions[];
+			const oauthOption = options.find((o) => o.value === 'n8nOAuth2');
+
+			expect(oauthOption).toBeDefined();
+			expect(oauthOption?.displayOptions).toEqual({ show: { '@version': [{ _cnd: { gte: 2 } }] } });
 		});
 
 		it('should define webhook endpoints', () => {
@@ -114,6 +158,68 @@ describe('McpTrigger', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
+		it('should forward configured instructions to the setup request', async () => {
+			const req = createMockRequest({ path: '/webhook' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? 'Call the context tool first.' : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(String),
+				expect.any(Array),
+				'Call the context tool first.',
+			);
+		});
+
+		// An expression can resolve `instructions` to any type, but the MCP client
+		// only accepts a string in the initialize result
+		it.each([
+			{ label: 'a number', value: 123, expected: '123' },
+			{ label: 'a boolean', value: false, expected: 'false' },
+			{ label: 'null', value: null, expected: undefined },
+		])('should coerce instructions resolving to $label', async ({ value, expected }) => {
+			const req = createMockRequest({ path: '/webhook' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? value : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(String),
+				expect.any(Array),
+				expected,
+			);
+		});
+
 		it('should use n8n-mcp-server name for version 1', async () => {
 			const req = createMockRequest({ path: '/webhook/sse' });
 			const resp = createMockResponse();
@@ -135,6 +241,7 @@ describe('McpTrigger', () => {
 				'n8n-mcp-server',
 				expect.any(String),
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -160,6 +267,7 @@ describe('McpTrigger', () => {
 				expect.stringMatching(/^[a-z0-9_-]+$/i),
 				expect.any(String),
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -184,6 +292,7 @@ describe('McpTrigger', () => {
 				expect.any(String),
 				'/webhook/messages',
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -208,6 +317,7 @@ describe('McpTrigger', () => {
 				expect.any(String),
 				'/webhook',
 				expect.any(Array),
+				undefined,
 			);
 		});
 	});
@@ -234,13 +344,14 @@ describe('McpTrigger', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should return workflow data when tool call is detected', async () => {
-			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
-			const resp = createMockResponse();
-			const node = mock<INode>({
-				typeVersion: 2,
-				name: 'MCP Server Trigger',
+		const setupToolCall = (typeVersion: number) => {
+			const req = createMockRequest({
+				method: 'POST',
+				query: { sessionId: 'test-session' },
+				headers: { 'x-user-id': 'user-1' },
 			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion, name: 'MCP Server Trigger' });
 
 			mockMcpServer.getSessionId.mockReturnValue('test-session');
 			mockMcpServer.handlePostMessage.mockResolvedValue({
@@ -255,6 +366,13 @@ describe('McpTrigger', () => {
 			mockContext.getRequestObject.mockReturnValue(req as never);
 			mockContext.getResponseObject.mockReturnValue(resp as never);
 			mockContext.getNode.mockReturnValue(node);
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/call' });
+
+			return { req };
+		};
+
+		it('should return workflow data when tool call is detected', async () => {
+			setupToolCall(2);
 
 			const result = await mcpTrigger.webhook(mockContext);
 
@@ -271,6 +389,38 @@ describe('McpTrigger', () => {
 					],
 				],
 			});
+		});
+
+		it('should include the request headers from version 2.1 on', async () => {
+			setupToolCall(2.1);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				mcpToolCall: { toolName: 'test-tool', arguments: { arg1: 'value1' } },
+				mcpMessageId: 'msg-123',
+				headers: { 'x-user-id': 'user-1' },
+			});
+		});
+
+		it('should carry the tool input on the response from version 2.1 on', async () => {
+			setupToolCall(2.1);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.toolInput).toEqual({
+				body: { method: 'tools/call' },
+				headers: { 'x-user-id': 'user-1' },
+			});
+		});
+
+		it('should not produce a tool input on version 2.0', async () => {
+			setupToolCall(2);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.toolInput).toBeUndefined();
+			expect(toolInputPassedToSubNodes()).toBeUndefined();
 		});
 
 		it('should handle Streamable HTTP setup when no session exists', async () => {
@@ -292,6 +442,35 @@ describe('McpTrigger', () => {
 
 			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should forward configured instructions to the Streamable HTTP setup', async () => {
+			const req = createMockRequest({ method: 'POST' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockMcpServer.getSessionId.mockReturnValue(undefined);
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? 'Call the context tool first.' : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(Array),
+				'Call the context tool first.',
+			);
 		});
 	});
 
@@ -318,12 +497,8 @@ describe('McpTrigger', () => {
 
 	describe('authentication', () => {
 		it('should rethrow non-authorization errors', async () => {
-			const { validateWebhookAuthentication } = jest.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-
 			const genericError = new Error('Something went wrong');
-			validateWebhookAuthentication.mockRejectedValue(genericError);
+			validateWebhookAuthenticationMock.mockRejectedValue(genericError);
 
 			const req = createMockRequest({ path: '/webhook' });
 			const resp = createMockResponse();
@@ -341,14 +516,9 @@ describe('McpTrigger', () => {
 		});
 
 		it('should return 401 for authentication errors', async () => {
-			const { WebhookAuthorizationError } = jest.requireActual(
-				'n8n-nodes-base/dist/nodes/Webhook/error',
-			);
-			const { validateWebhookAuthentication } = jest.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-
-			validateWebhookAuthentication.mockRejectedValue(
+			const { WebhookAuthorizationError }: { WebhookAuthorizationError: any } =
+				await vi.importActual('n8n-nodes-base/dist/nodes/Webhook/error');
+			validateWebhookAuthenticationMock.mockRejectedValue(
 				new WebhookAuthorizationError(401, 'Unauthorized'),
 			);
 
@@ -372,13 +542,362 @@ describe('McpTrigger', () => {
 		});
 	});
 
+	describe('n8nOAuth2 authentication', () => {
+		const resourceUrl = 'https://n8n.example.com/mcp/abc';
+		const prmUrl = 'https://n8n.example.com/.well-known/oauth-protected-resource/mcp/abc';
+		const OAUTH_USER = { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' };
+
+		function setupContext(opts: {
+			typeVersion: number;
+			headers?: Record<string, string>;
+			includeUserInOutput?: boolean;
+		}) {
+			const req = createMockRequest({ path: '/mcp/abc', headers: opts.headers ?? {} });
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: opts.typeVersion, name: 'MCP Server Trigger' });
+
+			mockContext.getNodeParameter.mockImplementation((name, fallback) => {
+				if (name === 'authentication') return 'n8nOAuth2';
+				if (name === 'includeUserInOutput') return opts.includeUserInOutput ?? fallback;
+				return fallback;
+			});
+			mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			return { req, resp, node };
+		}
+
+		const setupToolCall = (opts: Parameters<typeof setupContext>[0]) => {
+			const context = setupContext(opts);
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/call' });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockMcpServer.handlePostMessage.mockResolvedValue({
+				wasToolCall: true,
+				toolCallInfo: { toolName: 'test-tool', arguments: {} },
+				messageId: 'msg-123',
+				relaySessionId: undefined,
+				needsListToolsRelay: false,
+			});
+
+			return context;
+		};
+
+		it('fails closed with 401 on node version below 2', async () => {
+			const { resp } = setupContext({ typeVersion: 1.1 });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.writeHead).toHaveBeenCalledWith(401);
+			expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 401 with resource_metadata and no error when the bearer token is missing', async () => {
+			const { resp } = setupContext({ typeVersion: 2 });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.writeHead).toHaveBeenCalledWith(401, {
+				'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`,
+			});
+			expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 401 with error="invalid_token" when the token is rejected', async () => {
+			const { resp } = setupContext({
+				typeVersion: 2,
+				headers: { authorization: 'Bearer bad-token' },
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', resourceUrl);
+			expect(resp.writeHead).toHaveBeenCalledWith(401, {
+				'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}", error="invalid_token"`,
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 503 when the token verifier is unavailable', async () => {
+			const { resp } = setupContext({
+				typeVersion: 2,
+				headers: { authorization: 'Bearer some-token' },
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'verifier_unavailable',
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.status).toHaveBeenCalledWith(503);
+			expect(resp.writeHead).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('proceeds to MCP dispatch when the token is valid', async () => {
+			setupContext({ typeVersion: 2, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('redacts the bearer token in the input the tools see, exposing the caller as `user`', async () => {
+			const { req } = setupContext({
+				typeVersion: 2.1,
+				headers: { authorization: 'Bearer good-token', 'x-user-id': 'user-1' },
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/list' });
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(toolInputPassedToSubNodes()).toEqual({
+				body: { method: 'tools/list' },
+				headers: { authorization: REDACTED, 'x-user-id': 'user-1' },
+				user: OAUTH_USER,
+			});
+			expect(req.headers.authorization).toBe('Bearer good-token');
+		});
+
+		it('omits the caller when the user is excluded from the output', async () => {
+			setupContext({
+				typeVersion: 2.1,
+				headers: { authorization: 'Bearer good-token' },
+				includeUserInOutput: false,
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/list' });
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(toolInputPassedToSubNodes()).not.toHaveProperty('user');
+		});
+
+		it('exposes no user on version 2.0', async () => {
+			setupToolCall({ typeVersion: 2, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).not.toHaveProperty('user');
+			expect(result.toolInput).toBeUndefined();
+		});
+
+		it('exposes the caller in the trigger output on a tool call', async () => {
+			setupToolCall({ typeVersion: 2.1, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: OAUTH_USER });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(result.workflowData?.[0][0].json).toEqual({
+				mcpToolCall: { toolName: 'test-tool', arguments: {} },
+				mcpMessageId: 'msg-123',
+				headers: { authorization: REDACTED },
+				user: OAUTH_USER,
+			});
+			expect(result.toolInput).toMatchObject({ user: OAUTH_USER });
+		});
+	});
+
+	describe('consumed auth headers', () => {
+		const setup = (typeVersion: number) => {
+			const req = createMockRequest({
+				path: '/mcp/abc',
+				headers: { 'x-api-key': 'secret-value', 'x-tenant-id': 'acme' },
+			});
+			const resp = createMockResponse();
+
+			validateWebhookAuthenticationMock.mockImplementation(async () => {
+				recordConsumedAuth(req, ['x-api-key']);
+			});
+
+			mockContext.getNodeParameter.mockReturnValue('headerAuth');
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getBodyData.mockReturnValue({ method: 'tools/list' });
+			mockContext.getNode.mockReturnValue(mock<INode>({ typeVersion, name: 'MCP Server Trigger' }));
+
+			return { req };
+		};
+
+		it('redacts the header the credential named, keeping the rest', async () => {
+			const { req } = setup(2.1);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(toolInputPassedToSubNodes()).toEqual({
+				body: { method: 'tools/list' },
+				headers: { 'x-api-key': REDACTED, 'x-tenant-id': 'acme' },
+			});
+			expect(req.headers).toEqual({ 'x-api-key': 'secret-value', 'x-tenant-id': 'acme' });
+		});
+
+		it('exposes no headers to the tools on version 2.0', async () => {
+			setup(2);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(toolInputPassedToSubNodes()).toBeUndefined();
+		});
+	});
+
+	describe('credential gate during session setup and tool listing', () => {
+		const notReadyGate: CredentialCheckResult = {
+			readyToExecute: false,
+			credentials: [
+				{
+					credentialId: 'cred-1',
+					credentialName: 'Downstream MCP OAuth',
+					credentialType: 'mcpOAuth2Api',
+					status: 'missing',
+					authorizationUrl: 'https://n8n.example.com/connect/cred-1',
+				},
+			],
+		};
+		const readyGate: CredentialCheckResult = { readyToExecute: true, credentials: [] };
+		const toolBuildError = new Error(
+			'Error in sub-node MCP Client: Could not connect to your MCP server. Authentication failed.',
+		);
+
+		function setupWebhookContext(opts: { webhookName: 'setup' | 'default'; rawBody?: string }) {
+			// Earlier auth tests leave the shared mock rejecting; make auth pass here.
+			validateWebhookAuthenticationMock.mockResolvedValue(undefined);
+			const req = createMockRequest({
+				path: '/mcp/test',
+				method: opts.webhookName === 'setup' ? 'GET' : 'POST',
+				rawBody: opts.rawBody,
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockContext.getWebhookName.mockReturnValue(opts.webhookName);
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			return { req, resp, node };
+		}
+
+		it('exposes the connect-credentials placeholder on SSE setup when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
+			const tools = mockMcpServer.handleSetupRequest.mock.calls[0][4];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(tools[0].description).toContain('Downstream MCP OAuth');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('exposes the connect-credentials placeholder on Streamable HTTP setup when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'default' });
+			mockMcpServer.getSessionId.mockReturnValue(undefined);
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalled();
+			const tools = mockMcpServer.handleStreamableHttpSetup.mock.calls[0][3];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('exposes the connect-credentials placeholder on tools/list when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'default', rawBody: createListToolsMessage() });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalled();
+			const tools = mockMcpServer.handlePostMessage.mock.calls[0][2] as Tool[];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('passes the gate result to handlePostMessage for tool calls without re-checking', async () => {
+			setupWebhookContext({
+				webhookName: 'default',
+				rawBody: createValidToolCallMessage('some_tool', {}),
+			});
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockContext.checkTriggerCredentialStatus).toHaveBeenCalledTimes(1);
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.any(Array),
+				expect.any(String),
+				notReadyGate,
+				undefined,
+			);
+		});
+
+		it('does not pass the gate result to handlePostMessage for non-tool-call messages', async () => {
+			setupWebhookContext({ webhookName: 'default', rawBody: createListToolsMessage() });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.any(Array),
+				expect.any(String),
+				undefined,
+				undefined,
+			);
+		});
+
+		it('rethrows tool-building errors when the gate is ready', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(readyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			await expect(mcpTrigger.webhook(mockContext)).rejects.toThrow(toolBuildError.message);
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+		});
+
+		it('rethrows tool-building errors when there is no gate (no identity or module disabled)', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			await expect(mcpTrigger.webhook(mockContext)).rejects.toThrow(toolBuildError.message);
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('list tools relay', () => {
 		it('should return list tools relay data when needed', async () => {
 			// Reset validateWebhookAuthentication to resolve (not reject)
-			const { validateWebhookAuthentication } = jest.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-			validateWebhookAuthentication.mockResolvedValue(undefined);
+			validateWebhookAuthenticationMock.mockResolvedValue(undefined);
 
 			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
 			const resp = createMockResponse();

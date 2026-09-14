@@ -1,0 +1,156 @@
+/**
+ * LLM-based pin data generator.
+ *
+ * Generates realistic mock output data for specified nodes in a workflow
+ * via a single LLM call, ensuring cross-node data consistency. The caller
+ * decides which nodes need pin data — this module only generates it.
+ *
+ * Thin wrapper: prompt building, response parsing, and envelope repair live
+ * in `@n8n/workflow-sdk` (`mock-data/`), shared with the ai-workflow-builder
+ * evals and in-product simulated verification. This module contributes the
+ * LLM call (`createEvalAgent`) and the `__schema__` lookup wiring.
+ */
+
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import type {
+	WorkflowJSON,
+	OutputSchemaLookup,
+	PinDataGenerationInstructions,
+	DataTableColumnInfo,
+} from '@n8n/workflow-sdk';
+import {
+	buildDateAnchors,
+	buildFieldViolationRetryMessage,
+	buildPinDataUserPrompt,
+	buildSchemaContexts,
+	collectPinFieldViolations,
+	findOutputParserTargets,
+	parsePinDataResponse,
+	PIN_DATA_SYSTEM_PROMPT,
+	repairStructuredOutput,
+} from '@n8n/workflow-sdk';
+import { OperationalError } from 'n8n-workflow';
+
+// Re-exports: existing consumers/tests import these from this module.
+export { findOutputParserTargets, repairStructuredOutput } from '@n8n/workflow-sdk';
+
+type PinData = Record<string, Array<Record<string, unknown>>>;
+
+/**
+ * Hang guard for the pin-data LLM call. A stalled provider call otherwise
+ * eats the scenario execution budget; aborting lets the caller fall back to
+ * empty pin data instead.
+ */
+const PIN_DATA_LLM_TIMEOUT_MS = 180_000;
+
+export interface GeneratePinDataOptions {
+	/** The workflow containing the nodes to generate data for */
+	workflow: WorkflowJSON;
+	/** Node names to generate pin data for */
+	nodeNames: string[];
+	/** Optional instructions to enrich the LLM prompt */
+	instructions?: PinDataGenerationInstructions;
+	/**
+	 * `__schema__` lookup (`LoadNodesAndCredentials.createOutputSchemaLookup()`).
+	 * Absent lookup degrades to API-knowledge-only generation.
+	 */
+	outputSchemaLookup?: OutputSchemaLookup;
+	/**
+	 * Real Data Table columns per pinned dataTable-read node name — the
+	 * authoritative row shape; pinned rows are validated against these keys.
+	 */
+	dataTableColumns?: Record<string, DataTableColumnInfo[]>;
+}
+
+/**
+ * Generate pin data for specified nodes in a workflow using an LLM.
+ * Produces consistent cross-node mock data in a single LLM call.
+ *
+ * The caller decides which nodes need pin data (via nodeNames).
+ * This function only generates it.
+ *
+ * @returns PinData covering every requested node (empty array = valid "no stored data" pin).
+ * @throws when generation fails or a node is missing — a silently unpinned node runs for real.
+ */
+export async function generatePinData(options: GeneratePinDataOptions): Promise<PinData> {
+	const { workflow, nodeNames, instructions, outputSchemaLookup, dataTableColumns } = options;
+
+	if (nodeNames.length === 0) return {};
+
+	// Resolve target nodes from the workflow
+	const targetNodes = workflow.nodes.filter((n) => n.name && nodeNames.includes(n.name));
+	if (targetNodes.length === 0) return {};
+
+	// Build schema contexts with optional __schema__ enrichment and
+	// structured-output-parser envelopes for AI roots
+	const outputParserTargets = findOutputParserTargets(workflow);
+	const contexts = buildSchemaContexts(
+		targetNodes,
+		outputSchemaLookup,
+		outputParserTargets,
+		dataTableColumns,
+	);
+
+	// Build prompt and call LLM
+	const userPrompt = buildPinDataUserPrompt(workflow, contexts, {
+		instructions,
+		dateAnchors: buildDateAnchors(new Date()),
+	});
+	const expectedNodeNames = contexts.map((c) => c.nodeName);
+
+	const agent = createEvalAgent('eval-pin-data-generator', {
+		instructions: PIN_DATA_SYSTEM_PROMPT,
+		cache: true,
+	});
+
+	const generateOnce = async (prompt: string): Promise<PinData> => {
+		const result = await agent.generate(prompt, {
+			providerOptions: { anthropic: { maxTokens: 16_384 } },
+			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
+		});
+
+		const responseText = extractText(result);
+		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+
+		const missing = expectedNodeNames.filter((name) => !(name in pinData));
+		if (missing.length > 0) {
+			throw new OperationalError(
+				`Pin data generation returned no data for node(s): ${missing.join(', ')}`,
+			);
+		}
+
+		// Envelope repair for parser-target roots; the shared helper derives the
+		// envelope key from each root's with-parser `__schema__` variant
+		// (`output` for agent and chainLlm ≥1.9, always `output` for extractors).
+		return repairStructuredOutput(pinData, workflow, contexts);
+	};
+
+	const pinData = await generateOnce(userPrompt);
+
+	// Field-name drift (e.g. `invoice_amount` where the declared schema says
+	// `total_amount`) silently breaks correctly-built downstream expressions.
+	// Regenerate once with explicit corrections rather than renaming keys in
+	// place — a deterministic rename could fabricate scenario-relevant data.
+	const violations = collectPinFieldViolations(pinData, contexts);
+	if (violations.length === 0) return pinData;
+
+	const retryPrompt = `${userPrompt}\n\n## Correction required\n\n${buildFieldViolationRetryMessage(violations)}`;
+	const retried = await generateOnce(retryPrompt);
+
+	const remaining = collectPinFieldViolations(retried, contexts);
+	if (remaining.length > 0) {
+		const summary = remaining
+			.map(
+				(v) =>
+					`${v.nodeName} (unknown: ${v.unknownKeys.join(', ') || '-'}; missing: ${v.missingKeys.join(', ') || '-'}; declared: ${v.declaredKeys.join(', ')})`,
+			)
+			.join('; ');
+		// Fail loud: a drifted fixture served silently would poison failure
+		// attribution — an unpinnable scenario must surface as a harness fault.
+		throw new OperationalError(
+			`Pin data generation drifted from declared field names after retry: ${summary}`,
+		);
+	}
+
+	return retried;
+}

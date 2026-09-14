@@ -1,11 +1,12 @@
 import {
-	passwordSchema,
+	createPasswordSchema,
 	PasswordUpdateRequestDto,
 	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User, PublicUser } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
@@ -13,15 +14,17 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
+import { EmailChangeService } from '@/services/email-change.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
@@ -36,6 +39,8 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
+		private readonly globalConfig: GlobalConfig,
+		private readonly emailChangeService: EmailChangeService,
 	) {}
 
 	/**
@@ -54,6 +59,12 @@ export class MeController {
 			lastName: currentLastName,
 		} = req.user;
 
+		if (this.isUserManagedByEnv(req.user)) {
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
@@ -64,7 +75,7 @@ export class MeController {
 		if (isEmailBeingChanged || isFirstNameChanged || isLastNameChanged) {
 			const ssoIdentity = await this.userService.findSsoIdentity(userId);
 
-			if (ssoIdentity) {
+			if (ssoIdentity && this.isAuthIdentityActive(ssoIdentity)) {
 				this.logger.debug(
 					`Request to update user failed because ${ssoIdentity.providerType} user may not change their profile information`,
 					{
@@ -78,7 +89,12 @@ export class MeController {
 			}
 		}
 
-		await this.validateChangingUserEmail(req.user, payload);
+		if (isEmailBeingChanged) {
+			await this.emailChangeService.assertMayRequestEmailChange(req.user, {
+				currentPassword,
+				mfaCode: payload.mfaCode,
+			});
+		}
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [
 			userId,
@@ -108,58 +124,17 @@ export class MeController {
 		return publicUser;
 	}
 
-	private async validateChangingUserEmail(currentUser: User, payload: UserUpdateRequestDto) {
-		if (!payload.email || payload.email === currentUser.email) {
-			// email is not being changed
-			return;
-		}
-		const { currentPassword: providedCurrentPassword, ...payloadWithoutPassword } = payload;
-		const { id: userId, mfaEnabled } = currentUser;
+	private isUserManagedByEnv(user: User): boolean {
+		const { instanceSettingsLoader } = this.globalConfig;
+		return (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		);
+	}
 
-		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
-				{
-					userId: currentUser.id,
-					payload: payloadWithoutPassword,
-				},
-			);
-			throw new BadRequestError('SAML user may not change their email');
-		}
-
-		if (mfaEnabled) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
-			}
-
-			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaCodeValid) {
-				throw new InvalidMfaCodeError();
-			}
-		} else {
-			if (currentUser.password === null) {
-				this.logger.debug('User with no password changed their email', {
-					userId: currentUser.id,
-					payload: payloadWithoutPassword,
-				});
-				return;
-			}
-
-			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
-				throw new BadRequestError('Current password is required to change email');
-			}
-
-			const isProvidedPasswordCorrect = await this.passwordUtility.compare(
-				providedCurrentPassword,
-				currentUser.password,
-			);
-			if (!isProvidedPasswordCorrect) {
-				throw new BadRequestError(
-					'Unable to update profile. Please check your credentials and try again.',
-				);
-			}
-		}
+	private isAuthIdentityActive(authIdentity: AuthIdentity) {
+		return authIdentity.providerType === getCurrentAuthenticationMethod();
 	}
 
 	/**
@@ -175,6 +150,12 @@ export class MeController {
 	) {
 		const { user } = req;
 		const { currentPassword, newPassword, mfaCode } = payload;
+
+		if (this.isUserManagedByEnv(user)) {
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
+			);
+		}
 
 		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {
@@ -195,7 +176,9 @@ export class MeController {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
-		const passwordValidation = passwordSchema.safeParse(newPassword);
+		const passwordValidation = createPasswordSchema(
+			this.globalConfig.userManagement.password.minLength,
+		).safeParse(newPassword);
 		if (!passwordValidation.success) {
 			throw new BadRequestError(
 				passwordValidation.error.errors.map(({ message }) => message).join(' '),

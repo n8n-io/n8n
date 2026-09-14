@@ -1,5 +1,7 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription, INode } from 'n8n-workflow';
+import type * as NodeCrypto from 'node:crypto';
+import type { MockedFunction } from 'vitest';
 
 import {
 	createNode,
@@ -21,37 +23,34 @@ import {
 import { createAddNodeTool } from '../add-node.tool';
 
 // Mock LangGraph dependencies
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
 		// Transform the Command params to match what the test expects
-		content: JSON.stringify(params),
-	})),
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 // Mock crypto module
-// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	randomUUID: jest.fn().mockReturnValue('test-uuid-123'),
+vi.mock('crypto', async () => ({
+	...(await vi.importActual<typeof NodeCrypto>('crypto')),
+	randomUUID: vi.fn().mockReturnValue('test-uuid-123'),
 }));
 
 describe('AddNodeTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
 	let addNodeTool: ReturnType<typeof createAddNodeTool>['tool'];
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.agent];
 		addNodeTool = createAddNodeTool(nodeTypesList).tool;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('invoke', () => {

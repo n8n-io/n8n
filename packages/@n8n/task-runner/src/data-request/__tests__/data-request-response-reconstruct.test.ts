@@ -1,10 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteData,
 	INode,
 	INodeExecutionData,
 	ITaskDataConnectionsSource,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { DataRequestResponse, InputDataChunkDefinition } from '@/runner-types';
 
@@ -32,7 +32,7 @@ describe('DataRequestResponseReconstruct', () => {
 
 			const result = reconstruct.reconstructConnectionInputItems(inputData, chunk);
 
-			expect(result).toEqual([undefined, undefined, { json: { key: 'chunked' } }, undefined]);
+			expect(result).toEqual([undefined, undefined, { json: { key: 'chunked' } }]);
 		});
 
 		it('should handle empty input data gracefully', () => {

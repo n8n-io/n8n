@@ -3,9 +3,14 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nUserInfo from './UserInfo.vue';
 
 export default {
-	title: 'Modules/UserInfo',
+	title: 'Core/UserInfo',
 	component: N8nUserInfo,
 	parameters: {
+		docs: {
+			description: {
+				component: 'A user identity display combining avatar, name, and supporting details.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };
@@ -19,8 +24,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-user-info v-bind="args" />',
 });
 
-export const Member = Template.bind({});
-Member.args = {
+export const Default = Template.bind({});
+Default.args = {
 	firstName: 'Oscar',
 	lastName: 'Wilde',
 	email: 'test@n8n.io',

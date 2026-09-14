@@ -69,3 +69,25 @@ export async function boxApiRequestAllItems(
 
 	return returnData;
 }
+
+export async function boxApiRequestAllItemsMarker(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.limit = 100;
+	do {
+		responseData = await boxApiRequest.call(this, method, endpoint, body, query);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.next_marker = responseData.next_marker;
+	} while (responseData.next_marker);
+
+	return returnData;
+}

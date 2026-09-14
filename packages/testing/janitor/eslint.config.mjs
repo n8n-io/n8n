@@ -1,21 +1,25 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(baseConfig, {
-	ignores: ['coverage/**'],
-}, {
-	rules: {
-		'@typescript-eslint/naming-convention': [
-			'error',
-			// Allow kebab-case for rule IDs in config objects
-			{
-				selector: 'objectLiteralProperty',
-				format: null,
-				filter: {
-					regex: '^[a-z]+-[a-z-]+$', // kebab-case pattern
-					match: true,
-				},
-			},
-		],
+export default defineConfig(
+	backendConfig,
+	{
+		ignores: ['coverage/**', 'bin/**'],
 	},
-});
+	{
+		rules: {
+			'@typescript-eslint/naming-convention': [
+				'error',
+				// Allow kebab-case for rule IDs in config objects
+				{
+					selector: 'objectLiteralProperty',
+					format: null,
+					filter: {
+						regex: '^[a-z]+-[a-z-]+$', // kebab-case pattern
+						match: true,
+					},
+				},
+			],
+		},
+	},
+);

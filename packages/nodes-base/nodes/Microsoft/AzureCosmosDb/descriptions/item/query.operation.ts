@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 						name: 'queryParameters',
 						default: '',
 						description:
-							'Comma-separated list of values used as query parameters. Use $1, $2, $3, etc., in your query.',
+							'Comma-separated list of string values used as query parameters. Use $1, $2, $3, etc., in your query. All values are treated as strings — use "Query Parameters (JSON)" for typed values.',
 						hint: 'Reference them in your query as $1, $2, $3…',
 						placeholder: 'e.g. value1,value2,value3',
 						routing: {
@@ -58,6 +58,19 @@ const properties: INodeProperties[] = [
 							},
 						},
 						type: 'string',
+					},
+					{
+						displayName: 'Query Parameters (JSON)',
+						name: 'queryParametersJson',
+						default: '',
+						description:
+							'JSON array of values used as query parameters. Preserves types (numbers, booleans, null, strings with leading zeros). Use $1, $2, $3, etc., in your query.',
+						hint: 'E.g. [1737062400000, "01234", true, null]. Use this instead of "Query Parameters" when type precision matters.',
+						placeholder: 'e.g. [value1, value2, value3]',
+						type: 'string',
+						typeOptions: {
+							rows: 1,
+						},
 					},
 				],
 			},

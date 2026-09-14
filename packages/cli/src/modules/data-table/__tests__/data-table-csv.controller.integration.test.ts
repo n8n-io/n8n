@@ -10,6 +10,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createDataTable } from '@test-integration/db/data-tables';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -210,6 +211,12 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/download-csv', () =>
 					flag: true,
 					timestamp: testDate,
 				},
+				{
+					text: 'world',
+					number: 99,
+					flag: false,
+					timestamp: testDate,
+				},
 			],
 			columns,
 			'id',
@@ -225,8 +232,10 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/download-csv', () =>
 		expect(lines[0]).toBe('id,text,number,flag,timestamp,createdAt,updatedAt');
 		expect(lines[1]).toContain('hello');
 		expect(lines[1]).toContain('42');
-		// Boolean values vary by database: SQLite use 0/1, PostgreSQL uses true/false
-		expect(lines[1]).toMatch(/,(true|1),/);
+		expect(lines[1]).toContain(',true,');
+		expect(lines[2]).toContain('world');
+		expect(lines[2]).toContain('99');
+		expect(lines[2]).toContain(',false,');
 		// Check for date in ISO format (timezone may vary)
 		expect(lines[1]).toMatch(/2025-01-15T\d{2}:\d{2}:\d{2}\.\d{3}Z/);
 	});
@@ -501,5 +510,69 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/download-csv', () =>
 		expect(csvContent).not.toContain('id');
 		expect(csvContent).not.toContain('createdAt');
 		expect(csvContent).not.toContain('updatedAt');
+	});
+
+	describe('row-level authorization', () => {
+		test('should not expose row data via CSV if custom role lacks dataTable:readRow scope', async () => {
+			const project = await createTeamProject('test project', owner);
+			const metadataOnlyRole = await createCustomRoleWithScopeSlugs(
+				['dataTable:listProject', 'dataTable:read'],
+				{ roleType: 'project' },
+			);
+			const metadataOnlyUser = await createMember();
+			await linkUserToProject(metadataOnlyUser, project, metadataOnlyRole.slug);
+			const metadataOnlyAgent = testServer.authAgentFor(metadataOnlyUser);
+
+			const dataTable = await createDataTable(project, {
+				name: 'Sensitive Table',
+				columns: [{ name: 'secret', type: 'string' }],
+			});
+			const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+			await dataTableRowsRepository.insertRows(
+				dataTable.id,
+				[{ secret: 'payroll-token-123' }],
+				columns,
+				'id',
+			);
+
+			// The row listing endpoint already rejects the metadata-only role
+			await metadataOnlyAgent
+				.get(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.expect(403);
+
+			// The CSV export endpoint must reject it too, since it also returns row data
+			await metadataOnlyAgent
+				.get(`/projects/${project.id}/data-tables/${dataTable.id}/download-csv`)
+				.expect(403);
+		});
+
+		test('should allow CSV download if custom role has dataTable:readRow scope', async () => {
+			const project = await createTeamProject('test project', owner);
+			const rowReaderRole = await createCustomRoleWithScopeSlugs(
+				['dataTable:listProject', 'dataTable:read', 'dataTable:readRow'],
+				{ roleType: 'project' },
+			);
+			const rowReaderUser = await createMember();
+			await linkUserToProject(rowReaderUser, project, rowReaderRole.slug);
+			const rowReaderAgent = testServer.authAgentFor(rowReaderUser);
+
+			const dataTable = await createDataTable(project, {
+				name: 'Readable Table',
+				columns: [{ name: 'secret', type: 'string' }],
+			});
+			const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+			await dataTableRowsRepository.insertRows(
+				dataTable.id,
+				[{ secret: 'payroll-token-123' }],
+				columns,
+				'id',
+			);
+
+			const response = await rowReaderAgent
+				.get(`/projects/${project.id}/data-tables/${dataTable.id}/download-csv`)
+				.expect(200);
+
+			expect(response.body.data.csvContent).toContain('payroll-token-123');
+		});
 	});
 });

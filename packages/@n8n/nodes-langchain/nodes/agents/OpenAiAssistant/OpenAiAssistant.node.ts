@@ -14,9 +14,9 @@ import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -351,7 +351,7 @@ export class OpenAiAssistant implements INodeType {
 				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 				if (options.baseURL) {
-					checkDomainRestrictions(this, credentials, options.baseURL);
+					assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 				}
 
 				const client = new OpenAIClient({

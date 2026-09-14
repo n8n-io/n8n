@@ -4,7 +4,7 @@ import type { RecurrentEvent } from '../GenericFunctions';
 import { addNextOccurrence } from '../GenericFunctions';
 
 const mockNow = '2024-09-06T16:30:00+03:00';
-jest.spyOn(global.Date, 'now').mockImplementation(() => moment(mockNow).valueOf());
+vi.spyOn(global.Date, 'now').mockImplementation(() => moment(mockNow).valueOf());
 
 describe('addNextOccurrence', () => {
 	it('should not modify event if no recurrence exists', () => {

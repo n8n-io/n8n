@@ -22,11 +22,32 @@ properties:
     type: object
     readOnly: true
     example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+  nodeGroups:
+    type: array
+    readOnly: true
+    description: Visual groupings of nodes shown as frames on the canvas
+    items:
+      $ref: './workflowNodeGroup.yml'
   authors:
     type: string
     readOnly: true
     description: Comma-separated list of author IDs who contributed to this version
     example: 1,2,3
+  name:
+    type: string
+    nullable: true
+    readOnly: true
+    description: Optional name for this workflow version
+    example: Production release
+  description:
+    type: string
+    nullable: true
+    readOnly: true
+    description: Optional description for this workflow version
+  autosaved:
+    type: boolean
+    readOnly: true
+    description: Whether this version was created by autosave
   createdAt:
     type: string
     format: date-time

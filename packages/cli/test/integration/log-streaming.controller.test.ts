@@ -1,7 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { GLOBAL_OWNER_ROLE, type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
@@ -11,10 +13,11 @@ import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 mockInstance(Publisher);
 mockInstance(ExecutionRecoveryService);
+const credentialsFinderService = mockInstance(CredentialsFinderService);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
@@ -153,5 +156,118 @@ describe('POST /eventbus/destination', () => {
 
 			expect(response.statusCode).toBe(400);
 		});
+	});
+});
+
+describe('credential access enforcement', () => {
+	const payloadWithCredential = (credentialId: string) => ({
+		__type: '$$MessageEventBusDestinationWebhook',
+		url: 'http://localhost:3456',
+		method: 'POST',
+		label: 'With credentials',
+		enabled: false,
+		subscribedEvents: ['n8n.test.message'],
+		authentication: 'genericCredentialType',
+		genericAuthType: 'httpHeaderAuth',
+		credentials: { httpHeaderAuth: { id: credentialId, name: 'Some cred' } },
+		options: {},
+	});
+
+	afterEach(() => {
+		credentialsFinderService.findCredentialForUser.mockReset();
+	});
+
+	test('rejects with 403 when the user cannot access the referenced credential', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		const response = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(payloadWithCredential('some-credential-id'));
+
+		expect(response.statusCode).toBe(403);
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'some-credential-id',
+			expect.objectContaining({ id: owner.id }),
+			['credential:read'],
+		);
+	});
+
+	test('allows creation when the user can access the referenced credential', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'some-credential-id',
+		} as CredentialsEntity);
+
+		const response = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(payloadWithCredential('some-credential-id'));
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveProperty('id');
+	});
+
+	test('rejects testing a destination whose credentials the user cannot access with 403', async () => {
+		// create it while access is granted, so a destination with credentials is persisted
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'some-credential-id',
+		} as CredentialsEntity);
+		const created = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(payloadWithCredential('some-credential-id'));
+		expect(created.statusCode).toBe(200);
+		const { id } = created.body.data;
+
+		// access revoked → testing must be rejected before the credential is decrypted/sent
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const response = await authOwnerAgent.get('/eventbus/testmessage').query({ id });
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('when log streaming is managed by env', () => {
+	beforeAll(() => {
+		Container.get(InstanceSettingsLoaderConfig).logStreamingManagedByEnv = true;
+	});
+
+	afterAll(() => {
+		Container.get(InstanceSettingsLoaderConfig).logStreamingManagedByEnv = false;
+	});
+
+	test('POST /eventbus/destination is rejected with 403', async () => {
+		const webhookPayload = {
+			__type: '$$MessageEventBusDestinationWebhook',
+			url: 'http://localhost:3456',
+			method: 'POST',
+			label: 'Should not be created',
+			enabled: false,
+			subscribedEvents: ['n8n.test.message'],
+			options: {},
+		};
+
+		const response = await authOwnerAgent.post('/eventbus/destination').send(webhookPayload);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('DELETE /eventbus/destination is rejected with 403', async () => {
+		const response = await authOwnerAgent
+			.delete('/eventbus/destination')
+			.query({ id: '11111111-1111-4111-8111-111111111111' });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('GET /eventbus/destination still succeeds', async () => {
+		const response = await authOwnerAgent.get('/eventbus/destination');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('GET /eventbus/testmessage still succeeds', async () => {
+		const response = await authOwnerAgent
+			.get('/eventbus/testmessage')
+			.query({ id: '11111111-1111-4111-8111-111111111111' });
+
+		expect(response.statusCode).toBe(200);
 	});
 });

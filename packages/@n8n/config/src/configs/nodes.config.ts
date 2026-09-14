@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
 
 function isStringArray(input: unknown): input is string[] {
@@ -22,24 +24,28 @@ class JsonStringArray extends Array<string> {
 
 @Config
 export class NodesConfig {
-	/** Node types to load. Includes all if unspecified. @example '["n8n-nodes-base.hackerNews"]' */
+	/** Node types to load. If empty, all available nodes are loaded. Example: `["n8n-nodes-base.hackerNews"]`. */
 	@Env('NODES_INCLUDE')
 	include: JsonStringArray = [];
 
 	/**
-	 * Node types not to load. Defaults to excluding `ExecuteCommand` and `LocalFileTrigger` for security.
-	 * Set to an empty array to enable all node types.
+	 * Node types to exclude from loading. Default excludes `ExecuteCommand` and `LocalFileTrigger` for security.
+	 * Set to an empty array to allow all node types.
 	 *
 	 * @example '["n8n-nodes-base.hackerNews"]'
 	 */
 	@Env('NODES_EXCLUDE')
 	exclude: JsonStringArray = ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'];
 
-	/** Node type to use as error trigger */
+	/** Node type name used as the default error trigger when workflow execution fails. */
 	@Env('NODES_ERROR_TRIGGER_TYPE')
 	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Memory limit in MB for the Merge node's SQL sandbox. */
+	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
+	mergeSqlSandboxMemoryLimitMb: number = 64;
 }

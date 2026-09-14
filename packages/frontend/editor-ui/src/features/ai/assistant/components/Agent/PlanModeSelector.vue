@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { N8nActionDropdown, N8nButton, N8nIcon } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { N8nSelect2, N8nText } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 type BuilderMode = 'build' | 'plan';
+
+interface ModeSelectItem extends SelectOptionBase<BuilderMode> {
+	description: string;
+}
 
 const props = defineProps<{
 	modelValue: BuilderMode;
@@ -17,53 +21,59 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const modeOptions = computed<Array<ActionDropdownItem<BuilderMode>>>(() => [
+const modeOptions = computed<ModeSelectItem[]>(() => [
 	{
-		id: 'build',
+		value: 'build',
 		label: i18n.baseText('aiAssistant.builder.planMode.selector.build'),
 		description: i18n.baseText(
 			'aiAssistant.builder.planMode.selector.build.description' as BaseTextKey,
 		),
 		icon: 'box',
-		checked: props.modelValue === 'build',
 	},
 	{
-		id: 'plan',
+		value: 'plan',
 		label: i18n.baseText('aiAssistant.builder.planMode.selector.plan'),
 		description: i18n.baseText(
 			'aiAssistant.builder.planMode.selector.plan.description' as BaseTextKey,
 		),
 		icon: 'scroll-text',
-		checked: props.modelValue === 'plan',
 	},
 ]);
 
 const currentMode = computed(() => {
-	return modeOptions.value.find((opt) => opt.id === props.modelValue) ?? modeOptions.value[0];
+	return modeOptions.value.find((opt) => opt.value === props.modelValue) ?? modeOptions.value[0];
 });
 
-function onSelect(value: BuilderMode) {
-	emit('update:modelValue', value);
+function onSelect(value: SelectValue | undefined) {
+	if (value) {
+		emit('update:modelValue', value as BuilderMode);
+	}
 }
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="plan-mode-selector">
-		<N8nActionDropdown :items="modeOptions" placement="bottom-end" hide-arrow @select="onSelect">
-			<template #activator>
-				<N8nButton type="secondary" size="small" :class="$style.trigger">
-					<N8nIcon v-if="currentMode.icon" :icon="currentMode.icon" size="small" />
-					<span :class="$style.triggerLabel">{{ currentMode.label }}</span>
-					<N8nIcon icon="chevron-down" size="xsmall" />
-				</N8nButton>
+		<N8nSelect2
+			:class="$style.select"
+			:items="modeOptions"
+			:model-value="props.modelValue"
+			:icon="currentMode.icon"
+			variant="ghost"
+			size="medium"
+			@update:model-value="onSelect"
+		>
+			<template #default>
+				{{ currentMode.label }}
 			</template>
-			<template #menuItem="item">
-				<div :class="$style.menuItem">
-					<span :class="$style.label">{{ item.label }}</span>
-					<span :class="$style.description">{{ item.description }}</span>
-				</div>
+			<template #item-label="{ item }">
+				<span :class="$style.itemStack">
+					<N8nText tag="span" size="medium">{{ item.label }}</N8nText>
+					<N8nText tag="span" size="small" color="text-base">
+						{{ (item as ModeSelectItem).description }}
+					</N8nText>
+				</span>
 			</template>
-		</N8nActionDropdown>
+		</N8nSelect2>
 	</div>
 </template>
 
@@ -73,32 +83,17 @@ function onSelect(value: BuilderMode) {
 	align-items: center;
 }
 
-.trigger {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+.select {
+	background-color: transparent;
+
+	&:not([data-disabled]):hover {
+		background-color: transparent;
+	}
 }
 
-.triggerLabel {
-	font-size: var(--font-size--2xs);
-}
-
-.menuItem {
+.itemStack {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-}
-
-.label {
-	font-weight: var(--font-weight--bold);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--sm);
-}
-
-.description {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--sm);
 }
 </style>

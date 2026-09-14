@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
@@ -411,10 +411,10 @@ export class AwsRekognition implements INodeType {
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							Object.assign(body, {
 								Image: {
-									Bytes: binaryPropertyData.data,
+									Bytes: binaryBuffer.toString(BINARY_ENCODING),
 								},
 							});
 						} else {

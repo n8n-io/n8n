@@ -29,6 +29,7 @@ export class PerplexityApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'X-Source': 'n8n',
 			},
 		},
 	};

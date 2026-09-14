@@ -98,7 +98,7 @@ async function main() {
 	const allWorkflowIds: number[] = [];
 
 	// Fetch multiple pages to get enough workflow IDs
-	for (let page = 1; page <= 10; page++) {
+	for (let page = 1; page <= 20; page++) {
 		const results = await searchWorkflows(page, 100);
 		if (results.length === 0) break;
 
@@ -112,7 +112,7 @@ async function main() {
 		);
 
 		// Stop if we have enough candidates
-		if (allWorkflowIds.length >= 200) break;
+		if (allWorkflowIds.length >= 2000) break;
 	}
 
 	console.log(`\nFound ${allWorkflowIds.length} new workflow candidates\n`);
@@ -120,7 +120,7 @@ async function main() {
 
 	const results: { id: number; name: string; success: boolean }[] = [];
 	let publishedCount = 0;
-	const TARGET_COUNT = 100;
+	const TARGET_COUNT = 1000;
 
 	for (const id of allWorkflowIds) {
 		if (publishedCount >= TARGET_COUNT) {

@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { MockedFunction } from 'vitest';
 
 import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-messages';
 import {
@@ -9,19 +10,19 @@ import {
 } from '../state-modifier';
 import { estimateTokenCountFromMessages } from '../token-usage';
 
-jest.mock('../cleanup-dangling-tool-call-messages');
-jest.mock('../token-usage');
+vi.mock('../cleanup-dangling-tool-call-messages');
+vi.mock('../token-usage');
 
-const mockCleanupDanglingToolCallMessages = cleanupDanglingToolCallMessages as jest.MockedFunction<
+const mockCleanupDanglingToolCallMessages = cleanupDanglingToolCallMessages as MockedFunction<
 	typeof cleanupDanglingToolCallMessages
 >;
-const mockEstimateTokenCountFromMessages = estimateTokenCountFromMessages as jest.MockedFunction<
+const mockEstimateTokenCountFromMessages = estimateTokenCountFromMessages as MockedFunction<
 	typeof estimateTokenCountFromMessages
 >;
 
 describe('state-modifier', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockCleanupDanglingToolCallMessages.mockReturnValue([]);
 		mockEstimateTokenCountFromMessages.mockReturnValue(100);
 	});
@@ -246,7 +247,7 @@ describe('state-modifier', () => {
 		const mockLlm = {} as Parameters<typeof handleCreateWorkflowName>[2];
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should NOT generate a name for custom workflow name', async () => {

@@ -42,7 +42,8 @@ const NODE_SEMANTICS: Record<string, NodeSemantics> = {
 		outputs: (node: NodeJSON): string[] => {
 			const params = node.parameters;
 			const rules = params?.rules as IDataObject | undefined;
-			const rulesArray = rules?.rules as unknown[] | undefined;
+			// Switch v3+ uses rules.values, older versions use rules.rules
+			const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
 			const numCases = rulesArray?.length ?? 4;
 			const cases = Array.from({ length: numCases }, (_, i) => `case${i}`);
 			return [...cases, 'fallback'];

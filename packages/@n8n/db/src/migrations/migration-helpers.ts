@@ -149,6 +149,8 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		columnName: (name) => queryRunner.connection.driver.escape(name),
 		tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 		indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
+		triggerName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
+		functionName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 	},
 	runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
 		if (namedParameters) {
@@ -207,12 +209,22 @@ export const wrapMigration = (migration: Migration) => {
 	}
 	prototype.__n8n_wrapped = true;
 	const { up, down } = migration.prototype;
+	// When withFKsDisabled is set as an instance property (class field), it
+	// won't be on the prototype at wrap-time. A getter defers the check to
+	// when TypeORM reads `transaction` on the already-constructed instance.
+	Object.defineProperty(migration.prototype, 'transaction', {
+		get(this: BaseMigration) {
+			return this.withFKsDisabled ? false : undefined;
+		},
+		configurable: true,
+	});
+
 	if (up) {
 		Object.assign(migration.prototype, {
 			async up(this: BaseMigration, queryRunner: QueryRunner) {
 				logMigrationStart(migration.name);
 				const context = createContext(queryRunner, migration);
-				if (this.transaction === false) {
+				if (this.withFKsDisabled === true) {
 					await runDisablingForeignKeys(this, context, up);
 				} else {
 					await up.call(this, context);
@@ -227,7 +239,7 @@ export const wrapMigration = (migration: Migration) => {
 		Object.assign(migration.prototype, {
 			async down(this: BaseMigration, queryRunner: QueryRunner) {
 				const context = createContext(queryRunner, migration);
-				if (this.transaction === false) {
+				if (this.withFKsDisabled === true) {
 					await runDisablingForeignKeys(this, context, down);
 				} else {
 					await down.call(this, context);

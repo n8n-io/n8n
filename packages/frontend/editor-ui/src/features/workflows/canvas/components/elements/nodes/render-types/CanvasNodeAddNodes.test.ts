@@ -4,12 +4,11 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { TEMPLATES_URLS, VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { setActivePinia } from 'pinia';
 import * as vueRouter from 'vue-router';
 import CanvasNodeAddNodes from './CanvasNodeAddNodes.vue';
@@ -47,7 +46,7 @@ vi.mock('@/experiments/utils', async (importOriginal) => {
 });
 
 const mockTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: mockTrack,
 	})),
@@ -55,7 +54,6 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let templatesStore: ReturnType<typeof useTemplatesStore>;
-let recommendedTemplatesStore: ReturnType<typeof useRecommendedTemplatesStore>;
 let router: ReturnType<typeof vueRouter.useRouter>;
 
 const renderComponent = createComponentRenderer(CanvasNodeAddNodes, {
@@ -74,7 +72,6 @@ describe('CanvasNodeAddNodes', () => {
 		router = vueRouter.useRouter();
 		settingsStore = useSettingsStore();
 		templatesStore = useTemplatesStore();
-		recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 		window.open = vi.fn();
 	});
@@ -121,9 +118,6 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should track user click', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			Object.defineProperty(recommendedTemplatesStore, 'isFeatureEnabled', {
-				get: vi.fn(() => false),
-			});
 
 			const { getByTestId } = renderComponent({
 				global: {
@@ -161,9 +155,6 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should open window to template repository when no custom host and feature disabled', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			Object.defineProperty(recommendedTemplatesStore, 'isFeatureEnabled', {
-				get: vi.fn(() => false),
-			});
 			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
 				get: vi.fn(() => false),
 			});

@@ -18,10 +18,10 @@ const nameSchema = () =>
 		.min(1)
 		.max(32)
 		.refine(xssCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name can only contain letters, numbers, spaces and punctuation',
 		})
 		.refine(urlCheck, {
-			message: 'Potentially malicious string',
+			message: 'Name cannot contain a URL',
 		});
 
 export class UserUpdateRequestDto extends Z.class({

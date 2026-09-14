@@ -1,29 +1,38 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _transport from '../../v2/transport';
 
-jest.mock('../../v2/transport', () => ({
-	microsoftApiRequest: {
-		call: jest.fn(),
-	},
-	microsoftApiRequestAllItems: {
-		call: jest.fn(),
-	},
-}));
+// Preserve the real transport exports (the node description references
+// SERVICE_PRINCIPAL_AUTH/SP_HIDE at construction, and getResourcePath uses the real
+// credential resolver); only stub the network helpers.
+vi.mock('../../v2/transport', async () => {
+	const actual = await vi.importActual<typeof _transport>('../../v2/transport');
+	return {
+		...actual,
+		microsoftApiRequest: {
+			call: vi.fn(),
+		},
+		microsoftApiRequestAllItems: {
+			call: vi.fn(),
+		},
+	};
+});
 
 describe('Microsoft Teams Trigger Node', () => {
 	let mockWebhookFunctions: any;
 
 	beforeEach(() => {
 		mockWebhookFunctions = mock();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('webhookMethods', () => {
 		describe('checkExists', () => {
 			it('should return true if the subscription exists', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					{
 						id: 'sub1',
 						notificationUrl: 'https://webhook.url',
@@ -50,7 +59,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(result).toBe(true);
 			});
 			it('should return false if the subscription does not exist', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 
@@ -65,7 +74,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should throw an error if the API request fails', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockRejectedValue(
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(
 					new Error('API request failed'),
 				);
 
@@ -83,7 +92,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 		describe('create', () => {
 			it('should create a subscription successfully', async () => {
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({ id: 'subscription123' });
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
 
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
@@ -93,7 +102,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					},
 				});
 
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({
+				(microsoftApiRequest.call as Mock).mockResolvedValue({
 					value: [{ id: 'team1', displayName: 'Team 1' }],
 				});
 
@@ -113,8 +122,29 @@ describe('Microsoft Teams Trigger Node', () => {
 						expirationDateTime: expect.any(String),
 						latestSupportedTlsVersion: 'v1_2',
 						lifecycleNotificationUrl: 'https://webhook.url',
+						clientState: expect.any(String),
 					}),
 				);
+			});
+
+			it('should persist a clientState secret on the workflow static data', async () => {
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
+
+				const staticData: { subscriptionIds?: string[]; webhookSecret?: string } = {};
+				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+
+				await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(mockWebhookFunctions);
+
+				expect(typeof staticData.webhookSecret).toBe('string');
+				expect((staticData.webhookSecret as string).length).toBeGreaterThan(0);
+
+				const requestBody = (microsoftApiRequest.call as Mock).mock.calls[0][3] as Record<
+					string,
+					unknown
+				>;
+				expect(requestBody.clientState).toBe(staticData.webhookSecret);
 			});
 
 			it('should throw an error if the URL is invalid', async () => {
@@ -127,13 +157,17 @@ describe('Microsoft Teams Trigger Node', () => {
 
 		describe('delete', () => {
 			it('should delete subscriptions using stored IDs and clean static data', async () => {
-				const mockWebhookData = {
+				const mockWebhookData: {
+					subscriptionIds?: string[];
+					webhookSecret?: string;
+				} = {
 					subscriptionIds: ['subscription123'],
+					webhookSecret: 'stored-secret',
 				};
 
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
 
-				(microsoftApiRequest.call as jest.Mock).mockResolvedValue({});
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
 
 				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
 					mockWebhookFunctions,
@@ -145,10 +179,11 @@ describe('Microsoft Teams Trigger Node', () => {
 					'/v1.0/subscriptions/subscription123',
 				);
 				expect(mockWebhookData.subscriptionIds).toBeUndefined();
+				expect(mockWebhookData.webhookSecret).toBeUndefined();
 			});
 
 			it('should return false if no subscription matches', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([]);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
 					node: {
@@ -163,10 +198,10 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should throw an error if the API request fails', async () => {
-				(microsoftApiRequestAllItems.call as jest.Mock).mockResolvedValue([
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
 				]);
-				(microsoftApiRequest.call as jest.Mock).mockRejectedValue(new Error('API request failed'));
+				(microsoftApiRequest.call as Mock).mockRejectedValue(new Error('API request failed'));
 				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
 				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
 					node: {
@@ -190,8 +225,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				type: vi.fn().mockReturnThis(),
+				send: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
@@ -199,6 +235,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
 			expect(mockResponse.status).toHaveBeenCalledWith(200);
+			expect(mockResponse.type).toHaveBeenCalledWith('text/plain');
 			expect(mockResponse.send).toHaveBeenCalledWith('validation-token');
 			expect(result.noWebhookResponse).toBe(true);
 		});
@@ -211,12 +248,13 @@ describe('Microsoft Teams Trigger Node', () => {
 				query: {},
 			};
 			const mockResponse = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
 			};
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
 			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
 
@@ -227,6 +265,92 @@ describe('Microsoft Teams Trigger Node', () => {
 					},
 				],
 			]);
+		});
+
+		it('should process notifications when stored secret matches clientState', async () => {
+			const mockRequest = {
+				body: {
+					value: [
+						{
+							clientState: 'expected-secret',
+							resourceData: { message: 'test message' },
+						},
+					],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
+				end: vi.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(mockResponse.status).not.toHaveBeenCalledWith(401);
+			expect(result.workflowData).toEqual([
+				[
+					{
+						json: { message: 'test message' },
+					},
+				],
+			]);
+		});
+
+		it('should return 401 when clientState does not match stored secret', async () => {
+			const mockRequest = {
+				body: {
+					value: [{ clientState: 'wrong-secret-aa' }],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn().mockReturnThis(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+				webhookSecret: 'expected-secret',
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+			expect(result.noWebhookResponse).toBe(true);
+			expect(result.workflowData).toBeUndefined();
+		});
+
+		it('should process notifications when no secret is stored (backward compatibility)', async () => {
+			const mockRequest = {
+				body: {
+					value: [{ clientState: 'anything', resourceData: { id: '1' } }],
+				},
+				query: {},
+			};
+			const mockResponse = {
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn(),
+				end: vi.fn(),
+			};
+
+			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+			expect(mockResponse.status).not.toHaveBeenCalledWith(401);
+			expect(result.workflowData).toEqual([[{ json: { id: '1' } }]]);
 		});
 	});
 });

@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class TemplatesPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/templates');
+	}
+
 	getPageHeading(): Locator {
 		return this.page.getByRole('heading', { name: /workflow.*templates/i });
 	}
@@ -25,6 +29,10 @@ export class TemplatesPage extends BasePage {
 
 	getDescription(): Locator {
 		return this.page.getByTestId('template-description');
+	}
+
+	getDescriptionImages(): Locator {
+		return this.getDescription().locator('img');
 	}
 
 	getSearchInput(): Locator {

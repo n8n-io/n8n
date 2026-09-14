@@ -1,3 +1,5 @@
+@use 'mixins/motion';
+
 .el-skeleton {
 	width: 100%;
 }
@@ -25,6 +27,12 @@
 .el-skeleton__h1 {
 	height: 20px;
 	margin-top: 14px;
+}
+
+.el-skeleton__circle {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
 }
 
 .el-skeleton__image {
@@ -72,6 +80,8 @@
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;
 	animation: el-skeleton-loading 1.4s ease infinite;
+
+	@include motion.reduced-motion;
 }
 
 @-webkit-keyframes el-skeleton-loading {

@@ -1,0 +1,398 @@
+{
+	"packages/@n8n/agents": [
+		"src/__tests__/agent-configuration.test.ts",
+		"src/__tests__/integration/agent-vector-store-pinecone.test.ts",
+		"src/evals/categorization.ts"
+	],
+	"packages/@n8n/ai-node-sdk": ["src/index.ts"],
+	"packages/@n8n/ai-utilities": [
+		"integration-tests/openai.test.ts",
+		"src/__tests__/adapters/langchain-chat-model.test.ts",
+		"src/adapters/langchain-chat-model.ts"
+	],
+	"packages/@n8n/ai-workflow-builder.ee": [
+		"evaluations/__tests__/argument-parser.test.ts",
+		"src/agents/planner.agent.ts",
+		"src/test/ai-workflow-builder-agent.service.test.ts"
+	],
+	"packages/@n8n/api-types": [
+		"src/__tests__/agent-builder-interactive.test.ts",
+		"src/agent-builder-interactive.ts"
+	],
+	"packages/@n8n/backend-common": ["src/__tests__/cli-parser.test.ts", "src/cli-parser.ts"],
+	"packages/@n8n/backend-network": [
+		"src/dns/__tests__/dns-resolver.test.ts",
+		"src/dns/dns-resolver.ts"
+	],
+	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
+	"packages/@n8n/benchmark": ["src/commands/list.ts"],
+	"packages/@n8n/blob-storage": [
+		"src/__tests__/azure-byte-store.test.ts",
+		"src/azure-blob/azure-blob.config.ts"
+	],
+	"packages/@n8n/chat-hub": ["src/artifact.test.ts", "src/artifact.ts"],
+	"packages/@n8n/cli": [
+		"src/__tests__/client.test.ts",
+		"src/base-command.ts",
+		"src/client.ts",
+		"src/commands/login.ts",
+		"src/index.ts"
+	],
+	"packages/@n8n/client-oauth2": ["src/client-oauth2-token.ts", "test/client-oauth2.test.ts"],
+	"packages/@n8n/codemirror-lang-sql": ["src/complete.ts", "test/complete.test.ts"],
+	"packages/@n8n/codemirror-lang": [
+		"src/expressions/grammar.terms.ts",
+		"test/expressions/expressions.test.ts"
+	],
+	"packages/@n8n/computer-use": [
+		"src/__mocks__/@inquirer/prompts.ts",
+		"src/config-templates.test.ts"
+	],
+	"packages/@n8n/config": [
+		"src/configs/__tests__/ai.config.test.ts",
+		"src/configs/activity-log.config.ts"
+	],
+	"packages/@n8n/constants": ["src/api.ts"],
+	"packages/@n8n/crdt": [
+		"src/__tests__/helpers.ts",
+		"src/awareness/awareness.test.ts",
+		"src/awareness/index.ts"
+	],
+	"packages/@n8n/db": [
+		"src/connection/__tests__/backoff.test.ts",
+		"src/connection/backoff.ts",
+		"src/migrations/__tests__/migration-helpers.ts"
+	],
+	"packages/@n8n/decorators": [
+		"src/__tests__/memoized.test.ts",
+		"src/auth-handler/auth-handler-metadata.ts"
+	],
+	"packages/@n8n/di": ["src/__tests__/circular-depedency.test.ts", "src/di.ts"],
+	"packages/@n8n/engine": [
+		"src/admittance/__tests__/allow-all-admittance.test.ts",
+		"src/admittance/admittance-rejected.error.ts"
+	],
+	"packages/@n8n/errors": ["src/application.error.ts"],
+	"packages/@n8n/eslint-plugin-community-nodes": [
+		"src/plugin.ts",
+		"src/rules/ai-node-package-json.test.ts"
+	],
+	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
+	"packages/@n8n/instance-ai": [
+		"evaluations/__tests__/agent-report-rendering.test.ts",
+		"evaluations/computer-use/report-html.ts",
+		"src/__tests__/binary-checks.test.ts",
+		"src/agent/aia-model-defaults.ts",
+		"src/tools/__tests__/activity.tool.test.ts"
+	],
+	"packages/@n8n/json-schema-to-zod": ["src/index.ts", "test/json-schema-to-zod.test.ts"],
+	"packages/@n8n/local-gateway": ["src/main/connect-origin.test.ts", "src/main/connect-origin.ts"],
+	"packages/@n8n/mcp-apps": [
+		"src/apps-manifest.ts",
+		"src/apps/workflow-preview/App.vue",
+		"src/apps/workflow-preview/composables/use-workflow-preview.test.ts"
+	],
+	"packages/@n8n/mcp-browser-extension": [
+		"src/approvedHosts.test.ts",
+		"src/approvedHosts.ts",
+		"src/ui/App.vue"
+	],
+	"packages/@n8n/mcp-browser": [
+		"src/__tests__/cdp-relay-attach.test.ts",
+		"src/adapters/agent-browser.ts"
+	],
+	"packages/@n8n/node-cli": [
+		"src/commands/build.test.ts",
+		"src/commands/build.ts",
+		"src/configs/eslint.ts",
+		"src/modules.d.ts",
+		"src/test-utils/command-tester.ts"
+	],
+	"packages/@n8n/node-engine-compatibility": [
+		"src/__tests__/acceptance-fixtures.ts",
+		"src/__tests__/engine-step-data-loader.test.ts",
+		"src/constants.ts"
+	],
+	"packages/@n8n/nodes-langchain": [
+		"credentials/AlibabaCloudApi.credentials.ts",
+		"credentials/test/AnthropicApi.credentials.test.ts",
+		"nodes/Guardrails/Guardrails.node.ts",
+		"nodes/Guardrails/helpers/__tests__/model.test.ts",
+		"nodes/mcp/McpClient/__test__/McpClient.node.test.ts"
+	],
+	"packages/@n8n/permissions": ["src/__tests__/schemas.test.ts", "src/constants.ee.ts"],
+	"packages/@n8n/scheduler": ["src/__tests__/dependency-purity.test.ts", "src/core/clock-skew.ts"],
+	"packages/@n8n/syslog-client": ["src/client.ts", "test/client.test.ts", "vite.config.ts"],
+	"packages/@n8n/task-runner": [
+		"src/__tests__/node-types.test.ts",
+		"src/config/base-runner-config.ts"
+	],
+	"packages/@n8n/telemetry": ["src/__tests__/catalog.test.ts", "src/catalog.ts"],
+	"packages/@n8n/tournament": ["src/Constants.ts", "test/ASTHooks.test.ts"],
+	"packages/@n8n/utils": [
+		"src/__tests__/setup.ts",
+		"src/assert.ts",
+		"src/client-assertion.test.ts"
+	],
+	"packages/@n8n/workflow-sdk": [
+		"src/__tests__/fixtures-download.ts",
+		"src/ast-interpreter/errors.ts",
+		"src/ast-interpreter/interpreter.test.ts",
+		"src/prompts/best-practices/guides/chatbot.ts",
+		"src/prompts/node-guidance/parameter-guides/embedding-nodes.ts"
+	],
+	"packages/cli": [
+		"src/__tests__/abstract-server.test.ts",
+		"src/abstract-server.ts",
+		"src/active-workflow-manager.ts",
+		"src/binary-data/database.manager.ts",
+		"src/commands/db/revert.ts",
+		"src/commands/import/credentials.ts",
+		"src/commands/ldap/reset.ts",
+		"src/controllers/project.controller.ts",
+		"src/credentials-helper.ts",
+		"src/credentials/credential-connection-status-provider.interface.ts",
+		"src/credentials/credential-connection-status-proxy.ts",
+		"src/credentials/credential-dependency.service.ts",
+		"src/credentials/credentials-finder.service.ts",
+		"src/credentials/credentials.controller.ts",
+		"src/credentials/credentials.service.ee.ts",
+		"src/credentials/credentials.service.ts",
+		"src/databases/repositories/__tests__/credentials.repository.test.ts",
+		"src/evaluation.ee/evaluation-collection.service.ts",
+		"src/evaluation.ee/test-runner/test-runner.service.ee.ts",
+		"src/eventbus/message-event-bus/message-event-bus.ts",
+		"src/events/relays/telemetry.event-relay.ts",
+		"src/executions/execution-data/db-store.ts",
+		"src/executions/execution-persistence.ts",
+		"src/executions/execution-recovery.service.ts",
+		"src/executions/execution.service.ts",
+		"src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts",
+		"src/license.ts",
+		"src/metrics/prometheus/instance-role-metrics.service.ts",
+		"src/modules/agent-evals/agent-evals.module.ts",
+		"src/modules/agents/agent-knowledge.service.ts",
+		"src/modules/agents/agent-publish.service.ts",
+		"src/modules/agents/agent-task.service.ts",
+		"src/modules/agents/agents.service.ts",
+		"src/modules/agents/builder/agents-builder.service.ts",
+		"src/modules/agents/entities/agent-background-job.entity.ts",
+		"src/modules/agents/instance-ai-builder-delegate.adapter.ts",
+		"src/modules/agents/integrations/agent-channel-reconciler.service.ts",
+		"src/modules/agents/integrations/leader-channel-relay.service.ts",
+		"src/modules/agents/integrations/n8n-memory.ts",
+		"src/modules/agents/integrations/platforms/discord-integration.ts",
+		"src/modules/agents/repositories/agent-background-job.repository.ts",
+		"src/modules/agents/tools/workflow-tool-workflow-resolver.ts",
+		"src/modules/breaking-changes/breaking-changes.service.ts",
+		"src/modules/chat-hub/chat-hub-agent.service.ts",
+		"src/modules/chat-hub/chat-hub-credentials.service.ts",
+		"src/modules/chat-hub/chat-hub-title.service.ts",
+		"src/modules/chat-hub/chat-hub-tool.service.ts",
+		"src/modules/chat-hub/chat-hub-workflow.service.ts",
+		"src/modules/chat-hub/chat-hub.attachment.service.ts",
+		"src/modules/chat-hub/chat-hub.models.service.ts",
+		"src/modules/chat-hub/chat-hub.service.ts",
+		"src/modules/chat-hub/chat-hub.settings.service.ts",
+		"src/modules/data-table/data-table-ddl.service.ts",
+		"src/modules/data-table/data-table.service.ts",
+		"src/modules/data-table/utils/sql-utils.ts",
+		"src/modules/dynamic-credentials.ee/database/entities/credential-resolver.ts",
+		"src/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.ts",
+		"src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts",
+		"src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts",
+		"src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts",
+		"src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts",
+		"src/modules/favorites/favorites.service.ts",
+		"src/modules/insights/insights-collection.service.ts",
+		"src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts",
+		"src/modules/instance-ai/instance-ai.adapter.service.ts",
+		"src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts",
+		"src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts",
+		"src/modules/instance-ai/storage/typeorm-agent-memory.ts",
+		"src/modules/instance-ai/storage/typeorm-observation-log-store.ts",
+		"src/modules/instance-ai/suspended-thread-persistence.service.ts",
+		"src/modules/instance-reporting/instance-reporting-scheduler.service.ts",
+		"src/modules/log-streaming.ee/log-streaming-destination.service.ts",
+		"src/modules/mcp/mcp-api-key.service.ts",
+		"src/modules/mcp/mcp.settings.service.ts",
+		"src/modules/oauth-jwe/oauth-jwe-key.service.ts",
+		"src/modules/provisioning.ee/provisioning.service.ee.ts",
+		"src/modules/provisioning.ee/role-mapping-rule.service.ee.ts",
+		"src/modules/provisioning.ee/role-resolver.service.ee.ts",
+		"src/modules/source-control.ee/source-control-context.factory.ts",
+		"src/modules/source-control.ee/source-control-export.service.ee.ts",
+		"src/modules/source-control.ee/source-control-import.service.ee.ts",
+		"src/modules/source-control.ee/source-control-scoped.service.ts",
+		"src/modules/source-control.ee/source-control-status.service.ee.ts",
+		"src/modules/token-exchange/services/trusted-key.service.ts",
+		"src/modules/workflow-index/workflow-dependency-query.service.ts",
+		"src/permissions.ee/check-access.ts",
+		"src/policy/policy-enforcement.service.ts",
+		"src/public-api/v1/controllers/__tests__/workflows.public.controller.test.ts",
+		"src/public-api/v1/handlers/audit/audit.handler.ts",
+		"src/public-api/v1/handlers/community-packages/community-packages.handler.ts",
+		"src/public-api/v1/handlers/credentials/credentials.handler.ts",
+		"src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts",
+		"src/public-api/v1/handlers/data-tables/data-tables.handler.ts",
+		"src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts",
+		"src/public-api/v1/handlers/discover/discover.handler.ts",
+		"src/public-api/v1/handlers/evaluations/evaluations.handler.ts",
+		"src/public-api/v1/handlers/folders/folders.handler.ts",
+		"src/public-api/v1/handlers/insights/insights.handler.ts",
+		"src/public-api/v1/handlers/ldap/ldap.handler.ts",
+		"src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts",
+		"src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts",
+		"src/public-api/v1/handlers/otel/otel.handler.ts",
+		"src/public-api/v1/handlers/projects/projects.handler.ts",
+		"src/public-api/v1/handlers/security-policy/security-policy.handler.ts",
+		"src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts",
+		"src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts",
+		"src/public-api/v1/handlers/tags/tags.handler.ts",
+		"src/public-api/v1/handlers/users/users.handler.ee.ts",
+		"src/public-api/v1/handlers/variables/variables.handler.ts",
+		"src/public-api/v1/handlers/workflows/workflows.handler.ts",
+		"src/scaling/scaling.service.ts",
+		"src/scheduling/durable-job-provisioner.ts",
+		"src/scheduling/durable-scheduler.ts",
+		"src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts",
+		"src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts",
+		"src/scheduling/system-tasks/system-task-runner.ts",
+		"src/security-audit/risk-reporters/credentials-risk-reporter.ts",
+		"src/security-audit/security-audit.repository.ts",
+		"src/services/export.service.ts",
+		"src/services/folder-finder.service.ts",
+		"src/services/folder.service.ts",
+		"src/services/hooks.service.ts",
+		"src/services/import.service.ts",
+		"src/services/ownership-transfer/ownership-transfer-handler.registry.ts",
+		"src/services/ownership.service.ts",
+		"src/services/project.service.ee.ts",
+		"src/services/pruning/executions-pruning.service.ts",
+		"src/services/pruning/workflow-history-compaction.service.ts",
+		"src/services/public-api-key.service.ts",
+		"src/services/role-cache.service.ts",
+		"src/services/role.service.ts",
+		"src/services/tag.service.ts",
+		"src/services/user.service.ts",
+		"src/services/workflow-statistics-rollup.service.ts",
+		"src/wait-tracker.ts",
+		"src/workflows/publication/workflow-publication-outbox-consumer.ts",
+		"src/workflows/publication/workflow-publication-reconciler.service.ts",
+		"src/workflows/workflow-creation.service.ts",
+		"src/workflows/workflow-finder.service.ts",
+		"src/workflows/workflow-history/workflow-history.service.ts",
+		"src/workflows/workflow-sharing.service.ts",
+		"src/workflows/workflow-validation.service.ts",
+		"src/workflows/workflow.service.ee.ts",
+		"src/workflows/workflow.service.ts",
+		"src/workflows/workflows.controller.ts",
+		"test/extend-expect.ts"
+	],
+	"packages/core": [
+		"src/__tests__/credentials.test.ts",
+		"src/binary-data/binary-data.config.ts",
+		"test/helpers/constants.ts"
+	],
+	"packages/extensions/insights": [
+		"src/backend/index.ts",
+		"src/frontend/InsightsDashboard.vue",
+		"src/frontend/index.ts"
+	],
+	"packages/frontend/@n8n/chat": [
+		"src/App.vue",
+		"src/__stories__/App.stories.ts",
+		"src/__tests__/Chat.spec.ts",
+		"src/__tests__/plugins/chat.test.ts"
+	],
+	"packages/frontend/@n8n/composables": [
+		"src/__tests__/packageBoundary.test.ts",
+		"src/injectionKeys.ts"
+	],
+	"packages/frontend/@n8n/design-system": [
+		"src/__tests__/render.ts",
+		"src/components/AskAssistantAvatar/AskAssistantAvatar.test.ts",
+		"src/components/AskAssistantAvatar/AssistantAvatar.stories.ts",
+		"src/components/AskAssistantAvatar/AssistantAvatar.vue",
+		"src/components/N8nFormInput/validators.ts"
+	],
+	"packages/frontend/@n8n/eslint-plugin-design-system": [
+		"src/plugin.ts",
+		"src/rules/require-teleported-tooltip-in-dropdown.test.ts"
+	],
+	"packages/frontend/@n8n/frontend-constants": ["src/urls.ts", "src/views.test.ts", "src/views.ts"],
+	"packages/frontend/@n8n/frontend-module-sdk": [
+		"src/__tests__/setup.ts",
+		"src/index.ts",
+		"src/registries/commandRegistry.test.ts"
+	],
+	"packages/frontend/@n8n/frontend-test-utils": ["src/__tests__/render.test.ts", "src/defaults.ts"],
+	"packages/frontend/@n8n/frontend-utils": [
+		"src/__tests__/setup.ts",
+		"src/constants/sanitization.ts",
+		"src/htmlUtils.test.ts"
+	],
+	"packages/frontend/@n8n/i18n": ["src/__tests__/setup.ts", "src/index.test.ts", "src/index.ts"],
+	"packages/frontend/@n8n/rest-api-client": [
+		"src/__tests__/setup.ts",
+		"src/api/__tests__/api-keys.test.ts",
+		"src/api/ai-usage.ts"
+	],
+	"packages/frontend/@n8n/stores": [
+		"src/__tests__/metaTagConfig.test.ts",
+		"src/cloudPlan.store.ts"
+	],
+	"packages/frontend/@n8n/storybook": [".storybook/ThemedDocsContainer.ts"],
+	"packages/frontend/editor-ui": [
+		"src/Interface.ts",
+		"src/__tests__/data/users.ts",
+		"src/app/App.vue",
+		"src/app/__tests__/modal-definition.test.ts",
+		"src/app/constants/modals.ts",
+		"src/app/stores/defaults/modals.ts",
+		"src/app/stores/workflowDocument/types.ts",
+		"src/app/stores/workflows.store.ts",
+		"src/features/agents/__tests__/AgentAdvancedPanel.test.ts",
+		"src/features/agents/channels/AgentChannelStandardEditView.vue",
+		"src/features/ai/chatHub/__test__/data.ts",
+		"src/features/settings/environments.ee/completions/variables.completions.test.ts",
+		"src/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue",
+		"src/features/shared/editors/plugins/codemirror/completions/__tests__/mock.ts",
+		"src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts"
+	],
+	"packages/modules/insights/frontend": [
+		"src/__tests__/setup.ts",
+		"src/chartjs.utils.ts",
+		"src/components/InsightsDashboard.test.ts",
+		"src/components/InsightsDashboard.vue"
+	],
+	"packages/modules/instance-registry/frontend": [
+		"src/__tests__/setup.ts",
+		"src/index.ts",
+		"src/instance-registry.store.test.ts"
+	],
+	"packages/modules/otel/frontend": [
+		"src/OtelSettingsRow.vue",
+		"src/SettingsOpenTelemetryView.test.ts",
+		"src/__tests__/setup.ts",
+		"src/index.ts"
+	],
+	"packages/node-dev": ["src/Build.ts"],
+	"packages/nodes-base": [
+		"credentials/ActionNetworkApi.credentials.ts",
+		"credentials/common/aws/s3-path-signing.test.ts",
+		"credentials/test/AtlassianOAuth2Api.credentials.test.ts",
+		"nodes/ActionNetwork/ActionNetwork.node.ts",
+		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
+	],
+	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
+	"packages/testing/playwright": ["coverage-options.test.ts"],
+	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
+	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
+	"packages/workflow": [
+		"src/augment-object.ts",
+		"test/ExpressionExtensions/array-extensions.test.ts"
+	]
+}

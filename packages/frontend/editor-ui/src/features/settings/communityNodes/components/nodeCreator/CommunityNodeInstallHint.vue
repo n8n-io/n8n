@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed } from 'vue';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
@@ -7,13 +7,13 @@ export interface Props {
 	hint: string;
 }
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const isAdminOrOwner = computed(() => useUsersStore().isAdminOrOwner);
 
 defineProps<Props>();
 </script>
 
 <template>
-	<div v-if="isOwner" :class="$style.container">
+	<div v-if="isAdminOrOwner" :class="$style.container">
 		<N8nIcon color="text-light" icon="info" size="large" />
 		<N8nText color="text-base" size="medium"> {{ hint }} </N8nText>
 	</div>

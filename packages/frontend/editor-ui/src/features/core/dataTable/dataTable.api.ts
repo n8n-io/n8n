@@ -8,6 +8,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -19,8 +20,9 @@ export const fetchDataTablesApi = async (
 	filter?: {
 		id?: string | string[];
 		name?: string | string[];
-		projectId: string | string[];
+		projectId?: string | string[];
 	},
+	sortBy?: DataTableListSortBy,
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-tables` : '/data-tables-global';
 	return await makeRestApiRequest<{ count: number; data: DataTable[] }>(
@@ -30,6 +32,7 @@ export const fetchDataTablesApi = async (
 		{
 			...options,
 			filter: filter ?? undefined,
+			sortBy,
 		},
 	);
 };
@@ -263,6 +266,20 @@ export const downloadDataTableCsvApi = async (
 		filename,
 	};
 };
+export const importCsvToDataTableApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	fileId: string,
+) => {
+	return await makeRestApiRequest<{ importedRowCount: number; systemColumnsIgnored: string[] }>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataTableId}/import-csv`,
+		{ fileId },
+	);
+};
+
 export const uploadCsvFileApi = async (
 	context: IRestApiContext,
 	file: File,

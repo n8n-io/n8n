@@ -1,0 +1,142 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Ask the math sub-agent to compute 5 times 5"
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [220, 0],
+			"id": "parent-agent-id",
+			"name": "Parent Agent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [220, 200],
+			"id": "parent-model-id",
+			"name": "Parent Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"toolDescription": "A sub agent that can answer math questions using a calculator",
+				"promptType": "define",
+				"text": "={{ $json.input }}"
+			},
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"id": "sub-agent-id",
+			"name": "MathSubAgent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [400, 200],
+			"id": "child-model-id",
+			"name": "Child Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [580, 200],
+			"id": "calculator-id",
+			"name": "Calculator"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Parent Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parent Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Parent Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MathSubAgent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Parent Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Child Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "MathSubAgent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "MathSubAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

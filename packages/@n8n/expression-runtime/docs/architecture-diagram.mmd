@@ -69,24 +69,23 @@ graph TB
 sequenceDiagram
     participant WF as Workflow
     participant Eval as ExpressionEvaluator
-    participant Bridge as RuntimeBridge
+    participant Bridge as IsolatedVmBridge
     participant Runtime as Runtime (Isolated)
-    participant Store as Data Store
 
     WF->>Eval: evaluate(expr, data)
     Eval->>Eval: Transform with Tournament
-    Eval->>Eval: Check cache
-    Eval->>Store: Store data with ID
-    Eval->>Bridge: execute(code, dataId)
-    Bridge->>Runtime: Run code in isolation
+    Eval->>Eval: Check code cache
+    Eval->>Bridge: execute(code, data)
+    Bridge->>Bridge: Register ivm.Reference callbacks with data
+    Bridge->>Runtime: evalSync("resetDataProxies()")
+    Runtime->>Runtime: Create lazy proxies for $json, $input, etc.
+    Bridge->>Runtime: Run compiled script
 
     Runtime->>Runtime: Access $json.email
-    Runtime->>Bridge: getData(dataId, 'email')
-    Bridge->>Store: Lookup 'email'
-    Store-->>Bridge: Value
+    Runtime->>Bridge: __getValueAtPath(['$json','email']) [ivm.Reference]
+    Bridge->>Bridge: Navigate path in data
     Bridge-->>Runtime: Value
 
     Runtime-->>Bridge: Expression result
     Bridge-->>Eval: Result
-    Eval->>Eval: Cache result
     Eval-->>WF: Result

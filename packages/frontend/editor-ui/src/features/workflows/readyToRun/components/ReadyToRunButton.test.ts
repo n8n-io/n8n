@@ -8,12 +8,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
-vi.mock('@/composables/useToast', () => ({
-	useToast: () => ({
-		showError: vi.fn(),
-	}),
-}));
-
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
 	useProjectPages: () => ({
 		isOverviewSubPage: false,
@@ -21,8 +15,7 @@ vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => (
 }));
 
 vi.mock('vue-router', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await vi.importActual<typeof import('vue-router')>('vue-router');
+	const actual = await vi.importActual('vue-router');
 	return {
 		...actual,
 		useRoute: () => ({

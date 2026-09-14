@@ -4,22 +4,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Serialized } from '@langchain/core/load/serializable';
 import type { LLMResult } from '@langchain/core/outputs';
-import { mock } from 'jest-mock-extended';
+import { N8nLlmTracing } from '@n8n/ai-utilities';
 import type { IDataObject, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError, NodeApiError } from 'n8n-workflow';
-
-import { N8nLlmTracing } from '@n8n/ai-utilities';
+import { mock } from 'vitest-mock-extended';
 
 describe('N8nLlmTracing', () => {
 	const executionFunctions = mock<ISupplyDataFunctions>({
-		addInputData: jest.fn().mockReturnValue({ index: 0 }),
-		addOutputData: jest.fn(),
-		getNode: jest.fn().mockReturnValue({ name: 'TestNode' }),
-		getNextRunIndex: jest.fn().mockReturnValue(1),
+		addInputData: vi.fn().mockReturnValue({ index: 0 }),
+		addOutputData: vi.fn(),
+		getNode: vi.fn().mockReturnValue({ name: 'TestNode' }),
+		getNextRunIndex: vi.fn().mockReturnValue(1),
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('tokensUsageParser', () => {
@@ -259,7 +258,7 @@ describe('N8nLlmTracing', () => {
 				llmOutput: {},
 			};
 
-			jest.spyOn(tracer, 'estimateTokensFromGeneration').mockResolvedValue(45);
+			vi.spyOn(tracer, 'estimateTokensFromGeneration').mockResolvedValue(45);
 
 			await tracer.handleLLMEnd(output, runId);
 
@@ -288,7 +287,7 @@ describe('N8nLlmTracing', () => {
 
 	describe('handleLLMError', () => {
 		it('should handle NodeError with custom error description mapper', async () => {
-			const customMapper = jest.fn().mockReturnValue('Mapped error description');
+			const customMapper = vi.fn().mockReturnValue('Mapped error description');
 			const tracer = new N8nLlmTracing(executionFunctions, {
 				errorDescriptionMapper: customMapper,
 			});
@@ -354,7 +353,7 @@ describe('N8nLlmTracing', () => {
 			const runId = 'test-run-id';
 			const prompts = ['Prompt 1', 'Prompt 2'];
 
-			jest.spyOn(tracer, 'estimateTokensFromStringList').mockResolvedValue(100);
+			vi.spyOn(tracer, 'estimateTokensFromStringList').mockResolvedValue(100);
 
 			const llm = {
 				type: 'constructor',

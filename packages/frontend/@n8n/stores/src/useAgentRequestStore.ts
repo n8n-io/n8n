@@ -32,7 +32,7 @@ export const useAgentRequestStore = defineStore('agentRequest', () => {
 
 	// Getters
 	const getAgentRequests = (workflowId: string, nodeId: string): IAgentRequest['query'] => {
-		return agentRequests.value[workflowId]?.[nodeId]?.query || {};
+		return agentRequests.value[workflowId]?.[nodeId]?.query ?? {};
 	};
 
 	const getQueryValue = (

@@ -28,7 +28,7 @@ export const description: INodeProperties[] = [
 		displayOptions,
 	},
 	{
-		displayName: 'Limit',
+		displayName: 'Limit Per Input Row',
 		name: 'limit',
 		type: 'number',
 		default: ROWS_LIMIT_DEFAULT,
@@ -88,8 +88,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const limit = this.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) as number;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const limit = this.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT);
 	const options = this.getNodeParameter('options', index, {}) as {
 		filterName?: string;
 		sortField?: string;

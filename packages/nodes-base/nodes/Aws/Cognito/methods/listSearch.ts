@@ -49,7 +49,10 @@ export async function searchGroups(
 
 	const formattedResults = formatResults(groupsMapped, filter);
 
-	return { results: formattedResults, paginationToken: responseData.NextToken };
+	return {
+		results: formattedResults,
+		paginationToken: responseData.NextToken as string | undefined,
+	};
 }
 
 export async function searchGroupsForUser(
@@ -162,7 +165,10 @@ export async function searchUsers(
 		return { id: sub, name, value: sub };
 	});
 
-	return { results: formatResults(userResults, filter), paginationToken: responseData.NextToken };
+	return {
+		results: formatResults(userResults, filter),
+		paginationToken: responseData.NextToken as string | undefined,
+	};
 }
 
 export async function searchUserPools(
@@ -186,5 +192,8 @@ export async function searchUserPools(
 
 	const formattedResults = formatResults(userPoolsMapped, filter);
 
-	return { results: formattedResults, paginationToken: responseData.NextToken };
+	return {
+		results: formattedResults,
+		paginationToken: responseData.NextToken as string | undefined,
+	};
 }

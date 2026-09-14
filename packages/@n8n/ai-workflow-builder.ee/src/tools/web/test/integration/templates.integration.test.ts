@@ -17,7 +17,7 @@ describe('Templates API - Integration Tests', () => {
 	const skipTests = !shouldRunIntegrationTests();
 
 	// Set default timeout for all tests in this suite
-	jest.setTimeout(30000); // 30 seconds for API calls
+	vi.setConfig({ testTimeout: 30000 }); // 30 seconds for API calls
 
 	beforeAll(() => {
 		if (skipTests) {

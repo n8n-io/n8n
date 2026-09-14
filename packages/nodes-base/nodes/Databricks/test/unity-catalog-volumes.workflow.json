@@ -1,0 +1,143 @@
+{
+	"name": "Databricks Unity Catalog - Volumes Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "listVolumes",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"id": "uc-list-volumes-001",
+			"name": "List Volumes",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "createVolume",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"volumeName": "new_volume",
+				"volumeType": "MANAGED",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "uc-create-volume-001",
+			"name": "Create Volume",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "deleteVolume",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"volumeName": "old_volume"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "uc-delete-volume-001",
+			"name": "Delete Volume",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"List Volumes": [
+			{
+				"json": {
+					"volumes": [
+						{
+							"name": "my_volume",
+							"volume_type": "MANAGED",
+							"catalog_name": "main",
+							"schema_name": "default"
+						}
+					]
+				}
+			}
+		],
+		"Create Volume": [
+			{
+				"json": {
+					"name": "new_volume",
+					"catalog_name": "main",
+					"schema_name": "default",
+					"volume_type": "MANAGED",
+					"full_name": "main.default.new_volume"
+				}
+			}
+		],
+		"Delete Volume": [
+			{
+				"json": {
+					"success": true,
+					"message": "Volume deleted successfully",
+					"volumeName": "main.default.old_volume"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "List Volumes", "type": "main", "index": 0 },
+					{ "node": "Create Volume", "type": "main", "index": 0 },
+					{ "node": "Delete Volume", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

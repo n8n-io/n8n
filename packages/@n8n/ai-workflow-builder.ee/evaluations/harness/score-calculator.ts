@@ -48,6 +48,7 @@ export const DEFAULT_EVALUATOR_WEIGHTS: ScoreWeights = {
 	programmatic: 0.25,
 	pairwise: 0.25,
 	similarity: 0.15,
+	'binary-checks': 0,
 };
 
 /**

@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
  * recreating the method extraction in isolation.
  */
 
-// Helper to extract methods from a source file (mirrors the internal function)
+// Helper to extract methods and properties from a source file (mirrors the internal function)
 function extractMethods(sourceFile: ReturnType<Project['createSourceFile']>): Map<string, string> {
 	const methods = new Map<string, string>();
 
@@ -20,6 +20,13 @@ function extractMethods(sourceFile: ReturnType<Project['createSourceFile']>): Ma
 			const methodName = method.getName();
 			const key = `${className}.${methodName}`;
 			const bodyText = method.getText();
+			methods.set(key, bodyText);
+		}
+
+		for (const prop of classDecl.getProperties()) {
+			const propName = prop.getName();
+			const key = `${className}.${propName}`;
+			const bodyText = prop.getText();
 			methods.set(key, bodyText);
 		}
 	}
@@ -86,9 +93,30 @@ export class CanvasPage {
 
 			const methods = extractMethods(file);
 
-			expect(methods.size).toBe(2); // Only methods, not getters
+			expect(methods.size).toBe(2); // Methods only, not getters
 			expect(methods.has('CanvasPage.addNode')).toBe(true);
 			expect(methods.has('CanvasPage.connectNodes')).toBe(true);
+		});
+
+		it('extracts property declarations from a class', () => {
+			const project = new Project({ useInMemoryFileSystem: true });
+			const file = project.createSourceFile(
+				'test.ts',
+				`
+export class AppPage {
+  readonly canvas: CanvasPage;
+  readonly settings: SettingsPage;
+  readonly handler = () => { return 'hello'; };
+}
+`,
+			);
+
+			const methods = extractMethods(file);
+
+			expect(methods.size).toBe(3);
+			expect(methods.has('AppPage.canvas')).toBe(true);
+			expect(methods.has('AppPage.settings')).toBe(true);
+			expect(methods.has('AppPage.handler')).toBe(true);
 		});
 
 		it('extracts methods from multiple classes', () => {
@@ -306,6 +334,73 @@ export class CanvasPage {
 			expect(added?.methodName).toBe('newMethod');
 			expect(removed?.methodName).toBe('oldMethod');
 			expect(modified?.methodName).toBe('addNode');
+		});
+
+		it('detects added property declarations', () => {
+			const project = new Project({ useInMemoryFileSystem: true });
+
+			const baseFile = project.createSourceFile(
+				'base.ts',
+				`
+export class AppPage {
+  readonly canvas: CanvasPage;
+}
+`,
+			);
+
+			const currentFile = project.createSourceFile(
+				'current.ts',
+				`
+export class AppPage {
+  readonly canvas: CanvasPage;
+  readonly chatHubChat: ChatHubChatPage;
+}
+`,
+			);
+
+			const baseMethods = extractMethods(baseFile);
+			const currentMethods = extractMethods(currentFile);
+			const changes = diffMethods(baseMethods, currentMethods);
+
+			expect(changes).toHaveLength(1);
+			expect(changes[0]).toEqual({
+				className: 'AppPage',
+				methodName: 'chatHubChat',
+				changeType: 'added',
+			});
+		});
+
+		it('detects modified property type', () => {
+			const project = new Project({ useInMemoryFileSystem: true });
+
+			const baseFile = project.createSourceFile(
+				'base.ts',
+				`
+export class AppPage {
+  readonly canvas: CanvasPage;
+}
+`,
+			);
+
+			const currentFile = project.createSourceFile(
+				'current.ts',
+				`
+export class AppPage {
+  readonly canvas: NewCanvasPage;
+}
+`,
+			);
+
+			const baseMethods = extractMethods(baseFile);
+			const currentMethods = extractMethods(currentFile);
+			const changes = diffMethods(baseMethods, currentMethods);
+
+			expect(changes).toHaveLength(1);
+			expect(changes[0]).toEqual({
+				className: 'AppPage',
+				methodName: 'canvas',
+				changeType: 'modified',
+			});
 		});
 
 		it('handles class rename as remove + add', () => {

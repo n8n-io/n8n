@@ -4,6 +4,8 @@
  * Builds SwitchCaseCompositeNode from a semantic Switch node.
  */
 
+import type { IDataObject } from 'n8n-workflow';
+
 import type { CompositeNode, SwitchCaseCompositeNode } from '../composite-tree';
 import type { SemanticNode } from '../types';
 import { type BuildContext, createLeaf, createVarRef, shouldBeVariable } from './build-utils';
@@ -94,7 +96,12 @@ export function buildSwitchCaseComposite(
 			outputIndex = parseInt(caseMatch[1], 10);
 			caseIndices.push(outputIndex);
 		} else if (outputName === 'fallback') {
-			const fallbackIndex = caseIndices.length > 0 ? Math.max(...caseIndices) + 1 : 0;
+			// Derive fallback index from the node's rule count (not from connected outputs,
+			// which would undercount when some cases have no connections)
+			const params = node.json.parameters;
+			const rules = params?.rules as IDataObject | undefined;
+			const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
+			const fallbackIndex = rulesArray?.length ?? 4;
 			caseIndices.push(fallbackIndex);
 			outputIndex = fallbackIndex;
 		} else {

@@ -3,6 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
@@ -29,7 +30,16 @@ export async function execute(
 			}) as string;
 
 			try {
-				await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${workbookId}`);
+				await microsoftApiRequest.call(
+					this,
+					'DELETE',
+					`/drive/items/${workbookId}`,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					i,
+				);
 			} catch (error) {
 				if (error?.description.includes('Lock token does not match existing lock')) {
 					const errorDescription =
@@ -70,7 +80,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

@@ -3,17 +3,18 @@ import mysql2 from 'mysql2/promise';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { searchTables } from '../../v1/GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('mysql2/promise');
+vi.mock('mysql2/promise');
 
 describe('MySQL / v1 / Generic Functions', () => {
 	let mockLoadOptionsFunctions: ILoadOptionsFunctions;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		mockLoadOptionsFunctions = {
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				database: 'test_db',
 			}),
 		} as unknown as ILoadOptionsFunctions;
@@ -23,10 +24,10 @@ describe('MySQL / v1 / Generic Functions', () => {
 		it('should return matching tables', async () => {
 			const mockRows = [{ table_name: 'users' }, { table_name: 'products' }];
 
-			const mockQuery = jest.fn().mockResolvedValue([mockRows]);
-			const mockEnd = jest.fn().mockResolvedValue(undefined);
+			const mockQuery = vi.fn().mockResolvedValue([mockRows]);
+			const mockEnd = vi.fn().mockResolvedValue(undefined);
 
-			(mysql2.createConnection as jest.Mock).mockResolvedValue({
+			(mysql2.createConnection as Mock).mockResolvedValue({
 				query: mockQuery,
 				end: mockEnd,
 			});
@@ -58,10 +59,10 @@ ORDER  BY table_name`,
 		it('should handle empty search query', async () => {
 			const mockRows: any[] = [];
 
-			const mockQuery = jest.fn().mockResolvedValue([mockRows]);
-			const mockEnd = jest.fn().mockResolvedValue(undefined);
+			const mockQuery = vi.fn().mockResolvedValue([mockRows]);
+			const mockEnd = vi.fn().mockResolvedValue(undefined);
 
-			(mysql2.createConnection as jest.Mock).mockResolvedValue({
+			(mysql2.createConnection as Mock).mockResolvedValue({
 				query: mockQuery,
 				end: mockEnd,
 			});
@@ -84,7 +85,7 @@ ORDER  BY table_name`,
 		it('should handle database errors', async () => {
 			const mockError = new Error('Database connection failed');
 
-			(mysql2.createConnection as jest.Mock).mockRejectedValue(mockError);
+			(mysql2.createConnection as Mock).mockRejectedValue(mockError);
 
 			await expect(searchTables.call(mockLoadOptionsFunctions)).rejects.toThrow(
 				'Database connection failed',

@@ -1,22 +1,23 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ModelSelector } from '../ModelSelector.node';
 
 // Mock the N8nLlmTracing module completely to avoid module resolution issues
-jest.mock('@n8n/ai-utilities', () => ({
-	N8nLlmTracing: jest.fn().mockImplementation(() => ({
-		handleLLMStart: jest.fn(),
-		handleLLMEnd: jest.fn(),
+vi.mock('@n8n/ai-utilities', () => ({
+	N8nLlmTracing: vi.fn().mockImplementation(() => ({
+		handleLLMStart: vi.fn(),
+		handleLLMEnd: vi.fn(),
 	})),
 }));
 
 describe('ModelSelector Node', () => {
 	let node: ModelSelector;
-	let mockSupplyDataFunction: jest.Mocked<ISupplyDataFunctions>;
-	let mockLoadOptionsFunction: jest.Mocked<ILoadOptionsFunctions>;
+	let mockSupplyDataFunction: Mocked<ISupplyDataFunctions>;
+	let mockLoadOptionsFunction: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		node = new ModelSelector();
@@ -29,7 +30,7 @@ describe('ModelSelector Node', () => {
 			parameters: {},
 		} as INode);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('description', () => {
@@ -88,7 +89,7 @@ describe('ModelSelector Node', () => {
 		};
 		const mockModel3: Partial<BaseChatModel> = {
 			_llmType: () => 'fake-llm-3',
-			callbacks: [{ handleLLMStart: jest.fn() }],
+			callbacks: [{ handleLLMStart: vi.fn() }],
 		};
 
 		beforeEach(() => {

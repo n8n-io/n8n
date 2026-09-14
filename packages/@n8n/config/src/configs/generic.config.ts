@@ -7,14 +7,15 @@ type ReleaseChannel = z.infer<typeof releaseChannelSchema>;
 
 @Config
 export class GenericConfig {
-	/** Default timezone for the n8n instance. Can be overridden on a per-workflow basis. */
+	/** Default timezone for the instance. Can be overridden per workflow. */
 	@Env('GENERIC_TIMEZONE')
 	timezone: string = 'America/New_York';
 
+	/** Release channel (for example, stable, beta, nightly). Affects update checks and some defaults. */
 	@Env('N8N_RELEASE_TYPE', releaseChannelSchema)
 	releaseChannel: ReleaseChannel = 'dev';
 
-	/** Grace period (in seconds) to wait for components to shut down before process exit. */
+	/** Seconds to wait for graceful shutdown (for example, finishing executions) before the process exits. */
 	@Env('N8N_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
 }

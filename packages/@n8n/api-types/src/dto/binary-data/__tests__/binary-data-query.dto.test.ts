@@ -33,6 +33,15 @@ describe('BinaryDataQueryDto', () => {
 					mimeType: 'application/pdf',
 				},
 			},
+			{
+				name: 'azure mode with download action and optional fields',
+				request: {
+					id: 'azure:some-id',
+					action: 'download',
+					fileName: 'test.jpg',
+					mimeType: 'image/jpeg',
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = BinaryDataQueryDto.safeParse(request);
 			expect(result.success).toBe(true);

@@ -33,6 +33,10 @@ const userBaseUri = (uri?: string) => {
 	return uri;
 };
 
+export function escapeSqlIdentifier(value: string): string {
+	return value.replace(/`/g, '``');
+}
+
 export function resolveBaseUri(ctx: ICtx) {
 	return ctx?.credentials?.environment === 'cloudHosted'
 		? 'https://cloud.seatable.io'

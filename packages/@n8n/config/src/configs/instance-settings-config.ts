@@ -21,12 +21,10 @@ export class InstanceSettingsConfig {
 	@Env('N8N_ENCRYPTION_KEY')
 	encryptionKey: string = '';
 
-	/**
-	 * The home folder path of the user.
-	 * If none can be found it falls back to the current working directory
-	 */
+	/** User home directory path; falls back to current working directory if not available. */
 	readonly userHome: string;
 
+	/** n8n data directory (for example, ~/.n8n), used for settings, credentials, and local files. */
 	readonly n8nFolder: string;
 
 	constructor() {

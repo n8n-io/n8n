@@ -4,7 +4,7 @@
  * Fetches test duration metrics from Currents API for test orchestration.
  *
  * Usage:
- *   CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=<id>
+ *   CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=nHHLA5
  *
  * Output: .github/test-metrics/playwright.json
  */
@@ -24,7 +24,7 @@ const DEFAULT_DURATION = 60000; // 1 minute default for new specs (accounts for 
 
 const PROJECT_ID = process.argv.find((a) => a.startsWith('--project='))?.split('=')[1];
 if (!PROJECT_ID) {
-	console.error('Usage: CURRENTS_API_KEY=<key> node fetch-currents-metrics.mjs --project=<id>');
+	console.error('Usage: CURRENTS_API_KEY=<key> node fetch-currents-metrics.mjs --project=nHHLA5');
 	process.exit(1);
 }
 
@@ -71,7 +71,9 @@ function getPlaywrightSpecs() {
 			encoding: 'utf-8',
 			stdio: ['pipe', 'pipe', 'pipe'],
 		});
-		const specs = new Set([...output.matchAll(/› (tests\/e2e\/[^\s:]+\.spec\.ts)/g)].map((m) => m[1]));
+		const specs = new Set(
+			[...output.matchAll(/› (tests\/e2e\/[^\s:]+\.spec\.ts)/g)].map((m) => m[1]),
+		);
 		console.log(`Found ${specs.size} specs in Playwright`);
 		return specs;
 	} catch (e) {
@@ -104,7 +106,8 @@ async function main() {
 			staleSpecs.push(item.spec);
 			continue;
 		}
-		const duration = item.metrics.avgDuration < 1000 ? DEFAULT_DURATION : Math.round(item.metrics.avgDuration);
+		const duration =
+			item.metrics.avgDuration < 1000 ? DEFAULT_DURATION : Math.round(item.metrics.avgDuration);
 		output.specs[item.spec] = {
 			avgDuration: duration,
 			testCount: item.metrics.suiteSize,
@@ -132,7 +135,9 @@ async function main() {
 		staleSpecs.forEach((s) => console.log(`  - ${s}`));
 	}
 	if (newSpecs.length) {
-		console.log(`\nNew specs (in Playwright but not Currents, using ${DEFAULT_DURATION / 1000}s default):`);
+		console.log(
+			`\nNew specs (in Playwright but not Currents, using ${DEFAULT_DURATION / 1000}s default):`,
+		);
 		newSpecs.forEach((s) => console.log(`  - ${s}`));
 	}
 }

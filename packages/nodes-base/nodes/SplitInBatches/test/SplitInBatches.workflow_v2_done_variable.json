@@ -153,11 +153,27 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+				"data": [
+					{
+						"key": "10"
+					},
+					{
+						"key": "11"
+					},
+					{
+						"key": "12"
+					},
+					{
+						"key": "13"
+					},
+					{
+						"key": "14"
+					}
+				]
 			},
 			"id": "2a62fdd8-5e6c-468b-88af-bddd0475ff4a",
 			"name": "Mock Data 1_2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1580, 820]
 		},
@@ -180,11 +196,27 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+				"data": [
+					{
+						"key": "10"
+					},
+					{
+						"key": "11"
+					},
+					{
+						"key": "12"
+					},
+					{
+						"key": "13"
+					},
+					{
+						"key": "14"
+					}
+				]
 			},
 			"id": "9f9e4c1f-5dfc-45f6-ac48-ccd02d42e54c",
 			"name": "Mock Data 2_2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1580, 1260]
 		},
@@ -207,11 +239,27 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+				"data": [
+					{
+						"key": "10"
+					},
+					{
+						"key": "11"
+					},
+					{
+						"key": "12"
+					},
+					{
+						"key": "13"
+					},
+					{
+						"key": "14"
+					}
+				]
 			},
 			"id": "9b8f1472-3913-44ae-9e8c-e8bf01d5ea3c",
 			"name": "Mock Data 3_2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1580, 1560]
 		},
@@ -224,22 +272,18 @@
 			"position": [1400, 920]
 		},
 		{
-			"parameters": {
-				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 2\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
-			},
+			"parameters": {},
 			"id": "84277fcb-2749-49f3-83f3-7132848f3a0b",
 			"name": "Result 2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-base.noOp",
 			"position": [2860, 1280],
 			"typeVersion": 1
 		},
 		{
-			"parameters": {
-				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 3\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
-			},
+			"parameters": {},
 			"id": "fd9de431-a537-44a6-a4e2-68825768bb1d",
 			"name": "Result 3",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-base.noOp",
 			"position": [2860, 1520],
 			"typeVersion": 1
 		},
@@ -320,156 +364,66 @@
 		"Results 1": [
 			{
 				"json": {
-					"key": "10_0"
+					"key": "10"
 				}
 			},
 			{
 				"json": {
-					"key": "11_0"
+					"key": "11"
 				}
 			},
 			{
 				"json": {
-					"key": "12_0"
+					"key": "12"
 				}
 			},
 			{
 				"json": {
-					"key": "13_0"
+					"key": "13"
 				}
 			},
 			{
 				"json": {
-					"key": "14_0"
+					"key": "14"
 				}
 			},
 			{
 				"json": {
-					"key": "10_1"
+					"key": "10"
 				}
 			},
 			{
 				"json": {
-					"key": "11_1"
+					"key": "11"
 				}
 			},
 			{
 				"json": {
-					"key": "12_1"
+					"key": "12"
 				}
 			},
 			{
 				"json": {
-					"key": "13_1"
+					"key": "13"
 				}
 			},
 			{
 				"json": {
-					"key": "14_1"
+					"key": "14"
 				}
 			}
 		],
 		"Result 3": [
 			{
 				"json": {
-					"key": "10_0"
-				}
-			},
-			{
-				"json": {
-					"key": "11_0"
-				}
-			},
-			{
-				"json": {
-					"key": "12_0"
-				}
-			},
-			{
-				"json": {
-					"key": "13_0"
-				}
-			},
-			{
-				"json": {
-					"key": "14_0"
-				}
-			},
-			{
-				"json": {
-					"key": "10_1"
-				}
-			},
-			{
-				"json": {
-					"key": "11_1"
-				}
-			},
-			{
-				"json": {
-					"key": "12_1"
-				}
-			},
-			{
-				"json": {
-					"key": "13_1"
-				}
-			},
-			{
-				"json": {
-					"key": "14_1"
+					"key": "14"
 				}
 			}
 		],
 		"Result 2": [
 			{
 				"json": {
-					"key": "10_0"
-				}
-			},
-			{
-				"json": {
-					"key": "11_0"
-				}
-			},
-			{
-				"json": {
-					"key": "12_0"
-				}
-			},
-			{
-				"json": {
-					"key": "13_0"
-				}
-			},
-			{
-				"json": {
-					"key": "14_0"
-				}
-			},
-			{
-				"json": {
-					"key": "10_1"
-				}
-			},
-			{
-				"json": {
-					"key": "11_1"
-				}
-			},
-			{
-				"json": {
-					"key": "12_1"
-				}
-			},
-			{
-				"json": {
-					"key": "13_1"
-				}
-			},
-			{
-				"json": {
-					"key": "14_1"
+					"key": "14"
 				}
 			}
 		]
