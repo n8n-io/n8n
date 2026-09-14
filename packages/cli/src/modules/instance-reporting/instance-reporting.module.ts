@@ -49,16 +49,12 @@ export class InstanceReportingModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape is `{ enabled: boolean, reportTime?: string }`. A
-	 * consumer reads the three states as: key absent, so the module is not
-	 * enabled on this instance; `enabled: false`, so it is loaded but has no
-	 * receiver; `enabled: true`, so it reports daily at `reportTime`.
+	 * Return values:
+	 * { enabled: false } - module loaded but no receiver configured
+	 * { enabled: true, reportTime: 'HH:mm' } - module loaded and receiver configured
 	 *
-	 * These settings are built once, at startup, and served from a cache after
-	 * that, so only values fixed for the process lifetime belong here. For the
-	 * last delivery time, which moves while the process runs, read
-	 * `GET /rest/instance-reporting/status`.
-	 */
+	 * Built once at startup and cached for the process lifetime.
+	 **/
 	async settings() {
 		if (!(await this.isConfigured())) return { enabled: false };
 
