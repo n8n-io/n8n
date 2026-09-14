@@ -32,6 +32,29 @@ export function isContextPreferencesEnabled(): boolean {
 	);
 }
 
+/** How long a deep link waits for client-side flag evaluation before it fails closed. */
+const FLAG_WAIT_TIMEOUT_MS = 3000;
+
+/**
+ * The flag gate for a route. When the server delivered no flags and the client is
+ * still evaluating them, a deep link waits for that first evaluation, so an
+ * enrolled user is not bounced to the homepage by an unset value.
+ */
+export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
+	const posthog = usePostHog();
+	if (posthog.hasPendingFeatureFlags()) {
+		let timeoutId: number | undefined;
+		await Promise.race([
+			posthog.waitForFeatureFlags(),
+			new Promise<void>((resolve) => {
+				timeoutId = window.setTimeout(resolve, FLAG_WAIT_TIMEOUT_MS);
+			}),
+		]);
+		if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+	}
+	return isContextPreferencesEnabled();
+}
+
 /** The same decode the backend runs when it groups rows for a prompt. */
 export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
 	return aiPreferenceScopeOf(row);
@@ -71,11 +94,11 @@ export function preferenceAudience(
 	}
 }
 
-/** The display name of a user row's owner: the full name when set, else the email. */
+/** The display name of a user row's owner: the full name, else the email, else nothing. */
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	if (!user) return '';
 	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-	return fullName || user.email;
+	return fullName || user.email || '';
 }
 
 /**

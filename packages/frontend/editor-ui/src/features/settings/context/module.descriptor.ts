@@ -2,7 +2,7 @@ import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
 
-import { isContextPreferencesEnabled } from './context.utils';
+import { isContextPreferencesEnabledOnceEvaluated } from './context.utils';
 
 /**
  * Carries the routes. The preference dialog is local to the preferences page, so
@@ -32,7 +32,8 @@ export const ContextModule: FrontendModuleDescription = {
 					pageCategory: 'settings',
 				},
 			},
-			beforeEnter: () => isContextPreferencesEnabled() || { name: VIEWS.HOMEPAGE },
+			beforeEnter: async () =>
+				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
 		},
 		{
 			path: 'context/preferences',
@@ -44,7 +45,8 @@ export const ContextModule: FrontendModuleDescription = {
 					pageCategory: 'settings',
 				},
 			},
-			beforeEnter: () => isContextPreferencesEnabled() || { name: VIEWS.HOMEPAGE },
+			beforeEnter: async () =>
+				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
 		},
 	],
 };

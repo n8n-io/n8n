@@ -8,6 +8,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogFooter,
 	N8nFormInput,
 	N8nIcon,
 	N8nInputLabel,
@@ -365,7 +366,7 @@ watch(
 				</N8nSelect>
 			</N8nInputLabel>
 		</div>
-		<div :class="$style.footer">
+		<N8nDialogFooter>
 			<N8nButton
 				variant="subtle"
 				:label="i18n.baseText('settings.context.preferences.modal.cancel')"
@@ -379,21 +380,18 @@ watch(
 				data-test-id="preference-modal-save-button"
 				@click="handleSubmit"
 			/>
-		</div>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+// The dialog header and footer bring their own spacing; the body sets the gap
+// to both, as the design system's dialog examples do.
 .form {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
+	padding: var(--spacing--sm) 0;
 }
 
 .optionContent {

@@ -74,10 +74,13 @@ export type AiPreferenceProjectDto = {
 	icon: { type: 'emoji'; value: string } | { type: 'icon'; value: string } | null;
 };
 
-/** The owner of a user preference. Set on every user row, so an admin can name it. */
+/**
+ * The owner of a user preference. Set on every user row, so an admin can name it.
+ * Every field but the id is nullable on the entity, so the client needs a fallback.
+ */
 export type AiPreferenceUserDto = {
 	id: string;
-	email: string;
+	email: string | null;
 	firstName: string | null;
 	lastName: string | null;
 };
