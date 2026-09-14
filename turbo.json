@@ -49,8 +49,53 @@
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},
+		// A type check reads declarations, not bundles. Most packages still resolve a
+		// workspace import through the dependency's `types`/`exports` entry, which points
+		// into `dist`, so `^build` stays the default. The overrides below are the audited
+		// exceptions (N8N-384): a package gets a smaller edge only where every remaining
+		// `dist` read is listed. An edge with no proof stays `^build`.
 		"typecheck": {
 			"dependsOn": ["^build"]
+		},
+
+		// No import in these programs resolves to a workspace `dist`, so a type check here
+		// has nothing to wait for.
+		"@n8n/cli#typecheck": { "dependsOn": [] },
+		"@n8n/codemirror-lang#typecheck": { "dependsOn": [] },
+		"@n8n/constants#typecheck": { "dependsOn": [] },
+		"@n8n/crdt#typecheck": { "dependsOn": [] },
+		"@n8n/di#typecheck": { "dependsOn": [] },
+		"@n8n/errors#typecheck": { "dependsOn": [] },
+		"@n8n/eslint-plugin-design-system#typecheck": { "dependsOn": [] },
+		"@n8n/extension-sdk#typecheck": { "dependsOn": [] },
+		"@n8n/frontend-vite-config#typecheck": { "dependsOn": [] },
+		"@n8n/json-schema-to-zod#typecheck": { "dependsOn": [] },
+		"@n8n/mcp-browser#typecheck": { "dependsOn": [] },
+		"@n8n/n8n-benchmark#typecheck": { "dependsOn": [] },
+		"@n8n/permissions#typecheck": { "dependsOn": [] },
+		"@n8n/stylelint-config#typecheck": { "dependsOn": [] },
+		"@n8n/syslog-client#typecheck": { "dependsOn": [] },
+		"@n8n/test-impact#typecheck": { "dependsOn": [] },
+		"@n8n/tournament#typecheck": { "dependsOn": [] },
+		"@n8n/typeorm#typecheck": { "dependsOn": [] },
+		"@n8n/vitest-config#typecheck": { "dependsOn": [] },
+
+		// These read their siblings from `src` through tsconfig `paths`. Only the packages
+		// listed below are still resolved through `dist`.
+		"@n8n/design-system#typecheck": {
+			"dependsOn": ["n8n-workflow#build"]
+		},
+		"@n8n/frontend-module-insights#typecheck": {
+			"dependsOn": ["@n8n/permissions#build", "@n8n/vitest-config#build", "n8n-workflow#build"]
+		},
+		"@n8n/frontend-module-instance-registry#typecheck": {
+			"dependsOn": ["@n8n/permissions#build", "@n8n/vitest-config#build", "n8n-workflow#build"]
+		},
+		"@n8n/frontend-module-otel#typecheck": {
+			"dependsOn": ["@n8n/permissions#build", "@n8n/vitest-config#build", "n8n-workflow#build"]
+		},
+		"@n8n/storybook#typecheck": {
+			"dependsOn": ["@n8n/frontend-utils#build", "@n8n/i18n#build", "n8n-workflow#build"]
 		},
 		"format": {},
 		"format:check": {},
