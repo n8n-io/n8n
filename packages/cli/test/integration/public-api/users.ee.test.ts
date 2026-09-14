@@ -20,10 +20,6 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-mockInstance(License, {
-	getUsersLimit: vi.fn().mockReturnValue(-1),
-});
-
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeEach(async () => {
@@ -301,6 +297,9 @@ describe('With license without quota:users', () => {
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
 	});
 
+	// Headline demonstration for the `@RequiresUserQuota` gate: an owner API key that has every
+	// scope it needs still gets the licence 403, with the same message body as the legacy
+	// `validLicenseWithUserQuota` middleware.
 	test('GET /users should fail due to invalid license', async () => {
 		const response = await authOwnerAgent.get('/users').expect(403);
 
