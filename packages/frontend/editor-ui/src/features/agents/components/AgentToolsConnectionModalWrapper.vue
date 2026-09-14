@@ -899,15 +899,15 @@ function handleRowActivate(item: ToolConnectionItem) {
 		:items="items"
 		:categories="categories"
 		:title="props.data.mode === 'workflows' ? i18n.baseText('generic.workflows') : undefined"
-		:search-placeholder="
+		:searchPlaceholder="
 			props.data.mode === 'workflows'
 				? i18n.baseText('agents.tools.workflow.search.placeholder')
 				: undefined
 		"
 		size="2xlarge"
 		:detail-item="null"
-		:allow-workflow-creation="props.data.mode === 'workflows' && canCreateWorkflow"
-		:workflow-creation-loading="isCreatingWorkflow"
+		:allowWorkflowCreation="props.data.mode === 'workflows' && canCreateWorkflow"
+		:workflowCreationLoading="isCreatingWorkflow"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"

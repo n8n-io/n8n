@@ -99,6 +99,7 @@ function mountSection(
 				NodeIcon: { template: '<span />' },
 				N8nButton: {
 					props: ['disabled'],
+					emits: ['click'],
 					template:
 						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 				},
@@ -1012,6 +1013,7 @@ describe('AgentCapabilitiesSection', () => {
 						NodeIcon: { template: '<span />' },
 						N8nButton: {
 							props: ['disabled'],
+							emits: ['click'],
 							template:
 								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 						},
