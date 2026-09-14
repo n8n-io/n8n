@@ -4,6 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -573,6 +574,19 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should return 400 for an undocumented query parameter', async () => {
+		testServer.license.enable('feat:folders');
+		const { agent, personalProject } = await createDeleteScopedAgent();
+
+		const folder = await createFolder(personalProject, { name: 'Folder' });
+
+		const response = await agent
+			.delete(`/projects/${personalProject.id}/folders/${folder.id}`)
+			.query({ unknownParam: 'x' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should return 400 when transferToFolderId points to the folder being deleted', async () => {
 		testServer.license.enable('feat:folders');
 		const { agent, personalProject } = await createDeleteScopedAgent();
@@ -586,7 +600,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should delete a folder in personal project', async () => {
+	test('should delete a folder in personal project and send no response body', async () => {
 		testServer.license.enable('feat:folders');
 		const { agent, personalProject } = await createDeleteScopedAgent();
 
@@ -595,6 +609,12 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const response = await agent.delete(`/projects/${personalProject.id}/folders/${folder.id}`);
 
 		expect(response.statusCode).toBe(204);
+		expect(response.text).toBe('');
+		expect(response.body).toEqual({});
+
+		await expect(
+			Container.get(FolderService).findFolderInProjectOrFail(folder.id, personalProject.id),
+		).rejects.toThrow(FolderNotFoundError);
 	});
 
 	test('should delete folder and transfer child folders to transferToFolderId', async () => {
