@@ -156,6 +156,11 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'linear':
 		case 'discord':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'teams':
+			return {
+				icon: 'microsoft-teams',
+				label: i18n.baseText('agentSessions.origin.teams'),
+			};
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:
