@@ -161,8 +161,8 @@ export class ERPNext implements INodeType {
 
 					const { fields, filters } = this.getNodeParameter('options', i) as {
 						fields: string[];
-						filters: {
-							customProperty: Array<{ field: string; operator: string; value: string }>;
+						filters?: {
+							customProperty?: Array<{ field: string; operator: string; value: string }>;
 						};
 					};
 
@@ -175,8 +175,12 @@ export class ERPNext implements INodeType {
 						}
 					}
 					// filters=[["Person","first_name","=","Jane"]]
-					// TODO: filters not working
-					if (filters) {
+					// The Filters fixedCollection's own default is {} — not
+					// {customProperty: []} — for "no rows added", so `filters` can be
+					// truthy with `customProperty` still undefined. Reading it
+					// unguarded throws before any request is made, which is what the
+					// removed TODO above was flagging.
+					if (filters?.customProperty?.length) {
 						qs.filters = JSON.stringify(
 							filters.customProperty.map((filter) => {
 								return [docType, filter.field, toSQL(filter.operator), filter.value];
