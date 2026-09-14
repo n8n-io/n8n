@@ -77,7 +77,6 @@ describe('WorkflowSerializer.deserialize', () => {
 		const partial = serializer.deserialize(wire());
 
 		expect(partial).not.toHaveProperty('id');
-		expect(partial).not.toHaveProperty('versionId');
 		expect(partial).not.toHaveProperty('parentFolder');
 		expect(partial).not.toHaveProperty('parentFolderId');
 		expect(partial).not.toHaveProperty('activeVersionId');

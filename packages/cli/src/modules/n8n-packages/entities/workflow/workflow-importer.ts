@@ -275,6 +275,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				versionId: entity.versionId,
 				...(batchContext ? { batchContext } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
@@ -286,6 +287,7 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			versionId: entity.versionId,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 
@@ -301,14 +303,17 @@ export class WorkflowImporter {
 		item: UpdatePlanItem,
 		transition: WorkflowArchiveTransition,
 	): Promise<WorkflowEntity> {
+		const versionId = item.entity.versionId;
 		const workflow =
 			transition === 'archive'
 				? await this.workflowService.archive(context.user, item.existing.id, {
 						skipArchived: true,
 						publicApi: true,
+						versionId,
 					})
 				: await this.workflowService.unarchive(context.user, item.existing.id, {
 						publicApi: true,
+						versionId,
 					});
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.

@@ -25,6 +25,7 @@ const makeWorkflow = (id: string): WorkflowEntity =>
 		nodes: [],
 		connections: {},
 		isArchived: false,
+		versionId: `${id}-version`,
 	});
 
 const bindings: PackageImportBindings = {
@@ -117,13 +118,18 @@ describe('WorkflowImporter.apply', () => {
 		expect(createWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
-			expect.objectContaining({ batchContext }),
+			expect.objectContaining({ batchContext, versionId: 'source-create-version' }),
 		);
 		expect(updateWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
+			{
+				publicApi: true,
+				source: 'import',
+				allowArchivedUpdate: false,
+				versionId: 'source-update-version',
+			},
 		);
 	});
 
@@ -291,6 +297,7 @@ describe('WorkflowImporter.apply', () => {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: true,
+			versionId: 'source-version',
 		});
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();
@@ -334,6 +341,12 @@ describe('WorkflowImporter.apply', () => {
 		const result = await importer.apply(context, plan, bindings);
 
 		expect(update.mock.invocationCallOrder[0]).toBeLessThan(archive.mock.invocationCallOrder[0]);
+		// A version minted here would drift from the package.
+		expect(archive).toHaveBeenCalledWith(user, 'existing', {
+			skipArchived: true,
+			publicApi: true,
+			versionId: 'source-version',
+		});
 		expect(result.outcomes[0]?.workflow).toBe(archived);
 	});
 
