@@ -22,8 +22,15 @@ describe('GristOAuth2Api Credential', () => {
 		expect(property('authQueryParameters')?.default).toBe('prompt=consent');
 	});
 
-	// A token keeps the scopes it was granted, so this list cannot be widened after the fact.
-	it('should request read, write, webhook and offline access', () => {
-		expect(property('scope')?.default).toBe('offline_access doc:read doc:write doc:webhooks');
+	it('should default custom scopes to off, prefilled with read, write and offline access', () => {
+		expect(property('customScopes')?.default).toBe(false);
+		expect(property('enabledScopes')?.default).toBe('offline_access doc:read doc:write');
+	});
+
+	it('should use enabledScopes when customScopes is true, and fall back to the defaults when off or empty', () => {
+		expect(property('scope')?.type).toBe('hidden');
+		expect(property('scope')?.default).toBe(
+			'={{($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : "offline_access doc:read doc:write"}}',
+		);
 	});
 });

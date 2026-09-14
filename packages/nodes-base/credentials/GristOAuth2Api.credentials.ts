@@ -6,7 +6,6 @@ const scopes = [
 	'offline_access', // issue a refresh token, so the connection outlives the 1 h access token
 	'doc:read', // read records
 	'doc:write', // create, update, and delete records
-	'doc:webhooks', // manage webhooks (for a planned Grist Trigger node; awkward to widen later)
 ];
 
 // Mirrors `normalizeBaseUrl` in the node's GenericFunctions. Built with `new RegExp` because a
@@ -56,10 +55,44 @@ export class GristOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Enabled Scopes',
+			name: 'enabledScopes',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: scopes.join(' '),
+			description: 'Space-separated list of OAuth2 scopes to request',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: scopes.join(' '),
+			default:
+				'={{($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : "' +
+				scopes.join(' ') +
+				'"}}',
 		},
 		{
 			// Required: Grist's provider silently drops `offline_access` unless consent is prompted,
