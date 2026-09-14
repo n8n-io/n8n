@@ -126,6 +126,11 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 	closeNodeCreator(true);
 }
 
+function emptyGroupSelected() {
+	addEmptyGroup();
+	closeNodeCreator(true);
+}
+
 function toggleFocusPanel() {
 	focusPanelStore.toggleFocusPanel();
 
@@ -291,6 +296,7 @@ function openCommandBar(event: MouseEvent) {
 		<LazyNodeCreator
 			:active="createNodeActive"
 			@node-type-selected="nodeTypeSelected"
+			@empty-group-selected="emptyGroupSelected"
 			@close-node-creator="closeNodeCreator"
 		/>
 	</Suspense>
