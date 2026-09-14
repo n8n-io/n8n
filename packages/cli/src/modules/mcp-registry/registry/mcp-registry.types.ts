@@ -9,7 +9,7 @@ type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
-const optionalRegistryField = <T extends z.ZodType>(schema: T) =>
+const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
 /**
@@ -78,37 +78,32 @@ const mcpRegistryServerBaseSchema = z.object({
 	tagline: z.string(),
 	// Appended to every tool result from this server, for partners that require
 	// their attribution on the content the agent shows.
-	attribution: z
-		.string()
-		.nullish()
-		.transform((value) => value ?? undefined),
+	attribution: optionalField(z.string()),
 	version: z.string(),
 	updatedAt: z.string(),
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: optionalRegistryField(
+			mimeType: optionalField(
 				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
 			),
-			theme: optionalRegistryField(z.enum(['light', 'dark'])),
+			theme: optionalField(z.enum(['light', 'dark'])),
 		}),
 	),
-	websiteUrl: optionalRegistryField(z.string()),
+	websiteUrl: optionalField(z.string()),
 	remotes: z.array(
 		z.object({
 			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
 			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
-			headers: optionalRegistryField(z.record(z.string(), z.string())),
+			headers: optionalField(z.record(z.string(), z.string())),
 		}),
 	),
 	tools: z.array(
 		z.object({
 			name: z.string(),
-			title: optionalRegistryField(z.string()),
-			annotations: optionalRegistryField(
-				z.object({ readOnlyHint: optionalRegistryField(z.boolean()) }),
-			),
+			title: optionalField(z.string()),
+			annotations: optionalField(z.object({ readOnlyHint: optionalField(z.boolean()) })),
 		}),
 	),
 	isOfficial: z.boolean(),
