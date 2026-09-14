@@ -1347,9 +1347,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							@visible-change="(isVisible: boolean) => onSelectVisibleChange(type.name, isVisible)"
 							@blur="emit('blur', 'credentials')"
 						>
-							<template #prefix>
+							<template v-if="selectedCredentialIcon(type.name)" #prefix>
 								<N8nIcon
-									v-if="selectedCredentialIcon(type.name)"
 									:icon="selectedCredentialIcon(type.name)!"
 									size="large"
 									:class="$style.optionIcon"

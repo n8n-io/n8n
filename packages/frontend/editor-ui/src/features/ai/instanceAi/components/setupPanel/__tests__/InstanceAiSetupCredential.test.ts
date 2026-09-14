@@ -541,8 +541,40 @@ describe('InstanceAiSetupCredential', () => {
 		await rendered.rerender({
 			pendingCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
-		expect(rendered.getByTitle('••••••••')).toBeVisible();
+		expect(rendered.getByTitle(savedCredential.name)).toBeVisible();
+		expect(rendered.getByRole('status')).toHaveTextContent('Credential selected');
 		expect(rendered.queryByLabelText('API key')).toBeNull();
+	});
+
+	it('asks for help with service and field context without submitting the key', async () => {
+		const rendered = renderComponent();
+		await flushPromises();
+		await fireEvent.update(rendered.getByLabelText('API key'), 'private-draft');
+		await userEvent.click(rendered.getByRole('button', { name: 'Help me find my API key' }));
+		expect(rendered.emitted('askForHelp')).toEqual([
+			[
+				expect.objectContaining({
+					credentialType: 'serviceApi',
+					displayName: 'Service',
+					placeholderTitles: ['API key'],
+					documentationUrl: expect.stringContaining('/service/'),
+				}),
+			],
+		]);
+		expect(JSON.stringify(rendered.emitted('askForHelp'))).not.toContain('private-draft');
+		expect(rendered.getByLabelText('API key')).toHaveValue('private-draft');
+		await rendered.rerender({ helpDisabled: true });
+		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
+	});
+
+	it('offers another existing credential only when a different account is available', async () => {
+		const store = mockedStore(useCredentialsStore);
+		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		store.getUsableCredentialByType = vi.fn().mockReturnValue([savedCredential]);
+		const rendered = renderComponent({ props: { pendingCredential: savedCredential } });
+		await flushPromises();
+		await userEvent.click(rendered.getByRole('button', { name: 'Change connection' }));
+		expect(rendered.queryByRole('menuitem', { name: 'Use an existing credential' })).toBeNull();
 	});
 
 	it('reconciles a newly saved binding without opening a new OAuth form', async () => {

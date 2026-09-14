@@ -5,6 +5,18 @@ import { nextTick, ref } from 'vue';
 import SetupPanel from './SetupPanel.vue';
 
 describe('SetupPanel', () => {
+	it('keeps progress visible and updates it while a detail is open', async () => {
+		const items = [
+			{ id: 'slack', title: 'Slack', completed: false },
+			{ id: 'gmail', title: 'Gmail', completed: true },
+		];
+		const { getByRole, rerender } = render(SetupPanel, { props: { items, activeItemId: 'slack' } });
+		expect(getByRole('status')).toHaveTextContent('1 of 2 complete');
+		await rerender({ items: items.map((item) => ({ ...item, completed: true })) });
+		expect(getByRole('status')).toHaveTextContent('2 of 2 complete');
+		expect(getByRole('dialog', { name: 'Slack' })).toBeVisible();
+	});
+
 	it('retains outgoing content while making the closing detail inaccessible', async () => {
 		const activeItemId = ref<string | undefined>('slack');
 		const { getByRole, getByTestId, queryByRole, unmount } = render(

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import type { SetupConnectionProps } from './SetupConnection.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
-import type { SetupConnectionProps } from './SetupConnection.types';
 
 defineProps<SetupConnectionProps>();
 const emit = defineEmits<{
@@ -19,6 +19,7 @@ const { t } = useI18n();
 			<div :class="$style.field">
 				<span v-if="valueLabel" :class="$style.label">{{ valueLabel }}</span>
 				<div :class="$style.saved">
+					<N8nIcon icon="circle-check" size="small" :class="$style.success" />
 					<span :class="$style.value" :title="value">{{ value || t('setupPanel.connected') }}</span>
 					<N8nDropdownMenu
 						v-if="actions.length"
@@ -41,6 +42,7 @@ const { t } = useI18n();
 						</template>
 					</N8nDropdownMenu>
 				</div>
+				<span :class="$style.success" role="status">{{ t('setupPanel.credentialSelected') }}</span>
 			</div>
 		</template>
 		<template v-else>
@@ -53,7 +55,6 @@ const { t } = useI18n();
 					<N8nButton
 						size="small"
 						:variant="actionVariant"
-						:class="{ [$style.splitAction]: actions.length > 0 }"
 						:disabled="disabled || actionDisabled || loading"
 						:loading="loading"
 						@click="emit('action')"
@@ -71,13 +72,12 @@ const { t } = useI18n();
 						<template #trigger>
 							<N8nButton
 								size="small"
-								:variant="actionVariant"
+								variant="subtle"
 								icon-only
-								:class="$style.splitMenu"
 								:disabled="disabled || loading"
 								:aria-label="t('setupPanel.moreOptions')"
 							>
-								<N8nIcon icon="chevron-down" size="small" />
+								<N8nIcon icon="ellipsis" size="small" />
 							</N8nButton>
 						</template>
 					</N8nDropdownMenu>
@@ -124,12 +124,13 @@ const { t } = useI18n();
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--text-color--subtle);
+	color: var(--text-color);
 }
 
 .actions {
 	display: flex;
 	flex-shrink: 0;
+	gap: var(--spacing--3xs);
 }
 
 .footer {
@@ -145,14 +146,8 @@ const { t } = useI18n();
 	color: var(--text-color--subtle);
 }
 
-.splitAction {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-
-.splitMenu {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	border-left: var(--border);
+.success {
+	color: var(--text-color--success);
+	font-size: var(--font-size--2xs);
 }
 </style>

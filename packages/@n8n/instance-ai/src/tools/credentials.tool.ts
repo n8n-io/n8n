@@ -804,7 +804,7 @@ async function announceSetupItems(
 		workflowId,
 		credentials: existingByType,
 		message:
-			`Listed ${typeNames} in the setup panel next to the chat. No card is open and nothing is waiting on ` +
+			`Listed ${typeNames} in the setup panel. No card is open and nothing is waiting on ` +
 			'you: continue the build. The user can connect these at any time while you work — the build ' +
 			'attaches a matching stored credential automatically and the panel tracks what remains. Do not ' +
 			'ask the user to connect them now, do not describe a card, and do not call setup again for these ' +

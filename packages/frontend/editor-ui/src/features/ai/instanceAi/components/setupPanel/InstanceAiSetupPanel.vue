@@ -22,6 +22,7 @@ import {
 import { getWorkflow } from '@/app/api/workflows';
 import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { deriveHomeProject } from '@/app/stores/workflowDocument.store';
+import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
@@ -35,6 +36,10 @@ import { useCredentialTestInBackground } from '@/features/credentials/composable
 import { useThread } from '../../instanceAi.store';
 import { useSetupPanelState } from '../../composables/useSetupPanelState';
 import { useSetupPanelExecution } from '../../composables/useSetupPanelExecution';
+import {
+	buildInstanceAiArtifactCredentialQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../../composables/useInstanceAiHandoff';
 import { groupSetupPanelRows, type SetupPanelGroup } from '../../setupPanelGroups';
 import { useSetupPanelTelemetry } from '../../composables/useSetupPanelTelemetry';
 import {
@@ -362,6 +367,16 @@ const requestingExecution = ref(false);
 const isChatBusy = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
 );
+
+async function onAskForHelp(credential: InstanceAiCredentialContext) {
+	if (isChatBusy.value) return;
+	await thread.sendMessage(
+		buildInstanceAiArtifactCredentialQuestion(credential),
+		undefined,
+		rootStore.pushRef,
+		buildInstanceAiCredentialHandoffContext(credential),
+	);
+}
 const allRowsDone = computed(() => rows.value.length > 0 && rows.value.every((row) => row.isDone));
 const hasChanges = computed(() => credentialHasChanges.value || dirtyParameters.size > 0);
 const activeGroupComplete = computed(() => {
@@ -641,6 +656,8 @@ async function onApplyParameters(
 					:nodes="selectedNodes"
 					:workflow-id="workflowId"
 					:project-id="credentialProjectId"
+					:help-disabled="isChatBusy"
+					@ask-for-help="onAskForHelp"
 					@bind-credential="
 						(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
 					"

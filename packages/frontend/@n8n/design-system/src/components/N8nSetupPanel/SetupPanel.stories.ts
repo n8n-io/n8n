@@ -160,7 +160,7 @@ function example(state: Example): Story {
 							id: 'replace',
 							label:
 								state.method === 'key' || state.method === 'gateway'
-									? 'Replace key'
+									? 'Create new credential'
 									: 'Switch account',
 						},
 						{ id: 'edit', label: 'Edit credential' },

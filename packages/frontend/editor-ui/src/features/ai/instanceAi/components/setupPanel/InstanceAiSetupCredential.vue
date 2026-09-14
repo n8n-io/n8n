@@ -26,6 +26,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
@@ -55,10 +56,13 @@ const props = defineProps<{
 	nodes: INodeUi[];
 	workflowId: string;
 	projectId: string;
+	/** Whether the assistant is busy with another request. */
+	helpDisabled?: boolean;
 }>();
 const emit = defineEmits<{
 	bindCredential: [item: SetupCredentialItem, credentialId: string];
 	connectStarted: [method: SetupPanelConnectionMethod];
+	askForHelp: [credential: InstanceAiCredentialContext];
 	'update:busy': [value: boolean];
 	'update:hasChanges': [value: boolean];
 }>();
@@ -223,9 +227,7 @@ const valueLabel = computed(() =>
 		? i18n.baseText('instanceAi.setupPanel.connectedWith')
 		: isOAuth.value
 			? i18n.baseText('instanceAi.setupPanel.account')
-			: fieldTitles.value.length === 1
-				? fieldTitles.value[0]
-				: i18n.baseText('instanceAi.setupPanel.credential'),
+			: i18n.baseText('instanceAi.setupPanel.credential'),
 );
 const balanceLabel = computed(() =>
 	gateway.balance.value === undefined
@@ -243,7 +245,7 @@ const value = computed(() =>
 			? (storedCredential.value?.connectedAccountIdentifier ??
 				storedCredential.value?.name ??
 				binding.value?.name)
-			: '••••••••',
+			: (storedCredential.value?.name ?? binding.value?.name),
 );
 const useCredits = computed(() => gatewayAvailable.value && mode.value === 'credits');
 const actionLabel = computed(() =>
@@ -303,10 +305,34 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
 	if (!connected.value && documentationUrl.value)
 		items.push({ id: 'docs', label: i18n.baseText('credentialEdit.credentialConfig.openDocs') });
-	if (props.node && usableCredentials.value.length)
+	if (usableCredentials.value.some((credential) => credential.id !== binding.value?.id))
 		items.push({ id: 'existing', label: i18n.baseText('instanceAi.setupPanel.useExisting') });
 	return items;
 });
+
+const helpLabel = computed(() => {
+	const fieldName = inlineFields.value.length === 1 ? inlineFields.value[0].name : undefined;
+	return i18n.baseText(
+		fieldName === 'apiKey'
+			? 'instanceAi.setupPanel.helpFindApiKey'
+			: fieldName === 'accessToken'
+				? 'instanceAi.setupPanel.helpFindAccessToken'
+				: 'instanceAi.setupPanel.helpSetUp',
+	);
+});
+
+function askForHelp() {
+	if (props.helpDisabled || busy.value) return;
+	emit('askForHelp', {
+		credentialType: props.item.credentialType,
+		displayName: serviceName.value,
+		nodeName: props.node?.name,
+		nodeType: props.node?.type,
+		placeholderTitles: isOAuth.value ? undefined : fieldTitles.value,
+		documentationUrl: documentationUrl.value || undefined,
+		oauthRedirectUrl: isOAuth.value ? redirectUrl.value : undefined,
+	});
+}
 
 function emitBinding(id: string, submittedData?: ICredentialDataDecryptedObject) {
 	if (!active) return;
@@ -513,6 +539,7 @@ onScopeDispose(() => {
 				:project-id="projectId"
 				:workflow-id="workflowId"
 				:credential-setup-hint="item.setupHint"
+				:credentials-field-label="i18n.baseText('instanceAi.setupPanel.credential')"
 				standalone
 				hide-issues
 				skip-auto-select
@@ -575,6 +602,13 @@ onScopeDispose(() => {
 				<N8nText step="xs">{{ balanceLabel }}</N8nText>
 			</template>
 			<template v-if="initialized && !useCredits && !canQuickConnect">
+				<N8nText size="small" :class="$style.hint">
+					{{
+						i18n.baseText('instanceAi.setupPanel.accessDescription', {
+							interpolate: { service: serviceName },
+						})
+					}}
+				</N8nText>
 				<label v-if="isOAuth && redirectUrl" :class="$style.redirect">
 					{{ i18n.baseText('instanceAi.setupPanel.redirectUrl') }}
 					<N8nCopyInput
@@ -599,6 +633,17 @@ onScopeDispose(() => {
 					:show-validation-warnings="form.showValidationWarning.value"
 					@update="onDataChange"
 				/>
+			</template>
+			<template v-if="!useCredits" #footer>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:class="$style.help"
+					:disabled="helpDisabled || busy"
+					@click="askForHelp"
+				>
+					{{ helpLabel }}
+				</N8nButton>
 			</template>
 		</N8nSetupConnection>
 		<N8nButton
@@ -638,6 +683,10 @@ onScopeDispose(() => {
 
 .hint {
 	color: var(--text-color--subtle);
+}
+
+.help {
+	align-self: flex-start;
 }
 
 .redirectInput {

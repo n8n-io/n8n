@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core';
-import { CollapsibleRoot, VisuallyHidden } from 'reka-ui';
+import { CollapsibleRoot } from 'reka-ui';
 import { computed, nextTick, onScopeDispose, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
@@ -19,6 +19,7 @@ const { t } = useI18n();
 const activeItem = computed(() =>
 	props.items.find((item) => item.id === props.activeItemId && !item.disabled),
 );
+const completedCount = computed(() => props.items.filter((item) => item.completed).length);
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
 const overlayContent = useTemplateRef<HTMLElement>('overlayContent');
@@ -152,27 +153,24 @@ watch(
 									:role="item.hasAction ? 'group' : undefined"
 									:aria-label="item.hasAction ? item.title : undefined"
 									:type="item.hasAction ? undefined : 'button'"
-									:class="[
-										$style.row,
-										{ [$style.actionRow]: item.hasAction, [$style.completedRow]: item.completed },
-									]"
+									:class="[$style.row, { [$style.actionRow]: item.hasAction }]"
 									:disabled="item.hasAction ? undefined : item.disabled"
 									data-test-id="setup-panel-row"
 									:data-setup-item-id="item.id"
 									@click="!item.hasAction && emit('update:activeItemId', item.id)"
 								>
-									<span :class="[$style.icon, { [$style.complete]: item.completed }]">
-										<N8nIcon v-if="item.completed" icon="circle-check" size="small" />
-										<slot v-else name="icon" :item="item" />
+									<span :class="$style.icon">
+										<slot name="icon" :item="item" />
 									</span>
 									<span :class="$style.title">{{ item.title }}</span>
 									<slot v-if="item.hasAction" name="action" :item="item" />
 									<span v-else-if="!item.completed && item.subtitle" :class="$style.subtitle">
 										{{ item.subtitle }}
 									</span>
-									<VisuallyHidden v-if="item.completed" :aria-hidden="false">{{
-										t('setupPanel.complete')
-									}}</VisuallyHidden>
+									<span v-if="item.completed" :class="$style.complete">
+										<N8nIcon icon="circle-check" size="small" />
+										{{ t('setupPanel.complete') }}
+									</span>
 									<N8nIcon
 										v-if="!item.hasAction"
 										icon="chevron-right"
@@ -210,13 +208,18 @@ watch(
 						<N8nButton
 							variant="ghost"
 							size="small"
+							icon-only
 							:aria-label="t('setupPanel.back')"
 							data-test-id="setup-panel-back"
 							@click="emit('update:activeItemId', undefined)"
 						>
 							<N8nIcon icon="chevron-left" size="small" />
-							<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
 						</N8nButton>
+						<span :class="$style.icon"><slot name="icon" :item="activeItem" /></span>
+						<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
+						<span :class="$style.progress" role="status">
+							{{ t('setupPanel.progress', { completed: completedCount, total: items.length }) }}
+						</span>
 					</header>
 					<div :class="$style.detail">
 						<slot name="detail" :item="activeItem" />
@@ -388,10 +391,6 @@ watch(
 	white-space: nowrap;
 }
 
-.completedRow .title {
-	color: var(--text-color--subtler);
-}
-
 .subtitle {
 	min-width: 0;
 	overflow: hidden;
@@ -406,7 +405,17 @@ watch(
 }
 
 .complete {
-	color: var(--icon-color--success);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--text-color--success);
+}
+
+.progress {
+	flex-shrink: 0;
+	font-size: var(--font-size--2xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-color--subtle);
 }
 
 .chevron {
