@@ -15,16 +15,24 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Rule, RuleGroup } from '@/Interface';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { PREFERENCE_MODAL_KEY, PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { Preference, PreferenceScopeType } from '../context.types';
-import { canWriteInstanceScope, canWriteProjectScope, preferenceScope } from '../context.utils';
+import {
+	canWriteInstanceScope,
+	canWriteProjectScope,
+	preferenceAudience,
+	preferenceScope,
+	preferenceUserName,
+} from '../context.utils';
 
 // The modal registry mounts this and hands the payload through `data`, so the
 // shape follows the loader rather than the call site.
@@ -44,6 +52,7 @@ const telemetry = useTelemetry();
 const { showError } = useToast();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
 const contextStore = useContextStore();
 
 const modalBus = createEventBus();
@@ -59,11 +68,21 @@ onBeforeUnmount(() => {
 	disposed = true;
 });
 
+/*
+ * The select holds one string per target. A user row follows its user into every
+ * project; a project row, personal project included, applies only there.
+ */
 const USER_SCOPE_VALUE = 'user';
 const INSTANCE_SCOPE_VALUE = 'instance';
-const projectScopeValue = (id: string) => `project:${id}`;
+const USER_SCOPE_PREFIX = 'user:';
+const PROJECT_SCOPE_PREFIX = 'project:';
+const projectScopeValue = (id: string) => `${PROJECT_SCOPE_PREFIX}${id}`;
+const userScopeValue = (id: string) => `${USER_SCOPE_PREFIX}${id}`;
 
-const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layer-group' };
+const USER_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
+const INSTANCE_ICON: IconOrEmoji = { type: 'icon', value: 'globe' };
+
+const currentUserId = computed(() => usersStore.currentUser?.id);
 
 function initialScopeValue() {
 	const editing = preference.value;
@@ -71,15 +90,19 @@ function initialScopeValue() {
 
 	const scope = preferenceScope(editing);
 	if (scope === 'instance') return INSTANCE_SCOPE_VALUE;
-	if (scope === 'project' && editing.projectId) {
-		return projectScopeValue(editing.projectId);
+	if (scope === 'project' && editing.projectId) return projectScopeValue(editing.projectId);
+	// Another user's row keeps its owner. A bare `user` scope would hand it to the caller.
+	if (editing.userId && editing.userId !== currentUserId.value) {
+		return userScopeValue(editing.userId);
 	}
 	return USER_SCOPE_VALUE;
 }
 
+const initialScope = initialScopeValue();
+
 const form = reactive({
 	content: preference.value?.content ?? '',
-	scope: initialScopeValue(),
+	scope: initialScope,
 });
 
 const contentValid = ref(false);
@@ -97,37 +120,91 @@ const trimmedContent = computed(() => form.content.trim());
 
 type ScopeOption = { value: string; label: string; icon: IconOrEmoji; disabled: boolean };
 
+/**
+ * The option for the row's current target when the caller's own list lacks it: an
+ * admin editing another user's row or personal project, or a project they are not
+ * listed in.
+ */
+function currentTargetOption(editing: Preference): ScopeOption {
+	const audience = preferenceAudience(editing, currentUserId.value);
+	if (audience.kind === 'user') {
+		return {
+			value: initialScope,
+			label: i18n.baseText('settings.context.preferences.scope.otherUser', {
+				interpolate: { name: preferenceUserName(audience.user) },
+			}),
+			icon: USER_ICON,
+			disabled: false,
+		};
+	}
+	if (audience.kind === 'personalProject') {
+		return {
+			value: initialScope,
+			label: i18n.baseText('settings.context.preferences.scope.otherPersonalProject', {
+				interpolate: { name: audience.ownerName },
+			}),
+			icon: USER_ICON,
+			disabled: false,
+		};
+	}
+	return {
+		value: initialScope,
+		label: editing.project?.name ?? editing.projectId ?? '',
+		icon: editing.project?.icon ?? DEFAULT_PROJECT_ICON,
+		disabled: false,
+	};
+}
+
 const scopeOptions = computed<ScopeOption[]>(() => {
 	const options: ScopeOption[] = [
 		{
 			value: USER_SCOPE_VALUE,
 			label: i18n.baseText('settings.context.preferences.scope.user'),
-			icon: { type: 'icon', value: 'user' },
+			icon: USER_ICON,
 			disabled: false,
-		},
-		{
-			value: INSTANCE_SCOPE_VALUE,
-			label: i18n.baseText('settings.context.preferences.scope.instance'),
-			icon: { type: 'icon', value: 'globe' },
-			disabled: !canWriteInstanceScope(),
 		},
 	];
 
-	// Team projects only. A personal project holds one member, so scoping a preference
-	// to it would duplicate "Just you" under a second name. Variables list personal
-	// projects because they have no per-user scope to offer; preferences do.
+	// The caller's personal project sits next to the user scope: both reach one user,
+	// but this one applies only when that project is in scope.
+	const personal = projectsStore.myProjects.find((project) => project.type === 'personal');
+	if (personal) {
+		options.push({
+			value: projectScopeValue(personal.id),
+			label: i18n.baseText('settings.context.preferences.scope.personalProject'),
+			icon: USER_ICON,
+			disabled: !canWriteProjectScope(personal.id),
+		});
+	}
+
+	options.push({
+		value: INSTANCE_SCOPE_VALUE,
+		label: i18n.baseText('settings.context.preferences.scope.instance'),
+		icon: INSTANCE_ICON,
+		disabled: !canWriteInstanceScope(),
+	});
+
 	options.push(
 		...projectsStore.myProjects
 			.filter((project) => project.type === 'team')
 			.map((project) => ({
 				value: projectScopeValue(project.id),
 				label: project.name ?? project.id,
-				icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IconOrEmoji,
+				icon: project.icon ?? DEFAULT_PROJECT_ICON,
 				disabled: !canWriteProjectScope(project.id),
 			})),
 	);
 
-	return options;
+	const editing = preference.value;
+	if (editing && !options.some((option) => option.value === initialScope)) {
+		options.unshift(currentTargetOption(editing));
+	}
+
+	// Moving to a target needs the create right there, which `disabled` reflects.
+	// Staying put needs only the update right the Edit button already checked.
+	return options.map((option) =>
+		option.value === initialScope ? { ...option, disabled: false } : option,
+	);
 });
 
 const selectedIcon = computed<IconOrEmoji>(
@@ -143,10 +220,23 @@ const modalTitle = computed(() =>
 
 const isValid = computed(() => contentValid.value && trimmedContent.value.length > 0);
 
-function parseScope(): { scope: PreferenceScopeType; projectId: string | null } {
-	if (form.scope === USER_SCOPE_VALUE) return { scope: 'user', projectId: null };
-	if (form.scope === INSTANCE_SCOPE_VALUE) return { scope: 'instance', projectId: null };
-	return { scope: 'project', projectId: form.scope.slice('project:'.length) };
+function parseScope(): {
+	scope: PreferenceScopeType;
+	projectId: string | null;
+	userId: string | null;
+} {
+	if (form.scope === USER_SCOPE_VALUE) return { scope: 'user', projectId: null, userId: null };
+	if (form.scope === INSTANCE_SCOPE_VALUE) {
+		return { scope: 'instance', projectId: null, userId: null };
+	}
+	if (form.scope.startsWith(USER_SCOPE_PREFIX)) {
+		return { scope: 'user', projectId: null, userId: form.scope.slice(USER_SCOPE_PREFIX.length) };
+	}
+	return {
+		scope: 'project',
+		projectId: form.scope.slice(PROJECT_SCOPE_PREFIX.length),
+		userId: null,
+	};
 }
 
 function closeModal() {
@@ -156,25 +246,26 @@ function closeModal() {
 async function handleSubmit() {
 	if (!isValid.value || loading.value) return;
 
-	const { scope, projectId } = parseScope();
+	const { scope, projectId, userId } = parseScope();
 	const content = trimmedContent.value;
+	// The owner travels only when it is not the caller, so an own row stays a plain `user` scope.
+	const payload = { content, scope, projectId, ...(userId ? { userId } : {}) };
 
 	try {
 		loading.value = true;
 		if (mode.value === 'new') {
-			await contextStore.createPreference({ content, scope, projectId });
+			await contextStore.createPreference(payload);
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
 				scope_type: scope,
 				text_length: content.length,
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		} else if (preference.value) {
-			await contextStore.updatePreference(preference.value.id, { content, scope, projectId });
+			await contextStore.updatePreference(preference.value.id, payload);
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 				scope_type: scope,
 				text_length: content.length,
-				scope_changed:
-					scope !== preferenceScope(preference.value) || projectId !== preference.value.projectId,
+				scope_changed: form.scope !== initialScope,
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		}

@@ -19,6 +19,11 @@ export type ApplicableAiPreferencesQuery = {
 };
 
 export type AiPreferencePageQuery = ApplicableAiPreferencesQuery & {
+	/**
+	 * Include the rows of every user, not only the caller's. For admins in settings;
+	 * a prompt never sets it, because another user's rows do not apply to the caller.
+	 */
+	allUsers: boolean;
 	skip: number;
 	take: number;
 };
@@ -35,7 +40,7 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	 * built from them is stable across reads.
 	 */
 	async findApplicable(query: ApplicableAiPreferencesQuery): Promise<AiPreference[]> {
-		return await this.find({ where: visibleTo(query), order: ORDER });
+		return await this.find({ where: visibleTo(query, false), order: ORDER });
 	}
 
 	/**
@@ -44,8 +49,8 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	 */
 	async findPageApplicable(query: AiPreferencePageQuery): Promise<[AiPreference[], number]> {
 		return await this.findAndCount({
-			where: visibleTo(query),
-			relations: { project: true },
+			where: visibleTo(query, query.allUsers),
+			relations: RELATIONS,
 			order: ORDER,
 			skip: query.skip,
 			take: query.take,
@@ -58,17 +63,23 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	 * return it or act on it — `AiPreferenceService.requireVisible` is the one path
 	 * that does, and it answers a row the caller may not see as a missing row.
 	 */
-	async findByIdWithProject(id: string): Promise<AiPreference | null> {
-		return await this.findOne({ where: { id }, relations: { project: true } });
+	async findByIdWithRelations(id: string): Promise<AiPreference | null> {
+		return await this.findOne({ where: { id }, relations: RELATIONS });
 	}
 }
 
 const ORDER = { createdAt: 'ASC', id: 'ASC' } as const;
 
-function visibleTo(query: ApplicableAiPreferencesQuery): Array<FindOptionsWhere<AiPreference>> {
+/** The settings list names the owner of every row, so it loads both relations. */
+const RELATIONS = { project: true, user: true } as const;
+
+function visibleTo(
+	query: ApplicableAiPreferencesQuery,
+	allUsers: boolean,
+): Array<FindOptionsWhere<AiPreference>> {
 	const where: Array<FindOptionsWhere<AiPreference>> = [
 		{ userId: IsNull(), projectId: IsNull() },
-		{ userId: query.userId },
+		allUsers ? { userId: Not(IsNull()) } : { userId: query.userId },
 	];
 
 	if (query.projectIds === 'all') where.push({ projectId: Not(IsNull()) });

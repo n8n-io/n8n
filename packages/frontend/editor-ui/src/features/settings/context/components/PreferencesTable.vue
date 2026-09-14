@@ -105,7 +105,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 			</template>
 
 			<template #[`item.scope`]="{ item }">
-				<PreferenceScopeBadge :scope-type="preferenceScope(item)" :project="item.project" />
+				<PreferenceScopeBadge :preference="item" />
 			</template>
 
 			<template #[`item.actions`]="{ item }">

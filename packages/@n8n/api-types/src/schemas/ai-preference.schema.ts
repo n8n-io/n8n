@@ -41,17 +41,28 @@ export const aiPreferenceContentSchema = z
 export type AiPreferenceProjectDto = {
 	id: string;
 	name: string;
+	/** A personal project applies to one user, so the client labels it differently. */
+	type: 'personal' | 'team';
 	/** Discriminated, so a client can render it without narrowing it first. */
 	icon: { type: 'emoji'; value: string } | { type: 'icon'; value: string } | null;
+};
+
+/** The owner of a user preference. Set on every user row, so an admin can name it. */
+export type AiPreferenceUserDto = {
+	id: string;
+	email: string;
+	firstName: string | null;
+	lastName: string | null;
 };
 
 /** One `ai_preference` row, as the REST layer returns it. */
 export type AiPreferenceDto = {
 	id: string;
 	content: string;
-	/** Set when the preference belongs to one user. */
+	/** Set when the preference belongs to one user. It applies in every project. */
 	userId: string | null;
-	/** Set when the preference belongs to one project. */
+	user: AiPreferenceUserDto | null;
+	/** Set when the preference belongs to one project. It applies only there. */
 	projectId: string | null;
 	project: AiPreferenceProjectDto | null;
 	/** What the requesting user may do to this row. */

@@ -1,6 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@n8n/stores';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 
 import PreferencesTable from './PreferencesTable.vue';
 import type { Scope } from '@n8n/permissions';
@@ -15,6 +20,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		id: 'p1',
 		content: 'Keep replies short.',
 		userId: 'user-1',
+		user: null,
 		projectId: null,
 		project: null,
 		scopes: WRITABLE,
@@ -34,7 +40,14 @@ function render(preferences: Preference[], showEmpty = false) {
 
 describe('PreferencesTable', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({
+			initialState: {
+				[STORES.PROJECTS]: {
+					personalProject: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal' },
+				},
+			},
+		});
+		mockedStore(useUsersStore).currentUser = mock<IUser>({ id: 'user-1' });
 	});
 
 	it('renders one row for each preference', () => {
@@ -54,15 +67,48 @@ describe('PreferencesTable', () => {
 			preference({
 				id: 'c',
 				userId: null,
+				user: null,
 				projectId: 'proj',
-				project: { id: 'proj', name: 'Darwin', icon: null },
+				project: { id: 'proj', name: 'Darwin', type: 'team', icon: null },
 			}),
 		]);
 
 		const badges = getAllByTestId('preference-scope-badge');
-		expect(badges[0]).toHaveTextContent('Just you');
+		expect(badges[0]).toHaveTextContent('Just you · all projects');
 		expect(badges[1]).toHaveTextContent('Everyone');
 		expect(badges[2]).toHaveTextContent('Darwin');
+	});
+
+	it('names the owner of rows that reach another user, as an admin sees them', () => {
+		const { getAllByTestId } = render([
+			preference({
+				id: 'a',
+				userId: 'user-2',
+				user: { id: 'user-2', email: 'jane@acme.com', firstName: 'Jane', lastName: 'Doe' },
+			}),
+			preference({
+				id: 'b',
+				userId: null,
+				projectId: 'personal-2',
+				project: {
+					id: 'personal-2',
+					name: 'John Roe <john@acme.com>',
+					type: 'personal',
+					icon: null,
+				},
+			}),
+			preference({
+				id: 'c',
+				userId: null,
+				projectId: 'personal-1',
+				project: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal', icon: null },
+			}),
+		]);
+
+		const badges = getAllByTestId('preference-scope-badge');
+		expect(badges[0]).toHaveTextContent('Jane Doe · all projects');
+		expect(badges[1]).toHaveTextContent('John Roe · personal project');
+		expect(badges[2]).toHaveTextContent('Just you · personal project');
 	});
 
 	it('enables both actions when the row carries write scopes', () => {

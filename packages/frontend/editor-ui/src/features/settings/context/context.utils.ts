@@ -1,9 +1,15 @@
 import { getResourcePermissions } from '@n8n/permissions';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import type { Preference, PreferencePermissions, PreferenceScopeType } from './context.types';
+import type {
+	Preference,
+	PreferencePermissions,
+	PreferenceScopeType,
+	PreferenceUserRef,
+} from './context.types';
 
 /**
  * Reads the scope out of the entity's tri-state, the same way the backend does when
@@ -16,6 +22,47 @@ export function preferenceScope(
 	if (row.projectId) return 'project';
 	if (row.userId) return 'user';
 	return 'instance';
+}
+
+/**
+ * How the badge and the scope picker name a row. A user row follows its user into
+ * every project; a personal project row applies only there. Both belong to one
+ * user, so the label says whose they are when that user is not the viewer.
+ */
+export type PreferenceAudience =
+	| { kind: 'instance' }
+	| { kind: 'user'; own: boolean; user: PreferenceUserRef | null }
+	| { kind: 'personalProject'; own: boolean; ownerName: string }
+	| { kind: 'project'; name: string | null };
+
+export function preferenceAudience(
+	row: Preference,
+	currentUserId: string | undefined,
+): PreferenceAudience {
+	switch (preferenceScope(row)) {
+		case 'instance':
+			return { kind: 'instance' };
+		case 'user':
+			return { kind: 'user', own: row.userId === currentUserId, user: row.user };
+		case 'project':
+			if (row.project?.type === 'personal') {
+				// A personal project is named `First Last <email>`; the owner is the name part.
+				const { name, email } = splitName(row.project.name);
+				return {
+					kind: 'personalProject',
+					own: row.projectId === useProjectsStore().personalProject?.id,
+					ownerName: name ?? email ?? row.project.name,
+				};
+			}
+			return { kind: 'project', name: row.project?.name ?? null };
+	}
+}
+
+/** The display name of a user row's owner: the full name when set, else the email. */
+export function preferenceUserName(user: PreferenceUserRef | null): string {
+	if (!user) return '';
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+	return fullName || user.email;
 }
 
 /**

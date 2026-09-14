@@ -9,7 +9,7 @@ import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AiPreferenceService } from '@/services/ai-preference.service';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -92,6 +92,7 @@ describe('POST /ai-preferences', () => {
 		expect(response.body.data).toMatchObject({
 			content: 'Keep replies short.',
 			userId: member.id,
+			user: { id: member.id, email: member.email },
 			projectId: null,
 			project: null,
 			scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
@@ -99,7 +100,7 @@ describe('POST /ai-preferences', () => {
 		expect(typeof response.body.data.createdAt).toBe('string');
 		expect(typeof response.body.data.updatedAt).toBe('string');
 
-		const stored = await repository().findByIdWithProject(response.body.data.id);
+		const stored = await repository().findByIdWithRelations(response.body.data.id);
 		expect(stored).toMatchObject({ content: 'Keep replies short.', userId: member.id });
 	});
 
@@ -219,24 +220,70 @@ describe('POST /ai-preferences', () => {
 		});
 	});
 
-	test('refuses a preference aimed at a personal project', async () => {
+	test("lets a user and an admin save a preference on the user's personal project", async () => {
 		const personal = await getPersonalProject(member);
 
-		// The owner of a personal project holds no project preference scope on it, so the
-		// request never reaches the check that names the reason.
+		// Unlike a user preference, which follows the user everywhere, this one applies
+		// only when the personal project is in scope.
 		const ownRequest = await memberAgent
 			.post('/ai-preferences')
-			.send({ content: 'Mine, really.', scope: 'project', projectId: personal.id });
-		expect(ownRequest.statusCode).toBe(403);
+			.send({ content: 'Mine, here.', scope: 'project', projectId: personal.id });
+		expect(ownRequest.statusCode).toBe(200);
+		expect(ownRequest.body.data).toMatchObject({
+			userId: null,
+			projectId: personal.id,
+			project: { id: personal.id, type: 'personal' },
+			scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+		});
 
-		// An instance owner holds every project scope, so only the check stops them. A
-		// preference on a personal project would reach one user, which the personal scope
-		// already does.
-		const ownerRequest = await ownerAgent
+		const adminRequest = await adminAgent
+			.post('/ai-preferences')
+			.send({ content: 'Yours, here.', scope: 'project', projectId: personal.id });
+		expect(adminRequest.statusCode).toBe(200);
+
+		expect(await repository().count()).toBe(2);
+	});
+
+	test("refuses a preference on another member's personal project", async () => {
+		const personal = await getPersonalProject(outsider);
+
+		const response = await memberAgent
 			.post('/ai-preferences')
 			.send({ content: 'Yours, really.', scope: 'project', projectId: personal.id });
-		expect(ownerRequest.statusCode).toBe(400);
 
+		expect(response.statusCode).toBe(403);
+		expect(await repository().count()).toBe(0);
+	});
+
+	test('lets an admin save a preference for another user, but not a member', async () => {
+		const adminRequest = await adminAgent
+			.post('/ai-preferences')
+			.send({ content: 'For you.', scope: 'user', userId: member.id });
+		expect(adminRequest.statusCode).toBe(200);
+		expect(adminRequest.body.data).toMatchObject({
+			userId: member.id,
+			user: { id: member.id, email: member.email },
+		});
+
+		const memberRequest = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'For you.', scope: 'user', userId: outsider.id });
+		expect(memberRequest.statusCode).toBe(403);
+
+		const unknownUser = await adminAgent
+			.post('/ai-preferences')
+			.send({ content: 'For nobody.', scope: 'user', userId: crypto.randomUUID() });
+		expect(unknownUser.statusCode).toBe(400);
+
+		expect(await repository().count()).toBe(1);
+	});
+
+	test('refuses a user id on a scope that has no user', async () => {
+		const response = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance', userId: member.id });
+
+		expect(response.statusCode).toBe(400);
 		expect(await repository().count()).toBe(0);
 	});
 });
@@ -274,13 +321,48 @@ describe('GET /ai-preferences', () => {
 		expect(response.body.data.count).toBe(0);
 	});
 
-	test('shows an owner every project row without listing every project id', async () => {
+	test("includes the caller's personal project rows, and not another member's", async () => {
+		await seed({ content: 'Mine, here', projectId: (await getPersonalProject(member)).id });
+		await seed({ content: 'Theirs, there', projectId: (await getPersonalProject(outsider)).id });
+
+		const response = await memberAgent.get('/ai-preferences');
+
+		expect(contentsOf(response)).toEqual(['Mine, here']);
+	});
+
+	test('shows an owner every project row and every user row, and names their owners', async () => {
 		await seed({ content: 'Marketing', projectId: project.id });
 		await seed({ content: 'Someone else', userId: member.id });
+		await seed({ content: 'Theirs, there', projectId: (await getPersonalProject(outsider)).id });
 
 		const response = await ownerAgent.get('/ai-preferences');
+		const rows: Array<{ content: string; user: { id: string } | null; project: unknown }> =
+			response.body.data.data;
 
-		expect(contentsOf(response)).toEqual(['Marketing']);
+		expect(rows.map((row) => row.content).sort()).toEqual([
+			'Marketing',
+			'Someone else',
+			'Theirs, there',
+		]);
+		expect(rows.find((row) => row.content === 'Someone else')?.user).toMatchObject({
+			id: member.id,
+			email: member.email,
+		});
+		expect(rows.find((row) => row.content === 'Theirs, there')?.project).toMatchObject({
+			type: 'personal',
+		});
+	});
+
+	test("lets an admin update and delete another user's row", async () => {
+		await seed({ content: 'Someone else', userId: member.id });
+
+		const response = await adminAgent.get('/ai-preferences');
+
+		expect(response.body.data.data[0].scopes).toEqual([
+			'aiPreference:read',
+			'aiPreference:update',
+			'aiPreference:delete',
+		]);
 	});
 
 	test('reports what the caller may do to each row', async () => {
@@ -417,6 +499,49 @@ describe('PATCH /ai-preferences/:id', () => {
 		expect(response.statusCode).toBe(404);
 		expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('Someone else');
 	});
+
+	test("lets an admin edit another user's preference and keep its owner", async () => {
+		const row = await seed({ content: 'Old', userId: member.id });
+
+		const response = await adminAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'New', scope: 'user', userId: member.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			content: 'New',
+			userId: member.id,
+			user: { id: member.id },
+		});
+		expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({
+			content: 'New',
+			userId: member.id,
+		});
+	});
+
+	test("moves another user's preference to the admin when no user is named", async () => {
+		// The owner is explicit on the wire. A request without one means the caller.
+		const row = await seed({ content: 'Theirs', userId: member.id });
+
+		const response = await adminAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Theirs', scope: 'user' });
+
+		expect(response.statusCode).toBe(200);
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(admin.id);
+	});
+
+	test('refuses a move into a project the caller may only read, even with update rights on the row', async () => {
+		// A move creates the row in the new place, so it needs the create right there.
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Mine', scope: 'project', projectId: readOnlyProject.id });
+
+		expect(response.statusCode).toBe(403);
+		expect((await repository().findOneByOrFail({ id: row.id })).userId).toBe(member.id);
+	});
 });
 
 describe('DELETE /ai-preferences/:id', () => {
@@ -468,7 +593,32 @@ describe('the preferences a write produces', () => {
 		expect(applicable).toEqual({
 			instance: ['Everyone.'],
 			user: ['Just me.'],
-			projects: [{ id: project.id, name: 'Marketing', items: ['Marketing rule.'] }],
+			projects: [{ id: project.id, name: 'Marketing', type: 'team', items: ['Marketing rule.'] }],
 		});
+	});
+
+	test('reach the block only when the personal project is in scope', async () => {
+		const personal = await getPersonalProject(member);
+		await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Only here.', scope: 'project', projectId: personal.id });
+		const service = Container.get(AiPreferenceService);
+
+		// A thread bound to a team project does not see it; one bound to the personal
+		// project does, and the block names the kind of project rather than its owner.
+		const inTeamProject = await service.getApplicable(member.id, [
+			{ id: project.id, name: project.name, type: 'team' },
+		]);
+		expect(inTeamProject.projects).toEqual([]);
+
+		const inPersonalProject = await service.getApplicable(member.id, [
+			{ id: personal.id, name: personal.name, type: 'personal' },
+		]);
+		expect(inPersonalProject.projects).toEqual([
+			{ id: personal.id, name: personal.name, type: 'personal', items: ['Only here.'] },
+		]);
+		expect(renderAiPreferencesBlock(inPersonalProject)).toContain(
+			'Preferences for your personal project:',
+		);
 	});
 });

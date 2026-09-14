@@ -4,8 +4,9 @@ export const RESOURCES = {
 	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
 	// Free-text instructions injected into AI prompts. `aiPreference` covers the
-	// instance-wide ones; `projectAiPreference` covers the ones a project shares.
-	// A user's own preferences need neither: they are theirs to manage.
+	// instance-wide ones and, for admins, the ones of other users. `projectAiPreference`
+	// covers the ones a project holds, personal projects included. A user's own
+	// preferences need neither: they are theirs to manage.
 	aiPreference: [...DEFAULT_OPERATIONS] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,

@@ -134,6 +134,7 @@ export type {
 	AiPreferenceDto,
 	AiPreferenceListDto,
 	AiPreferenceProjectDto,
+	AiPreferenceUserDto,
 	AiPreferenceScope,
 } from './schemas/ai-preference.schema';
 

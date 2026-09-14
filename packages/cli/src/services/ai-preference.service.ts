@@ -5,7 +5,7 @@ import type {
 	AiPreferenceRequestDto,
 } from '@n8n/api-types';
 import type { AiPreference, Project, ReadableProjects, User } from '@n8n/db';
-import { AiPreferenceRepository, ProjectRepository } from '@n8n/db';
+import { AiPreferenceRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -16,7 +16,8 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 
-export type AiPreferenceProjectRef = { id: string; name: string };
+/** `type` lets the prompt name a personal project without quoting its owner's name. */
+export type AiPreferenceProjectRef = { id: string; name: string; type?: Project['type'] };
 
 /** The three write operations a preference has. Reading needs no scope of its own. */
 type WriteOperation = 'create' | 'update' | 'delete';
@@ -24,9 +25,14 @@ type WriteOperation = 'create' | 'update' | 'delete';
 /** The projects one operation is allowed in. `'all'` covers every project. */
 type AllowedProjects = Set<string> | 'all';
 
-/** Where a request wants the preference to live, once the caller is allowed there. */
+/**
+ * Where a request wants the preference to live, once the caller is allowed there.
+ * The relations travel with the ids: a loaded relation outranks the id column on
+ * save, so a move has to set both.
+ */
 type PreferenceTarget = {
 	userId: string | null;
+	user: User | null;
 	projectId: string | null;
 	project: Project | null;
 };
@@ -52,6 +58,7 @@ export class AiPreferenceService {
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -100,7 +107,8 @@ export class AiPreferenceService {
 	/**
 	 * One page of the preferences the user may see in settings: the instance-wide
 	 * rows, their own rows, and the rows of every project they may list preferences
-	 * in. The page keeps the order the preferences reach a prompt in.
+	 * in. An admin also sees the rows of every other user. The page keeps the order
+	 * the preferences reach a prompt in.
 	 */
 	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
 		const [projectIds, updatable, deletable] = await Promise.all([
@@ -110,6 +118,7 @@ export class AiPreferenceService {
 		]);
 		const [rows, count] = await this.aiPreferenceRepository.findPageApplicable({
 			userId: user.id,
+			allUsers: hasGlobalScope(user, 'aiPreference:list'),
 			projectIds,
 			...page,
 		});
@@ -133,25 +142,26 @@ export class AiPreferenceService {
 			}),
 		);
 		row.project = target.project;
+		row.user = target.user;
 
 		return this.toDto(row, await this.scopesFor(user, row));
 	}
 
 	/**
-	 * Replaces the whole preference, scope included. Moving one to another target
-	 * needs the write right on both, so nobody can push a preference somewhere they
-	 * could not have created it.
+	 * Replaces the whole preference, scope included. A move removes the preference
+	 * from one target and creates it in another, so it needs the delete right on the
+	 * old one and the create right on the new one. An edit in place needs only update.
 	 */
 	async update(user: User, id: string, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
 		const row = await this.requireVisible(user, id);
-		await this.assertCanWrite(user, row, 'update');
-		const target = await this.resolveTarget(user, request, 'update');
+		const moved = this.isMove(user, row, request);
+		await this.assertCanWrite(user, row, moved ? 'delete' : 'update');
+		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update');
 
 		row.content = request.content;
 		row.userId = target.userId;
+		row.user = target.user;
 		row.projectId = target.projectId;
-		// The row was read with its project, so the relation is set either way. A set
-		// relation outranks the id column on save, so a move needs both.
 		row.project = target.project;
 
 		const saved = await this.aiPreferenceRepository.save(row);
@@ -170,7 +180,7 @@ export class AiPreferenceService {
 	 * both answer the same way.
 	 */
 	private async requireVisible(user: User, id: string): Promise<AiPreference> {
-		const row = await this.aiPreferenceRepository.findByIdWithProject(id);
+		const row = await this.aiPreferenceRepository.findByIdWithRelations(id);
 		if (!row || !(await this.canSee(user, row))) {
 			throw new NotFoundError(`Preference with id ${id} not found`);
 		}
@@ -179,8 +189,8 @@ export class AiPreferenceService {
 
 	private async canSee(user: User, row: AiPreference): Promise<boolean> {
 		if (row.projectId) return await this.hasProjectScope(user, row.projectId, 'read');
+		if (row.userId) return row.userId === user.id || hasGlobalScope(user, 'aiPreference:read');
 		// Instance preferences apply to everyone, so everyone sees them.
-		if (row.userId) return row.userId === user.id;
 		return true;
 	}
 
@@ -191,7 +201,10 @@ export class AiPreferenceService {
 		operation: WriteOperation,
 	): Promise<boolean> {
 		if (row.projectId) return await this.hasProjectScope(user, row.projectId, operation);
-		if (row.userId) return row.userId === user.id;
+		// The global scope also covers other users' rows, so an admin can manage them.
+		if (row.userId) {
+			return row.userId === user.id || hasGlobalScope(user, `aiPreference:${operation}`);
+		}
 		return hasGlobalScope(user, `aiPreference:${operation}`);
 	}
 
@@ -199,6 +212,17 @@ export class AiPreferenceService {
 		if (!(await this.canWrite(user, row, operation))) {
 			throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
 		}
+	}
+
+	/**
+	 * Whether the request puts the row under another user or project. Decided from
+	 * the ids alone, before any permission check, so the check can pick the right
+	 * operation.
+	 */
+	private isMove(user: User, row: AiPreference, request: AiPreferenceRequestDto): boolean {
+		const userId = request.scope === 'user' ? (request.userId ?? user.id) : null;
+		const projectId = request.scope === 'project' ? (request.projectId ?? null) : null;
+		return row.userId !== userId || row.projectId !== projectId;
 	}
 
 	/**
@@ -211,45 +235,61 @@ export class AiPreferenceService {
 		operation: WriteOperation,
 	): Promise<PreferenceTarget> {
 		switch (request.scope) {
-			case 'user':
-				// Preferences of one's own need no scope: every user has them.
+			case 'user': {
 				this.assertNoProject(request);
-				return { userId: user.id, projectId: null, project: null };
+				// Preferences of one's own need no scope: every user has them.
+				const userId = request.userId ?? user.id;
+				if (userId === user.id) return { userId, user, projectId: null, project: null };
+
+				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
+					throw new ForbiddenError('You are not allowed to set preferences for another user');
+				}
+				const target = await this.userRepository.findOneBy({ id: userId });
+				if (!target) throw new BadRequestError('The user of the preference does not exist');
+				return { userId: target.id, user: target, projectId: null, project: null };
+			}
 
 			case 'instance':
 				this.assertNoProject(request);
+				this.assertNoUser(request);
 				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
 					throw new ForbiddenError('You are not allowed to set preferences for the whole instance');
 				}
-				return { userId: null, projectId: null, project: null };
+				return { userId: null, user: null, projectId: null, project: null };
 
 			case 'project': {
+				this.assertNoUser(request);
 				if (!request.projectId) {
 					throw new BadRequestError('A preference for a project needs a project id');
 				}
+				// A personal project passes too: its owner holds every preference scope on
+				// it, and an admin holds them globally. Such a row applies only when that
+				// project is in scope, unlike a user row, which applies everywhere.
 				const project = await this.projectService.getProjectWithScope(user, request.projectId, [
 					`projectAiPreference:${operation}`,
 				]);
 				if (!project) {
 					throw new ForbiddenError('You are not allowed to set preferences for this project');
 				}
-				// A personal project reaches only its owner, which is what a personal
-				// preference already does. Two ways to say one thing confuse the list.
-				if (project.type !== 'team') {
-					throw new BadRequestError('A preference cannot belong to a personal project');
-				}
-				return { userId: null, projectId: project.id, project };
+				return { userId: null, user: null, projectId: project.id, project };
 			}
 		}
 	}
 
 	/**
-	 * Only a project preference has a project. Dropping the id quietly would turn a
-	 * client that names the wrong scope into a preference saved somewhere else.
+	 * Only a project preference has a project, and only a user preference has a
+	 * user. Dropping an id quietly would turn a client that names the wrong scope
+	 * into a preference saved somewhere else.
 	 */
 	private assertNoProject(request: AiPreferenceRequestDto) {
 		if (request.projectId !== null && request.projectId !== undefined) {
 			throw new BadRequestError(`A ${request.scope} preference cannot name a project`);
+		}
+	}
+
+	private assertNoUser(request: AiPreferenceRequestDto) {
+		if (request.userId !== null && request.userId !== undefined) {
+			throw new BadRequestError(`A ${request.scope} preference cannot name a user`);
 		}
 	}
 
@@ -273,15 +313,27 @@ export class AiPreferenceService {
 	/** The projects whose preferences the user may list, without enumerating them all. */
 	private async readableProjects(user: User): Promise<ReadableProjects> {
 		if (hasGlobalScope(user, 'projectAiPreference:list')) return 'all';
-		return await this.projectService.getProjectIdsWithScope(user, ['projectAiPreference:list']);
+		return await this.projectIdsWithScope(user, 'list');
 	}
 
 	private async allowedProjects(user: User, operation: WriteOperation): Promise<AllowedProjects> {
 		if (hasGlobalScope(user, `projectAiPreference:${operation}`)) return 'all';
-		const ids = await this.projectService.getProjectIdsWithScope(user, [
-			`projectAiPreference:${operation}`,
+		return new Set(await this.projectIdsWithScope(user, operation));
+	}
+
+	/**
+	 * The role lookup covers team projects only, so the caller's personal project is
+	 * added by hand. Its owner role holds every preference scope.
+	 */
+	private async projectIdsWithScope(
+		user: User,
+		operation: 'list' | WriteOperation,
+	): Promise<string[]> {
+		const [teamIds, personal] = await Promise.all([
+			this.projectService.getProjectIdsWithScope(user, [`projectAiPreference:${operation}`]),
+			this.projectRepository.getPersonalProjectForUser(user.id),
 		]);
-		return new Set(ids);
+		return personal ? [...teamIds, personal.id] : teamIds;
 	}
 
 	private async hasProjectScope(user: User, projectId: string, operation: 'read' | WriteOperation) {
@@ -303,7 +355,7 @@ export class AiPreferenceService {
 	): Scope[] {
 		const may = (allowed: AllowedProjects, global: Scope) => {
 			if (row.projectId) return allowed === 'all' || allowed.has(row.projectId);
-			if (row.userId) return row.userId === user.id;
+			if (row.userId) return row.userId === user.id || hasGlobalScope(user, global);
 			return hasGlobalScope(user, global);
 		};
 
@@ -318,9 +370,22 @@ export class AiPreferenceService {
 			id: row.id,
 			content: row.content,
 			userId: row.userId,
+			user: row.user
+				? {
+						id: row.user.id,
+						email: row.user.email,
+						firstName: row.user.firstName,
+						lastName: row.user.lastName,
+					}
+				: null,
 			projectId: row.projectId,
 			project: row.project
-				? { id: row.project.id, name: row.project.name, icon: toProjectIcon(row.project.icon) }
+				? {
+						id: row.project.id,
+						name: row.project.name,
+						type: row.project.type,
+						icon: toProjectIcon(row.project.icon),
+					}
 				: null,
 			scopes,
 			createdAt: row.createdAt.toISOString(),
@@ -343,7 +408,7 @@ export function groupAiPreferences(
 ): ApplicableAiPreferences {
 	// Keyed in caller order, so the output keeps that order.
 	const byProject = new Map(
-		projects.map(({ id, name }) => [id, { id, name, items: [] as string[] }]),
+		projects.map(({ id, name, type }) => [id, { id, name, type, items: [] as string[] }]),
 	);
 	const instance: string[] = [];
 	const user: string[] = [];
@@ -376,8 +441,12 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 			heading: 'Instance preferences (set by an admin for everyone):',
 			items: preferences.instance,
 		},
+		// A personal project is named after its owner, so the heading names the kind instead.
 		...preferences.projects.map((project) => ({
-			heading: `Preferences for project "${singleLine(project.name)}":`,
+			heading:
+				project.type === 'personal'
+					? 'Preferences for your personal project:'
+					: `Preferences for project "${singleLine(project.name)}":`,
 			items: project.items,
 		})),
 		{ heading: 'Personal preferences:', items: preferences.user },

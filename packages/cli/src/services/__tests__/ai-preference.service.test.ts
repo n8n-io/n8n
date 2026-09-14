@@ -4,6 +4,7 @@ import type {
 	Project,
 	ProjectRepository,
 	User,
+	UserRepository,
 } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -27,10 +28,12 @@ describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
 	const projectService = mock<ProjectService>();
+	const userRepository = mock<UserRepository>();
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
 		projectService,
+		userRepository,
 	);
 
 	beforeEach(() => {
@@ -101,7 +104,9 @@ describe('AiPreferenceService', () => {
 				userId: 'user-1',
 				projectIds: ['personal-1', 'team-1'],
 			});
-			expect(result.projects).toEqual([{ id: 'team-1', name: 'Sales', items: ['Sales rule'] }]);
+			expect(result.projects).toEqual([
+				{ id: 'team-1', name: 'Sales', type: 'team', items: ['Sales rule'] },
+			]);
 		});
 
 		it("adds every team project for an owner, without other users' personal projects", async () => {
@@ -259,6 +264,19 @@ describe('renderAiPreferencesBlock', () => {
 				'</ai-preferences>',
 			].join('\n'),
 		);
+	});
+
+	it('names a personal project by its kind, not by its owner', () => {
+		const text = renderAiPreferencesBlock({
+			instance: [],
+			user: [],
+			projects: [
+				{ id: 'p-1', name: 'Jane Doe <jane@acme.com>', type: 'personal', items: ['Only here.'] },
+			],
+		});
+
+		expect(text).toContain('Preferences for your personal project:\n- Only here.');
+		expect(text).not.toContain('jane@acme.com');
 	});
 
 	it('keeps a multi-line preference inside one bullet', () => {

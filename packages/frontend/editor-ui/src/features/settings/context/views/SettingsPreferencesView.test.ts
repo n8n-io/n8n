@@ -35,6 +35,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		id: 'p1',
 		content: 'Keep replies short.',
 		userId: 'user-1',
+		user: null,
 		projectId: null,
 		project: null,
 		scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],

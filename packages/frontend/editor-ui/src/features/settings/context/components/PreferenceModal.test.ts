@@ -45,7 +45,15 @@ const initialState = {
 		modalStack: [PREFERENCE_MODAL_KEY],
 	},
 	[STORES.PROJECTS]: {
+		personalProject: { id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal' },
 		myProjects: [
+			// The owner of a personal project holds every `projectAiPreference` scope on it.
+			{
+				id: 'personal-1',
+				name: 'Me <me@n8n.io>',
+				type: 'personal',
+				scopes: ['projectAiPreference:create'],
+			},
 			// Project admins and editors both hold `projectAiPreference:create`.
 			{
 				id: 'p-write',
@@ -95,10 +103,16 @@ describe('PreferenceModal', () => {
 	});
 
 	describe('scope options', () => {
-		it('always offers "Just you"', () => {
+		it('always offers the user scope, which follows the user into every project', () => {
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
-			expect(findOption('Just you')?.className).not.toContain('is-disabled');
+			expect(findOption('Just you · all projects')?.className).not.toContain('is-disabled');
+		});
+
+		it('offers the personal project next to it, for preferences that apply only there', () => {
+			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+
+			expect(findOption('Just you · personal project')?.className).not.toContain('is-disabled');
 		});
 
 		it('disables "Everyone" for a user who is not an instance owner or admin', () => {
@@ -122,6 +136,44 @@ describe('PreferenceModal', () => {
 
 			expect(findOption('Writable Project')?.className).not.toContain('is-disabled');
 			expect(findOption('Read Only Project')?.className).toContain('is-disabled');
+		});
+
+		it('keeps the current scope selectable when editing, even without the create right there', () => {
+			// Staying put needs only the update right the Edit button already checked.
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Use sub-workflows.',
+				userId: null,
+				user: null,
+				projectId: 'p-read',
+				project: { id: 'p-read', name: 'Read Only Project', type: 'team', icon: null },
+				scopes: ['aiPreference:read', 'aiPreference:update'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+
+			expect(findOption('Read Only Project')?.className).not.toContain('is-disabled');
+		});
+
+		it("adds another user's row as its own option, so an admin can edit it in place", () => {
+			usersStore.currentUser = currentUser(['aiPreference:create', 'aiPreference:update']);
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Theirs.',
+				userId: 'user-2',
+				user: { id: 'user-2', email: 'jane@acme.com', firstName: 'Jane', lastName: 'Doe' },
+				projectId: null,
+				project: null,
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			renderModal({ props: { data: { mode: 'edit', preference } }, global, pinia });
+
+			expect(findOption('Jane Doe · all projects')?.className).not.toContain('is-disabled');
 		});
 	});
 
@@ -215,6 +267,7 @@ describe('PreferenceModal', () => {
 			id: 'p9',
 			content: 'Keep replies short.',
 			userId: 'user-1',
+			user: null,
 			projectId: null,
 			project: null,
 			scopes: [],
@@ -255,8 +308,9 @@ describe('PreferenceModal', () => {
 				id: 'p1',
 				content: 'Use sub-workflows.',
 				userId: null,
+				user: null,
 				projectId: 'p-write',
-				project: { id: 'p-write', name: 'Writable Project', icon: null },
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
@@ -277,13 +331,62 @@ describe('PreferenceModal', () => {
 			});
 		});
 
+		it("sends the owner back when editing another user's preference", async () => {
+			usersStore.currentUser = currentUser(['aiPreference:create', 'aiPreference:update']);
+			const preference: Preference = {
+				id: 'p1',
+				content: 'Theirs.',
+				userId: 'user-2',
+				user: { id: 'user-2', email: 'jane@acme.com', firstName: 'Jane', lastName: 'Doe' },
+				projectId: null,
+				project: null,
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
+				createdAt: '2026-09-08T00:00:00.000Z',
+				updatedAt: '2026-09-08T00:00:00.000Z',
+			};
+
+			const { getByTestId } = renderModal({
+				props: { data: { mode: 'edit', preference } },
+				global,
+				pinia,
+			});
+
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			// Without the owner the server would hand the row to the admin.
+			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				content: 'Theirs.',
+				scope: 'user',
+				projectId: null,
+				userId: 'user-2',
+			});
+		});
+
+		it('creates a preference for the personal project when that scope is picked', async () => {
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Only here.',
+			);
+			await userEvent.click(findOption('Just you · personal project')!);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			expect(contextStore.createPreference).toHaveBeenCalledWith({
+				content: 'Only here.',
+				scope: 'project',
+				projectId: 'personal-1',
+			});
+		});
+
 		it('reports an unchanged scope as scope_changed false', async () => {
 			const preference: Preference = {
 				id: 'p1',
 				content: 'Use sub-workflows.',
 				userId: null,
+				user: null,
 				projectId: 'p-write',
-				project: { id: 'p-write', name: 'Writable Project', icon: null },
+				project: { id: 'p-write', name: 'Writable Project', type: 'team', icon: null },
 				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',

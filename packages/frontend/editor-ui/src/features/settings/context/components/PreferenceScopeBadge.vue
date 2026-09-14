@@ -3,38 +3,66 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
+import { useUsersStore } from '@n8n/stores/users.store';
 
-import type { PreferenceProjectRef, PreferenceScopeType } from '../context.types';
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
+
+import type { Preference } from '../context.types';
+import { preferenceAudience, preferenceUserName } from '../context.utils';
 
 const props = defineProps<{
-	scopeType: PreferenceScopeType;
-	project?: PreferenceProjectRef | null;
+	preference: Preference;
 }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 
-const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layer-group' };
+const audience = computed(() => preferenceAudience(props.preference, usersStore.currentUser?.id));
 
-const icon = computed<IconOrEmoji | null>(() =>
-	props.scopeType === 'project' ? (props.project?.icon ?? DEFAULT_PROJECT_ICON) : null,
-);
+const icon = computed<IconOrEmoji | null>(() => {
+	switch (audience.value.kind) {
+		case 'project':
+			return props.preference.project?.icon ?? DEFAULT_PROJECT_ICON;
+		case 'personalProject':
+			return { type: 'icon', value: 'user' };
+		default:
+			return null;
+	}
+});
 
 const label = computed(() => {
-	if (props.scopeType === 'user') return i18n.baseText('settings.context.preferences.scope.user');
-	if (props.scopeType === 'instance') {
-		return i18n.baseText('settings.context.preferences.scope.instance');
+	const scope = audience.value;
+	switch (scope.kind) {
+		case 'instance':
+			return i18n.baseText('settings.context.preferences.scope.instance');
+		case 'user':
+			return scope.own
+				? i18n.baseText('settings.context.preferences.scope.user')
+				: i18n.baseText('settings.context.preferences.scope.otherUser', {
+						interpolate: { name: preferenceUserName(scope.user) },
+					});
+		case 'personalProject':
+			return scope.own
+				? i18n.baseText('settings.context.preferences.scope.personalProject')
+				: i18n.baseText('settings.context.preferences.scope.otherPersonalProject', {
+						interpolate: { name: scope.ownerName },
+					});
+		case 'project':
+			// A project the viewer cannot read is still listed, so fall back to a neutral label.
+			return scope.name ?? i18n.baseText('settings.context.preferences.scope.project');
 	}
-	// A project the viewer cannot read is still listed, so fall back to a neutral label.
-	return props.project?.name ?? i18n.baseText('settings.context.preferences.scope.project');
 });
+
+/** Rows that reach only one user read as plain; shared ones stand out. */
+const theme = computed(() =>
+	audience.value.kind === 'user' || audience.value.kind === 'personalProject'
+		? 'default'
+		: 'tertiary',
+);
 </script>
 
 <template>
-	<N8nBadge
-		:theme="scopeType === 'user' ? 'default' : 'tertiary'"
-		:class="$style.badge"
-		data-test-id="preference-scope-badge"
-	>
+	<N8nBadge :theme="theme" :class="$style.badge" data-test-id="preference-scope-badge">
 		<!--
 			The badge wraps its slot in a text span, so the flex row that spaces the icon
 			from the label has to live inside the slot. The variables table and the project
