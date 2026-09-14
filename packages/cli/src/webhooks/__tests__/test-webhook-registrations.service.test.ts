@@ -1,12 +1,17 @@
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { TEST_WEBHOOK_MAX_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 describe('TestWebhookRegistrationsService', () => {
+	const now = new Date('2026-01-01T00:00:00.000Z').getTime();
 	const cacheService = mock<CacheService>();
 	const registrations = new TestWebhookRegistrationsService(
 		cacheService,
@@ -17,11 +22,19 @@ describe('TestWebhookRegistrationsService', () => {
 	const registration = mock<TestWebhookRegistration>({
 		version: 1,
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
-		expiresAt: Date.now() + 60_000,
+		expiresAt: now + 60_000,
 	});
 
 	const webhookKey = 'GET|hello';
 	const cacheKey = 'test-webhooks';
+
+	beforeAll(() => {
+		vi.setSystemTime(now);
+	});
+
+	afterAll(() => {
+		vi.useRealTimers();
+	});
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -33,7 +46,10 @@ describe('TestWebhookRegistrationsService', () => {
 			await registrations.register(registration);
 
 			expect(cacheService.setHash).toHaveBeenCalledWith(cacheKey, {
-				[webhookKey]: expect.objectContaining({ version: 1, expiresAt: expect.any(Number) }),
+				[webhookKey]: expect.objectContaining({
+					version: 1,
+					expiresAt: now + TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+				}),
 			});
 		});
 
@@ -94,7 +110,7 @@ describe('TestWebhookRegistrationsService', () => {
 		});
 
 		test('should skip an expired registration', async () => {
-			cacheService.getHashValue.mockResolvedValueOnce({ version: 1, expiresAt: Date.now() - 1 });
+			cacheService.getHashValue.mockResolvedValueOnce({ version: 1, expiresAt: now - 1 });
 
 			await expect(registrations.get(webhookKey)).resolves.toBeUndefined();
 		});
@@ -124,7 +140,7 @@ describe('TestWebhookRegistrationsService', () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' }, // invalid registration to test filtering
-				EXPIRED_KEY: { version: 1, expiresAt: Date.now() - 1 },
+				EXPIRED_KEY: { version: 1, expiresAt: now - 1 },
 			});
 
 			const result = await registrations.getAllRegistrations();
@@ -138,7 +154,7 @@ describe('TestWebhookRegistrationsService', () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' },
-				EXPIRED_KEY: { version: 1, expiresAt: Date.now() - 1 },
+				EXPIRED_KEY: { version: 1, expiresAt: now - 1 },
 			});
 
 			const result = await registrations.getRegistrationsHash();
