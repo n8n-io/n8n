@@ -923,6 +923,8 @@
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
+    "confusables": "1.1.1",
+    "fast-check": "catalog:",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "nock": "catalog:",
