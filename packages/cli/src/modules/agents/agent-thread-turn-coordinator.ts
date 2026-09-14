@@ -1,9 +1,7 @@
-import { LockNamespace, LockService } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
@@ -31,38 +29,30 @@ export class AgentThreadQueueFullError extends UserError {
 class AgentThreadTurnPermit {
 	private declare readonly issuedByCoordinator: true;
 
-	constructor(
-		readonly threadId: string,
-		/** Aborts when the distributed lease is lost while the turn runs. */
-		readonly leaseLost: AbortSignal,
-	) {}
+	constructor(readonly threadId: string) {}
 }
 export type { AgentThreadTurnPermit };
 
-export interface AgentThreadTurnLease {
+export interface AgentThreadTurnAdmission {
 	permit: AgentThreadTurnPermit;
-	release: () => Promise<void>;
+	release: () => void;
 }
 
 /**
  * Admits one agent turn per durable thread at a time.
  *
  * Waiters on one main form a FIFO per thread, bounded by
- * {@link MAX_AGENT_THREAD_WAITERS}. The admitted turn then takes the
- * distributed `agent-thread-turn:<threadId>` lease for cross-main exclusion
- * and waits until no running row exists for the thread, which also covers
+ * {@link MAX_AGENT_THREAD_WAITERS}. The admitted turn then waits until no
+ * running row exists for the thread, which covers turns on other mains and
  * rows from mains that predate the claim column. The database claim on the
- * running row is the fail-closed fence behind the lease.
+ * running row is the fail-closed fence behind this wait.
  */
 @Service()
 export class AgentThreadTurnCoordinator {
 	/** Threads with an active turn in this process, with their waiting turns in arrival order. */
 	private readonly waiters = new Map<string, Array<() => void>>();
 
-	constructor(
-		private readonly lockService: LockService,
-		private readonly executionRepository: AgentExecutionRepository,
-	) {}
+	constructor(private readonly executionRepository: AgentExecutionRepository) {}
 
 	/** Run `fn` as the thread's only turn. */
 	async run<T>(
@@ -70,11 +60,11 @@ export class AgentThreadTurnCoordinator {
 		signal: AbortSignal | undefined,
 		fn: (permit: AgentThreadTurnPermit) => Promise<T>,
 	): Promise<T> {
-		const lease = await this.acquire(threadId, signal);
+		const { permit, release } = await this.acquire(threadId, signal);
 		try {
-			return await fn(lease.permit);
+			return await fn(permit);
 		} finally {
-			await lease.release();
+			release();
 		}
 	}
 
@@ -84,11 +74,11 @@ export class AgentThreadTurnCoordinator {
 		signal: AbortSignal | undefined,
 		fn: (permit: AgentThreadTurnPermit) => AsyncGenerator<T>,
 	): AsyncGenerator<T> {
-		const lease = await this.acquire(threadId, signal);
+		const { permit, release } = await this.acquire(threadId, signal);
 		try {
-			yield* fn(lease.permit);
+			yield* fn(permit);
 		} finally {
-			await lease.release();
+			release();
 		}
 	}
 
@@ -97,29 +87,19 @@ export class AgentThreadTurnCoordinator {
 	 * thread already has the maximum number of waiters on this main, and with
 	 * the signal's reason when the caller aborts while waiting.
 	 */
-	async acquire(threadId: string, signal?: AbortSignal): Promise<AgentThreadTurnLease> {
+	async acquire(threadId: string, signal?: AbortSignal): Promise<AgentThreadTurnAdmission> {
 		signal?.throwIfAborted();
 		await this.admitLocally(threadId, signal);
-		let lease: Awaited<ReturnType<typeof this.acquireLease>> | undefined;
 		try {
-			lease = await this.acquireLease(threadId);
-			const idleWaitSignal = AbortSignal.any(
-				[signal, lease.leaseLost].filter((s) => s !== undefined),
-			);
-			await this.waitUntilThreadIdle(threadId, idleWaitSignal);
-			idleWaitSignal.throwIfAborted();
+			await this.waitUntilThreadIdle(threadId, signal);
+			signal?.throwIfAborted();
 		} catch (error) {
-			await lease?.release();
 			this.releaseLocally(threadId);
 			throw error;
 		}
-		const { leaseLost, release: releaseLease } = lease;
 		return {
-			permit: new AgentThreadTurnPermit(threadId, leaseLost),
-			release: async () => {
-				await releaseLease();
-				this.releaseLocally(threadId);
-			},
+			permit: new AgentThreadTurnPermit(threadId),
+			release: () => this.releaseLocally(threadId),
 		};
 	}
 
@@ -161,37 +141,5 @@ export class AgentThreadTurnCoordinator {
 		const next = this.waiters.get(threadId)?.shift();
 		if (next) next();
 		else this.waiters.delete(threadId);
-	}
-
-	/**
-	 * Hold the distributed lease as a handle instead of a callback scope, so a
-	 * generator can keep it until its consumer is done. The lock service aborts
-	 * without a reason, so `leaseLost` carries one for every consumer.
-	 */
-	private async acquireLease(
-		threadId: string,
-	): Promise<{ leaseLost: AbortSignal; release: () => Promise<void> }> {
-		const acquired = createDeferredPromise();
-		const released = createDeferredPromise();
-		const lost = new AbortController();
-		const held = this.lockService
-			.withLease(LockNamespace.KNOWN_LOCKS, `agent-thread-turn:${threadId}`, async (signal) => {
-				signal.addEventListener(
-					'abort',
-					() => lost.abort(new OperationalError('Agent thread lease was lost')),
-					{ once: true },
-				);
-				acquired.resolve();
-				await released.promise;
-			})
-			.catch((error: Error) => acquired.reject(error));
-		await acquired.promise;
-		return {
-			leaseLost: lost.signal,
-			release: async () => {
-				released.resolve();
-				await held;
-			},
-		};
 	}
 }

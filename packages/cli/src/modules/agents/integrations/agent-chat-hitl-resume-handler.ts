@@ -49,9 +49,6 @@ interface AgentChatHitlResumeHandlerOptions {
 }
 
 export class AgentChatHitlResumeHandler {
-	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
-	private readonly activeResumedRuns = new Set<string>();
-
 	constructor(private readonly options: AgentChatHitlResumeHandlerOptions) {}
 
 	/**
@@ -237,12 +234,13 @@ export class AgentChatHitlResumeHandler {
 	}
 
 	/**
-	 * Guard against double resumption, then resume the agent and stream the
-	 * response back into the thread.
+	 * Resume the agent and stream the response back into the thread. A resume
+	 * whose action was already handled — a second click on the same card, or a
+	 * run that is no longer suspended — is rejected once it owns the thread
+	 * turn, and only the user's own click is told so.
 	 *
 	 * Public because a resume is not always user-driven — `AgentChatBridge` also
-	 * calls this when a sub-workflow finishing wakes a suspended run. Note the
-	 * `activeResumedRuns` guard is per instance, so it only covers this process.
+	 * calls this when a sub-workflow finishing wakes a suspended run.
 	 */
 	async executeResume(
 		thread: Thread<unknown, unknown>,
@@ -259,13 +257,6 @@ export class AgentChatHitlResumeHandler {
 			beforeResume?: () => Promise<void>;
 		} = {},
 	): Promise<void> {
-		if (this.activeResumedRuns.has(runId)) {
-			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			if (notifyOnDuplicate) await thread.post('This action has already been handled');
-			return;
-		}
-
-		this.activeResumedRuns.add(runId);
 		try {
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
 			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
@@ -292,8 +283,6 @@ export class AgentChatHitlResumeHandler {
 		} catch (error) {
 			if (!(error instanceof AgentActionAlreadyHandledError)) throw error;
 			if (notifyOnDuplicate) await thread.post(error.message);
-		} finally {
-			this.activeResumedRuns.delete(runId);
 		}
 	}
 }

@@ -361,41 +361,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('does not retry the claim when the thread lease is lost during a conflict wait', async () => {
-		const { service, executionService, turnCoordinator, permitFor } = makeService();
-		const permit = await permitFor('thread-1');
-		executionService.startClaimedExecutionRecording.mockRejectedValue(
-			new AgentThreadClaimConflictError(),
-		);
-		turnCoordinator.executionRepository.existsRunningByThread.mockImplementationOnce(async () => {
-			turnCoordinator.leases.at(-1)?.abort();
-			return true;
-		});
-		const runtime = makeRuntime();
-
-		await expect(
-			collect(
-				service.streamChatResponse({
-					agentInstance: runtime.agent,
-					toolRegistry: runtime.toolRegistry,
-					agentId,
-					userId,
-					message: 'hello',
-					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-					projectId,
-					telemetry: telemetryContext,
-					sandboxPrincipalHash: userPrincipalHash,
-					permit,
-				}),
-			),
-		).rejects.toThrow('Agent thread lease was lost');
-
-		expect(executionService.startClaimedExecutionRecording).toHaveBeenCalledOnce();
-		expect(runtime.agent.stream).not.toHaveBeenCalled();
-	});
-
-	it('stops the runtime when the thread lease or the claim is lost', async () => {
-		const { service, executionService, turnCoordinator, permitFor } = makeService();
+	it('stops the runtime when the claim is lost', async () => {
+		const { service, executionService, permitFor } = makeService();
 		const claim = new AbortController();
 		executionService.startClaimedExecutionRecording.mockResolvedValue({
 			executionId: 'execution-1',
@@ -423,26 +390,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeSignal.aborted).toBe(false);
 		claim.abort(new Error('claim lost'));
 		expect(runtimeSignal.aborted).toBe(true);
-
-		runtime.agent.stream.mockClear();
-		const secondPermit = await permitFor('thread-2');
-		await collect(
-			service.streamChatResponse({
-				agentInstance: runtime.agent,
-				toolRegistry: runtime.toolRegistry,
-				agentId,
-				userId,
-				message: 'hello',
-				memory: { threadId: 'thread-2', resourceId: 'resource-1' },
-				projectId,
-				telemetry: telemetryContext,
-				sandboxPrincipalHash: userPrincipalHash,
-				permit: secondPermit,
-			}),
-		);
-		const secondSignal: AbortSignal = runtime.agent.stream.mock.calls[0][1].abortSignal;
-		turnCoordinator.leases.at(-1)?.abort(new Error('lease lost'));
-		expect(secondSignal.aborted).toBe(true);
 	});
 
 	it('streams chat responses and records suspended executions', async () => {
@@ -1053,7 +1000,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		executionService.hasSuspendedRun.mockResolvedValue(true);
 		checkpointStorage.findSuspendedForThread.mockResolvedValue(makeCheckpoint());
-		await runningTurn.release();
+		runningTurn.release();
 
 		await expect(wake).resolves.toBe('skipped');
 
@@ -1447,7 +1394,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		await new Promise((resolve) => setImmediate(resolve));
 		expect(checkpointStorage.getStatus).toHaveBeenCalledOnce();
 
-		await runningTurn.release();
+		runningTurn.release();
 
 		await expect(resume).rejects.toThrow('This action has already been handled');
 		expect(executionService.startClaimedExecutionRecording).not.toHaveBeenCalled();

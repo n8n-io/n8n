@@ -120,23 +120,8 @@ describe('AgentThreadTurnCoordinator', () => {
 		}
 	});
 
-	it('does not start a turn after losing the lease while waiting for a running row', async () => {
-		const { coordinator, executionRepository, leases } = createTestTurnCoordinator();
-		executionRepository.existsRunningByThread.mockResolvedValue(true);
-		const body = vi.fn(async () => {});
-		const run = coordinator.run('t1', undefined, body);
-		await flush();
-
-		leases[0].abort();
-		await expect(run).rejects.toThrow('Agent thread lease was lost');
-		expect(body).not.toHaveBeenCalled();
-
-		executionRepository.existsRunningByThread.mockResolvedValue(false);
-		await expect(coordinator.run('t1', undefined, async () => 'next')).resolves.toBe('next');
-	});
-
-	it('releases the local turn and the lease when the running-row wait is aborted', async () => {
-		const { coordinator, executionRepository, leases } = createTestTurnCoordinator();
+	it('releases the local turn when the running-row wait is aborted', async () => {
+		const { coordinator, executionRepository } = createTestTurnCoordinator();
 		executionRepository.existsRunningByThread.mockResolvedValue(true);
 		const aborted = new AbortController();
 		const run = coordinator.run('t1', aborted.signal, async () => {});
@@ -144,38 +129,27 @@ describe('AgentThreadTurnCoordinator', () => {
 
 		aborted.abort(new Error('stop waiting'));
 		await expect(run).rejects.toThrow('stop waiting');
-		expect(leases[0].signal.aborted).toBe(true);
 
 		executionRepository.existsRunningByThread.mockResolvedValue(false);
 		await expect(coordinator.run('t1', undefined, async () => 'next')).resolves.toBe('next');
 	});
 
-	it('holds the lease for the whole generator and exposes its loss on the permit', async () => {
-		const { coordinator, lockService, leases } = createTestTurnCoordinator();
-		const seen: string[] = [];
+	it('holds the turn for the whole generator and releases it when the consumer stops early', async () => {
+		const { coordinator } = createTestTurnCoordinator();
+		const waiting = vi.fn(async () => {});
 
 		const stream = coordinator.stream('t1', undefined, async function* (permit) {
 			expect(permit.threadId).toBe('t1');
-			yield 'one';
-			leases[0].abort();
-			expect(permit.leaseLost.aborted).toBe(true);
-			yield 'two';
-		});
-		for await (const value of stream) seen.push(value);
-
-		expect(seen).toEqual(['one', 'two']);
-		expect(lockService.withLease).toHaveBeenCalledExactlyOnceWith(
-			expect.anything(),
-			'agent-thread-turn:t1',
-			expect.any(Function),
-		);
-		// A consumer that stops early still releases the turn.
-		const partial = coordinator.stream('t1', undefined, async function* () {
 			yield 'a';
 			yield 'b';
 		});
-		await partial.next();
-		await partial.return(undefined);
-		await expect(coordinator.run('t1', undefined, async () => 'free')).resolves.toBe('free');
+		await stream.next();
+		const next = coordinator.run('t1', undefined, waiting);
+		await flush();
+		expect(waiting).not.toHaveBeenCalled();
+
+		await stream.return(undefined);
+		await next;
+		expect(waiting).toHaveBeenCalledOnce();
 	});
 });

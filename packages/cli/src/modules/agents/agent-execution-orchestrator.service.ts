@@ -452,8 +452,8 @@ export class AgentExecutionOrchestratorService {
 
 		const threadId = memoryScope.threadId;
 
-		yield* this.turnCoordinator.stream(threadId, config.abortSignal, (permit) =>
-			this.streamResumedTurn(config, threadId, sandboxPrincipalHash, permit),
+		yield* this.turnCoordinator.stream(threadId, config.abortSignal, () =>
+			this.streamResumedTurn(config, threadId, sandboxPrincipalHash),
 		);
 	}
 
@@ -461,7 +461,6 @@ export class AgentExecutionOrchestratorService {
 		config: ResumeForChatConfig,
 		threadId: string,
 		sandboxPrincipalHash: AgentSandboxPrincipalHash | undefined,
-		permit: AgentThreadTurnPermit,
 	): AsyncGenerator<StreamChunk> {
 		const {
 			agentId,
@@ -557,7 +556,7 @@ export class AgentExecutionOrchestratorService {
 					configuration: runtime.telemetryConfiguration,
 				},
 			};
-			const claimed = await this.claimTurn(startParams, startedAt, permit, abortSignal);
+			const claimed = await this.claimTurn(startParams, startedAt, abortSignal);
 			executionId = claimed.executionId;
 			await beforeResume?.();
 			const resultStream = await agentInstance.resume('stream', resumeData, {
@@ -1066,7 +1065,7 @@ export class AgentExecutionOrchestratorService {
 				telemetry: { ...telemetry, userId },
 			};
 			// The claimed running row is the fail-closed fence: no row, no turn.
-			const claimed = await this.claimTurn(startParams, startedAt, permit, abortSignal);
+			const claimed = await this.claimTurn(startParams, startedAt, abortSignal);
 			executionId = claimed.executionId;
 			const resultStream = await agentInstance.stream(input, {
 				persistence: { threadId, resourceId, hostMetadata },
@@ -1225,34 +1224,28 @@ export class AgentExecutionOrchestratorService {
 
 	/**
 	 * Insert the claimed running row for a top-level turn and return the signal
-	 * that stops its runtime: when the caller cancels, when the thread lease is
-	 * lost, or when the heartbeat can no longer confirm the claimed row. Only the
-	 * caller's own signal marks the record as cancelled.
+	 * that stops its runtime: when the caller cancels, or when the heartbeat can
+	 * no longer confirm the claimed row. Only the caller's own signal marks the
+	 * record as cancelled.
 	 *
 	 * A unique-index conflict means a running row from another main (or one
-	 * that predates the permit) still holds the thread: wait for it to end and
-	 * claim again. Any other failure propagates, so the turn never runs
+	 * that predates the claim column) still holds the thread: wait for it to
+	 * end and claim again. Any other failure propagates, so the turn never runs
 	 * unrecorded.
 	 */
 	private async claimTurn(
 		params: StartExecutionParams,
 		startedAt: Date,
-		permit: AgentThreadTurnPermit,
 		abortSignal?: AbortSignal,
 	): Promise<{ executionId: string; abortSignal: AbortSignal }> {
-		const waitSignal = AbortSignal.any(
-			[abortSignal, permit.leaseLost].filter((s) => s !== undefined),
-		);
 		for (;;) {
-			waitSignal.throwIfAborted();
+			abortSignal?.throwIfAborted();
 			try {
 				const { executionId, claimLost } =
 					await this.agentExecutionService.startClaimedExecutionRecording(params, startedAt);
 				return {
 					executionId,
-					abortSignal: AbortSignal.any(
-						[abortSignal, permit.leaseLost, claimLost].filter((s) => s !== undefined),
-					),
+					abortSignal: AbortSignal.any([abortSignal, claimLost].filter((s) => s !== undefined)),
 				};
 			} catch (error) {
 				if (!(error instanceof AgentThreadClaimConflictError)) throw error;
@@ -1260,7 +1253,7 @@ export class AgentExecutionOrchestratorService {
 					agentId: params.agentId,
 					threadId: params.threadId,
 				});
-				await this.turnCoordinator.waitUntilThreadIdle(params.threadId, waitSignal);
+				await this.turnCoordinator.waitUntilThreadIdle(params.threadId, abortSignal);
 			}
 		}
 	}
