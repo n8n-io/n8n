@@ -16,6 +16,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
+	type InstanceAiAppAttachment,
 	type InstanceAiFileAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
@@ -284,6 +285,20 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
+/**
+ * Renders one app attachment. `appId` is always required (no pending/new-app
+ * state, unlike the agent attachment) — the thread is always bound to a
+ * real app.
+ */
+function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
+	const label = attachment.name ? `\`${attachment.name}\`` : `\`${attachment.appId}\``;
+	const path = attachment.namespace ? `, \`/apps/${attachment.namespace}/\`` : '';
+	return (
+		`- This thread is bound to app ${label} (\`${attachment.appId}\`${path}). ` +
+		'Edit its pages with `apps`; do not create another app.'
+	);
+}
+
 export function buildContextResourcesBlock(
 	contextAttachments: InstanceAiResourceAttachment[],
 ): string {
@@ -294,6 +309,10 @@ export function buildContextResourcesBlock(
 	const lines = contextAttachments.map((attachment) => {
 		if (attachment.type === 'nodes') {
 			return buildNodesAttachmentLine(attachment);
+		}
+
+		if (attachment.type === 'app') {
+			return buildAppAttachmentLine(attachment);
 		}
 
 		const name = attachment.name ? ` "${attachment.name}"` : '';
@@ -316,7 +335,9 @@ export function buildContextResourcesBlock(
 
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
-		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+		: contextAttachments.some((attachment) => attachment.type === 'app')
+			? 'The user opened this conversation from the apps page, where they are looking at:'
+			: 'The user opened this conversation from the workflow editor, where they are looking at:';
 
 	const pendingAgentGuidance = contextAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
@@ -339,10 +360,13 @@ export function buildContextResourcesBlock(
 	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
-/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+/** Workflow/agent/app attachments carry a display name; a nodes attachment doesn't. */
 function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
-): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
+): attachment is
+	| InstanceAiWorkflowAttachment
+	| InstanceAiAgentAttachment
+	| InstanceAiAppAttachment {
 	return attachment.type !== 'nodes' && Boolean(attachment.name);
 }
 
@@ -3593,8 +3617,8 @@ export class InstanceAiService {
 	/**
 	 * Splits a message's attachments into the resource references that feed the
 	 * context block, gating canvas node-selection attachments behind
-	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
-	 * through — only `nodes` attachments are conditional.
+	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow, agent, and app references
+	 * always pass through — only `nodes` attachments are conditional.
 	 */
 	private async resolveContextAttachments(
 		attachments: InstanceAiAttachment[] | undefined,
@@ -3610,6 +3634,10 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
 
+		const appAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiAppAttachment => attachment.type === 'app',
+		);
+
 		const nodeAttachments = attachmentsOrEmpty.filter(
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
@@ -3620,6 +3648,7 @@ export class InstanceAiService {
 		return [
 			...workflowAttachments,
 			...agentAttachments,
+			...appAttachments,
 			...(canvasNodeContextEnabled ? nodeAttachments : []),
 		];
 	}
@@ -3702,6 +3731,14 @@ export class InstanceAiService {
 				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
 					if (attachment.type === 'nodes') {
 						return { type: attachment.type, id: attachment.workflowId };
+					}
+
+					if (attachment.type === 'app') {
+						return {
+							type: attachment.type,
+							id: attachment.appId,
+							projectId: attachment.projectId,
+						};
 					}
 
 					const resource: TracedResourceAttachment = {

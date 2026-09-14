@@ -12,8 +12,16 @@ export class Page extends WithTimestampsAndStringId {
 	@Column()
 	route: string;
 
+	/** Shown in the menu and the browser tab; `null` falls back to the route. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	title: string | null;
+
 	@Column({ type: 'json', nullable: true })
 	content: unknown[] | null;
+
+	/** `null` inherits the nearest ancestor's layout. */
+	@Column({ type: 'json', nullable: true })
+	layout: unknown[] | null;
 
 	@ManyToOne(() => App)
 	@JoinColumn({ name: 'appId' })
@@ -30,8 +38,4 @@ export class Page extends WithTimestampsAndStringId {
 	@Column({ nullable: true })
 	@Index()
 	parentPageId: string | null;
-
-	/** Workflow this page calls to fetch its data. `null` means the page has no data source yet. */
-	@Column({ type: String, nullable: true })
-	dataWorkflowId: string | null;
 }

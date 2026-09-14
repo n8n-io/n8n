@@ -1292,6 +1292,9 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
+import type { UrlService } from '@/services/url.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -4155,6 +4158,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		urlService?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -4204,6 +4208,11 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	if (overrides?.urlService) {
+		args[40] = overrides.urlService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[40];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -4889,6 +4898,329 @@ describe('createContext — builder delegate wiring', () => {
 
 		expect(result).toEqual(agents);
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — apps wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — apps wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+	const mockUrlService = { getInstanceBaseUrl: () => 'https://n8n.example.com' } as UrlService;
+
+	const appRow = {
+		id: 'app-1',
+		name: 'Orders dashboard',
+		namespace: 'orders-dashboard',
+		projectId: 'proj-1',
+		activeVersionId: null,
+	};
+
+	beforeEach(() => {
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	afterEach(() => {
+		// Container.get is globally spied below — restore it so later tests keep
+		// the real, module-inactive-by-default ModuleRegistry.
+		vi.restoreAllMocks();
+	});
+
+	/** Route Container.get for the tokens `getAppsService` resolves. */
+	function mockAppsModuleActive(appsService: unknown) {
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === AppsService) return appsService;
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	function mockAppsModuleInactive() {
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(false) };
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return moduleRegistry;
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	it('is absent when the apps module is inactive', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+		mockAppsModuleInactive();
+
+		const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+		expect(context.appService).toBeUndefined();
+	});
+
+	it('is absent when urlService was not injected (test-context construction)', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		mockAppsModuleActive(mock<AppsService>());
+
+		const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+		expect(context.appService).toBeUndefined();
+	});
+
+	it('is present when the module is active and urlService is injected', async () => {
+		const appsService = mock<AppsService>();
+		appsService.getApp.mockResolvedValue(
+			appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+		);
+		const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+		mockAppsModuleActive(appsService);
+
+		const context = service.createContext(mockUser, { projectId: 'proj-1' });
+		const app = await context.appService?.getApp('app-1');
+
+		expect(app).toEqual({
+			id: 'app-1',
+			name: 'Orders dashboard',
+			namespace: 'orders-dashboard',
+			projectId: 'proj-1',
+			url: 'https://n8n.example.com/apps/orders-dashboard/',
+			activeVersionId: null,
+		});
+	});
+
+	describe('scopes', () => {
+		it('listApps checks app:listProject scope on the given projectId', async () => {
+			const appsService = mock<AppsService>();
+			appsService.listApps.mockResolvedValue([]);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			await context.appService?.listApps('proj-2');
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['app:listProject'],
+				false,
+				{ projectId: 'proj-2' },
+			);
+			expect(appsService.listApps).toHaveBeenCalledWith('proj-2');
+		});
+
+		it('createApp always writes to the thread-bound project, ignoring a mismatched input.projectId', async () => {
+			const appsService = mock<AppsService>();
+			appsService.createApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['createApp']>>,
+			);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			await context.appService?.createApp({
+				projectId: 'some-other-project',
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+			});
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['app:create'],
+				false,
+				{ projectId: 'proj-1' },
+			);
+			expect(appsService.createApp).toHaveBeenCalledWith('proj-1', {
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+			});
+		});
+
+		it('getPage checks app:read scope on the app looked up by appId', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			appsService.getPage.mockResolvedValue({
+				id: 'page-1',
+				route: '',
+				title: 'Overview',
+				parentPageId: null,
+				content: null,
+			} as unknown as Awaited<ReturnType<AppsService['getPage']>>);
+			appsService.listPages.mockResolvedValue([
+				{ id: 'page-1', route: '', title: 'Overview', parentPageId: null, content: null },
+			] as unknown as Awaited<ReturnType<AppsService['listPages']>>);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const page = await context.appService?.getPage('app-1', 'page-1');
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user-1' }),
+				['app:read'],
+				false,
+				{ projectId: 'proj-1' },
+			);
+			expect(page).toEqual({
+				id: 'page-1',
+				route: '',
+				title: 'Overview',
+				parentPageId: null,
+				path: '/apps/orders-dashboard',
+				hasContent: false,
+				content: null,
+				layout: null,
+			});
+		});
+
+		it('rejects when the user lacks the required scope', async () => {
+			mockedUserHasScopes.mockResolvedValue(false);
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			await expect(context.appService?.getApp('app-1')).rejects.toThrow(
+				'User does not have the required permissions in this project',
+			);
+		});
+	});
+
+	describe('namespace conflict', () => {
+		it('createApp turns AppNamespaceConflictError into { conflict: true }', async () => {
+			const appsService = mock<AppsService>();
+			appsService.createApp.mockRejectedValue(new AppNamespaceConflictError('orders-dashboard'));
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const result = await context.appService?.createApp({
+				projectId: 'proj-1',
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+			});
+
+			expect(result).toEqual({ conflict: true });
+		});
+	});
+
+	describe('DTO re-validation', () => {
+		it('rejects an invalid app name with structured issues, without calling the service', async () => {
+			const appsService = mock<AppsService>();
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			await expect(
+				context.appService?.createApp({ projectId: 'proj-1', name: '', namespace: 'orders' }),
+			).rejects.toMatchObject({ issues: expect.any(Array) });
+			expect(appsService.createApp).not.toHaveBeenCalled();
+		});
+
+		it('rejects an invalid page route with structured issues, without calling the service', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			await expect(
+				context.appService?.createPage('app-1', { route: 'Not A Valid Route!' }),
+			).rejects.toMatchObject({ issues: expect.any(Array) });
+			expect(appsService.createPage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('page path computation', () => {
+		it('builds a nested path pattern from parentPageId, leaving a dynamic segment literal', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			appsService.listPages.mockResolvedValue([
+				{ id: 'root', route: 'clients', title: null, parentPageId: null, content: null },
+				{ id: 'child', route: ':id', title: null, parentPageId: 'root', content: [] },
+			] as unknown as Awaited<ReturnType<AppsService['listPages']>>);
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const pages = await context.appService?.listPages('app-1');
+
+			expect(pages).toEqual([
+				{
+					id: 'root',
+					route: 'clients',
+					title: null,
+					parentPageId: null,
+					path: '/apps/orders-dashboard/clients',
+					hasContent: false,
+				},
+				{
+					id: 'child',
+					route: ':id',
+					title: null,
+					parentPageId: 'root',
+					path: '/apps/orders-dashboard/clients/%3Aid',
+					hasContent: false,
+				},
+			]);
+		});
+	});
+
+	describe('publish', () => {
+		it('delegates to appsService.publish with the current user id', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			appsService.publish.mockResolvedValue({ versionId: 'v1', url: '/apps/orders-dashboard' });
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const result = await context.appService?.publish('app-1');
+
+			expect(appsService.publish).toHaveBeenCalledWith('app-1', 'user-1');
+			expect(result).toEqual({ versionId: 'v1', url: '/apps/orders-dashboard' });
+		});
+	});
+
+	describe('previewPage', () => {
+		it('renders the draft through appsService.preview and returns errors and logs only', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			appsService.preview.mockResolvedValue({
+				html: '<html></html>',
+				errors: { b1: 'boom' },
+				logs: { b2: ['["x"]'] },
+			});
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const result = await context.appService?.previewPage('app-1', 'page-1', '/apps/x/y');
+
+			expect(appsService.preview).toHaveBeenCalledWith('app-1', 'page-1', '/apps/x/y', {});
+			expect(result).toEqual({ errors: { b1: 'boom' }, logs: { b2: ['["x"]'] } });
+		});
+	});
+
+	describe('codeApi', () => {
+		it('returns the appPageApiTypes constant', () => {
+			const appsService = mock<AppsService>();
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const types = context.appService?.codeApi();
+
+			expect(typeof types).toBe('string');
+			expect(types?.length).toBeGreaterThan(0);
+		});
 	});
 });
 

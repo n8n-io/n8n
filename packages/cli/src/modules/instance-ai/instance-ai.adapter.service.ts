@@ -10,6 +10,13 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	appContentSchema,
+	appLayoutSchema,
+	appPageApiTypes,
+	CreateAppDto,
+	CreatePageDto,
+	UpdateAppDto,
+	UpdatePageDto,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -74,6 +81,9 @@ import type {
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
+	InstanceAiAppService,
+	AppSummary,
+	PageSummary,
 } from '@n8n/instance-ai';
 import {
 	BuilderTemplatesService,
@@ -123,6 +133,7 @@ import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { ZodError } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -140,6 +151,9 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
+import { appBasePath, pagePath } from '@/modules/apps/serving/page-menu';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -162,6 +176,7 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -351,6 +366,9 @@ export class InstanceAiAdapterService {
 		// Appended rather than grouped with the other query services: existing tests construct this
 		// service positionally, so inserting mid-list renames every later argument.
 		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
+		// Same reasoning: appended so existing positional test construction keeps compiling.
+		// DI always provides it in a running instance.
+		private readonly urlService?: UrlService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -412,6 +430,7 @@ export class InstanceAiAdapterService {
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
 		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const appsService = this.getAppsService();
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
@@ -439,6 +458,9 @@ export class InstanceAiAdapterService {
 			conversationHistoryService: conversationHistory,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			...(appsService && this.urlService
+				? { appService: this.createAppsAdapter(appsService, this.urlService, user, projectId) }
+				: {}),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -478,6 +500,25 @@ export class InstanceAiAdapterService {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
 			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Resolve `AppsService` only when the `apps` module is active. Same pattern
+	 * as {@link getBuilderDelegateAdapter}: the class is statically imported (its
+	 * `@Service` is always registered), so the module-enabled check is what
+	 * gates the `apps` tool. Returns null when the module is off, so
+	 * `appService` is simply absent from the context.
+	 */
+	private getAppsService(): AppsService | null {
+		if (!Container.get(ModuleRegistry).isActive('apps')) return null;
+		try {
+			return Container.get(AppsService);
+		} catch (error) {
+			this.logger.warn('Failed to resolve AppsService; apps tool disabled', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return null;
@@ -3341,6 +3382,212 @@ export class InstanceAiAdapterService {
 		};
 		return adapter;
 	}
+
+	/**
+	 * Pattern for `InstanceAiAppService`: every write goes through
+	 * `assertNotReadOnly`; project scope is checked by looking the app up first
+	 * (`getAppWithScope`) except on `listApps`, which is scoped directly by the
+	 * given `projectId`, and `createApp`, which always writes to the thread's
+	 * bound project via `resolveBoundProjectId` regardless of any `projectId`
+	 * the tool passed. Inputs are re-validated through the same DTOs the REST
+	 * controller uses, so the tool cannot bypass those rules; a rejection
+	 * throws `AppInputValidationError` (a `UserError` carrying `issues`), which
+	 * the `apps` tool duck-types and turns into `{ denied, reason, issues }`.
+	 */
+	private createAppsAdapter(
+		appsService: AppsService,
+		urlService: UrlService,
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiAppService {
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('apps');
+		const { resolveBoundProjectId, assertProjectScope } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
+		const baseUrl = urlService.getInstanceBaseUrl();
+
+		const toAppSummary = (app: AppRow): AppSummary => ({
+			id: app.id,
+			name: app.name,
+			namespace: app.namespace,
+			projectId: app.projectId,
+			url: `${baseUrl}${appBasePath(app.namespace)}/`,
+			activeVersionId: app.activeVersionId,
+		});
+
+		const toPageSummary = (
+			namespace: string,
+			page: PageRow,
+			pagesById: Map<string, PageRow>,
+		): PageSummary => ({
+			id: page.id,
+			route: page.route,
+			title: page.title,
+			parentPageId: page.parentPageId,
+			path: pagePathPattern(namespace, page, pagesById),
+			hasContent: Array.isArray(page.content) && page.content.length > 0,
+		});
+
+		/** Loads the app and asserts the caller holds `scopes` on its project — the "look up the app first" pattern for every method but `listApps`/`createApp`. */
+		const getAppWithScope = async (appId: string, scopes: Scope[]): Promise<AppRow> => {
+			const app = await appsService.getApp(appId);
+			await assertProjectScope(scopes, app.projectId);
+			return app;
+		};
+
+		return {
+			async listApps(projectId) {
+				await assertProjectScope(['app:listProject'], projectId);
+				const apps = await appsService.listApps(projectId);
+				return apps.map(toAppSummary);
+			},
+
+			async createApp(input) {
+				assertNotReadOnly();
+				const projectId = await resolveBoundProjectId(['app:create']);
+				const dto = revalidateAppInput(CreateAppDto, {
+					name: input.name,
+					namespace: input.namespace,
+					layoutPreset: input.layoutPreset,
+				});
+				try {
+					const app = await appsService.createApp(projectId, dto);
+					return { app: toAppSummary(app) };
+				} catch (error) {
+					if (error instanceof AppNamespaceConflictError) return { conflict: true };
+					throw error;
+				}
+			},
+
+			async getApp(appId) {
+				const app = await getAppWithScope(appId, ['app:read']);
+				return { ...toAppSummary(app), components: app.components };
+			},
+
+			async updateApp(appId, input) {
+				assertNotReadOnly();
+				const app = await getAppWithScope(appId, ['app:update']);
+				const dto = revalidateAppInput(UpdateAppDto, input);
+				const updated = await appsService.updateApp(app.id, dto);
+				return toAppSummary(updated);
+			},
+
+			async listPages(appId) {
+				const app = await getAppWithScope(appId, ['app:read']);
+				const pages = await appsService.listPages(appId);
+				const pagesById = new Map(pages.map((page) => [page.id, page]));
+				return pages.map((page) => toPageSummary(app.namespace, page, pagesById));
+			},
+
+			async getPage(appId, pageId) {
+				const app = await getAppWithScope(appId, ['app:read']);
+				const [page, pages] = await Promise.all([
+					appsService.getPage(appId, pageId),
+					appsService.listPages(appId),
+				]);
+				const pagesById = new Map(pages.map((p) => [p.id, p]));
+				return {
+					...toPageSummary(app.namespace, page, pagesById),
+					content: appContentSchema.safeParse(page.content).data ?? null,
+					layout: appLayoutSchema.safeParse(page.layout).data ?? null,
+				};
+			},
+
+			async createPage(appId, input) {
+				assertNotReadOnly();
+				const app = await getAppWithScope(appId, ['app:update']);
+				const dto = revalidateAppInput(CreatePageDto, input);
+				const page = await appsService.createPage(appId, dto);
+				const pages = await appsService.listPages(appId);
+				const pagesById = new Map(pages.map((p) => [p.id, p]));
+				return toPageSummary(app.namespace, page, pagesById);
+			},
+
+			async updatePage(appId, pageId, input) {
+				assertNotReadOnly();
+				const app = await getAppWithScope(appId, ['app:update']);
+				const dto = revalidateAppInput(UpdatePageDto, input);
+				const page = await appsService.updatePage(appId, pageId, dto);
+				const pages = await appsService.listPages(appId);
+				const pagesById = new Map(pages.map((p) => [p.id, p]));
+				return toPageSummary(app.namespace, page, pagesById);
+			},
+
+			async deletePage(appId, pageId) {
+				assertNotReadOnly();
+				await getAppWithScope(appId, ['app:update']);
+				await appsService.deletePage(appId, pageId);
+			},
+
+			async publish(appId) {
+				assertNotReadOnly();
+				await getAppWithScope(appId, ['app:update']);
+				return await appsService.publish(appId, user.id);
+			},
+
+			async previewPage(appId, pageId, path) {
+				await getAppWithScope(appId, ['app:read']);
+				const { errors, logs } = await appsService.preview(appId, pageId, path, {});
+				return { errors, logs };
+			},
+
+			codeApi() {
+				return appPageApiTypes;
+			},
+		};
+	}
+}
+
+type AppRow = Awaited<ReturnType<AppsService['getApp']>>;
+type PageRow = Awaited<ReturnType<AppsService['getPage']>>;
+
+/**
+ * Carries the zod issues from a DTO re-validation failure across the
+ * instance-ai package boundary. The `apps` tool can't import this class (it
+ * lives in `packages/cli`), so it duck-types instead: `error instanceof
+ * UserError && 'issues' in error`.
+ */
+class AppInputValidationError extends UserError {
+	constructor(
+		message: string,
+		readonly issues: unknown,
+	) {
+		super(message, { level: 'info' });
+	}
+}
+
+/** Re-validates `data` against a zod-class DTO, wrapping a rejection as `AppInputValidationError`. */
+function revalidateAppInput<T>(dtoClass: { parse: (data: unknown) => T }, data: unknown): T {
+	try {
+		return dtoClass.parse(data);
+	} catch (error) {
+		if (error instanceof ZodError) {
+			throw new AppInputValidationError('This input does not match the App schema.', error.issues);
+		}
+		throw error;
+	}
+}
+
+/**
+ * The literal (unresolved) public path pattern for a draft page — e.g.
+ * `/clients/:id` — built by walking `parentPageId` up to the root. Distinct
+ * from `AppsService`'s private `draftPagePath`, which resolves `:param`
+ * segments against real request params for the preview renderer; the `apps`
+ * tool has no request params, so it shows the pattern, not a resolved path.
+ */
+function pagePathPattern(
+	namespace: string,
+	page: PageRow,
+	pagesById: Map<string, PageRow>,
+): string {
+	const segments: string[] = [];
+	let current: PageRow | undefined = page;
+	while (current) {
+		if (current.route !== '') segments.unshift(current.route);
+		current = current.parentPageId ? pagesById.get(current.parentPageId) : undefined;
+	}
+	return pagePath(namespace, segments);
 }
 
 /** Maximum total size (in characters) for execution result data across all nodes. */

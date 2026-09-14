@@ -5,7 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { escapeHtml } from '@/app/utils/htmlUtils';
 import { useAppsStore } from '@/features/apps/apps.store';
-import { formatRoutePath } from '@/features/apps/pageTree.utils';
+import { getPageLabel } from '@/features/apps/pageTree.utils';
 import type { App } from '@/features/apps/apps.types';
 
 /** Confirm-then-delete for Apps and Pages, shared by every view that offers a delete action. */
@@ -53,7 +53,7 @@ export function useAppDeletion() {
 			i18n.baseText('apps.page.delete.confirm.title'),
 			i18n.baseText('apps.page.delete.confirm.message', {
 				interpolate: {
-					name: escapeHtml(formatRoutePath(page.route, i18n.baseText('apps.page.index'))),
+					name: escapeHtml(getPageLabel(page, i18n.baseText('apps.page.home'))),
 				},
 			}),
 		);

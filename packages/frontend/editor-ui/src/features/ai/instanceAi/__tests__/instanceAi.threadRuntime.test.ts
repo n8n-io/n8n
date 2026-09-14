@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { effectScope, nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
@@ -1282,6 +1282,114 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 
 		await sendPromise;
+	});
+});
+
+describe('createThreadRuntime - effect scope ownership', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('registers live apps tool results after the creating component scope is stopped', async () => {
+		const hooks = {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		} satisfies Parameters<typeof createThreadRuntime>[1];
+		// A discarded duplicate view instance creates the runtime, then unmounts.
+		const creatorScope = effectScope();
+		const runtime = creatorScope.run(() => createThreadRuntime('thread-greeter', hooks));
+		if (!runtime) throw new Error('scope.run returned nothing');
+		creatorScope.stop();
+
+		runtime.connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+
+		const base = { runId: 'run-1', agentId: 'agent-root' };
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				...base,
+				type: 'tool-input-start',
+				payload: { toolCallId: 'tc-create', toolName: 'apps' },
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				...base,
+				type: 'tool-call',
+				payload: {
+					toolCallId: 'tc-create',
+					toolName: 'apps',
+					args: {
+						action: 'create',
+						projectId: 'ZonivKTWDZP7Qzoy',
+						name: 'Greeter',
+						namespace: 'greeter',
+					},
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				...base,
+				type: 'tool-result',
+				payload: {
+					toolCallId: 'tc-create',
+					result: {
+						appId: 'RWY2POcB67qVlJPk',
+						name: 'Greeter',
+						namespace: 'greeter',
+						projectId: 'ZonivKTWDZP7Qzoy',
+						url: 'http://localhost:5678/apps/greeter/',
+					},
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				...base,
+				type: 'tool-call',
+				payload: {
+					toolCallId: 'tc-create-page',
+					toolName: 'apps',
+					args: { action: 'create-page', appId: 'RWY2POcB67qVlJPk', route: '' },
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				...base,
+				type: 'tool-result',
+				payload: {
+					toolCallId: 'tc-create-page',
+					result: {
+						appId: 'RWY2POcB67qVlJPk',
+						pageId: 'page-1',
+						route: '',
+						path: '/apps/greeter',
+						projectId: 'ZonivKTWDZP7Qzoy',
+						namespace: 'greeter',
+					},
+				},
+			}),
+		);
+		await nextTick();
+
+		expect(runtime.producedArtifacts.get('RWY2POcB67qVlJPk')).toMatchObject({
+			type: 'app',
+			name: 'Greeter',
+			namespace: 'greeter',
+			url: 'http://localhost:5678/apps/greeter/',
+		});
+
+		runtime.dispose();
 	});
 });
 

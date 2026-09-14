@@ -159,6 +159,7 @@ type EntityName =
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'App'
+	| 'AppVersion'
 	| 'Page'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'

@@ -1,0 +1,117 @@
+/* The `agent-chat` block (partial app-block-agent-chat.handlebars, script app-chat.js). */
+.app-chat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	background: var(--app-color-surface, var(--background--surface));
+	border: 1px solid var(--border-color);
+	border-radius: var(--app-radius);
+	padding: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
+}
+
+.app-chat-messages {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	max-height: 24rem;
+	overflow-y: auto;
+}
+
+.app-chat-bubble {
+	max-width: 80%;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--app-radius);
+	overflow-wrap: anywhere;
+}
+
+/* Only the assistant bubble holds rendered markdown; the others hold raw text. */
+.app-chat-bubble--user,
+.app-chat-bubble--notice {
+	white-space: pre-wrap;
+}
+
+.app-chat-bubble--user {
+	align-self: flex-end;
+	background: var(--app-color-primary, var(--color--primary));
+	color: var(--text-color--inverse);
+}
+
+.app-chat-bubble--assistant {
+	align-self: flex-start;
+	background: var(--app-color-background, var(--background--subtle));
+}
+
+.app-chat-bubble--assistant:empty::after {
+	content: '…';
+	color: var(--app-color-muted, var(--text-color--subtle));
+}
+
+.app-chat-bubble--notice {
+	align-self: stretch;
+	max-width: none;
+	border: 1px solid var(--border-color--danger);
+}
+
+.app-chat-form {
+	display: flex;
+	gap: var(--spacing--xs);
+	align-items: flex-end;
+}
+
+.app-chat-form textarea {
+	flex: 1;
+	min-width: 0;
+}
+
+/* Markdown of an assistant reply. */
+.app-chat-bubble--assistant > :first-child {
+	margin-top: 0;
+}
+
+.app-chat-bubble--assistant > :last-child {
+	margin-bottom: 0;
+}
+
+.app-chat-bubble--assistant p,
+.app-chat-bubble--assistant ul,
+.app-chat-bubble--assistant ol,
+.app-chat-bubble--assistant pre,
+.app-chat-bubble--assistant blockquote {
+	margin: 0 0 var(--spacing--2xs);
+}
+
+.app-chat-bubble--assistant h1,
+.app-chat-bubble--assistant h2,
+.app-chat-bubble--assistant h3 {
+	margin: var(--spacing--xs) 0 var(--spacing--2xs);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+}
+
+.app-chat-bubble--assistant ul,
+.app-chat-bubble--assistant ol {
+	padding-left: var(--spacing--md);
+}
+
+.app-chat-bubble--assistant blockquote {
+	padding-left: var(--spacing--2xs);
+	border-left: 2px solid var(--border-color);
+	color: var(--app-color-muted, var(--text-color--subtle));
+}
+
+.app-chat-bubble--assistant code {
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--xs);
+}
+
+.app-chat-bubble--assistant pre {
+	overflow-x: auto;
+	padding: var(--spacing--2xs);
+	border-radius: var(--app-radius-control);
+	background: var(--background--surface);
+}
+
+.app-chat-bubble--assistant a {
+	color: var(--app-color-primary, var(--color--primary));
+}

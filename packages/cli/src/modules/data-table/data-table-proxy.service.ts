@@ -117,6 +117,11 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		return this.makeDataTableOperations(projectId, dataTableId);
 	}
 
+	/** Row and column operations on one data table of a project, for the Apps runtime. */
+	makeDataTableOperationsForProject(projectId: string, dataTableId: string) {
+		return this.makeDataTableOperations(projectId, dataTableId);
+	}
+
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
 		const hasScope = await userHasScopes(user, [scope], false, { projectId });
 		if (!hasScope) {

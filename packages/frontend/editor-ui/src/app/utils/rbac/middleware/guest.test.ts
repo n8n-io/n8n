@@ -17,6 +17,7 @@ describe('Middleware', () => {
 			value: {
 				href: '',
 				origin: ORIGIN_URL,
+				assign: vi.fn(),
 			},
 			writable: true,
 		});
@@ -42,6 +43,19 @@ describe('Middleware', () => {
 				await guestMiddleware(toMock, fromMock, nextMock, {});
 
 				expect(nextMock).toHaveBeenCalledWith('/some-path');
+			});
+
+			it('should leave the SPA for a served app page redirect', async () => {
+				const nextMock = vi.fn();
+				const toMock = {
+					query: { redirect: '/apps/acme/clients' },
+				} as unknown as RouteLocationNormalized;
+				const fromMock = {} as RouteLocationNormalized;
+
+				await guestMiddleware(toMock, fromMock, nextMock, {});
+
+				expect(window.location.assign).toHaveBeenCalledWith('/apps/acme/clients');
+				expect(nextMock).toHaveBeenCalledWith(false);
 			});
 
 			it('should redirect to homepage if no redirect is set', async () => {

@@ -42,6 +42,15 @@ export interface WorkflowSetupResult {
 	toolCallId: string;
 }
 
+export interface AppResult {
+	appId: string;
+	/** Page the result touched, when the action was page-scoped. */
+	pageId?: string;
+	projectId?: string;
+	/** Unique per operation — changes even when the same app is modified again. */
+	toolCallId: string;
+}
+
 export interface DataTableResult {
 	dataTableId: string;
 	/** Unique per operation — changes even when the same table is modified again. */
@@ -312,6 +321,37 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 	return false;
 }
 
+/** `apps` write actions; the read-only `list`/`get`/`get-page`/`code-api`/`preview-page` never lock the canvas. */
+const APP_WRITE_ACTIONS = new Set([
+	'create',
+	'update-app',
+	'create-page',
+	'update-page',
+	'delete-page',
+	'set-content',
+	'publish',
+]);
+
+/**
+ * Whether the AI has an in-flight `apps` write call targeting app `appId`
+ * somewhere in this agent tree — the per-artifact building signal for apps.
+ * Unlike workflows/agents there is no sub-agent builder node type for apps,
+ * so an in-flight tool call is the only signal.
+ */
+export function isAgentEditingApp(node: InstanceAiAgentNode, appId: string): boolean {
+	for (const tc of node.toolCalls) {
+		if (!tc.isLoading || tc.toolName !== 'apps') continue;
+		const args = tc.args as { appId?: string; action?: string } | undefined;
+		if (args?.appId !== appId) continue;
+		if (typeof args.action === 'string' && APP_WRITE_ACTIONS.has(args.action)) return true;
+	}
+
+	for (const child of node.children) {
+		if (isAgentEditingApp(child, appId)) return true;
+	}
+	return false;
+}
+
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',
@@ -406,6 +446,42 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 			const dataTableId = extractDataTableId(action, result, args);
 			if (dataTableId) {
 				return { dataTableId, toolCallId: tc.toolCallId };
+			}
+		}
+	}
+	return undefined;
+}
+
+/** `apps` actions worth auto-opening/refreshing the preview for — content edits and publishes. */
+const APP_PREVIEW_ACTIONS = new Set(['create-page', 'set-content', 'publish']);
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the appId
+ * and toolCallId from the latest `apps` result that edited or published a
+ * page (`create-page` / `set-content` / `publish`) — the actions worth
+ * auto-opening or refreshing the preview for.
+ */
+export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAppResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		const action = typeof args?.action === 'string' ? args.action : '';
+		if (
+			tc.toolName === 'apps' &&
+			APP_PREVIEW_ACTIONS.has(action) &&
+			!tc.isLoading &&
+			tc.result &&
+			typeof tc.result === 'object'
+		) {
+			const result = tc.result as Record<string, unknown>;
+			if (typeof result.appId === 'string') {
+				const projectId = typeof result.projectId === 'string' ? result.projectId : undefined;
+				const pageId = typeof result.pageId === 'string' ? result.pageId : undefined;
+				return { appId: result.appId, projectId, pageId, toolCallId: tc.toolCallId };
 			}
 		}
 	}

@@ -17,6 +17,7 @@ export const DOMAIN_TOOL_IDS = {
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
+	APPS: 'apps',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -49,6 +50,7 @@ export const WORKSPACE_TOOL_IDS = {
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
 export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
+export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;

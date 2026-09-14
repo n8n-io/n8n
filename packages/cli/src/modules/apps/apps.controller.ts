@@ -13,15 +13,44 @@ import {
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+import { AppTokenService } from './serving/app-token.service';
+
+/** Values of `req.query.params`, sent by the editor as a JSON-encoded object of strings. */
+const parsePreviewParams = (raw: unknown): Record<string, string> => {
+	if (typeof raw !== 'string') return {};
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== 'object' || parsed === null) return {};
+
+	const params: Record<string, string> = {};
+	for (const [key, value] of Object.entries(parsed)) {
+		if (typeof value === 'string') params[key] = value;
+	}
+	return params;
+};
+
+const RENDER_ERRORS_HEADER = 'X-N8N-App-Render-Errors';
+const CODE_HEADER = 'X-N8N-App-Code';
+
+/** Header values must be Latin-1; the JSON stays valid with `\uXXXX` escapes. */
+const toHeaderJson = (value: unknown): string =>
+	JSON.stringify(value).replace(
+		/[^\x20-\x7e]/g,
+		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+	);
 
 @RestController('/projects/:projectId/apps')
 export class AppsController {
@@ -29,7 +58,8 @@ export class AppsController {
 		private readonly appsService: AppsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly attachableWorkflowsService: AttachableWorkflowsService,
+		private readonly appTokenService: AppTokenService,
+		private readonly authService: AuthService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -44,6 +74,7 @@ export class AppsController {
 		if (e instanceof AppNamespaceConflictError || e instanceof PageRouteConflictError) {
 			throw new ConflictError(e.message);
 		}
+		// AppContentInvalidError is already a 400 ResponseError; let it propagate as-is.
 		throw e;
 	}
 
@@ -82,13 +113,6 @@ export class AppsController {
 		return await this.appsService.listApps(req.params.projectId);
 	}
 
-	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
-	@Get('/data-workflows')
-	@ProjectScope('app:read')
-	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
-	}
-
 	@Get('/:appId')
 	@ProjectScope('app:read')
 	async getApp(
@@ -96,7 +120,7 @@ export class AppsController {
 		_res: Response,
 		@Param('appId') appId: string,
 	) {
-		return await this.appsService.getApp(appId);
+		return await this.appsService.getAppForResponse(appId);
 	}
 
 	@Patch('/:appId')
@@ -124,6 +148,43 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deleteApp(appId);
+	}
+
+	@Post('/:appId/publish')
+	@ProjectScope('app:update')
+	async publish(
+		req: AuthenticatedRequest<{ projectId: string; appId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.appsService.publish(appId, req.user.id);
+		} catch (e: unknown) {
+			this.handleAppError(e);
+		}
+	}
+
+	@Get('/:appId/versions')
+	@ProjectScope('app:read')
+	async listVersions(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		return await this.appsService.listVersions(appId);
+	}
+
+	@Post('/:appId/versions/:versionId/activate')
+	@ProjectScope('app:update')
+	async activateVersion(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		await this.appsService.activateVersion(appId, versionId);
 	}
 
 	@Post('/:appId/pages')
@@ -155,7 +216,7 @@ export class AppsController {
 	@Patch('/:appId/pages/:pageId')
 	@ProjectScope('app:update')
 	async updatePage(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('appId') appId: string,
 		@Param('pageId') pageId: string,
@@ -163,7 +224,7 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
-			return await this.appsService.updatePage(appId, pageId, dto, req.user);
+			return await this.appsService.updatePage(appId, pageId, dto);
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}
@@ -179,5 +240,57 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deletePage(appId, pageId);
+	}
+
+	/** The sanitized effective draft layout, for the editor to place its content editor into. */
+	@Get('/:appId/pages/:pageId/layout-preview')
+	@ProjectScope('app:read')
+	async previewLayout(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('pageId') pageId: string,
+	) {
+		return await this.appsService.previewLayout(appId, pageId);
+	}
+
+	/**
+	 * Renders the draft page tree, for the editor/AI Assistant preview iframe.
+	 * The one-time code in the response header lets the iframe's script obtain a
+	 * `draft` access token for this editor user, so actions run against the draft;
+	 * the HTML itself carries neither code nor token.
+	 */
+	@Get('/:appId/pages/:pageId/preview', { usesTemplates: true })
+	@ProjectScope('app:read')
+	async previewPage(
+		req: AuthenticatedRequest<
+			{ projectId: string; appId: string; pageId: string },
+			unknown,
+			unknown,
+			{ path?: string; params?: string }
+		>,
+		res: Response,
+		@Param('appId') appId: string,
+		@Param('pageId') pageId: string,
+	) {
+		const { html, errors } = await this.appsService.preview(
+			appId,
+			pageId,
+			req.query.path,
+			parsePreviewParams(req.query.params),
+		);
+		const code = await this.appTokenService.issueCode({
+			appId,
+			viewerId: req.user.id,
+			sessionToken: this.authService.getCookieToken(req) ?? null,
+			mode: 'draft',
+		});
+		res.setHeader('X-Content-Type-Options', 'nosniff');
+		res.setHeader('Cache-Control', 'no-store');
+		res.setHeader(CODE_HEADER, code);
+		if (Object.keys(errors).length > 0) {
+			res.setHeader(RENDER_ERRORS_HEADER, toHeaderJson(errors));
+		}
+		res.type('html').send(html);
 	}
 }

@@ -156,6 +156,9 @@ erDiagram
   varchar_36_ versionId
 }
 "app" {
+  varchar_36_ activeVersionId FK
+  varchar_16_ auth
+  TEXT components
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

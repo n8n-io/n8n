@@ -34,9 +34,16 @@ const resolveSegment = (route: string, params: Record<string, string>): string |
 /** An index page owns no segment of its own, so it is named after its role. */
 const titleFor = (segment: string) => (segment === '' ? INDEX_PAGE_TITLE : segment);
 
-/** How a page is named in the menu, and undefined when it cannot be named from here. */
-export const pageTitle = (route: string, params: Record<string, string>) => {
-	const segment = resolveSegment(route, params);
+/**
+ * How a page is named: its title, else its route segment. Undefined when it has
+ * no title and cannot be named from here.
+ */
+export const pageTitle = (
+	page: Pick<PageNode, 'route' | 'title'>,
+	params: Record<string, string>,
+) => {
+	if (page.title) return page.title;
+	const segment = resolveSegment(page.route, params);
 	return segment === undefined ? undefined : titleFor(segment);
 };
 
@@ -75,7 +82,7 @@ export function buildMenu<T extends PageNode>(
 			const segments = segment === '' ? parentSegments : [...parentSegments, segment];
 
 			items.push({
-				title: titleFor(segment),
+				title: page.title ?? titleFor(segment),
 				path: pagePath(namespace, segments),
 				current: page.id === currentPageId,
 				children: walk(page.id, segments),

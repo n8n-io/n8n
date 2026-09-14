@@ -51,6 +51,10 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openAppPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAppPreview',
+	undefined,
+);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -83,6 +87,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openAgentPreview) return;
 		e.preventDefault();
 		openAgentPreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'app' && artifact.id) {
+		if (!artifact.projectId || !openAppPreview) return;
+		e.preventDefault();
+		openAppPreview(artifact.id, artifact.projectId);
 	}
 }
 
@@ -108,7 +116,12 @@ const buildingArtifactIds = useBuildingArtifactIds();
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+		if (
+			entry.type === 'workflow' ||
+			entry.type === 'data-table' ||
+			entry.type === 'agent' ||
+			entry.type === 'app'
+		) {
 			result.push(entry);
 		}
 	}
@@ -119,6 +132,7 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	app: 'app-window',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -133,6 +147,11 @@ function artifactHref(artifact: ResourceEntry) {
 		return artifact.projectId
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
+	}
+	if (artifact.type === 'app') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/apps/${artifact.id}`
+			: '/home/apps';
 	}
 	return '#';
 }

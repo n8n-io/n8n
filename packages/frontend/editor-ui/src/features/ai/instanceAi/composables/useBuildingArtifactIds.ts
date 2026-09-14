@@ -1,6 +1,10 @@
 import { computed, type ComputedRef } from 'vue';
 
-import { isAgentEditingAgent, isAgentEditingWorkflow } from '../canvasPreview.utils';
+import {
+	isAgentEditingAgent,
+	isAgentEditingApp,
+	isAgentEditingWorkflow,
+} from '../canvasPreview.utils';
 import { useThread, type ThreadRuntime } from '../instanceAi.store';
 
 /**
@@ -10,9 +14,10 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
  * flight instead of only when the change lands.
  *
  * Reuses the per-artifact editing-lock signals (`isAgentEditingWorkflow` /
- * `isAgentEditingAgent`), so the indicator covers the same window as the
- * editing lock: from sub-agent spawn (or first mutating tool call) until the
- * run settles. Data tables have no lock signal and are not tracked.
+ * `isAgentEditingAgent` / `isAgentEditingApp`), so the indicator covers the
+ * same window as the editing lock: from sub-agent spawn (or first mutating
+ * tool call) until the run settles. Data tables have no lock signal and are
+ * not tracked.
  *
  * Pass `runtime` from the component that *provides* the thread — it can't
  * inject what it provides. Everything below it just calls this with no
@@ -24,8 +29,13 @@ export function useBuildingArtifactIds(runtime?: ThreadRuntime): ComputedRef<Set
 	return computed(() => {
 		const ids = new Set<string>();
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type !== 'workflow' && entry.type !== 'agent') continue;
-			const isEditing = entry.type === 'workflow' ? isAgentEditingWorkflow : isAgentEditingAgent;
+			if (entry.type !== 'workflow' && entry.type !== 'agent' && entry.type !== 'app') continue;
+			const isEditing =
+				entry.type === 'workflow'
+					? isAgentEditingWorkflow
+					: entry.type === 'agent'
+						? isAgentEditingAgent
+						: isAgentEditingApp;
 			for (const message of thread.messages) {
 				if (!message.agentTree) continue;
 				if (isEditing(message.agentTree, entry.id)) {

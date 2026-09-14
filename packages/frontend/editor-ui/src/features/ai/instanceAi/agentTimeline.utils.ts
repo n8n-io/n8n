@@ -289,7 +289,7 @@ export function isStreamingTimelineEntry(
 }
 
 export interface ArtifactInfo {
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'app';
 	resourceId: string;
 	name: string;
 	projectId?: string;
@@ -297,7 +297,10 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** Extract all artifacts (workflows, data tables, and agents) from a node's tool calls. */
+/** Actions the `apps` tool returns nothing worth an artifact card for. */
+const APP_NON_ARTIFACT_ACTIONS = new Set(['list', 'get', 'code-api', 'preview-page']);
+
+/** Extract all artifacts (workflows, data tables, agents, and apps) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	if (node.status !== 'completed') return [];
 
@@ -307,7 +310,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 	// Check targetResource first (single-resource agents)
 	if (node.targetResource?.id && node.targetResource.type) {
 		const type = node.targetResource.type;
-		if (type === 'workflow' || type === 'data-table' || type === 'agent') {
+		if (type === 'workflow' || type === 'data-table' || type === 'agent' || type === 'app') {
 			seenIds.add(node.targetResource.id);
 			const artifact: ArtifactInfo = {
 				type,
@@ -375,6 +378,21 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 				projectId: tableProjectId,
 				completedAt: tc.completedAt,
 			});
+		}
+
+		// App artifacts — every `apps` result outside APP_NON_ARTIFACT_ACTIONS carries `appId` directly.
+		if (tc.toolName === 'apps' && typeof result.appId === 'string' && !seenIds.has(result.appId)) {
+			const action = (tc.args as Record<string, unknown> | undefined)?.action;
+			if (typeof action === 'string' && !APP_NON_ARTIFACT_ACTIONS.has(action)) {
+				seenIds.add(result.appId);
+				artifacts.push({
+					type: 'app',
+					resourceId: result.appId,
+					name: typeof result.name === 'string' ? result.name : 'Untitled',
+					projectId: typeof result.projectId === 'string' ? result.projectId : undefined,
+					completedAt: tc.completedAt,
+				});
+			}
 		}
 	}
 

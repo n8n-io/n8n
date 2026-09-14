@@ -133,6 +133,45 @@ describe('formNodeUtils', () => {
 		});
 	});
 
+	it('answers a client that prefers JSON with the form spec instead of the page', async () => {
+		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+		webhookFunctions.getRequestObject.mockReturnValue({
+			method: 'GET',
+			headers: { host: 'localhost:5678' },
+			protocol: 'http',
+			accepts: () => 'json',
+		} as never);
+		webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			formTitle: 'Step 2',
+			formDescription: 'More <b>details</b>',
+			buttonLabel: 'Next',
+		});
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+		const res = mock<Response>({ render: vi.fn(), json: vi.fn() } as any);
+		const triggerMock = mock<NodeTypeAndVersion>({ name: 'triggerName' } as any);
+
+		await renderFormNode(webhookFunctions, res, triggerMock, formFields, 'production');
+
+		expect(res.render).not.toHaveBeenCalled();
+		expect(res.json).toHaveBeenCalledWith({
+			kind: 'page',
+			formTitle: 'Step 2',
+			formDescription: 'More <b>details</b>',
+			buttonLabel: 'Next',
+			formFields: [
+				expect.objectContaining({
+					id: 'field-0',
+					label: 'Name',
+					inputRequired: 'form-required',
+					isInput: true,
+					type: 'text',
+				}),
+			],
+		});
+	});
+
 	it('should sanitize formDescription', async () => {
 		webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
 

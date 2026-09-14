@@ -1,6 +1,6 @@
 import { getBrowserId } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
-import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
@@ -97,14 +97,17 @@ const legacyParamSerializer = (params: Record<string, any>) =>
 		})
 		.join('&');
 
-export async function request(config: {
+type RequestConfig = {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
 	headers?: RawAxiosRequestHeaders;
 	data?: GenericValue | GenericValue[];
 	withCredentials?: boolean;
-}) {
+};
+
+/** Like `request`, but returns the whole response, for callers that need headers. */
+export async function rawRequest(config: RequestConfig): Promise<AxiosResponse> {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
 		method,
@@ -130,8 +133,7 @@ export async function request(config: {
 	}
 
 	try {
-		const response = await axios.request(options);
-		return response.data;
+		return await axios.request(options);
 	} catch (error) {
 		if (error.message === 'Network Error') {
 			throw new ResponseError("Can't connect to n8n.", {
@@ -166,6 +168,10 @@ export async function request(config: {
 
 		throw error;
 	}
+}
+
+export async function request(config: RequestConfig) {
+	return (await rawRequest(config)).data;
 }
 
 /**

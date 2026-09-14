@@ -38,6 +38,10 @@ const openAgentPreview = inject<((id: string, projectId: string) => boolean) | u
 	'openAgentPreview',
 	undefined,
 );
+const openAppPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAppPreview',
+	undefined,
+);
 
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
@@ -49,6 +53,7 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 	agent:
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
+	app: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M10 4v4M2 8h20M6 4v4"/></svg>',
 };
 
 /** URL builders for each resource type — fallbacks when the registry has no projectId. */
@@ -57,6 +62,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 	credential: (id) => `/home/credentials/${id}`,
 	'data-table': () => '/home/datatables',
 	agent: () => '/home/agents',
+	app: () => '/home/apps',
 };
 
 /**
@@ -214,6 +220,8 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/home\/apps(?:\/|$)/, type: 'app' },
+	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
 const AGENT_PREVIEW_PATH = /^\/projects\/[^/]+\/agents\/[^/]+\/preview\/?$/;
 
@@ -266,6 +274,7 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
+		if (type === 'app') return `/projects/${projectId}/apps/${id}`;
 	}
 	return URL_BUILDERS[type]?.(id) ?? '#';
 }
@@ -292,9 +301,8 @@ function enhanceResourceLinks(): void {
 		const href = link.getAttribute('href') ?? '';
 
 		// 1. Handle n8n-resource:// custom scheme links
-		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
-			href,
-		);
+		const resourceMatch =
+			/^n8n-resource:\/\/(workflow|credential|data-table|agent|app)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
@@ -391,6 +399,13 @@ function handleLinkClick(event: MouseEvent): void {
 		);
 		if (registryEntry?.projectId) {
 			switched = openAgentPreview?.(id, registryEntry.projectId);
+		}
+	} else if (type === 'app') {
+		const registryEntry = [...thread.resourceNameIndex.values()].find(
+			(r) => r.type === type && r.id === id,
+		);
+		if (registryEntry?.projectId) {
+			switched = openAppPreview?.(id, registryEntry.projectId);
 		}
 	}
 

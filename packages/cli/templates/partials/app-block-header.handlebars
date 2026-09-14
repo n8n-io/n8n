@@ -1,0 +1,7 @@
+{{!-- Handlebars can't build a dynamic tag name, so the level is precomputed into flags. --}}
+{{#if isH1}}<h1 class='text-2xl font-bold mb-md'>{{{text}}}</h1>{{/if}}
+{{#if isH2}}<h2 class='text-xl font-bold mb-md'>{{{text}}}</h2>{{/if}}
+{{#if isH3}}<h3 class='text-lg font-bold mb-md'>{{{text}}}</h3>{{/if}}
+{{#if isH4}}<h4 class='text-md font-bold mb-md'>{{{text}}}</h4>{{/if}}
+{{#if isH5}}<h5 class='text-sm font-bold mb-md'>{{{text}}}</h5>{{/if}}
+{{#if isH6}}<h6 class='text-xs font-bold mb-md'>{{{text}}}</h6>{{/if}}

@@ -1,0 +1,57 @@
+{{#if errorMessage}}
+<div class='app-notice app-notice--danger'>
+	{{errorMessage}}
+</div>
+{{/if}}
+<div class='app-table-wrap'>
+	<table class='app-table'>
+		<thead>
+			<tr>
+				{{#each columns}}<th>{{this}}</th>{{/each}}
+				{{#if hasActions}}<th></th>{{/if}}
+			</tr>
+		</thead>
+		<tbody>
+			{{#each rows}}
+			<tr>
+				{{#each cells}}
+				<td>
+					{{#if input}}
+					{{#if input.isBoolean}}
+					<select name='{{input.name}}' form='{{input.formId}}' class='app-input'>
+						<option value='true' {{#if input.isTrue}}selected{{/if}}>true</option>
+						<option value='false' {{#unless input.isTrue}}selected{{/unless}}>false</option>
+					</select>
+					{{else}}
+					<input type='{{input.inputType}}' {{#if input.isNumber}}step='any'{{/if}} name='{{input.name}}' value='{{value}}' form='{{input.formId}}' class='app-input' />
+					{{/if}}
+					{{else}}
+					{{value}}
+					{{/if}}
+				</td>
+				{{/each}}
+				{{#if @root.hasActions}}
+				<td class='whitespace-nowrap text-right'>
+					{{#unless editing}}
+					{{#if editUrl}}<a href='{{editUrl}}' class='app-link mr-xs'>Edit</a>{{/if}}
+					{{#if @root.deleteUrl}}
+					<form method='POST' action='{{@root.deleteUrl}}' class='inline'>
+						<input type='hidden' name='id' value='{{id}}' />
+						<button type='submit' class='app-btn app-btn--secondary'>Delete</button>
+					</form>
+					{{/if}}
+					{{/unless}}
+				</td>
+				{{/if}}
+			</tr>
+			{{/each}}
+		</tbody>
+	</table>
+</div>
+{{#if editForm}}
+<form id='{{editForm.id}}' method='POST' action='{{editForm.updateUrl}}' class='flex items-center gap-sm mb-md'>
+	<input type='hidden' name='id' value='{{editForm.rowId}}' />
+	<button type='submit' class='app-btn'>Save</button>
+	<a href='{{editForm.cancelUrl}}' class='app-link'>Cancel</a>
+</form>
+{{/if}}

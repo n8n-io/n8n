@@ -246,6 +246,23 @@ function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: nu
 	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
+/** A client that prefers JSON over HTML (n8n Apps rendering a form step) gets the form spec instead of the page. */
+export const wantsFormJson = (req: Request): boolean => req.accepts?.(['html', 'json']) === 'json';
+
+/** The form spec a JSON client renders itself; template-only fields (tokens, shell flags, attribution) stay out. */
+export const toFormPageJson = ({
+	formTitle,
+	formDescription,
+	buttonLabel,
+	formFields,
+}: FormTriggerData) => ({
+	kind: 'page' as const,
+	formTitle,
+	formDescription,
+	buttonLabel,
+	formFields,
+});
+
 /** Target of the "Form automated with n8n" attribution footer. */
 export function getN8nWebsiteLink(instanceId?: string) {
 	const utm_campaign = instanceId ? `&utm_campaign=${encodeURIComponent(instanceId)}` : '';
@@ -674,6 +691,11 @@ export function renderForm({
 		hasAuthenticatedSubmitter,
 		hostNavigationPath: getHostNavigationPath(context, inShell),
 	});
+
+	if (wantsFormJson(context.getRequestObject())) {
+		res.json(toFormPageJson(data));
+		return;
+	}
 
 	if (!isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());

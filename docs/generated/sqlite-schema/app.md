@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "auth" varchar(16) NOT NULL DEFAULT ('public'), "components" text, CONSTRAINT "CHK_app_auth" CHECK ("auth" IN ('public', 'n8n')), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_activeVersionId_foreign" FOREIGN KEY ("activeVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,8 +15,11 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionId | varchar(36) |  | true |  | [app_version](app_version.md) |  |
+| auth | varchar(16) | 'public' | false |  |  |  |
+| components | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [page](page.md) |  |  |
+| id | varchar(36) |  | false | [app_version](app_version.md) [page](page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
@@ -27,7 +30,9 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - | CHECK | CHECK ("auth" IN ('public', 'n8n')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_app_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -43,10 +48,15 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 ```mermaid
 erDiagram
 
+"app" }o--o| "app_version" : "FOREIGN KEY (activeVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "app" {
+  varchar_36_ activeVersionId FK
+  varchar_16_ auth
+  TEXT components
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
@@ -55,14 +65,23 @@ erDiagram
   TEXT theme
   datetime_3_ updatedAt
 }
+"app_version" {
+  varchar_36_ appId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ id PK
+  TEXT snapshot
+  datetime_3_ updatedAt
+}
 "page" {
   varchar_36_ appId FK
   TEXT content
   datetime_3_ createdAt
-  varchar_36_ dataWorkflowId FK
   varchar_36_ id PK
+  TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   datetime_3_ updatedAt
 }
 "project" {

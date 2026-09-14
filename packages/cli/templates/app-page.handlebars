@@ -3,63 +3,36 @@
 <!--
 	An App page. Served under the sandbox CSP, so this document has an opaque
 	origin: no cookies, no localStorage, and its own requests are cross-site.
-	Anything dynamic has to be resolved server-side or carry its own token.
+	Anything dynamic is resolved server-side; the served script (app.js) holds
+	the tokens and sends them as a header.
 -->
 
 <head>
 	<meta charset='UTF-8' />
 	<meta name='viewport' content='width=device-width, initial-scale=1.0' />
 	<meta name='robots' content='noindex' />
+	<meta name='n8n-app-base' content='{{appBase}}' />
 	<title>{{title}} · {{appName}}</title>
-	<style>
-		:root {
-			--color-background: #fbfcfe;
-			--color-surface: #ffffff;
-			--color-border: #dbdfe7;
-			--color-text: #3f4145;
-			--color-muted: #7e8186;
-			--color-link: #5a4bd6;
-			--font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		}
-
-		*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-		body {
-			font-family: var(--font-family);
-			background: var(--color-background);
-			color: var(--color-text);
-			line-height: 1.55;
-			min-height: 100vh;
-		}
-
-		.shell { display: flex; align-items: flex-start; gap: 32px; max-width: 1040px; margin: 0 auto; padding: 32px 24px; }
-
-		.menu { flex: 0 0 220px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 16px; }
-		.app-name { display: block; font-size: 13px; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
-		.menu ul { list-style: none; }
-		.menu ul ul { padding-left: 14px; }
-		.menu a, .menu span.current-page { display: block; padding: 5px 0; font-size: 14px; text-decoration: none; color: var(--color-link); }
-		.menu a:hover { text-decoration: underline; }
-		.menu span.current-page { color: var(--color-text); font-weight: 600; }
-
-		main { flex: 1 1 auto; min-width: 0; min-height: 120px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px; padding: 28px 32px; }
-
-		@media only screen and (max-width: 720px) {
-			.shell { flex-direction: column; }
-			.menu { flex: 1 1 auto; width: 100%; }
-		}
-	</style>
+	<link rel='stylesheet' href='{{cssHref}}' />
+	<script src='{{jsHref}}' defer></script>
+	{{{themeStyle}}}
 </head>
 
-<body>
-	<div class='shell'>
-		<nav class='menu'>
-			<span class='app-name'>{{appName}}</span>
-			{{> appPageMenu menu}}
-		</nav>
+<body class='app-canvas app-text min-h-screen'>
+	{{#if layout}}
+		{{> appLayout}}
+	{{else}}
+		<div class='app-shell' data-app-root>
+			<nav class='app-menu'>
+				<span class='block text-xs font-semibold app-muted uppercase mb-sm'>{{appName}}</span>
+				{{> appPageMenu menu}}
+			</nav>
 
-		<main></main>
-	</div>
+			<main class='app-main'>
+				{{#each blocks}}{{{this}}}{{/each}}
+			</main>
+		</div>
+	{{/if}}
 </body>
 
 </html>

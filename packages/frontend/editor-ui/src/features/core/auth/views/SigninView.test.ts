@@ -246,6 +246,19 @@ describe('SigninView', () => {
 			expect(router.push).not.toHaveBeenCalled();
 		});
 
+		it('should leave the SPA if redirect url is a served app page', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({
+				redirect: '/apps/acme/clients',
+			});
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			await signInWithValidUser();
+
+			expect(hrefSpy).toHaveBeenCalledWith('/apps/acme/clients');
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
 		it('should redirect with router to given route if redirect url is a local path', async () => {
 			const validLocalRedirectUrl = '/valid-redirect';
 			vi.spyOn(route, 'query', 'get').mockReturnValue({

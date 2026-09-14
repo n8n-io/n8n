@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) NOT NULL, "parentPageId" varchar(36), "route" varchar(255) NOT NULL, "content" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "dataWorkflowId" varchar(36), CONSTRAINT "FK_b85a31f0bff1e857156d27ea152" FOREIGN KEY ("parentPageId") REFERENCES "page" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5e3cf5ed8328c4993a910bd239b" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "page_dataWorkflowId_foreign" FOREIGN KEY ("dataWorkflowId") REFERENCES "workflow_entity" ("id") ON DELETE SET NULL)
+CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) NOT NULL, "parentPageId" varchar(36), "route" varchar(255) NOT NULL, "content" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "layout" text, "title" varchar(255), CONSTRAINT "FK_b85a31f0bff1e857156d27ea152" FOREIGN KEY ("parentPageId") REFERENCES "page" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5e3cf5ed8328c4993a910bd239b" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -18,19 +18,19 @@ CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) 
 | appId | varchar(36) |  | false |  | [app](app.md) |  |
 | content | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| dataWorkflowId | varchar(36) |  | true |  | [workflow_entity](workflow_entity.md) |  |
 | id | varchar(36) |  | false | [page](page.md) |  |  |
+| layout | TEXT |  | true |  |  |  |
 | parentPageId | varchar(36) |  | true |  | [page](page.md) |  |
 | route | varchar(255) |  | false |  |  |  |
+| title | varchar(255) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (dataWorkflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_page_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -48,20 +48,23 @@ CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) 
 erDiagram
 
 "page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"page" }o--o| "workflow_entity" : "FOREIGN KEY (dataWorkflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "page" }o--o| "page" : "FOREIGN KEY (parentPageId) REFERENCES page (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "page" {
   varchar_36_ appId FK
   TEXT content
   datetime_3_ createdAt
-  varchar_36_ dataWorkflowId FK
   varchar_36_ id PK
+  TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   datetime_3_ updatedAt
 }
 "app" {
+  varchar_36_ activeVersionId FK
+  varchar_16_ auth
+  TEXT components
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
@@ -69,28 +72,6 @@ erDiagram
   varchar_36_ projectId FK
   TEXT theme
   datetime_3_ updatedAt
-}
-"workflow_entity" {
-  boolean active
-  varchar_36_ activeVersionId FK
-  TEXT connections
-  datetime_3_ createdAt
-  TEXT description
-  varchar_36_ id PK
-  boolean isArchived
-  TEXT meta
-  varchar_128_ name
-  TEXT nodeGroups
-  TEXT nodes
-  varchar_36_ parentFolderId FK
-  TEXT pinData
-  TEXT settings
-  varchar sourceWorkflowId
-  TEXT staticData
-  INTEGER triggerCount
-  datetime_3_ updatedAt
-  INTEGER versionCounter
-  varchar_36_ versionId
 }
 ```
 

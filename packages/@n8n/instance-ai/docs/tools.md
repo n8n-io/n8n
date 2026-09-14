@@ -17,6 +17,7 @@ live in `src/tools/tool-ids.ts`.
 |------|---------|
 | `workflows` | 14 |
 | `data-tables` | 11 |
+| `apps` | 11 |
 | `workspace` | 8 |
 | `executions` | 7 |
 | `credentials` | 6 |
@@ -825,6 +826,48 @@ Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
 
 ---
 
+## `apps` (11 actions, conditional)
+
+Build and edit end-user-facing web Apps served at `/apps/<namespace>/`. Load
+the `app-builder` skill before calling this tool — its description says so.
+Deferred (reached through `search_tools` + `load_tool`); registered only when
+the `apps` backend module is active and wired (`context.appService`).
+
+Every result is flat and carries `appId` (plus `projectId`/`namespace`/`url`
+where the handler already has them) so the artifact registry can bind the
+thread to the app without an extra read.
+
+| Action | Description |
+|--------|-------------|
+| `list` | List apps in a project (defaults to the conversation's bound project) |
+| `create` | Create an app. Namespace is slugified from the name when omitted. HITL. |
+| `get` | Get an app and its pages |
+| `update-app` | Update an app's name or theme |
+| `create-page` | Create a page with a `title` (what the menu and the browser tab show), optionally with `content` and a `layout`. Block ids missing from either are generated before validation. |
+| `get-page` | Read a page's route, title, path, and content |
+| `set-content` | Replace a page's content blocks (same id-generation + validation as `create-page`) |
+| `update-page` | Change a page's route or title (`title: null` falls back to the route-derived name) |
+| `delete-page` | Delete a page. HITL. |
+| `publish` | Freeze the draft pages as a new version and serve it. HITL. |
+| `preview-page` | Render the draft page and return `{ errors, logs }` per block id (no HTML). Call after `set-content`/`set-layout`; fix errors before `publish`. |
+| `code-api` | Get the ambient types for a `code` block (TSX): `PageContext`, the JSX factory `h` / `Fragment`, `raw()` and `Renderable` |
+
+**Content validation**: `create-page` and `set-content` validate `content`
+against the block schema (`appContentSchema`) after filling in any missing
+block `id`. A validation failure returns `{ denied: true, reason, issues }`
+(the raw zod issues) instead of calling the adapter, so the model can fix the
+blocks and retry. The adapter re-validates every write through the DTOs as
+defense in depth; a rejection there surfaces the same `{ denied, reason,
+issues? }` shape. `publish` returns the same shape (with one entry per
+invalid page) when a draft page's content no longer matches the schema.
+
+**HITL**: `create`, `delete-page`, and `publish` suspend for approval (the
+`data-tables` three-state suspend/resume/deny pattern), gated by
+`permissions.createApp` / `deleteAppPage` / `publishApp` and by the session
+grants `apps:create` / `apps:delete-page` / `apps:publish`.
+
+---
+
 ## `workspace` (4 or 8 actions)
 
 The registry always contains this tool. Without `workspaceService`, every call
@@ -1204,6 +1247,7 @@ except for the workflow-tool permission fallback described above.
 | `credentials` | ✅ | ❌ |
 | `nodes` | ✅ (full domain tool) | ✅ (full domain tool) |
 | `data-tables` | ✅ (direct, via `data-table-manager` skill) | ❌ |
+| `apps` | ✅ (conditional, via `app-builder` skill) | ❌ |
 | `workspace` | ✅ | ❌ |
 | `ask-user` | ✅ | ❌ |
 | `parse-file` | ✅ (when the turn has a parseable attachment) | ❌ |

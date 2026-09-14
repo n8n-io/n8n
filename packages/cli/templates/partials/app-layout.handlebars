@@ -1,0 +1,10 @@
+{{!-- A page's layout: its blocks in order, the slot holding the page's content blocks. --}}
+<div class='app-layout' data-app-root>
+	{{#each layout}}
+		{{#if slot}}
+			<main class='app-main' data-app-slot>{{#each ../blocks}}{{{this}}}{{/each}}</main>
+		{{else}}
+			<div class='app-block' data-block-id='{{id}}'>{{{html}}}</div>
+		{{/if}}
+	{{/each}}
+</div>

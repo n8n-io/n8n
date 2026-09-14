@@ -94,6 +94,11 @@ catalog:
   '@confluentinc/kafka-javascript': 1.9.1
   '@daytona/sdk': 0.205.1
   '@e965/xlsx': 0.20.3
+  '@editorjs/delimiter': 1.4.2
+  '@editorjs/editorjs': 2.31.6
+  '@editorjs/header': 2.8.9
+  '@editorjs/list': 2.0.9
+  '@editorjs/paragraph': 2.11.7
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
   '@iconify/json': ^2.2.488

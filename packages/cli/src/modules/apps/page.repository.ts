@@ -9,8 +9,15 @@ export class PageRepository extends Repository<Page> {
 		super(Page, dataSource.manager);
 	}
 
-	async createPage(appId: string, parentPageId: string | null, route: string) {
-		const page = this.create({ appId, parentPageId, route });
+	async createPage(
+		appId: string,
+		parentPageId: string | null,
+		route: string,
+		content: Page['content'] = null,
+		layout: Page['layout'] = null,
+		title: Page['title'] = null,
+	) {
+		const page = this.create({ appId, parentPageId, route, content, layout, title });
 		return await this.save(page);
 	}
 
@@ -40,7 +47,7 @@ export class PageRepository extends Repository<Page> {
 
 	async updatePage(
 		page: Page,
-		updates: Partial<Pick<Page, 'route' | 'content' | 'dataWorkflowId'>>,
+		updates: Partial<Pick<Page, 'route' | 'title' | 'content' | 'layout'>>,
 	) {
 		return await this.save(Object.assign(page, updates));
 	}
