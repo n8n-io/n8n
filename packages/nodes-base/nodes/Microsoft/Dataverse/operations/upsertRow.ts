@@ -71,7 +71,7 @@ export const upsertRow: OperationDefinition = {
 		{
 			...commonRecordIdProperty(['upsert']),
 			description:
-				'GUID of the row to upsert. Dataverse will create the row with this GUID if it does not exist yet.',
+				'GUID of the row to upsert. Dataverse will create the row with this GUID if it does not exist yet. For a partitioned elastic table, add partitionid to the Row Item, or use Create or Update with the alternate-key form.',
 			displayOptions: {
 				show: { ...forOperation(['upsert']).show, identifierType: ['guid'] },
 			},

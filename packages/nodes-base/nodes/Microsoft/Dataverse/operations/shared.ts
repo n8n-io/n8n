@@ -143,8 +143,11 @@ export function normalizeEntitySet(value: unknown): string {
 		.replace(/^\/+|\/+$/g, '');
 }
 
-const ASCII_CONTROL_CHARS = /[\x00-\x1f]/;
 const ENTITY_SET_PATTERN = /^[a-z][a-z0-9_]*$/i;
+
+export function isValidEntitySet(value: unknown): boolean {
+	return ENTITY_SET_PATTERN.test(normalizeEntitySet(value));
+}
 
 /**
  * Validate a table name before interpolating it into a request path.
@@ -159,9 +162,8 @@ export function assertValidEntitySet(
 	entitySet: unknown,
 	paramName = 'entitySet',
 ): string {
-	const raw = resourceLocatorValue(entitySet);
 	const normalized = normalizeEntitySet(entitySet);
-	if (ASCII_CONTROL_CHARS.test(raw) || !ENTITY_SET_PATTERN.test(normalized)) {
+	if (!isValidEntitySet(normalized)) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`Parameter "${paramName}" must be a valid Dataverse table name`,

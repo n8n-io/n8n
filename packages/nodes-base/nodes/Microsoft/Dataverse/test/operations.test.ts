@@ -232,8 +232,8 @@ describe('Microsoft Dataverse operations', () => {
 	});
 
 	describe('getManyRows', () => {
-		it('rejects control characters in the table name before dispatching', async () => {
-			withParams({ entitySet: 'accounts\n', returnAll: true, getAllOptions: {} });
+		it('rejects control characters inside the table name before dispatching', async () => {
+			withParams({ entitySet: 'accounts\ncontacts', returnAll: true, getAllOptions: {} });
 
 			await expect(getManyRows.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/"entitySet"/);
 			expect(dataverseApiRequestAllItems).not.toHaveBeenCalled();
@@ -416,6 +416,14 @@ describe('Microsoft Dataverse operations', () => {
 	});
 
 	describe('updateRow', () => {
+		it('explains how to address a partitioned elastic row', () => {
+			const rowId = updateRow.properties.find((property) => property.name === 'recordId');
+
+			expect(rowId?.description).toContain(
+				'For a partitioned elastic table, add partitionid to the Row Item, or use Create or Update with the alternate-key form.',
+			);
+		});
+
 		it('PATCHes with If-Match: * and return=representation', async () => {
 			withParams({
 				entitySet: 'accounts',
@@ -472,6 +480,14 @@ describe('Microsoft Dataverse operations', () => {
 	});
 
 	describe('upsertRow', () => {
+		it('explains how to address a partitioned elastic row by GUID', () => {
+			const rowId = upsertRow.properties.find((property) => property.name === 'recordId');
+
+			expect(rowId?.description).toContain(
+				'For a partitioned elastic table, add partitionid to the Row Item, or use Create or Update with the alternate-key form.',
+			);
+		});
+
 		it('PATCHes by GUID with no precondition header for the default behavior', async () => {
 			withParams({
 				entitySet: 'accounts',

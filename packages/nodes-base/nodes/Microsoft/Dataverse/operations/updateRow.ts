@@ -39,7 +39,11 @@ export const updateRow: OperationDefinition = {
 	action: 'Update a row',
 	properties: [
 		commonEntitySetProperty(['update']),
-		commonRecordIdProperty(['update']),
+		{
+			...commonRecordIdProperty(['update']),
+			description:
+				'GUID of the row to update. For a partitioned elastic table, add partitionid to the Row Item, or use Create or Update with the alternate-key form.',
+		},
 		...commonRowItemProperties(['update']),
 		buildOptionsCollection('update', [
 			commonReturnFullMetadataOption(),

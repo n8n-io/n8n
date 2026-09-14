@@ -12,6 +12,7 @@ import {
 	type DataverseHeaders,
 	type DataverseQuery,
 } from './GenericFunctions';
+import { isValidEntitySet, normalizeEntitySet } from './operations/shared';
 
 /**
  * `loadOptions` handlers for the Dataverse node. These power the in-editor
@@ -274,8 +275,13 @@ export async function searchRows(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const entitySet = parameterValue(this.getCurrentNodeParameter('entitySet'));
+	const entitySet = normalizeEntitySet(this.getCurrentNodeParameter('entitySet'));
 	if (!entitySet) return { results: [] };
+	if (!isValidEntitySet(entitySet)) {
+		throw new NodeApiError(this.getNode(), {
+			message: 'Table name must be a valid Dataverse table name',
+		} as JsonObject);
+	}
 
 	// Resolve the primary id/name attributes used to map rows. Runs on every
 	// invocation, including each pagination page: the nextLink is opaque to us, so

@@ -215,6 +215,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 	describe('assertValidEntitySet', () => {
 		it('returns a normalized table name from strings and resource locators', () => {
 			expect(assertValidEntitySet(ctx, 0, '  /accounts/ ')).toBe('accounts');
+			expect(assertValidEntitySet(ctx, 0, 'accounts\r\n')).toBe('accounts');
 			expect(assertValidEntitySet(ctx, 0, { mode: 'list', value: 'custom_table' })).toBe(
 				'custom_table',
 			);
@@ -229,7 +230,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 			'accounts?query',
 			'accounts#fragment',
 			'account name',
-			'accounts\t',
+			'accounts\tcontacts',
 		])('rejects an invalid table name: %j', (entitySet) => {
 			expect(() => assertValidEntitySet(ctx, 0, entitySet)).toThrow(/"entitySet"/);
 		});

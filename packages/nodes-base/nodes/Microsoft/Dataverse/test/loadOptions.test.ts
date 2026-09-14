@@ -326,7 +326,7 @@ describe('Microsoft Dataverse loadOptions', () => {
 		});
 
 		it('searches rows by the selected table primary name and returns primary IDs', async () => {
-			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: ' /accounts/\r\n' });
 			request
 				.mockResolvedValueOnce({
 					value: [{ PrimaryIdAttribute: 'accountid', PrimaryNameAttribute: 'name' }],
@@ -349,6 +349,13 @@ describe('Microsoft Dataverse loadOptions', () => {
 			// Server-driven paging, not a `$top` cap.
 			expect(rowsRequest.qs.$top).toBeUndefined();
 			expect(rowsRequest.headers.Prefer).toBe('odata.maxpagesize=100');
+		});
+
+		it('rejects an invalid table name before requesting metadata', async () => {
+			ctx.getCurrentNodeParameter.mockReturnValue('accounts/../contacts');
+
+			await expect(searchRows.call(ctx)).rejects.toThrow(/valid Dataverse table name/);
+			expect(request).not.toHaveBeenCalled();
 		});
 
 		it('returns the @odata.nextLink as the pagination token', async () => {
