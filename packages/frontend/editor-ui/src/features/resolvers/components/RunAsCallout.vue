@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nCallout, N8nButton, N8nText } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const i18n = useI18n();
+const toast = useToast();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
@@ -53,13 +55,21 @@ const state = computed<'off' | 'you' | 'other'>(() => {
 
 const { holderName } = useRunAsHolderName(runAsUserId);
 
+// The template calls this and drops the promise, so the switch shows the new
+// position at once. A refusal from the backend (a credential probe on a
+// published workflow, for example) must not be lost, so it becomes a toast and
+// the store keeps the value it had.
 async function setRunAs(on: boolean) {
 	const value = on ? usersStore.currentUser?.id : undefined;
-	await workflowsStore.updateWorkflowSetting(
-		workflowDocumentStore.value.workflowId,
-		'runAsUserId',
-		value,
-	);
+	try {
+		await workflowsStore.updateWorkflowSetting(
+			workflowDocumentStore.value.workflowId,
+			'runAsUserId',
+			value,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('runAs.callout.error.title'));
+	}
 }
 </script>
 

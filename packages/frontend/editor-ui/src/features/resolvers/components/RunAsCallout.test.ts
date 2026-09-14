@@ -21,6 +21,11 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(),
 }));
 
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
 const mockDocumentStore: { settings: IWorkflowSettings; scopes: Scope[]; workflowId: string } = {
 	settings: {},
 	scopes: [],
@@ -249,6 +254,26 @@ describe('RunAsCallout', () => {
 			await waitFor(() => {
 				expect(fetchUsers).toHaveBeenCalledWith({ filter: { ids: [OTHER_USER_ID] } });
 			});
+		});
+	});
+
+	describe('a rejected update', () => {
+		it('shows a toast and keeps the callout usable', async () => {
+			mockDocumentStore.scopes = ['workflow:publish'];
+			const rejection = new Error('Connect your end-user credentials first');
+			updateWorkflowSetting.mockRejectedValueOnce(rejection);
+
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('run-as-switch'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(
+					rejection,
+					'Could not change who scheduled executions run as',
+				);
+			});
+			expect(getByTestId('run-as-switch')).toBeInTheDocument();
 		});
 	});
 
