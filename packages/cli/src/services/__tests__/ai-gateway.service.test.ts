@@ -726,6 +726,41 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('embeds agent context in every routed gateway URL', async () => {
+			const routingConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['browserbaseApi'],
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						urlField: 'baseUrl',
+						apiKeyField: 'browserbaseApiKey',
+						routing: {
+							baseUrl: '/v1/gateway/browserbase',
+							stagehandBaseUrl: '/v1/gateway/browserbaseStagehand',
+						},
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(routingConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+				agentId: 'AG123',
+				projectId: 'nr6r2FfB0mVeqZP1',
+			});
+
+			expect(result).toEqual({
+				browserbaseApiKey: 'mock-jwt-token',
+				baseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbase`,
+				stagehandBaseUrl: `${BASE_URL}/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/browserbaseStagehand`,
+			});
+		});
+
 		it('uses standard gateway URL when gatewayPath does not start with the gateway prefix', async () => {
 			const customConfig = {
 				...MOCK_GATEWAY_CONFIG,

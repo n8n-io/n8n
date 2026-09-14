@@ -380,6 +380,7 @@ export class AgentRuntimeCacheService {
 			this.credentialsService,
 			projectId,
 			user,
+			agentId,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 			agentData,
