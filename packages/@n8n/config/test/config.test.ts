@@ -296,6 +296,7 @@ describe('GlobalConfig', () => {
 			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
+			mcpUserPreferencesEnabled: false,
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
 			rest: 'rest',
