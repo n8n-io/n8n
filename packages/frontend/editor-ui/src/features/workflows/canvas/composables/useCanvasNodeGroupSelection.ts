@@ -103,6 +103,11 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 		}
 		for (const group of groupsToCheck.values()) {
 			const groupNodeId = createCanvasGroupNodeId(group.id);
+			// A one-member expanded group must not swallow a direct click on its
+			// only member. The title bar still selects the group explicitly (the
+			// first reconciliation pass adds the member), but selecting the member
+			// alone should leave the member as the selection target.
+			if (group.nodeIds.length === 1 && !target.has(groupNodeId)) continue;
 			if (group.nodeIds.every((memberId) => target.has(memberId))) {
 				target.add(groupNodeId);
 			} else {
