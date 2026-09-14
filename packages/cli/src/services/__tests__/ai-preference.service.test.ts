@@ -270,6 +270,17 @@ describe('renderAiPreferencesBlock', () => {
 		expect(text?.split('</ai-preferences>')).toHaveLength(2);
 	});
 
+	it('keeps angle brackets that are not the block tags, such as a personal project name', () => {
+		const text = renderAiPreferencesBlock({
+			instance: [],
+			user: ['Use <b>bold</b> sparingly.'],
+			projects: [{ id: 'p-1', name: 'Jane <jane@acme.com>', items: ['x'] }],
+		});
+
+		expect(text).toContain('Preferences for project "Jane <jane@acme.com>":');
+		expect(text).toContain('- Use <b>bold</b> sparingly.');
+	});
+
 	it('does not let a preference or a project name close the block', () => {
 		const text = renderAiPreferencesBlock({
 			instance: [],

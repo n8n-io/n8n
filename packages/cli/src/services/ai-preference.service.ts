@@ -130,7 +130,13 @@ function singleLine(text: string): string {
 	return text.replaceAll(/\s+/g, ' ').trim();
 }
 
-/** User text must not be able to close the block or open another tag. */
+/**
+ * User text must not be able to close the block or open another one. Only the
+ * block's own tags are neutralized, so a name like `Jane <jane@acme.com>` stays
+ * readable and matches the other per-turn blocks.
+ */
 function escapeTags(text: string): string {
-	return text.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+	return text
+		.replaceAll('<ai-preferences>', '&lt;ai-preferences&gt;')
+		.replaceAll('</ai-preferences>', '&lt;/ai-preferences&gt;');
 }

@@ -2,8 +2,8 @@ import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
 	channel: 'create' | 'deleteChannel' | 'get' | 'getAll' | 'update';
-	channelMessage: 'create' | 'get' | 'getAll' | 'getAllReplies' | 'reply';
-	chatMember: 'add' | 'getAll';
+	channelMessage: 'create' | 'get' | 'getAll' | 'getAllReplies' | 'reply' | 'softDeleteMessage';
+	chatMember: 'add' | 'getAll' | 'remove';
 	chatMessage:
 		| 'create'
 		| 'get'
