@@ -22,7 +22,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
-	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
@@ -301,8 +300,8 @@ export async function provisionLaunchedThread(
  * into the same write so binding a subject and recording where it opened from
  * (e.g. the agent-preview view) costs one round trip, not two.
  *
- * Shared by `InstanceAiChatPanel` (embed/) and `openAgentArtifactThread` below,
- * which used to run this in two separate steps.
+ * Shared by `InstanceAiChatPanel` (embed/), which used to run this in two
+ * separate steps.
  */
 export async function provisionSubjectThread(
 	subject: InstanceAiEmbedSubject,
@@ -394,62 +393,6 @@ export function useInstanceAiHandoff() {
 			new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
 			i18n.baseText('instanceAi.handoff.openFailed.title'),
 		);
-	}
-
-	async function openAgentArtifactThread(
-		attachment: InstanceAiAgentAttachment,
-		launch: InstanceAiThreadLaunch,
-		options?: {
-			context?: InstanceAiHandoffContext;
-			initialDraft?: string;
-		},
-	): Promise<boolean> {
-		if (!instanceAiReady.value) {
-			await routeToSetup();
-			return false;
-		}
-		if (handoffInFlight) return false;
-		handoffInFlight = true;
-		try {
-			let threadId: string;
-			try {
-				// Mints the thread, binds it to the agent, and stashes the attachment —
-				// the agent-preview view metadata rides along as extra metadata so this
-				// is one merged write, not two. Same primitive `InstanceAiChatPanel` uses.
-				threadId = await provisionSubjectThread(
-					attachment,
-					launch,
-					options?.context?.source === 'agent-preview'
-						? {
-								[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
-									agentId: options.context.agentId,
-									threadId: options.context.threadId,
-								},
-							}
-						: undefined,
-				);
-			} catch {
-				showOpenFailed();
-				return false;
-			}
-			if (options?.context) stashPendingHandoffContext(threadId, options.context);
-			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
-			try {
-				const failure = await router.push({
-					name: INSTANCE_AI_THREAD_VIEW,
-					params: { threadId },
-				});
-				if (failure) throw new Error('Navigation failed');
-			} catch {
-				clearPendingThreadHandoff(threadId);
-				await instanceAiStore.deleteThread(threadId);
-				showOpenFailed();
-				return false;
-			}
-			return true;
-		} finally {
-			handoffInFlight = false;
-		}
 	}
 
 	async function openThreadWithContext(
@@ -590,5 +533,5 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
+	return { startThread, openThreadWithContext, openThreadForDraft };
 }

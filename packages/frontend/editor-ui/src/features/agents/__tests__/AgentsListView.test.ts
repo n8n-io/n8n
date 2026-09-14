@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { newAgentRoute } from '../createAgentRoute';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 
 const mocks = vi.hoisted(() => ({
@@ -434,8 +434,6 @@ describe('AgentsListView — create agent', () => {
 		// so the "clicked" and "created" events can be joined on it.
 		const [, mintedAgentId] = mocks.trackClickedNewAgent.mock.calls[0] as [string, string];
 		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
-		expect(mocks.routerPush).toHaveBeenCalledWith(
-			instanceAiCreateAgentRoute('project-1', mintedAgentId),
-		);
+		expect(mocks.routerPush).toHaveBeenCalledWith(newAgentRoute('project-1', mintedAgentId));
 	});
 });
