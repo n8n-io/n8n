@@ -82,8 +82,6 @@ export class TagsPublicController {
 		try {
 			return toTagPublicDto(await this.tagService.save(newTag, 'create'));
 		} catch {
-			// Every save failure answers 409, an entity validation failure included. The published
-			// endpoint replies the same way, so keep it until a follow-up ticket changes the contract.
 			throw new ConflictError('Tag already exists');
 		}
 	}
