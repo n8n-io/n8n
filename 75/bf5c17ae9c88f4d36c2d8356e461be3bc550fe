@@ -11,6 +11,7 @@ packages/@n8n/engine/src/execution/step-store.ts
 packages/@n8n/engine/src/dependencies/external-dependencies.ts
   s_77655ca8fe3a59::t_fb4f2278d3a257 51-54
   s_77655ca8fe3a59::t_c8d093896a57c3 47-50,55-65
+  s_77655ca8fe3a59::t_7b782f847e963a 1
 packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
   s_77655ca8fe3a59::t_8245f0254336b3 84,91-98,228-267
   s_77655ca8fe3a59::t_bc07f837f2d49e 268-269
