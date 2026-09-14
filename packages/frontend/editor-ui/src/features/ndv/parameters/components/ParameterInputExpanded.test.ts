@@ -139,6 +139,25 @@ describe('ParameterInputExpanded.vue', () => {
 			],
 		});
 
+		it('does not render the focus parameter button for the fields inside the collection', async () => {
+			ndvStoreMock.current = mock<NDVStore>({ activeNode: createTestNode() });
+
+			const nodeValues = {
+				headers: { values: [{ name: '', value: '' }] },
+			};
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameter: fixedCollectionParameter,
+					value: nodeValues.headers,
+					nodeValues,
+				},
+			});
+			await vi.dynamicImportSettled();
+
+			// the focus panel cannot host credential fields, so the button must stay hidden
+			expect(queryAllByTestId('parameter-focus-button')).toHaveLength(0);
+		});
+
 		it('should render FixedCollectionParameter for fixedCollection type', async () => {
 			const nodeValues = {
 				headers: { values: [{ name: '', value: '' }] },
