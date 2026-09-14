@@ -24,11 +24,12 @@ const viewportRef = { value: { x: 0, y: 0, zoom: 1 } };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
-		props: ['id', 'type', 'position', 'isConnectable'],
+		props: ['id', 'type', 'position', 'connectable'],
 		render() {
 			return h('div', {
 				class: 'vue-flow__handle',
 				'data-handle-id': (this as unknown as { id: string }).id,
+				'data-connectable': String((this as unknown as { connectable: boolean }).connectable),
 			});
 		},
 	},
@@ -144,6 +145,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('empty-group connection handles', () => {
+		it('enables both title-bar handles only for a collapsed empty group', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: true,
+					isEmptyGroup: true,
+					group: { ...baseGroup, nodeIds: ['anchor'] },
+				}),
+			});
+
+			expect(wrapper.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(2);
+		});
+
+		it('does not enable handles for expanded or non-empty groups', () => {
+			const expanded = render({ data: makeData({ isCollapsed: false, isEmptyGroup: true }) });
+			const nonEmpty = render({ data: makeData({ isCollapsed: true, isEmptyGroup: false }) });
+
+			expect(expanded.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
+			expect(nonEmpty.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
 		});
 	});
 
@@ -559,6 +582,27 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-deactivated-label')).toBeNull();
 			const root = wrapper.getByTestId('canvas-node-group');
 			expect([...root.classList].some((c) => /deactivated/i.test(c))).toBe(false);
+		});
+	});
+
+	describe('empty state', () => {
+		it('marks empty groups with the dedicated presentation class in both states', () => {
+			const collapsed = render({ data: makeData({ isEmptyGroup: true, isCollapsed: true }) });
+			const expanded = render({ data: makeData({ isEmptyGroup: true, isCollapsed: false }) });
+			const realNoOp = render({ data: makeData({ isEmptyGroup: false }) });
+
+			const getRoot = (container: Element) =>
+				container.querySelector<HTMLElement>('[data-test-id="canvas-node-group"]');
+
+			expect([...getRoot(collapsed.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
+				true,
+			);
+			expect([...getRoot(expanded.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
+				true,
+			);
+			expect([...getRoot(realNoOp.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
+				false,
+			);
 		});
 	});
 

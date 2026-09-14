@@ -209,6 +209,7 @@ export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	isEmptyGroup?: boolean;
 	executionStatus?: GroupExecutionStatus;
 	allNodesDisabled?: boolean;
 }
