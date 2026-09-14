@@ -100,6 +100,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
 	includeSsrfMetrics: boolean = false;
 
+	/** Whether to include metrics for decryption and key-lookup latency. */
+	@Env('N8N_METRICS_INCLUDE_ENCRYPTION_METRICS')
+	includeEncryptionMetrics: boolean = false;
+
 	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
 	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
 	includeDnsCacheMetrics: boolean = false;

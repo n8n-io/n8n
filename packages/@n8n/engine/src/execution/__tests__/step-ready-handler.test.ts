@@ -66,6 +66,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		status: 'running',
 		mode: 'production',
 		graph,
+		workflow: {},
 		triggerOutputs: null,
 		callerContext: {},
 		...overrides,

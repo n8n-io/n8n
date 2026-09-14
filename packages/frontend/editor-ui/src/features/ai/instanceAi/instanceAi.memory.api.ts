@@ -8,6 +8,7 @@ import type {
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
 } from '@n8n/api-types';
+import type { AgentResource } from '@/features/agents/types';
 
 export async function fetchThreads(
 	context: IRestApiContext,
@@ -37,6 +38,25 @@ export async function updateThreadMetadata(
 	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
 		metadata,
 	});
+}
+
+/**
+ * Persist the thread's pending new-agent artifact under the client-minted id and
+ * bind it to the thread in one request. Converges with a concurrent chat build on
+ * the same id instead of failing, and the response arriving IS the guarantee that
+ * the binding is durable.
+ */
+export async function persistPendingAgent(
+	context: IRestApiContext,
+	threadId: string,
+	payload: { projectId: string; agentId: string; name: string },
+): Promise<{ agent: AgentResource; thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/agent`,
+		payload,
+	);
 }
 
 export async function fetchThreadMessages(

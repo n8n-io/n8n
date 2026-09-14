@@ -105,6 +105,7 @@ describe('step execution (integration)', () => {
 			.send({
 				workflowId,
 				graph: workflowGraph,
+				workflow: {},
 				triggerOutputs,
 				executionId: generateId(),
 				callerContext: {},
@@ -396,6 +397,7 @@ describe('step execution (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
 			callerContext: {},
 		});

@@ -7,6 +7,8 @@ import { ref } from 'vue';
  */
 export interface AgentReturnContext {
 	workflowId: string;
+	/** Non-workflow route that contains the workflow, such as an Assistant artifact view. */
+	returnPath?: string;
 	/**
 	 * Node whose NDV reopens on return. Set only when the round-trip started
 	 * from the node's NDV; empty for trips that started from the canvas (the
@@ -17,8 +19,14 @@ export interface AgentReturnContext {
 	agentId: string;
 }
 
+export interface PendingAgentArtifactReturn {
+	workflowId: string;
+	nodeId?: string;
+}
+
 export const useAgentReturnContextStore = defineStore('agentReturnContext', () => {
 	const context = ref<AgentReturnContext | null>(null);
+	const pendingArtifactReturn = ref<PendingAgentArtifactReturn | null>(null);
 
 	function set(ctx: AgentReturnContext) {
 		context.value = ctx;
@@ -28,5 +36,22 @@ export const useAgentReturnContextStore = defineStore('agentReturnContext', () =
 		context.value = null;
 	}
 
-	return { context, set, clear };
+	function setPendingArtifactReturn(pending: PendingAgentArtifactReturn) {
+		pendingArtifactReturn.value = pending;
+	}
+
+	function consumePendingArtifactReturn() {
+		const pending = pendingArtifactReturn.value;
+		pendingArtifactReturn.value = null;
+		return pending;
+	}
+
+	return {
+		context,
+		pendingArtifactReturn,
+		set,
+		clear,
+		setPendingArtifactReturn,
+		consumePendingArtifactReturn,
+	};
 });

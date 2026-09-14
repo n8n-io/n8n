@@ -245,6 +245,176 @@ describe('Validation', () => {
 				0,
 			);
 		});
+
+		it('should not warn when a primary and a fallback model use different input indices', () => {
+			const result = validateWorkflow({
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, 0],
+						parameters: { needsFallback: true },
+					},
+					{
+						id: '3',
+						name: 'Primary Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						typeVersion: 1.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Fallback Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [200, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Primary Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Fallback Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+					},
+				},
+			});
+
+			expect(result.warnings.filter((w) => w.code === 'DUPLICATE_SUBNODE_CONNECTION')).toHaveLength(
+				0,
+			);
+			expect(result.warnings.filter((w) => w.code === 'MISSING_FALLBACK_MODEL_FLAG')).toHaveLength(
+				0,
+			);
+		});
+
+		it('should warn when a fallback model is wired but needsFallback is not enabled', () => {
+			const result = validateWorkflow({
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						position: [200, 0],
+						// needsFallback left off, so the node declares no Fallback Model input.
+						parameters: {},
+					},
+					{
+						id: '3',
+						name: 'Primary Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						typeVersion: 1.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Fallback Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [200, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Primary Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Fallback Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+					},
+				},
+			});
+
+			const fallbackWarnings = result.warnings.filter(
+				(w) => w.code === 'MISSING_FALLBACK_MODEL_FLAG',
+			);
+			expect(fallbackWarnings).toHaveLength(1);
+			expect(fallbackWarnings[0].message).toContain('needsFallback');
+			expect(fallbackWarnings[0].nodeName).toBe('Agent');
+		});
+
+		it('should not warn about needsFallback for a node type that has no fallback input', () => {
+			const result = validateWorkflow({
+				id: 'test-id',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: '2',
+						name: 'Model Selector',
+						type: '@n8n/n8n-nodes-langchain.modelSelector',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+					{
+						id: '3',
+						name: 'Model A',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Model B',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.3,
+						position: [200, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Model Selector', type: 'main', index: 0 }]] },
+					'Model A': {
+						ai_languageModel: [[{ node: 'Model Selector', type: 'ai_languageModel', index: 0 }]],
+					},
+					'Model B': {
+						ai_languageModel: [[{ node: 'Model Selector', type: 'ai_languageModel', index: 1 }]],
+					},
+				},
+			});
+
+			// Model Selector genuinely has many model slots and no needsFallback toggle.
+			expect(result.warnings.filter((w) => w.code === 'MISSING_FALLBACK_MODEL_FLAG')).toHaveLength(
+				0,
+			);
+			expect(result.warnings.filter((w) => w.code === 'DUPLICATE_SUBNODE_CONNECTION')).toHaveLength(
+				0,
+			);
+		});
 	});
 
 	describe('ValidationError', () => {

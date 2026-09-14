@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -181,7 +182,7 @@ describe('ScopeGroupSelector', () => {
 	});
 
 	describe('settings "Manage all settings" select-all behaviour', () => {
-		it('checks MCP and AI Assistant use/manage when "Manage all settings" is toggled on', async () => {
+		it('checks MCP and n8n Assistant use/manage when "Manage all settings" is toggled on', async () => {
 			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [] },
 			});
@@ -203,7 +204,7 @@ describe('ScopeGroupSelector', () => {
 			);
 		});
 
-		it('keeps all four MCP/AI Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
+		it('keeps all four MCP/n8n Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});
@@ -255,6 +256,68 @@ describe('ScopeGroupSelector', () => {
 			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
 				'true',
 			);
+		});
+	});
+
+	describe('option tooltip anchoring', () => {
+		// jsdom has no layout engine, so the misplacement cannot be measured in
+		// pixels. What jsdom does resolve is the cascade that causes it: a tooltip
+		// positions against its trigger element, and that trigger is a flex item of
+		// the option list. While the list stretches its items (the flex default),
+		// the trigger is as wide as the whole row, so `placement="right"` puts the
+		// tooltip at the right edge of the card instead of beside the hovered
+		// option.
+		const SFC_PATH = 'src/features/roles/instance/components/ScopeGroupSelector.vue';
+
+		/**
+		 * Give jsdom the component's own CSS module block. `classNameStrategy:
+		 * 'non-scoped'` keeps the rendered class names equal to the source ones, so
+		 * these selectors match the rendered tree.
+		 */
+		function applyComponentStyles(): () => void {
+			const css = /<style[^>]*module>([\s\S]*?)<\/style>/.exec(readFileSync(SFC_PATH, 'utf8'))?.[1];
+			if (!css) throw new Error(`Found no CSS module block in ${SFC_PATH}`);
+			const style = document.createElement('style');
+			style.textContent = css;
+			document.head.append(style);
+			return () => style.remove();
+		}
+
+		const SHRINK_WRAPPING_WIDTHS = ['fit-content', 'min-content', 'max-content'];
+		const STRETCHING_ALIGNMENTS = ['', 'auto', 'normal', 'stretch'];
+
+		/** Width of the box a tooltip anchors to: its own content, or the full row. */
+		function anchorWidth(anchor: HTMLElement, row: HTMLElement): 'content' | 'full-row' {
+			const anchorStyles = getComputedStyle(anchor);
+			if (SHRINK_WRAPPING_WIDTHS.includes(anchorStyles.width)) return 'content';
+			const isFlexItem = ['flex', 'inline-flex'].includes(getComputedStyle(row).display);
+			const alignment =
+				anchorStyles.alignSelf || (isFlexItem ? getComputedStyle(row).alignItems : '');
+			return STRETCHING_ALIGNMENTS.includes(alignment) ? 'full-row' : 'content';
+		}
+
+		it('anchors the tooltip on the option, not on the full width of the option row', () => {
+			const removeStyles = applyComponentStyles();
+			try {
+				const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+
+				// "Tags: Manage" carries a description, so hovering it shows a tooltip.
+				const option = getByTestId('scope-option-tag-manage');
+				const row = option.closest<HTMLElement>('.optionList');
+				const anchor = [...(row?.children ?? [])].find((child): child is HTMLElement =>
+					child.contains(option),
+				);
+
+				// The tooltip trigger is the option's flex item in the row.
+				expect(anchor?.getAttribute('data-state')).toBe('closed');
+
+				expect(
+					anchorWidth(anchor!, row!),
+					'the tooltip trigger stretches across the option row, so the tooltip opens at the right edge of the card instead of beside the hovered option',
+				).toBe('content');
+			} finally {
+				removeStyles();
+			}
 		});
 	});
 

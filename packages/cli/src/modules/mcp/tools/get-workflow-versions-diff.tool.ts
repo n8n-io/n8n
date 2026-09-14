@@ -13,7 +13,7 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { nodeSchema, sanitizeNodeCredentials } from './schemas';
+import { ensureNodeParameters, nodeSchema, sanitizeNodeCredentials } from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -284,8 +284,10 @@ export async function getWorkflowVersionsDiff(
 		getMcpWorkflowVersion(workflowHistoryService, user, workflowId, toVersionId),
 	]);
 
-	const fromNodes = fromVersion.nodes ?? [];
-	const toNodes = toVersion.nodes ?? [];
+	// Normalized so a node persisted without a `parameters` key compares equal
+	// to the same node persisted with `parameters: {}`.
+	const fromNodes = ensureNodeParameters(fromVersion.nodes ?? []);
+	const toNodes = ensureNodeParameters(toVersion.nodes ?? []);
 	const nodeDiff = compareWorkflowsNodes(fromNodes, toNodes);
 	// The diff stores the pre-change node for modified entries; report the
 	// post-change node so a renamed node is listed by a name that still exists.

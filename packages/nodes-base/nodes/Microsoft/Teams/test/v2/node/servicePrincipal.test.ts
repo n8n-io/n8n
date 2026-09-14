@@ -72,14 +72,16 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
 	});
 
-	it.each(['getAll'])(
+	it.each(['add', 'getAll'])(
 		'chatMember:%s throws a static error and issues no request under SP',
 		async (operation) => {
 			selectSp({
 				resource: 'chatMember',
 				operation,
 				chatId: 'chatID',
+				userId: 'e76f456f-5c3f-4f1e-9d5e-4d8f0f6ab111',
 				returnAll: true,
+				options: {},
 			});
 
 			await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -93,15 +95,22 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	);
 
 	it.each([
-		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
-		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		['createOrGet', { externalId: 'order-4711', options: {} }],
+		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
+		[
+			'update',
+			{
+				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
+				updateFields: { subject: 'Renamed' },
+			},
+		],
 	])(
 		'onlineMeeting:%s throws a static error and issues no request under SP',
 		async (op, params) => {
 			selectSp({ resource: 'onlineMeeting', operation: op, ...params });
 
 			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'Online meetings are not available with the Service Principal credential',
+				'This online meeting operation is not available with the Service Principal credential yet',
 			);
 			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
 			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
@@ -404,5 +413,44 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 				1,
 			);
 		});
+	});
+
+	describe('chatMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'chatMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'chatMessage',
+					operation,
+					chatId: 'chatID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Chat messages are not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('channelMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage'])(
+			'channelMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'channelMessage',
+					operation,
+					teamId: 'teamID',
+					channelId: 'channelID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Deleting and restoring channel messages is not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

@@ -164,7 +164,7 @@ export class BuilderModelLiveLookupService {
 			const models = await listModelsForProvider(provider, {
 				apiKey,
 				baseURL,
-				fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
+				fetch: createAiProxyFetch(this.outboundHttp),
 				...(headers ? { headers } : {}),
 			});
 

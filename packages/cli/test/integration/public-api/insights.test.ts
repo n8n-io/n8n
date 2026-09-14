@@ -30,7 +30,13 @@ let authUnscopedAgent: SuperAgentTest;
 
 async function createSummaryMetrics(
 	workflow: Awaited<ReturnType<typeof createWorkflow>>,
-	values: { success?: number; failure?: number; runtimeMs?: number; timeSavedMin?: number },
+	values: {
+		success?: number;
+		failure?: number;
+		runtimeMs?: number;
+		timeSavedMin?: number;
+		billable?: number;
+	},
 ) {
 	const periodStart = DateTime.utc().minus({ days: 1 });
 	const periodUnit = 'day' as const;
@@ -70,6 +76,15 @@ async function createSummaryMetrics(
 			periodUnit,
 		});
 	}
+
+	if (values.billable !== undefined) {
+		await createCompactedInsightsEvent(workflow, {
+			type: 'billable',
+			value: values.billable,
+			periodStart,
+			periodUnit,
+		});
+	}
 }
 
 beforeAll(async () => {
@@ -97,6 +112,7 @@ describe('GET /insights/summary', () => {
 			failure: 1,
 			runtimeMs: 400,
 			timeSavedMin: 20,
+			billable: 3,
 		});
 
 		const response = await testServer
@@ -110,6 +126,7 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('returns 401 with an invalid session cookie', async () => {
@@ -142,6 +159,7 @@ describe('GET /insights/summary', () => {
 			failure: 1,
 			runtimeMs: 400,
 			timeSavedMin: 20,
+			billable: 3,
 		});
 
 		const response = await authScopedAgent
@@ -156,6 +174,7 @@ describe('GET /insights/summary', () => {
 		expect(parsed.success).toBe(true);
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	test('respects startDate and endDate filters', async () => {
@@ -187,6 +206,46 @@ describe('GET /insights/summary', () => {
 		expect(response.body.total.value).toBe(2);
 	});
 
+	test('does not expose stored billable rows on the summary', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, {
+			success: 10,
+			failure: 2,
+			billable: 9,
+		});
+
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(12);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
+	test('does not count billable rows toward total', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, { billable: 7 });
+
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(0);
+		expect(response.body).not.toHaveProperty('billable');
+	});
+
 	test('respects projectId filter', async () => {
 		const [firstProject, secondProject] = await Promise.all([
 			createTeamProject(),
@@ -202,12 +261,14 @@ describe('GET /insights/summary', () => {
 			failure: 1,
 			runtimeMs: 400,
 			timeSavedMin: 20,
+			billable: 3,
 		});
 		await createSummaryMetrics(secondWorkflow, {
 			success: 5,
 			failure: 0,
 			runtimeMs: 500,
 			timeSavedMin: 25,
+			billable: 5,
 		});
 
 		const response = await authScopedAgent
@@ -221,6 +282,7 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+		expect(response.body).not.toHaveProperty('billable');
 	});
 
 	describe('project access', () => {

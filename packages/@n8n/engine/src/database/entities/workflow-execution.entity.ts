@@ -12,6 +12,7 @@ import type {
 	ExecutionMode,
 	ExecutionStatus,
 	TriggerOutputs,
+	WorkflowDocument,
 } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
 
@@ -33,6 +34,10 @@ export class WorkflowExecution {
 
 	@Column('jsonb')
 	graph!: WorkflowGraph;
+
+	/** The workflow captured at start. Stored and reported, never read by the engine. */
+	@Column('jsonb')
+	workflow!: WorkflowDocument;
 
 	@Column('jsonb', { name: 'trigger_outputs', nullable: true })
 	triggerOutputs!: TriggerOutputs | null;

@@ -54,6 +54,7 @@ function makeExecutionStore(
 		status: 'running',
 		mode: 'production',
 		graph,
+		workflow: {},
 		triggerOutputs: null,
 		callerContext: {},
 		...overrides,

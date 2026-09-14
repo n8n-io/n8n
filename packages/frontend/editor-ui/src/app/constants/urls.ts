@@ -17,7 +17,7 @@ export const EXECUTION_DATA_REDACTION_DOCS_URL = `https://${DOCS_DOMAIN}/workflo
 export const EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL = `${EXECUTION_DATA_REDACTION_DOCS_URL}#instance-level-enforcement`;
 export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
-export const RELEASE_NOTES_URL = 'https://docs.n8n.io/release-notes/';
+export const RELEASE_NOTES_URL = 'https://docs.n8n.io/changelog/release-notes';
 export const CHANGELOG_URL = 'https://docs.n8n.io/changelog';
 export const CREATOR_HUB_URL = 'https://creators.n8n.io/hub';
 

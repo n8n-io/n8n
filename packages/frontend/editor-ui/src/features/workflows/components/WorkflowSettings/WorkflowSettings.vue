@@ -458,7 +458,7 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		{
 			key: 'workflowsFromSameOwner',
 			value: i18n.baseText(
-				workflow.value.homeProject?.type === ProjectTypes.Personal
+				workflow.value?.homeProject?.type === ProjectTypes.Personal
 					? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
 					: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 				{
@@ -1824,6 +1824,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .workflow-settings {
 	font-size: var(--font-size--sm);
 	display: flex;

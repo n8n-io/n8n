@@ -17,7 +17,8 @@
 		"skipLibCheck": true,
 		"paths": {
 			"@mcp-apps/*": ["./src/*"],
-			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"]
+			"@n8n/design-system": ["../../frontend/@n8n/design-system/src/index.ts"],
+			"@n8n/design-system/*": ["../../frontend/@n8n/design-system/src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]

@@ -489,7 +489,7 @@ export class WorkflowApiHelper {
 			const executions = await this.getExecutions(workflowId);
 			const execution = executions.find((e) => e.workflowId === workflowId);
 
-			if (execution && execution.status === expectedStatus) {
+			if (execution?.status === expectedStatus) {
 				return execution;
 			}
 

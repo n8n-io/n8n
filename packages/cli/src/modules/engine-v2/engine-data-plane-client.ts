@@ -129,6 +129,6 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	private parseErrorResponse(body: unknown): Partial<EngineErrorResponse> {
 		if (!isObjectLiteral(body)) return {};
 
-		return body as Partial<EngineErrorResponse>;
+		return body;
 	}
 }

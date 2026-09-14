@@ -298,12 +298,20 @@ function main() {
 			// workflow, so a "what was I working on?" probe has something to find.
 			const threadId = uuid();
 			const threadAt = NOW - Math.floor(random() * DAYS * 86400e3);
+			// `resourceId` is the owning user: the assistant page lists threads by it, so a
+			// workflow id here makes the thread exist but never show. The workflow goes in
+			// `sourceContext`, where the runtime also puts it.
 			insThread.run(
 				threadId,
-				wf.id,
+				user.id,
 				project.id,
 				`Working on ${short}`,
-				`{${THREAD_MARKER}}`,
+				JSON.stringify({
+					seeded: true,
+					source: 'assistant_page',
+					origin: 'internal',
+					sourceContext: { workflowId: wf.id },
+				}),
 				iso(threadAt),
 				iso(threadAt + 600e3),
 			);
@@ -329,16 +337,20 @@ function main() {
 							`Added a Data Table insert named "Record Run" at the end of ${short}, writing to \`automation_runs\`, matching the other workflows here.`,
 						],
 					];
-			for (const [role, content] of turns) {
+			// `content` holds the whole agent message as JSON, the way the runtime stores it.
+			// A plain string is dropped on read, so the thread would open empty.
+			for (const [i, [role, text]] of turns.entries()) {
+				const messageId = uuid();
+				const createdAt = iso(threadAt + i * 30e3);
 				insMessage.run(
-					uuid(),
+					messageId,
 					threadId,
-					content,
+					JSON.stringify({ id: messageId, role, content: [{ type: 'text', text }], createdAt }),
 					role,
-					'message',
-					wf.id,
-					iso(threadAt),
-					iso(threadAt),
+					null,
+					user.id,
+					createdAt,
+					createdAt,
 				);
 				msgCount++;
 			}

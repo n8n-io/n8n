@@ -183,7 +183,7 @@ async function onEditInBuilder() {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .header {
 	display: flex;
@@ -231,7 +231,7 @@ async function onEditInBuilder() {
 		transparent 100%
 	);
 
-	@include ds-mixins.scroll-bar;
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .unavailable {

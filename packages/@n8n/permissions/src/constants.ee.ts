@@ -108,7 +108,7 @@ export const API_KEY_RESOURCES = {
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
-	sourceControl: ['pull', 'read'] as const,
+	sourceControl: ['pull', 'push', 'read'] as const,
 	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
@@ -120,6 +120,7 @@ export const API_KEY_RESOURCES = {
 	insights: ['read'] as const,
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
+	nodeTypePolicy: ['manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

@@ -42,6 +42,17 @@ describe('Tool.describe()', () => {
 		expect(descriptor.systemInstruction).toBe(directive);
 	});
 
+	it('persists output trust through describe()', () => {
+		const descriptor = new Tool('search')
+			.description('Search the web')
+			.input(z.object({ query: z.string() }))
+			.untrustedOutput()
+			.handler(async ({ query }) => await Promise.resolve({ result: query }))
+			.describe();
+
+		expect(descriptor.outputTrust).toBe('untrusted');
+	});
+
 	it('sets hasSuspend/hasResume when suspend/resume are defined', () => {
 		const tool = new Tool('approve')
 			.description('Approve an action')

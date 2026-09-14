@@ -189,9 +189,20 @@ export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 // Cap each serialized field to bound judge token cost (matches the report's cap).
 const MAX_STEP_CHARS = 2000;
 
-function cap(text: string): string {
-	return text.length > MAX_STEP_CHARS
-		? `${text.slice(0, MAX_STEP_CHARS)}… (${String(text.length - MAX_STEP_CHARS)} more chars)`
+/**
+ * The agent's own words get a larger budget than tool payloads. Process and
+ * behaviour expectations are graded from what the agent said, and a
+ * report-shaped answer puts its conclusion last — an analysis case lost a
+ * legitimate green because the closing "which should I build?" fell past the
+ * 2000-char cut while the stored transcript held it in full. Tool args and
+ * results keep the tighter cap: they are unbounded and are what actually
+ * drives judge token cost.
+ */
+const MAX_NARRATION_CHARS = 8000;
+
+function cap(text: string, limit: number = MAX_STEP_CHARS): string {
+	return text.length > limit
+		? `${text.slice(0, limit)}… (${String(text.length - limit)} more chars)`
 		: text;
 }
 
@@ -207,7 +218,7 @@ function capJson(value: unknown): string {
 
 function describeStep(step: TranscriptStep): string | null {
 	if (step.kind === 'agent-text') {
-		return step.text ? `Assistant: ${cap(step.text)}` : null;
+		return step.text ? `Assistant: ${cap(step.text, MAX_NARRATION_CHARS)}` : null;
 	}
 	return describeInteraction(step);
 }

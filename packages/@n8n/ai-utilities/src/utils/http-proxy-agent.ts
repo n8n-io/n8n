@@ -121,12 +121,25 @@ export async function proxyFetch({
 	timeoutOptions,
 	lookup,
 }: ProxyFetchOptions): Promise<Response> {
-	const targetUrl = input instanceof Request ? input.url : input.toString();
+	// Two Request classes exist at runtime (the global one and this package's
+	// undici), so detect a Request by exclusion instead of `instanceof`.
+	const isRequest = typeof input !== 'string' && !(input instanceof URL);
+	const targetUrl = isRequest ? input.url : input.toString();
 	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 
 	// The dispatcher comes from this package's undici, so the request must use
-	// the same undici's fetch: the global fetch on Node >= 26 rejects it.
-	return (await undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+	// the same undici's fetch: the global fetch on Node >= 26 rejects it. That
+	// fetch only recognizes its own Request class and stringifies any other, so
+	// a Request (the Mistral SDK builds one with the global class) is passed
+	// as url + init instead.
+	return (await undiciFetch(targetUrl, {
+		...(isRequest && {
+			method: input.method,
+			headers: [...input.headers],
+			body: input.body === null ? undefined : await input.arrayBuffer(),
+			signal: input.signal,
+			redirect: input.redirect,
+		}),
 		...(init as Parameters<typeof undiciFetch>[1]),
 		dispatcher,
 	})) as unknown as Response;
