@@ -140,9 +140,12 @@ describe('background task notifications', () => {
 	it('notifies after registration succeeds, but not after a limit or insert error', async () => {
 		const { service, jobRepository, updateBroadcaster } = setup();
 		await service.registerSubAgentJob(registerParams);
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 		expect(jobRepository.insertJob.mock.invocationCallOrder[0]).toBeLessThan(
-			updateBroadcaster.notifyBackgroundTasks.mock.invocationCallOrder[0],
+			updateBroadcaster.notifyBackgroundTasksUpdated.mock.invocationCallOrder[0],
 		);
 		jobRepository.countRunningSubAgentsByParentThread.mockResolvedValueOnce(
 			MAX_RUNNING_JOBS_PER_THREAD,
@@ -150,7 +153,7 @@ describe('background task notifications', () => {
 		await service.registerSubAgentJob(registerParams);
 		jobRepository.insertJob.mockRejectedValueOnce(new Error('insert failed'));
 		await expect(service.registerSubAgentJob(registerParams)).rejects.toThrow('insert failed');
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledOnce();
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledOnce();
 	});
 
 	it.each(['completed', 'failed', 'cancelled'] as const)(
@@ -159,10 +162,13 @@ describe('background task notifications', () => {
 			const { service, jobRepository, updateBroadcaster } = setup();
 			jobRepository.findById.mockResolvedValue(makeJob({ status }));
 			await service.settle('job-1', { status });
-			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+			expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
 			jobRepository.settleIfRunning.mockResolvedValueOnce(false);
 			await service.settle('job-1', { status });
-			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledOnce();
+			expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledOnce();
 		},
 	);
 
@@ -172,7 +178,10 @@ describe('background task notifications', () => {
 			const { service, jobRepository, updateBroadcaster } = setup();
 			jobRepository.findByParentThread.mockResolvedValue([makeJob({ kind })]);
 			await service.cancel('thread-1', 'job-1');
-			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+			expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
 		},
 	);
 
@@ -182,7 +191,10 @@ describe('background task notifications', () => {
 		jobRepository.findRunningPastTimeout.mockResolvedValue([job]);
 		jobRepository.findById.mockResolvedValue(job);
 		await service.reconcile();
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 	});
 
 	it('notifies when reconciliation ends a workflow job', async () => {
@@ -194,7 +206,10 @@ describe('background task notifications', () => {
 			{ id: 'exec-1', status: 'error' },
 		] as never);
 		await service.reconcileWorkflowJobs();
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 	});
 });
 
@@ -269,7 +284,7 @@ describe('settle', () => {
 			disabled.service.settle('job-1', { status: 'completed', result: 'done' }),
 		).resolves.toBe(true);
 		expect(wakeService.requestWake).not.toHaveBeenCalled();
-		expect(disabled.updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith(
+		expect(disabled.updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
 		);
@@ -424,9 +439,12 @@ describe('result consumption updates', () => {
 		jobRepository.findById.mockResolvedValue(makeJob());
 		jobRepository.markMailConsumed.mockResolvedValue(1);
 		await service.markMailConsumed('thread-1', ['job-1']);
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
-			updateBroadcaster.notifyBackgroundTasks.mock.invocationCallOrder[0],
+			updateBroadcaster.notifyBackgroundTasksUpdated.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -438,9 +456,9 @@ describe('result consumption updates', () => {
 		jobRepository.markMailConsumed.mockResolvedValue(1);
 		service.registerAbortController(job.id, new AbortController());
 		await service.cancel('thread-1', job.id);
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledTimes(2);
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledTimes(2);
 		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
-			updateBroadcaster.notifyBackgroundTasks.mock.invocationCallOrder[1],
+			updateBroadcaster.notifyBackgroundTasksUpdated.mock.invocationCallOrder[1],
 		);
 	});
 });
@@ -625,7 +643,10 @@ describe('registerWorkflowJob', () => {
 		const receipt = await service.registerWorkflowJob(workflowParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'wf-job-1' });
-		expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 		expect(jobRepository.insertWorkflowJobOrGetExisting).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: 'workflow',
@@ -650,7 +671,7 @@ describe('registerWorkflowJob', () => {
 		const receipt = await service.registerWorkflowJob(workflowParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'wf-existing' });
-		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).not.toHaveBeenCalled();
 	});
 
 	it('converges on the existing job even after it settled', async () => {
@@ -950,7 +971,7 @@ describe('background task update failures', () => {
 		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
 		expect(executionPersistence.findStatusesByIds).not.toHaveBeenCalled();
 		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
-		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).not.toHaveBeenCalled();
 		expect(wake.requestWake).not.toHaveBeenCalled();
 	});
 
@@ -980,7 +1001,7 @@ describe('background task update failures', () => {
 		jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
 		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
 		expect(jobRepository.findById).toHaveBeenCalledOnce();
-		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).not.toHaveBeenCalled();
 		expect(wake.requestWake).not.toHaveBeenCalled();
 	});
 
@@ -989,7 +1010,7 @@ describe('background task update failures', () => {
 		const wake = mock<AgentWakeService>();
 		Container.set(AgentWakeService, wake);
 		jobRepository.findById.mockResolvedValue(makeJob());
-		updateBroadcaster.notifyBackgroundTasks.mockImplementation(() => {
+		updateBroadcaster.notifyBackgroundTasksUpdated.mockImplementation(() => {
 			throw new Error('notification failed');
 		});
 		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
@@ -1002,7 +1023,7 @@ describe('background task update failures', () => {
 		jobRepository.markMailConsumed.mockResolvedValue(0);
 		await expect(service.markMailConsumed('thread-1', ['job-1'])).resolves.toBe(0);
 		expect(jobRepository.findById).not.toHaveBeenCalled();
-		expect(updateBroadcaster.notifyBackgroundTasks).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundTasksUpdated).not.toHaveBeenCalled();
 	});
 
 	it.each(['success', 'zero', 'consume-error', 'lookup-error'] as const)(
@@ -1019,8 +1040,11 @@ describe('background task update failures', () => {
 			if (outcome === 'lookup-error')
 				jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
 			await expect(service.cancel('thread-1', job.id)).resolves.toBe('cancelled');
-			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledWith('agent-1', 'thread-1');
-			expect(updateBroadcaster.notifyBackgroundTasks).toHaveBeenCalledTimes(
+			expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
+			expect(updateBroadcaster.notifyBackgroundTasksUpdated).toHaveBeenCalledTimes(
 				outcome === 'success' ? 2 : 1,
 			);
 		},

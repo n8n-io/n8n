@@ -151,7 +151,10 @@ export class AgentBackgroundJobService {
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
-		this.updateBroadcaster.notifyBackgroundTasks(params.parentAgentId, params.parentThreadId);
+		this.updateBroadcaster.notifyBackgroundTasksUpdated(
+			params.parentAgentId,
+			params.parentThreadId,
+		);
 
 		return { status: 'started', jobId: params.id };
 	}
@@ -170,7 +173,10 @@ export class AgentBackgroundJobService {
 			childExecutionId: executionId,
 		});
 		if (outcome.inserted) {
-			this.updateBroadcaster.notifyBackgroundTasks(params.parentAgentId, params.parentThreadId);
+			this.updateBroadcaster.notifyBackgroundTasksUpdated(
+				params.parentAgentId,
+				params.parentThreadId,
+			);
 		}
 
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
@@ -191,7 +197,7 @@ export class AgentBackgroundJobService {
 		try {
 			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
 			if (settled) {
-				const job = await this.findJobForUpdate(jobId);
+				const job = await this.findJob(jobId);
 				if (job) {
 					this.notifyJobUpdate(job);
 					await this.requestWakeSafely(job.parentThreadId);
@@ -256,12 +262,18 @@ export class AgentBackgroundJobService {
 		};
 	}
 
+	/**
+	 * A group contains jobs whose execution periods overlap. A gap with no running jobs starts a new group.
+	 * Return only the latest group while any job runs or has results that await consumption.
+	 * This allows to show completed tasks alongside still running tasks.
+	 */
 	async listCurrentGroupForThread(parentThreadId: string): Promise<BackgroundJobView[]> {
 		const jobs = (await this.jobRepository.findByParentThread(parentThreadId))
 			.map((job) => this.toJobView(job))
 			.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
 		let group: BackgroundJobView[] = [];
 		let groupEndsAt = Number.NEGATIVE_INFINITY;
+
 		for (const job of jobs) {
 			const startedAt = job.createdAt.getTime();
 			// A gap with no running jobs starts a new group.
@@ -274,7 +286,8 @@ export class AgentBackgroundJobService {
 					: (job.settledAt?.getTime() ?? startedAt),
 			);
 		}
-		// Keep final statuses available during the parent wake's batching delay.
+
+		// Keep finished tasks visible until their results consumed.
 		return group.some((job) => job.status === 'running' || !job.notifiedAt) ? group : [];
 	}
 
@@ -297,7 +310,7 @@ export class AgentBackgroundJobService {
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
-		this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+		this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -322,7 +335,7 @@ export class AgentBackgroundJobService {
 		return 'cancelled';
 	}
 
-	private async findJobForUpdate(jobId: string): Promise<AgentBackgroundJob | null> {
+	private async findJob(jobId: string): Promise<AgentBackgroundJob | null> {
 		try {
 			return await this.jobRepository.findById(jobId);
 		} catch (error) {
@@ -333,14 +346,14 @@ export class AgentBackgroundJobService {
 
 	private notifyJobUpdate(job: AgentBackgroundJob): void {
 		try {
-			this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+			this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
 		} catch (error) {
 			this.logger.warn('Failed to notify background task update', { jobId: job.id, error });
 		}
 	}
 
 	private async notifyTaskUpdate(jobId: string): Promise<void> {
-		const job = await this.findJobForUpdate(jobId);
+		const job = await this.findJob(jobId);
 		if (job) this.notifyJobUpdate(job);
 	}
 
@@ -434,7 +447,7 @@ export class AgentBackgroundJobService {
 		// either way the job is cancelled.
 		const settled = await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
 		if (settled) {
-			this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+			this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
 		}
 		await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';

@@ -50,15 +50,16 @@ export class AgentExecutionUpdateBroadcaster {
 		}
 	}
 
-	notifyBackgroundTasks(agentId: string, threadId: string): void {
-		void this.broadcastBackgroundTasks(agentId, threadId).catch((error: unknown) => {
+	notifyBackgroundTasksUpdated(agentId: string, threadId: string): void {
+		void this.broadcastBackgroundTasksUpdated(agentId, threadId).catch((error: unknown) => {
 			this.logger.warn('Failed to broadcast background task update', { agentId, threadId, error });
 		});
 	}
 
-	private async broadcastBackgroundTasks(agentId: string, threadId: string): Promise<void> {
+	private async broadcastBackgroundTasksUpdated(agentId: string, threadId: string): Promise<void> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
 		if (!thread || thread.agentId !== agentId) return;
+
 		const data = { projectId: thread.projectId, agentId, threadId };
 		const userIds = await this.projectRelationRepository.findUserIdsByProjectId(data.projectId);
 		if (userIds.length === 0) return;
