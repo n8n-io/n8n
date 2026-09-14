@@ -893,6 +893,62 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		expect(response.body).toHaveProperty('name', 'Renamed');
 	});
 
+	test('should return only the documented folder fields', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body as object).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'updatedAt',
+		]);
+		expect(response.body).toMatchObject({ id: folder.id, name: 'Renamed', parentFolderId: null });
+	});
+
+	test('should return 400 when the body is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for an unknown body property', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed', unknownProperty: true });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when the name is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: '   ' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should update parent folder', async () => {
 		testServer.license.enable('feat:folders');
 
