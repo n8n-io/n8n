@@ -3688,6 +3688,30 @@ export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 
+/**
+ * Nodes carrying run data that a caller supplied, instead of this execution
+ * producing it.
+ *
+ * A caller can seed run data to start a run part-way through a workflow. The
+ * seeded nodes then sit in `resultData.runData` and read exactly like nodes
+ * that ran, which makes a one-node run look like a whole-workflow run. This
+ * records the difference on the execution, so a reader does not have to infer
+ * it from timestamps.
+ *
+ * Recorded for the reader. The engine does not act on it.
+ */
+export interface ISeededRunData {
+	/**
+	 * Nodes whose output was invented. Their data is evidence of nothing: a
+	 * placeholder on a branching node picks a branch that real data may not.
+	 */
+	mocked?: string[];
+	/** Nodes whose output was copied from the execution named below. */
+	replayed?: string[];
+	/** Execution the replayed output came from. */
+	replayedFromExecutionId?: string;
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;

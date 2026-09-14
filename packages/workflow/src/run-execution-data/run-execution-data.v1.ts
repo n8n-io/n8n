@@ -7,6 +7,7 @@ import type {
 	IPinData,
 	IRedactedErrorInfo,
 	IRunData,
+	ISeededRunData,
 	ITaskMetadata,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
@@ -31,6 +32,8 @@ export interface IRunExecutionDataV1 {
 		destinationNode?: IDestinationNode;
 		originalDestinationNode?: IDestinationNode;
 		runNodeFilter?: string[];
+		/** Nodes whose run data the caller supplied rather than this run producing it. */
+		seededRunData?: ISeededRunData;
 	};
 	resultData: {
 		error?: ExecutionError;

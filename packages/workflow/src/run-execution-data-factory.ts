@@ -28,6 +28,7 @@ export interface CreateFullRunExecutionDataOptions {
 			IRunExecutionData['startData']
 		>['originalDestinationNode'];
 		runNodeFilter?: string[];
+		seededRunData?: NonNullable<IRunExecutionData['startData']>['seededRunData'];
 	};
 	resultData?: {
 		error?: ExecutionError;

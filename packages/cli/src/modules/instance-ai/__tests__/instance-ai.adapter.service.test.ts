@@ -4447,9 +4447,13 @@ function createRunAdapterForTests(
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[0],
+		// `warn` matters: the best-effort catches on the run paths call it, so a
+		// stub without it turns a handled failure into a thrown one.
+		{
+			error: vi.fn(),
+			warn: vi.fn(),
+			scoped: vi.fn().mockReturnThis(),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub({
 			allowSendingParameterValues: options?.allowSendingParameterValues,
 			queueMode: options?.queueMode,
@@ -5552,6 +5556,70 @@ describe('createExecutionAdapter runStep()', () => {
 		const { result } = await runStepOn(chainWorkflow, 'Send');
 
 		expect(result).not.toHaveProperty('replayedNodeNames');
+	});
+
+	it('discloses the mocked nodes on the execution itself', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
+
+		// Without this the saved execution reads as a full run: the stubs sit in
+		// `runData` and nothing says they never ran.
+		const [, update] = harness.mockExecutionPersistence.updateExistingExecution.mock.calls[0];
+		expect(update.data?.startData?.seededRunData).toEqual({
+			mocked: expect.arrayContaining(['Trigger', 'Fetch']),
+		});
+	});
+
+	it('discloses the replayed nodes and the execution they came from', async () => {
+		const priorRunData = {
+			Trigger: [makeTaskData([{}])],
+			Fetch: [makeTaskData([{ id: 9 }])],
+			Send: [makeTaskData([{ old: true }])],
+		};
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({ status: 'success', runData: priorRunData }),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' });
+
+		const [, update] = harness.mockExecutionPersistence.updateExistingExecution.mock.calls[0];
+		expect(update.data?.startData?.seededRunData).toEqual({
+			replayed: expect.arrayContaining(['Trigger', 'Fetch']),
+			replayedFromExecutionId: 'exec-past',
+		});
+	});
+
+	it('writes no disclosure for a chain run, where nothing was seeded', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		expect(harness.mockExecutionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+	});
+
+	it('still returns the result when the disclosure write fails', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		harness.mockExecutionPersistence.updateExistingExecution.mockRejectedValue(
+			new Error('db is down') as never,
+		);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		// The run already happened. Losing the disclosure must not lose the result.
+		const result = await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
+
+		expect(result.status).toBe('success');
+		expect(result.inputMode).toBe('mocked');
 	});
 
 	it('reports the step in telemetry', async () => {

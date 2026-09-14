@@ -197,6 +197,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { buildSeededRunData, recordSeededRunData } from './instance-ai-step-run-provenance';
 import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -2236,6 +2237,28 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 
+					// Disclose the seeded nodes on the execution. Best effort: a failure
+					// here costs the reader an explanation, and must not fail a run that
+					// already happened.
+					const discloseSeededRunData = async (replayed: string[]) => {
+						try {
+							await recordSeededRunData({
+								executionPersistence,
+								executionId,
+								seededRunData: buildSeededRunData({
+									mocked: plan.mockedNodeNames,
+									replayed,
+									replayedFromExecutionId: reusedFromExecutionId,
+								}),
+							});
+						} catch (error) {
+							logger.warn('Failed to record seeded run data on the execution', {
+								executionId,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
+					};
+
 					const waitOutcome = await waitForInstanceAiExecution({
 						activeExecutions,
 						executionId,
@@ -2244,6 +2267,7 @@ export class InstanceAiAdapterService {
 					});
 
 					if (waitOutcome.kind === 'cancelled') {
+						await discloseSeededRunData(offeredForReplay);
 						trackStepRun('error', waitOutcome.message);
 						return describe({
 							executionId,
@@ -2257,8 +2281,10 @@ export class InstanceAiAdapterService {
 						allowSendingParameterValues,
 						nodeTypes,
 					);
+					const stepResult = describe(result);
+					await discloseSeededRunData(stepResult.replayedNodeNames ?? []);
 					trackStepRun(result.status, telemetryError);
-					return describe(result);
+					return stepResult;
 				} catch (error) {
 					trackStepRun('error', error instanceof Error ? error.message : String(error));
 					throw error;

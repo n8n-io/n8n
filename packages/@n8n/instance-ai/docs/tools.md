@@ -617,6 +617,13 @@ effect again, so debug that from `debug` and `get-resolved-node-parameters`
 instead. `mockInput` does not change this: only the input is invented, the node
 still runs. See the `debugging-executions` skill.
 
+**Provenance on the execution**: a seeded step run writes
+`startData.seededRunData` onto the execution — `mocked`, `replayed` and
+`replayedFromExecutionId`. The seeded nodes sit in the saved `runData` and read
+exactly like nodes that ran, so without this a one-node run is
+indistinguishable from a whole-workflow run. A chain run seeds nothing and
+writes nothing.
+
 **Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
 the pre-authorized workflow list, and session grants. The session grant is per
 node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
