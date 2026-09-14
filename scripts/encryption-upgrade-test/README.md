@@ -1,8 +1,24 @@
 # Encryption-cycle tests
 
-Repeatable end-to-end tests for the encryption-key rollout, in one script
-(`encryption-cycle.sh`) with two modes. Both run on both supported databases:
-sqlite and postgres.
+Repeatable end-to-end tests for the encryption-key rollout, in one entry
+script (`encryption-cycle.sh`) with two modes. Both run on both supported
+databases: sqlite and postgres.
+
+## Layout
+
+`encryption-cycle.sh` holds the parameters, the shared state, and the main
+dispatch. The rest is split into sourced parts under `lib/`:
+
+| File | Responsibility |
+|---|---|
+| `lib/harness.sh` | progress log, metrics + summary, failure handling, per-backend setup/teardown |
+| `lib/instance.sh` | database access (`db_query`) and process control: postgres container, old-release (FROM) container, local checkout |
+| `lib/api.sh` | REST calls and the encryption assertions (`assert_decrypts`, `assert_prefixed`, `rotate_key`, …) |
+| `lib/cycle-upgrade.sh` | `run_cycle()` — MODE=upgrade, phases P1–P4 |
+| `lib/cycle-rotation.sh` | `run_rotation()` — MODE=rotation, phases R1–R3 |
+
+The lib files are sourced, not executable; adding a scenario = one new
+`lib/cycle-*.sh` with a `run_*()` function plus a branch in `run_one()`.
 
 ```bash
 pnpm build                       # the checkout under test must be built
