@@ -368,7 +368,7 @@ describe('AgentChatPanel', () => {
 		it.each([
 			['completed', 'Completed', 'circle-check'],
 			['failed', 'Failed', 'circle-x'],
-			['cancelled', 'Canceled', 'circle-minus'],
+			['cancelled', 'Canceled', 'circle-x'],
 		] as const)('shows the %s status without a spinner', async (status, label, icon) => {
 			backgroundTasksMock.value = [
 				{ ...task, status },

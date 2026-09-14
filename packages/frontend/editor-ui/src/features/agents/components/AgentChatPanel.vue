@@ -145,7 +145,7 @@ const backgroundTaskStatuses = computed(() => ({
 	},
 	failed: { icon: 'circle-x', label: locale.baseText('agents.chat.backgroundTasks.status.failed') },
 	cancelled: {
-		icon: 'circle-minus',
+		icon: 'circle-x',
 		label: locale.baseText('agents.chat.backgroundTasks.status.cancelled'),
 	},
 	waiting: {
@@ -661,6 +661,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .panel {
 	position: relative;
 	width: 400px;
@@ -737,14 +739,15 @@ onBeforeUnmount(() => {
 	display: inline-flex;
 	flex-shrink: 0;
 	line-height: inherit;
-	color: var(--text-color--subtler);
+	color: var(--color--foreground--shade-2);
 
 	&[data-status='completed'] {
-		color: var(--icon-color--success);
+		color: var(--color--success);
+		@include motion.fade-in;
 	}
 
 	&[data-status='failed'] {
-		color: var(--icon-color--danger);
+		color: var(--color--danger);
 	}
 }
 

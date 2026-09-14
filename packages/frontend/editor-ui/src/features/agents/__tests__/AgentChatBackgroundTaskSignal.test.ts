@@ -1,5 +1,5 @@
 import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
-import { N8nAiActivityStep } from '@n8n/design-system';
+import { N8nAiActivityStep, N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,6 +36,13 @@ describe('AgentChatBackgroundTaskSignal', () => {
 					(task) => `${task.title}agents.chat.backgroundTasks.status.${task.status}`,
 				),
 			);
+			for (const [index, task] of signal.tasks.entries()) {
+				const icon = wrapper.findAll('li')[index].getComponent(N8nIcon);
+				expect(icon.props()).toMatchObject({
+					icon: task.status === 'completed' ? 'circle-check' : 'circle-x',
+					spin: false,
+				});
+			}
 			await wrapper.setProps({ signal: structuredClone(signal) });
 			expect(button.attributes('aria-expanded')).toBe('true');
 			await user.keyboard(' ');

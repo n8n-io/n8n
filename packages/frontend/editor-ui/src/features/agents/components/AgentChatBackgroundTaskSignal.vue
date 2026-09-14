@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
-import { N8nAiActivityStep, N8nText } from '@n8n/design-system';
+import { N8nAiActivityStep, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{ signal: AgentBackgroundTaskSignal }>();
@@ -22,15 +22,25 @@ const statusLabels = {
 		<ul :class="$style.tasks">
 			<li v-for="task in props.signal.tasks" :key="task.id" :class="$style.task">
 				<N8nText size="small" color="text-dark" :class="$style.title">{{ task.title }}</N8nText>
-				<N8nText size="small" color="text-base">{{
-					i18n.baseText(statusLabels[task.status])
-				}}</N8nText>
+				<span :class="$style.outcome">
+					<N8nIcon
+						:icon="task.status === 'completed' ? 'circle-check' : 'circle-x'"
+						:class="$style.statusIcon"
+						:data-status="task.status"
+						size="small"
+					/>
+					<N8nText size="small" color="text-base">{{
+						i18n.baseText(statusLabels[task.status])
+					}}</N8nText>
+				</span>
 			</li>
 		</ul>
 	</N8nAiActivityStep>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .tasks {
 	list-style: none;
 	margin: 0;
@@ -48,5 +58,26 @@ const statusLabels = {
 
 .title {
 	overflow-wrap: anywhere;
+}
+
+.outcome {
+	display: inline-flex;
+	align-items: center;
+	align-self: start;
+	gap: var(--spacing--3xs);
+}
+
+.statusIcon {
+	flex-shrink: 0;
+	color: var(--color--foreground--shade-2);
+
+	&[data-status='completed'] {
+		color: var(--color--success);
+		@include motion.fade-in;
+	}
+
+	&[data-status='failed'] {
+		color: var(--color--danger);
+	}
 }
 </style>
