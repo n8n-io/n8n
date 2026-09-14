@@ -62,7 +62,7 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		// covers time-based Wait and Form gates), and non-gate dead ends keep the
 		// seed-and-re-run guidance instead of being attributed to the gate.
 		expect(analysis.coverageNote).not.toContain('human decision');
-		expect(analysis.coverageNote).toContain('NOT behind the gate');
+		expect(analysis.coverageNote).toContain('Other unreached nodes remain unverified');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {
@@ -416,7 +416,7 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.coverageNote).toContain('1st of Month');
 	});
 
-	it('keeps the generic zero-output guidance when no trigger was named', () => {
+	it('gives neutral coverage guidance when no trigger was named', () => {
 		const analysis = analyzeVerificationResult({
 			result: weekdayPass,
 			buildOutcome: twoBranchOutcome,
@@ -425,6 +425,6 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 			runId: 'run-1',
 		});
 
-		expect(analysis.coverageNote).toContain('Seed matching test data');
+		expect(analysis.coverageNote).toContain('Agent tool calls');
 	});
 });

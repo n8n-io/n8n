@@ -3698,6 +3698,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
