@@ -113,6 +113,7 @@ export class AgentChatController {
 			this.credentialsService,
 			projectId,
 			req.user,
+			agentId,
 		);
 
 		const { send } = initSseStream(res);

@@ -32,6 +32,7 @@ export class AgentsCredentialProvider
 		private readonly credentialsService: CredentialsService,
 		private readonly projectId: string,
 		private readonly user?: User,
+		private readonly agentId?: string,
 	) {}
 
 	/**
@@ -51,6 +52,7 @@ export class AgentsCredentialProvider
 			credentialType,
 			userId: this.user?.id,
 			projectId: this.projectId,
+			agentId: this.agentId,
 		});
 	}
 

@@ -25,7 +25,12 @@ describe('AgentsCredentialProvider', () => {
 			});
 			Container.set(AiGatewayService, aiGatewayService);
 
-			const provider = new AgentsCredentialProvider(mock<CredentialsService>(), projectId, user);
+			const provider = new AgentsCredentialProvider(
+				mock<CredentialsService>(),
+				projectId,
+				user,
+				'agent-1',
+			);
 			const result = await provider.resolveAiGatewayModelCredential('openai');
 
 			expect(aiGatewayService.getCredentialTypeForProvider).toHaveBeenCalledWith('openai');
@@ -33,6 +38,7 @@ describe('AgentsCredentialProvider', () => {
 				credentialType: 'openAiApi',
 				userId: 'user-1',
 				projectId,
+				agentId: 'agent-1',
 			});
 			expect(result).toEqual({ apiKey: 'jwt', url: 'https://gw/openai/v1' });
 		});

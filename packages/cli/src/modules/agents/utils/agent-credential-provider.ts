@@ -8,6 +8,7 @@ export function createAgentCredentialProvider(
 	credentialsService: CredentialsService,
 	projectId: string,
 	user?: User,
+	agentId?: string,
 ): AgentsCredentialProvider {
-	return new AgentsCredentialProvider(credentialsService, projectId, user);
+	return new AgentsCredentialProvider(credentialsService, projectId, user, agentId);
 }

@@ -275,6 +275,7 @@ export class AgentPublishService {
 			this.credentialsService,
 			projectId,
 			user,
+			agent.id,
 		);
 
 		const validation = targetHistory
