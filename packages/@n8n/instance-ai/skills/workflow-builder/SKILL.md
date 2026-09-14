@@ -593,10 +593,10 @@ every reported error and warning before calling `build-workflow`.
 
 - Native node first: shape, compute, default or format fields with
   **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
-  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out** and
-  **Merge** cover the rest. A Code node is only for multi-pass algorithms,
-  `$getWorkflowStaticData` state, fence-stripping model output, try/catch around
-  upstream node access, or a step needing three or more nodes.
+  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out**,
+  **Limit** and **Merge** cover the rest. A Code node is only for multi-pass
+  algorithms, `$getWorkflowStaticData` state, fence-stripping model output,
+  try/catch around upstream node access, or a step needing three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
   (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
