@@ -827,6 +827,41 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
+	it('flushes a pending autosave and prevents browser save with Cmd/Ctrl+S', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Renamed agent' });
+			await nextTick();
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			const event = new KeyboardEvent('keydown', {
+				key: 's',
+				code: 'KeyS',
+				metaKey: true,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ name: 'Renamed agent' }),
+				'hash-1',
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('opens the preview dock with a new session when requested by the route', async () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		routeQuery[NEW_SESSION_PARAM] = 'true';
@@ -948,6 +983,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			expect(initialDraft).toContain('Update row in Data Table');
 			expect(initialDraft?.match(/Column \\"status\\" does not exist/g)).toHaveLength(1);
 		}
+	});
+
+	it.each([
+		['closes the preview once the assistant has it', true, 'false'],
+		['leaves the preview open when the assistant did not open', false, 'true'],
+	])('%s', async (_label, opened, expectedStored) => {
+		sendPreviewSessionToInstanceAiMock.mockResolvedValueOnce(opened);
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe(expectedStored);
 	});
 
 	it('keeps an artifact on the selected preview session and stages the handoff in its Assistant thread', async () => {

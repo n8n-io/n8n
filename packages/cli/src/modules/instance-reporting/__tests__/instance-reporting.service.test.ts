@@ -11,6 +11,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -91,6 +92,7 @@ interface Harness {
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	insightsService: Mocked<InsightsService>;
 	http: HttpRequestClient;
+	eventService: Mocked<EventService>;
 	clientOptions: HttpRequestClientOptions | undefined;
 }
 
@@ -124,6 +126,8 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		}),
 	});
 
+	const eventService = mock<EventService>();
+
 	const service = new InstanceReportingService(
 		config,
 		reportRepository,
@@ -132,10 +136,11 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		ownershipService,
 		licenseMetricsRepository,
 		mockLogger(),
+		eventService,
 		outboundHttp,
 	);
 
-	return { service, reportRepository, insightsService, http, clientOptions };
+	return { service, reportRepository, insightsService, http, eventService, clientOptions };
 }
 
 describe('InstanceReportingService', () => {
@@ -323,6 +328,25 @@ describe('InstanceReportingService', () => {
 			await expect(service.sendReport()).rejects.toThrow('301');
 
 			expect(reportRepository.markDelivered).not.toHaveBeenCalled();
+		});
+
+		test('emits a delivered event once the report is delivered', async () => {
+			const { service, eventService } = makeHarness();
+
+			await service.sendReport();
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-report-delivered');
+			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-failed');
+		});
+
+		test('emits a failed event when a delivery attempt fails', async () => {
+			const { service, eventService, http } = makeHarness();
+			vi.mocked(http.request).mockRejectedValue(new Error('Network error'));
+
+			await expect(service.sendReport()).rejects.toThrow('Network error');
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-report-failed');
+			expect(eventService.emit).not.toHaveBeenCalledWith('instance-report-delivered');
 		});
 
 		test('marks a report the receiver already holds as delivered, without retrying', async () => {

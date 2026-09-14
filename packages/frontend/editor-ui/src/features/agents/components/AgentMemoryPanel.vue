@@ -67,7 +67,7 @@ const isAiAssistantProxyEnabled = computed(
 const configuredMemoryModel = computed(() => {
 	const episodicModel =
 		episodicMemory.value?.enabled === true
-			? (episodicMemory.value.reflectorModel?.model ?? episodicMemory.value.extractorModel?.model)
+			? (episodicMemory.value.reflectorModel?.model ?? null)
 			: null;
 
 	return (
@@ -84,8 +84,7 @@ const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
 const configuredMemoryCredential = computed(() => {
 	const episodicCredential =
 		episodicMemory.value?.enabled === true
-			? (episodicMemory.value.reflectorModel?.credential ??
-				episodicMemory.value.extractorModel?.credential)
+			? (episodicMemory.value.reflectorModel?.credential ?? null)
 			: null;
 
 	return (
@@ -194,7 +193,6 @@ function onMemoryRecallModelChange(selection: AgentModelSelection) {
 				? {
 						episodicMemory: {
 							...existingEpisodicMemory,
-							extractorModel: workerModel,
 							reflectorModel: workerModel,
 						},
 					}

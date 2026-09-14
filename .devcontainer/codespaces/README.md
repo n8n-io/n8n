@@ -59,7 +59,8 @@ PR instead of reading it. It is a different box from a `pnpm session`: it uses
 [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
 creates the box, serves the PR head, shares port 5678 with the org, and comments
 the URL on the PR. A later push serves the new head in the same box. Remove the
-label, or close the PR, to delete the box.
+label, or close the PR, to delete the box. The same workflow runs by hand from
+the Actions tab: give it a PR number and `up`, `refresh` or `down`.
 
 **From your laptop:** `pnpm preview up <pr>` does the same thing, plus
 `pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
@@ -76,8 +77,12 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   re-serves the box; it never creates or deletes one. From a laptop the labels
   apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
   toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
-- **A preview sleeps after 30 minutes** of no use and GitHub deletes it after 24
-  hours. Add the label again to get a new one.
+- **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
+  hours. A box that slept serves nothing and its port is private again, so wake
+  it with `pnpm preview up <pr>` or a manual run of
+  [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
+  with `up`. Removing and adding the label works too, but it deletes the box and
+  builds a new one.
 - **A PR from a fork gets no preview.** A codespace's token is scoped to
   `n8n-io/n8n`, so it cannot check out a fork head.
 - **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The

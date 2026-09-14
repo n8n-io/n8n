@@ -3,6 +3,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -103,6 +104,7 @@ import {
 	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
+	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
 	type DataTableRow,
@@ -602,7 +604,9 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
+			folderExplorationEnabled:
+				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
+				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		};
 	}
 
@@ -2076,6 +2080,7 @@ export class InstanceAiAdapterService {
 					const { result, telemetryError } = await extractExecutionOutcome(
 						executionId,
 						allowSendingParameterValues,
+						nodeTypes,
 					);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
@@ -2103,7 +2108,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues);
+				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getResult(executionId: string) {
@@ -2112,7 +2117,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues);
+				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async stop(executionId: string) {
@@ -2150,13 +2155,13 @@ export class InstanceAiAdapterService {
 				if (!allowSendingParameterValues) {
 					return {
 						nodeName,
-						items: [],
+						outputs: [],
 						totalItems: 0,
 						returned: { from: 0, to: 0 },
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options, nodeTypes);
 			},
 
 			getResolvedNodeParameters: async (
@@ -3951,25 +3956,50 @@ export function truncateResultData(resultData: Record<string, unknown>): Record<
 	if (serialized.length <= MAX_RESULT_CHARS) return resultData;
 
 	const truncated: Record<string, unknown> = {};
-	for (const [nodeName, items] of Object.entries(resultData)) {
-		if (!Array.isArray(items) || items.length === 0) {
-			truncated[nodeName] = items;
-			continue;
-		}
-
-		const itemStr = JSON.stringify(items[0]);
-		const preview =
-			itemStr.length > MAX_NODE_OUTPUT_CHARS
-				? `${itemStr.slice(0, MAX_NODE_OUTPUT_CHARS)}…`
-				: items[0];
-
-		truncated[nodeName] = {
-			_itemCount: items.length,
-			_truncated: true,
-			_firstItemPreview: preview,
-		};
+	for (const [nodeName, value] of Object.entries(resultData)) {
+		truncated[nodeName] = isBranchedNodeOutput(value)
+			? {
+					...value,
+					outputs: value.outputs.map((output) => ({
+						...output,
+						items: collapseItems(output.items),
+					})),
+				}
+			: collapseItems(value);
 	}
 	return truncated;
+}
+
+/** Replaces an item array with its count and a capped first-item preview. */
+function collapseItems(items: unknown): unknown {
+	if (!Array.isArray(items) || items.length === 0) return items;
+
+	const itemStr = JSON.stringify(items[0]);
+	const preview =
+		itemStr.length > MAX_NODE_OUTPUT_CHARS
+			? `${itemStr.slice(0, MAX_NODE_OUTPUT_CHARS)}…`
+			: items[0];
+
+	return {
+		_itemCount: items.length,
+		_truncated: true,
+		_firstItemPreview: preview,
+	};
+}
+
+/** `data[nodeName]` of a multi-output node: items grouped per output. */
+interface BranchedNodeOutput {
+	outputs: Array<{ index: number; name?: string; items: unknown }>;
+	totalItems: number;
+}
+
+function isBranchedNodeOutput(value: unknown): value is BranchedNodeOutput {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'outputs' in value &&
+		Array.isArray(value.outputs)
+	);
 }
 
 /**
@@ -4041,8 +4071,9 @@ function extractNodeErrors(
 export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionResult> {
-	return (await extractExecutionOutcome(executionId, includeOutputData)).result;
+	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
 /**
@@ -4056,6 +4087,7 @@ export async function extractExecutionResult(
 export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4084,20 +4116,34 @@ export async function extractExecutionOutcome(
 	// parameter-values privacy setting.
 	const runData = execution.data?.resultData?.runData;
 	const executedNodeNames = Object.keys(runData ?? {});
-	if (includeOutputData) {
-		if (runData) {
+	if (includeOutputData && runData) {
+		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+		await workflow?.expression.acquireIsolate();
+		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (lastRun?.data?.main) {
-					const outputItems = lastRun.data.main
-						.flat()
-						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-						.map((item) => item.json);
-					if (outputItems.length > 0) {
-						resultData[nodeName] = truncateNodeOutput(outputItems);
-					}
+				if (!lastRun?.data?.main) continue;
+				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
+				if (totalItems === 0) continue;
+				if (branches.length === 1) {
+					resultData[nodeName] = truncateNodeOutput(branches[0]);
+					continue;
 				}
+				// Multi-output nodes (Filter, IF, Switch) keep each output separate, so
+				// their items are reported per output, never as one list.
+				const names = resolveOutputNames(workflow, nodeName);
+				resultData[nodeName] = {
+					outputs: branches.map((items, index) => ({
+						index,
+						...(names[index] ? { name: names[index] } : {}),
+						items: truncateNodeOutput(items),
+					})),
+					totalItems,
+				} satisfies BranchedNodeOutput;
 			}
+		} finally {
+			await workflow?.expression.releaseIsolate();
 		}
 	}
 
@@ -4203,6 +4249,62 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 /** Maximum characters for a single item returned by get-node-output. */
 const MAX_ITEM_CHARS = 50_000;
 
+/** Caps one item so a single giant JSON blob cannot flood the context. */
+function capItem(item: unknown): unknown {
+	const str = JSON.stringify(item);
+	return str.length > MAX_ITEM_CHARS
+		? { _truncatedItem: true, preview: str.slice(0, MAX_ITEM_CHARS), originalLength: str.length }
+		: item;
+}
+
+/**
+ * Transient Workflow over the execution's workflow so `getNodeOutputs` can
+ * resolve dynamic `outputs` expressions (Switch). Same pattern as the
+ * `getNodeInputs` call above. `undefined` when node types are missing or a
+ * node type is not installed; outputs are then index-only.
+ */
+function buildExecutionWorkflow(
+	workflowData: IWorkflowBase | undefined,
+	nodeTypes?: NodeTypes,
+): Workflow | undefined {
+	if (!workflowData || !nodeTypes) return undefined;
+	try {
+		// The constructor fills default parameters on the passed node objects.
+		// Nothing downstream reads raw parameters, so no copy is needed.
+		return new Workflow({
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+		});
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Output labels as the node's output pane shows them: the resolved output's
+ * `displayName` (Switch rules, Success / Error), else the node type's
+ * `outputNames[i]` (Filter: Kept / Discarded). An empty string means no label.
+ */
+function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): string[] {
+	const node = workflow?.getNode(nodeName);
+	if (!workflow || !node) return [];
+	try {
+		const { description } = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, description);
+		// Filter declares one output but names two, so count both sources.
+		const count = Math.max(outputs.length, description.outputNames?.length ?? 0);
+		return Array.from({ length: count }, (_, i) => {
+			const output = outputs[i];
+			const displayName = typeof output === 'object' ? output.displayName : undefined;
+			return displayName ?? description.outputNames?.[i] ?? '';
+		});
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract paginated raw output for a specific node from an execution.
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
@@ -4211,6 +4313,7 @@ export async function extractNodeOutput(
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
+	nodeTypes?: NodeTypes,
 ): Promise<NodeOutputResult> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4231,46 +4334,50 @@ export async function extractNodeOutput(
 
 	const startIndex = options?.startIndex ?? 0;
 	const maxItems = Math.min(options?.maxItems ?? 10, 50);
+	const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+	await workflow?.expression.acquireIsolate();
+	let names: string[];
+	try {
+		names = resolveOutputNames(workflow, nodeName);
+	} finally {
+		await workflow?.expression.releaseIsolate();
+	}
 
-	// Walk the nested output arrays without materializing all items into memory.
-	// Only collect the slice we need — avoids OOM on nodes with huge result sets.
+	// One page over the items of all outputs (first output first), reported per
+	// output so a Filter's Kept and Discarded items never read as one list.
+	// Only the requested slice is materialized — avoids OOM on huge result sets.
 	let index = 0;
-	let totalItems = 0;
-	const collected: unknown[] = [];
-	for (const output of lastRun?.data?.main ?? []) {
-		for (const item of output ?? []) {
-			totalItems++;
-			if (index >= startIndex && collected.length < maxItems) {
+	let returnedCount = 0;
+	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
+		const items = output ?? [];
+		const firstInPage = Math.max(startIndex - index, 0);
+		const collected: unknown[] = [];
+		for (const item of items) {
+			if (index >= startIndex && returnedCount < maxItems) {
 				collected.push(item.json);
+				returnedCount++;
 			}
 			index++;
 		}
-	}
-
-	// Per-item char cap
-	const capped = collected.map((item) => {
-		const str = JSON.stringify(item);
-		if (str.length > MAX_ITEM_CHARS) {
-			return {
-				_truncatedItem: true,
-				preview: str.slice(0, MAX_ITEM_CHARS),
-				originalLength: str.length,
-			};
-		}
-		return item;
+		return {
+			index: outputIndex,
+			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
+			totalItems: items.length,
+			items: collected.map((item, i) =>
+				wrapUntrustedData(
+					JSON.stringify(capItem(item), null, 2),
+					'execution-output',
+					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
+				),
+			),
+		};
 	});
 
 	return {
 		nodeName,
-		items: capped.map((item, i) =>
-			wrapUntrustedData(
-				JSON.stringify(item, null, 2),
-				'execution-output',
-				`node:${nodeName}[${startIndex + i}]`,
-			),
-		),
-		totalItems,
-		returned: { from: startIndex, to: startIndex + capped.length },
+		outputs,
+		totalItems: index,
+		returned: { from: startIndex, to: startIndex + returnedCount },
 	};
 }
 
@@ -4390,7 +4497,7 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(executionId, includeOutputData);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData, nodeTypes);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];

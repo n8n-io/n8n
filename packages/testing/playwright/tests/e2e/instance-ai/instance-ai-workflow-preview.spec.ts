@@ -4,7 +4,7 @@ const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a fin
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI workflow preview @capability:proxy',
+	'Instance AI workflow preview',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
