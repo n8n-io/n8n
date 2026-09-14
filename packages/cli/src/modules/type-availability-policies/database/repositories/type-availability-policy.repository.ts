@@ -1,6 +1,6 @@
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { isDeepStrictEqual } from 'node:util';
 
 import type { PolicyRule } from '../../policy-rule.types';
@@ -28,6 +28,13 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		super(TypeAvailabilityPolicy, dataSource.manager, transactionRunner);
 	}
 
+	/** Postgres only — see `TypeAvailabilityPolicyScopeRepository.forUpdateLock`. */
+	private forUpdateLock(manager: EntityManager) {
+		return manager.connection.options.type === 'postgres'
+			? { lock: { mode: 'pessimistic_write' as const } }
+			: {};
+	}
+
 	/**
 	 * Pass `forUpdate: true` inside a write transaction that checks `expectedVersion` — see
 	 * `TypeAvailabilityPolicyScopeRepository.findScopeByKindAndProject` for why the lock
@@ -41,15 +48,39 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(TypeAvailabilityPolicy, {
 			where: { id },
-			...(forUpdate && manager.connection.options.type === 'postgres'
-				? { lock: { mode: 'pessimistic_write' as const } }
-				: {}),
+			...(forUpdate ? this.forUpdateLock(manager) : {}),
 		});
 	}
 
-	async findManyByIds(ids: string[], ctx: OperationContext): Promise<TypeAvailabilityPolicy[]> {
+	/**
+	 * Unknown ids are ignored. Chunked, since a caller may name many documents at once.
+	 *
+	 * Pass `forUpdate: true` inside a write transaction whose decision depends on the rules as
+	 * they are at commit time — `replaceAttachments` checks them before attaching to a project
+	 * scope, and `updatePolicyDocument` holds the same lock while it edits them, so one waits
+	 * for the other instead of deciding on rules the other is about to change. Rows are locked
+	 * in id order, batch by batch, for the reason `lockScopesByIds` gives; a caller that locks
+	 * scopes first and then documents keeps the scope → policy order every write path uses.
+	 */
+	async findManyByIds(
+		ids: string[],
+		ctx: OperationContext,
+		forUpdate = false,
+	): Promise<TypeAvailabilityPolicy[]> {
 		if (ids.length === 0) return [];
-		return await this.managerFor(ctx).findBy(TypeAvailabilityPolicy, { id: In(ids) });
+
+		const manager = this.managerFor(ctx);
+		const found: TypeAvailabilityPolicy[] = [];
+		for (const batch of chunkIds([...ids].sort())) {
+			const rows = await manager.find(TypeAvailabilityPolicy, {
+				where: { id: In(batch) },
+				order: { id: 'ASC' },
+				...(forUpdate ? this.forUpdateLock(manager) : {}),
+			});
+			found.push(...rows);
+		}
+
+		return found;
 	}
 
 	/** Every policy document of one kind, for the document-library listing screen. */

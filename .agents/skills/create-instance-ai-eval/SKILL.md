@@ -244,7 +244,10 @@ calibration you hand the driver the thread link + login to review the real build
    build has a real gap, or because the harness can't exercise it, **that red is
    the result — keep it and surface why** (see "A red is signal", below). Never
    delete a scenario, weaken an assertion, or drop to build-only just to make the
-   run green.
+   run green. And when the case comes back **green**, that is a result to earn,
+   not to accept: confirm the precondition actually fired, then re-derive it from
+   the raw thread before calling the case a regression guard (see
+   [First reproduce, then reclassify](#first-reproduce-then-reclassify)).
 7. **Push to the suite — do NOT commit the JSON.** Once calibrated, push the case
    into its curated lang-tracer suite with `eval:langtracer-push` (see
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
@@ -282,13 +285,80 @@ and verify X actually materialised — the direct-loop `eval-results.json` does 
 persist per-expectation judge reasoning, so pass/fail alone can't tell you which
 reading you got.
 
-**A sourced failure that no longer reproduces is still worth keeping — it's now a
-regression guard.** When you encode a real failure and calibration shows the
-current build handling it correctly (behaviour drifts across versions), the case
-doesn't lose value: it flips from *capability-gap* (currently red) to *regression
-guard* (currently green, catches a re-introduction). Keep it — but only after the
-non-vacuous check above proves it *would* turn red on the bad behaviour, else the
-"guard" guards nothing.
+**The negative form is the easiest to fool yourself with.** An assertion phrased
+as "the agent did NOT call `X` with a bad argument" passes when the agent called
+`X` correctly *and* when **it never called `X` at all**. Those are opposite
+results and the judge reports the same green. So for any assertion about tool
+misuse, confirm the tool was actually invoked before believing the pass: parse
+`testCases[].transcriptPerRun[][].steps[]` for the call. Note the transcript
+groups multi-action tools under a bare `toolName` (`nodes`, `workflows`,
+`credentials`), so read `args.action` to get the real one — filtering on
+`nodes[explore-resources]` finds nothing and looks like a clean pass. Measured on
+this corpus: a batch of five tool-misuse cases scored 100% on its first
+calibration run, and three of them were passing vacuously because the tool under
+test was never called.
+
+**A sourced failure that does not reproduce is not yet a regression guard — first
+re-derive the precondition.** Behaviour does drift across versions, and a case
+that flips from *capability-gap* (red) to *regression guard* (green, catches a
+re-introduction) is a legitimate and valuable outcome. But reach it by
+elimination, not by default: a green far more often means *your case never set up
+the situation* than *the builder improved*. See below.
+
+## First reproduce, then reclassify
+
+A case built from a real failure that comes back green is the most common
+outcome of a first calibration run, and "the build must have improved" is the
+most common wrong conclusion. The usual cause is that you authored from a
+*summary* of the thread — the theme label, the observation description, your own
+one-line note — and the trigger you assumed is not the trigger that fired. Go
+back to the raw thread before you downgrade anything.
+
+**Find the turn, not the topic.** Locate the exact tool call that failed, then
+read the assistant text immediately before it. The agent usually states its
+intent in the open, and that sentence is the precondition. Then ask what *state*
+made that call necessary — not what the conversation was about.
+
+Worked example from this corpus. Sourced finding: "the agent invents
+`nodes[explore-resources]` method names." Assumed trigger: the user swaps model
+provider. A case built on a clean provider swap came back green — the agent set
+the model id directly and never called the tool at all. The raw thread said it
+plainly:
+
+> "The **Groq Chat Model** has an invalid model (`llama3-8b-8192` isn't offered
+> by your Groq credential). **Let me list valid models and fix it.**"
+
+The precondition was never the swap. It was *an existing model id that the
+provider rejects at runtime, with a credential already connected* — that is the
+state that makes enumerating models necessary. Rebuilt on it, the same case
+reproduced the failure on the first run, with the agent inventing two method
+names in a row.
+
+Three moves turn a non-reproducing case into a reproducing one. Try them in
+order before settling for a guard:
+
+1. **Fix the precondition.** Rebuild the seed and the live turn to recreate the
+   state the source thread was in, not the subject it was discussing.
+2. **Move the assertion to the first call.** A mechanism where the agent
+   *self-corrects* grades green on the end state and is still a real defect — the
+   wasted round-trip and the guessed schema are the finding. Grading first-call
+   correctness turned a mechanism previously dismissed as "self-corrects, weak
+   eval" into a gap that reproduced in 2 of 2 runs.
+3. **Keep what the attempt actually caught.** A reproduction run often reds on a
+   *different* real defect than the one you targeted. That is still a
+   capability-gap finding — keep the red, retarget the description, and say
+   plainly in it that the originally targeted mechanism did not reproduce.
+
+**Know when to stop.** Some mechanisms are structurally unreachable in this
+harness, and no amount of re-deriving fixes that. The clearest example: a seed
+restores a **fresh** workspace file at the start of the graded turn, so the
+agent's first `old_str` always comes from a file it just read. Failures that need
+*accumulated drift* across many turns — the `str_replace` byte-fidelity family,
+the largest agent-caused tool-call failure in production at 15% of threads — do
+not reproduce even in a multi-turn chain of edits, each followed by a build. Cap
+the effort at about three attempts, then write the negative result into the case
+`description` as the finding it is, and ask whether the real defect belongs in a
+ticket rather than an eval.
 
 ## A red is signal — surface it, don't work around it
 

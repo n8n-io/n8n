@@ -9,7 +9,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { StreamOutput, ToolProgressChunk, WorkflowUpdateChunk } from '../../types/streaming';
+import type { StreamOutput } from '../../types/streaming';
 import { FIX_VALIDATION_ERRORS_INSTRUCTION } from '../constants';
 import type { WarningTracker } from '../state/warning-tracker';
 import type { ParseAndValidateResult } from '../types';
@@ -291,7 +291,7 @@ export class TextEditorToolHandler {
 					toolCallId,
 					displayTitle,
 					status,
-				} as ToolProgressChunk,
+				},
 			],
 		};
 	}
@@ -306,7 +306,7 @@ export class TextEditorToolHandler {
 					role: 'assistant',
 					type: 'workflow-updated',
 					codeSnippet: JSON.stringify(workflow, null, 2),
-				} as WorkflowUpdateChunk,
+				},
 			],
 		};
 	}

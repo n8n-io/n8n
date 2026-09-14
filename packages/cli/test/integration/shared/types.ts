@@ -72,7 +72,7 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'git-connections'
+	| 'promotions'
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'

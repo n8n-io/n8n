@@ -454,7 +454,7 @@ export class UserRepository extends Repository<User> {
 		}
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
-		this.applyUserListSelect(queryBuilder, select as Array<keyof User>);
+		this.applyUserListSelect(queryBuilder, select);
 		this.applyUserListFilter(queryBuilder, filter);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);

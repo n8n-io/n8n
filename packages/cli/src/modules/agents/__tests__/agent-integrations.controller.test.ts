@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -26,6 +27,7 @@ function makeController({
 	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
+	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -33,6 +35,7 @@ function makeController({
 	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
+	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -45,12 +48,14 @@ function makeController({
 			chatIntegrationRegistry,
 			channelStatusRepository,
 			statusReporter,
+			agentUpdateBroadcaster,
 		),
 		managementService,
 		chatIntegrationService,
 		agentRepository,
 		channelStatusRepository,
 		statusReporter,
+		agentUpdateBroadcaster,
 	};
 }
 
@@ -98,11 +103,9 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration,
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
 		expect(result).toEqual({ status: 'connected' });
 	});
 
@@ -126,12 +129,14 @@ describe('AgentIntegrationsController integration management', () => {
 			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
-			replaces: { type: 'slack', credentialId: 'credential-0' },
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+				replaces: { type: 'slack', credentialId: 'credential-0' },
+			}),
+		);
 	});
 
 	it('passes platform settings through the envelope untouched', async () => {
@@ -155,7 +160,9 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -186,13 +193,18 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('delegates disconnect without platform-specific cleanup', async () => {
-		const { controller, managementService, agentRepository } = makeController();
+		const { controller, managementService, agentRepository, agentUpdateBroadcaster } =
+			makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		managementService.disconnect.mockResolvedValue({ savedAgent: agent });
+		managementService.disconnect.mockImplementation(async (options) => {
+			options.onPersisted?.();
+			return { savedAgent: agent };
+		});
 
 		const result = await controller.disconnectIntegration(
 			{
 				params: { projectId: agent.projectId },
+				headers: { 'push-ref': 'sender-1' },
 				user,
 			} as never,
 			undefined as never,
@@ -200,12 +212,18 @@ describe('AgentIntegrationsController integration management', () => {
 			{ type: 'slack', credentialId: 'credential-1' },
 		);
 
-		expect(managementService.disconnect).toHaveBeenCalledWith({
-			agent,
-			user,
-			type: 'slack',
-			credentialId: 'credential-1',
-		});
+		expect(managementService.disconnect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				type: 'slack',
+				credentialId: 'credential-1',
+			}),
+		);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId: agent.projectId, agentId: agent.id },
+			'sender-1',
+		);
 		expect(result).toEqual({ status: 'disconnected' });
 	});
 

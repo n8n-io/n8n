@@ -7,7 +7,7 @@ import type {
 	WorkflowEntity,
 	PollLeaseFence,
 } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -40,12 +40,16 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -74,7 +78,8 @@ export class WorkflowExecutionService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCrashService: ExecutionCrashService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	async runWorkflow(
@@ -183,6 +188,24 @@ export class WorkflowExecutionService {
 			return undefined;
 		}
 
+		try {
+			await this.workflowRunner.prepareNewExecution(runData, true);
+		} catch (error) {
+			if (error instanceof PreExecuteBlockedError) {
+				this.logger.error('Blocked a polled execution before its row was committed', {
+					workflowId: workflowData.id,
+					nodeName: node.name,
+					error: error.cause,
+				});
+
+				responsePromise?.reject(error.cause);
+
+				return undefined;
+			}
+
+			throw error;
+		}
+
 		const payload: CreateExecutionPayload = {
 			data: executionData,
 			mode,
@@ -221,7 +244,7 @@ export class WorkflowExecutionService {
 		try {
 			await this.workflowRunner.run(
 				runData,
-				true,
+				false,
 				undefined,
 				{ executionId, expectedStatus: 'new' },
 				responsePromise,
@@ -234,6 +257,53 @@ export class WorkflowExecutionService {
 			} else {
 				await this.crashFailedPolledExecution(executionId, error, responsePromise);
 			}
+		}
+
+		return executionId;
+	}
+
+	/**
+	 * Starts a polled execution on engine 2.0, then advances the cursor.
+	 *
+	 * The v2 path keeps no control-plane execution row, so the cursor cannot
+	 * commit in the same transaction as the run the way {@link runPolledWorkflow}
+	 * does. It commits after the data plane confirms the run started instead: a
+	 * crash between the two calls can duplicate a poll, never lose one.
+	 * TODO(CAT-4078): add a dedup key once `StartExecutionRequest` supports one.
+	 */
+	async runPolledWorkflowV2(
+		workflowData: IWorkflowBase,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		cursor: PollCursor,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		fence?: PollLeaseFence,
+	): Promise<string> {
+		const executionId = await this.runWorkflow(
+			workflowData,
+			node,
+			data,
+			additionalData,
+			mode,
+			responsePromise,
+		);
+
+		const committed = await this.pollCursorService.commitCursorOnly({
+			workflowId: workflowData.id,
+			nodeId: node.id,
+			cursor,
+			fence,
+		});
+
+		if (!committed) {
+			// The run already started; the lease loss only means a concurrent
+			// poller may repeat the same window, not that anything was lost.
+			this.logger.warn(
+				'Poll cursor commit skipped after its execution already started: the poll no longer holds its lease',
+				{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name, executionId },
+			);
 		}
 
 		return executionId;
@@ -256,7 +326,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId);
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
@@ -278,6 +348,8 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		n8nAuthCookie?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		this.assertManualExecutionAllowed();
+
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
 
@@ -757,6 +829,15 @@ export class WorkflowExecutionService {
 			payload.destinationNode.nodeName,
 			payload.runData,
 		);
+	}
+
+	/** Production triggers still run on a protected instance. Block only user-started manual runs. */
+	private assertManualExecutionAllowed() {
+		if (this.instanceWriteAccess.isReadOnly()) {
+			throw new ForbiddenError(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 }
 

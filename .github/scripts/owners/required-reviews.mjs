@@ -91,7 +91,7 @@ export function collectApprovers(reviews) {
 /**
  * @param { string[] } missingTeams Team handles without an approving member.
  * @param { number } requiredCount Total number of required teams.
- * @returns {{ state: 'success' | 'failure', description: string }}
+ * @returns {{ state: 'success' | 'pending', description: string }}
  */
 export function buildStatus(missingTeams, requiredCount) {
 	if (requiredCount === 0) {
@@ -105,9 +105,11 @@ export function buildStatus(missingTeams, requiredCount) {
 		};
 	}
 
+	// Pending, not failure: an unreviewed PR waits, it is not broken. Anything
+	// other than success still blocks the merge.
 	return {
-		state: 'failure',
-		description: `Missing approval from: ${missingTeams.map(teamHandleToSlug).join(', ')}`,
+		state: 'pending',
+		description: `Waiting for approval from: ${missingTeams.map(teamHandleToSlug).join(', ')}`,
 	};
 }
 
@@ -119,7 +121,7 @@ function statusTargetUrl() {
 
 /**
  * @param { number } pullRequestNumber
- * @returns { Promise<{ state: 'success' | 'failure', description: string }> }
+ * @returns { Promise<{ state: 'success' | 'pending', description: string }> }
  */
 async function evaluateRequiredReviews(pullRequestNumber) {
 	const changedFiles = await getChangedFiles(pullRequestNumber);
@@ -182,7 +184,7 @@ export async function run() {
 		targetUrl,
 	});
 
-	/** @type { { state: 'success' | 'failure', description: string } } */
+	/** @type { { state: 'success' | 'pending', description: string } } */
 	let status;
 	try {
 		status = await evaluateRequiredReviews(pullRequestNumber);

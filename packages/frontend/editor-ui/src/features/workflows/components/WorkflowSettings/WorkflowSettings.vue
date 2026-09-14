@@ -1824,6 +1824,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .workflow-settings {
 	font-size: var(--font-size--sm);
 	display: flex;

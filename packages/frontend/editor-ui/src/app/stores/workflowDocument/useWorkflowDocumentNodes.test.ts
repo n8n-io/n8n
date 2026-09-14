@@ -21,14 +21,13 @@ import { setActivePinia, createPinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes, type INodeTypeDescription, type Workflow } from 'n8n-workflow';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 import {
 	useWorkflowDocumentNodes,
 	type WorkflowDocumentNodesDeps,
 } from './useWorkflowDocumentNodes';
 import { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
-import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
-
 const getNodeType = vi.fn().mockReturnValue(null);
 const communityNodeType = vi.fn().mockReturnValue(undefined);
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -64,19 +63,6 @@ describe('useWorkflowDocumentNodes', () => {
 	});
 
 	describe('round-trip: setNodes → read', () => {
-		it('preserves a center-aligned v2 agent position', () => {
-			const agent = createNode({
-				position: [112, 105],
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-			});
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-
-			workflowDocumentNodes.setNodes([agent]);
-
-			expect(workflowDocumentNodes.getNodeById(agent.id)?.position).toEqual([112, 105]);
-		});
-
 		it('nodes set via setNodes are readable via allNodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
@@ -131,6 +117,22 @@ describe('useWorkflowDocumentNodes', () => {
 			workflowDocumentNodes.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
 
 			expect(workflowDocumentNodes.canvasNames.value).toEqual(new Set(['X', 'Y']));
+		});
+
+		it('setNodes snaps every node position to the grid, including agent cards', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([
+				createNode({
+					name: 'Agent',
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [95, 57],
+				}),
+				createNode({ name: 'Regular', position: [110, 110] }),
+			]);
+
+			expect(workflowDocumentNodes.getNodeByName('Agent')?.position).toEqual([96, 64]);
+			expect(workflowDocumentNodes.getNodeByName('Regular')?.position).toEqual([112, 112]);
 		});
 
 		it('getNodesByIds returns matching nodes', () => {

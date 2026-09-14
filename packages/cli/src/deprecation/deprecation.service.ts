@@ -42,6 +42,10 @@ export class DeprecationService {
 		{ envVar: 'N8N_CONFIG_FILES', message: 'Please use .env files or *_FILE env vars instead.' },
 		{ envVar: 'N8N_RUNNERS_ENABLED', message: SAFE_TO_REMOVE },
 		{
+			envVar: 'N8N_DB_PING_TIMEOUT',
+			message: 'Use DB_PING_TIMEOUT_MS instead. This variable will be removed in a future version.',
+		},
+		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},
@@ -72,6 +76,29 @@ export class DeprecationService {
 			message:
 				'The default for this variable will change to `false` in a future version. Set it to `true` explicitly to keep installing unverified community packages.',
 			checkValue: (value?: string) => value === undefined,
+		},
+		{
+			envVar: 'N8N_RUNNERS_MODE',
+			message:
+				'The `internal` mode is deprecated and will be removed in a future version. Run task runners as a separate process and set this variable to `external`.',
+			checkValue: (value?: string) => value === 'internal',
+		},
+		{
+			envVar: 'N8N_SSRF_PROTECTION_ENABLED',
+			message:
+				"The built-in blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. To keep the current list, set N8N_SSRF_BLOCKED_IP_RANGES to the literal ranges instead of the `default` keyword, which always expands to the running version's built-in list.",
+			checkValue: (value?: string) => ['true', '1'].includes(value?.toLowerCase() ?? ''),
+			// Literal block lists without the `default` keyword do not pick up the expanded built-in list.
+			disableIf: () => {
+				const ranges = process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				return (
+					ranges !== undefined &&
+					!ranges
+						.toLowerCase()
+						.split(',')
+						.some((r) => r.trim() === 'default')
+				);
+			},
 		},
 		{
 			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
@@ -167,7 +194,7 @@ export class DeprecationService {
 
 		if (!this.instanceSettings.isDocker) {
 			mustWarn.push(
-				' - Running n8n outside a container is deprecated. Future versions will require running n8n via the official Docker image. See https://docs.n8n.io/deploy/host-n8n/install-options/install-with-docker\n',
+				' - Running n8n outside a container is deprecated. Future versions will require running n8n via the official Docker image. See https://docs.n8n.io/deploy/host-n8n\n',
 			);
 		}
 

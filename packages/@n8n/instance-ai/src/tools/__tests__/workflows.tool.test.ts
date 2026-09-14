@@ -8,8 +8,6 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
-import { WorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
-import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import type { InstanceAiContext } from '../../types';
 import {
 	analyzeWorkflow,
@@ -17,9 +15,9 @@ import {
 	buildCompletedReport,
 } from '../workflows/setup-workflow.service';
 import { FULL_PAYLOAD_TOO_LARGE_NOTE, STRUCTURE_ONLY_NOTE } from '../workflows/summarize-workflow';
+import { validateWorkflowConfig } from '../workflows/validate-workflow.service';
 import {
 	getWorkflowSourceFileBinding,
-	refreshWorkflowSourceFileBindingFromSave,
 	saveWorkflowSourceFileBinding,
 } from '../workflows/workflow-file-bindings';
 import { createWorkflowsTool, type WorkflowAction, workflowsResumeSchema } from '../workflows.tool';
@@ -32,6 +30,10 @@ vi.mock('../workflows/setup-workflow.service', () => ({
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
 	buildCompletedReport: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock('../workflows/validate-workflow.service', () => ({
+	validateWorkflowConfig: vi.fn(),
 }));
 
 // Mock code generation used by get-as-code while keeping shared SDK helpers real.
@@ -182,16 +184,16 @@ describe('workflows tool', () => {
 		expect(JSON.stringify(zodToJsonSchema(workflowsResumeSchema))).not.toContain('"format":"uri"');
 	});
 
-	describe('surface filtering', () => {
+	describe('action schema', () => {
 		const builderWorkflowActions = [
 			'list',
 			'get',
-			'get-json',
+			'get-as-code',
 		] as const satisfies readonly WorkflowAction[];
 
-		it('should support get-as-code on full surface', async () => {
+		it('should support get-as-code', async () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 
 			const result = await executeTool(
 				tool,
@@ -208,78 +210,25 @@ describe('workflows tool', () => {
 			});
 		});
 
-		it('should describe only explicitly allowed actions', () => {
+		it('should support a filtered safe action surface', () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, {
 				allowedActions: builderWorkflowActions,
 				descriptionPrefix: 'Inspect workflows during build',
 			});
+			const schema = getInputSchema(tool);
 
+			expect(schema.safeParse({ action: 'list' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'get-as-code', workflowId: 'w1' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'setup', workflowId: 'w1' }).success).toBe(false);
 			expect(getDescription(tool)).toContain('Inspect workflows during build');
-			expect(getDescription(tool)).not.toContain('set up');
 			expect(getDescription(tool)).not.toContain('publish');
-			expect(getDescription(tool)).not.toContain('archive');
 		});
 
-		it.each([
-			[{ action: 'list' }],
-			[{ action: 'get', workflowId: 'w1' }],
-			[{ action: 'get-json', workflowId: 'w1' }],
-		])('should support explicitly allowed action %p', (input) => {
+		it('should reject raw workflow actions', () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, {
-				allowedActions: builderWorkflowActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(schema.safeParse(input).success).toBe(true);
-		});
-
-		it.each([
-			[{ action: 'setup', workflowId: 'w1' }],
-			[{ action: 'publish', workflowId: 'w1' }],
-			[{ action: 'unpublish', workflowId: 'w1' }],
-			[{ action: 'delete', workflowId: 'w1' }],
-			[{ action: 'unarchive', workflowId: 'w1' }],
-			[{ action: 'get-as-code', workflowId: 'w1' }],
-			[
-				{
-					action: 'update',
-					workflowId: 'w1',
-					workflow: { name: 'WF', nodes: [], connections: {} },
-				},
-			],
-			[{ action: 'list-versions', workflowId: 'w1' }],
-			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
-			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
-		])('should reject action %p when it is not explicitly allowed', (input) => {
-			const context = createMockContext();
-			context.workflowService.listVersions = vi.fn();
-			context.workflowService.getVersion = vi.fn();
-			context.workflowService.restoreVersion = vi.fn();
-			context.workflowService.updateVersion = vi.fn();
-			const tool = createWorkflowsTool(context, {
-				allowedActions: builderWorkflowActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(schema.safeParse(input).success).toBe(false);
-		});
-
-		it('should reject builder-disallowed publish at the schema boundary', () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, {
-				allowedActions: builderWorkflowActions,
-			});
-			const schema = getInputSchema(tool);
-
-			expect(schema.safeParse({ action: 'publish', workflowId: 'w1' }).success).toBe(false);
-			expect(context.workflowService.publish).not.toHaveBeenCalled();
-		});
-
-		it('should allow code inspection but reject raw workflow actions on orchestrator surface', () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'orchestrator');
+			const tool = createWorkflowsTool(context);
 			const schema = getInputSchema(tool);
 
 			expect(schema.safeParse({ action: 'get-json', workflowId: 'w1' }).success).toBe(false);
@@ -296,6 +245,66 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('validate action', () => {
+		const validationResult = {
+			workflowId: 'wf1',
+			issues: {},
+			summary: [],
+			valid: true,
+		};
+
+		it('includes a report when the workflow has pinned data', async () => {
+			vi.mocked(validateWorkflowConfig).mockResolvedValue(validationResult);
+			const context = createMockContext();
+			const getPinnedDataSummary = context.workflowService.getPinnedDataSummary;
+			if (!getPinnedDataSummary) throw new Error('Expected pinned-data summary mock');
+			vi.mocked(getPinnedDataSummary).mockResolvedValue([
+				{ nodeName: 'Example Data', itemCount: 3 },
+			]);
+
+			const result = await executeTool(
+				createWorkflowsTool(context),
+				{ action: 'validate', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				...validationResult,
+				pinnedNodes: [{ nodeName: 'Example Data', itemCount: 3 }],
+				pinnedDataNote: expect.stringContaining('pinned data'),
+			});
+		});
+
+		it('returns the validation result unchanged when no nodes are pinned', async () => {
+			vi.mocked(validateWorkflowConfig).mockResolvedValue(validationResult);
+			const context = createMockContext();
+
+			const result = await executeTool(
+				createWorkflowsTool(context),
+				{ action: 'validate', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result).toEqual(validationResult);
+		});
+
+		it('keeps validation available when the pinned-data lookup fails', async () => {
+			vi.mocked(validateWorkflowConfig).mockResolvedValue(validationResult);
+			const context = createMockContext();
+			const getPinnedDataSummary = context.workflowService.getPinnedDataSummary;
+			if (!getPinnedDataSummary) throw new Error('Expected pinned-data summary mock');
+			vi.mocked(getPinnedDataSummary).mockRejectedValue(new Error('pin lookup failed'));
+
+			const result = await executeTool(
+				createWorkflowsTool(context),
+				{ action: 'validate', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result).toEqual(validationResult);
+		});
+	});
+
 	describe('version actions', () => {
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
@@ -304,7 +313,7 @@ describe('workflows tool', () => {
 			context.workflowService.getVersion = vi.fn();
 			context.workflowService.restoreVersion = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'list-versions', workflowId: 'w1' } as never,
@@ -323,7 +332,7 @@ describe('workflows tool', () => {
 			context.workflowService.restoreVersion = vi.fn();
 			context.workflowService.updateVersion = vi.fn().mockResolvedValue({ success: true });
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -344,7 +353,7 @@ describe('workflows tool', () => {
 			});
 			context.workflowService.updateVersion = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -369,7 +378,7 @@ describe('workflows tool', () => {
 			context.workflowService.updateVersion = vi.fn();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(
 				tool,
 				{
@@ -395,7 +404,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			context.workflowService.updateVersion = vi.fn().mockResolvedValue({ success: true });
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -418,7 +427,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			context.workflowService.updateVersion = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -459,7 +468,7 @@ describe('workflows tool', () => {
 				totalInScope: 1,
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'list', query: 'test', limit: 10 },
@@ -474,7 +483,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'list', status: 'archived' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'archived' });
@@ -484,7 +493,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'list', status: 'all' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ status: 'all' });
@@ -508,7 +517,7 @@ describe('workflows tool', () => {
 				totalInScope: 3,
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool<{
 				total: number;
 				totalInScope: number;
@@ -539,7 +548,7 @@ describe('workflows tool', () => {
 				totalInScope: 12,
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool<{ note: string }>(
 				tool,
 				{ action: 'list', limit: 1 },
@@ -553,7 +562,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'list', projectId: 'other-project' }, {} as never);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({
@@ -590,7 +599,7 @@ describe('workflows tool', () => {
 				totalInScope: 2,
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool<{ note: string }>(
 				tool,
 				{ action: 'list', scope: 'instance' },
@@ -633,7 +642,7 @@ describe('workflows tool', () => {
 				totalInScope: 2,
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool<{ note?: string }>(
 				tool,
 				{ action: 'list', scope: 'instance' },
@@ -647,7 +656,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.list as Mock).mockResolvedValue(emptyList);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'list' }, {} as never);
 
 			expect(result).toEqual({ workflows: [], total: 0, totalInScope: 0 });
@@ -943,7 +952,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
@@ -970,7 +979,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'get', workflowId: 'wf1', full: true },
@@ -995,7 +1004,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(small);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual(small);
@@ -1008,7 +1017,7 @@ describe('workflows tool', () => {
 				throw new Error('unsupported graph');
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			const structure = (result as { structure: string }).structure;
@@ -1039,7 +1048,7 @@ describe('workflows tool', () => {
 				connections: {},
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
@@ -1066,7 +1075,7 @@ describe('workflows tool', () => {
 		it('should explain when versionId is passed but version history is unavailable', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
@@ -1081,95 +1090,7 @@ describe('workflows tool', () => {
 		});
 	});
 
-	describe('get-json action', () => {
-		it('should return full WorkflowJSON with node metadata', async () => {
-			const workflow = {
-				id: 'wf1',
-				name: 'Test WF',
-				nodes: [
-					{
-						id: 'node-1',
-						name: 'Agent',
-						type: '@n8n/n8n-nodes-langchain.agent',
-						typeVersion: 2,
-						position: [0, 0],
-						parameters: { text: '={{ $json.input }}' },
-						credentials: { openAiApi: { id: 'cred-1', name: 'OpenAI' } },
-						disabled: false,
-					},
-				],
-				connections: {},
-			};
-			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(workflow);
-
-			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(
-				tool,
-				{ action: 'get-json', workflowId: 'wf1' },
-				{} as never,
-			);
-
-			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1', undefined);
-			expect(result).toEqual(workflow);
-		});
-
-		it('reports pinned nodes next to the JSON when the workflow carries pinned data', async () => {
-			const workflow = { id: 'wf1', name: 'Test WF', nodes: [], connections: {} };
-			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(workflow);
-			(context.workflowService.getPinnedDataSummary as Mock).mockResolvedValue([
-				{ nodeName: 'Get Job Alert Emails', itemCount: 1 },
-			]);
-
-			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(
-				tool,
-				{ action: 'get-json', workflowId: 'wf1' },
-				{} as never,
-			);
-
-			expect(result).toMatchObject({
-				...workflow,
-				pinnedNodes: [{ nodeName: 'Get Job Alert Emails', itemCount: 1 }],
-			});
-			expect(result).toHaveProperty('pinnedDataNote', expect.stringContaining('pinned data'));
-		});
-
-		it('does not fetch a pin report for historical version reads', async () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
-
-			await executeTool(
-				tool,
-				{ action: 'get-json', workflowId: 'wf1', versionId: 'v7' },
-				{} as never,
-			);
-
-			expect(context.workflowService.getPinnedDataSummary).not.toHaveBeenCalled();
-		});
-
-		it('should forward versionId to the full fetches', async () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
-
-			await executeTool(
-				tool,
-				{ action: 'get-json', workflowId: 'wf1', versionId: 'v7' },
-				{} as never,
-			);
-			await executeTool(
-				tool,
-				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
-				{} as never,
-			);
-
-			expect((context.workflowService.getAsWorkflowJSON as Mock).mock.calls).toEqual([
-				['wf1', 'v7'],
-				['wf1', 'v7'],
-			]);
-		});
-
+	describe('get-as-code action', () => {
 		/**
 		 * The code returned here is what the agent edits and builds back into the same
 		 * saved workflow, so it has to carry node ids or the rebuild re-identifies every
@@ -1177,7 +1098,7 @@ describe('workflows tool', () => {
 		 */
 		it('should ask codegen to emit node ids for get-as-code', async () => {
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 
 			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
 
@@ -1602,7 +1523,7 @@ describe('workflows tool', () => {
 				workflowChecksum: 'checksum-stale',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'get-as-code', workflowId: 'wf1' }, {} as never);
 
 			await expect(
@@ -1624,7 +1545,7 @@ describe('workflows tool', () => {
 				workflowChecksum: 'checksum-stale',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(
 				tool,
 				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
@@ -1640,592 +1561,6 @@ describe('workflows tool', () => {
 				workflowChecksum: 'checksum-stale',
 			});
 		});
-
-		it('refreshes bound checksum after update', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'always_allow' },
-			});
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v-updated',
-				checksum: 'checksum-updated',
-			});
-			(context.workflowService.get as Mock).mockResolvedValue({
-				id: 'wf1',
-				name: 'Test WF',
-				versionId: 'v-updated',
-				checksum: 'checksum-updated',
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-				nodes: [],
-				connections: {},
-			});
-
-			await saveWorkflowSourceFileBinding(context, {
-				filePath: 'src/workflows/main.workflow.ts',
-				workflowId: 'wf1',
-				workflowVersionId: 'v-stale',
-				workflowChecksum: 'checksum-stale',
-			});
-
-			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(
-				tool,
-				{
-					action: 'update',
-					workflowId: 'wf1',
-					workflow: { name: 'Updated WF', nodes: [], connections: {} },
-				},
-				{ resumeData: { approved: true } } as never,
-			);
-
-			await expect(
-				getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
-			).resolves.toMatchObject({
-				workflowId: 'wf1',
-				workflowVersionId: 'v-updated',
-				workflowChecksum: 'checksum-updated',
-			});
-		});
-	});
-
-	describe('update action', () => {
-		const workflowPayload = { name: 'Updated WF', nodes: [], connections: {} };
-
-		it('should suspend for approval before updating a foreign workflow', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'require_approval' },
-			});
-			(context.workflowService.get as Mock).mockResolvedValue({
-				id: 'wf1',
-				name: 'Foreign WF',
-			});
-			const suspend = vi.fn();
-
-			await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{ suspend } as never,
-			);
-
-			expect(suspend).toHaveBeenCalledWith(
-				expect.objectContaining({
-					message: 'Update workflow "Foreign WF" (ID: wf1)?',
-					severity: 'warning',
-					workflowId: 'wf1',
-				}),
-			);
-			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-		});
-
-		describe('stale-save detection', () => {
-			const workflowDetail = (checksum: string) => ({
-				id: 'wf1',
-				name: 'Test WF',
-				versionId: 'v1',
-				checksum,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-				nodes: [],
-				connections: {},
-			});
-
-			it('expects the checksum the agent last read, so a concurrent save is caught', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-					'wf1',
-					workflowPayload,
-					{ expectedChecksum: 'checksum-read' },
-				);
-			});
-
-			it('expects the checksum current when the agent read the workflow JSON to edit', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(tool, { action: 'get-json', workflowId: 'wf1' }, {} as never);
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-					'wf1',
-					workflowPayload,
-					{ expectedChecksum: 'checksum-read' },
-				);
-			});
-
-			it('does not expect a checksum after reading a past version', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(
-					tool,
-					{ action: 'get-json', workflowId: 'wf1', versionId: 'v-old' },
-					{} as never,
-				);
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-					'wf1',
-					workflowPayload,
-				);
-			});
-
-			it('expects the checksum read in an earlier turn of the same conversation', async () => {
-				// Each run builds its own context, so the expectation has to live on the thread.
-				const threads = new Map<string, { metadata: Record<string, unknown> }>();
-				const threadMemory = {
-					getThread: vi.fn(
-						async (threadId: string) => await Promise.resolve(threads.get(threadId) ?? null),
-					),
-					patchThread: vi.fn(
-						async ({
-							threadId,
-							update,
-						}: {
-							threadId: string;
-							update: (current: { metadata: Record<string, unknown> }) => {
-								metadata?: Record<string, unknown>;
-							} | null;
-						}) => {
-							const current = threads.get(threadId) ?? { metadata: {} };
-							const patch = update(current);
-							if (!patch) return null;
-							const next = { ...current, metadata: patch.metadata ?? current.metadata };
-							threads.set(threadId, next);
-							return await Promise.resolve(next);
-						},
-					),
-				};
-				const contextForTurn = () =>
-					createMockContext({
-						permissions: { updateWorkflow: 'always_allow' },
-						threadId: 'thread-1',
-						threadMemory,
-					});
-
-				const readTurn = contextForTurn();
-				(readTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				await executeTool(
-					createWorkflowsTool(readTurn, 'full'),
-					{ action: 'get', workflowId: 'wf1' },
-					{} as never,
-				);
-
-				const updateTurn = contextForTurn();
-				(updateTurn.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(updateTurn.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				await executeTool(
-					createWorkflowsTool(updateTurn, 'full'),
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(updateTurn.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-					'wf1',
-					workflowPayload,
-					{ expectedChecksum: 'checksum-read' },
-				);
-			});
-
-			it('advances the expectation to the checksum of its own save', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenLastCalledWith(
-					'wf1',
-					workflowPayload,
-					{ expectedChecksum: 'checksum-saved' },
-				);
-			});
-
-			it('tracks saves made by other Instance AI paths, so they do not look stale', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(
-					workflowDetail('checksum-saved'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
-				// e.g. the setup or apply-credentials flow saving in between
-				await refreshWorkflowSourceFileBindingFromSave(context, 'wf1', {
-					versionId: 'v-setup',
-					checksum: 'checksum-setup',
-				});
-				await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-					'wf1',
-					workflowPayload,
-					{ expectedChecksum: 'checksum-setup' },
-				);
-			});
-
-			it('tells the agent to re-read the workflow when its save is stale', async () => {
-				const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-				(context.workflowService.get as Mock).mockResolvedValue(workflowDetail('checksum-read'));
-				(context.workflowService.updateFromWorkflowJSON as Mock).mockRejectedValue(
-					new WorkflowSaveConflictError('wf1'),
-				);
-				const tool = createWorkflowsTool(context, 'full');
-
-				await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
-				const result = await executeTool(
-					tool,
-					{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-					{} as never,
-				);
-
-				expect(result).toMatchObject({ success: false });
-				expect((result as { error: string }).error).toMatch(/modified outside this conversation/);
-				expect((result as { error: string }).error).toMatch(/action="get"/);
-			});
-		});
-
-		it('drops invalid node groups before saving and reports coded warnings', async () => {
-			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-				checksum: 'checksum-saved',
-			});
-			const workflow = {
-				name: 'Updated WF',
-				nodes: [
-					{
-						id: 'node-1',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				nodeGroups: [
-					{
-						id: 'group-1',
-						name: 'Broken group',
-						nodeIds: ['missing-node', 'another-missing-node'],
-					},
-				],
-			};
-
-			const result = await executeTool<{
-				success: boolean;
-				workflowId?: string;
-				warnings?: string[];
-			}>(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow },
-				{} as never,
-			);
-
-			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
-			expect(result.warnings).toHaveLength(1);
-			expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
-			expect(result.warnings?.join('\n')).toContain('Broken group');
-			expect(result.warnings?.join('\n')).toContain('missing-node');
-			expect(result.warnings?.join('\n')).toContain('another-missing-node');
-			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-				'wf1',
-				expect.objectContaining({ nodeGroups: [] }),
-			);
-		});
-
-		it('saves valid node groups unchanged and returns no node-group warnings', async () => {
-			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-				checksum: 'checksum-saved',
-			});
-			const workflow = {
-				name: 'Updated WF',
-				nodes: [
-					{
-						id: 'a',
-						name: 'A',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'b',
-						name: 'B',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
-				nodeGroups: [{ id: 'group-1', name: 'Valid group', nodeIds: ['a', 'b'] }],
-			};
-
-			const result = await executeTool<{
-				success: boolean;
-				workflowId?: string;
-				warnings?: string[];
-			}>(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow },
-				{} as never,
-			);
-
-			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
-			expect(result.warnings).toBeUndefined();
-			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf1', workflow);
-		});
-
-		it('normalizes duplicate and blank node IDs before node-group validation', async () => {
-			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-				checksum: 'checksum-saved',
-			});
-			const workflow = {
-				name: 'Updated WF',
-				nodes: [
-					{
-						id: '',
-						name: 'A',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: '',
-						name: 'B',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [100, 0],
-						parameters: {},
-					},
-				],
-				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
-				nodeGroups: [{ id: 'group-1', name: 'Healed group', nodeIds: ['', ''] }],
-			};
-
-			const result = await executeTool<{
-				success: boolean;
-				workflowId?: string;
-				warnings?: string[];
-			}>(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow },
-				{} as never,
-			);
-
-			const savedWorkflow = (context.workflowService.updateFromWorkflowJSON as Mock).mock
-				.calls[0][1] as typeof workflow;
-			const nodeIds = savedWorkflow.nodes.map((node) => node.id);
-			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
-			expect(result.warnings).toBeUndefined();
-			expect(nodeIds.every(Boolean)).toBe(true);
-			expect(new Set(nodeIds)).toHaveProperty('size', 2);
-			expect(savedWorkflow.nodeGroups).toEqual([{ id: 'group-1', name: 'Healed group', nodeIds }]);
-		});
-
-		it('returns a tool error when raw update ID normalization cannot read nodes', async () => {
-			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{
-					action: 'update',
-					workflowId: 'wf1',
-					workflow: { name: 'Updated WF', nodes: [null], connections: {} },
-				},
-				{} as never,
-			);
-
-			expect(result).toMatchObject({ success: false });
-			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-		});
-
-		it('tells the agent what to do when a user is editing the workflow in the editor', async () => {
-			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockRejectedValue(
-				new WorkflowEditorLockedError('wf1'),
-			);
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{} as never,
-			);
-
-			expect(result).toMatchObject({ success: false });
-			expect((result as { error: string }).error).toMatch(/being edited by a user/);
-			expect((result as { error: string }).error).toMatch(/retry/i);
-		});
-
-		it('should update without approval when the workflow was created in this run', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'require_approval' },
-				aiCreatedWorkflowIds: new Set(['wf1']),
-			});
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-			});
-			const suspend = vi.fn();
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{ suspend } as never,
-			);
-
-			expect(result).toEqual({ success: true, workflowId: 'wf1' });
-			expect(suspend).not.toHaveBeenCalled();
-			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
-				'wf1',
-				workflowPayload,
-			);
-		});
-
-		it('should update without approval when the workflow has a session ownership grant', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'require_approval' },
-				sessionApprovedToolKeys: new Set(['workflows:update:wf1']),
-			});
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-			});
-			const suspend = vi.fn();
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{ suspend } as never,
-			);
-
-			expect(result).toEqual({ success: true, workflowId: 'wf1' });
-			expect(suspend).not.toHaveBeenCalled();
-			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
-		});
-
-		it('should still block updates when admin policy denies them for owned workflows', async () => {
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'blocked' },
-				aiCreatedWorkflowIds: new Set(['wf1']),
-			});
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{} as never,
-			);
-
-			expect(result).toEqual({
-				success: false,
-				denied: true,
-				reason: 'Action blocked by admin',
-			});
-			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-		});
-
-		it('should persist a session update grant when resumed with scope=session', async () => {
-			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'require_approval' },
-				grantSessionToolApproval,
-			});
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-			});
-
-			const result = await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{ resumeData: { approved: true, scope: 'session' } } as never,
-			);
-
-			expect(result).toEqual({ success: true, workflowId: 'wf1' });
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf1');
-		});
-
-		it('should not persist a grant for a one-time update approval', async () => {
-			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
-			const context = createMockContext({
-				permissions: { updateWorkflow: 'require_approval' },
-				grantSessionToolApproval,
-			});
-			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
-				id: 'wf1',
-				versionId: 'v2',
-			});
-
-			await executeTool(
-				createWorkflowsTool(context, 'full'),
-				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
-				{ resumeData: { approved: true } } as never,
-			);
-
-			expect(grantSessionToolApproval).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('delete action', () => {
@@ -2234,7 +1569,7 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
@@ -2252,7 +1587,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2271,7 +1606,7 @@ describe('workflows tool', () => {
 			(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2286,7 +1621,7 @@ describe('workflows tool', () => {
 		it('should archive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -2298,7 +1633,7 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				resumeData: { approved: false },
 			} as never);
@@ -2317,7 +1652,7 @@ describe('workflows tool', () => {
 				permissions: { deleteWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'unarchive', workflowId: 'wf1' },
@@ -2340,7 +1675,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2363,7 +1698,7 @@ describe('workflows tool', () => {
 			const suspension = { suspended: true };
 			const suspend = vi.fn().mockResolvedValue(suspension);
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2376,7 +1711,7 @@ describe('workflows tool', () => {
 		it('should unarchive when approved via resume', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -2388,7 +1723,7 @@ describe('workflows tool', () => {
 		it('should return denied when user rejects', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
 				resumeData: { approved: false },
 			} as never);
@@ -2408,7 +1743,7 @@ describe('workflows tool', () => {
 				permissions: { publishWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
@@ -2418,13 +1753,243 @@ describe('workflows tool', () => {
 			});
 		});
 
+		function contextWithClaim(claim: unknown, permissions?: Partial<InstanceAiPermissions>) {
+			return createMockContext({
+				...(permissions ? { permissions } : {}),
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi
+							.fn()
+							.mockResolvedValue({ runId: 'run-1', verification: { claim } }),
+					},
+				} as never,
+			});
+		}
+
+		const partialClaim = {
+			level: 'partial',
+			plannedNodeCount: 12,
+			reachedNodeCount: 5,
+			nodesNotReached: ['Send Email', 'Log Row'],
+			simulatedNodes: [{ nodeName: 'Create Event', reason: 'Creates a record' }],
+			pinnedNodes: [],
+			unprovenTargets: [],
+			publishReady: false,
+			liveTestRecommended: true,
+		};
+
+		it('should refuse to publish an unverified workflow and disclose the coverage', async () => {
+			const context = contextWithClaim(partialClaim);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			// Refused before the dialog, so an `always_allow` instance is covered too.
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+			const { verificationDisclosure } = result as { verificationDisclosure: string };
+			expect(verificationDisclosure).toContain('NOT fully verified');
+			expect(verificationDisclosure).toContain('Send Email, Log Row');
+			expect(verificationDisclosure).toContain('Create Event');
+		});
+
+		it('should refuse an unverified publish even when approval is not required', async () => {
+			const context = contextWithClaim(partialClaim, { publishWorkflow: 'always_allow' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+		});
+
+		it('still asks the user to approve an acknowledged unverified publish under always_allow', async () => {
+			// The acknowledgement is only the model's word that the user asked, so
+			// it must not be the sole gate: without the dialog an `always_allow`
+			// instance would publish an unverified workflow with no disclosure
+			// anywhere the user could see.
+			const context = contextWithClaim(partialClaim, { publishWorkflow: 'always_allow' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).toContain('NOT fully verified');
+		});
+
+		it('keeps always_allow routine for a verified publish', async () => {
+			const context = contextWithClaim(
+				{ ...partialClaim, level: 'verified', publishReady: true },
+				{ publishWorkflow: 'always_allow' },
+			);
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it('should disclose the coverage in the approval prompt once acknowledged', async () => {
+			const context = contextWithClaim(partialClaim);
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).toContain('Publish');
+			expect(message).toContain('NOT fully verified');
+			expect(message).toContain('Send Email, Log Row');
+		});
+
+		it('should publish once acknowledged and approved', async () => {
+			const context = contextWithClaim(partialClaim);
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', workflowId: 'wf1', acknowledgeUnverified: true },
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
+				versionId: undefined,
+			});
+			expect(result).toMatchObject({ success: true, activeVersionId: 'v2' });
+		});
+
+		it('should not gate a fully verified workflow', async () => {
+			const context = contextWithClaim({ ...partialClaim, level: 'verified', publishReady: true });
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			const { message } = (suspend as Mock).mock.calls[0][0] as { message: string };
+			expect(message).not.toContain('NOT');
+		});
+
+		it('refuses a publish when verification ran but produced no verdict', async () => {
+			// `handleMissingSimulationPlan` writes an attempted record with no
+			// claim. Reading that as an absent record let a failed verification
+			// publish as freely as a workflow nobody ever verified.
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({
+							runId: 'run-1',
+							verification: {
+								attempted: true,
+								success: false,
+								failureSignature: 'missing_simulation_plan',
+							},
+						}),
+					},
+				} as never,
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend: vi.fn(),
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false, denied: true, reason: 'not_verified' });
+			const { verificationDisclosure } = result as { verificationDisclosure: string };
+			expect(verificationDisclosure).toContain('produced no verdict');
+			expect(verificationDisclosure).toContain('missing_simulation_plan');
+		});
+
+		it('does not gate a workflow that was never verified', async () => {
+			// An absent record is unknown, not unverified. Gating it would stop
+			// publishing every workflow built before the claim existed.
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({ runId: 'run-1' }),
+					},
+				} as never,
+			});
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it('should fail open when the build outcome cannot be read', async () => {
+			const context = createMockContext({
+				workflowBuildContext: {
+					threadId: 't1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: {
+						getLatestBuildOutcomeForWorkflow: vi.fn().mockRejectedValue(new Error('storage down')),
+					},
+				} as never,
+				logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never,
+			});
+			(context.workflowService.publish as Mock).mockResolvedValue({ activeVersionId: 'v2' });
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				resumeData: { approved: true },
+			} as never);
+
+			expect(result).toMatchObject({ success: true });
+		});
+
 		it('should suspend for confirmation and then publish when approved', async () => {
 			const context = createMockContext();
 			(context.workflowService.publish as Mock).mockResolvedValue({
 				activeVersionId: 'v2',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -2466,7 +2031,7 @@ describe('workflows tool', () => {
 				activeVersionId: 'v-main',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -2532,7 +2097,7 @@ describe('workflows tool', () => {
 				workflowChecksum: 'sub-b-previous-checksum',
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -2575,7 +2140,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2608,7 +2173,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2627,7 +2192,7 @@ describe('workflows tool', () => {
 				permissions: { updateWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				resumeData: undefined,
 			} as never);
@@ -2646,7 +2211,7 @@ describe('workflows tool', () => {
 				permissions: { updateWorkflow: 'blocked' },
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				resumeData: {
 					approved: true,
@@ -2670,7 +2235,7 @@ describe('workflows tool', () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([]);
 
 			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(
 				tool,
 				{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
@@ -2695,7 +2260,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2723,7 +2288,7 @@ describe('workflows tool', () => {
 			const context = createMockContext({ projectId: 'project-team-1' });
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2762,7 +2327,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2799,7 +2364,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2835,7 +2400,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1', includeAllNodes: true }, {
 				suspend,
 				resumeData: undefined,
@@ -2875,7 +2440,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2909,7 +2474,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2934,7 +2499,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -2960,7 +2525,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1', allowPlainGenericAuth: true }, {
 				suspend,
 				resumeData: undefined,
@@ -3131,7 +2696,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -3153,7 +2718,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -3167,7 +2732,7 @@ describe('workflows tool', () => {
 
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				resumeData: undefined,
 			} as never);
@@ -3199,7 +2764,7 @@ describe('workflows tool', () => {
 				connections: {},
 			});
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				resumeData: {
 					approved: true,
@@ -3237,7 +2802,7 @@ describe('workflows tool', () => {
 
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				resumeData: {
 					approved: true,
@@ -3306,7 +2871,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					suspend,
 					resumeData: undefined,
@@ -3320,7 +2885,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					suspend,
 					resumeData: undefined,
@@ -3338,7 +2903,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(
 					tool,
 					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Post to Slack'] },
@@ -3374,7 +2939,7 @@ describe('workflows tool', () => {
 				};
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					suspend,
 					resumeData: undefined,
@@ -3408,7 +2973,7 @@ describe('workflows tool', () => {
 				};
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					suspend,
 					resumeData: undefined,
@@ -3425,7 +2990,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Notion'] },
@@ -3447,7 +3012,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['slackApi', 'Notion'] },
@@ -3468,7 +3033,7 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext();
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Notion'] },
@@ -3488,7 +3053,7 @@ describe('workflows tool', () => {
 				(analyzeWorkflow as Mock).mockResolvedValue([sheetsParamRequest]);
 				const context = createGrantAwareContext();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					resumeData: { approved: false },
 				} as never);
@@ -3505,7 +3070,7 @@ describe('workflows tool', () => {
 				(analyzeWorkflow as Mock).mockResolvedValue([slackRequest, sheetsRequest]);
 				const context = createGrantAwareContext();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					resumeData: { approved: false },
 				} as never);
@@ -3527,7 +3092,7 @@ describe('workflows tool', () => {
 				(buildCompletedReport as Mock).mockReturnValue([]);
 				const context = createGrantAwareContext();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					resumeData: {
 						approved: true,
@@ -3554,7 +3119,7 @@ describe('workflows tool', () => {
 				]);
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					resumeData: {
 						approved: true,
@@ -3578,7 +3143,7 @@ describe('workflows tool', () => {
 				(context.executionService.run as Mock).mockResolvedValue({ status: 'success' });
 				const suspend = vi.fn();
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					suspend,
 					resumeData: {
@@ -3663,7 +3228,7 @@ describe('workflows tool', () => {
 				]);
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 
-				const tool = createWorkflowsTool(context, 'full');
+				const tool = createWorkflowsTool(context);
 				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 					resumeData: {
 						approved: true,
@@ -3760,7 +3325,7 @@ describe('workflows tool', () => {
 		it('should unpublish when approved', async () => {
 			const context = createMockContext();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			const result = await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
 				resumeData: { approved: true },
 			} as never);
@@ -3777,7 +3342,7 @@ describe('workflows tool', () => {
 			});
 			const suspend = vi.fn();
 
-			const tool = createWorkflowsTool(context, 'full');
+			const tool = createWorkflowsTool(context);
 			await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
 				suspend,
 				resumeData: undefined,
@@ -3933,5 +3498,316 @@ describe('node usage', () => {
 				expect.objectContaining({ nodeTypes: ['n8n-nodes-base.slack'] }),
 			);
 		});
+	});
+});
+
+describe('workflows(action="setup") — setup panel', () => {
+	const openSlack = {
+		node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+		credentialType: 'slackApi',
+		credentialNeedsAction: true,
+		needsAction: true,
+	};
+	const boundGmail = {
+		node: {
+			name: 'Gmail',
+			type: 'n8n-nodes-base.gmail',
+			credentials: { gmailOAuth2: { id: 'cred-1', name: 'Work Gmail' } },
+		},
+		credentialType: 'gmailOAuth2',
+		credentialNeedsAction: false,
+		needsAction: false,
+	};
+	const sheetParams = {
+		node: { name: 'Sheet', type: 'n8n-nodes-base.googleSheets' },
+		parameterIssues: { documentId: ['missing'] },
+		needsAction: true,
+	};
+
+	function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
+		const emitter = {
+			emit: vi.fn(() => true),
+			announce: vi.fn().mockResolvedValue(undefined),
+			merge: vi.fn(() => true),
+			workflowIds: vi.fn(() => []),
+			lastWorkflowId: vi.fn(),
+		};
+		const markWorkflowSetupHandled = vi.fn().mockResolvedValue(undefined);
+		const context = createMockContext({
+			setupItemsEmitter: emitter,
+			markWorkflowSetupHandled,
+			...overrides,
+		});
+		return { context, emitter, markWorkflowSetupHandled };
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		(analyzeWorkflow as Mock).mockReset();
+	});
+
+	it('announces the whole checklist and returns instead of suspending', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack, boundGmail, sheetParams]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+
+		const tool = createWorkflowsTool(context, 'full');
+		const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+
+		expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+			includeSettled: true,
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.announce).toHaveBeenCalledWith('wf1', [
+			expect.objectContaining({
+				id: 'wf1:credential:slackApi',
+				nodeBindings: [{ nodeName: 'Slack' }],
+			}),
+			expect.objectContaining({
+				id: 'wf1:credential:gmailOAuth2',
+				nodeBindings: [{ nodeName: 'Gmail' }],
+			}),
+			expect.objectContaining({ id: 'wf1:parameters:Sheet', parameterNames: ['documentId'] }),
+		]);
+		expect(markWorkflowSetupHandled).toHaveBeenCalledWith('wf1');
+		expect(result).toMatchObject({
+			success: true,
+			announced: true,
+			workflowId: 'wf1',
+			open: [
+				{ kind: 'credential', credentialType: 'slackApi', nodes: ['Slack'] },
+				{ kind: 'parameters', nodeName: 'Sheet', parameterNames: ['documentId'] },
+			],
+			configured: [{ kind: 'credential', credentialType: 'gmailOAuth2', nodes: ['Gmail'] }],
+		});
+		expect((result as { message: string }).message).toContain('Finish your turn now');
+	});
+
+	it('does not report an announcement or mark setup handled when publication fails', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		emitter.announce.mockRejectedValue(new Error('storage unavailable'));
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({ success: false, announced: false });
+		expect(markWorkflowSetupHandled).not.toHaveBeenCalled();
+	});
+
+	it('retries the routing marker before reporting a successful handoff', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		markWorkflowSetupHandled.mockRejectedValueOnce(new Error('storage unavailable'));
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({ success: true, announced: true });
+		expect(markWorkflowSetupHandled).toHaveBeenCalledTimes(2);
+		expect(emitter.announce).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports failure when the routing marker cannot be saved', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack]);
+		const { context, markWorkflowSetupHandled } = panelContext();
+		markWorkflowSetupHandled.mockRejectedValue(new Error('storage unavailable'));
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({ success: false, announced: false });
+		expect(markWorkflowSetupHandled).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps explicit credential replacement in the selection card', async () => {
+		const replacement = { ...openSlack, preferNewCredential: true };
+		(analyzeWorkflow as Mock).mockResolvedValue([replacement, boundGmail]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+
+		await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+
+		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ setupRequests: [replacement] }));
+		expect(emitter.announce).not.toHaveBeenCalled();
+		expect(markWorkflowSetupHandled).not.toHaveBeenCalled();
+	});
+
+	it('keeps failed connection checks in the announcement', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{ ...boundGmail, credentialTestResult: { success: false, message: 'Connection failed' } },
+		]);
+		const { context } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({
+			announced: true,
+			open: [],
+			validationWarnings: [
+				{ nodeName: 'Gmail', credentialType: 'gmailOAuth2', message: 'Connection failed' },
+			],
+		});
+	});
+
+	it('does not scope the announcement to the nodes the last build changed', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack, sheetParams]);
+		const { context, emitter } = panelContext({
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				workflowTaskService: {
+					getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue({
+						workflowId: 'wf1',
+						runId: 'run-1',
+						changedNodeNames: ['Sheet'],
+					}),
+				},
+			} as never,
+			runId: 'run-1',
+		});
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect((emitter.announce as Mock).mock.calls[0][1] as unknown[]).toHaveLength(2);
+		expect((result as { open: unknown[] }).open).toHaveLength(2);
+	});
+
+	it('reports configuration without claiming successful testing', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([boundGmail]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(emitter.announce).toHaveBeenCalledWith('wf1', [
+			expect.objectContaining({ id: 'wf1:credential:gmailOAuth2' }),
+		]);
+		expect(result).toMatchObject({ success: true, announced: true, open: [] });
+		expect((result as { message: string }).message).toContain('Do not describe the workflow');
+	});
+
+	it('still reviews a templated credential destination before announcing', async () => {
+		const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+		(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+		const { context, emitter } = panelContext();
+		const suspend = vi.fn();
+
+		await executeTool(createWorkflowsTool(context, 'full'), fixture.input, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Review where this credential will be used' }),
+		);
+		expect(emitter.announce).not.toHaveBeenCalled();
+	});
+
+	it('announces once the credential destination is approved', async () => {
+		const fixture = templatedSetupFixture({ testUrl: 'https://api.example.com/me' });
+		(analyzeWorkflow as Mock).mockResolvedValue([fixture.request]);
+		const { context, emitter } = panelContext({
+			grantSessionToolApproval: vi.fn().mockResolvedValue(undefined),
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool(createWorkflowsTool(context, 'full'), fixture.input, {
+			suspend,
+			resumeData: { approved: true, credentialDestination: { origin: 'https://api.example.com' } },
+		} as never);
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.announce).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({ announced: true });
+	});
+
+	it('still rejects plain generic auth on a new HTTP credential before announcing', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{
+				node: { name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
+				credentialType: 'httpBearerAuth',
+				credentialNeedsAction: true,
+				needsAction: true,
+				existingCredentials: [],
+			},
+		]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend: vi.fn(), resumeData: undefined } as never,
+		);
+
+		expect(result).toMatchObject({ error: 'plain_generic_auth' });
+		expect(emitter.announce).not.toHaveBeenCalled();
+	});
+
+	it('leaves the legacy resume paths untouched for an already-suspended card', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([]);
+		const { context, emitter } = panelContext();
+
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{
+				suspend: vi.fn(),
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					nodeParameters: { Slack: { channel: '#ops' } },
+				},
+			} as never,
+		);
+
+		expect(applyNodeChanges).toHaveBeenCalled();
+		expect(result).not.toMatchObject({ announced: true });
+		expect(emitter.announce).not.toHaveBeenCalled();
+	});
+
+	it('keeps the suspending card while the panel is off', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([openSlack]);
+		const suspend = vi.fn();
+
+		await executeTool(
+			createWorkflowsTool(createMockContext(), 'full'),
+			{ action: 'setup', workflowId: 'wf1' },
+			{ suspend, resumeData: undefined } as never,
+		);
+
+		expect(analyzeWorkflow).toHaveBeenCalledWith(expect.anything(), 'wf1', undefined, {});
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Configure credentials for your workflow' }),
+		);
 	});
 });

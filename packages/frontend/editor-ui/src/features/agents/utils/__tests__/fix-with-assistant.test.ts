@@ -98,7 +98,7 @@ describe('buildAgentFixWithAssistantPrompt', () => {
 		expect(baseText).toHaveBeenCalledWith(
 			'agents.builder.preview.fixWithAssistantPrompt.template',
 			{
-				interpolate: { diagnostics: '__N8N_FIX_WITH_ASSISTANT_DIAGNOSTICS__' },
+				interpolate: { diagnostics: '__N8N_ASSISTANT_DRAFT_BODY__' },
 			},
 		);
 	});

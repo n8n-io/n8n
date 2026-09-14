@@ -152,10 +152,16 @@ export class LmChatAzureOpenAi implements INodeType {
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
 					fetchOptions: {
-						dispatcher: getProxyAgent(undefined, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
+						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.
+						dispatcher: getProxyAgent(
+							modelConfig.azureOpenAIEndpoint ||
+								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+						),
 					},
 				},
 				modelKwargs: options.responseFormat

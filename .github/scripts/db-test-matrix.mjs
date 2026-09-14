@@ -24,13 +24,24 @@ export function readPostgresVersions(repoRoot = REPO_ROOT) {
 	return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+const SCOPES = new Set(['pr', 'full']);
+
 /**
  * Coverage and the schema-docs check run on the primary Postgres leg only, since
  * the committed docs come from that one version.
  *
+ * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
+ * every Postgres major. The merge queue generates with 'full', so every merge
+ * still gates on the older majors.
+ *
  * @param {PostgresVersions} versions
+ * @param {'pr' | 'full'} scope
  */
-export function buildMatrix(versions) {
+export function buildMatrix(versions, scope = 'full') {
+	if (!SCOPES.has(scope)) {
+		throw new Error(`Unknown scope "${scope}", expected "pr" or "full"`);
+	}
+
 	const { primary, matrix } = versions;
 
 	if (!Array.isArray(matrix) || matrix.length === 0) {
@@ -67,6 +78,9 @@ export function buildMatrix(versions) {
 		}
 	}
 
+	// Validation always runs on the full list; scope only trims the output.
+	const postgresLegs = scope === 'pr' ? matrix.filter(({ image }) => image === primary) : matrix;
+
 	return [
 		{
 			name: 'SQLite Pooled',
@@ -77,7 +91,7 @@ export function buildMatrix(versions) {
 			TEST_IMAGE_POSTGRES: undefined,
 			collectCoverage: 'false',
 		},
-		...matrix.map(({ major, image }) => ({
+		...postgresLegs.map(({ major, image }) => ({
 			name: `Postgres ${major}`,
 			runner: RUNNER,
 			'test-cmd': 'pnpm test:postgres:integration:tc',
@@ -91,5 +105,7 @@ export function buildMatrix(versions) {
 
 // Skipped when imported by the tests.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	console.log(JSON.stringify(buildMatrix(readPostgresVersions())));
+	const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
+	const scope = scopeArg ? scopeArg.slice('--scope='.length) : 'full';
+	console.log(JSON.stringify(buildMatrix(readPostgresVersions(), scope)));
 }
