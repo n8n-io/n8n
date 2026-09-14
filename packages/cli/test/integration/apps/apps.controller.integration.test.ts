@@ -113,7 +113,8 @@ describe('GET /projects/:projectId/apps', () => {
 		await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
 
 		const response = await authOwnerAgent.get(`/projects/${ownerProject.id}/apps`).expect(200);
-		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data).toMatchObject({ count: 1 });
+		expect(response.body.data.data).toHaveLength(1);
 
 		await authMemberAgent.get(`/projects/${ownerProject.id}/apps`).expect(403);
 	});

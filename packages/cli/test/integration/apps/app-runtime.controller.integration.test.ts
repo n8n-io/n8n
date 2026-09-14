@@ -4,7 +4,13 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { ExecutionRepository, type IWorkflowDb, type Project, type User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	WorkflowPublishedVersionRepository,
+	type IWorkflowDb,
+	type Project,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { gzipSync } from 'node:zlib';
@@ -134,6 +140,10 @@ const createPublishedWorkflow = async (
 		owner,
 	);
 	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 	return workflow;
 };
 
@@ -172,6 +182,7 @@ beforeEach(async () => {
 		'App',
 		'ExecutionEntity',
 		'SharedWorkflow',
+		'WorkflowPublishedVersion',
 		'WorkflowEntity',
 		'WorkflowHistory',
 	]);

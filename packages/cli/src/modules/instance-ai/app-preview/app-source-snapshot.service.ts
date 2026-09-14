@@ -51,7 +51,7 @@ export function buildSnapshotScript(input: {
 		'set -e',
 		`mkdir -p '${input.root}/${STAGING_DIR}'`,
 		`cd '${input.root}/${APPS_DIR}/${input.namespace}'`,
-		`if [ "$(git log -1 --format=%s 2>/dev/null)" = scaffold ] && [ -z "$(git status --porcelain 2>/dev/null)" ]; then echo PRISTINE; exit 0; fi`,
+		'if [ "$(git log -1 --format=%s 2>/dev/null)" = scaffold ] && [ -z "$(git status --porcelain 2>/dev/null)" ]; then echo PRISTINE; exit 0; fi',
 		`hash=$(tar -cf - ${excludes} . | (sha256sum 2>/dev/null || cksum) | cut -d' ' -f1)`,
 		`if [ "$hash" = '${input.lastHash ?? ''}' ]; then echo UNCHANGED; exit 0; fi`,
 		`tar -czf '${tarball}' ${excludes} .`,
