@@ -72,6 +72,20 @@ describe('WorkflowRunAsBindingRepository', () => {
 		});
 	});
 
+	test('deleting the setBy user leaves the binding with setBy null', async () => {
+		await repository.insertActive({ workflowId: workflow.id, userId: owner.id, setBy: member.id });
+
+		await Container.get(UserRepository).delete(member.id);
+
+		const binding = await repository.findActiveByWorkflowId(workflow.id);
+		expect(binding).toMatchObject({
+			workflowId: workflow.id,
+			userId: owner.id,
+			setBy: null,
+			status: 'active',
+		});
+	});
+
 	test('deleting the user cascades the binding', async () => {
 		await repository.insertActive({ workflowId: workflow.id, userId: member.id, setBy: owner.id });
 

@@ -21,6 +21,9 @@ export type WorkflowRunAsBindingStatus = 'active' | 'revoked';
  */
 @Entity({ name: 'workflow_run_as_binding' })
 @Index(['userId'])
+// Mirrors the partial unique index the migration creates. Revoked rows stay for audit,
+// so only the active row takes part.
+@Index(['workflowId'], { unique: true, where: '"status" = \'active\'' })
 export class WorkflowRunAsBinding extends WithTimestamps {
 	@PrimaryColumn({ type: 'uuid' })
 	id: string;
