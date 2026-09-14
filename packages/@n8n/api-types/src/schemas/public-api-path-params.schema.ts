@@ -23,6 +23,7 @@ export const projectIdParamSchema = stringIdParamSchema('The ID of the project.'
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
 export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
 export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
+export const userIdentifierParamSchema = stringIdParamSchema('The ID or email of the user.');
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
 export const promotionConnectionIdParamSchema = stringIdParamSchema(

@@ -165,6 +165,7 @@ export {
 	roleSlugParamSchema,
 	tagIdParamSchema,
 	userIdParamSchema,
+	userIdentifierParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
