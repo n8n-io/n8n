@@ -11,7 +11,13 @@ import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'queued'
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -53,6 +59,13 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	activeThreadId: string | null;
+
+	/**
+	 * Memory resource id of the sender (`draft-chat:<userId>`). Set on queued
+	 * preview turns so the drain can run the turn as that user; null otherwise.
+	 */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	resourceId: string | null;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;

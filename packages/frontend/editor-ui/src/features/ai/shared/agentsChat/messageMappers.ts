@@ -231,6 +231,17 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
  * `InteractivePayload` so the UI re-renders the card in either its open
  * (awaiting user) or resolved (disabled) state.
  */
+function persistedMessageStatus(
+	role: ChatMessage['role'],
+	executionStatus: AgentPersistedMessageDto['executionStatus'],
+): ChatMessage['status'] {
+	if (executionStatus === 'error') return CHAT_MESSAGE_STATUS.ERROR;
+	if (executionStatus === 'queued') return CHAT_MESSAGE_STATUS.QUEUED;
+	// A user turn that runs without a stream in this tab, e.g. a picked-up queued message.
+	if (role === 'user' && executionStatus === 'running') return CHAT_MESSAGE_STATUS.STREAMING;
+	return undefined;
+}
+
 export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
@@ -248,8 +259,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
-		let status: ChatMessage['status'] =
-			msg.executionStatus === 'error' ? CHAT_MESSAGE_STATUS.ERROR : undefined;
+		let status = persistedMessageStatus(role, msg.executionStatus);
 
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {

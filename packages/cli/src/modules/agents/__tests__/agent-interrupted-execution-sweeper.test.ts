@@ -2,6 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatQueueService } from '../agent-chat-queue.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -24,6 +25,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
+		mock<AgentChatQueueService>(),
 	);
 	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
 }

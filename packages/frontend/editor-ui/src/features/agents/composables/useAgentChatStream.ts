@@ -2,11 +2,12 @@ import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
+	AgentChatAttachmentPayload,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
@@ -17,8 +18,11 @@ import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
+	editQueuedAgentChatMessage,
 	getChatMessages,
 	getTestChatMessages,
+	queueAgentChatMessage,
+	removeQueuedAgentChatMessage,
 } from './useAgentApi';
 
 import {
@@ -89,7 +93,7 @@ function warningKey(warning: AgentChatWarning): string {
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
-	const { showError } = useToast();
+	const { showError, showMessage } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreaming = ref(false);
@@ -123,12 +127,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const warnings = ref<AgentChatWarning[]>([]);
 	const dismissedWarningKeys = new Set<string>();
 
+	const isQueued = (msg: ChatMessage) => msg.status === CHAT_MESSAGE_STATUS.QUEUED;
+
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
-		const lastMsg = messages.value[messages.value.length - 1];
+		// Queued bubbles trail the transcript; the streamed turn ends before them.
+		const lastMsg = messages.value.findLast((msg) => !isQueued(msg));
 		if (!lastMsg || lastMsg.role === 'user') return 'waitingFirstChunk';
 		return 'receiving';
 	});
+
+	/**
+	 * The thread runs a turn somewhere — this tab's stream, a queued row, or a
+	 * turn that runs without a stream here. A new message must queue.
+	 */
+	const threadBusy = computed(
+		() =>
+			isStreaming.value ||
+			messages.value.some(
+				(msg) =>
+					isQueued(msg) || (msg.role === 'user' && msg.status === CHAT_MESSAGE_STATUS.STREAMING),
+			),
+	);
+
+	/** Insert a live bubble above the queued ones, which always trail. */
+	function appendLive(msg: ChatMessage): void {
+		const index = messages.value.findLastIndex((m) => !isQueued(m));
+		messages.value.splice(index + 1, 0, msg);
+	}
 
 	async function refreshHistory({
 		clearOnNotFound = false,
@@ -307,7 +333,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 		});
-		messages.value.push(msg);
+		appendLive(msg);
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
@@ -451,7 +477,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		settleOpenReasoning(session);
 		dropOrphanMintedBubbles(session);
 		markInFlightStateFailed(session);
-		messages.value.push(
+		appendLive(
 			reactive<ChatMessage>({
 				id: crypto.randomUUID(),
 				role: 'assistant',
@@ -699,8 +725,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else if (event.errorCode === 'agent_turn_queue_full') {
+					// Another tab raced this send into a full queue: keep the draft out of
+					// the transcript and tell the user, as the queue route's 409 does.
+					const tail = messages.value.findLast((msg) => !isQueued(msg));
+					if (tail?.role === 'user') messages.value.splice(messages.value.indexOf(tail), 1);
+					showError(new Error(event.message), locale.baseText('agents.chat.queue.error'));
 				} else {
-					messages.value.push(
+					appendLive(
 						reactive<ChatMessage>({
 							id: crypto.randomUUID(),
 							role: 'assistant',
@@ -820,7 +852,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					content: `Error: ${response.statusText || 'Failed to reach agent'}`,
 					status: 'error',
 				};
-				messages.value.push(errorMsg);
+				appendLive(errorMsg);
 				return { outcome: 'failed' };
 			}
 
@@ -867,6 +899,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
+	async function encodeAttachments(files: File[]): Promise<AgentChatAttachmentPayload[]> {
+		return await Promise.all(
+			files.map(async (file) => {
+				const encoded = await convertFileToBinaryData(file);
+				// Browsers report an empty type for unrecognized extensions; the
+				// backend requires a non-empty mime type and sniffs the real one.
+				return {
+					fileName: file.name,
+					mimeType: file.type || 'application/octet-stream',
+					data: encoded.data,
+				};
+			}),
+		);
+	}
+
 	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
@@ -875,18 +922,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.sessionId = params.continueSessionId.value;
 		}
 		if (files?.length) {
-			body.attachments = await Promise.all(
-				files.map(async (file) => {
-					const encoded = await convertFileToBinaryData(file);
-					// Browsers report an empty type for unrecognized extensions; the
-					// backend requires a non-empty mime type and sniffs the real one.
-					return {
-						fileName: file.name,
-						mimeType: file.type || 'application/octet-stream',
-						data: encoded.data,
-					};
-				}),
-			);
+			body.attachments = await encodeAttachments(files);
 		}
 		await postAndConsume(url, body);
 	}
@@ -964,7 +1000,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (isCancellation) {
 			optimisticUserMessageId = crypto.randomUUID();
 			fatalError.value = null;
-			messages.value.push({
+			appendLive({
 				id: optimisticUserMessageId,
 				role: 'user',
 				content: text,
@@ -1018,27 +1054,116 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
+	function toLocalAttachments(files: File[]): ChatMessage['attachments'] {
+		return files.map((file) => ({
+			fileName: file.name,
+			mimeType: file.type || 'application/octet-stream',
+			sizeBytes: file.size,
+			file,
+		}));
+	}
+
+	function httpStatus(error: unknown): number | undefined {
+		return isRecord(error) && typeof error.httpStatusCode === 'number'
+			? error.httpStatusCode
+			: undefined;
+	}
+
+	/**
+	 * Store the message server-side so it runs when the running turn ends. The
+	 * bubble takes the persisted id so the next history refetch replaces it in place.
+	 */
+	async function queueMessage(sessionId: string, text: string, files?: File[]): Promise<void> {
+		try {
+			const { executionId } = await queueAgentChatMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				{
+					message: text,
+					sessionId,
+					...(files?.length ? { attachments: await encodeAttachments(files) } : {}),
+				},
+			);
+			messages.value.push({
+				id: `${executionId}:user`,
+				role: 'user',
+				content: text,
+				status: CHAT_MESSAGE_STATUS.QUEUED,
+				executionId,
+				...(files?.length && { attachments: toLocalAttachments(files) }),
+			});
+		} catch (error) {
+			showError(error, locale.baseText('agents.chat.queue.error'));
+		}
+	}
+
+	/**
+	 * Streams the turn on an idle thread; queues the message while the thread
+	 * runs one. Without a session id there is nothing to queue on, so the busy
+	 * thread rejects the send as before.
+	 */
 	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
+		if ((!trimmed && !files?.length) || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
-		messages.value.push({
+		if (threadBusy.value) {
+			const sessionId = params.continueSessionId?.value;
+			if (sessionId) await queueMessage(sessionId, trimmed, files);
+			return;
+		}
+		appendLive({
 			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
 			status: 'success',
-			...(files?.length && {
-				attachments: files.map((file) => ({
-					fileName: file.name,
-					mimeType: file.type || 'application/octet-stream',
-					sizeBytes: file.size,
-					file,
-				})),
-			}),
+			...(files?.length && { attachments: toLocalAttachments(files) }),
 		});
 		await streamChat(trimmed, files);
+	}
+
+	/** A 409 means the agent picked the row up: the transcript moved on, so reload it. */
+	async function reportQueueMutationFailure(error: unknown, titleKey: BaseTextKey): Promise<void> {
+		if (httpStatus(error) === 409) {
+			showMessage({ type: 'warning', title: locale.baseText('agents.chat.queue.alreadyStarted') });
+			await refreshHistory({ silent: true });
+			return;
+		}
+		showError(error, locale.baseText(titleKey));
+	}
+
+	async function editQueuedMessage(executionId: string, text: string): Promise<void> {
+		const trimmed = text.trim();
+		const bubble = messages.value.find((msg) => msg.id === `${executionId}:user`);
+		if (!trimmed || !bubble) return;
+		try {
+			await editQueuedAgentChatMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				executionId,
+				trimmed,
+			);
+			bubble.content = trimmed;
+		} catch (error) {
+			await reportQueueMutationFailure(error, 'agents.chat.queue.editError');
+		}
+	}
+
+	async function removeQueuedMessage(executionId: string): Promise<void> {
+		try {
+			await removeQueuedAgentChatMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				executionId,
+			);
+			messages.value = messages.value.filter((msg) => msg.id !== `${executionId}:user`);
+		} catch (error) {
+			await reportQueueMutationFailure(error, 'agents.chat.queue.removeError');
+		}
 	}
 
 	function dismissFatalError(): void {
@@ -1109,6 +1234,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages,
 		isStreaming,
 		isCancelling,
+		threadBusy,
 		messagingState,
 		fatalError,
 		warnings,
@@ -1116,6 +1242,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		refresh,
 		clearHistory,
 		sendMessage,
+		editQueuedMessage,
+		removeQueuedMessage,
 		stopGenerating,
 		resume,
 		cancelAndSteer,

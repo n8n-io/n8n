@@ -1,8 +1,11 @@
 /**
  * Status of an assistant message during/after streaming.
  * Used by `useAgentChatStream`, `agentChatMessages`, and templates.
+ * A user message carries `queued` while it waits for the running turn, and
+ * `streaming` while its own turn runs without a stream in this tab.
  */
 export const CHAT_MESSAGE_STATUS = {
+	QUEUED: 'queued',
 	STREAMING: 'streaming',
 	SUCCESS: 'success',
 	ERROR: 'error',

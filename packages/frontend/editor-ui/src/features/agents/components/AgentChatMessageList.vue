@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nText,
+} from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
@@ -44,6 +51,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
+	editQueued: [executionId: string, text: string];
+	removeQueued: [executionId: string];
 }>();
 
 const i18n = useI18n();
@@ -173,6 +182,57 @@ const changeRequestGroupId = computed(() =>
 
 function onEditWithAssistant(changeRequest: string) {
 	emit('sendToAssistant', { changeRequest });
+}
+
+// Queued user messages can change or leave until the agent picks them up.
+const editingQueuedId = ref<string | null>(null);
+const editedQueuedText = ref('');
+
+function isQueuedUserMessage(message: ChatMessage): boolean {
+	return (
+		message.role === 'user' &&
+		message.status === CHAT_MESSAGE_STATUS.QUEUED &&
+		message.executionId !== undefined
+	);
+}
+
+function startQueuedEdit(message: ChatMessage): void {
+	editingQueuedId.value = message.executionId ?? null;
+	editedQueuedText.value = message.content;
+}
+
+function cancelQueuedEdit(): void {
+	editingQueuedId.value = null;
+}
+
+function removeQueued(message: ChatMessage): void {
+	if (message.executionId) emit('removeQueued', message.executionId);
+}
+
+function saveQueuedEdit(message: ChatMessage): void {
+	const text = editedQueuedText.value.trim();
+	if (text && message.executionId && text !== message.content) {
+		emit('editQueued', message.executionId, text);
+	}
+	editingQueuedId.value = null;
+}
+
+function onQueuedEditKeydown(event: KeyboardEvent, message: ChatMessage): void {
+	if (event.key === 'Escape') {
+		cancelQueuedEdit();
+	} else if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+		event.preventDefault();
+		saveQueuedEdit(message);
+	}
+}
+
+/** A user turn that runs without a stream in this tab and has no reply yet. */
+function awaitsHeadlessReply(index: number): boolean {
+	const group = displayGroups.value[index];
+	if (group.kind !== 'message' || group.message.role !== 'user') return false;
+	if (group.message.status !== CHAT_MESSAGE_STATUS.STREAMING) return false;
+	const next = displayGroups.value[index + 1];
+	return next === undefined || !isAssistantGroup(next);
 }
 
 function isThinkingActive(message: ChatMessage): boolean {
@@ -410,7 +470,7 @@ watch(
 
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
-		<template v-for="group in displayGroups" :key="group.id">
+		<template v-for="(group, index) in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
@@ -542,7 +602,67 @@ watch(
 						{{ group.message.author.name }}
 					</N8nText>
 					<div
-						v-if="group.message.role === 'user' && group.message.content"
+						v-if="isQueuedUserMessage(group.message)"
+						:class="$style.queuedBar"
+						data-testid="agent-chat-queued-message"
+					>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('agents.chat.queue.queued') }}
+						</N8nText>
+						<N8nIconButton
+							icon="pen"
+							variant="ghost"
+							size="xsmall"
+							:aria-label="i18n.baseText('agents.chat.queue.edit')"
+							:title="i18n.baseText('agents.chat.queue.edit')"
+							data-testid="agent-chat-queued-edit"
+							@click="startQueuedEdit(group.message)"
+						/>
+						<N8nIconButton
+							icon="trash-2"
+							variant="ghost"
+							size="xsmall"
+							:aria-label="i18n.baseText('agents.chat.queue.remove')"
+							:title="i18n.baseText('agents.chat.queue.remove')"
+							data-testid="agent-chat-queued-remove"
+							@click="removeQueued(group.message)"
+						/>
+					</div>
+					<div
+						v-if="
+							isQueuedUserMessage(group.message) && editingQueuedId === group.message.executionId
+						"
+						:class="$style.queuedEdit"
+					>
+						<N8nInput
+							v-model="editedQueuedText"
+							type="textarea"
+							:autosize="{ minRows: 1, maxRows: 10 }"
+							data-testid="agent-chat-queued-edit-input"
+							@keydown="onQueuedEditKeydown($event, group.message)"
+						/>
+						<div :class="$style.queuedEditActions">
+							<N8nButton
+								variant="subtle"
+								size="small"
+								data-testid="agent-chat-queued-edit-cancel"
+								@click="cancelQueuedEdit"
+							>
+								{{ i18n.baseText('agents.chat.queue.cancel') }}
+							</N8nButton>
+							<N8nButton
+								variant="solid"
+								size="small"
+								:disabled="!editedQueuedText.trim()"
+								data-testid="agent-chat-queued-edit-save"
+								@click="saveQueuedEdit(group.message)"
+							>
+								{{ i18n.baseText('agents.chat.queue.save') }}
+							</N8nButton>
+						</div>
+					</div>
+					<div
+						v-else-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
@@ -648,6 +768,11 @@ watch(
 						"
 						:class="$style.typingIndicator"
 					/>
+				</div>
+			</div>
+			<div v-if="awaitsHeadlessReply(index)" :class="$style.message">
+				<div :class="$style.content">
+					<AgentTypingIndicator :class="$style.typingIndicator" />
 				</div>
 			</div>
 		</template>
@@ -766,6 +891,26 @@ watch(
 
 .author {
 	padding: 0 var(--spacing--sm) var(--spacing--4xs);
+}
+
+.queuedBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--2xs) var(--spacing--4xs);
+}
+
+.queuedEdit {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.queuedEditActions {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 
 .chatMessageError {

@@ -71,6 +71,18 @@ export interface ClaimedExecutionRecording {
 	claimLost: AbortSignal;
 }
 
+/** A queued row plus the scope its update events carry. */
+export type QueuedExecutionRef = Pick<AgentExecution, 'id' | 'threadId'> & {
+	agentId: string;
+	projectId: string;
+};
+
+/** The claim on a promoted queued row, with the user turn as it was at pickup. */
+export interface ClaimedQueuedExecution extends ClaimedExecutionRecording {
+	userMessage: string | null;
+	attachments: AgentExecution['attachments'];
+}
+
 interface TimelineSnapshotParams {
 	executionId: string;
 	projectId: string;
@@ -130,7 +142,12 @@ export class AgentExecutionService {
 
 	/** Record a running run that does not take part in the per-thread turn queue. */
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const executionId = await this.insertRunningExecution(params, startedAt, null);
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			activeThreadId: null,
+			startedAt,
+			resourceId: null,
+		});
 		this.startHeartbeat(executionId);
 		return executionId;
 	}
@@ -145,26 +162,97 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 		startedAt: Date,
 	): Promise<ClaimedExecutionRecording> {
-		const executionId = await this.insertRunningExecution(params, startedAt, params.threadId);
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			activeThreadId: params.threadId,
+			startedAt,
+			resourceId: null,
+		});
+		return this.holdClaim(executionId, params.threadId);
+	}
+
+	/**
+	 * Store a preview-chat message that waits for the thread's running turn.
+	 * `resourceId` names the sender, so the drain can run the turn as that user.
+	 */
+	async recordQueuedExecution(
+		params: StartExecutionParams & { resourceId: string },
+	): Promise<string> {
+		return await this.insertExecution(params, {
+			status: 'queued',
+			activeThreadId: null,
+			startedAt: null,
+			resourceId: params.resourceId,
+		});
+	}
+
+	async isQueued(executionId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.existsBy({ id: executionId, status: 'queued' });
+	}
+
+	/**
+	 * Promote a queued row to the thread's claimed running row, like
+	 * {@link startClaimedExecutionRecording} without the insert. `null` when the
+	 * row is no longer queued. The user turn is read after the promote, so no
+	 * later edit can change what the model receives.
+	 */
+	async claimQueuedExecution(
+		execution: QueuedExecutionRef,
+		startedAt: Date,
+	): Promise<ClaimedQueuedExecution | null> {
+		const promoted = await this.agentExecutionRepository.promoteQueuedToRunning(
+			execution.id,
+			execution.threadId,
+			startedAt,
+		);
+		if (!promoted) return null;
+		this.executionUpdateBroadcaster.notify({
+			projectId: execution.projectId,
+			agentId: execution.agentId,
+			threadId: execution.threadId,
+			executionId: execution.id,
+		});
+		const row = await this.agentExecutionRepository.findOneBy({ id: execution.id });
+		return {
+			...this.holdClaim(execution.id, execution.threadId),
+			userMessage: row?.userMessage ?? null,
+			attachments: row?.attachments ?? null,
+		};
+	}
+
+	/** End a queued row that cannot run, e.g. because its sender is gone. */
+	async failQueuedExecution(execution: QueuedExecutionRef, error: unknown): Promise<void> {
+		const failed = await this.agentExecutionRepository.failQueued(
+			execution.id,
+			error instanceof Error ? error.message : String(error),
+			new Date(),
+		);
+		if (!failed) return;
+		this.executionUpdateBroadcaster.notify({
+			projectId: execution.projectId,
+			agentId: execution.agentId,
+			threadId: execution.threadId,
+			executionId: execution.id,
+		});
+	}
+
+	private holdClaim(executionId: string, threadId: string): ClaimedExecutionRecording {
 		const claim = new AbortController();
 		this.startHeartbeat(executionId, {
-			threadId: params.threadId,
+			threadId,
 			onLost: (reason) => claim.abort(new OperationalError(reason)),
 		});
 		return { executionId, claimLost: claim.signal };
 	}
 
-	private async insertRunningExecution(
+	private async insertExecution(
 		params: StartExecutionParams,
-		startedAt: Date,
-		activeThreadId: string | null,
+		row: Pick<AgentExecution, 'status' | 'activeThreadId' | 'startedAt' | 'resourceId'>,
 	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
 		const inserted = await this.agentExecutionRepository.insertRunning({
 			threadId: params.threadId,
-			activeThreadId,
-			status: 'running',
-			startedAt,
+			...row,
 			stoppedAt: null,
 			duration: 0,
 			userMessage,
@@ -696,7 +784,7 @@ export class AgentExecutionService {
 }
 
 function toSessionStatus(
-	latestStatus: AgentExecutionStatus | undefined,
+	latestStatus: Exclude<AgentExecutionStatus, 'queued'> | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;
@@ -713,7 +801,7 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
-function executionStatus(record: MessageRecord): AgentExecution['status'] {
+function executionStatus(record: MessageRecord): Exclude<AgentExecutionStatus, 'queued'> {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';

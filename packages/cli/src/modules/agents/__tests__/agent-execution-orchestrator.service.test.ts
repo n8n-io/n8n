@@ -16,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
 
+import { AgentChatQueueService } from '../agent-chat-queue.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentThreadClaimConflictError } from '../repositories/agent-execution.repository';
@@ -153,6 +154,8 @@ function makeService(sandboxEnabled = false) {
 	});
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
+	const chatQueueService = mock<AgentChatQueueService>();
+	Container.set(AgentChatQueueService, chatQueueService);
 	const turnCoordinator = createTestTurnCoordinator();
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
@@ -190,6 +193,7 @@ function makeService(sandboxEnabled = false) {
 		agentSandboxRuntimeService,
 		agentRepository,
 		wakeService,
+		chatQueueService,
 		chatIntegrationService,
 		bridge,
 		turnCoordinator,
@@ -868,6 +872,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(first.wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
+		// Messages queued during the turn run before the job results.
+		expect(first.chatQueueService.requestDrain).toHaveBeenCalledWith('thread-1');
+		expect(first.chatQueueService.requestDrain.mock.invocationCallOrder[0]).toBeLessThan(
+			first.wakeService.onParentTurnFinished.mock.invocationCallOrder[0],
+		);
 
 		const failing = makeService();
 		failing.runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
@@ -962,6 +971,109 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 		expect(runtime.agent.stream).not.toHaveBeenCalled();
+	});
+
+	it('runs a queued message as its own turn on the promoted row with the text read at pickup', async () => {
+		const { service, runtimeCacheService, executionService, turnCoordinator } = makeService();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Answer to the queued question.' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		executionService.isQueued.mockResolvedValue(true);
+		executionService.claimQueuedExecution.mockResolvedValue({
+			executionId: 'queued-1',
+			claimLost: new AbortController().signal,
+			userMessage: 'edited before pickup',
+			attachments: null,
+		});
+
+		// The running turn holds the thread; the queued message waits for it.
+		const runningTurn = await turnCoordinator.coordinator.acquire('thread-1');
+		const queued = service.executeForQueued({
+			agentId,
+			projectId,
+			executionId: 'queued-1',
+			threadId: 'thread-1',
+			user,
+			resourceId: 'draft-chat:user-1',
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		runningTurn.release();
+
+		await expect(queued).resolves.toBe('ran');
+		expect(executionService.claimQueuedExecution).toHaveBeenCalledWith(
+			{ id: 'queued-1', threadId: 'thread-1', agentId, projectId },
+			expect.any(Date),
+		);
+		expect(executionService.startClaimedExecutionRecording).not.toHaveBeenCalled();
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
+			expect.objectContaining({ user, previewChat: true }),
+		);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'edited before pickup',
+			expect.objectContaining({
+				persistence: expect.objectContaining({ resourceId: 'draft-chat:user-1' }),
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'queued-1',
+			expect.objectContaining({
+				userMessage: 'edited before pickup',
+				record: expect.objectContaining({ assistantResponse: 'Answer to the queued question.' }),
+			}),
+		);
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+	});
+
+	it('leaves a queued message alone while the thread awaits a human response and skips one that left the queue', async () => {
+		const { service, runtimeCacheService, executionService, checkpointStorage } = makeService();
+		const config = {
+			agentId,
+			projectId,
+			executionId: 'queued-1',
+			threadId: 'thread-1',
+			user,
+			resourceId: 'draft-chat:user-1',
+		};
+
+		executionService.hasSuspendedRun.mockResolvedValue(true);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(makeCheckpoint());
+		await expect(service.executeForQueued(config)).resolves.toBe('deferred');
+
+		executionService.hasSuspendedRun.mockResolvedValue(false);
+		executionService.isQueued.mockResolvedValue(false);
+		await expect(service.executeForQueued(config)).resolves.toBe('skipped');
+
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(executionService.claimQueuedExecution).not.toHaveBeenCalled();
+		expect(executionService.failQueuedExecution).not.toHaveBeenCalled();
+	});
+
+	it('ends a queued message whose runtime cannot be built and moves on', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const cause = new Error('credential gone');
+		executionService.isQueued.mockResolvedValue(true);
+		runtimeCacheService.getRuntime.mockRejectedValue(cause);
+
+		await expect(
+			service.executeForQueued({
+				agentId,
+				projectId,
+				executionId: 'queued-1',
+				threadId: 'thread-1',
+				user,
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe('skipped');
+
+		expect(executionService.failQueuedExecution).toHaveBeenCalledWith(
+			{ id: 'queued-1', threadId: 'thread-1', agentId, projectId },
+			cause,
+		);
+		expect(executionService.claimQueuedExecution).not.toHaveBeenCalled();
 	});
 
 	it.each(['draft', 'published'] as const)(

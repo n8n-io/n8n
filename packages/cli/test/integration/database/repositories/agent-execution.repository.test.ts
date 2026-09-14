@@ -241,6 +241,51 @@ describe('AgentExecutionRepository', () => {
 			hitlStatus: null,
 			source: null,
 			attachments: null,
+			resourceId: null,
+		});
+
+		it('promotes a queued row into the thread claim only while the row is queued and the thread is free', async () => {
+			const thread = await createThread();
+			const queued = await repository.insertRunning({
+				...runningValues(thread.id, null),
+				status: 'queued',
+				startedAt: null,
+				resourceId: 'draft-chat:user-1',
+			});
+			const running = await repository.insertRunning(runningValues(thread.id, thread.id));
+			const startedAt = new Date('2026-09-14T10:00:00.000Z');
+
+			await expect(
+				repository.promoteQueuedToRunning(queued.id, thread.id, startedAt),
+			).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
+			expect(await repository.findOneByOrFail({ id: queued.id })).toMatchObject({
+				status: 'queued',
+				activeThreadId: null,
+			});
+
+			await repository.updateIfRunning(running.id, {
+				status: 'success',
+				stoppedAt: new Date(),
+				duration: 1,
+				timeline: null,
+				storedAt: 'db',
+				error: null,
+				failureSummary: null,
+			});
+			expect(await repository.promoteQueuedToRunning(queued.id, thread.id, startedAt)).toBe(true);
+			expect(await repository.findOneByOrFail({ id: queued.id })).toMatchObject({
+				status: 'running',
+				activeThreadId: thread.id,
+				startedAt,
+			});
+
+			// A promoted row is no longer queued: a second pickup, an edit and a removal all miss it.
+			expect(await repository.promoteQueuedToRunning(queued.id, thread.id, startedAt)).toBe(false);
+			expect(await repository.updateQueuedMessage(queued.id, 'changed')).toBe(false);
+			expect(await repository.deleteQueued(queued.id)).toBe(false);
+			expect(await repository.findOneByOrFail({ id: queued.id })).toMatchObject({
+				userMessage: 'run',
+			});
 		});
 
 		it('allows one claimed running row per thread and releases the claim when the row ends', async () => {
@@ -375,7 +420,19 @@ describe('AgentExecutionRepository', () => {
 				failureSummary: null,
 				createdAt: new Date('2026-01-02T00:00:00Z'),
 			});
-			await createExecution({ threadId: succeeded.id, status: 'success', failureSummary: null });
+			await createExecution({
+				threadId: succeeded.id,
+				status: 'success',
+				failureSummary: null,
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+			});
+			// A message waiting behind the last run does not change the thread's status.
+			await createExecution({
+				threadId: succeeded.id,
+				status: 'queued',
+				failureSummary: null,
+				createdAt: new Date('2026-01-03T00:00:00Z'),
+			});
 			await createExecution({
 				threadId: recovered.id,
 				status: 'success',
@@ -394,8 +451,12 @@ describe('AgentExecutionRepository', () => {
 			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
 			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
 
-			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([
+				running.id,
+				succeeded.id,
+			]);
 			expect(latestStatuses.get(running.id)).toBe('running');
+			expect(latestStatuses.get(succeeded.id)).toBe('success');
 		});
 
 		it('mirrors the displayed origin precedence', async () => {

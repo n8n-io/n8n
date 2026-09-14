@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import { AgentChatQueueService } from './agent-chat-queue.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
@@ -18,6 +19,7 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly chatQueueService: AgentChatQueueService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -73,6 +75,13 @@ export class AgentInterruptedExecutionSweeper {
 			await this.agentWakeService.drainUnconsumed();
 		} catch (error) {
 			this.logger.error('Failed to schedule delivery of pending background job results', { error });
+		}
+
+		// Queued chat messages whose drain died with a main restart resume here.
+		try {
+			await this.chatQueueService.drainAll();
+		} catch (error) {
+			this.logger.error('Failed to schedule queued agent chat messages', { error });
 		}
 	}
 }

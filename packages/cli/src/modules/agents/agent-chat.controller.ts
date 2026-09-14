@@ -1,7 +1,9 @@
 import {
 	type AgentChatAttachmentPayload,
+	AgentChatEditQueuedMessageDto,
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
+	AgentChatQueueMessageDto,
 	AgentChatResumeDto,
 	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -10,7 +12,16 @@ import {
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	RestController,
+} from '@n8n/decorators';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
@@ -25,6 +36,7 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
+import { AgentChatQueueService } from './agent-chat-queue.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { messagesToDto } from './agent-message-mapper';
 import { AgentThreadQueueFullError } from './agent-thread-turn-coordinator';
@@ -55,6 +67,7 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly agentChatQueueService: AgentChatQueueService,
 	) {}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
@@ -245,6 +258,105 @@ export class AgentChatController {
 			res.off('close', abortOnClose);
 			res.end();
 		}
+	}
+
+	/** Store a message that runs after the thread's running turn ends. */
+	@Post('/:agentId/chat/queue')
+	@ProjectScope('agent:execute')
+	async queueChatMessage(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentChatQueueMessageDto,
+	) {
+		const { projectId } = req.params;
+		const { message, sessionId, attachments } = payload;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const prepared = await this.agentTestRunService.prepareDraftRun({
+			agentId,
+			projectId,
+			sessionId,
+			credentialProvider: new AgentsCredentialProvider(
+				this.credentialsService,
+				projectId,
+				req.user,
+			),
+		});
+		if (prepared.status === 'session_not_found') {
+			throw new NotFoundError(`Session "${sessionId}" not found`);
+		}
+		if (prepared.status === 'agent_misconfigured') {
+			throw new BadRequestError('This agent is not ready to run yet.');
+		}
+
+		const resourceId = draftChatMemoryResourceId(req.user.id);
+		const storedAttachments = await this.storeChatAttachments({
+			attachments,
+			agentId,
+			projectId,
+			threadId: sessionId,
+			resourceId,
+		});
+		try {
+			const executionId = await this.agentChatQueueService.enqueue({
+				agentId,
+				agentName: agent.name,
+				projectId,
+				threadId: sessionId,
+				message,
+				attachments: storedAttachments,
+				resourceId,
+			});
+			return { executionId };
+		} catch (error) {
+			// A rejected message owns nothing; drop the attachments it brought.
+			if (storedAttachments?.length) {
+				await this.agentChatAttachmentService
+					.deleteByIds(storedAttachments.map((ref) => ref.id))
+					.catch(() => {});
+			}
+			throw error;
+		}
+	}
+
+	@Patch('/:agentId/chat/queue/:executionId')
+	@ProjectScope('agent:execute')
+	async editQueuedChatMessage(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('executionId') executionId: string,
+		@Body payload: AgentChatEditQueuedMessageDto,
+	) {
+		await this.agentChatQueueService.editQueued(
+			{
+				executionId,
+				agentId,
+				projectId: req.params.projectId,
+				resourceId: draftChatMemoryResourceId(req.user.id),
+			},
+			payload.message,
+		);
+		return { executionId };
+	}
+
+	@Delete('/:agentId/chat/queue/:executionId')
+	@ProjectScope('agent:execute')
+	async removeQueuedChatMessage(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('executionId') executionId: string,
+	) {
+		await this.agentChatQueueService.removeQueued({
+			executionId,
+			agentId,
+			projectId: req.params.projectId,
+			resourceId: draftChatMemoryResourceId(req.user.id),
+		});
+		return { removed: true };
 	}
 
 	@Delete('/:agentId/chat/runs/:runId')

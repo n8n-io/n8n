@@ -48,6 +48,12 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['click'],
 		props: ['variant', 'size'],
 	},
+	N8nInput: {
+		template:
+			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+		props: ['modelValue', 'type', 'autosize'],
+		emits: ['update:modelValue'],
+	},
 }));
 
 vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
@@ -121,6 +127,36 @@ vi.mock('@n8n/i18n', () => ({
 describe('AgentChatMessageList', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('lets the user edit or remove a queued message until the agent picks it up', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'user-1', role: 'user', content: 'Running now', status: 'success' },
+					{
+						id: 'exec-q1:user',
+						role: 'user',
+						content: 'Later',
+						status: 'queued',
+						executionId: 'exec-q1',
+					},
+				] satisfies ChatMessage[],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.findAll('[data-testid="agent-chat-queued-message"]')).toHaveLength(1);
+
+		await wrapper.find('[data-testid="agent-chat-queued-edit"]').trigger('click');
+		const input = wrapper.find('[data-testid="agent-chat-queued-edit-input"]');
+		await input.setValue('  Later, revised  ');
+		await input.trigger('keydown', { key: 'Enter' });
+		expect(wrapper.emitted('editQueued')).toEqual([['exec-q1', 'Later, revised']]);
+		expect(wrapper.find('[data-testid="agent-chat-queued-edit-input"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="agent-chat-queued-remove"]').trigger('click');
+		expect(wrapper.emitted('removeQueued')).toEqual([['exec-q1']]);
 	});
 
 	describe('agent change requests', () => {
