@@ -45,11 +45,6 @@
       "require": "./dist/setup/frontend.js",
       "types": "./dist/setup/frontend.d.ts"
     },
-    "./setup/network-guard": {
-      "import": "./dist/setup/network-guard.js",
-      "require": "./dist/setup/network-guard.js",
-      "types": "./dist/setup/network-guard.d.ts"
-    },
     "./node": {
       "import": "./dist/node.js",
       "require": "./dist/node.js",

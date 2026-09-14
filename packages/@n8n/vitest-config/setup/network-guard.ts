@@ -75,17 +75,19 @@ if (!allowNetwork && !Reflect.has(net.Socket.prototype, installedFlag)) {
 	Reflect.set(net.Socket.prototype, installedFlag, true);
 	net.Socket.prototype.connect = function connect(this: net.Socket, ...args: unknown[]) {
 		const target = connectTarget(args);
+		if (target.path) return Reflect.apply(originalConnect, this, args) as net.Socket;
 		const host = target.host ?? 'localhost';
-		if (!target.path && !LOOPBACK.test(host)) {
-			if (typeof target.lookup !== 'function') {
-				// Async, like a real connect failure. A sync throw breaks `tls.connect`.
-				process.nextTick(() => this.destroy(blockedError(host, target.port)));
-				return this;
-			}
+		if (typeof target.lookup === 'function') {
+			// A custom lookup can resolve a loopback name to another address, so
+			// the block always moves to the resolved address here.
 			const guarded = { ...target, lookup: guardLookup(target, target.lookup) };
 			// Node owns the normalized array, the caller owns a plain options object.
 			if (Array.isArray(args[0])) args[0][0] = guarded;
 			else args[0] = guarded;
+		} else if (!LOOPBACK.test(host)) {
+			// Async, like a real connect failure. A sync throw breaks `tls.connect`.
+			process.nextTick(() => this.destroy(blockedError(host, target.port)));
+			return this;
 		}
 		return Reflect.apply(originalConnect, this, args) as net.Socket;
 	} as typeof net.Socket.prototype.connect;
