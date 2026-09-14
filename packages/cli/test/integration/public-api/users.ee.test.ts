@@ -22,6 +22,7 @@ import * as utils from '../shared/utils/';
 
 mockInstance(License, {
 	getUsersLimit: vi.fn().mockReturnValue(-1),
+	isWithinUsersLimit: vi.fn().mockReturnValue(true),
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -291,7 +292,10 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: vi.fn().mockReturnValue(null) });
+		mockInstance(License, {
+			getUsersLimit: vi.fn().mockReturnValue(null),
+			isWithinUsersLimit: vi.fn().mockReturnValue(false),
+		});
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);

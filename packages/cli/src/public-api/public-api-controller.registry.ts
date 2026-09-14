@@ -22,7 +22,10 @@ import {
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
+import {
+	deprecated,
+	USER_QUOTA_FORBIDDEN_MESSAGE,
+} from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -137,6 +140,10 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
 			}
 
+			if (route.requiresUserQuota) {
+				middlewares.push(this.createUserQuotaMiddleware());
+			}
+
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
@@ -202,6 +209,17 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (!Container.get(License).isLicensed(feature)) {
 				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createUserQuotaMiddleware(): RequestHandler {
+		return (_req, res, next) => {
+			if (!Container.get(License).isWithinUsersLimit()) {
+				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
 				return;
 			}
 

@@ -15,7 +15,9 @@ import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';
 
-const UNLIMITED_USERS_QUOTA = -1;
+/** Shared with the `@RequiresUserQuota` gate, so the two enforcement points cannot drift. */
+export const USER_QUOTA_FORBIDDEN_MESSAGE =
+	'/users path can only be used with a valid license. See https://n8n.io/pricing/';
 
 export type ProjectScopeResource = 'workflow' | 'credential' | 'dataTable';
 
@@ -173,9 +175,9 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
-	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
+	if (!license.isWithinUsersLimit()) {
 		return res.status(403).json({
-			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
 	}
 
