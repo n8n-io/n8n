@@ -3,7 +3,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { AiPreferenceService } from '@/services/ai-preference.service';
-import { renderAiPreferences } from '@/services/ai-preference.service';
+import { flattenAiPreferences, renderAiPreferences } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_USER_PREFERENCES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -33,6 +33,11 @@ const outputSchema = {
 		.boolean()
 		.describe(
 			'False when nothing is saved for the instance, the caller, or their projects. The preferences themselves are in the text content.',
+		),
+	preferences: z
+		.array(z.string())
+		.describe(
+			'Every saved preference as its own item, instance first, then personal, then projects. Empty when hasPreferences is false.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -89,7 +94,7 @@ export const createGetUserPreferencesTool = (
 
 			return {
 				content: [{ type: 'text', text: hasPreferences ? text : NOTHING_SAVED }],
-				structuredContent: { hasPreferences },
+				structuredContent: { hasPreferences, preferences: flattenAiPreferences(preferences) },
 			};
 		} catch (error) {
 			telemetryPayload.results = {

@@ -111,7 +111,10 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Use British English.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
-			expect(result.structuredContent).toEqual({ hasPreferences: true });
+			expect(result.structuredContent).toEqual({
+				hasPreferences: true,
+				preferences: ['Use British English.', 'Keep replies short.', 'Prefer HubSpot nodes.'],
+			});
 		});
 
 		test('answers definitely when nothing is saved, so the assistant does not ask again', async () => {
@@ -121,7 +124,7 @@ describe('get-user-preferences MCP tool', () => {
 			const result = await tool.handler({});
 
 			expect(result.content).toEqual([{ type: 'text', text: NOTHING_SAVED }]);
-			expect(result.structuredContent).toEqual({ hasPreferences: false });
+			expect(result.structuredContent).toEqual({ hasPreferences: false, preferences: [] });
 		});
 
 		test('reads again on every call, so an edit lands without a reconnect', async () => {
