@@ -6,8 +6,8 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { N8nButton, N8nHeading, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { GLOBAL_ADMIN_ROLE_SLUG } from '@n8n/permissions';
-import { computed, toRaw } from 'vue';
+import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_MEMBER_ROLE_SLUG } from '@n8n/permissions';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
@@ -17,7 +17,11 @@ import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
 import DeleteInstanceRoleModal from './components/DeleteInstanceRoleModal.vue';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
-import { ALL_INSTANCE_SCOPES, withMandatoryInstanceScopes } from './instanceRoleScopes';
+import {
+	ALL_INSTANCE_SCOPES,
+	getPresetScopes,
+	withMandatoryInstanceScopes,
+} from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
@@ -65,10 +69,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 	create: i18n.baseText('projectRoles.create'),
 }));
 
-// Only the Admin system role is offered as a preset (clicking copies its scopes).
+// The Member and Admin system roles are offered as presets, in this order
+// (clicking copies the options they grant in full, see `getPresetScopes`).
+// Chat is not: none of its scopes is an option the editor exposes.
+const PRESET_ROLE_SLUGS: readonly string[] = [GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_ADMIN_ROLE_SLUG];
 const presetRoles = computed(() =>
-	rolesStore.processedInstanceRoles.filter(
-		(r) => r.systemRole && r.slug === GLOBAL_ADMIN_ROLE_SLUG,
+	PRESET_ROLE_SLUGS.flatMap((slug) =>
+		rolesStore.processedInstanceRoles.filter((r) => r.systemRole && r.slug === slug),
 	),
 );
 
@@ -91,13 +98,11 @@ function setPreset(slug: string) {
 	const preset = rolesStore.processedInstanceRoles.find((role) => role.slug === slug);
 	if (!preset) return;
 
-	// Only keep scopes the editor knows about; system roles may carry internal scopes
-	// (e.g. chatHub:*) that the UI doesn't expose and shouldn't be silently forwarded.
-	form.value.scopes = withMandatoryInstanceScopes(
-		structuredClone(toRaw(preset.scopes)).filter((s) =>
-			(ALL_INSTANCE_SCOPES as readonly string[]).includes(s),
-		),
-	);
+	// Copy only the options the preset grants in full. System roles carry scopes
+	// the editor does not expose (e.g. chatHub:*) and partial option subsets
+	// (Member holds four of the five Tags scopes); both are left out, so the
+	// form never shows a half-checked box the user could not set themselves.
+	form.value.scopes = getPresetScopes(preset.scopes);
 }
 
 async function createInstanceRole() {
