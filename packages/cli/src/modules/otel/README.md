@@ -136,6 +136,12 @@ cd packages/cli
 N8N_OTEL_ENABLED=true N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 pnpm run dev
 ```
 
+### Reshaping attributes with a collector
+
+`examples/collector-attribute-mapping/` has a runnable OpenTelemetry Collector
+config that renames n8n's prefixed custom attributes, lifts them to the
+resource, and adds constants. Start it with `docker compose up` in that folder.
+
 ### Wire protocol (OTLP/HTTP vs OTLP/gRPC)
 
 `N8N_OTEL_EXPORTER_OTLP_PROTOCOL` selects how spans are delivered. It mirrors the
