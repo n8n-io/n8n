@@ -60,6 +60,14 @@ Chat hub is off by default. `chat-hub` is no longer a default module, so the **C
 
 If your instance uses chat hub. Add `chat-hub` to `N8N_ENABLED_MODULES` to turn it on again for the 3.x line. n8n then prints a deprecation warning at startup. The migration report on v2 lists this change for every instance that uses chat hub.
 
+### What changed?
+
+The `$evaluateExpression()` helper was removed from the Code node. A Code node that calls it fails with the error `The function "$evaluateExpression" is not supported in the Code Node`. The helper is still available in expression fields.
+
+### When is action necessary?
+
+If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
+
 # 2.0.0
 
 ### What changed?
