@@ -314,11 +314,7 @@ export class SchedulerConfig {
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
 	 *
-	 * Give every instance the same value, and the same {@link enabled}. An
-	 * instance that does not run a job on the durable scheduler deletes that
-	 * job's schedule at startup, and the instances that do run it re-create it
-	 * only at their own startup. So one instance with a different setting stops
-	 * the job until one of the others restarts.
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;
