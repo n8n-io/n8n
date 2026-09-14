@@ -22,7 +22,7 @@ describe('AiActivityStepGroup', () => {
 		'supports slots and keyboard expansion %s the header',
 		async (contentPosition) => {
 			const user = userEvent.setup();
-			const { getByRole, queryByText, getByText } = render(AiActivityStepGroup, {
+			const { container, getByRole, queryByText, getByText } = render(AiActivityStepGroup, {
 				props: { label: 'Background tasks', fullWidth: true, contentPosition },
 				slots: {
 					prefix: '<span aria-hidden="true">Status</span>',
@@ -30,6 +30,11 @@ describe('AiActivityStepGroup', () => {
 					default: '<ul><li>Check escalations</li></ul>',
 				},
 			});
+			if (contentPosition === 'above') {
+				expect(container.firstElementChild).toHaveClass('contentAbove');
+			} else {
+				expect(container.firstElementChild).not.toHaveClass('contentAbove');
+			}
 			const button = getByRole('button');
 			expect(button).toHaveAttribute('aria-expanded', 'false');
 			expect(button).toHaveAttribute('aria-live', 'off');

@@ -295,6 +295,9 @@ it('shows the signal label and task status in the chart popover', async () => {
 	try {
 		await wrapper.get('[data-test-id="timeline-block"]').trigger('focus');
 		await vi.runAllTimersAsync();
+		expect(wrapper.get('[data-test-id="timeline-hover-card"]').attributes('data-open')).toBe(
+			'true',
+		);
 		expect(wrapper.text()).toContain('Background task results received');
 		expect(wrapper.text()).toContain('Check invoices — Failed');
 	} finally {

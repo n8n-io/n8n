@@ -22,6 +22,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
+import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	EventKind,
@@ -90,15 +91,10 @@ const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
 	switch (key) {
-		case 'background-task-signal':
-			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
-		case 'background-task-completed':
-			return i18n.baseText('agents.chat.backgroundTasks.status.completed');
-		case 'background-task-failed':
-			return i18n.baseText('agents.chat.backgroundTasks.status.failed');
-		case 'background-task-cancelled':
-			return i18n.baseText('agents.chat.backgroundTasks.status.cancelled');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
