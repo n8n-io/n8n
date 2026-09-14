@@ -24,7 +24,10 @@ export function parseWorkflowBuildOutcome(
 }
 
 export class WorkflowVerificationObligationService {
-	constructor(private readonly agentMemory: TypeORMAgentMemory) {}
+	constructor(
+		private readonly agentMemory: TypeORMAgentMemory,
+		private readonly isSetupPanelEnabled: () => boolean = () => false,
+	) {}
 
 	private storage(): WorkflowLoopStorage {
 		return new WorkflowLoopStorage(this.agentMemory);
@@ -51,7 +54,10 @@ export class WorkflowVerificationObligationService {
 		record: WorkflowLoopWorkItemRecord,
 		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
 	): WorkflowVerificationObligation {
-		return deriveWorkflowVerificationObligation(threadId, record, options);
+		return deriveWorkflowVerificationObligation(threadId, record, {
+			...options,
+			setupPanelEnabled: this.isSetupPanelEnabled(),
+		});
 	}
 
 	async findPendingPlannedWorkflowVerification(
@@ -88,7 +94,11 @@ export class WorkflowVerificationObligationService {
 		const baseOutcome = taskOutcome ?? fallbackOutcome;
 		if (!baseOutcome) return undefined;
 
-		const options = { source: 'planned', plannedTaskId: task.id } as const;
+		const options = {
+			source: 'planned',
+			plannedTaskId: task.id,
+			setupPanelEnabled: this.isSetupPanelEnabled(),
+		} satisfies Parameters<typeof deriveWorkflowVerificationObligation>[2];
 		const record = await this.storage().getWorkItem(threadId, baseOutcome.workItemId);
 		const outcome = record?.lastBuildOutcome ?? baseOutcome;
 		const obligation = record?.lastBuildOutcome

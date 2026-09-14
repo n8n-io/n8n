@@ -14,8 +14,34 @@ const ArgDecorator =
 		routeMetadata.args[parameterIndex] = arg;
 	};
 
+export interface BodyOptions {
+	required?: boolean;
+}
+
 /** Injects the request body into the handler */
-export const Body = ArgDecorator({ type: 'body' });
+export function Body(
+	target: object,
+	propertyKey: string | symbol | undefined,
+	parameterIndex: number,
+): void;
+export function Body(options?: BodyOptions): ParameterDecorator;
+export function Body(
+	targetOrOptions?: object | BodyOptions,
+	propertyKey?: string | symbol,
+	parameterIndex?: number,
+): ParameterDecorator | void {
+	// Bare form e.g. `@Body body: MyDto`
+	if (parameterIndex !== undefined) {
+		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
+	}
+
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true }) body: MyDto`
+	const options = targetOrOptions as BodyOptions | undefined;
+	return ArgDecorator({
+		type: 'body',
+		...(options?.required !== undefined && { required: options.required }),
+	});
+}
 
 /** Injects the request query into the handler */
 export const Query = ArgDecorator({ type: 'query' });

@@ -25,6 +25,11 @@ import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const fs = await importOriginal<typeof import('node:fs/promises')>();
+	return { ...fs, rm: vi.fn(fs.rm) };
+});
+
 const CONFIG_ID = 'cfg1';
 const REMOTE_URL = 'git@github.com:o/r.git';
 
@@ -128,6 +133,7 @@ describe('PromotionsService', () => {
 	});
 
 	afterEach(async () => {
+		vi.mocked(rm).mockReset();
 		await rm(n8nFolder, { recursive: true, force: true });
 	});
 
@@ -349,9 +355,7 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
-		// `createBranchOnPromotion` is not part of the cache identity, so flipping it
-		// must leave the checkout alone.
-		it('keeps the checkout usable when only the branching toggle changes', async () => {
+		it('pushes to a new timestamped branch when branching is enabled', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
@@ -359,11 +363,63 @@ describe('PromotionsService', () => {
 				}),
 			);
 
+			const result = await service.promote('conn1', actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+				force: true,
+			});
+			const targetBranchName = result.git.branchName;
+
+			expect(targetBranchName).toMatch(
+				/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+			);
+			expect(gitService.validateBranchName).toHaveBeenCalledWith(targetBranchName);
+			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'staging',
+					configId: CONFIG_ID,
+					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+				}),
+			);
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ targetBranchName, force: false }),
+			);
+		});
+
+		it('stops before the commit when descriptor invalidation fails', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			vi.spyOn(workingDirectory, 'invalidateDescriptor').mockRejectedValueOnce(
+				new Error('Descriptor removal failed'),
+			);
+
 			await expect(
 				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
-			).resolves.toMatchObject({
-				git: { branchName: 'staging' },
-			});
+			).rejects.toThrow('Descriptor removal failed');
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.not.toBeNull();
+		});
+
+		it('keeps the checkout trusted when a branched promotion fails before the commit', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
+				new Error('Missing workflow dependency'),
+			);
+
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('Missing workflow dependency');
+			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.not.toBeNull();
 		});
 
 		it('refuses to promote when the checkout was cloned from another remote', async () => {
@@ -686,7 +742,38 @@ describe('PromotionsService', () => {
 			expect(snapshot.workflows.map((w) => w.id).sort()).toEqual(['w1', 'w2']);
 		});
 
-		it('restores the package when the remote push fails', async () => {
+		it('keeps the push result and removes staging when backup cleanup fails', async () => {
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+			const cleanupError = new Error('Backup cleanup failed');
+			gitService.commitAndPush.mockImplementationOnce(async () => {
+				vi.mocked(rm).mockRejectedValueOnce(cleanupError);
+				return { commitSha: 'selsha' };
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).resolves.toMatchObject({ git: { commitSha: 'selsha', branchName: 'staging' } });
+
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			await expect(stat(stagingFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to remove the selection backup',
+				{ prePushBackup: `${packageFolder}.pre-selection`, error: cleanupError },
+			]);
+		});
+
+		it('restores the package and keeps the push error when staging cleanup fails', async () => {
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
@@ -697,7 +784,19 @@ describe('PromotionsService', () => {
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
 				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 			});
-			gitService.commitAndPush.mockRejectedValueOnce(new ServiceUnavailableError('timed out'));
+			const pushError = new ServiceUnavailableError('timed out');
+			const cleanupError = new Error('Staging cleanup failed');
+			const { rm: realRm } =
+				await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+			gitService.commitAndPush.mockImplementationOnce(async () => {
+				const stagingFolder =
+					n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+				vi.mocked(rm).mockImplementation(async (target, options) => {
+					if (target === stagingFolder) throw cleanupError;
+					await realRm(target, options);
+				});
+				throw pushError;
+			});
 
 			await expect(
 				service.promoteSelection(
@@ -706,8 +805,16 @@ describe('PromotionsService', () => {
 					{ commitMessage: 'm', canExportVariableValues: true },
 					{ projectId: 'p1', workflowIds: ['w2'], deletedWorkflowIds: [] },
 				),
-			).rejects.toThrow(ServiceUnavailableError);
+			).rejects.toBe(pushError);
 
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to remove the selection staging folder',
+				{ stagingFolder, error: cleanupError },
+			]);
+			expect(gitService.commitAndPush.mock.calls).toContainEqual([
+				expect.objectContaining({ rollbackOnFailure: true }),
+			]);
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
 			);

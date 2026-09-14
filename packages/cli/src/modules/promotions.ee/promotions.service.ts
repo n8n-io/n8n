@@ -10,6 +10,7 @@ import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -36,12 +37,21 @@ import {
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
 
+import {
+	BASE_BRANCH_DIRECTORIES,
+	parseBaseBranchFiles,
+	type BaseBranchFile,
+} from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
-import { checkoutBranchName, repositoryUrl } from './promotions-git.utils';
+import {
+	buildPromotionBranchName,
+	checkoutBranchName,
+	repositoryUrl,
+} from './promotions-git.utils';
 import type { PromotionCacheDescriptor, PromotionOperationInput } from './promotions.types';
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
 
@@ -132,10 +142,27 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
+		if (input.config.direction !== 'promote') {
+			throw new UnexpectedError('Resolved an invalid promotion direction');
+		}
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		const targetBranchName = input.config.settings.createBranchOnPromotion
+			? buildPromotionBranchName(new Date())
+			: undefined;
+		const credentials = await this.credentialsFor(input);
+		if (targetBranchName) {
+			await this.gitService.validateBranchName(targetBranchName);
+			await this.gitService.prepareCheckoutForPromotion({
+				remoteUrl: repositoryUrl(input),
+				credentials,
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+			});
+		}
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 
@@ -174,24 +201,33 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			if (targetBranchName) {
+				// The commit moves the local base branch. Remove trust before it moves, and
+				// restore trust only after the base branch is back on its own commit.
+				await this.workingDirectory.invalidateDescriptor(input.configId);
+			}
+
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
-				credentials: await this.credentialsFor(input),
+				credentials,
 				paths: this.workingDirectory.paths(input.configId),
 				branchName,
+				targetBranchName,
 				configId: input.configId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
-				force: request.force ?? false,
+				// A promotion branch must be new, so force does not apply.
+				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
+				onCheckoutRestored: async () =>
+					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
 
 			return {
 				connectionId: input.connectionId,
 				configId: input.configId,
 				counts: exportResult.counts,
-				// The branch we really pushed to. LIGO-1030 adds the branch-per-promotion case.
-				git: { commitSha, branchName },
+				git: { commitSha, branchName: targetBranchName ?? branchName },
 			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
@@ -210,6 +246,12 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 	): Promise<PromotePackageResultDto> {
+		if (request.force) {
+			throw new BadRequestError(
+				"Selective promotion doesn't support force. Set force to false and try again.",
+			);
+		}
+
 		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
 		this.assertInstanceScope(input, 'Promote');
 		this.workingCopy.validateSelection(selection);
@@ -221,7 +263,7 @@ export class PromotionsService {
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
 		if (!(await this.hasExportedPackage(packageFolder))) {
 			throw new BadRequestError(
-				'The remote branch has no exported package. Promote the instance first, then promote a selection.',
+				'The local checkout has no exported package. Promote the instance first, then promote a selection.',
 			);
 		}
 
@@ -272,8 +314,11 @@ export class PromotionsService {
 				configId: input.configId,
 				author: this.commitAuthor(actor),
 				commitMessage: request.commitMessage,
-				force: request.force ?? false,
+				force: false,
 				stagePathspec: PACKAGE_SUBFOLDER,
+				rollbackOnFailure: true,
+				onCheckoutRestored: async () =>
+					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
 
 			return {
@@ -303,9 +348,13 @@ export class PromotionsService {
 			throw error;
 		} finally {
 			if (!keepPrePushBackup) {
-				await rm(prePushBackup, { recursive: true, force: true });
+				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
+					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
+				});
 			}
-			await rm(stagingFolder, { recursive: true, force: true });
+			await rm(stagingFolder, { recursive: true, force: true }).catch((error: unknown) => {
+				this.logger.warn('Failed to remove the selection staging folder', { stagingFolder, error });
+			});
 		}
 	}
 
@@ -348,6 +397,22 @@ export class PromotionsService {
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
 			git: { commitSha, branchName },
 		};
+	}
+
+	async listBaseBranchFiles(projectId: string): Promise<BaseBranchFile[]> {
+		const input = await this.resolver.resolveForProject(projectId, 'promote');
+		await this.assertCheckoutReady(input, 'listing branch files');
+
+		const lsTreeOutput = await this.gitService.listBranchTree({
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			paths: this.workingDirectory.paths(input.configId),
+			branchName: checkoutBranchName(input.config),
+			configId: input.configId,
+			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
+		});
+
+		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId });
 	}
 
 	/**

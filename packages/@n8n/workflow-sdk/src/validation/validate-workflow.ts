@@ -865,7 +865,7 @@ function checkDisplayOptionsMatch(
 		if (!expectedValues.includes(actualValue as never)) {
 			mismatches.push({
 				param: paramName,
-				expected: expectedValues as unknown[],
+				expected: expectedValues,
 				actual: actualValue,
 			});
 		}
@@ -1049,9 +1049,9 @@ function validateParentSupportsInputs(
 		if (!builderHintInputs) continue;
 
 		const parentContext: DisplayOptionsContext = {
-			parameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			parameters: parentNode.parameters ?? {},
 			nodeVersion: version,
-			rootParameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			rootParameters: parentNode.parameters ?? {},
 		};
 
 		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
@@ -1075,7 +1075,7 @@ function validateParentSupportsInputs(
 					const subnodeField = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType] || connectionType;
 					const conditionDetails = buildConditionSummary(
 						inputConfig.displayOptions,
-						(parentNode.parameters ?? {}) as Record<string, unknown>,
+						parentNode.parameters ?? {},
 					);
 
 					warnings.push(
@@ -1125,9 +1125,9 @@ function validateRequiredInputsConnected(
 		if (!builderHintInputs) continue;
 
 		const parentContext: DisplayOptionsContext = {
-			parameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			parameters: parentNode.parameters ?? {},
 			nodeVersion: version,
-			rootParameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			rootParameters: parentNode.parameters ?? {},
 		};
 
 		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
@@ -1151,7 +1151,7 @@ function validateRequiredInputsConnected(
 			const triggerDetails = inputConfig.displayOptions
 				? ` (triggered by ${buildTriggeringConditionSummary(
 						inputConfig.displayOptions,
-						(parentNode.parameters ?? {}) as Record<string, unknown>,
+						parentNode.parameters ?? {},
 					)})`
 				: '';
 			const alternative = inputConfig.displayOptions
@@ -1236,9 +1236,9 @@ function validateOutputUsage(
 		if (!outputsHint) continue;
 
 		const ctx: DisplayOptionsContext = {
-			parameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+			parameters: sourceNode.parameters ?? {},
 			nodeVersion: version,
-			rootParameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+			rootParameters: sourceNode.parameters ?? {},
 		};
 
 		for (const [connectionType, cfg] of Object.entries(outputsHint)) {
@@ -1255,7 +1255,7 @@ function validateOutputUsage(
 
 			const conditionDetails = buildConditionSummary(
 				cfg.displayOptions,
-				(sourceNode.parameters ?? {}) as Record<string, unknown>,
+				sourceNode.parameters ?? {},
 			);
 			const usedWiring = describeOutputWiring(connectionType);
 			const enabledAlt = findEnabledAlternativeOutput(outputsHint, ctx, connectionType);

@@ -39,7 +39,6 @@
   "dependencies": {
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",

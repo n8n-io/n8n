@@ -51,16 +51,29 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 	return new Tool('spawn_background_subagent')
 		.description(
 			'Dispatch a sub-agent as a detached background job. Returns a receipt immediately; the ' +
-				'sub-agent keeps working after your turn ends. Pass "inline" as subAgentId to spawn a ' +
+				'sub-agent keeps working after your turn ends. Use delegate_subagent in the foreground by ' +
+				'default. Use background mode for clear parallel work, a clearly long task, or an ' +
+				'explicit user request for background mode. Pass "inline" as subAgentId to spawn a ' +
 				'copy of yourself for a self-contained subtask.' +
 				(roster ? ` Available configured sub-agents:\n${roster}` : ''),
 		)
 		.systemInstruction(
-			'Prefer spawn_background_subagent for independent pieces of work that can run in parallel ' +
-				'while you continue. After spawning, either continue with non-overlapping work or end ' +
-				'your turn telling the user that work continues in the background — never poll ' +
-				'check_background_jobs in a loop waiting for jobs to finish; check once in a later turn ' +
-				'instead. The final answer is the contract; never expect the full trace. Instruct ' +
+			'When delegation is appropriate, use delegate_subagent in the foreground by default. ' +
+				'Use spawn_background_subagent when independent work benefits from parallel execution, ' +
+				'when the task will clearly take substantial time, or when the user explicitly requests ' +
+				'background mode. If any of these conditions applies, choose spawn_background_subagent ' +
+				'instead of delegate_subagent. For example, run independent research workstreams as ' +
+				'separate background jobs, even when you need all their results for the final synthesis. ' +
+				'Broad research across many sources or several slow steps can indicate ' +
+				'a long task. A clearly long task can run in the background even if you have no other ' +
+				'work. If the duration is uncertain and no other background condition applies, use ' +
+				'foreground mode. Keep work that needs user input with the parent; background agents ' +
+				'cannot pause for user interaction. Pass all context the child needs. After a successful ' +
+				'launch, continue independent work that does not overlap with the child, or end your turn ' +
+				'with a short message that work continues in the background. Completion triggers a ' +
+				'follow-up. A launch receipt does not mean the task is complete. Do not check jobs just ' +
+				'to wait for them, and do not sleep or poll for completion. The final answer is the ' +
+				'contract; never expect the full trace. Instruct ' +
 				'sub-agents producing large outputs to write them to the shared workspace and return a ' +
 				'summary.',
 		)
@@ -158,7 +171,7 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				return {
 					status: 'started',
 					jobId: receipt.jobId,
-					note: 'Job dispatched. Check on it later with check_background_jobs.',
+					note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
 				};
 			}
 			return {
@@ -174,8 +187,17 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 		.description(
 			'List the background jobs of this conversation with their status and, once settled, ' +
 				'their result or error. Pass an empty object {} to list all jobs (required — do not pass null). ' +
-				'Call this at most once per turn: when jobs are still running, tell the user and end your ' +
-				'turn — repeated checks within one turn only burn time and tokens.',
+				'Call this at most once per turn. Collect all relevant jobs in that call, rather than ' +
+				'checking each job separately.',
+		)
+		.systemInstruction(
+			'Call check_background_jobs at most once per turn, including calls made together. ' +
+				'Omit jobIds to check all jobs, or include all relevant job IDs in one call. Use the ' +
+				'results already available and continue independent work. If further progress depends ' +
+				'on running jobs, end your turn with a short progress message. Completion triggers a ' +
+				'follow-up. Do not wait, sleep, or call this tool again in the same turn to see whether ' +
+				'a job has finished. A user status request or a completion hint can justify one check ' +
+				'in a later turn. Do not claim that running jobs are complete.',
 		)
 		.input(
 			z.object({
@@ -206,6 +228,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					...(job.childExecutionId !== null ? { executionId: job.childExecutionId } : {}),
 				})),
 				runningCount: jobs.filter((job) => job.status === 'running').length,
+				note: 'You have checked background jobs for this turn. Use the available results and continue independent work. If further progress depends on running jobs, end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or check again in this turn.',
 			};
 		})
 		.build();

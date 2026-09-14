@@ -235,10 +235,18 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation,
 		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
-		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
-		supportsHitl?: boolean,
-		/** Disable background jobs for task-triggered runtimes. */
-		allowBackgroundTasks = true,
+		{
+			supportsHitl,
+			previewChat,
+			allowBackgroundTasks = true,
+		}: {
+			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
+			supportsHitl?: boolean;
+			/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
+			previewChat?: boolean;
+			/** Disable background jobs for task-triggered runtimes. */
+			allowBackgroundTasks?: boolean;
+		} = {},
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
@@ -296,6 +304,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
+			previewChat,
 		});
 		return {
 			...runtime,
@@ -498,6 +507,8 @@ export class AgentRuntimeReconstructionService {
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
+		/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
+		previewChat?: boolean;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -520,6 +531,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			parentWorkspace,
 			allowBackgroundTasks = true,
+			previewChat,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
@@ -542,6 +554,7 @@ export class AgentRuntimeReconstructionService {
 				agentId: memoryOwnerAgentId,
 				integrationType,
 				userId: user?.id,
+				previewChat,
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -608,6 +621,7 @@ export class AgentRuntimeReconstructionService {
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
+			previewChat,
 		});
 
 		if (unavailable.length > 0) {
@@ -723,6 +737,7 @@ export class AgentRuntimeReconstructionService {
 			agentId?: string;
 			integrationType?: string;
 			userId?: string;
+			previewChat?: boolean;
 			supportsHitl: boolean;
 			backgroundTasksEnabled: boolean;
 		},

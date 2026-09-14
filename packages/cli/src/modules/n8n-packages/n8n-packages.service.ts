@@ -49,6 +49,7 @@ import {
 	type ExportPackageRequest,
 	type ExportPackageDirectoryResult,
 	type ExportPackageResult,
+	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportRequest,
 	type ImportResult,
@@ -65,8 +66,8 @@ import {
 import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
-	counts: ExportPackageEventCounts;
 	manifest: PackageManifest;
+	counts: ExportPackageEventCounts;
 	workflowIds: string[];
 	folderIds: string[];
 	projectIds: string[];
@@ -126,9 +127,17 @@ export class N8nPackagesService {
 		target: { targetDir: string },
 	): Promise<ExportPackageDirectoryResult> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
-		const result = await this.writeExport(writer, request);
+		const result = await this.exportPackageToWriter(request, writer);
 		await writer.finalize();
 		return { counts: result.counts, manifest: result.manifest };
+	}
+
+	async exportPackageToWriter(
+		request: ExportPackageRequest,
+		writer: PackageWriter,
+	): Promise<ExportPackageSummary & { manifest: PackageManifest }> {
+		const { manifest, counts } = await this.writeExport(writer, request);
+		return { manifest, counts };
 	}
 
 	private async writeExport(
@@ -356,8 +365,8 @@ export class N8nPackagesService {
 		};
 
 		return {
-			counts,
 			manifest,
+			counts,
 			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),

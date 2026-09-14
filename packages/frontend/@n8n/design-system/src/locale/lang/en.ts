@@ -230,6 +230,8 @@ export default {
 	'markdownEditor.heading3': 'Heading 3',
 	'markdownEditor.rawMarkdownView': 'Raw markdown',
 	'markdownEditor.formattedMarkdownView': 'Formatted view',
+	'markdownEditor.expand': 'Expand editor',
+	'markdownEditor.collapse': 'Collapse editor',
 	'markdownEditor.linkDialogTitle': 'Add link',
 	'markdownEditor.linkUrl': 'Link URL',
 	'markdownEditor.linkPlaceholder': 'https://example.com',

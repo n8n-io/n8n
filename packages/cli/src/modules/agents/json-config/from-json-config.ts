@@ -64,6 +64,15 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/**
+ * Appended only for the in-app preview chat. The agent has no tool that edits
+ * its own configuration, so without this it agrees to setup changes it cannot
+ * make. The preview UI offers the AI Assistant hand-off beside this answer.
+ */
+const PREVIEW_SELF_MODIFICATION_POLICY =
+	'### Preview chat policy\n' +
+	'This conversation only runs you. You cannot change your own setup — instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other configuration — and you have no tool that can. This holds whether or not the user names you as the owner of the thing: "add a tool" and "connect a Slack channel" are setup changes too. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Never claim a setup change was applied.';
+
 /** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -126,6 +135,13 @@ export interface BuildFromJsonOptions {
 	 * the eval path when its mock MCP transport is injected.
 	 */
 	attachAuthPendingMcpServers?: boolean;
+	/**
+	 * Build for the in-app preview chat, which appends
+	 * {@link PREVIEW_SELF_MODIFICATION_POLICY} to the instructions. Runtimes
+	 * built with this differ from every other surface, so callers must keep
+	 * them on their own cache key.
+	 */
+	previewChat?: boolean;
 }
 
 /**
@@ -154,7 +170,7 @@ export async function buildFromJson(
 		options.skills ?? {},
 		createRuntimeSkillRegistry,
 	);
-	agent.instructions(getInstructionsWithWebSearchPolicy(config));
+	agent.instructions(buildInstructions(config, options));
 
 	// Tools
 	if (config.tools) {
@@ -251,9 +267,13 @@ function getProviderToolPrefix(toolName: string): string | undefined {
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
 }
 
-function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
-	if (config.config?.webSearch?.enabled !== true) return config.instructions;
-	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+function buildInstructions(config: AgentJsonConfig, options: BuildFromJsonOptions): string {
+	const policies = [
+		config.config?.webSearch?.enabled === true ? WEB_SEARCH_POLICY_INSTRUCTION : undefined,
+		options.previewChat === true ? PREVIEW_SELF_MODIFICATION_POLICY : undefined,
+	].filter((policy) => policy !== undefined);
+	if (policies.length === 0) return config.instructions;
+	return [config.instructions.trimEnd(), ...policies].join('\n\n');
 }
 
 /**
@@ -429,6 +449,7 @@ async function resolveToolRef(
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
@@ -563,11 +584,9 @@ async function resolveEpisodicMemoryJsonConfig(
 	credentialProvider: CredentialProvider,
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
-	const {
-		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-		createEpisodicMemoryExtractFn,
-		createEpisodicMemoryReflectFn,
-	} = await import('@n8n/agents');
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
+		'@n8n/agents'
+	);
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const embeddingProviderOptions =
 		config.credential === MANAGED_CREDENTIAL_TOKEN
@@ -584,11 +603,6 @@ async function resolveEpisodicMemoryJsonConfig(
 
 	return {
 		enabled: true,
-		...(config.extractorModel !== undefined && {
-			extract: createEpisodicMemoryExtractFn(
-				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
-			),
-		}),
 		...(config.reflectorModel !== undefined && {
 			reflect: createEpisodicMemoryReflectFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),

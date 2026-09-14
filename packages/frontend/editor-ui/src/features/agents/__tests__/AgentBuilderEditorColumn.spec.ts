@@ -72,8 +72,8 @@ vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
 }));
 
-vi.mock('../components/AgentChannelsSection.vue', () => ({
-	default: { name: 'AgentChannelsSection', template: '<div />' },
+vi.mock('../components/AgentTriggersSection.vue', () => ({
+	default: { name: 'AgentTriggersSection', template: '<div />' },
 }));
 
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
@@ -85,7 +85,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
+		props: ['showModel', 'showInstructions'],
 	},
 }));
 
@@ -99,7 +99,10 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 }));
 
 vi.mock('../components/AgentPanelHeader.vue', () => ({
-	default: { name: 'AgentPanelHeader', template: '<h3 data-testid="agent-panel-header" />' },
+	default: {
+		name: 'AgentPanelHeader',
+		template: '<header data-testid="agent-panel-header"><slot name="actions" /></header>',
+	},
 }));
 
 vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
@@ -185,19 +188,13 @@ async function mountColumn(
 			plugins: [pinia],
 			stubs: {
 				AgentCapabilitiesSection: false,
-				AgentChannelsSection: false,
+				AgentTriggersSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: [
-						'showModel',
-						'showInstructions',
-						'showInstructionsToolbar',
-						'instructionsMaxHeight',
-					],
+					props: ['showModel', 'showInstructions'],
 				},
-				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
 			},
@@ -328,16 +325,31 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('uses settings cards without wrapping the Agent tab sections', async () => {
-		const agentWrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
+	it('renders named Agent tab cards', async function rendersNamedCards() {
+		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(agentWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(0);
-		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(3);
+		expect(
+			panels.map(function getPanelHeader(panel) {
+				return panel.props('header');
+			}),
+		).toEqual([
+			'agents.builder.triggers.title',
+			'agents.builder.capabilities.title',
+			'agents.builder.memory.title',
+		]);
 	});
 
-	it('renders only the episodic memory row in the builder memory card', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
+		const wrapper = await mountColumn();
+
+		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
+
+		expect(wrapper.emitted('open-preview')).toEqual([[]]);
+	});
+
+	it('renders the episodic memory row on the Agent tab', async function rendersMemoryOnAgentTab() {
+		const wrapper = await mountColumn();
 
 		expect(wrapper.text()).toContain('Episodic Memory');
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
@@ -357,7 +369,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
@@ -370,46 +382,39 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentInfoPanel' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentSubAgentsPanel' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
+	it('keeps the Agent tab card order', async function ordersAgentCards() {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
 
-		expect(channels.exists()).toBe(true);
-		expect(capabilities.exists()).toBe(true);
 		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
-		expect(
-			channels.element.compareDocumentPosition(capabilities.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			capabilities.element.compareDocumentPosition(model.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(triggers.exists()).toBe(true);
+		expect(capabilities.exists()).toBe(true);
 		expect(
 			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
-	});
-
-	it('shows the instructions toolbar in the main Agent tab', async () => {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		await flushPromises();
-
-		const instructionsPanel = wrapper
-			.findAllComponents({ name: 'AgentInfoPanel' })
-			.find((panel) => panel.props('showModel') === false);
-
-		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
-		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
+		expect(
+			instructions.element.compareDocumentPosition(triggers.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			triggers.element.compareDocumentPosition(capabilities.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			capabilities.element.compareDocumentPosition(memory.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 });

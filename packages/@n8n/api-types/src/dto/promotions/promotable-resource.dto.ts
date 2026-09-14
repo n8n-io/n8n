@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { n8nIdSchema } from '../../schemas/id.schema';
+
 export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived', 'deleted']);
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
@@ -9,7 +11,7 @@ export const promotableResourceTypeSchema = z.enum(['workflow']);
 export type PromotableResourceType = z.infer<typeof promotableResourceTypeSchema>;
 
 export const promotableResourceSchema = z.object({
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	type: promotableResourceTypeSchema,
 	status: promotableResourceStatusSchema,
@@ -22,7 +24,7 @@ export const promotableResourceSchema = z.object({
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
 export const promoteRequestSchema = z.object({
-	workflowIds: z.array(z.string().min(1)).min(1),
+	workflowIds: z.array(n8nIdSchema).min(1),
 	createBranch: z.boolean(),
 });
 

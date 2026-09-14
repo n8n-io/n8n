@@ -1,33 +1,17 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
-import {
-	CONTAINER_ONLY_CAPABILITIES,
-	CONTAINER_ONLY_MODES,
-	LICENSED_TAG,
-} from './fixtures/capabilities';
+import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
 // Matches:
-// - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
 // - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	[
-		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
-		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
-		`@${LICENSED_TAG}`,
-		'@db:reset',
-	].join('|'),
+	[`@mode:(${CONTAINER_ONLY_MODES.join('|')})`, `@${LICENSED_TAG}`, '@db:reset'].join('|'),
 );
-
-// Escape hatch: allow `@capability:*` tests to run against a pre-started local
-// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
-// etc.) must detect the no-container case and skip or fall back to direct
-// network calls. Used by `pnpm test:local:isolated` and similar workflows.
-const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
@@ -35,7 +19,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: { mains: 2, workers: 1 },
 	},
 ];
 
@@ -243,7 +227,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:infrastructure`,
 					testDir: './tests/infrastructure',
-					grep: new RegExp(`@mode:${name}|@capability:${name}`),
+					grep: new RegExp(`@mode:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },

@@ -94,6 +94,7 @@ vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
 vi.mock('../../tracing/langsmith-tracing', () => ({
 	buildAgentTraceInputs: vi.fn().mockReturnValue({}),
 	mergeTraceRunInputs: vi.fn(),
+	setTracePromptVersion: vi.fn(),
 }));
 
 vi.mock('../system-prompt', () => ({
@@ -104,6 +105,7 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -203,6 +205,22 @@ describe('createInstanceAgent', () => {
 		});
 		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+	});
+
+	it('applies the selected profile exclusions to domain and orchestration tools', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: { runLabel: 'profile' },
+			orchestrationContext: {
+				runId: 'profile',
+				disabledToolNames: new Set(['create-tasks', 'nodes']),
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
+		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
+		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
 	});
 
 	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
@@ -372,6 +390,10 @@ describe('createInstanceAgent', () => {
 
 	it('attaches native telemetry from the trace context when present', async () => {
 		const telemetry = { provider: 'langsmith' };
+		const tracing = {
+			getTelemetry: vi.fn().mockReturnValue(telemetry),
+			wrapTools: vi.fn((tools: unknown) => tools),
+		};
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -383,16 +405,15 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
-				tracing: {
-					getTelemetry: vi.fn().mockReturnValue(telemetry),
-					wrapTools: vi.fn((tools: unknown) => tools),
-				},
+				promptConfiguration: { version: 'default@1' },
+				tracing,
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
+		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
 	});
 
 	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
@@ -437,6 +458,32 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
+		);
+	});
+
+	it('passes the selected catalog to domain tools before workspace materialization', async () => {
+		const runtimeSkillCatalog = {
+			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+		const runtimeSkills = {
+			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog }),
+		);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

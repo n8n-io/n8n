@@ -492,9 +492,11 @@ export class InstanceAiMemoryService {
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
-	 *  and flip `confirmation.expired = true` on the ones with no live row. */
-	private async flagExpiredConfirmations(
-		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	 *  and flip `confirmation.expired = true` on the ones with no live row. Shared
+	 *  by the history read and the SSE run-sync frame so both render a settled
+	 *  card the same way. */
+	async flagExpiredConfirmations(
+		messages: Parameters<typeof markExpiredConfirmations>[0],
 	): Promise<void> {
 		const requestIds = collectConfirmationRequestIds(messages);
 		if (requestIds.length === 0) return;

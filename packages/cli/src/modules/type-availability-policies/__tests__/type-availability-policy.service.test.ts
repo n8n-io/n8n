@@ -242,6 +242,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-1',
 				kind: KIND,
 				policyId: created.id,
+				origin: 'document-api',
 				after: { rules: created.rules, version: created.version },
 			});
 		});
@@ -358,6 +359,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-2',
 				kind: KIND,
 				policyId: before.id,
+				origin: 'document-api',
 				before: { rules: [], version: 1 },
 				after: { rules: [RULE], version: 2 },
 			});
@@ -796,15 +798,26 @@ describe('TypeAvailabilityPolicyService', () => {
 				[{ policyId: createdPolicy.id, priority: 0, isFloor: false }],
 				ROOT,
 			);
-			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-scope-updated',
 				expect.objectContaining({ before: null }),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-created',
-				expect.objectContaining({ policyId: createdPolicy.id }),
+				expect.objectContaining({ policyId: createdPolicy.id, origin: 'composed-save' }),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-saved', {
+				updatedBy: 'user-1',
+				kind: KIND,
+				projectId: null,
+				scopeId: createdScope.id,
+				before: null,
+				after: { defaultAction: 'deny', version: 2 },
+				rulesBefore: null,
+				rulesAfter: [RULE],
+				warningCount: 0,
+			});
 		});
 
 		it('updates the existing scope and document, emitting both facets', async () => {
@@ -835,14 +848,26 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
-			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
 				expect.objectContaining({
+					origin: 'composed-save',
 					before: { rules: [], version: 1 },
 					after: { rules: [RULE], version: 2 },
 				}),
 			);
+			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-saved', {
+				updatedBy: 'user-2',
+				kind: KIND,
+				projectId: null,
+				scopeId: scope.id,
+				before: { defaultAction: 'allow', version: 1 },
+				after: { defaultAction: 'deny', version: 3 },
+				rulesBefore: [],
+				rulesAfter: [RULE],
+				warningCount: 0,
+			});
 		});
 
 		it('throws NotFoundError when the document update unexpectedly finds no row', async () => {
@@ -951,7 +976,12 @@ describe('TypeAvailabilityPolicyService', () => {
 				PROJECT_ID,
 				ROOT,
 			);
-			expect(result).toEqual({ action: 'allow', scope: 'project', matchedRuleId: 'project-allow' });
+			expect(result).toEqual({
+				action: 'allow',
+				scope: 'project',
+				matchedRuleId: 'project-allow',
+				optInAvailable: false,
+			});
 		});
 
 		it('lets an instance deny win over an unconfigured project', async () => {
@@ -970,7 +1000,97 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const result = await service.evaluateComposedType(KIND, PROJECT_ID, TYPE);
 
-			expect(result).toEqual({ action: 'deny', scope: 'instance', matchedRuleId: 'instance-deny' });
+			expect(result).toEqual({
+				action: 'deny',
+				scope: 'instance',
+				matchedRuleId: 'instance-deny',
+				optInAvailable: false,
+			});
+		});
+	});
+
+	describe('evaluateComposedTypes', () => {
+		const PROJECT_ID = 'project-1';
+
+		it('reads each scope once and composes a verdict for every type', async () => {
+			const instanceDeny: PolicyRule = {
+				id: 'instance-deny',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.executeCommand' },
+			};
+			const instanceDelegate: PolicyRule = {
+				id: 'instance-delegate',
+				action: 'delegate',
+				selector: { kind: 'name', value: 'n8n-nodes-base.code' },
+			};
+			const projectDeny: PolicyRule = {
+				id: 'project-deny',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+			};
+			const instanceScope = makeScope({ projectId: null, defaultAction: 'allow' });
+			const projectScope = makeScope({
+				id: 'scope-2',
+				projectId: PROJECT_ID,
+				defaultAction: 'allow',
+			});
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				projectId === null ? instanceScope : projectScope,
+			);
+			attachmentRepository.listAttachmentsForScope.mockImplementation(async (scopeId) => [
+				{
+					policyId: 'p1',
+					rules: scopeId === projectScope.id ? [projectDeny] : [instanceDeny, instanceDelegate],
+					priority: 0,
+					isFloor: false,
+				},
+			]);
+
+			const result = await service.evaluateComposedTypes(KIND, PROJECT_ID, [
+				'n8n-nodes-base.gmail',
+				'n8n-nodes-base.executeCommand',
+				'n8n-nodes-base.code',
+				'n8n-nodes-base.slack',
+			]);
+
+			expect(result).toEqual([
+				{
+					name: 'n8n-nodes-base.gmail',
+					action: 'allow',
+					scope: 'instance',
+					matchedRuleId: null,
+					optInAvailable: false,
+				},
+				{
+					name: 'n8n-nodes-base.executeCommand',
+					action: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'instance-deny',
+					optInAvailable: false,
+				},
+				{
+					name: 'n8n-nodes-base.code',
+					action: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'instance-delegate',
+					optInAvailable: true,
+				},
+				{
+					name: 'n8n-nodes-base.slack',
+					action: 'deny',
+					scope: 'project',
+					matchedRuleId: 'project-deny',
+					optInAvailable: false,
+				},
+			]);
+			expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(2);
+			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledTimes(2);
+		});
+
+		it('returns an empty list when there are no types', async () => {
+			const result = await service.evaluateComposedTypes(KIND, PROJECT_ID, []);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

@@ -43,6 +43,19 @@ export function isInputTarget(value: unknown): value is InputTarget {
 }
 
 /**
+ * `.onError()` routes to one handler. An array reached the graph as a target with no
+ * name, so every handler in it was dropped without a word. Say so instead.
+ */
+export function assertSingleErrorHandler(handler: unknown): void {
+	if (!Array.isArray(handler)) return;
+	throw new TypeError(
+		'.onError() takes one handler, not an array. ' +
+			'Call it once for each handler — .onError(notify).onError(logFailure) — ' +
+			'or route to a chain: .onError(notify.to(logFailure)).',
+	);
+}
+
+/**
  * Type guard to check if a value is an OutputSelector
  */
 export function isOutputSelector(value: unknown): value is OutputSelector<string, string, unknown> {
@@ -181,7 +194,7 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 	}
 
 	if (!normalizedCreds) return { ...config, id };
-	return { ...config, id, credentials: normalizedCreds } as NodeConfig;
+	return { ...config, id, credentials: normalizedCreds };
 }
 
 /**
@@ -372,8 +385,11 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		// Declaring an error route implies the error output port exists.
-		this.config.onError ??= 'continueErrorOutput';
+		assertSingleErrorHandler(handler);
+		// Declaring an error route implies the error output port exists. The other two
+		// values expose no error pin, so keeping one would serialize this route as a
+		// connection from an output the node does not have — the route wins.
+		this.config.onError = 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
@@ -561,11 +577,7 @@ class NodeChainImpl<
 	output(index: number): OutputSelector<TTail['type'], TTail['version'], TTail['_outputType']> {
 		const compositeNode = getCompositeOutputNode(this.tail);
 		if (compositeNode) {
-			return compositeNode.output(index) as OutputSelector<
-				TTail['type'],
-				TTail['version'],
-				TTail['_outputType']
-			>;
+			return compositeNode.output(index);
 		}
 		return this.tail.output(index);
 	}
