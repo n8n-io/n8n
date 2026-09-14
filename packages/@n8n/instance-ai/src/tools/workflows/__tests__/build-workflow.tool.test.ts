@@ -103,6 +103,14 @@ vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
 type BuildToolOutput = {
 	success: boolean;
 	filePath: string;
+	grouping?: {
+		topLevelItemCount: number;
+		ceiling: number;
+		groupCount: number;
+		droppedGroupCount: number;
+		decision: string;
+		reason?: string;
+	};
 	sourceHash?: string;
 	workflowId?: string;
 	workflowName?: string;
@@ -563,6 +571,269 @@ describe('createBuildWorkflowTool', () => {
 				warning_count: 1,
 			}),
 		);
+	});
+
+	describe('grouping decision check', () => {
+		const wideWorkflow = (nodeGroups?: Array<{ id: string; name: string; nodeIds: string[] }>) => ({
+			name: 'Wide workflow',
+			nodes: Array.from({ length: 8 }, (_, i) => ({
+				id: `node-${i}`,
+				name: `Step ${i}`,
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			})),
+			connections: {},
+			...(nodeGroups ? { nodeGroups } : {}),
+		});
+		const compileTo = (workflow: ReturnType<typeof wideWorkflow>) =>
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow,
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+		it('refuses a new canvas over the ceiling that declares no group', async () => {
+			const { context, filePath, trackTelemetry } = makeContext({ source: 'src' });
+			compileTo(wideWorkflow());
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
+			expect(result.errors?.join('\n')).toContain('Step 0, Step 1');
+			expect(result.remediation?.reason).toBe('workflow_grouping_decision_missing');
+			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'missing' });
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(trackTelemetry).toHaveBeenCalledWith(
+				'instance_ai_workflow_source_build',
+				expect.objectContaining({
+					result: 'failure',
+					stage: 'grouping',
+					top_level_item_count: 8,
+					group_count: 0,
+				}),
+			);
+		});
+
+		it('saves the same canvas when the agent opts out with a reason, and records it', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			compileTo(wideWorkflow());
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				groupingDecision: 'not_warranted',
+				groupingReason: 'every step fans out to its own branch',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.grouping).toMatchObject({
+				topLevelItemCount: 8,
+				groupCount: 0,
+				decision: 'not_warranted',
+				reason: 'every step fans out to its own branch',
+			});
+			expect(result.warnings?.join('\n')).toContain(
+				'(accepted: every step fans out to its own branch)',
+			);
+		});
+
+		it('rejects the opt-out without a reason before compiling', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				groupingDecision: 'not_warranted',
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.remediation?.reason).toBe('grouping_reason_missing');
+			expect(compileWorkflowSource).not.toHaveBeenCalled();
+		});
+
+		it('saves a canvas over the ceiling when a valid group survived', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			compileTo(
+				wideWorkflow([{ id: 'g1', name: 'Stage', nodeIds: ['node-0', 'node-1', 'node-2'] }]),
+			);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.grouping).toMatchObject({
+				topLevelItemCount: 6,
+				groupCount: 1,
+				decision: 'grouped',
+			});
+			expect(result.warnings).toBeUndefined();
+		});
+
+		it('refuses when every declared group was dropped, even with the opt-out', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			compileTo(wideWorkflow([{ id: 'g1', name: 'Stage', nodeIds: ['missing-a', 'missing-b'] }]));
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				groupingDecision: 'not_warranted',
+				groupingReason: 'does not matter here',
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
+			expect(result.errors?.join('\n')).toContain('Stage');
+			// The error carries the drop reason; the matching warning is not repeated.
+			expect(result.warnings?.join('\n') ?? '').not.toContain('[NODE_GROUP_DROPPED]');
+			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
+			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'grouped' });
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('refuses when one declared group was dropped and the canvas is still over the ceiling', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			const wide = wideWorkflow([
+				{ id: 'g1', name: 'Kept', nodeIds: ['node-0', 'node-1'] },
+				{ id: 'g2', name: 'Broken', nodeIds: ['missing-a', 'missing-b'] },
+			]);
+			// 10 nodes: 2 in the kept group + 8 loose = 9 boxes, still over the ceiling.
+			wide.nodes.push(
+				...[8, 9].map((i) => ({
+					id: `node-${i}`,
+					name: `Step ${i}`,
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				})),
+			);
+			compileTo(wide);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
+			expect(result.errors?.join('\n')).toContain('Broken');
+			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
+			expect(result.grouping).toMatchObject({
+				topLevelItemCount: 9,
+				groupCount: 1,
+				droppedGroupCount: 1,
+				decision: 'grouped',
+			});
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('leaves a canvas at the ceiling alone', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			const atCeiling = wideWorkflow();
+			atCeiling.nodes = atCeiling.nodes.slice(0, 7);
+			compileTo(atCeiling);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.grouping).toMatchObject({ topLevelItemCount: 7, decision: 'under_ceiling' });
+			expect(result.warnings).toBeUndefined();
+		});
+
+		describe('on an existing workflow', () => {
+			const snapshotWith = (count: number) => ({
+				name: 'Target workflow',
+				nodes: Array.from({ length: count }, (_, i) => ({
+					id: `old-${i}`,
+					name: `Old ${i}`,
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				})),
+				connections: {},
+			});
+
+			it("saves the user's workflow that was already over the ceiling, with a warning only", async () => {
+				const { context, filePath } = makeContext({ source: 'src' });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValueOnce(
+					snapshotWith(9) as never,
+				);
+				compileTo(wideWorkflow());
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-user',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.warnings?.join('\n')).toContain('[TOP_LEVEL_ITEMS_OVER_CEILING]');
+				expect(result.warnings?.join('\n')).not.toContain('GROUPING_DECISION_MISSING');
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+			});
+
+			it("refuses a dropped group even on the user's workflow that was already over the ceiling", async () => {
+				const { context, filePath } = makeContext({ source: 'src' });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValueOnce(
+					snapshotWith(9) as never,
+				);
+				compileTo(
+					wideWorkflow([{ id: 'g1', name: 'Broken', nodeIds: ['missing-a', 'missing-b'] }]),
+				);
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-user',
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
+				expect(result.errors?.join('\n')).toContain('Broken');
+				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			});
+
+			it('refuses when the edit pushes a workflow that was under the ceiling over it with no groups', async () => {
+				const { context, filePath } = makeContext({ source: 'src' });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValueOnce(
+					snapshotWith(6) as never,
+				);
+				compileTo(wideWorkflow());
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-user',
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
+				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			});
+
+			it('refuses on a workflow this run created, even when it was already over the ceiling', async () => {
+				const { context, filePath } = makeContext({
+					source: 'src',
+					overrides: { aiCreatedWorkflowIds: new Set(['wf-created']) },
+				});
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValueOnce(
+					snapshotWith(9) as never,
+				);
+				compileTo(wideWorkflow());
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-created',
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
+				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	it('falls back to the post-build-flow handoff for a triggerless one-off build', async () => {
