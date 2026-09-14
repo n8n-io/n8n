@@ -5,6 +5,7 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_MCP_NODES,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -238,6 +239,34 @@ describe('NodesMode', () => {
 
 			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
 		});
+	});
+
+	it('emits an empty-group selection for the Group item', async () => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			items: [
+				{
+					key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+					type: 'view',
+					properties: {
+						title: 'Group',
+						description: 'Add an organisational container to your workflow',
+						icon: 'group',
+					},
+				},
+			],
+		});
+
+		const { emitted } = render({ pinia });
+		await nextTick();
+
+		await userEvent.click(screen.getByText('Group'));
+
+		expect(emitted('emptyGroupSelected')).toEqual([[]]);
+		expect(emitted('nodeTypeSelected')).toBeUndefined();
 	});
 
 	it('keeps the MCP client pinned once and shows the MCP empty state for no results', async () => {

@@ -19,6 +19,7 @@ import {
 	HITL_SUBCATEGORY,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	AI_CATEGORY_MCP_NODES,
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	REQUEST_NODE_FORM_URL,
 } from '@/app/constants';
 
@@ -62,6 +63,7 @@ export interface Props {
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
+	emptyGroupSelected: [];
 }>();
 
 const i18n = useI18n();
@@ -244,6 +246,11 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'view') {
+		if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM) {
+			emit('emptyGroupSelected');
+			return;
+		}
+
 		const views = {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
