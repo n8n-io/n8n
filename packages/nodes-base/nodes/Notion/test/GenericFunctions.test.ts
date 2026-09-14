@@ -24,7 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
-import { hardString } from '@test/hard-strings';
+import { stringFrom } from '@test/text-families';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -618,7 +618,7 @@ describe('Test Notion, simplifyObjects', () => {
 		});
 
 		it('keeps accented words as lowercase keys', () => {
-			const accentedWord = hardString('latin-accented').filter((name) =>
+			const accentedWord = stringFrom('latin-accented').filter((name) =>
 				/^\p{L}\p{Ll}*$/u.test(name),
 			);
 
@@ -658,7 +658,7 @@ describe('Test Notion, simplifyObjects', () => {
 
 		it('folds every accented letter to a separator', () => {
 			fc.assert(
-				fc.property(hardString('latin-accented'), (name) => {
+				fc.property(stringFrom('latin-accented'), (name) => {
 					const words = name
 						.replace(/\P{ASCII}/gu, ' ')
 						.toLowerCase()

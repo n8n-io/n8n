@@ -356,7 +356,7 @@ export const familyByName = (name: FamilyName): Family => {
  * A string from any of the given families, or from every family when none is
  * named. The single entry point for a property that must hold for all user text.
  */
-export const hardString = (...names: FamilyName[]): fc.Arbitrary<string> => {
+export const stringFrom = (...names: FamilyName[]): fc.Arbitrary<string> => {
 	const selected = names.length > 0 ? names.map(familyByName) : families;
 	return fc.oneof(...selected.map((family) => family.arbitrary));
 };
