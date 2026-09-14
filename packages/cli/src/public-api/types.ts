@@ -144,19 +144,6 @@ export declare namespace CredentialRequest {
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
-export declare namespace InsightsRequest {
-	type GetSummary = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			startDate?: string;
-			endDate?: string;
-			projectId?: string;
-		}
-	>;
-}
-
 export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
