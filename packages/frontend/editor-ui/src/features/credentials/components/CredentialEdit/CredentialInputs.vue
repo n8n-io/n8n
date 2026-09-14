@@ -8,9 +8,9 @@ import type { IUpdateInformation } from '@/Interface';
 import CopyInput from '@/app/components/CopyInput.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 
-import { N8nInput, N8nNotice } from '@n8n/design-system';
+import { N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 type Props = {
 	credentialProperties: INodeProperties[];
@@ -23,6 +23,7 @@ type Props = {
 
 const props = defineProps<Props>();
 const i18n = useI18n();
+const inputId = useId();
 
 const { check: envFeatureFlag } = useEnvFeatureFlag();
 
@@ -66,20 +67,32 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:hint="parameter.description"
 				:value="String(credentialDataValues[parameter.name] ?? parameter.default ?? '')"
 			/>
-			<N8nInput
+			<N8nInputLabel
 				v-else-if="compact && parameter.type === 'string'"
-				:model-value="
-					typeof credentialDataValues[parameter.name] === 'string'
-						? String(credentialDataValues[parameter.name])
-						: ''
-				"
-				:type="parameter.typeOptions?.password ? 'password' : 'text'"
-				:placeholder="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
-				:aria-label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
-				:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
+				:input-name="`${inputId}-${parameter.name}`"
+				:label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
+				:tooltip-text="i18n.credText(credentialType ?? '').inputLabelDescription(parameter)"
+				:required="parameter.required"
+				:bold="false"
+				show-tooltip
 				size="small"
-				@update:model-value="valueChanged({ name: parameter.name, value: $event })"
-			/>
+			>
+				<N8nInput
+					:id="`${inputId}-${parameter.name}`"
+					:model-value="
+						typeof credentialDataValues[parameter.name] === 'string'
+							? String(credentialDataValues[parameter.name])
+							: ''
+					"
+					:type="parameter.typeOptions?.password ? 'password' : 'text'"
+					:placeholder="i18n.credText(credentialType ?? '').placeholder(parameter)"
+					:aria-label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
+					:required="parameter.required"
+					:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
+					size="small"
+					@update:model-value="valueChanged({ name: parameter.name, value: $event })"
+				/>
+			</N8nInputLabel>
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"

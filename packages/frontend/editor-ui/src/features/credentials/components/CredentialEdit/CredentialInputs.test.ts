@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialInputs from './CredentialInputs.vue';
 
@@ -9,7 +10,7 @@ const renderComponent = createComponentRenderer(CredentialInputs);
 describe('compact CredentialInputs', () => {
 	beforeEach(() => setActivePinia(createTestingPinia()));
 
-	it('renders accessible compact OAuth fields and emits edits with their property names', async () => {
+	it('keeps compact OAuth labels visible and focuses their inputs on click', async () => {
 		const rendered = renderComponent({
 			props: {
 				compact: true,
@@ -23,6 +24,7 @@ describe('compact CredentialInputs', () => {
 						type: 'string',
 						default: '',
 						required: true,
+						placeholder: 'app-client-id',
 					},
 					{
 						name: 'clientSecret',
@@ -36,9 +38,21 @@ describe('compact CredentialInputs', () => {
 			},
 		});
 		const client = rendered.getByRole('textbox', { name: 'Client ID' });
-		expect(client).toHaveAttribute('placeholder', 'Client ID');
+		const clientLabel = rendered.getByText('Client ID');
+		const secretLabel = rendered.getByText('Client Secret');
+		expect(clientLabel.closest('label')).toHaveAttribute('for', client.id);
+		expect(clientLabel).toBeVisible();
+		expect(secretLabel).toBeVisible();
+		expect(client).toHaveAttribute('placeholder', 'app-client-id');
 		expect(rendered.getByLabelText('Client Secret')).toHaveAttribute('type', 'password');
+		await userEvent.click(clientLabel);
+		expect(client).toHaveFocus();
 		await fireEvent.update(client, 'app-client');
 		expect(rendered.emitted('update')).toContainEqual([{ name: 'clientId', value: 'app-client' }]);
+		await rendered.rerender({
+			credentialData: { clientId: 'app-client', clientSecret: 'demo-secret' },
+		});
+		expect(clientLabel).toBeVisible();
+		expect(secretLabel).toBeVisible();
 	});
 });
