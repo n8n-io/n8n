@@ -2,11 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { RegexEngine } from 'n8n-workflow';
-import {
-	createDefaultRegexEngine,
-	resetUserRegexEngine,
-	setUserRegexEngine,
-} from 'n8n-workflow';
+import { createDefaultRegexEngine, resetUserRegexEngine, setUserRegexEngine } from 'n8n-workflow';
 
 /** An engine this service can install, plus the teardown it needs when the process exits. */
 export interface ManagedRegexEngine extends RegexEngine {
@@ -15,7 +11,8 @@ export interface ManagedRegexEngine extends RegexEngine {
 
 /**
  * Installs the engine that runs the patterns a user writes. The instance picks it once, at
- * start-up; there is no switching later. Patterns n8n itself authored stay on `safeRegex`.
+ * start-up; there is no switching later. Patterns n8n itself authored stay on
+ * `safeInternalRegex`.
  */
 @Service()
 export class RegexEngineService {
@@ -28,6 +25,10 @@ export class RegexEngineService {
 
 	async init(): Promise<void> {
 		const { engine } = this.globalConfig.regexEngine;
+
+		// The default engine is already installed at module load: nothing to build or
+		// swap in, so skip constructing and tearing down a second, identical one.
+		if (engine === 'js') return;
 
 		this.active = await this.create();
 		setUserRegexEngine(this.active);

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { resetUserRegexEngine, safeRegex, safeUserRegex } from 'n8n-workflow';
+import { resetUserRegexEngine, safeInternalRegex, safeUserRegex } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { RegexEngineService } from '../regex-engine.service';
@@ -31,6 +31,15 @@ describe('init', () => {
 			'Regular expression execution timed out',
 		);
 	});
+
+	it('builds no engine for js: the default is already installed', async () => {
+		const subject = service('js');
+		await subject.init();
+
+		// A no-op init leaves shutdown with nothing to tear down.
+		expect(() => subject.shutdown()).not.toThrow();
+		expect(safeUserRegex.test('^a$', 'a')).toBe(true);
+	});
 });
 
 describe('shutdown', () => {
@@ -41,7 +50,7 @@ describe('shutdown', () => {
 		subject.shutdown();
 
 		expect(safeUserRegex.test('^a$', 'a')).toBe(true);
-		expect(safeRegex.test('^a$', 'a')).toBe(true);
+		expect(safeInternalRegex.test('^a$', 'a')).toBe(true);
 	});
 
 	it('does nothing when init never ran', () => {
