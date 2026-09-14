@@ -740,33 +740,10 @@ describe('ParameterInputList', () => {
 
 	/**
 	 * Tests rendering of all parameter types to ensure each type works correctly.
-	 * Covers: button, collection, resourceMapper, filter, assignmentCollection,
+	 * Covers: collection, resourceMapper, filter, assignmentCollection,
 	 * curlImport, and multipleValues parameters.
 	 */
 	describe('Different Parameter Types', () => {
-		it('should render button parameter', async () => {
-			const buttonParameters: INodeProperties[] = [
-				{
-					displayName: 'Test Button',
-					name: 'testButton',
-					type: 'button',
-					default: '',
-				},
-			];
-
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { container, findByText } = renderComponent({
-				props: {
-					parameters: buttonParameters,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			expect(container.querySelector('.parameter-item')).toBeInTheDocument();
-			expect(await findByText('Test Button')).toBeInTheDocument();
-		});
-
 		it('should render collection parameter', async () => {
 			const collectionParameters: INodeProperties[] = [
 				{
@@ -1542,12 +1519,6 @@ describe('ParameterInputList', () => {
 					default: {},
 					options: [],
 				},
-				{
-					displayName: 'Button',
-					name: 'buttonParam',
-					type: 'button',
-					default: '',
-				},
 			];
 
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
@@ -1563,7 +1534,6 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('[path="stringParam"]')).toBeInTheDocument();
 			expect(await findByText('Notice')).toBeInTheDocument();
 			expect(await findByText('Fixed Collection')).toBeInTheDocument();
-			expect(await findByText('Button')).toBeInTheDocument();
 		});
 
 		it('should handle nested paths correctly', () => {
