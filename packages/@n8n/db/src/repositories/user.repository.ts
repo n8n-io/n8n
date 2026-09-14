@@ -111,7 +111,7 @@ export class UserRepository extends Repository<User> {
 					? { lock: { mode: 'pessimistic_write' as const } }
 					: {}),
 			});
-			if (!user || user.email !== oldEmail) return 'stale';
+			if (user?.email !== oldEmail) return 'stale';
 			user.email = newEmail;
 			try {
 				await trx.save(User, user);
