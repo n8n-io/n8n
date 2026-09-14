@@ -1,3 +1,16 @@
+## [2.39.5](https://github.com/n8n-io/n8n/compare/n8n@2.39.4...n8n@2.39.5) (2026-09-14)
+
+
+### Bug Fixes
+
+* **editor:** Fixes issue that prevented some users from revoking their end-user credentials ([#38455](https://github.com/n8n-io/n8n/issues/38455)) ([3d8f578](https://github.com/n8n-io/n8n/commit/3d8f578a390f196e22b0077aceff04cfbab28f6d))
+
+
+### Features
+
+* **core:** Add log streaming events for instance reports ([#38483](https://github.com/n8n-io/n8n/issues/38483)) ([6174e8e](https://github.com/n8n-io/n8n/commit/6174e8e375bdd20e2d6096a58a78286dad5a4e67))
+
+
 ## [2.39.4](https://github.com/n8n-io/n8n/compare/n8n@2.39.3...n8n@2.39.4) (2026-09-11)
 
 
