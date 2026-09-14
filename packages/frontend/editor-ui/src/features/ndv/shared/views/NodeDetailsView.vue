@@ -354,8 +354,22 @@ const currentNodePaneType = computed((): MainPanelType => {
 	return activeNodeType.value?.parameterPane ?? 'regular';
 });
 
-const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
-	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+const {
+	containerWidth,
+	onDrag,
+	onResize,
+	onResizeEnd,
+	resetPanelSize,
+	panelWidthPercentage,
+	panelWidthPixels,
+} = useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+
+function onResizeHandleDblClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('[data-test-id="resize-handle"], [data-test-id="panel-drag-button"]')) {
+		resetPanelSize();
+	}
+}
 
 const icon = useNodeIconSource(activeNodeType, activeNode);
 
@@ -822,6 +836,7 @@ onBeforeUnmount(() => {
 						@resize="onResize"
 						@resizestart="onDragStart"
 						@resizeend="onDragEnd"
+						@dblclick="onResizeHandleDblClick"
 					>
 						<div ref="mainPanelRef" :class="$style.main">
 							<PanelDragButton
@@ -944,6 +959,17 @@ onBeforeUnmount(() => {
 .input,
 .output {
 	min-width: 280px;
+}
+
+.input:has([data-ndv-empty-state]),
+.output:has([data-ndv-empty-state]) {
+	min-width: 0;
+	container: ndvPane / inline-size;
+}
+
+.input:has([data-ndv-pane-min]),
+.output:has([data-ndv-pane-min]) {
+	min-width: 220px;
 }
 
 .dataColumn {
