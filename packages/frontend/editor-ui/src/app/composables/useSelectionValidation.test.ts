@@ -405,11 +405,9 @@ describe('useSelectionValidation', () => {
 			expect(resolveGroupableNodeIds(['sticky', 'sticky2'])).toBeNull();
 		});
 
-		it('returns null for selections with fewer than two connectable members', () => {
-			// Single-member groups are pointless, so creating one is not offered.
-			// A sticky does not count toward the minimum: a lone node plus its
-			// annotation sticky is still a "one-node group". Creation-only rule —
-			// deletion can still degenerate an existing group below the minimum.
+		it('accepts a single connectable member', () => {
+			// A sticky does not count as a connectable member, but a lone real node
+			// is a valid group member.
 			const graph = makeLinearGraph();
 			graph.nodes.sticky = makeNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE });
 			setupGraph(graph, {
@@ -419,8 +417,8 @@ describe('useSelectionValidation', () => {
 
 			const { resolveGroupableNodeIds } = useSelectionValidation();
 
-			expect(resolveGroupableNodeIds(['a'])).toBeNull();
-			expect(resolveGroupableNodeIds(['a', 'sticky'])).toBeNull();
+			expect(resolveGroupableNodeIds(['a'])).toEqual(['a']);
+			expect(resolveGroupableNodeIds(['a', 'sticky'])).toEqual(['a', 'sticky']);
 		});
 
 		it('counts connectable members after sub-node expansion for the minimum', () => {
