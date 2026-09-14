@@ -1,7 +1,7 @@
 export * from './license-state';
 export type * from './types';
 
-export { inDevelopment, inProduction, inTest } from './environment';
+export { inDevelopment, inProduction, inTest, isEnvFeatureEnabled } from './environment';
 export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';

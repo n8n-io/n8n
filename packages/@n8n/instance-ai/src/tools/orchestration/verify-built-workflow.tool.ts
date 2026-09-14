@@ -7,10 +7,15 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import {
+	analyzeVerificationResult,
+	buildNodePreviews,
+	getTriggerMainFlowScope,
+} from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
@@ -19,6 +24,12 @@ import {
 import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import {
+	buildResolvedParameterNote,
+	collectResolvedParameterWarnings,
+	resolvedParameterWarningSchema,
+	skippedParameterCheckSchema,
+} from './verification/resolved-parameter-warnings';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import {
 	executionNodeErrorSchema,
@@ -42,7 +53,11 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.describe(
 			"Input data for the workflow trigger. Shape MUST match the trigger's real-world output: " +
 				'Form Trigger -> flat field map like {name: "Alice", email: "a@b.c"} (do NOT wrap in formFields); ' +
-				'Webhook -> the body payload like {event: "signup", userId: "..."} (adapter wraps it under body); ' +
+				'Webhook -> a flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
+				'`query`, `headers` and `params` EMPTY. When any expression reads $json.query.*, $json.headers.* or ' +
+				'$json.params.*, pass the request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
+				'headers: {"x-github-event": "issues"}, params: {...}}. A flat payload cannot exercise those fields, they resolve ' +
+				'empty, and a simulated downstream node still looks green; ' +
 				'Chat Trigger -> {chatInput: "user message"}; ' +
 				'Schedule Trigger -> omit inputData. ' +
 				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
@@ -126,6 +141,15 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 			z.object({
 				nodeName: z.string(),
 				itemCount: z.number().optional(),
+				outputs: z
+					.array(
+						z.object({
+							index: z.number(),
+							name: z.string().optional(),
+							itemCount: z.number().optional(),
+						}),
+					)
+					.optional(),
 				preview: z.string(),
 				truncated: z.boolean(),
 				chars: z.number(),
@@ -135,6 +159,9 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 		.optional(),
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
+	resolvedParameterWarnings: z.array(resolvedParameterWarningSchema).optional(),
+	skippedParameterChecks: z.array(skippedParameterCheckSchema).optional(),
+	skippedParameterCheckCount: z.number().int().nonnegative().optional(),
 	lastNodeExecuted: z.string().optional(),
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
@@ -194,22 +221,46 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const chatModelRecovery = await target.domainContext.workflowService
+			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
-				.then(
-					async (workflow) =>
-						await collectChatModelRecoveryContext(
-							target.domainContext,
-							workflow.nodes ?? [],
-							workflow.connections,
-						),
-				)
 				.catch(() => undefined);
+			if (
+				resolvedInput.triggerNodeName !== undefined &&
+				!workflow?.nodes.some(
+					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+				)
+			) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
+				};
+			}
+			const chatModelRecovery = workflow
+				? await collectChatModelRecoveryContext(
+						target.domainContext,
+						workflow.nodes ?? [],
+						workflow.connections,
+					).catch(() => undefined)
+				: undefined;
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+			const selectedTriggerNodeName = buildOutcome.triggerNodes?.some(
+				(trigger) => trigger.nodeName === resolvedInput.triggerNodeName,
+			)
+				? resolvedInput.triggerNodeName
+				: undefined;
+			const verificationScope =
+				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
+					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
+					: undefined;
+			const previousProgress = await workflowTaskService.startVerification(
+				resolvedInput.workItemId,
+				verificationScope ? selectedTriggerNodeName : undefined,
+			);
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis } = prepared.gateScript
+			const { result, analysis, parameterCheckRuns } = prepared.gateScript
 				? await runScriptedGateVerification({
 						script: prepared.gateScript,
 						prepared,
@@ -224,6 +275,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						runId: context.runId,
 						chatModelRelatedNodeNames,
 						chatModelRecovery,
+						verificationScope,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -237,19 +289,27 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								abortSignal: context.abortSignal,
 							},
 						);
+						const analysis = analyzeVerificationResult({
+							result: runResult,
+							buildOutcome,
+							simulatedNodes: prepared.simulatedNodes,
+							haltedGateNames: prepared.haltedGateNames,
+							triggerNodeName: resolvedInput.triggerNodeName,
+							stateBefore: target.stateBefore,
+							runId: context.runId,
+							chatModelRelatedNodeNames,
+							chatModelRecovery,
+							verificationScope,
+						});
 						return {
 							result: runResult,
-							analysis: analyzeVerificationResult({
-								result: runResult,
-								buildOutcome,
-								simulatedNodes: prepared.simulatedNodes,
-								haltedGateNames: prepared.haltedGateNames,
-								triggerNodeName: resolvedInput.triggerNodeName,
-								stateBefore: target.stateBefore,
-								runId: context.runId,
-								chatModelRelatedNodeNames,
-								chatModelRecovery,
-							}),
+							analysis,
+							parameterCheckRuns: [
+								{
+									executionId: runResult.executionId,
+									nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+								},
+							],
 						};
 					})();
 
@@ -263,22 +323,51 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
-			const claim = deriveVerificationClaim({
-				analysis,
+			const runClaim = deriveVerificationClaim({
+				analysis: {
+					...analysis,
+					nodesNotReached: buildOutcome.nodeSimulationPlan
+						.map((node) => node.nodeName)
+						.filter((name) => !analysis.reachedNames.has(name)),
+				},
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
 				fixTargetNodeNames,
 			});
 
-			await persistVerificationOutcome({
+			const claim = await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
 				workflowTaskService,
 				workflowId,
 				result,
 				analysis,
-				claim,
-				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
+				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
+				previousProgress,
+				claim: runClaim,
 			});
+
+			// A simulated node's preview is fixture data, so an expression that resolved
+			// to empty (e.g. `$json.query.x` on a body-only input) leaves no trace in the
+			// run. Replay the parameters of every reached simulated node and surface it.
+			const {
+				warnings: resolvedParameterWarnings,
+				skipped: skippedParameterChecks,
+				skippedCount: skippedParameterCheckCount,
+			} = await collectResolvedParameterWarnings({
+				executionService: target.domainContext.executionService,
+				runs: parameterCheckRuns,
+				logger: context.logger,
+			});
+			const simulationNote = [
+				analysis.simulationNote,
+				buildResolvedParameterNote(
+					resolvedParameterWarnings,
+					skippedParameterChecks,
+					skippedParameterCheckCount,
+				),
+			]
+				.filter((note): note is string => note !== undefined)
+				.join(' ');
 
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
 			const simulatedNames = new Set(analysis.reachedSimulatedNodes.map((n) => n.nodeName));
@@ -293,7 +382,13 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
 				simulatedNodes:
 					analysis.reachedSimulatedNodes.length > 0 ? analysis.reachedSimulatedNodes : undefined,
-				simulationNote: analysis.simulationNote,
+				simulationNote: simulationNote.length > 0 ? simulationNote : undefined,
+				resolvedParameterWarnings:
+					resolvedParameterWarnings.length > 0 ? resolvedParameterWarnings : undefined,
+				skippedParameterChecks:
+					skippedParameterChecks.length > 0 ? skippedParameterChecks : undefined,
+				skippedParameterCheckCount:
+					skippedParameterCheckCount > 0 ? skippedParameterCheckCount : undefined,
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,

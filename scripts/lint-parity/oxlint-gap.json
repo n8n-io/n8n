@@ -1,0 +1,52 @@
+{
+	"$comment": [
+		"Rules the ESLint layers enforce at error that the oxlint layers do not.",
+		"`oxlint-parity.mjs` fails on any rule missing from oxlint that is absent here,",
+		"so every drop is a deliberate, reviewed entry. Measured against oxlint 1.78.0.",
+		"`layer` is the ESLint layer the rule is at error in. `native` names the oxlint",
+		"rule id when one exists but we still do not enable it."
+	],
+	"no-restricted-syntax": {
+		"layer": "base",
+		"native": null,
+		"reason": "oxlint 1.78 has no AST-selector rule and no equivalent. It is an ESLint core rule, so a jsPlugin cannot host it either: `Rule 'no-restricted-syntax' not found in plugin 'eslint'`. base uses it for the raw-enum ban; editor-ui uses it for store-migration ratchets, and editor-ui keeps ESLint.",
+		"impact": "The const-enum ban is unenforced in migrated packages."
+	},
+	"no-octal": {
+		"layer": "base",
+		"native": null,
+		"reason": "No oxlint rule. Largely covered incidentally: the oxc parser rejects legacy `0`-prefixed octal literals in strict-mode and module code, which is all of our source.",
+		"impact": "Near zero."
+	},
+	"import-x/no-extraneous-dependencies": {
+		"layer": "base",
+		"native": null,
+		"reason": "`import-x` is a reserved plugin name in oxlint, so `eslint-plugin-import-x` cannot load as a jsPlugin under its own name (`Plugin name 'import-x' is reserved`). An alias would permanently change the rule ids, and these rules are the slowest in ESLint and unvalidated through the alpha bridge.",
+		"impact": "A package can import a dependency it does not declare. Left out of the spike deliberately."
+	},
+	"typescript/prefer-optional-chain": {
+		"layer": "base",
+		"native": "typescript/prefer-optional-chain",
+		"reason": "Native but `nursery`, and it diverges. It reports `typeof crypto !== 'undefined' && crypto.randomUUID` in @n8n/crdt where ESLint does not, and its fix is wrong: `crypto?.randomUUID` still throws a ReferenceError when the global is undeclared, which is what the typeof guard prevents.",
+		"impact": "Re-evaluate when the rule leaves nursery."
+	},
+	"import/export": {
+		"layer": "base",
+		"native": "import/export",
+		"reason": "Native but `nursery`. Not enabling a pre-release rule silently; no divergence observed yet.",
+		"impact": "Re-evaluate when the rule leaves nursery."
+	},
+	"typescript/consistent-type-imports": {
+		"layer": "base",
+		"native": "typescript/consistent-type-imports",
+		"reason": "oxlint's rule has no `emitDecoratorMetadata` carve-out. typescript-eslint goes silent in any file containing a decorator when `experimentalDecorators` + `emitDecoratorMetadata` are set, because converting such an import to `import type` erases the `design:paramtypes` metadata that DI resolves. oxlint reads no compiler options in this rule and offers no option to declare them, so it reported 3488 false positives across packages/cli/src, all in decorated files. Its fixer also fights n8n-local-rules/no-type-only-import-in-di: one adds `type`, the other removes it, so `oxlint --fix` does not converge.",
+		"impact": "Low at runtime. The direction that breaks DI stays guarded by no-type-only-import-in-di, and these packages leave `verbatimModuleSyntax` off, so TypeScript elides a type-only-used import at emit. The cost is drift from a clean baseline.",
+		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
+	},
+	"n8n-local-rules/no-unsealed-workflow-entity-write": {
+		"layer": "base",
+		"native": null,
+		"reason": "Needs type information. oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws and the rule reports `Error running JS plugin` on any file that calls a checked method. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
+		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does."
+	}
+}

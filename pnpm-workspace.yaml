@@ -176,11 +176,11 @@ catalog:
   # Pinned exactly and kept together: these packages cross types with each other
   # (`rule-tester` pins `utils` exactly), so a caret that lets one float breaks the
   # other. Must match the `typescript-eslint` meta-package version below.
-  '@typescript-eslint/eslint-plugin': 8.35.0
-  '@typescript-eslint/parser': 8.35.0
-  '@typescript-eslint/rule-tester': 8.35.0
-  '@typescript-eslint/typescript-estree': 8.35.0
-  '@typescript-eslint/utils': 8.35.0
+  '@typescript-eslint/eslint-plugin': 8.70.0
+  '@typescript-eslint/parser': 8.70.0
+  '@typescript-eslint/rule-tester': 8.70.0
+  '@typescript-eslint/typescript-estree': 8.70.0
+  '@typescript-eslint/utils': 8.70.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
@@ -273,7 +273,7 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
-  typescript-eslint: 8.35.0
+  typescript-eslint: 8.70.0
   uuid: 11.1.1
   vite: ^8.0.2
   unplugin-dts: ^1.1.0
@@ -286,6 +286,7 @@ catalog:
   yaml: 2.8.3
   zod: 3.25.76
   zod-to-json-schema: 3.23.3
+  knip: ^6.35.1
 
 catalogMode: strict
 
@@ -356,6 +357,9 @@ catalogs:
     undici: ^6.28.0
   undici-v7:
     undici: ^7.29.0
+  # knip needs zod 4 while the default catalog pins zod 3.
+  zod-v4:
+    zod: ^4.4.3
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -394,6 +398,8 @@ overrides:
   nodemailer: 8.0.10
   validator: 13.15.26
   zod: 3.25.76
+  # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
+  'knip>zod': catalog:zod-v4
   js-yaml: 4.3.2
   katex: 0.18.2
   body-parser: 2.3.0
@@ -476,12 +482,12 @@ overrides:
 patchedDependencies:
   axios: patches/axios.patch
   bull@4.16.4: patches/bull@4.16.4.patch
+  element-plus@2.4.3: patches/element-plus@2.4.3.patch
   pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
   '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
   '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
   vue-tsc@2.2.8: patches/vue-tsc@2.2.8.patch
-  element-plus@2.4.3: patches/element-plus@2.4.3.patch
   ics: patches/ics.patch
   minifaker: patches/minifaker.patch
   z-vue-scan: patches/z-vue-scan.patch

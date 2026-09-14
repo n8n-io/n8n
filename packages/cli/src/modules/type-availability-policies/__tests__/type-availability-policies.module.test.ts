@@ -18,7 +18,9 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
 	});
 
-	it('registers the instance and project controllers on init', async () => {
+	// The available-types controller injects the node registry, whose import chain takes
+	// several seconds to transform — more than the default per-test timeout.
+	it('registers the instance, project and available-types controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -29,6 +31,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const { TypeAvailabilityPolicyProjectController } = await import(
 			'../type-availability-policy-project.controller.js'
 		);
+		const { AvailableTypesController } = await import('../available-types.controller.js');
 		const registry = Container.get(ControllerRegistryMetadata);
 
 		expect(
@@ -37,7 +40,10 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(
 			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
 		).toBeGreaterThan(0);
-	});
+		expect(
+			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
+		).toBeGreaterThan(0);
+	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {
 		const module = new TypeAvailabilityPoliciesModule();

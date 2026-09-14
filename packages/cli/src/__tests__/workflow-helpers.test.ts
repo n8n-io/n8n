@@ -756,7 +756,7 @@ describe('validateWorkflowNodeGroups', () => {
 						getNodeType,
 					),
 				).toThrow(
-					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit (no path from "Node n1" to "Node n2").',
 				);
 			});
 		});

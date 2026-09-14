@@ -130,7 +130,7 @@ export class StaleOverridesRule extends BaseRule<CodeHealthContext> {
 			if (hasSemverOperator(ov.targetVersion)) continue;
 
 			const resolved = lockData.resolvedVersions.get(ov.packageName);
-			if (!resolved || resolved.size !== 1) continue;
+			if (resolved?.size !== 1) continue;
 
 			const onlyResolved = [...resolved][0];
 			if (onlyResolved !== ov.targetVersion) continue;

@@ -1,0 +1,342 @@
+operationId: pullSourceControl
+tags:
+  - SourceControl
+summary: Pull changes from the remote repository
+description: Fetches changes from the connected Git branch into the instance.
+x-required-scope: sourceControl:pull
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          force:
+            type: boolean
+            description: Discard local changes and force the pull to complete.
+          autoPublish:
+            type: string
+            enum:
+              - none
+              - all
+              - published
+            default: none
+            description: |-
+              Controls automatic workflow publishing after import:
+              - `none`: Keep workflows in their local published state (default)
+              - `all`: Publish all imported workflows
+              - `published`: Publish only workflows that were published locally before import
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              file:
+                type: string
+              id:
+                type: string
+              name:
+                type: string
+              type:
+                type: string
+                enum:
+                  - credential
+                  - workflow
+                  - tags
+                  - variables
+                  - file
+                  - folders
+                  - project
+                  - datatable
+              status:
+                type: string
+                enum:
+                  - new
+                  - modified
+                  - deleted
+                  - created
+                  - renamed
+                  - conflicted
+                  - ignored
+                  - staged
+                  - unknown
+              location:
+                type: string
+                enum:
+                  - local
+                  - remote
+              conflict:
+                type: boolean
+              updatedAt:
+                type: string
+              pushed:
+                type: boolean
+              isLocalPublished:
+                type: boolean
+              isRemoteArchived:
+                type: boolean
+              parentFolderId:
+                type: string
+                nullable: true
+              folderPath:
+                type: array
+                items:
+                  type: string
+              remoteFolderPath:
+                type: array
+                items:
+                  type: string
+              owner:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - personal
+                      - team
+                  projectId:
+                    type: string
+                  projectName:
+                    type: string
+                required:
+                  - type
+                  - projectId
+                  - projectName
+              publishingError:
+                type: string
+              publishingErrorDetails:
+                type: object
+                properties:
+                  reason:
+                    type: string
+                    enum:
+                      - review_pending
+                      - changes_requested
+                      - insufficient_api_key_scope
+                      - insufficient_permissions
+                  workflowReviewRequestId:
+                    type: string
+                    minLength: 1
+                  versionId:
+                    type: string
+                    minLength: 1
+                required:
+                  - reason
+                additionalProperties: false
+              contentImportPolicy:
+                type: object
+                properties:
+                  violations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                        checkId:
+                          type: string
+                        message:
+                          type: string
+                        subject:
+                          type: string
+                        subjectType:
+                          type: string
+                        scope:
+                          type: string
+                        matchedRuleId:
+                          type: string
+                      required:
+                        - kind
+                        - checkId
+                        - message
+                  checkErrors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        checkId:
+                          type: string
+                        correlationId:
+                          type: string
+                      required:
+                        - checkId
+                        - correlationId
+                required:
+                  - violations
+                  - checkErrors
+            required:
+              - file
+              - id
+              - name
+              - type
+              - status
+              - location
+              - conflict
+              - updatedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    description: 'Conflict due to uncommitted local changes or merge conflicts. The response body lists every file in the pull diff; files causing the conflict have `conflict: true` or `status: modified`. Retry with `force: true` to discard local changes.'
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              file:
+                type: string
+              id:
+                type: string
+              name:
+                type: string
+              type:
+                type: string
+                enum:
+                  - credential
+                  - workflow
+                  - tags
+                  - variables
+                  - file
+                  - folders
+                  - project
+                  - datatable
+              status:
+                type: string
+                enum:
+                  - new
+                  - modified
+                  - deleted
+                  - created
+                  - renamed
+                  - conflicted
+                  - ignored
+                  - staged
+                  - unknown
+              location:
+                type: string
+                enum:
+                  - local
+                  - remote
+              conflict:
+                type: boolean
+              updatedAt:
+                type: string
+              pushed:
+                type: boolean
+              isLocalPublished:
+                type: boolean
+              isRemoteArchived:
+                type: boolean
+              parentFolderId:
+                type: string
+                nullable: true
+              folderPath:
+                type: array
+                items:
+                  type: string
+              remoteFolderPath:
+                type: array
+                items:
+                  type: string
+              owner:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - personal
+                      - team
+                  projectId:
+                    type: string
+                  projectName:
+                    type: string
+                required:
+                  - type
+                  - projectId
+                  - projectName
+              publishingError:
+                type: string
+              publishingErrorDetails:
+                type: object
+                properties:
+                  reason:
+                    type: string
+                    enum:
+                      - review_pending
+                      - changes_requested
+                      - insufficient_api_key_scope
+                      - insufficient_permissions
+                  workflowReviewRequestId:
+                    type: string
+                    minLength: 1
+                  versionId:
+                    type: string
+                    minLength: 1
+                required:
+                  - reason
+                additionalProperties: false
+              contentImportPolicy:
+                type: object
+                properties:
+                  violations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                        checkId:
+                          type: string
+                        message:
+                          type: string
+                        subject:
+                          type: string
+                        subjectType:
+                          type: string
+                        scope:
+                          type: string
+                        matchedRuleId:
+                          type: string
+                      required:
+                        - kind
+                        - checkId
+                        - message
+                  checkErrors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        checkId:
+                          type: string
+                        correlationId:
+                          type: string
+                      required:
+                        - checkId
+                        - correlationId
+                required:
+                  - violations
+                  - checkErrors
+            required:
+              - file
+              - id
+              - name
+              - type
+              - status
+              - location
+              - conflict
+              - updatedAt
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

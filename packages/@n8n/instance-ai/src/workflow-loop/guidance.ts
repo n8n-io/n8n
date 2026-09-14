@@ -33,7 +33,11 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	const rules = [
 		'Do NOT call the workflow verified, tested, working, or ready to publish.',
 		'Do NOT offer to publish it.',
-		claim.liveTestRecommended ? 'Offer a live end-to-end test instead.' : '',
+		(claim.pendingTriggers?.length ?? 0) > 0
+			? 'Follow the verification obligation for the remaining triggers. Respect its attempt limit.'
+			: claim.liveTestRecommended
+				? 'Offer a live end-to-end test instead.'
+				: '',
 	].filter((rule) => rule !== '');
 
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');
@@ -85,7 +89,7 @@ export function formatWorkflowLoopGuidance(
 				return (
 					`${claimLead} It still uses temporary mock data. ` +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
-					'to open the inline setup card in the AI Assistant panel for credentials, parameters, and triggers. ' +
+					'to open the inline setup card in the n8n Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);

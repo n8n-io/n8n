@@ -88,6 +88,11 @@
 			"name": "PromotionConnectionProject",
 			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-connection-project.entity.ts",
 			"reason": "Promotion configuration for the project (which connection it is linked to), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
+		},
+		{
+			"name": "AiPreference",
+			"path": "packages/@n8n/db/src/entities/ai-preference.ts",
+			"reason": "Project-scoped AI preferences describe how to work inside the deleted project; dropped via FK cascade, like Variables. Personal and global preferences carry no projectId."
 		}
 	]
 }

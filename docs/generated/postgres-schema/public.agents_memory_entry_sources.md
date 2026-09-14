@@ -5,21 +5,24 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) | Agent that owns the linked episodic memory entry source |
+| candidateId | varchar(36) |  | true |  | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) | Capture candidate used as source evidence |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | evidenceHash | varchar(64) |  | false |  |  | Bounded hash used to deduplicate exact evidence links |
-| evidenceText | text |  | false |  |  | Exact source evidence text from the observation, not recall scope |
+| evidenceText | text |  | false |  |  | Exact source evidence text, not recall scope |
 | id | varchar(36) |  | false |  |  |  |
 | memoryEntryId | varchar(36) |  | false |  | [public.agents_memory_entries](public.agents_memory_entries.md) | Episodic memory entry linked to this source evidence |
-| observationId | varchar(36) |  | false |  | [public.agents_observations](public.agents_observations.md) | Observation-log row used as source evidence |
-| threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | Source conversation thread that produced the linked observation |
+| observationId | varchar(36) |  | true |  | [public.agents_observations](public.agents_observations.md) | Observation-log row used as source evidence |
+| threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | Source conversation thread for this evidence |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agents_memory_entry_sources_exactly_one_source | CHECK | CHECK (((("observationId" IS NOT NULL) AND ("candidateId" IS NULL)) OR (("observationId" IS NULL) AND ("candidateId" IS NOT NULL)))) |
 | FK_451d387a182fa8dd8002dfc3a77 | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agents_threads(id) ON DELETE CASCADE |
 | FK_4706f6223313959b7437a2b48df | FOREIGN KEY | FOREIGN KEY ("memoryEntryId") REFERENCES agents_memory_entries(id) ON DELETE CASCADE |
+| FK_87640d646b020c3be8e16cd0fa6 | FOREIGN KEY | FOREIGN KEY ("candidateId") REFERENCES agents_memory_entry_candidates(id) ON DELETE CASCADE |
 | FK_c38e8a57a36b880e39a52ada2e8 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_cb7c15d22fd068a0806aa57fc03 | FOREIGN KEY | FOREIGN KEY ("observationId") REFERENCES agents_observations(id) ON DELETE CASCADE |
 | PK_278f05e98e74baaaa93f52b4bab | PRIMARY KEY | PRIMARY KEY (id) |
@@ -29,7 +32,6 @@
 | agents_memory_entry_sources_evidenceText_not_null | n | NOT NULL "evidenceText" |
 | agents_memory_entry_sources_id_not_null | n | NOT NULL id |
 | agents_memory_entry_sources_memoryEntryId_not_null | n | NOT NULL "memoryEntryId" |
-| agents_memory_entry_sources_observationId_not_null | n | NOT NULL "observationId" |
 | agents_memory_entry_sources_threadId_not_null | n | NOT NULL "threadId" |
 | agents_memory_entry_sources_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -39,6 +41,8 @@
 | ---- | ---------- |
 | IDX_451d387a182fa8dd8002dfc3a7 | CREATE INDEX "IDX_451d387a182fa8dd8002dfc3a7" ON public.agents_memory_entry_sources USING btree ("threadId") |
 | IDX_a353ac251315ef0af6ad3c9f0a | CREATE UNIQUE INDEX "IDX_a353ac251315ef0af6ad3c9f0a" ON public.agents_memory_entry_sources USING btree ("memoryEntryId", "observationId", "evidenceHash") |
+| IDX_agents_mem_src_candidate_unique | CREATE UNIQUE INDEX "IDX_agents_mem_src_candidate_unique" ON public.agents_memory_entry_sources USING btree ("memoryEntryId", "candidateId", "evidenceHash") WHERE ("candidateId" IS NOT NULL) |
+| IDX_agents_memory_entry_sources_candidateId | CREATE INDEX "IDX_agents_memory_entry_sources_candidateId" ON public.agents_memory_entry_sources USING btree ("candidateId") |
 | IDX_cb7c15d22fd068a0806aa57fc0 | CREATE INDEX "IDX_cb7c15d22fd068a0806aa57fc0" ON public.agents_memory_entry_sources USING btree ("observationId") |
 | IDX_f9573af4ed653f13b0ba1f7b12 | CREATE INDEX "IDX_f9573af4ed653f13b0ba1f7b12" ON public.agents_memory_entry_sources USING btree ("agentId", "threadId") |
 | PK_278f05e98e74baaaa93f52b4bab | CREATE UNIQUE INDEX "PK_278f05e98e74baaaa93f52b4bab" ON public.agents_memory_entry_sources USING btree (id) |
@@ -49,12 +53,14 @@
 erDiagram
 
 "public.agents_memory_entry_sources" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agents_memory_entry_sources" }o--o| "public.agents_memory_entry_candidates" : "FOREIGN KEY (#quot;candidateId#quot;) REFERENCES agents_memory_entry_candidates(id) ON DELETE CASCADE"
 "public.agents_memory_entry_sources" }o--|| "public.agents_memory_entries" : "FOREIGN KEY (#quot;memoryEntryId#quot;) REFERENCES agents_memory_entries(id) ON DELETE CASCADE"
-"public.agents_memory_entry_sources" }o--|| "public.agents_observations" : "FOREIGN KEY (#quot;observationId#quot;) REFERENCES agents_observations(id) ON DELETE CASCADE"
+"public.agents_memory_entry_sources" }o--o| "public.agents_observations" : "FOREIGN KEY (#quot;observationId#quot;) REFERENCES agents_observations(id) ON DELETE CASCADE"
 "public.agents_memory_entry_sources" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 
 "public.agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   timestamp_3__with_time_zone createdAt
   varchar_64_ evidenceHash
   text evidenceText
@@ -79,6 +85,22 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  text content
+  timestamp_3__with_time_zone createdAt
+  text evidenceText
+  varchar_36_ id
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entries" {
   varchar_36_ agentId FK

@@ -14,6 +14,13 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
+import {
+	assertInstanceAiPromptVersion,
+	describePromptProfile,
+	getVersionedSystemPrompt,
+	resolvePromptProfile,
+} from '../src/prompts/prompt-profiles';
+import { loadInstanceAiPromptSkills } from '../src/skills/runtime-skills';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -31,9 +38,10 @@ interface AgentEntry {
 	variants: Variant[];
 }
 
-function parseArgs(argv: string[]): { outDir: string } {
+function parseArgs(argv: string[]): { outDir: string; promptVersion?: string } {
 	const args = argv.slice(2);
 	let outDir = resolve(__dirname, '..', '.output', 'prompts');
+	let promptVersion: string | undefined;
 	for (let i = 0; i < args.length; i++) {
 		if (args[i] === '--out' || args[i] === '-o') {
 			const next = args[i + 1];
@@ -43,13 +51,18 @@ function parseArgs(argv: string[]): { outDir: string } {
 			}
 			outDir = resolve(next);
 			i++;
+		} else if (args[i] === '--profile') {
+			promptVersion = args[++i];
+			if (!promptVersion) throw new Error('--profile requires a version');
+			assertInstanceAiPromptVersion(promptVersion);
 		} else if (args[i] === '--help' || args[i] === '-h') {
-			console.log('Usage: pnpm prompts:print [--out <dir>]');
+			console.log('Usage: pnpm prompts:print [--out <dir>] [--profile <version>]');
 			console.log('  --out, -o   Output directory (default: <package>/.output/prompts)');
+			console.log('  --profile   Export a prompt profile and its selected skills');
 			process.exit(0);
 		}
 	}
-	return { outDir };
+	return { outDir, promptVersion };
 }
 
 function collectAgents(): AgentEntry[] {
@@ -133,8 +146,36 @@ function renderFile(agent: AgentEntry, variant: Variant): string {
 	return header.join('\n') + variant.body;
 }
 
-function main(): void {
-	const { outDir } = parseArgs(process.argv);
+async function main(): Promise<void> {
+	const { outDir, promptVersion } = parseArgs(process.argv);
+	if (promptVersion) {
+		const selected = resolvePromptProfile({ version: promptVersion });
+		const { source, disabledTools } = await loadInstanceAiPromptSkills(selected.profile);
+		const directory = join(outDir, promptVersion);
+		mkdirSync(join(directory, 'skills'), { recursive: true });
+		writeFileSync(
+			join(directory, 'system.md'),
+			getVersionedSystemPrompt(selected.profile.systemPromptVersion, {}),
+		);
+		writeFileSync(
+			join(directory, 'manifest.json'),
+			JSON.stringify(
+				{
+					...describePromptProfile(selected, source),
+					disabledTools,
+					skills: source.registry.skills.map(({ id, version, hash }) => ({ id, version, hash })),
+				},
+				null,
+				2,
+			),
+		);
+		for (const entry of source.registry.skills) {
+			const skill = await source.loadSkill(entry.id);
+			if (skill) writeFileSync(join(directory, 'skills', `${entry.id}.md`), skill.instructions);
+		}
+		console.log(`Wrote profile ${promptVersion} to ${directory}`);
+		return;
+	}
 	const agents = collectAgents();
 
 	const written: Array<{ relPath: string; chars: number }> = [];
@@ -159,4 +200,4 @@ function main(): void {
 	}
 }
 
-main();
+void main();

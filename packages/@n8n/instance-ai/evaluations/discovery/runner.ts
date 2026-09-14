@@ -313,6 +313,6 @@ function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {
 		type: event.type,
 		// `extractOutcomeFromEvents` reads `data.payload.toolName` etc. — our
 		// InstanceAiEvent already has that shape, so we pass it through directly.
-		data: event as unknown as Record<string, unknown>,
+		data: event,
 	};
 }

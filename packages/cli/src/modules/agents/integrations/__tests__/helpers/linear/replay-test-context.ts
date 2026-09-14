@@ -243,7 +243,7 @@ export async function createLinearReplayContext(
 				organizationId,
 			);
 			return {
-				apiCall: { method, body: variables.input ?? (variables as Record<string, unknown>) },
+				apiCall: { method, body: variables.input ?? variables },
 				responseBody: { data },
 			};
 		},
@@ -258,7 +258,7 @@ export async function createLinearReplayContext(
 		webhookSecret: LINEAR_WEBHOOK_SECRET,
 		userName: fixtures.botUser.displayName,
 		mode,
-	} as Parameters<typeof createLinearAdapter>[0]);
+	});
 	const chat = new Chat({
 		userName: 'n8n-agent-agent-1',
 		adapters: { linear: adapter } as unknown as Record<string, never>,
