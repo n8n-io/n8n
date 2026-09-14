@@ -267,7 +267,7 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
-		it('does not delete another request\'s in-progress staging directory', async () => {
+		it("does not delete another request's in-progress staging directory", async () => {
 			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
 			const firstClone = createDeferredPromise();
 			let cloneCalls = 0;

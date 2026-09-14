@@ -20,9 +20,9 @@ export class PromotionChangesController {
 		@Query query: PromotionChangesQueryDto,
 	): Promise<PromotableResource[]> {
 		const changes = await this.changeService.getChanges(req.user, projectId);
-		const search = query.search?.toLocaleLowerCase();
+		const search = query.search?.toLowerCase();
 		return changes
-			.filter(({ name }) => !search || name.toLocaleLowerCase().includes(search))
+			.filter(({ name }) => !search || name.toLowerCase().includes(search))
 			.sort((a, b) => {
 				const comparison = (a[query.sort] ?? '').localeCompare(b[query.sort] ?? '');
 				return (query.order === 'desc' ? -comparison : comparison) || a.id.localeCompare(b.id);
