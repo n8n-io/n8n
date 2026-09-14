@@ -1,6 +1,7 @@
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { TEST_WEBHOOK_MAX_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
@@ -12,9 +13,11 @@ describe('TestWebhookRegistrationsService', () => {
 		mock<InstanceSettings>({ isMultiMain: false }),
 	);
 
+	// `expiresAt` is set explicitly: a deep mock would return a function for it and read as expired.
 	const registration = mock<TestWebhookRegistration>({
 		version: 1,
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
+		expiresAt: Date.now() + 60_000,
 	});
 
 	const webhookKey = 'GET|hello';
@@ -40,7 +43,7 @@ describe('TestWebhookRegistrationsService', () => {
 			expect(cacheService.expire).not.toHaveBeenCalled();
 		});
 
-		test('should set the given TTL rounded up to whole seconds on the hash in multi-main setup', async () => {
+		test('should set the maximum window plus buffer as the hash TTL in multi-main setup', async () => {
 			const multiMainRegistrations = new TestWebhookRegistrationsService(
 				cacheService,
 				mock<InstanceSettings>({ isSingleMain: false }),
@@ -48,22 +51,10 @@ describe('TestWebhookRegistrationsService', () => {
 
 			await multiMainRegistrations.register(registration, 1234);
 
-			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 2000);
-		});
-
-		test('should keep the hash TTL at the longest remaining registration in multi-main setup', async () => {
-			const multiMainRegistrations = new TestWebhookRegistrationsService(
-				cacheService,
-				mock<InstanceSettings>({ isSingleMain: false }),
+			expect(cacheService.expire).toHaveBeenCalledWith(
+				cacheKey,
+				TEST_WEBHOOK_MAX_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
 			);
-			const longLivedKey = 'POST|long';
-			cacheService.getHash.mockResolvedValue({
-				[longLivedKey]: { version: 1, expiresAt: Date.now() + 500_000 },
-			});
-
-			await multiMainRegistrations.register(registration, 1234);
-
-			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 500_000);
 		});
 
 		test('should throw an error if the registration fails', async () => {
@@ -102,6 +93,12 @@ describe('TestWebhookRegistrationsService', () => {
 			await expect(promise).resolves.toBeUndefined();
 		});
 
+		test('should skip an expired registration', async () => {
+			cacheService.getHashValue.mockResolvedValueOnce({ version: 1, expiresAt: Date.now() - 1 });
+
+			await expect(registrations.get(webhookKey)).resolves.toBeUndefined();
+		});
+
 		test('should skip registrations with outdated version', async () => {
 			const { version, ...outdatedRegistration } = registration; // remove the version property to simulate outdated registration
 			cacheService.getHashValue.mockResolvedValueOnce(outdatedRegistration);
@@ -127,11 +124,26 @@ describe('TestWebhookRegistrationsService', () => {
 			cacheService.getHash.mockResolvedValueOnce({
 				[webhookKey]: registration,
 				ANOTHER_KEY: { invalid: 'data' }, // invalid registration to test filtering
+				EXPIRED_KEY: { version: 1, expiresAt: Date.now() - 1 },
 			});
 
 			const result = await registrations.getAllRegistrations();
 
 			expect(result).toEqual([registration]);
+		});
+	});
+
+	describe('getRegistrationsHash()', () => {
+		test('should drop invalid and expired registrations', async () => {
+			cacheService.getHash.mockResolvedValueOnce({
+				[webhookKey]: registration,
+				ANOTHER_KEY: { invalid: 'data' },
+				EXPIRED_KEY: { version: 1, expiresAt: Date.now() - 1 },
+			});
+
+			const result = await registrations.getRegistrationsHash();
+
+			expect(result).toEqual({ [webhookKey]: registration });
 		});
 	});
 

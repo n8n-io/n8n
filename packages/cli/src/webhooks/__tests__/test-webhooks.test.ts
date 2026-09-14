@@ -18,7 +18,11 @@ import { v4 as uuid } from 'uuid';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {
@@ -113,6 +117,19 @@ describe('TestWebhooks', () => {
 			const ttls = registrations.register.mock.calls.map(([, ttl]) => ttl);
 			expect(ttls[0]).toBe(TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
 			expect(ttls.at(-1)).toBe(600_000 + TEST_WEBHOOK_TIMEOUT_BUFFER);
+		});
+
+		test('clamps timeoutMs to the maximum window and falls back to the default for non-positive values', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: 0 });
+			await testWebhooks.needsWebhook({ ...args, timeoutMs: 2 * TEST_WEBHOOK_MAX_TIMEOUT });
+
+			const ttls = registrations.register.mock.calls.map(([, ttl]) => ttl);
+			expect(ttls[0]).toBe(TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
+			expect(ttls.at(-1)).toBe(TEST_WEBHOOK_MAX_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER);
 		});
 
 		test('if webhook activation fails, should deactivate workflow webhooks', async () => {

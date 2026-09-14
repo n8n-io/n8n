@@ -18,7 +18,11 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
@@ -402,7 +406,7 @@ export class TestWebhooks implements IWebhookManager {
 		chatSessionId?: string;
 		workflowIsActive?: boolean;
 		n8nAuthCookie?: string;
-		/** How long the test webhook stays registered. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
+		/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
 		timeoutMs?: number;
 	}) {
 		const {
@@ -449,7 +453,11 @@ export class TestWebhooks implements IWebhookManager {
 				return false; // no webhooks found to start a workflow
 			}
 
-			const timeoutDuration = timeoutMs ?? TEST_WEBHOOK_TIMEOUT;
+			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
+			const timeoutDuration =
+				timeoutMs !== undefined && timeoutMs > 0
+					? Math.min(timeoutMs, TEST_WEBHOOK_MAX_TIMEOUT)
+					: TEST_WEBHOOK_TIMEOUT;
 			const registrationTtl = timeoutDuration + TEST_WEBHOOK_TIMEOUT_BUFFER;
 
 			// Check if any webhook is a single webhook trigger and workflow is active

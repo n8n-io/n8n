@@ -8,7 +8,11 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
@@ -42,6 +46,13 @@ function isTestWebhookRegistration(obj: unknown): obj is TestWebhookRegistration
 	if (!('version' in obj)) return false;
 
 	return obj.version === TEST_WEBHOOK_REGISTRATION_VERSION;
+}
+
+/** A registration past its own `expiresAt` is gone, whatever the hash TTL says. */
+function isLiveRegistration(obj: unknown): obj is TestWebhookRegistration {
+	return (
+		isTestWebhookRegistration(obj) && (obj.expiresAt === undefined || obj.expiresAt > Date.now())
+	);
 }
 
 @Service()
@@ -82,14 +93,14 @@ export class TestWebhookRegistrationsService {
 		 * with an additional buffer to ensure this safeguard expiration will not delete
 		 * the key before the regular test webhook timeout fetches the key to delete it.
 		 *
-		 * The TTL covers the whole hash, so it must outlive the longest-lived registration:
-		 * a short editor test must not expire a long assistant listener.
+		 * The TTL covers the whole hash, so it is the longest window a registration can ask for
+		 * (`TEST_WEBHOOK_MAX_TIMEOUT`) plus the buffer. A constant keeps concurrent registrations on
+		 * different mains from shortening each other's TTL; `expiresAt` bounds each entry on read.
 		 */
-		const now = Date.now();
-		const remaining = (await this.getAllRegistrations()).map((r) => (r.expiresAt ?? 0) - now);
-		// Redis EXPIRE takes whole seconds; `remaining` carries arbitrary milliseconds.
-		const ttlMs = Math.ceil(Math.max(ttl, ...remaining) / 1000) * 1000;
-		await this.cacheService.expire(this.cacheKey, ttlMs);
+		await this.cacheService.expire(
+			this.cacheKey,
+			TEST_WEBHOOK_MAX_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+		);
 	}
 
 	async deregister(arg: IWebhookData | string) {
@@ -103,7 +114,7 @@ export class TestWebhookRegistrationsService {
 
 	async get(key: string): Promise<TestWebhookRegistration | undefined> {
 		const val = await this.cacheService.getHashValue(this.cacheKey, key);
-		return isTestWebhookRegistration(val) ? val : undefined;
+		return isLiveRegistration(val) ? val : undefined;
 	}
 
 	async getAllKeys() {
@@ -119,13 +130,13 @@ export class TestWebhookRegistrationsService {
 
 		if (!hash) return [];
 
-		return Object.values(hash).filter(isTestWebhookRegistration);
+		return Object.values(hash).filter(isLiveRegistration);
 	}
 
 	async getRegistrationsHash() {
 		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
 		for (const key in val) {
-			if (!isTestWebhookRegistration(val[key])) {
+			if (!isLiveRegistration(val[key])) {
 				delete val[key];
 			}
 		}
