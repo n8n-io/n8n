@@ -355,7 +355,9 @@ This enables two mechanisms:
 
 The variable is honoured regardless of `NODE_ENV`, so it also applies to
 production builds and the published Docker image. Never set it on an instance
-reachable by anyone you would not give a shell to.
+reachable by anyone you would not give a shell to. It also disables the crash
+journal, so a dev container that was killed rather than shut down gracefully
+does not pay the 10 second crash-loop penalty on its next boot.
 
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines
