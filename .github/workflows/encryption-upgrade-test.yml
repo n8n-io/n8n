@@ -33,7 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      WORK_ROOT: ${{ github.workspace }}/.upgrade-test
+      # Not a hidden dir: upload-artifact skips hidden paths by default.
+      WORK_ROOT: ${{ github.workspace }}/upgrade-test-work
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -94,6 +95,6 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
           path: |
-            ${{ github.workspace }}/.upgrade-test/run.log
-            ${{ github.workspace }}/.upgrade-test/*/metrics.csv
-            ${{ github.workspace }}/.upgrade-test/*/n8n.log
+            ${{ github.workspace }}/upgrade-test-work/run.log
+            ${{ github.workspace }}/upgrade-test-work/*/metrics.csv
+            ${{ github.workspace }}/upgrade-test-work/*/n8n.log
