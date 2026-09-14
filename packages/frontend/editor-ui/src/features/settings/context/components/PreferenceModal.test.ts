@@ -247,6 +247,19 @@ describe('PreferenceModal', () => {
 			const textarea = getByTestId('preference-modal-text-input').querySelector('textarea');
 			expect(textarea).toHaveAttribute('maxlength', String(PREFERENCE_TEXT_MAX_LENGTH));
 		});
+
+		it('counts the characters against the cap', async () => {
+			const { getByTestId } = renderModal({ props: { open: true, preference: null }, pinia });
+
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+
+			expect(getByTestId('preference-modal-counter')).toHaveTextContent(
+				`${'Keep replies short.'.length} / ${PREFERENCE_TEXT_MAX_LENGTH}`,
+			);
+		});
 	});
 
 	describe('submitting', () => {

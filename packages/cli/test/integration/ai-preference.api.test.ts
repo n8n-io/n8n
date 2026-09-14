@@ -275,6 +275,12 @@ describe('POST /ai-preferences', () => {
 			.send({ content: 'For nobody.', scope: 'user', userId: crypto.randomUUID() });
 		expect(unknownUser.statusCode).toBe(400);
 
+		// A malformed id is refused by validation, before any database lookup.
+		const malformedUser = await adminAgent
+			.post('/ai-preferences')
+			.send({ content: 'For nobody.', scope: 'user', userId: 'not-a-uuid' });
+		expect(malformedUser.statusCode).toBe(400);
+
 		expect(await repository().count()).toBe(1);
 	});
 

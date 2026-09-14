@@ -20,5 +20,6 @@ export class AiPreferenceRequestDto extends Z.class({
 	content: aiPreferenceContentSchema,
 	scope: aiPreferenceScopeSchema,
 	projectId: z.string().max(36).nullish(),
-	userId: z.string().max(36).nullish(),
+	// User ids are uuids. A malformed one must fail here, not in the database lookup.
+	userId: z.string().uuid().nullish(),
 }) {}

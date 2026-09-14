@@ -326,12 +326,20 @@ watch(
 				:placeholder="i18n.baseText('settings.context.preferences.modal.text.placeholder')"
 				:autosize="{ minRows: 3, maxRows: 8 }"
 				:maxlength="PREFERENCE_TEXT_MAX_LENGTH"
-				show-word-limit
 				:validate-on-blur="false"
 				:validation-rules="contentValidationRules"
 				data-test-id="preference-modal-text-input"
 				@validate="(value: boolean) => (contentValid = value)"
 			/>
+			<!-- The form input has no counter of its own, and the cap is worth seeing. -->
+			<N8nText
+				:class="$style.counter"
+				size="small"
+				color="text-light"
+				data-test-id="preference-modal-counter"
+			>
+				{{ form.content.length }} / {{ PREFERENCE_TEXT_MAX_LENGTH }}
+			</N8nText>
 
 			<N8nInputLabel
 				:label="i18n.baseText('settings.context.preferences.modal.scope.label')"
@@ -393,6 +401,11 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm) 0;
+}
+
+.counter {
+	align-self: flex-end;
+	margin-top: calc(-1 * var(--spacing--xs));
 }
 
 .optionContent {

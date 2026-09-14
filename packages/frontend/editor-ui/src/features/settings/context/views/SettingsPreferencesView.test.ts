@@ -194,6 +194,12 @@ describe('SettingsPreferencesView', () => {
 		expect(contextStore.deletePreferences).toHaveBeenCalledWith(['a', 'b', 'c']);
 		// Only the survivor stays selected, so the toolbar counts one and a retry hits it alone.
 		expect(getByTestId('settings-preferences-view')).toHaveTextContent('1 selected');
+
+		contextStore.deletePreferences.mockResolvedValue({ deleted: ['b'], failed: [] });
+		await userEvent.click(getByTestId('preferences-delete-selected-button'));
+		await new Promise(process.nextTick);
+
+		expect(contextStore.deletePreferences).toHaveBeenLastCalledWith(['b']);
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
 			count: 2,
 			source: 'bulk',
