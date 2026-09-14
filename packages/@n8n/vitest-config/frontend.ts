@@ -38,6 +38,9 @@ export const createVitestConfig = ({
 			passWithNoTests: true,
 			// The guard runs before the package's own setup files.
 			setupFiles: [networkGuard, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
+			// Inline so vitest maps the `vitest` import inside it to the running instance.
+			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
+			server: { deps: { inline: ['vitest-mock-extended'] } },
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {

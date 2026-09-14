@@ -77,6 +77,9 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5478,6 +5481,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5490,6 +5494,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
+			aiPreferencesEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -5503,6 +5508,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
+			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5512,6 +5518,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5526,6 +5533,16 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	// The preferences flag is multivariate too, so a boolean `true` must not
+	// open the gate.
+	it('does not open the AI preferences gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [CONTEXT_PREFERENCES_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			aiPreferencesEnabled: false,
+		});
+	});
+
 	it('fails closed when no flags resolve (PostHog outage returns {})', async () => {
 		stubContainer({});
 
@@ -5536,6 +5553,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5550,6 +5568,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5902,7 +5921,28 @@ describe('createContext — builder delegate wiring', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
+		return builderDelegateAdapter;
 	}
+
+	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
+
+		service.createContext(mockUser, {
+			threadId: 'thread-1',
+			projectId: 'proj-1',
+			credentialIdAllowlist: [],
+		});
+
+		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			expect.anything(),
+			expect.anything(),
+			{ useEvalModelCatalog: true },
+		);
+	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
 		const mockTelemetry = { track: vi.fn() };
