@@ -5,7 +5,11 @@ import type {
 	CanvasConnectionPort,
 	CanvasNodeData,
 } from '@/features/workflows/canvas/canvas.types';
-import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
+import {
+	CANVAS_NODE_GROUP_HANDLE_LEFT,
+	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CanvasConnectionMode,
+} from '@/features/workflows/canvas/canvas.types';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 
 describe('useNodeConnections', () => {
@@ -248,6 +252,36 @@ describe('useNodeConnections', () => {
 					index: 0,
 				}),
 			};
+			expect(isValidConnection(connection)).toBe(true);
+		});
+
+		it('accepts a visual group target handle as a main input', () => {
+			const connection = {
+				source: 'node1',
+				target: 'group:g1',
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionTypes.Main,
+					index: 0,
+				}),
+				targetHandle: CANVAS_NODE_GROUP_HANDLE_LEFT,
+			};
+
+			expect(isValidConnection(connection)).toBe(true);
+		});
+
+		it('accepts a visual group source handle as a main output', () => {
+			const connection = {
+				source: 'group:g1',
+				target: 'node1',
+				sourceHandle: CANVAS_NODE_GROUP_HANDLE_RIGHT,
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: NodeConnectionTypes.Main,
+					index: 0,
+				}),
+			};
+
 			expect(isValidConnection(connection)).toBe(true);
 		});
 	});
