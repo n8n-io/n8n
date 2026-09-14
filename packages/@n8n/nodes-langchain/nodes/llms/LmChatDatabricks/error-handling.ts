@@ -56,8 +56,8 @@ function isExpiredTokenResponse(error: unknown, expiredStatus: number): boolean 
  * A dead session arrives either as a rejected response or as a wrapped throw.
  * `expiredStatus` is undefined for grants that cannot be reconnected, such as a
  * service principal — those keep the generic "check your credentials" advice.
- * A 429 names Databricks and `modelName` (the configured model service) and keeps
- * the Databricks text, which is where the endpoint-specific fix lives.
+ * On a 429 the thrown error names Databricks and `modelName` (the configured model
+ * service) and keeps the Databricks text, which carries the endpoint-specific fix.
  */
 export function makeDatabricksFailedAttemptHandler(
 	expiredStatus: number | undefined,

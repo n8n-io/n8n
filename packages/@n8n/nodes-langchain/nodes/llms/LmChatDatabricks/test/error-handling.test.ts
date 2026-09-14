@@ -55,6 +55,17 @@ describe('makeDatabricksFailedAttemptHandler', () => {
 
 	it('should leave other errors alone', () => {
 		expect(() => handle(new Error('socket hang up'))).not.toThrow();
+		// The OpenAI handler's "Use Responses API" advice names an option this node
+		// does not have, so its 404 branch must stay out of the Databricks path
+		expect(() =>
+			handle(
+				Object.assign(new Error('x is not a chat model'), {
+					status: 404,
+					type: 'invalid_request_error',
+					param: 'model',
+				}),
+			),
+		).not.toThrow();
 	});
 
 	it('should honour a non-Databricks expiry status', () => {
