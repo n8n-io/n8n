@@ -9,9 +9,13 @@ import { useDebounceFn } from '@vueuse/core';
 import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 
+import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
 import AgentPanel from './AgentPanel.vue';
 
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
@@ -33,6 +37,8 @@ import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
 const { catalog, ensureLoaded } = useModelCatalog();
 const DEFAULT_CAPABILITIES = {
 	promptCaching: false,
@@ -259,11 +265,27 @@ watch(
 const fallbackCredentialType = computed(() =>
 	webSearchMethod.value === 'searxng' ? 'searXngApi' : 'braveSearchApi',
 );
-const fallbackCredentials = computed(() =>
-	credentialsStore.allCredentials.filter(
-		(credential) => credential.type === fallbackCredentialType.value,
-	),
+const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
+	credentialsStore.allCredentials
+		.filter((credential) => credential.type === fallbackCredentialType.value)
+		.map((credential) => ({
+			id: credential.id,
+			name: credential.name,
+			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+			homeProject: credential.homeProject,
+		})),
 );
+
+const projectForPermissions = computed(() => {
+	if (projectsStore.currentProject?.id === props.projectId) return projectsStore.currentProject;
+	if (projectsStore.personalProject?.id === props.projectId) return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === props.projectId) ?? null;
+});
+
+const credentialPermissions = computed(() => {
+	const permissions = getResourcePermissions(projectForPermissions.value?.scopes).credential;
+	return { ...permissions, create: !!permissions.create };
+});
 
 function buildWebSearchArgs(): NativeWebSearchArgs {
 	const tool = capabilities.value.webSearch;
@@ -342,6 +364,23 @@ function onFallbackCredentialChange(value: string) {
 			buildWebSearchArgs(),
 			value,
 		),
+	);
+}
+
+function onCreateFallbackCredential() {
+	if (props.disabled || !credentialPermissions.value.create) return;
+	uiStore.openNewCredential(
+		fallbackCredentialType.value,
+		false,
+		false,
+		props.projectId,
+		undefined,
+		undefined,
+		undefined,
+		{
+			hideAskAssistant: true,
+			onCredentialCreated: (credential) => onFallbackCredentialChange(credential.id),
+		},
 	);
 }
 
@@ -518,21 +557,19 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 									{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
 								</N8nText>
 							</div>
-							<N8nSelect
+							<AgentCredentialSelect
 								:model-value="fallbackWebSearchCredential"
-								size="small"
+								:credentials="fallbackCredentials"
+								:placeholder="
+									i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')
+								"
+								:credential-permissions="credentialPermissions"
 								:disabled="props.disabled"
 								:class="$style.credentialSelect"
-								data-testid="agent-web-search-fallback-credential"
-								@update:model-value="(v) => onFallbackCredentialChange(String(v))"
-							>
-								<N8nOption
-									v-for="credential in fallbackCredentials"
-									:key="credential.id"
-									:value="credential.id"
-									:label="credential.name"
-								/>
-							</N8nSelect>
+								data-test-id="agent-web-search-fallback-credential"
+								@update:model-value="onFallbackCredentialChange"
+								@create="onCreateFallbackCredential"
+							/>
 						</div>
 					</div>
 				</div>

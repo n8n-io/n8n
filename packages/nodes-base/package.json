@@ -953,7 +953,6 @@
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",
-    "axios": "catalog:",
     "basic-auth": "catalog:",
     "change-case": "catalog:",
     "cheerio": "catalog:",
@@ -1016,13 +1015,12 @@
     "snowflake-sdk": "2.1.0",
     "ssh2-sftp-client": "12.1.0",
     "tar": "catalog:",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
     "vm2": "catalog:",
     "@e965/xlsx": "catalog:",
     "xml2js": "catalog:",
-    "xmlhttprequest-ssl": "3.1.0",
     "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
