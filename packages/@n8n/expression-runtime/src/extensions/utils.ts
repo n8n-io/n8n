@@ -20,6 +20,20 @@ export const convertToDateTime = (value: string | Date | DateTime): DateTime | u
 	return converted;
 };
 
+// Define an own data field rather than assigning through an inherited setter.
+export function defineField(
+	target: Record<string, unknown>,
+	key: PropertyKey,
+	value: unknown,
+): void {
+	Object.defineProperty(target, key, {
+		value,
+		writable: true,
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 export function checkIfValueDefinedOrThrow<T>(value: T, functionName: string): void {
 	if (value === undefined || value === null) {
 		throw new ExpressionExtensionError(`${functionName} can't be used on ${String(value)} value`, {
