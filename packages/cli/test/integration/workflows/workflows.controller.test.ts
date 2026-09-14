@@ -44,6 +44,7 @@ import {
 	type IPinData,
 	type ITaskData,
 	type IWorkflowBase,
+	type WorkflowSettings,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -1996,9 +1997,178 @@ describe('GET /workflows', () => {
 				.query(`filter=${filter}`)
 				.expect(200);
 
-			const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
-			expect(returnedIds).toEqual([parentWorkflow.id]);
-			expect(returnedIds).not.toContain(anyPolicyWorkflow.id);
+				// Legacy stored callerPolicy: 'any' denies every caller, so the policy
+				// never makes it callable cross-project. Same-project workflows stay
+				// listed regardless of policy, because the list is a union of readable
+				// and callable workflows.
+				const crossProjectLegacyAnyWorkflow = await createWorkflow(
+					{
+						name: 'Cross Project Legacy Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+					},
+					owner,
+				);
+
+				const sameProjectLegacyAnyWorkflow = await createWorkflow(
+					{
+						name: 'Same Project Legacy Any Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+					},
+					member,
+				);
+
+				// callerPolicy: 'workflowsFromAList' — parentWorkflow is explicitly listed
+				const fromListWorkflow = await createWorkflow(
+					{
+						name: 'From List Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				// callerPolicy: 'none' — callable by nobody
+				const nonePolicyWorkflow = await createWorkflow(
+					{
+						name: 'None Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'none' },
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				expect(returnedIds).not.toContain(crossProjectLegacyAnyWorkflow.id);
+				expect(returnedIds).toContain(sameProjectLegacyAnyWorkflow.id);
+				expect(returnedIds).toContain(fromListWorkflow.id);
+				expect(returnedIds).not.toContain(nonePolicyWorkflow.id);
+			});
+
+			test('should not include callable workflows when includeCallableSubworkflows is false', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// Allowlists the parent, so it would be callable with expansion enabled.
+				const fromListWorkflow = await createWorkflow(
+					{
+						name: 'From List Policy',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: false,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member doesn't own fromListWorkflow, so without expansion it should not be visible
+				expect(returnedIds).not.toContain(fromListWorkflow.id);
+			});
+
+			test('should not expand the list when the requester cannot read the parent workflow', async () => {
+				// Parent workflow owned by `owner`, inaccessible to `member`.
+				const parentWorkflow = await createWorkflow({ name: 'Owner Parent' }, owner);
+
+				// Subworkflow owned by the same owner, callable by same-owner workflows.
+				const sameOwnerSubworkflow = await createWorkflow(
+					{
+						name: 'Same Owner Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: { callerPolicy: 'workflowsFromSameOwner' },
+					},
+					owner,
+				);
+
+				// Subworkflow that explicitly allowlists the inaccessible parent id.
+				const fromListSubworkflow = await createWorkflow(
+					{
+						name: 'From List Sub',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: parentWorkflow.id,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// member cannot read the supplied parent workflow, so callable
+				// subworkflows must not be exposed regardless of caller policy.
+				expect(returnedIds).not.toContain(sameOwnerSubworkflow.id);
+				expect(returnedIds).not.toContain(fromListSubworkflow.id);
+			});
+
+			test('should match callerIds by whole id, not by substring', async () => {
+				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
+
+				// Allowlist contains the parent id only as a substring of a longer id.
+				const substringSubworkflow = await createWorkflow(
+					{
+						name: 'Substring Allowlist',
+						nodes: [executeWorkflowTriggerNode()],
+						settings: {
+							callerPolicy: 'workflowsFromAList',
+							callerIds: `${parentWorkflow.id}-extra-suffix`,
+						},
+					},
+					owner,
+				);
+
+				const filter = JSON.stringify({
+					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+					includeCallableSubworkflows: true,
+					parentWorkflowId: parentWorkflow.id,
+				});
+
+				const response = await authMemberAgent
+					.get('/workflows')
+					.query(`filter=${filter}`)
+					.expect(200);
+
+				const returnedIds = response.body.data.map((w: { id: string }) => w.id) as string[];
+				// parentWorkflow.id is only a substring of the allowlisted id, so it must
+				// not be treated as an allowed caller.
+				expect(returnedIds).not.toContain(substringSubworkflow.id);
+			});
 		});
 	});
 
