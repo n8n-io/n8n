@@ -19,10 +19,6 @@ export class TagListPublicDto extends Z.class({
 	nextCursor: z.string().nullable(),
 }) {}
 
-/**
- * `name` carries no length bound on purpose. The published request schema never had one, and the
- * entity validator is what rejects a name outside 1-24 characters.
- */
 export class CreateTagPublicDto extends Z.class(
 	{
 		id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
