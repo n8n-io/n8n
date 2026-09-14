@@ -53,6 +53,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
+	'nodeTypePolicy:manage',
 	'dataTable:create',
 	'dataTable:delete',
 	'dataTable:read',

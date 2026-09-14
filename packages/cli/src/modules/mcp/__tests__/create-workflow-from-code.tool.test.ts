@@ -954,7 +954,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					},
 					{
 						nodeName: 'OpenAI',
-						credentialName: 'n8n credits',
+						credentialName: 'Gateway credits',
 						credentialType: 'openAiApi',
 						source: 'aiGateway',
 					},
@@ -1332,6 +1332,45 @@ describe('create-workflow-from-code MCP tool', () => {
 						reason: expect.stringContaining('cannot contain trigger nodes') as string,
 					},
 				]);
+			});
+		});
+
+		describe('top-level ceiling warning', () => {
+			const wideNodes: INode[] = Array.from({ length: 8 }, (_, i) => ({
+				id: `node-${i}`,
+				name: `Step ${i}`,
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [i * 200, 0],
+				parameters: {},
+			}));
+
+			test('flag on: a saved canvas over the ceiling with no groups gets a warning', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodes: wideNodes },
+					warnings: [],
+				});
+
+				const result = await callHandler(
+					{ code: 'const wf = ...' },
+					createTool({ canvasGroupsEnabled: true }),
+				);
+
+				const response = parseResult(result);
+				expect(response.warnings).toEqual([
+					expect.objectContaining({ code: 'TOP_LEVEL_ITEMS_OVER_CEILING' }),
+				]);
+			});
+
+			test('flag off: no ceiling warning, groups cannot be kept anyway', async () => {
+				mockParseAndValidate.mockResolvedValue({
+					workflow: { ...mockWorkflowJson, nodes: wideNodes },
+					warnings: [],
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' }, createTool());
+
+				expect(parseResult(result)).not.toHaveProperty('warnings');
 			});
 		});
 	});

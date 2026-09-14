@@ -23,10 +23,15 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+	function trackClickedNewAgent(
+		source: AgentCreateSource,
+		agentId: string,
+		options?: { manual?: boolean },
+	) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source,
 			agent_id: agentId,
+			...(options?.manual ? { manual: true } : {}),
 			...common(),
 		});
 	}
@@ -102,6 +107,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackDuplicatedAgent(params: {
+		sourceAgentId: string;
+		agentId: string;
+		projectId: string;
+	}) {
+		try {
+			telemetry.track('User duplicated agent', {
+				source_agent_id: params.sourceAgentId,
+				agent_id: params.agentId,
+				project_id: params.projectId,
+				...common(),
+			});
+		} catch {
+			// Swallow — telemetry must not break user-facing flows.
+		}
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -110,5 +132,6 @@ export function useAgentTelemetry() {
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
 		trackImportedSkill,
+		trackDuplicatedAgent,
 	};
 }

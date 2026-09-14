@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import {
 	markPublicApiController,
+	OptionalWidgetBodyDto,
 	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetPaginationQueryDto,
@@ -133,8 +134,42 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape).toHaveProperty('id');
 		expect(operation.config.request?.query).toBeDefined();
 		expect(operation.config.request?.body).toEqual({
+			required: true,
 			content: { 'application/json': { schema: WidgetBodyDto.schema } },
 		});
+	});
+
+	it('publishes a @Param schema in place of the default bare string', () => {
+		const widgetId = z
+			.string()
+			.regex(/^\d+$/)
+			.openapi({ type: 'integer', minimum: 1, description: 'The ID of the widget.' });
+
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId', widgetId) _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBe(widgetId);
+	});
+
+	it('falls back to a bare string for a @Param that declares no schema', () => {
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId') _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
 	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
@@ -154,6 +189,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
 		expect(operation.config.deprecated).toBeUndefined();
+		expect(operation.config.responses[415]).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
@@ -194,6 +230,34 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
+	});
+
+	it('leaves the request body optional when every field is optional', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: OptionalWidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.required).toBeUndefined();
+	});
+
+	it('documents a 415 for a route that takes a request body', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
 	});
 
 	it('refs the shared response file for an error status declared without a body DTO', () => {

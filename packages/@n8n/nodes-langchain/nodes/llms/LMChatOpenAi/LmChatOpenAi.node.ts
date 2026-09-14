@@ -2,7 +2,6 @@ import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchai
 import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
-	assertCredentialAllowsUrl,
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -14,8 +13,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
 	makeN8nLlmFailedAttemptHandler,
@@ -770,13 +771,7 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		if (options.baseURL) {
-			assertCredentialAllowsUrl({
-				node: this.getNode(),
-				credentialData: credentials,
-				url: options.baseURL,
-				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-				surface: 'OpenAI',
-			});
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
@@ -875,7 +870,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		return {
-			response: model,
+			response: responsesApiEnabled ? model : wrapChatModelMessageInput(model),
 		};
 	}
 }

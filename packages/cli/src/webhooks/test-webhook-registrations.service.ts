@@ -21,6 +21,13 @@ export type TestWebhookRegistration = {
 	workflowEntity: IWorkflowBase;
 	destinationNode?: IDestinationNode;
 	webhook: IWebhookData;
+	/**
+	 * Encrypted credential context carrying the identity of the builder who started
+	 * this test run. A manual run normally picks this up from the auth cookie when its
+	 * execution data is built, but a run that waits for a webhook returns before that,
+	 * so the identity has to travel on the registration instead.
+	 */
+	encryptedRunnerIdentity?: string;
 };
 
 // Type guard for TestWebhookRegistration.

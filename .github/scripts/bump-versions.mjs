@@ -23,11 +23,17 @@ export function generateExperimentalVersion(currentVersion, sha) {
 }
 
 /**
+ * Overrides live in `pnpm-workspace.yaml` since pnpm 11; older tags still carry them in
+ * package.json. Both are merged so a comparison that straddles the move sees the same set
+ * on either side, rather than reading every override as added and removed.
+ *
  * @param {{ pnpm?: { overrides?: Record<string, string> }, overrides?: Record<string, string> }} pkg
+ * @param {Record<string, unknown>} [workspace] parsed pnpm-workspace.yaml
  * @returns {Record<string, string>}
  */
-export function getOverrides(pkg) {
-	return { ...pkg.pnpm?.overrides, ...pkg.overrides };
+export function getOverrides(pkg, workspace) {
+	const fromWorkspace = /** @type {Record<string, string> | undefined} */ (workspace?.overrides);
+	return { ...pkg.pnpm?.overrides, ...pkg.overrides, ...fromWorkspace };
 }
 
 /**
@@ -213,18 +219,13 @@ async function bumpVersions() {
 	// that package also needs a bump (e.g. design-system → editor-ui → cli).
 
 	// Detect root-level changes that affect resolved dep versions without touching individual
-	// package.json files: pnpm.overrides (applies to all specifiers)
-	// and pnpm-workspace.yaml catalog entries (applies only to deps using a "catalog:…" specifier).
+	// package.json files: overrides (apply to all specifiers) and catalog entries
+	// (apply only to deps using a "catalog:…" specifier).
 
 	const rootPkgJson = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf-8'));
 	const rootPkgJsonAtTag = await exec(`git show ${lastTag}:package.json`)
 		.then(({ stdout }) => JSON.parse(stdout))
 		.catch(() => ({}));
-
-	const changedOverrides = computeChangedOverrides(
-		getOverrides(rootPkgJson),
-		getOverrides(rootPkgJsonAtTag),
-	);
 
 	const workspaceYaml = parseWorkspaceYaml(
 		await readFile(resolve(rootDir, 'pnpm-workspace.yaml'), 'utf-8').catch(() => ''),
@@ -234,6 +235,12 @@ async function bumpVersions() {
 			.then(({ stdout }) => stdout)
 			.catch(() => ''),
 	);
+
+	const changedOverrides = computeChangedOverrides(
+		getOverrides(rootPkgJson, workspaceYaml),
+		getOverrides(rootPkgJsonAtTag, workspaceYamlAtTag),
+	);
+
 	const changedCatalogEntries = computeChangedCatalogEntries(
 		getCatalogs(workspaceYaml),
 		getCatalogs(workspaceYamlAtTag),

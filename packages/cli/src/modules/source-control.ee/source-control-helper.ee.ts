@@ -18,7 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
-import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 import { containsExpression } from '@/utils';
 
 import {
@@ -206,10 +206,7 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof (error as { code: unknown }).code === 'string'
+		typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
 	);
 }
 
@@ -418,19 +415,30 @@ export function hasOwnerChanged(
 }
 
 /**
- * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
- * between local and remote versions
+ * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
+ * descriptions and owners between local and remote versions
  */
+function normalizeDescription(description: string | null | undefined): string | null {
+	return description ? description : null;
+}
+
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
+	direction: 'push' | 'pull',
 ): boolean {
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	// Description edits don't bump the versionId. On pull, skip legacy remote files
+	// without a `description` key: importing them can't change the local description.
+	const hasDescriptionChanged =
+		direction === 'pull' && remote.description === undefined
+			? false
+			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
 }
 
 /**

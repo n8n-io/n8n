@@ -1,3 +1,5 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
+
 import type { EvalScore } from '../types';
 
 /**
@@ -5,11 +7,7 @@ import type { EvalScore } from '../types';
  * Handles JSON wrapped in markdown fences, plain JSON, or raw text.
  */
 export function parseJudgeResponse(text: string): EvalScore {
-	// Strip markdown code fences if present: ```json ... ``` or ``` ... ```
-	const stripped = text
-		.replace(/^```(?:json)?\s*\n?/i, '')
-		.replace(/\n?```\s*$/i, '')
-		.trim();
+	const stripped = extractJsonCandidate(text);
 
 	try {
 		const parsed = JSON.parse(stripped) as { pass?: boolean; score?: number; reasoning?: string };

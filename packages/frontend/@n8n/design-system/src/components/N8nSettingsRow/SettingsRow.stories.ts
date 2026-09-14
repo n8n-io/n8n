@@ -11,7 +11,7 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Areas/Settings/Settings Row',
+	title: 'Areas/Settings/SettingsRow',
 	component: N8nSettingsRow,
 	argTypes: {
 		layout: { control: 'select', options: ['horizontal', 'vertical', 'custom'] },
@@ -48,7 +48,7 @@ type Story = StoryObj<typeof meta>;
 const card = (inner: string) =>
 	`<div style="max-width: 45rem;"><N8nSettingsRowGroup>${inner}</N8nSettingsRowGroup></div>`;
 
-export const Horizontal: Story = {
+export const Default: Story = {
 	render: (args) => ({
 		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton },
 		setup: () => ({ args }),
@@ -63,6 +63,31 @@ export const Horizontal: Story = {
 		description: 'Last changed 4 months ago.',
 		layout: 'horizontal',
 	},
+};
+
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton, N8nInput, N8nText },
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 24px; max-width: 45rem;">
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow layout="horizontal" title="Horizontal" description="Label and action sit side by side.">
+						<template #action><N8nButton variant="outline" size="medium" label="Edit" /></template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow layout="vertical" title="Vertical" description="The action uses the full row width.">
+						<template #action><N8nInput placeholder="https://example.com/webhook" /></template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow layout="custom">
+						<N8nText>Custom layout renders the default slot at full width.</N8nText>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</div>
+		`,
+	}),
 };
 
 export const Vertical: Story = {

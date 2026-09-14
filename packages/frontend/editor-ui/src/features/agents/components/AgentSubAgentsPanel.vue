@@ -8,13 +8,7 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import {
-	N8nIconButton,
-	N8nInputNumber2,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIconButton, N8nInputNumber, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -22,6 +16,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import AgentModelSelector from './AgentModelSelector.vue';
+import AgentPanel from './AgentPanel.vue';
 import {
 	type AgentCredentialsByProvider,
 	type AgentModelOption,
@@ -317,7 +312,12 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 </script>
 
 <template>
-	<div :class="$style.subAgentsPanel" :aria-disabled="disabled">
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.subAgents.title')"
+		:description="i18n.baseText('agents.builder.subAgents.settings.description')"
+		:class="$style.subAgentsPanel"
+		:aria-disabled="disabled"
+	>
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
@@ -331,7 +331,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 					}}
 				</N8nText>
 			</div>
-			<N8nInputNumber2
+			<N8nInputNumber
 				:model-value="maxChildrenModelValue"
 				:min="SUB_AGENT_MAX_CHILDREN_MIN"
 				:max="SUB_AGENT_MAX_CHILDREN_MAX"
@@ -418,7 +418,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				</div>
 			</div>
 		</div>
-	</div>
+	</AgentPanel>
 </template>
 
 <style lang="scss" module>

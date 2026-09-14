@@ -174,6 +174,7 @@ describe('CredentialConnectionStatusService', () => {
 			em.find.mockResolvedValueOnce([admin]);
 			// Even if the project check returned nothing, admin is retained in-memory
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['admin-1'], em);
@@ -192,6 +193,7 @@ describe('CredentialConnectionStatusService', () => {
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'sharee-1' },
 			]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['sharee-1'], em);
@@ -220,6 +222,7 @@ describe('CredentialConnectionStatusService', () => {
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'member-1' },
 			]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['member-1'], em);
@@ -235,6 +238,7 @@ describe('CredentialConnectionStatusService', () => {
 			em.find.mockResolvedValueOnce([member]);
 			// No retained pairs — member was unshared / removed / role downgraded
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['member-1'], em);
@@ -259,12 +263,46 @@ describe('CredentialConnectionStatusService', () => {
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'member-1' },
 			]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['member-1'], em);
 
 			// ASSERT — surviving path keeps the entry
 			expect(repository.deleteByPairs).not.toHaveBeenCalled();
+		});
+
+		it('retains pair for a recipient of a global end-user credential share', async () => {
+			// ARRANGE — no project share at all, only a global (isGlobal + isResolvable) share
+			const recipient = makeUser('recipient-1'); // no global scope
+			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'recipient-1')]);
+			em.find.mockResolvedValueOnce([recipient]);
+			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
+			em.find.mockResolvedValueOnce([{ id: CRED_ID }]); // globally-connectable credential
+
+			// ACT
+			await service.cleanupOrphanedEntriesForUsers(['recipient-1'], em);
+
+			// ASSERT — global end-user share retains the connection
+			expect(repository.deleteByPairs).not.toHaveBeenCalled();
+		});
+
+		it('deletes pair when the credential is globally shared but not an end-user credential', async () => {
+			// ARRANGE — a static global credential grants no connect access
+			const recipient = makeUser('recipient-1'); // no global scope
+			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'recipient-1')]);
+			em.find.mockResolvedValueOnce([recipient]);
+			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
+			em.find.mockResolvedValueOnce([]); // not resolvable, so excluded from the query result
+
+			// ACT
+			await service.cleanupOrphanedEntriesForUsers(['recipient-1'], em);
+
+			// ASSERT
+			expect(repository.deleteByPairs).toHaveBeenCalledWith(
+				[{ credentialId: CRED_ID, userId: 'recipient-1' }],
+				em,
+			);
 		});
 
 		it('handles mixed batch: deletes orphaned pair and retains the one with access', async () => {
@@ -283,6 +321,7 @@ describe('CredentialConnectionStatusService', () => {
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_B, userId: 'user-active' },
 			]);
+			em.find.mockResolvedValueOnce([]); // no globally-connectable credentials
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['user-lost', 'user-active'], em);

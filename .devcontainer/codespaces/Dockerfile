@@ -24,8 +24,8 @@ COPY gitcredential-refresh.sh /usr/local/bin/gitcredential-refresh.sh
 COPY gh-shim.sh /usr/local/bin/gh
 RUN chmod +x /usr/local/bin/gitcredential-refresh.sh /usr/local/bin/gh
 
-# VS Code terminals are non-login shells: they read bashrc, not profile.d
-RUN echo '. /usr/local/lib/codespaces-env.sh' >> /etc/bash.bashrc
+# VS Code terminals load secrets here because they do not read profile.d.
+RUN echo '[ "${N8N_SKIP_CODESPACE_SECRETS:-}" = "1" ] || . /usr/local/lib/codespaces-env.sh' >> /etc/bash.bashrc
 
 COPY tmux.conf /etc/tmux.conf
 

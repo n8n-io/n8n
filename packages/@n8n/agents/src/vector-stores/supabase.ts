@@ -68,7 +68,11 @@ type SupabaseVectorSchema = {
  */
 async function createSupabaseVectorClient(url: string, apiKey: string) {
 	const { createClient } = await import('@supabase/supabase-js');
-	return createClient<SupabaseVectorSchema>(url, apiKey);
+	// supabase-js arms a 30s token-refresh interval per client; PostgREST-only
+	// usage does not need auth refresh or session persistence.
+	return createClient<SupabaseVectorSchema>(url, apiKey, {
+		auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+	});
 }
 
 type SupabaseVectorClient = Awaited<ReturnType<typeof createSupabaseVectorClient>>;

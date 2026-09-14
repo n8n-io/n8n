@@ -1,17 +1,25 @@
 <script setup lang="ts">
+import AgentPanel from './AgentPanel.vue';
 /**
  * Combined editor for the core agent fields: name, model, and instructions.
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nIconButton,
+	N8nInput,
+	N8nMarkdownEditor,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@n8n/composables/useToast';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
@@ -33,7 +41,6 @@ import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,11 +48,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
-		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
-		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
-		showInstructionsToolbar?: boolean;
 		/**
 		 * Emit instructions edits per keystroke instead of debounced. For hosts
 		 * whose updates are cheap local writes (inline agent → node parameter);
@@ -56,17 +60,17 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
-		showInstructionsToolbar: false,
 		immediateUpdates: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const instructionsEditorId = useId();
 const usersStore = useUsersStore();
+const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
 const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
 	useModelCatalog();
@@ -137,15 +141,100 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-const panelTestId = computed(() => {
-	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
-	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
-	return 'agent-info-panel';
+// Azure OpenAI classic deployments are user-named in Azure and surfaced in the
+// deployment-based URL path; Foundry endpoints take the model id directly, so
+// the deployment name only applies to classic. The credential's `endpointType`
+// is only readable with credential edit access — when it can't be determined,
+// keep the field visible and let backend validation stay the enforcement point.
+const azureEndpointType = ref<'classic' | 'foundry' | 'unknown'>('unknown');
+
+watch(
+	[configProvider, () => props.config?.credential],
+	async ([provider, credentialId]) => {
+		azureEndpointType.value = 'unknown';
+		if (provider !== 'azure-openai' || !credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) {
+			return;
+		}
+		try {
+			const credential = await credentialsStore.getCredentialData({ id: credentialId });
+			// Ignore stale responses from rapid credential switches.
+			if (props.config?.credential !== credentialId) return;
+			const data = credential && typeof credential.data === 'object' ? credential.data : undefined;
+			if (data?.endpointType === 'classic' || data?.endpointType === 'foundry') {
+				azureEndpointType.value = data.endpointType;
+			}
+		} catch {
+			// No read access to the credential data (e.g. shared credential) —
+			// keep 'unknown' so the field stays visible.
+		}
+	},
+	{ immediate: true },
+);
+
+const showDeploymentName = computed(() => {
+	if (props.disabled || !props.showModel) return false;
+	if (configProvider.value !== 'azure-openai') return false;
+	const credentialId = props.config?.credential;
+	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
+	if (!credentialsStore.getCredentialById(credentialId)) return false;
+	return azureEndpointType.value !== 'foundry';
 });
 
-const instructionsToolbarMode = computed(() =>
-	props.showInstructionsToolbar ? 'always' : 'never',
+const deploymentName = ref(props.config?.modelDeploymentName ?? '');
+const deploymentNameFocused = ref(false);
+
+watch(
+	() => props.config?.modelDeploymentName ?? '',
+	(value) => {
+		// The autosave round-trip echoes the server's config copy, which lags the
+		// input by a save cycle — syncing it mid-typing would wipe newer keystrokes.
+		// External updates (model-change seeding, AI edits) land while unfocused.
+		if (deploymentNameFocused.value) return;
+		if (value !== deploymentName.value) deploymentName.value = value;
+		// Parent replaced the value (agent switch / echo). Drop a queued emit
+		// so it cannot write the previous agent's name onto the new config.
+		cancelDeploymentNameEmit();
+	},
 );
+
+// Hand-rolled so a model change can drop a queued emit. `useDebounceFn` has no cancel.
+let deploymentNameEmitTimer: ReturnType<typeof setTimeout> | undefined;
+
+function cancelDeploymentNameEmit() {
+	if (deploymentNameEmitTimer === undefined) return;
+	clearTimeout(deploymentNameEmitTimer);
+	deploymentNameEmitTimer = undefined;
+}
+
+onBeforeUnmount(cancelDeploymentNameEmit);
+
+function scheduleDeploymentNameEmit(value: string) {
+	cancelDeploymentNameEmit();
+	deploymentNameEmitTimer = setTimeout(() => {
+		deploymentNameEmitTimer = undefined;
+		emit('update:config', { modelDeploymentName: value });
+	}, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
+}
+
+function onDeploymentNameInput(value: string) {
+	deploymentName.value = value;
+	if (props.immediateUpdates) {
+		cancelDeploymentNameEmit();
+		emit('update:config', { modelDeploymentName: value });
+		return;
+	}
+	scheduleDeploymentNameEmit(value);
+}
+
+function deriveDefaultDeploymentName(selection: AgentModelSelection): string {
+	// Azure deployments are conventionally named after the model. Default the
+	// deployment name to the chosen model's display name, lowercased with
+	// whitespace turned into dashes (e.g. "GPT-4o mini" → "gpt-4o-mini").
+	const displayName =
+		filteredAgents.value[selection.provider]?.models.find((m) => m.model === selection.model)
+			?.name ?? selection.model;
+	return displayName.toLowerCase().replace(/\s+/g, '-');
+}
 
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
@@ -175,12 +264,27 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
+	// Azure OpenAI classic needs a user-named deployment; seed it from the model
+	// so the field isn't blank. Following the model on change is the sensible
+	// default — deployments are usually named after the model. Foundry endpoints
+	// take the model id directly and don't need one.
+	// Drop any in-flight typed/cleared value so it can't land after this seed
+	// and wipe the model-derived name.
+	cancelDeploymentNameEmit();
+	const deploymentNameChange =
+		selection.provider === 'azure-openai' && azureEndpointType.value !== 'foundry'
+			? { modelDeploymentName: deriveDefaultDeploymentName(selection) }
+			: {};
+	if (deploymentNameChange.modelDeploymentName !== undefined) {
+		deploymentName.value = deploymentNameChange.modelDeploymentName;
+	}
 	emit('update:config', {
 		model,
 		credential: credentialId,
 		...webSearchChanges,
 		...promptCachingChanges,
 		...reasoningChanges,
+		...deploymentNameChange,
 	});
 }
 
@@ -190,7 +294,15 @@ watch(
 			? getDefaultModelForPicker(effectiveCredentials.value, pendingDefaultProvider.value)
 			: null,
 	(defaultModel) => {
-		if (!defaultModel || props.disabled || modelToString(props.config?.model)) return;
+		const currentModel = parseModelString(modelToString(props.config?.model));
+		if (
+			!defaultModel ||
+			props.disabled ||
+			(currentModel?.provider === defaultModel.provider && currentModel.name === defaultModel.model)
+		) {
+			pendingDefaultProvider.value = null;
+			return;
+		}
 
 		pendingDefaultProvider.value = null;
 		onModelChange(defaultModel, 'auto');
@@ -225,18 +337,9 @@ watch(
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
-	if (credentialId && !modelToString(props.config?.model)) {
-		pendingDefaultProvider.value = provider;
-	}
 	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
-	}
-}
-
-function onConfigureCredential(provider: AgentModelProvider) {
-	if (!modelToString(props.config?.model)) {
-		pendingDefaultProvider.value = provider;
 	}
 }
 
@@ -265,101 +368,143 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="$style.panel" :data-testid="panelTestId">
-		<AgentPanelHeader
-			v-if="!props.embedded"
-			:title="i18n.baseText('agents.builder.agent.title')"
-			:description="i18n.baseText('agents.builder.agent.description')"
-		/>
-
-		<div v-if="props.showModel" :class="[$style.field]">
-			<label :class="[$style.label, props.disabled && shared.disabled]"
-				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-					i18n.baseText('agents.builder.agent.model.label')
-				}}</N8nText></label
-			>
-			<AgentModelSelector
-				:disabled="props.disabled"
-				:selected-model="selectedAgent"
-				:credentials="effectiveCredentials"
-				:models-by-provider="filteredAgents"
-				:is-loading="isLoading"
-				:project-id="projectId"
-				:warn-missing-credentials="true"
-				:bound-credential-id="props.config?.credential ?? null"
-				data-testid="agent-model-selector"
-				@change="onModelChange"
-				@select-credential="onSelectCredential"
-				@configure-credential="onConfigureCredential"
-			/>
-			<N8nCallout
-				v-if="defaultModelHint && !props.disabled"
-				theme="info"
-				slim
-				:class="$style.defaultHint"
-				data-testid="agent-default-model-hint"
-			>
-				<div :class="$style.defaultHintBody">
-					<span :class="$style.defaultHintText">
-						<strong>{{ i18n.baseText('agents.builder.agent.model.defaultSelected.title') }}</strong>
-						{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
-					</span>
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="small"
-						:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
-						data-testid="agent-default-model-hint-dismiss"
-						@click="defaultModelHint = false"
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.agent.title')"
+		header-visibility="visually-hidden"
+		data-testid="agent-info-panel"
+		:container-class="$style.containerClass"
+	>
+		<div :class="$style.panels">
+			<div v-if="props.showModel" data-testid="agent-model-panel">
+				<div :class="$style.field">
+					<div :class="[$style.label, props.disabled && shared.disabled]">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
+							{{ i18n.baseText('agents.builder.agent.model.label') }}
+						</N8nText>
+						<N8nText step="sm" color="text-light">
+							{{ i18n.baseText('agents.builder.agent.model.description') }}
+						</N8nText>
+					</div>
+					<AgentModelSelector
+						:disabled="props.disabled"
+						:selected-model="selectedAgent"
+						:credentials="effectiveCredentials"
+						:models-by-provider="filteredAgents"
+						:is-loading="isLoading"
+						:project-id="projectId"
+						:warn-missing-credentials="true"
+						:bound-credential-id="props.config?.credential ?? null"
+						data-testid="agent-model-selector"
+						@change="onModelChange"
+						@select-credential="onSelectCredential"
 					/>
+					<N8nCallout
+						v-if="defaultModelHint && !props.disabled"
+						theme="info"
+						slim
+						:class="$style.defaultHint"
+						data-testid="agent-default-model-hint"
+					>
+						<div :class="$style.defaultHintBody">
+							<span :class="$style.defaultHintText">
+								<strong>{{
+									i18n.baseText('agents.builder.agent.model.defaultSelected.title')
+								}}</strong>
+								{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
+							</span>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="small"
+								:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
+								data-testid="agent-default-model-hint-dismiss"
+								@click="defaultModelHint = false"
+							/>
+						</div>
+					</N8nCallout>
 				</div>
-			</N8nCallout>
-		</div>
 
-		<div v-if="props.showInstructions" :class="[$style.field]">
-			<label :class="[$style.label, props.disabled && shared.disabled]">
-				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-					i18n.baseText('agents.builder.agent.instructions.label')
-				}}</N8nText>
-			</label>
-			<N8nMarkdownEditor
-				:class="$style.instructionsDocument"
-				:model-value="instructions"
-				:disabled="props.disabled"
-				:show-toolbar="instructionsToolbarMode"
-				:max-height="props.instructionsMaxHeight"
-				variant="contained"
-				data-testid="agent-instructions-document"
-				@update:model-value="onInstructionsInput"
-			/>
+				<div
+					v-if="showDeploymentName"
+					:class="$style.field"
+					data-testid="agent-deployment-name-field"
+				>
+					<label :class="[$style.label, props.disabled && shared.disabled]">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.agent.model.deploymentName.label')
+						}}</N8nText>
+					</label>
+					<N8nInput
+						:model-value="deploymentName"
+						:placeholder="i18n.baseText('agents.builder.agent.model.deploymentName.placeholder')"
+						:disabled="props.disabled"
+						data-testid="agent-deployment-name"
+						@focus="deploymentNameFocused = true"
+						@blur="deploymentNameFocused = false"
+						@update:model-value="onDeploymentNameInput"
+					/>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('agents.builder.agent.model.deploymentName.description') }}
+					</N8nText>
+				</div>
+			</div>
+			<div
+				v-if="props.showModel && props.showInstructions"
+				:class="$style.divider"
+				aria-hidden="true"
+			></div>
+			<div
+				v-if="props.showInstructions"
+				:class="$style.field"
+				data-testid="agent-instructions-panel"
+			>
+				<div :class="[$style.label, props.disabled && shared.disabled]">
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">
+						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
+					</N8nText>
+					<N8nText step="sm" color="text-light">
+						{{ i18n.baseText('agents.builder.agent.instructions.description') }}
+					</N8nText>
+				</div>
+				<N8nMarkdownEditor
+					:id="instructionsEditorId"
+					:class="$style.instructionsDocument"
+					:model-value="instructions"
+					:disabled="props.disabled"
+					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+					is-collapsible
+					show-toolbar="floating"
+					variant="ghost"
+					data-testid="agent-instructions-document"
+					@update:model-value="onInstructionsInput"
+				/>
+			</div>
 		</div>
-	</div>
+	</AgentPanel>
 </template>
 
 <style module>
-.panel {
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
+.panels {
 	display: flex;
+	align-items: stretch;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--lg);
 	width: 100%;
+}
+
+.panels > * {
+	flex: 1;
+	min-width: 0;
 }
 
 .instructionsDocument {
 	display: block;
 	width: 100%;
+	margin-inline: calc(var(--spacing--xs) * -1);
 }
 
 .instructionsDocument:disabled {
 	opacity: 0.5;
-}
-
-/* Follow the editor's configured max-height and scroll within the cap. */
-.instructionsDocument :global(.n8n-markdown) {
-	max-height: var(--markdown-editor-max-height);
-	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: auto;
 }
 
 .field {
@@ -369,7 +514,10 @@ function onInstructionsInput(value: string) {
 }
 
 .label {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	user-select: none;
 }
 
 .defaultHint {
@@ -386,5 +534,16 @@ function onInstructionsInput(value: string) {
 .defaultHintText {
 	flex: 1;
 	min-width: 0;
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
+}
+
+.containerClass {
+	padding-bottom: 0;
 }
 </style>

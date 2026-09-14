@@ -166,6 +166,32 @@ describe('CommunityPackagesLifecycleService', () => {
 				undefined,
 			);
 		});
+
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = lifecycle.install({ name: 'n8n-nodes-invalid' }, user, 'ui');
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('uninstall', () => {
+		it('should reject with BadRequestError when package name parsing fails', async () => {
+			communityPackagesService.parseNpmPackageName.mockImplementationOnce(() => {
+				throw new Error('Package name "n8n-nodes-invalid" is not allowed');
+			});
+
+			const promise = lifecycle.uninstall('n8n-nodes-invalid', user, 'notFound');
+
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
+			expect(communityPackagesService.removePackage).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('listInstalledPackages', () => {

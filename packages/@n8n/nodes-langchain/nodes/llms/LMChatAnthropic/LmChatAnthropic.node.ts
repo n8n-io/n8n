@@ -21,9 +21,20 @@ import { getCustomCredentialHeader } from '@utils/helpers';
 
 import { searchModels } from './methods/searchModels';
 
+// The 1.3+ resource locator accepts any id the provider lists, so the newest
+// generation is the right answer on every one of those versions. Phrased as
+// choice guidance rather than a validity claim: older versions still default to
+// an older model, and that stored value is not wrong, just superseded.
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed on Opus 4.7+, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+		'Default to claude-sonnet-5 (latest Sonnet); use claude-opus-5 when the user needs the most capable model. Do not fall back to an older generation (Claude Sonnet 4.6 or earlier, Claude 3.x, Claude 2, LEGACY options) unless the user asks for a specific model. Tell the user which model you picked, why, and that they can change it at any time. When extended thinking is needed, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+};
+
+// Versions 1 to 1.2 expose a fixed enum that predates the current generation,
+// so the recommendation above names nothing those versions can actually select.
+const ANTHROPIC_LEGACY_MODEL_BUILDER_HINT = {
+	propertyHint:
+		'This node version only offers superseded Claude models. Pick claude-3-5-sonnet-20241022 if the node has to stay on this version; otherwise rebuild it on the latest node version, where the current Claude generation is selectable.',
 };
 
 const modelField: INodeProperties = {
@@ -76,7 +87,7 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
-	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+	builderHint: ANTHROPIC_LEGACY_MODEL_BUILDER_HINT,
 };
 
 const MIN_THINKING_BUDGET = 1024;
@@ -127,8 +138,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		defaultVersion: 1.5,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		defaultVersion: 1.6,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -297,7 +308,44 @@ export class LmChatAnthropic implements INodeType {
 					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.5 } }],
+						'@version': [1.5],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-5',
+					cachedResultName: 'Claude Sonnet 5',
+				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Claude Sonnet',
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.6 } }],
 					},
 				},
 			},
@@ -391,7 +439,8 @@ export class LmChatAnthropic implements INodeType {
 						name: 'thinkingMode',
 						type: 'options',
 						default: 'disabled',
-						description: 'How extended thinking should be configured for the model',
+						description:
+							'How extended thinking is configured. Leave the option unset to use the model default.',
 						options: [
 							{
 								name: 'Disabled',
@@ -541,6 +590,10 @@ export class LmChatAnthropic implements INodeType {
 			promptCaching?: 'disabled' | '5m' | '1h';
 		};
 
+		// Pre-flight check for the one model family we have confirmed rejects manual thinking, so
+		// those users fail fast instead of spending a request. Newer generations likely reject it
+		// too, but rather than guess a capability matrix that drifts every release, anything this
+		// misses is caught by manualThinkingErrorHandler once the provider rejects the call.
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
 		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
 			version >= 1.5
@@ -548,6 +601,11 @@ export class LmChatAnthropic implements INodeType {
 				: options.thinking
 					? 'manual'
 					: 'disabled';
+		// langchain no longer defaults `thinking` to disabled, and Sonnet 5 / Opus 5 think adaptively
+		// when the field is absent. Only a Disabled the user added is sent; an unset option leaves the
+		// field out so the model default applies (models such as Fable reject an explicit disabled).
+		const thinkingExplicitlyDisabled =
+			version >= 1.5 ? options.thinkingMode === 'disabled' : options.thinking === false;
 
 		if (thinkingMode === 'manual' && isOpus47Model) {
 			throw new NodeOperationError(
@@ -585,6 +643,8 @@ export class LmChatAnthropic implements INodeType {
 				top_p: undefined,
 				temperature: undefined,
 			};
+		} else if (thinkingExplicitlyDisabled) {
+			invocationKwargs = { thinking: { type: 'disabled' } };
 		}
 
 		if (options.promptCaching && options.promptCaching !== 'disabled') {
@@ -663,9 +723,51 @@ export class LmChatAnthropic implements INodeType {
 			}
 		};
 
+		// Same shape as the sampling-parameter backstop above, for the same reason: newer Claude
+		// generations drop the legacy manual thinking mode, and the pre-flight check below only
+		// recognises the models we have confirmed. This catches the rest — including gateway
+		// traffic, whose capabilities we cannot infer from the model name. Models that always think
+		// (Fable, Mythos) reject an explicit disabled the same way.
+		const thinkingErrorHandler = (error: unknown) => {
+			if (thinkingMode !== 'manual' && !thinkingExplicitlyDisabled) return;
+			const message = error instanceof Error ? error.message : String(error);
+			const mentionsThinking = /thinking|budget_tokens/i.test(message);
+			// Match the verb stem rather than the participle: providers phrase this both ways
+			// ("thinking is not supported" and "this model does not support thinking"), and
+			// "not supported" never appears in the active-voice form.
+			const isRejection =
+				/(?:not|n['’]?t) support|unsupported|not allowed|not permitted|deprecated|invalid|only supports/i.test(
+					message,
+				);
+			if (mentionsThinking && isRejection) {
+				// Node versions below 1.5 have the Enable Thinking toggle instead of Thinking Mode.
+				const guidance =
+					version >= 1.5
+						? {
+								manual: 'Set Thinking Mode to Adaptive and choose an Effort level.',
+								disabled:
+									'Set Thinking Mode to Adaptive, or remove the Thinking Mode option to use the model default.',
+							}
+						: {
+								manual:
+									'Turn off Enable Thinking, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+								disabled:
+									'Remove the Enable Thinking option, or add a new Anthropic Chat Model node to use Adaptive thinking.',
+							};
+				throw new NodeOperationError(
+					this.getNode(),
+					thinkingMode === 'manual'
+						? `The model "${modelName}" does not support the legacy Manual thinking mode. ${guidance.manual}`
+						: `The model "${modelName}" does not support disabling thinking. ${guidance.disabled}`,
+					{ itemIndex },
+				);
+			}
+		};
+
 		const failedAttemptHandler = (error: unknown) => {
 			gatewayErrorHandler?.(error);
 			deprecatedSamplingParamErrorHandler(error);
+			thinkingErrorHandler(error);
 		};
 
 		const chatAnthropicParams: ChatAnthropicInput = {

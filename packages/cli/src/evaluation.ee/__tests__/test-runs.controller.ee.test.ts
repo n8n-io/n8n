@@ -134,7 +134,10 @@ describe('TestRunsController', () => {
 				mockUser,
 				['workflow:read'],
 			);
-			expect(mockTestRunRepository.getMany).toHaveBeenCalledWith(mockWorkflowId, {});
+			expect(mockTestRunRepository.getMany).toHaveBeenCalledWith(mockWorkflowId, {
+				offset: undefined,
+				limit: undefined,
+			});
 			expect(result).toEqual(mockResult);
 		});
 

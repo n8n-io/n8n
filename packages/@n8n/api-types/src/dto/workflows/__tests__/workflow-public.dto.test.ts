@@ -1,4 +1,10 @@
-import { WorkflowPublicDto, WorkflowPublishPublicDto } from '../workflow-public.dto';
+import assert from 'node:assert';
+
+import {
+	CreatedWorkflowPublicDto,
+	WorkflowPublicDto,
+	WorkflowPublishPublicDto,
+} from '../workflow-public.dto';
 
 const baseWorkflow = {
 	id: '1',
@@ -125,6 +131,36 @@ describe('WorkflowPublicDto', () => {
 	test('rejects a missing required field', () => {
 		const { id: _id, ...withoutId } = baseWorkflow;
 		const result = WorkflowPublicDto.safeParse(withoutId);
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('CreatedWorkflowPublicDto', () => {
+	test('accepts a null parent folder', () => {
+		const result = CreatedWorkflowPublicDto.safeParse({ ...baseWorkflow, parentFolder: null });
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts a populated parent folder', () => {
+		const parentFolder = {
+			id: 'folder-1',
+			name: 'Target Folder',
+			parentFolderId: null,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+
+		const result = CreatedWorkflowPublicDto.safeParse({ ...baseWorkflow, parentFolder });
+
+		assert(result.success, 'Expected safeParse to succeed');
+
+		expect(result.data.parentFolder).toEqual(parentFolder);
+	});
+
+	test('rejects a body with no parentFolder key', () => {
+		const result = CreatedWorkflowPublicDto.safeParse(baseWorkflow);
+
 		expect(result.success).toBe(false);
 	});
 });

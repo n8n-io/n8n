@@ -8,7 +8,11 @@ import {
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import {
+	MAX_WORKFLOW_CODE_LENGTH,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
@@ -17,6 +21,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
@@ -35,7 +40,7 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
@@ -73,8 +78,9 @@ function normalizeWorkflowDescription(description?: string) {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	name: z
@@ -128,7 +134,7 @@ const outputSchema = {
 					.enum(['user', 'aiGateway'])
 					.optional()
 					.describe(
-						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via Gateway credits.',
 					),
 			}),
 		)
@@ -167,7 +173,9 @@ const outputSchema = {
 			}),
 		)
 		.optional()
-		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. Repair them with update_workflow before you report the workflow as done.',
+		),
 	hint: z
 		.string()
 		.optional()
@@ -323,7 +331,7 @@ export const createCreateWorkflowFromCodeTool = (
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
 			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
 						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
 					)
 				: [];
@@ -444,8 +452,14 @@ export const createCreateWorkflowFromCodeTool = (
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
-			const output =
-				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
+
+			// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+			const ceilingWarning = options.canvasGroupsEnabled
+				? topLevelItemsWarning(savedWorkflow)
+				: undefined;
+
+			const warnings = ceilingWarning ? [...result.warnings, ceilingWarning] : result.warnings;
+			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

@@ -1,24 +1,35 @@
 import type { WorkflowGraph } from '../graph';
-import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
+import type {
+	CallerContext,
+	ExecutionMode,
+	ExecutionStatus,
+	TriggerOutputs,
+	WorkflowDocument,
+} from './execution.types';
 
-/** A new execution to persist. `id` and timestamps are assigned by the store. */
-export interface NewExecutionRecord {
-	workflowId: string;
-	status: ExecutionStatus;
-	mode: ExecutionMode;
-	graph: WorkflowGraph;
-	triggerOutputs: TriggerOutputs | null;
-}
-
-/** A full execution record. */
-export interface ExecutionRecord {
+/** The fields the write side supplies and the execution path reads back. */
+interface BaseExecutionRecord {
+	/** Caller-minted id. The store never mints one. */
 	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
 	graph: WorkflowGraph;
+	/** Stored for the read path only. Nothing on the execution path reads it. */
+	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
+	callerContext: CallerContext;
 }
+
+/** A new execution to persist. Timestamps are assigned by the store. */
+export type NewExecutionRecord = BaseExecutionRecord;
+
+/**
+ * What running an execution needs of its row. No timing: the execution path
+ * decides on `status`, never on when anything happened. The read path has its
+ * own view (`ExecutionView`).
+ */
+export type ExecutionRecord = BaseExecutionRecord;
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
@@ -30,8 +41,8 @@ export class ExecutionNotFoundError extends Error {
 
 /** Persistence interface for executions. */
 export interface ExecutionStore {
-	/** Persist a new execution record; returns its generated id. */
-	createExecution(record: NewExecutionRecord): Promise<{ id: string }>;
+	/** Persist a new execution record under the caller-minted `record.id`. */
+	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;

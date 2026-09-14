@@ -13,9 +13,9 @@ import { DURATION_BUCKETS_SECONDS } from './constant';
  * for the poll reliability work. Opt-in via `includePollTriggerMetrics` and only
  * active on a main instance. Tick duration, errors, and same-process overlap come
  * from the core poll engine's event stream ({@link TriggersAndPollers.events});
- * cursor-commit outcomes come from `EventService`. Cross-instance overlap is not
- * observable from inside a poll, so it is covered by the scheduler collector's
- * `scheduler_tasks_lease_lost_total` instead.
+ * cursor-commit outcomes and scheduler-side poll timeouts come from `EventService`.
+ * Cross-instance overlap is not observable from inside a poll, so it is covered by
+ * the scheduler collector's `scheduler_tasks_lease_lost_total` instead.
  *
  * Labels are bounded (node type, status, kind, operation, result): no
  * workflow or instance label, per the metrics cardinality rule.
@@ -55,6 +55,12 @@ export class PrometheusPollTriggerMetricsService implements PrometheusMetricsCol
 			labelNames: ['node_type'],
 		});
 
+		const timeouts = new promClient.Counter({
+			name: `${prefix}poll_trigger_timeouts_total`,
+			help: 'Total number of polls the durable scheduler abandoned after they exceeded N8N_SCHEDULER_POLL_TIMEOUT, by node type.',
+			labelNames: ['node_type'],
+		});
+
 		const cursorCommits = new promClient.Counter({
 			name: `${prefix}poll_trigger_cursor_commits_total`,
 			help: 'Total number of poll cursor commits by operation and result (success, fence_rejected, failure).',
@@ -84,6 +90,10 @@ export class PrometheusPollTriggerMetricsService implements PrometheusMetricsCol
 		this.eventService.on('poll-cursor-commit-settled', ({ operation, result, durationMs }) => {
 			cursorCommits.inc({ operation, result });
 			cursorCommitDuration.observe({ operation, result }, durationMs / 1000);
+		});
+
+		this.eventService.on('poll-tick-timed-out', ({ nodeType }) => {
+			timeouts.inc({ node_type: nodeType });
 		});
 	}
 }

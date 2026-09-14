@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { IHttpRequestOptions, IN8nHttpFullResponse } from 'n8n-workflow';
@@ -38,15 +37,12 @@ export class OAuth2MetadataHttpClient {
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
 		outboundHttp: OutboundHttp,
-		ssrfProtectionService: SsrfProtectionService,
-		ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
-		// We opt into SSRF protection (when the environment enables it) because the attack risk is higher here.
-		// This matters for the second hop too: the introspection/userinfo endpoints come from
-		// the remote metadata server, so they are fully third-party-controlled.
-		// Self-hosted users pointing the resolver at an internal IdP can allowlist via SsrfProtectionConfig.
+		// The default safe mode applies. This matters for the second hop too: the
+		// introspection/userinfo endpoints come from the remote metadata server, so
+		// they are fully third-party-controlled. Self-hosted users pointing the
+		// resolver at an internal IdP can allowlist via SsrfProtectionConfig.
 		this.http = outboundHttp.requests({
-			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
 			timeout: REQUEST_TIMEOUT,
 		});
 	}

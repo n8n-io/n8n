@@ -168,10 +168,11 @@ export function updateWorkflowToolRef(
 		allOutputs: boolean;
 		workflow: string;
 		workflowId?: string;
+		inputs?: Extract<AgentJsonToolRef, { type: 'workflow' }>['inputs'];
 	},
 ): AgentJsonToolRef {
 	if (original.type !== 'workflow') return original;
-	return {
+	const next: Extract<AgentJsonToolRef, { type: 'workflow' }> = {
 		...original,
 		name: edits.name,
 		description: edits.description,
@@ -179,4 +180,12 @@ export function updateWorkflowToolRef(
 		workflow: edits.workflow,
 		...(edits.workflowId !== undefined ? { workflowId: edits.workflowId } : {}),
 	};
+	if ('inputs' in edits) {
+		if (edits.inputs && Object.keys(edits.inputs).length > 0) {
+			next.inputs = edits.inputs;
+		} else {
+			delete next.inputs;
+		}
+	}
+	return next;
 }

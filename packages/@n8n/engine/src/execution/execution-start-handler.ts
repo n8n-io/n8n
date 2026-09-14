@@ -1,5 +1,6 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
@@ -18,6 +19,7 @@ export class ExecutionStartHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -30,6 +32,16 @@ export class ExecutionStartHandler {
 		if (!claimed) return;
 
 		const execution = await this.executionStore.loadExecution(event.executionId);
+
+		// This worker won the claim, so it is the one that announces the start.
+		// After the load, because the ids it carries save consumers a round trip.
+		this.lifecycleEventPublisher.publish({
+			type: 'execution:started',
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			mode: execution.mode,
+			at: new Date().toISOString(),
+		});
 
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {

@@ -2,7 +2,6 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import {
-	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeProperties,
 	type INodeType,
@@ -13,6 +12,8 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { mergeCustomHeaders } from '@utils/helpers';
+
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
@@ -252,13 +253,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders,
 		};
 		if (options.baseURL) {
-			assertCredentialAllowsUrl({
-				node: this.getNode(),
-				credentialData: credentials,
-				url: options.baseURL,
-				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
-				surface: 'OpenAI',
-			});
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;

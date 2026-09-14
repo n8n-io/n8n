@@ -67,12 +67,13 @@ function wrapAsNodeOperationError(
 	error: unknown,
 	node: INode,
 	itemIndex: number | undefined,
+	fallbackMessage: string,
 ): Error {
 	const className = resolveErrorName(error);
 	const messageProperty = getErrorProperty(error, 'message');
 	const candidateMessage = messageProperty ?? (typeof error === 'string' ? error : undefined);
 	const message = isUselessMessage(candidateMessage, className)
-		? AGENT_FAILURE_FALLBACK_MESSAGE
+		? fallbackMessage
 		: (candidateMessage as string);
 
 	const options = {
@@ -98,23 +99,27 @@ export function wrapLangChainParserError(
 	error: unknown,
 	node: INode,
 	itemIndex?: number,
-	options?: { enrichNonParserErrors?: boolean },
+	options?: { enrichNonParserErrors?: boolean; fallbackMessage?: string },
 ): Error {
 	if (!isLangChainParserError(error)) {
-		// Default: callers that have not opted in (the chain nodes, ReAct and
-		// Conversational agents) keep the error exactly as it was thrown.
+		// Default: callers that have not opted in keep the error exactly as it was thrown.
 		if (!options?.enrichNonParserErrors) {
 			return error instanceof Error
 				? error
 				: new Error(getErrorProperty(error, 'message') ?? String(error));
 		}
 
-		// Opt-in enrichment (Tools Agent, all versions): wrap plain errors so a
-		// useless message like "Error" never reaches the user, and the original
-		// error survives as `cause` for failure-type telemetry. Errors that are
-		// already ours carry a meaningful message, so leave them alone.
+		// Opt-in enrichment: wrap plain errors so a useless message like "Error"
+		// never reaches the user, and the original error survives as `cause` for
+		// failure-type telemetry. Errors that are already ours carry a meaningful
+		// message, so leave them alone.
 		if (error instanceof BaseError) return error;
-		return wrapAsNodeOperationError(error, node, itemIndex);
+		return wrapAsNodeOperationError(
+			error,
+			node,
+			itemIndex,
+			options.fallbackMessage ?? AGENT_FAILURE_FALLBACK_MESSAGE,
+		);
 	}
 
 	const parserOptions = {

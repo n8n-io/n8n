@@ -183,7 +183,7 @@ describe('NodeResourceExplorerService', () => {
 			{
 				openAiApi: {
 					id: null,
-					name: 'n8n credits',
+					name: 'Gateway credits',
 					__aiGatewayManaged: true,
 				},
 			},

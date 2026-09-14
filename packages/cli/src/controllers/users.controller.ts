@@ -6,15 +6,9 @@ import {
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import type { PublicUser } from '@n8n/db';
 import {
-	Project,
 	User,
-	AuthIdentity,
-	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
 	UserRepository,
 	AuthenticatedRequest,
 	GLOBAL_ADMIN_ROLE,
@@ -36,48 +30,22 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UserRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/users')
 export class UsersController {
 	constructor(
-		private readonly logger: Logger,
-		private readonly externalHooks: ExternalHooks,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
-		private readonly projectRepository: ProjectRepository,
-		private readonly workflowService: WorkflowService,
-		private readonly credentialsService: CredentialsService,
-		private readonly eventService: EventService,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly provisioningService: ProvisioningService,
-		private readonly ownershipTransferService: OwnershipTransferService,
 	) {}
-
-	static ERROR_MESSAGES = {
-		CHANGE_ROLE: {
-			NO_USER: 'Target user not found',
-			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
-			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
-			CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
-		},
-	} as const;
 
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
@@ -222,117 +190,7 @@ export class UsersController {
 	@Delete('/:id')
 	@GlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
-		const { id: idToDelete } = req.params;
-
-		if (req.user.id === idToDelete) {
-			this.logger.debug(
-				'Request to delete a user failed because it attempted to delete the requesting user',
-				{ userId: req.user.id },
-			);
-			throw new BadRequestError('Cannot delete your own user');
-		}
-
-		const { transferId } = req.query;
-
-		const userToDelete = await this.userRepository.findOne({
-			where: { id: idToDelete },
-			relations: ['role'],
-		});
-
-		if (!userToDelete) {
-			throw new NotFoundError(
-				'Request to delete a user failed because the user to delete was not found in DB',
-			);
-		}
-
-		if (userToDelete.role.slug === GLOBAL_OWNER_ROLE.slug) {
-			throw new ForbiddenError('Instance owner cannot be deleted.');
-		}
-
-		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
-			userToDelete.id,
-		);
-
-		if (transferId === personalProjectToDelete.id) {
-			throw new BadRequestError(
-				'Request to delete a user failed because the user to delete and the transferee are the same user',
-			);
-		}
-
-		let transfereeId;
-		let transfereeProject: Project | null = null;
-
-		if (transferId) {
-			transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
-
-			if (!transfereeProject) {
-				throw new NotFoundError(
-					'Request to delete a user failed because the transferee project was not found in DB',
-				);
-			}
-
-			const transfereeProjectId = transfereeProject.id;
-
-			const transferee = await this.userRepository.findOneByOrFail({
-				projectRelations: {
-					projectId: transfereeProjectId,
-				},
-			});
-
-			transfereeId = transferee.id;
-
-			await this.ownershipTransferService.transferAllResources(
-				[personalProjectToDelete.id],
-				transfereeProjectId,
-			);
-		}
-
-		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-			this.sharedWorkflowRepository.find({
-				select: { workflowId: true },
-				where: { projectId: personalProjectToDelete.id, role: 'workflow:owner' },
-			}),
-			this.sharedCredentialsRepository.find({
-				relations: { credentials: true },
-				where: { projectId: personalProjectToDelete.id, role: 'credential:owner' },
-			}),
-		]);
-
-		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
-
-		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId, true);
-		}
-
-		for (const credential of ownedCredentials) {
-			await this.credentialsService.delete(userToDelete, credential.id);
-		}
-
-		// Clean up module-owned resources (e.g. data tables with their physical
-		// user tables) before the project is removed, so they are not orphaned by
-		// the FK cascade. The transfer case is handled by the transfer above.
-		if (!transfereeProject) {
-			await this.ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
-		}
-
-		await this.userService.getManager().transaction(async (trx) => {
-			await trx.delete(AuthIdentity, { userId: userToDelete.id });
-			await trx.delete(Project, { id: personalProjectToDelete.id });
-			await trx.delete(User, { id: userToDelete.id });
-		});
-
-		this.eventService.emit('user-deleted', {
-			user: req.user,
-			publicApi: false,
-			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
-			targetUserId: idToDelete,
-			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
-			migrationUserId: transfereeId,
-		});
-
-		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
-
-		return { success: true };
+		return await this.userService.deleteUser(req.user, req.params.id, req.query.transferId);
 	}
 
 	@Patch('/:id/role')
@@ -344,50 +202,6 @@ export class UsersController {
 		@Body payload: RoleChangeRequestDto,
 		@Param('id') id: string,
 	) {
-		if (await this.provisioningService.isInstanceRoleManaged()) {
-			throw new ForbiddenError(
-				'Instance roles are managed automatically and cannot be changed manually',
-			);
-		}
-
-		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, CANNOT_CHANGE_OWN_ROLE } =
-			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
-
-		if (req.user.id === id) {
-			throw new ForbiddenError(CANNOT_CHANGE_OWN_ROLE);
-		}
-
-		const targetUser = await this.userRepository.findOne({
-			where: { id },
-			relations: ['role'],
-		});
-		if (targetUser === null) {
-			throw new NotFoundError(NO_USER);
-		}
-
-		if (
-			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
-		}
-
-		if (
-			req.user.role.slug === GLOBAL_OWNER_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(NO_OWNER_ON_OWNER);
-		}
-
-		await this.userService.changeUserRole(targetUser, payload);
-
-		this.eventService.emit('user-changed-role', {
-			userId: req.user.id,
-			targetUserId: targetUser.id,
-			targetUserNewRole: payload.newRoleName,
-			publicApi: false,
-		});
-
-		return { success: true };
+		return await this.userService.changeGlobalRole(req.user, id, payload);
 	}
 }

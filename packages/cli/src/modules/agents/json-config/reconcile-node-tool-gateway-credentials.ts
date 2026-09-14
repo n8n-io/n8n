@@ -6,7 +6,7 @@ import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow'
 import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
-const N8N_CONNECT_CREDENTIAL_NAME = 'n8n credits';
+const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
 const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
 
 type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];

@@ -33,6 +33,7 @@ import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.
 import { NodeTypes } from '@/node-types';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
@@ -261,6 +262,7 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			if (!valid) {
 				if (isSendAndWait) {
+					applyFormSandboxCSP(res);
 					res.status(401).render('form-invalid-token');
 				} else {
 					res.status(401).json({ error: 'Invalid token' });
@@ -299,6 +301,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
+				applyFormSandboxCSP(res);
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
 			} else {
@@ -393,6 +396,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 
 				if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
+					applyFormSandboxCSP(res);
 					res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 					return { noWebhookResponse: true };
 				}

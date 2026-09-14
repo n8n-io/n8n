@@ -2,6 +2,7 @@ import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	McpOAuth2CredentialTypeSchema,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -43,6 +44,19 @@ describe('AgentJsonConfigSchema — reasoning', () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('McpOAuth2CredentialTypeSchema', () => {
+	it.each(['oAuth2Api', 'githubOAuth2Api', 'gmailOAuth2'])(
+		'accepts the OAuth2 credential type %s',
+		(credentialType) => {
+			expect(McpOAuth2CredentialTypeSchema.safeParse(credentialType).success).toBe(true);
+		},
+	);
+
+	it('rejects a non-OAuth2 credential type', () => {
+		expect(McpOAuth2CredentialTypeSchema.safeParse('httpBearerAuth').success).toBe(false);
 	});
 });
 
@@ -602,5 +616,103 @@ describe('formatAgentConfigZodError', () => {
 		expect(formatted).toContain('MCP server name cannot be blank');
 		expect(formatted).not.toContain('"validation": "regex"');
 		expect(result.error.issues[0]?.message).toBe('MCP server name cannot be blank');
+	});
+});
+
+describe('WorkflowToolJsonConfigSchema — inputs', () => {
+	it('accepts AI and fixed input bindings on a workflow tool', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						chatId: { mode: 'ai' },
+						shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+						botName: { mode: 'fixed', value: 'Jarvis' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({
+				type: 'workflow',
+				inputs: {
+					chatId: { mode: 'ai' },
+					shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+					botName: { mode: 'fixed', value: 'Jarvis' },
+				},
+			});
+		}
+	});
+
+	it('rejects a fixed binding without a value', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						botName: { mode: 'fixed' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts nested JSON arrays and objects as fixed values', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+						meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({
+				inputs: {
+					tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+					meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+				},
+			});
+		}
+	});
+
+	it('rejects non-JSON values inside fixed arrays and objects', () => {
+		const cases: Array<[string, unknown]> = [
+			['array with undefined', { mode: 'fixed', value: ['a', undefined, 'b'] }],
+			['object with undefined', { mode: 'fixed', value: { ok: undefined } }],
+			['array with function', { mode: 'fixed', value: [() => 1] }],
+			['object with Date', { mode: 'fixed', value: { when: new Date() } }],
+		];
+
+		for (const [, value] of cases) {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				tools: [
+					{
+						type: 'workflow',
+						workflow: 'Show Shopping List',
+						inputs: { field: value },
+					},
+				],
+			});
+
+			expect(result.success).toBe(false);
+		}
 	});
 });

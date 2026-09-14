@@ -1,5 +1,10 @@
 import type { SharedCredentials, User } from '@n8n/db';
-import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	chunkIds,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
@@ -27,12 +32,25 @@ export class CredentialsFinderService {
 		});
 	}
 
+	private isExactScope(scopes: Scope[], scope: Scope): boolean {
+		return scopes.length === 1 && scopes[0] === scope;
+	}
+
 	/**
 	 * Checks if the scopes allow read-only access to global credentials.
 	 * Global credentials can be accessed with credential:read scope only.
 	 */
 	hasGlobalReadOnlyAccess(scopes: Scope[]): boolean {
-		return scopes.length === 1 && scopes[0] === 'credential:read';
+		return this.isExactScope(scopes, 'credential:read');
+	}
+
+	/**
+	 * Checks if the scopes allow connect access to global credentials. Only
+	 * end-user (resolvable) global credentials grant this — the caller is
+	 * still responsible for checking `isResolvable` on the credential itself.
+	 */
+	hasGlobalConnectAccess(scopes: Scope[]): boolean {
+		return this.isExactScope(scopes, 'credential:connect');
 	}
 
 	/**
@@ -188,6 +206,15 @@ export class CredentialsFinderService {
 			});
 		}
 
+		// End-user credentials shared globally still let the recipient connect
+		// their own account; static global credentials do not.
+		if (this.hasGlobalConnectAccess(scopes)) {
+			const globalCredential = await this.findGlobalCredentialById(credentialsId, {
+				shared: { project: true },
+			});
+			return globalCredential?.isResolvable ? globalCredential : null;
+		}
+
 		return null;
 	}
 
@@ -283,20 +310,40 @@ export class CredentialsFinderService {
 			};
 		}
 
-		const sharedCredentials = await this.sharedCredentialsRepository.find({
-			select: { credentialsId: true },
-			where,
-		});
-
-		const result = new Set(sharedCredentials.map((sc) => sc.credentialsId));
+		const result = new Set<string>();
+		for (const chunk of chunkIds(credentialIds)) {
+			const sharedCredentials = await this.sharedCredentialsRepository.find({
+				select: { credentialsId: true },
+				where: { ...where, credentialsId: In(chunk) },
+			});
+			for (const sharedCredential of sharedCredentials) {
+				result.add(sharedCredential.credentialsId);
+			}
+		}
 
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			const globalCreds = await this.credentialsRepository.find({
-				where: { id: In(credentialIds), isGlobal: true, usageScope: 'project' },
-				select: ['id'],
-			});
-			for (const gc of globalCreds) result.add(gc.id);
+			for (const chunk of chunkIds(credentialIds)) {
+				const globalCreds = await this.credentialsRepository.find({
+					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+					select: ['id'],
+				});
+				for (const gc of globalCreds) result.add(gc.id);
+			}
+		} else if (this.hasGlobalConnectAccess(scopes)) {
+			// Only end-user (resolvable) global credentials grant connect access.
+			for (const chunk of chunkIds(credentialIds)) {
+				const globalCreds = await this.credentialsRepository.find({
+					where: {
+						id: In(chunk),
+						isGlobal: true,
+						usageScope: 'project',
+						isResolvable: true,
+					},
+					select: ['id'],
+				});
+				for (const gc of globalCreds) result.add(gc.id);
+			}
 		}
 
 		return result;

@@ -6,6 +6,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
@@ -66,11 +67,14 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				caller: { authType: 'oauth', clientId: 'client-abc' },
+			});
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toEqual({ user, authType: 'oauth' });
+			expect(result).toEqual({ user, caller: { authType: 'oauth', clientId: 'client-abc' } });
 			expect(oauthTokenVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
 				oauthToken,
 				'https://n8n.example.com/mcp-server/http',
@@ -85,11 +89,14 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({
+				user,
+				caller: { authType: 'api_key' },
+			});
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user, authType: 'api_key' });
+			expect(result).toEqual({ user, caller: { authType: 'api_key' } });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -102,11 +109,14 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: false },
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({
+				user,
+				caller: { authType: 'api_key' },
+			});
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual({ user, authType: 'api_key' });
+			expect(result).toEqual({ user, caller: { authType: 'api_key' } });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -149,6 +159,59 @@ describe('McpServerMiddlewareService', () => {
 		});
 	});
 
+	describe('getEnabledMiddleware', () => {
+		const runMiddleware = async (enabled: boolean, body?: unknown) => {
+			mcpProtectedResource.isAvailable.mockResolvedValue(enabled);
+			const res = mockDeep<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+			const next = vi.fn() as NextFunction;
+
+			await service.getEnabledMiddleware()(mockReqWith(undefined, body), res, next);
+
+			return { res, next };
+		};
+
+		it('should pass the request through when MCP access is enabled', async () => {
+			const { res, next } = await runMiddleware(true);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		it('should return 404 without an authentication challenge when MCP access is disabled', async () => {
+			const { res, next } = await runMiddleware(false);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+			expect(res.header).not.toHaveBeenCalledWith('WWW-Authenticate', expect.anything());
+			expect(next).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('should track a connection error when a handshake hits the disabled server', async () => {
+			await runMiddleware(false, {
+				jsonrpc: '2.0',
+				method: 'initialize',
+				params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+				mcp_connection_status: 'error',
+				error: 'MCP access is disabled',
+				http_status: 404,
+				client_name: 'Claude',
+				client_version: '1.0.0',
+			});
+		});
+
+		it('should not track non-handshake requests against the disabled server', async () => {
+			await runMiddleware(false, { jsonrpc: '2.0', method: 'tools/call', params: {} });
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getAuthMiddleware', () => {
 		it('should return 401 with WWW-Authenticate header when authorization header is missing', async () => {
 			const req = mockReqWith(undefined);
@@ -173,6 +236,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -203,6 +267,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -233,6 +298,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -254,15 +320,18 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = vi.fn() as NextFunction;
 
-			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				caller: { authType: 'oauth', clientId: 'client-abc' },
+			});
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
-			const authenticatedReq = req as Request & { user?: User; mcpAuthType?: 'oauth' };
+			const authenticatedReq = req as Request & { user?: User; mcpCaller?: McpCallerAuth };
 
 			expect(authenticatedReq.user).toEqual(user);
-			expect(authenticatedReq.mcpAuthType).toBe('oauth');
+			expect(authenticatedReq.mcpCaller?.authType).toBe('oauth');
 			expect(next).toHaveBeenCalled();
 			expect(res.status).not.toHaveBeenCalled();
 		});
@@ -281,7 +350,7 @@ describe('McpServerMiddlewareService', () => {
 
 			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
 				user,
-				authType: 'oauth',
+				caller: { authType: 'oauth', clientId: 'client-abc' },
 				scopes: ['workflow:read'],
 			});
 
@@ -289,6 +358,32 @@ describe('McpServerMiddlewareService', () => {
 			const authenticatedReq = req as Request & { mcpScopes?: string[] };
 
 			expect(authenticatedReq.mcpScopes).toEqual(['workflow:read']);
+			expect(next).toHaveBeenCalled();
+		});
+
+		it('should attach the OAuth client the token was issued to', async () => {
+			const user = mock<User>({ id: 'user-123' });
+			const oauthToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				meta: { isOAuth: true },
+			});
+
+			const req = mockReqWith(`Bearer ${oauthToken}`);
+			const res = mockDeep<Response>();
+			const next = vi.fn() as NextFunction;
+
+			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({
+				user,
+				caller: { authType: 'oauth', clientId: 'client-abc' },
+			});
+
+			await service.getAuthMiddleware()(req, res, next);
+
+			expect((req as Request & { mcpCaller?: McpCallerAuth }).mcpCaller).toEqual({
+				authType: 'oauth',
+				clientId: 'client-abc',
+			});
 			expect(next).toHaveBeenCalled();
 		});
 
@@ -303,19 +398,23 @@ describe('McpServerMiddlewareService', () => {
 			const res = mockDeep<Response>();
 			const next = vi.fn() as NextFunction;
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({
+				user,
+				caller: { authType: 'api_key' },
+			});
 
 			const middleware = service.getAuthMiddleware();
 
 			await middleware(req, res, next);
 			const authenticatedReq = req as Request & {
 				user?: User;
-				mcpAuthType?: 'api_key';
+				mcpCaller?: McpCallerAuth;
 				mcpScopes?: string[];
 			};
 
 			expect(authenticatedReq.user).toEqual(user);
-			expect(authenticatedReq.mcpAuthType).toBe('api_key');
+			// An API key is not issued to an OAuth client, so there is none to report
+			expect(authenticatedReq.mcpCaller).toEqual({ authType: 'api_key' });
 			// API keys are not scope-bearing: undefined means full tool access
 			expect(authenticatedReq.mcpScopes).toBeUndefined();
 			expect(next).toHaveBeenCalled();
@@ -408,6 +507,7 @@ describe('McpServerMiddlewareService', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'test-client',
 				client_version: '1.0.0',
@@ -448,6 +548,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'Claude',
 				client_version: '3.0.0',

@@ -58,6 +58,18 @@ export class TtlMap<K, V> {
 		return entry !== undefined && !this.deleteIfExpired(key, entry);
 	}
 
+	/**
+	 * Refresh a live entry's expiry to a full TTL from now (sliding expiration).
+	 * Returns `false` if the key is missing or already expired (expired entries are evicted).
+	 */
+	touch(key: K): boolean {
+		const entry = this.store.get(key);
+		if (!entry) return false;
+		if (this.deleteIfExpired(key, entry)) return false;
+		entry.expiresAt = Date.now() + this.ttlMs;
+		return true;
+	}
+
 	delete(key: K): boolean {
 		return this.store.delete(key);
 	}

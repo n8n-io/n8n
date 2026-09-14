@@ -6,6 +6,7 @@ import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
 	CANVAS_NODE_GROUP_TYPE,
+	CanvasConnectionMode,
 	type CanvasConnection,
 	type CanvasEventBusEvents,
 	type CanvasGroupNode,
@@ -16,6 +17,7 @@ import {
 	createCanvasGroupElement,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
+import { createEmptyCanvasRenderData } from '../canvas.utils';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -28,6 +30,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
 import { computeGroupFrameRects } from '../composables/useCanvasMapping.groups';
+import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import {
 	NodeGroupViewKey,
 	useCanvasNodeGroupView,
@@ -41,7 +44,9 @@ import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { DEFAULT_NODE_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -149,7 +154,10 @@ function getSelectionRing(container: Element) {
 	return container.querySelector('[data-test-id="canvas-node-group-selection-ring"]');
 }
 
-function createNodeGroupViewMock(initialCollapsed: boolean) {
+function createNodeGroupViewMock(
+	initialCollapsed: boolean,
+	overrides: Partial<CanvasNodeGroupView> = {},
+) {
 	const collapsedByGroupId = new Map<string, boolean>();
 	return {
 		isGroupCollapsed: (id: string) => collapsedByGroupId.get(id) ?? initialCollapsed,
@@ -161,6 +169,7 @@ function createNodeGroupViewMock(initialCollapsed: boolean) {
 		syncLayoutComponents: () => {},
 		settleManualNodePositions: (events: unknown) => events,
 		commitMovedPushSourceEffects: () => [],
+		...overrides,
 	} as unknown as CanvasNodeGroupView;
 }
 
@@ -222,6 +231,237 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
+	});
+
+	it('tidies hidden members when using the context menu on a collapsed group', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'first-member', name: 'First member' }),
+			createTestNode({ id: 'second-member', name: 'Second member' }),
+		]);
+		workflowDocumentStore.setNodeGroups([
+			{
+				id: 'collapsed-group',
+				name: 'Collapsed group',
+				nodeIds: ['first-member', 'second-member'],
+			},
+		]);
+
+		const firstMember = {
+			...createCanvasNodeElement({
+				id: 'first-member',
+				label: 'First member',
+				position: { x: -272, y: 320 },
+				data: {
+					name: 'First member',
+					connections: {
+						[CanvasConnectionMode.Input]: {},
+						[CanvasConnectionMode.Output]: {
+							[NodeConnectionTypes.Main]: [
+								[{ node: 'Second member', type: NodeConnectionTypes.Main, index: 0 }],
+							],
+						},
+					},
+				},
+			}),
+			hidden: true,
+		};
+		const secondMember = {
+			...createCanvasNodeElement({
+				id: 'second-member',
+				label: 'Second member',
+				position: { x: 160, y: 144 },
+				data: { name: 'Second member' },
+			}),
+			hidden: true,
+		};
+		const groupNode = createCanvasGroupNode({
+			id: 'collapsed-group',
+			nodeIds: ['first-member', 'second-member'],
+			isCollapsed: true,
+			nodesRect: { x: -272, y: 144, width: 528, height: 272 },
+			position: { x: -336, y: 48 },
+		});
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [firstMember, secondMember, groupNode],
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) },
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('canvas-node-group')).toBeInTheDocument());
+		await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([groupNode.id]);
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.source).toBe('context-menu');
+		expect(tidyUpEvent.target).toBe('selection');
+		const first = tidyUpEvent.result.nodes.find((node) => node.id === 'first-member');
+		const second = tidyUpEvent.result.nodes.find((node) => node.id === 'second-member');
+		expect(first).toBeDefined();
+		expect(second).toBeDefined();
+		expect(second!.x - first!.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+		expect(second!.y - first!.y).toBe(0);
+	});
+
+	it('keeps tidy-up scoped to a group context menu with one member', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'group-member', name: 'Group member' }),
+			createTestNode({ id: 'loose-node', name: 'Loose node' }),
+		]);
+		workflowDocumentStore.setNodeGroups([
+			{
+				id: 'single-group',
+				name: 'Single group',
+				nodeIds: ['group-member'],
+			},
+		]);
+		const groupMember = {
+			...createCanvasNodeElement({
+				id: 'group-member',
+				label: 'Group member',
+				position: { x: -272, y: 144 },
+				data: { name: 'Group member' },
+			}),
+			hidden: true,
+		};
+		const groupNode = createCanvasGroupNode({
+			id: 'single-group',
+			nodeIds: ['group-member'],
+			isCollapsed: true,
+			nodesRect: { x: -272, y: 144, width: 96, height: 96 },
+			position: { x: -336, y: 48 },
+		});
+		const looseNode = createCanvasNodeElement({
+			id: 'loose-node',
+			label: 'Loose node',
+			position: { x: 600, y: 0 },
+		});
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [groupMember, groupNode, looseNode],
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) },
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('canvas-node-group')).toBeInTheDocument());
+		await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.target).toBe('selection');
+		expect(tidyUpEvent.targetNodeCount).toBe(1);
+		expect(tidyUpEvent.result.nodes).toHaveLength(1);
+		expect(tidyUpEvent.result.nodes[0]?.id).toBe('group-member');
+	});
+
+	it('tidies the whole workflow from a single node menu even with a current selection', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'node-1', name: 'Node 1' }),
+			createTestNode({ id: 'node-2', name: 'Node 2' }),
+			createTestNode({ id: 'node-3', name: 'Node 3' }),
+		]);
+		const firstNode = createCanvasNodeElement({ id: 'node-1', label: 'Node 1' });
+		const secondNode = createCanvasNodeElement({ id: 'node-2', label: 'Node 2' });
+		const menuNode = createCanvasNodeElement({
+			id: 'node-3',
+			label: 'Node 3',
+			position: { x: 600, y: 0 },
+		});
+		const { container, emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [firstNode, secondNode, menuNode],
+				connections: [createCanvasConnection(firstNode, secondNode)],
+				renderData: createEmptyCanvasRenderData(),
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector(`[data-id="${menuNode.id}"]`)).toBeInTheDocument(),
+		);
+		const vueFlow = useVueFlow(canvasId);
+		vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!, vueFlow.findNode('node-2')!]);
+		await waitFor(() =>
+			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['node-1', 'node-2']),
+		);
+
+		const menuNodeElement = container.querySelector(`[data-id="${menuNode.id}"]`);
+		expect(menuNodeElement).not.toBeNull();
+		await fireEvent.click(
+			within(menuNodeElement as HTMLElement).getByTestId('overflow-node-button'),
+		);
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.target).toBe('all');
+		expect(tidyUpEvent.targetNodeCount).toBe(3);
+		expect(tidyUpEvent.result.nodes).toHaveLength(3);
+		expect(tidyUpEvent.result.nodes.map(({ id }) => id)).toEqual(
+			expect.arrayContaining(['node-1', 'node-2', 'node-3']),
+		);
+	});
+
+	it('settles node group offsets before emitting tidy positions', async () => {
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'node-1', name: 'Node 1', position: [0, 0] }),
+			createTestNode({ id: 'node-2', name: 'Node 2', position: [0, 0] }),
+			createTestNode({ id: 'node-3', name: 'Node 3', position: [0, 0] }),
+		]);
+		const settleManualNodePositions = vi.fn(() => [
+			{ id: 'node-1', position: { x: 160, y: 0 } },
+			{ id: 'node-2', position: { x: 384, y: 0 } },
+			{ id: 'node-3', position: { x: 608, y: 0 } },
+		]);
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+		const node1 = createCanvasNodeElement({ id: 'node-1', label: 'Node 1' });
+		const node2 = createCanvasNodeElement({ id: 'node-2', label: 'Node 2' });
+
+		const { emitted } = renderComponent({
+			props: {
+				nodes: [node1, node2],
+				connections: [createCanvasConnection(node1, node2)],
+				eventBus,
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: {
+					[NodeGroupViewKey as symbol]: createNodeGroupViewMock(false, {
+						settleManualNodePositions,
+					}),
+				},
+			},
+		});
+
+		eventBus.emit('tidyUp', { source: 'canvas-button' });
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(settleManualNodePositions).toHaveBeenCalled();
+		expect(tidyUpEvent.result.nodes).toEqual([
+			{ id: 'node-1', x: 160, y: 0 },
+			{ id: 'node-2', x: 384, y: 0 },
+			{ id: 'node-3', x: 608, y: 0 },
+		]);
+		expect(tidyUpEvent.targetNodeCount).toBe(2);
 	});
 
 	it('should render group frame from live VueFlow node data', async () => {
@@ -1095,89 +1335,7 @@ describe('Canvas', () => {
 		]);
 	});
 
-	it('snaps an agent drag by its measured center', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const canvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const { container, emitted } = renderComponent({ props: { nodes: [canvasNode] } });
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
-		const graphNode = useVueFlow({ id: canvasId }).findNode(agent.id)!;
-		graphNode.dimensions = { width: 320, height: 206 };
-
-		const node = container.querySelector(`[data-id="${agent.id}"]`) as Element;
-		await fireEvent.mouseDown(node, { view: window });
-		await fireEvent.mouseMove(node, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(node, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(node, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{
-						id: agent.id,
-						position: { x: 112, y: 105 },
-					},
-				],
-			],
-		]);
-	});
-
-	it('snaps a selected agent by its measured center when dragging a regular node', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const agentCanvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const regularCanvasNode = createCanvasNodeElement({
-			id: 'regular',
-			position: { x: 100, y: 100 },
-		});
-		const { container, emitted } = renderComponent({
-			props: { nodes: [agentCanvasNode, regularCanvasNode] },
-		});
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
-		const vueFlow = useVueFlow({ id: canvasId });
-		const agentGraphNode = vueFlow.findNode(agent.id)!;
-		agentGraphNode.dimensions = { width: 320, height: 206 };
-		vueFlow.addSelectedNodes([agentGraphNode, vueFlow.findNode(regularCanvasNode.id)!]);
-
-		const regularNode = container.querySelector(`[data-id="${regularCanvasNode.id}"]`) as Element;
-		await fireEvent.mouseDown(regularNode, { view: window });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(regularNode, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{ id: agent.id, position: { x: 112, y: 105 } },
-					{ id: regularCanvasNode.id, position: { x: 112, y: 105 } },
-				],
-			],
-		]);
-	});
-
-	it('centers a newly added agent when its rendered height is first measured', async () => {
+	it('places a newly added agent by its handle when its rendered height is first measured', async () => {
 		const agent = createTestNode({
 			id: 'agent',
 			name: 'Agent',
@@ -1186,7 +1344,10 @@ describe('Canvas', () => {
 			typeVersion: 2,
 		});
 		workflowDocumentStore.addNode(agent);
-		useAgentNodeCanvasGeometryStore().setPendingCenterY(canvasId, agent.id, 176);
+		const geometryStore = useAgentNodeCanvasGeometryStore();
+		geometryStore.setPendingCenterY(canvasId, agent.id, 176);
+		// The card reports its content once loaded; only then does its size count.
+		geometryStore.setNodeContentKey(canvasId, agent.id, 'summary');
 
 		const { container } = renderComponent({
 			props: {
@@ -1969,6 +2130,96 @@ describe('Canvas', () => {
 			expect(useTelemetry().track).toHaveBeenCalledWith(
 				'User collapsed group',
 				expect.objectContaining({ group_id: group.id, source: 'group-header' }),
+			);
+		});
+	});
+
+	describe('multi-selection telemetry', () => {
+		const MULTI_SELECT_DEBOUNCE = 500;
+
+		it('tracks the settled multi-selection once the debounce elapses', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({
+					workflow_id: 'wf-test',
+					node_count: 2,
+					push_ref: expect.any(String),
+				}),
+			);
+		});
+
+		it('excludes groups from the reported node count', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasGroupNode({ id: 'g1', nodeIds: ['node-1'] }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			// Two nodes plus the group are selected, but the group must not count.
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
+			);
+		});
+
+		it('reports again when one settled multi-selection is replaced with another of the same size', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [
+				createCanvasNodeElement({ id: 'node-1' }),
+				createCanvasNodeElement({ id: 'node-2' }),
+				createCanvasNodeElement({ id: 'node-3' }),
+			];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() =>
+				expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(nodes.length),
+			);
+
+			const { addSelectedNodes, removeSelectedElements, findNode } = useVueFlow({ id: canvasId });
+
+			addSelectedNodes([findNode('node-1')!, findNode('node-2')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			trackSpy.mockClear();
+
+			// Swap to a different two-node selection — same count, different ids.
+			removeSelectedElements();
+			addSelectedNodes([findNode('node-2')!, findNode('node-3')!]);
+			await vi.advanceTimersByTimeAsync(MULTI_SELECT_DEBOUNCE);
+
+			expect(trackSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'User selected multiple nodes' }),
+				expect.objectContaining({ node_count: 2 }),
 			);
 		});
 	});

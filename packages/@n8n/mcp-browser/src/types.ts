@@ -307,8 +307,16 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	): AffectedResource[] | Promise<AffectedResource[]>;
 }
 
+/**
+ * What the `resource` string identifies. Callers gate on this rather than on the
+ * string itself: `resource` is a hostname for `host`, and a hostname can legitimately
+ * be the literal `credentials`.
+ */
+export type AffectedResourceKind = 'host' | 'credential-write';
+
 export interface AffectedResource {
 	toolGroup: 'browser';
+	kind: AffectedResourceKind;
 	resource: string;
 	description: string;
 }

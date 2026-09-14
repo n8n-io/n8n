@@ -30,7 +30,7 @@
 	them by a word's worth. */
 @mixin activity-headline {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-wrap: wrap;
 }

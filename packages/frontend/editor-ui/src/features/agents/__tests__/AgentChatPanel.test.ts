@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { computed, defineComponent, h, ref } from 'vue';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -14,6 +14,7 @@ import type { AgentJsonConfig } from '../types';
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
+const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
@@ -28,19 +29,27 @@ const defaultAgentConfig: AgentJsonConfig = {
 	instructions: 'Help.',
 };
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			const translations: Record<string, string> = {
-				'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-				'agents.chat.misconfigured.issuesPrefix': 'Check:',
-				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
-				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
-				'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
-			};
-			return translations[key] ?? key;
-		},
-	}),
+vi.mock('@n8n/i18n', () => {
+	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
+		const translations: Record<string, string> = {
+			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
+			'agents.chat.misconfigured.issuesPrefix': 'Check:',
+			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
+			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
+			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+		};
+		return translations[key] ?? key;
+	};
+	const i18n = { baseText };
+	return { useI18n: () => i18n, i18n };
+});
+
+vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
+	default: {
+		name: 'AgentSessionTimelinePanel',
+		props: ['projectId', 'agentId', 'threadId'],
+		template: '<div data-testid="agent-preview-session-timeline" />',
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -72,6 +81,26 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useMessage', function mockUseMessage() {
+	return {
+		useMessage: function useMessage() {
+			return { confirm: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { deleteThread: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+	return { default: { template: '<button />' } };
+});
+
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
 		isEnabled: false,
@@ -91,7 +120,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
 		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
-		emits: ['submit', 'stop', 'update:modelValue'],
+		emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 		methods: { focus: vi.fn() },
 	},
 }));
@@ -119,6 +148,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
 			loadHistory: loadHistoryMock,
+			refresh: refreshMock,
 			sendMessage: sendMessageMock,
 			stopGenerating: stopGeneratingMock,
 			resume: vi.fn(),
@@ -157,6 +187,7 @@ describe('AgentChatPanel', () => {
 
 	function mountPanel(
 		overrides: Partial<{
+			visible: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
@@ -173,6 +204,49 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('refreshes history when the preview reopens', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel({ visible: false });
+		expect(refreshMock).not.toHaveBeenCalled();
+		await wrapper.setProps({ visible: true });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
+		await wrapper.setProps({ visible: false });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
+		expect(stopGeneratingMock).not.toHaveBeenCalled();
+		isStreamingMock.value = false;
+		wrapper.unmount();
+	});
+
+	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: '  Hello  ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '\n**Welcome**\n', status: 'success' },
+			{ id: 'assistant-2', role: 'assistant', content: ' \n ', status: 'success' },
+			{ id: 'user-2', role: 'user', content: 'Next question', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe(
+			'**User:**\n\nHello\n\n---\n\n**Agent:**\n\n**Welcome**\n\n---\n\n**User:**\n\nNext question',
+		);
+	});
+
+	it('returns empty markdown without messages', function formatsEmptyConversation() {
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
+
+	it('returns empty markdown when messages contain only whitespace', function skipsBlankMessages() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: ' \n\t ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
 
 	it('uses the live agent name in the normal chat placeholder', async () => {
 		const wrapper = mountPanel();
@@ -341,6 +415,48 @@ describe('AgentChatPanel', () => {
 		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		{ state: 'streaming', busy: isStreamingMock },
+		{ state: 'cancellation', busy: isCancellingMock },
+	])('keeps the draft when $state starts during telemetry preparation', async ({ busy }) => {
+		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
+		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		const draft = '  keep this draft  ';
+		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		chatInput.vm.$emit('update:modelValue', draft);
+		chatInput.vm.$emit('files-selected', [file]);
+		chatInput.vm.$emit('submit');
+		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
+
+		busy.value = true;
+		fingerprint.resolve({
+			instructions: '',
+			tools: [],
+			skills: [],
+			tasks: [],
+			triggers: [],
+			vector_stores: [],
+			memory: null,
+			model: null,
+			config_version: 'test-version',
+		});
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(chatInput.props('modelValue')).toBe(draft);
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		busy.value = false;
+		await flushPromises();
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(draft.trim(), [file]);
+		expect(chatInput.props('modelValue')).toBe('');
+		wrapper.unmount();
+	});
+
 	it('keeps the draft while suspended-run cancellation is pending', async () => {
 		isCancellingMock.value = true;
 		const wrapper = mountPanel();
@@ -427,6 +543,176 @@ describe('AgentChatPanel', () => {
 		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
 	});
 
+	/**
+	 * A workflow tool parked on a Wait node. It renders a card, but nobody is
+	 * being asked anything — the workflow resumes it — so the input must be
+	 * blocked rather than routed into cancel-and-steer.
+	 */
+	function openWaitMessage(): ChatMessage {
+		return {
+			id: 'assistant-1',
+			role: 'assistant',
+			content: '',
+			status: 'awaitingUser',
+			toolCalls: [
+				{ tool: 'approval_workflow', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+			],
+			interactive: {
+				toolName: WAIT_TOOL_NAME,
+				toolCallId: 'tc-1',
+				runId: 'run-1',
+				input: {
+					card: {
+						title: 'Waiting on "Approval workflow"',
+						components: [{ type: 'button', label: 'Stop waiting', value: 'cancel' }],
+					},
+				},
+			},
+		};
+	}
+
+	it('blocks the chat input while a waiting card is open', () => {
+		messagesMock.value = [openWaitMessage()];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(true);
+		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('placeholder')).toBe('agents.chat.waiting.inputPlaceholder');
+	});
+
+	it('neither sends nor steers while a waiting card is open', async () => {
+		messagesMock.value = [openWaitMessage()];
+
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('any news?');
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(cancelAndSteerMock).not.toHaveBeenCalled();
+	});
+
+	// The workflow woke the run and the answer landed after the card. Nothing is
+	// parked any more, so the input has to come back on its own — the user never
+	// clicked the card and never will.
+	it('frees the chat input once a turn lands after the waiting card', () => {
+		messagesMock.value = [
+			openWaitMessage(),
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				content: "Here's the result of the long wait test",
+				status: 'success',
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
+	});
+
+	// An abandoned card from an earlier turn is scrolled far out of view, so
+	// blocking on it would wedge the chat with no way to see what it points at.
+	it('does not let an abandoned card from an earlier turn hold the input', () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{ id: 'user-2', role: 'user', content: 'and now something else', status: 'success' },
+			{
+				id: 'assistant-2',
+				role: 'assistant',
+				content: 'Done.',
+				status: 'success',
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+	});
+
+	// Typing is a new message, not an answer: a waiting card is not a question,
+	// so it must never be routed into cancel-and-steer.
+	it('does not steer an earlier waiting card when the user types', async () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{ id: 'assistant-2', role: 'assistant', content: 'Done.', status: 'success' },
+		];
+
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('something new');
+		await flushPromises();
+
+		expect(cancelAndSteerMock).not.toHaveBeenCalled();
+		expect(sendMessageMock).toHaveBeenCalledWith('something new');
+	});
+
+	// An abandoned wait card earlier in the thread must not hide a real question
+	// on the current turn: that question is answerable and typing steers it.
+	it('keeps a tail question answerable behind an abandoned waiting card', async () => {
+		messagesMock.value = [
+			{ ...openWaitMessage(), id: 'assistant-old' },
+			{
+				...openInteractiveMessage(),
+				id: 'assistant-2',
+				toolCalls: [
+					{ tool: 'chat_action', toolCallId: 'tc-2', runId: 'run-2', state: 'suspended' },
+				],
+				interactive: {
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					toolCallId: 'tc-2',
+					runId: 'run-2',
+					input: {
+						card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+					},
+				},
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(false);
+		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('go another direction');
+		await flushPromises();
+
+		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');
+		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	// The run is parked and would restart from a context with the pending tool
+	// call stripped out, so the model would call the same tool again.
+	it('blocks the chat input for a suspension with no card', () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: 'external_action', toolCallId: 'tc-1', runId: 'run-1', state: 'suspended' },
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('disabled')).toBe(true);
+	});
+
 	it('keeps the stop control available for a non-card suspension', () => {
 		messagesMock.value = [
 			{
@@ -505,7 +791,6 @@ describe('AgentChatPanel', () => {
 describe('AgentPreviewDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		messagesMock.value = [];
 		isStreamingMock.value = true;
 		isCancellingMock.value = false;

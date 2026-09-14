@@ -109,7 +109,7 @@ onBeforeUnmount(stopCycling);
 			</span>
 		</div>
 		<div :class="$style.card">
-			<N8nIcon :icon="centerIcon" color="text-light" />
+			<N8nIcon :icon="centerIcon" />
 		</div>
 		<div :class="$style.card">
 			<span

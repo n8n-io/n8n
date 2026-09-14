@@ -25,7 +25,7 @@ on:
         type: boolean
 
 env:
-  NODE_VERSION: '26.5.1'
+  NODE_VERSION: '26.7.0'
 
 jobs:
   build:

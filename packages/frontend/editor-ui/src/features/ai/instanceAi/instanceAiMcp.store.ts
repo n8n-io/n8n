@@ -163,12 +163,6 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	}
 
 	async function fetchConnectionTools(id: string): Promise<void> {
-		const inFlight = inFlightConnectionToolsById.get(id);
-		if (inFlight) {
-			await inFlight.catch(() => undefined);
-			return;
-		}
-
 		setConnectionStatus(id, 'connecting');
 		const promise = fetchMcpConnectionTools(rootStore.restApiContext, id);
 		const isCurrent = () => inFlightConnectionToolsById.get(id) === promise;
@@ -199,6 +193,11 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		if (!connection || connection.status === 'connecting') return;
 		if (connection.status === 'connected' && connectionToolsById.has(id)) return;
 		await fetchConnectionTools(id);
+	}
+
+	function handleToolCallFailed(id: string): void {
+		if (!connections.value.some((connection) => connection.id === id)) return;
+		void fetchConnectionTools(id);
 	}
 
 	async function connect(body: CreateMcpConnectionBody): Promise<InstanceAiMcpConnection | null> {
@@ -283,7 +282,9 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		fetchConnections,
 		fetchConnectionsLazy,
 		fetchCatalogLazy,
+		fetchConnectionTools,
 		fetchConnectionToolsLazy,
+		handleToolCallFailed,
 		connect,
 		updateConnection,
 		disconnect,

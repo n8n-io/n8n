@@ -48,16 +48,16 @@ describe('N8nActionPill', () => {
 
 		it('renders info type correctly', () => {
 			const { container } = render(ActionPill, {
-				props: { text: 'n8n credits', type: 'info' },
+				props: { text: 'Gateway credits', type: 'info' },
 			});
 			expect(container).toMatchSnapshot();
 		});
 
 		it('documents default, info, and danger variants in Storybook', () => {
-			expect(stories.default.title).toBe('Core/Action Pill');
+			expect(stories.default.title).toBe('Core/ActionPill');
 			expect(stories.default.argTypes?.type.options).toEqual(['default', 'info', 'danger']);
-			expect(stories.Info.args).toEqual({ text: 'n8n credits', type: 'info' });
-			expect(stories.Danger.args).toEqual({ text: 'No credits', type: 'danger' });
+			expect(stories.Variants).toBeDefined();
+			expect(stories.Sizes).toBeDefined();
 		});
 
 		it('renders small size correctly', () => {

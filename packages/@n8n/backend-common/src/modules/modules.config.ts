@@ -14,7 +14,7 @@ export const MODULE_NAMES = [
 	'provisioning',
 	'breaking-changes',
 	'source-control',
-	'git-connections',
+	'promotions',
 	'dynamic-credentials',
 	'chat-hub',
 	'sso-oidc',
@@ -38,6 +38,8 @@ export const MODULE_NAMES = [
 	'workflow-reviews',
 	'engine-v2',
 	'policy-infrastructure',
+	'type-availability-policies',
+	'instance-reporting',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

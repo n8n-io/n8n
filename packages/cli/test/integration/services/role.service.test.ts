@@ -1923,6 +1923,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [
 					{
 						projectId: 'project-1',
@@ -1954,6 +1955,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential 2',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [],
 			} as any;
 			const userProjectRelations = [] as any[];
@@ -1980,6 +1982,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential 3',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [
 					{
 						projectId: 'project-1',

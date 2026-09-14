@@ -247,7 +247,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 	height: fit-content;
 	width: 100%;
 	max-width: var(--content-container--width);
-	padding: var(--spacing--lg) 0 var(--spacing--3xl) 0;
+	padding: var(--spacing--lg) var(--spacing--2xl) var(--spacing--3xl);
 }
 
 .header {

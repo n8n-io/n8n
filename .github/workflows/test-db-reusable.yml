@@ -11,6 +11,11 @@ on:
         description: 'Job matrix JSON, from .github/scripts/db-test-matrix.mjs.'
         required: true
         type: string
+      run-migrations:
+        description: 'Run the migration test step in each leg. The caller turns this off when no migration-relevant path changed.'
+        required: false
+        type: boolean
+        default: true
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
@@ -28,7 +33,7 @@ jobs:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
@@ -43,7 +48,7 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
-        if: matrix.migration-cmd != ''
+        if: matrix.migration-cmd != '' && inputs.run-migrations
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
 

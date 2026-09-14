@@ -6,6 +6,7 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -14,16 +15,13 @@ import {
 import {
 	StepNotFoundError,
 	type NewStepRecord,
-	type StepError,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
 } from '../execution/step-store';
 
 /**
- * Per output slot: whether the step put data there. Computed in the query, so the
- * potentially large outputs payload is never transferred. A slot counts as filled
- * unless it holds JSON null.
+ * Reports which output slots a step filled, without fetching what it put in them.
  */
 const FILLED_OUTPUT_SLOTS = `COALESCE(
 	(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
@@ -31,7 +29,6 @@ const FILLED_OUTPUT_SLOTS = `COALESCE(
 	'{}'
 )`;
 
-/** What both summary queries select: every column but the outputs payload. */
 type StepSummaryRow = {
 	id: string;
 	nodeId: string;
@@ -125,7 +122,7 @@ export class TypeOrmStepStore implements StepStore {
 		// The one transition that hands the row back, so the claimant doesn't
 		// need a second query to learn which node it now runs. RETURNING covers
 		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
+		// an outcome yet, so `outputs` is `null` by the lifecycle.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -164,7 +161,6 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
-				error: null,
 			};
 		});
 	}
@@ -268,6 +264,13 @@ export class TypeOrmStepStore implements StepStore {
 			.getRawMany();
 
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+	}
+
+	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

@@ -9,7 +9,11 @@ export type EventKind =
 	| 'hitl-response';
 
 export type ToolCallOutcome = 'success' | 'error';
-export type HitlRequestType = 'approval' | 'interaction';
+/**
+ * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
+ * node: nobody is being asked anything, the resume arrives from the workflow.
+ */
+export type HitlRequestType = 'approval' | 'interaction' | 'wait';
 export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
@@ -19,6 +23,8 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
+	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;

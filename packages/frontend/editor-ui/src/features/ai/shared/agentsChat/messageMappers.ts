@@ -1,6 +1,7 @@
 import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -9,6 +10,7 @@ import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
+	parseWaitSuspendPayload,
 } from './n8nChatInteraction';
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
@@ -90,6 +92,38 @@ export function findOpenInteractive(
 	return undefined;
 }
 
+/**
+ * The open interactive on the last turn, which is the one that owns the chat
+ * input and any steering. A parked run is always the tail of the transcript, so
+ * an unresolved card further up belongs to a turn the conversation already moved
+ * past — `findOpenInteractive` returns those too, and acting on them would
+ * answer or cancel the wrong tool call.
+ */
+export function findTailOpenInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find((payload) => payload.resolvedAt === undefined);
+}
+
+/**
+ * The open interactive on the last turn that a steering message is allowed to
+ * cancel. A waiting card is never one: the workflow resumes it by itself, so
+ * cancelling it because the user typed would abandon a run they never asked to
+ * stop and leave the sub-workflow finishing into a checkpoint nobody reads.
+ * Stopping a wait is a deliberate act — the card's own button, or Stop.
+ */
+export function findTailSteerableInteractive(
+	messages: MessageWithInteractives[],
+): InteractivePayload | undefined {
+	const tail = messages[messages.length - 1];
+	if (!tail) return undefined;
+	return getMessageInteractives(tail).find(
+		(payload) => payload.resolvedAt === undefined && payload.toolName !== WAIT_TOOL_NAME,
+	);
+}
+
 /** True when a suspend payload is the approval tool's renderable input. */
 export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;
@@ -128,8 +162,8 @@ function isDeclinedToolOutput(value: unknown): boolean {
 
 /**
  * Given a tool call belonging to one of the interactive tools still rendered
- * in agents chat (`approval`, `chat_action`), reconstruct an
- * `InteractivePayload` for it. The result is:
+ * in agents chat (`approval`, `chat_action`) — or a workflow tool parked on a
+ * Wait node — reconstruct an `InteractivePayload` for it. The result is:
  *
  * - **resolved**: when `output` is present.
  * - **open**: when `output` is absent — the card renders as an active
@@ -153,6 +187,21 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
+		};
+	}
+
+	// A workflow tool waiting on a Wait node: the tool name is per-workflow, so
+	// the suspend payload's own marker is the only discriminator.
+	const waitInput = parseWaitSuspendPayload(tc.suspendPayload);
+	if (waitInput) {
+		const resolved = tc.output !== undefined ? n8nChatResumeValueSchema.safeParse(tc.output) : null;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: WAIT_TOOL_NAME,
+			input: waitInput,
+			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 
@@ -275,6 +324,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
@@ -285,6 +335,21 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
+
+		// A turn that ended in an error carries the recorded run error — render
+		// it as its own error bubble, mirroring what the live stream showed.
+		// Without this, an errored turn reloads as red-marked partial output (or
+		// nothing at all) with no explanation.
+		if (msg.executionError) {
+			result.push({
+				id: `${chatMessage.id}:error`,
+				role: 'assistant',
+				content: msg.executionError,
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+				...(msg.executionId ? { executionId: msg.executionId } : {}),
+			});
+		}
 	}
 	return result;
 }

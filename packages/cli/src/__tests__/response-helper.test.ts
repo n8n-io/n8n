@@ -1,12 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { reportError, sendErrorResponse } from '@/response-helper';
 
@@ -55,6 +57,40 @@ describe('sendErrorResponse', () => {
 				meta: expect.anything(),
 			}),
 		);
+	});
+
+	describe('form pages', () => {
+		const responseFor = (originalUrl: string) =>
+			mock<Response>({
+				req: mock<Request>({ originalUrl }),
+				status: vi.fn().mockReturnThis(),
+				json: vi.fn().mockReturnThis(),
+				render: vi.fn().mockReturnThis(),
+			});
+
+		it('should sandbox the form 404 page', () => {
+			const res = responseFor('/form/does-not-exist');
+
+			sendErrorResponse(res, new NotFoundError('not found'));
+
+			expect(res.render).toHaveBeenCalledWith('form-trigger-404', { isTestWebhook: false });
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+		});
+
+		it('should sandbox the form 409 page', () => {
+			const res = responseFor('/form-waiting/123');
+
+			sendErrorResponse(res, new ConflictError('already finished'));
+
+			expect(res.render).toHaveBeenCalledWith('form-trigger-409', { message: 'already finished' });
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+		});
 	});
 });
 

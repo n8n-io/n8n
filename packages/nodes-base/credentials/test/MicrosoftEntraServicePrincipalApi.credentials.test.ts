@@ -49,9 +49,9 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		requestMock.mockResolvedValue({ access_token: 'abc', token_type: 'Bearer', expires_in: 3599 });
 		requestsMock.mockClear();
 
-		// Stub ONLY OutboundHttp. The `fixed-vendor` path short-circuits before reading
-		// SsrfProtectionConfig/Service, so reaching any other DI token signals a regression
-		// (e.g. switching to `user-controlled`) and must fail loudly.
+		// Stub ONLY OutboundHttp. `getTokenRequestClient` resolves nothing else from
+		// the container, so reaching any other DI token signals a regression and
+		// must fail loudly.
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === OutboundHttp) return { requests: requestsMock };
 			throw new Error('unexpected DI token');
@@ -61,7 +61,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 	it('should have correct static properties', () => {
 		expect(credential.name).toBe('microsoftEntraServicePrincipalApi');
 		expect(credential.displayName).toBe('Microsoft Entra Service Principal');
-		expect(credential.documentationUrl).toBe('microsoftentra');
+		expect(credential.documentationUrl).toBe('microsoftentraserviceprincipal');
 		expect(credential.icon).toBe('file:icons/Microsoft.svg');
 
 		const accessToken = credential.properties.find(
@@ -103,12 +103,12 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		);
 		expect(scope).toBeUndefined();
 
-		// Surfaces the admin-consent / Organization.Read.All requirement so the credential
-		// test does not fail with an opaque 403.
 		const setupNotice = credential.properties.find(
 			(property: INodeProperties) => property.name === 'setupNotice',
 		);
 		expect(setupNotice?.type).toBe('notice');
+		expect(setupNotice?.displayName).not.toContain('Organization.Read.All');
+		expect(setupNotice?.displayName).not.toContain('Directory.Read.All');
 
 		const graphApiBaseUrl = credential.properties.find(
 			(property: INodeProperties) => property.name === 'graphApiBaseUrl',
@@ -125,7 +125,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 	});
 
 	it('should have the expected credential test request shape', () => {
-		expect(credential.test.request.url).toBe('/v1.0/organization');
+		expect(credential.test.request.url).toBe('/v1.0/');
 		expect(credential.test.request.method).toBe('GET');
 		expect(credential.test.request.baseURL).toBe(
 			'={{$credentials.graphApiBaseUrl || "https://graph.microsoft.com"}}',
@@ -189,9 +189,9 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		it('mints via the SSRF-exempt fixed-vendor client', async () => {
 			await callPreAuthentication(baseCredentials);
 
-			// `{ ssrf: 'disabled' }` proves the fixed-vendor path; the `throw on other DI token`
-			// mock proves SsrfProtectionConfig/Service are never consulted.
-			expect(requestsMock).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			// `{ useDefaultSsrfPolicy: 'unsafe' }` proves the fixed-vendor path; the `throw on
+			// other DI token` mock proves nothing else is resolved from the container.
+			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('re-mints on each call without internal memoization', async () => {
@@ -425,7 +425,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		it('attaches the cached bearer token to the request', async () => {
 			const result = await credential.authenticate(
 				{ accessToken: 'cached' },
-				{ headers: {}, method: 'GET', url: '/v1.0/organization' },
+				{ headers: {}, method: 'GET', url: '/v1.0/' },
 			);
 
 			expect(result.headers?.Authorization).toBe('Bearer cached');
@@ -434,7 +434,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		it('reuses the cached token without performing a token exchange', async () => {
 			const result = await credential.authenticate(
 				{ ...baseCredentials, accessToken: 'cached' },
-				{ headers: {}, method: 'GET', url: '/v1.0/organization' },
+				{ headers: {}, method: 'GET', url: '/v1.0/' },
 			);
 
 			expect(result.headers?.Authorization).toBe('Bearer cached');
@@ -450,7 +450,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				const result = await credential.authenticate(credentials, {
 					headers: {},
 					method: 'GET',
-					url: `/v1.0/organization?attempt=${i}`,
+					url: `/v1.0/?attempt=${i}`,
 				});
 				expect(result.headers?.Authorization).toBe('Bearer abc');
 			}

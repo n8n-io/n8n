@@ -28,8 +28,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const DefaultPlaceholderChat = Template.bind({});
-DefaultPlaceholderChat.args = {
+export const Default = Template.bind({});
+Default.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',

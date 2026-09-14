@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -177,6 +178,172 @@ describe('ScopeGroupSelector', () => {
 			expect(getByTestId('scope-option-apiKey-manage-all').getAttribute('aria-checked')).toBe(
 				'false',
 			);
+		});
+	});
+
+	describe('settings "Manage all settings" select-all behaviour', () => {
+		it('checks MCP and n8n Assistant use/manage when "Manage all settings" is toggled on', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-manage'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).toEqual(
+				expect.arrayContaining([
+					'mcp:manage',
+					'mcp:oauth',
+					'mcpApiKey:create',
+					'mcpApiKey:rotate',
+					'aiAssistant:manage',
+					'instanceAi:manage',
+					'instanceAi:message',
+				]),
+			);
+		});
+
+		it('keeps all four MCP/n8n Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+			for (const testId of [
+				'scope-option-settings-mcp-use',
+				'scope-option-settings-mcp-manage',
+				'scope-option-settings-aiassistant-use',
+				'scope-option-settings-aiassistant-manage',
+			]) {
+				const checkbox = getByTestId(testId);
+				expect(checkbox.getAttribute('aria-checked')).toBe('true');
+				expect(checkbox.hasAttribute('disabled')).toBe(false);
+			}
+		});
+
+		it('unchecking "Mcp use" (not just "Mcp manage") turns "Manage all settings" off', async () => {
+			const { getByTestId, emitted, rerender } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-mcp-use'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).not.toContain('mcp:oauth');
+			expect(scopes).toContain('securitySettings:manage');
+
+			// v-model doesn't auto-sync in tests — re-render with the emitted value to
+			// prove the effect the title claims: the checkbox itself loses its checked state.
+			await rerender({ modelValue: scopes });
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
+				'true',
+			);
+		});
+
+		it('unchecking "Mcp manage" turns "Manage all settings" off while "Manage all settings" was checked', async () => {
+			const { getByTestId, emitted, rerender } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
+			});
+
+			await userEvent.click(getByTestId('scope-option-settings-mcp-manage'));
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			const [scopes] = emitted()['update:modelValue'][0] as [string[]];
+			expect(scopes).not.toContain('mcp:manage');
+			expect(scopes).toContain('securitySettings:manage');
+
+			await rerender({ modelValue: scopes });
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).not.toBe(
+				'true',
+			);
+		});
+	});
+
+	describe('option tooltip anchoring', () => {
+		// jsdom has no layout engine, so the misplacement cannot be measured in
+		// pixels. What jsdom does resolve is the cascade that causes it: a tooltip
+		// positions against its trigger element, and that trigger is a flex item of
+		// the option list. While the list stretches its items (the flex default),
+		// the trigger is as wide as the whole row, so `placement="right"` puts the
+		// tooltip at the right edge of the card instead of beside the hovered
+		// option.
+		const SFC_PATH = 'src/features/roles/instance/components/ScopeGroupSelector.vue';
+
+		/**
+		 * Give jsdom the component's own CSS module block. `classNameStrategy:
+		 * 'non-scoped'` keeps the rendered class names equal to the source ones, so
+		 * these selectors match the rendered tree.
+		 */
+		function applyComponentStyles(): () => void {
+			const css = /<style[^>]*module>([\s\S]*?)<\/style>/.exec(readFileSync(SFC_PATH, 'utf8'))?.[1];
+			if (!css) throw new Error(`Found no CSS module block in ${SFC_PATH}`);
+			const style = document.createElement('style');
+			style.textContent = css;
+			document.head.append(style);
+			return () => style.remove();
+		}
+
+		const SHRINK_WRAPPING_WIDTHS = ['fit-content', 'min-content', 'max-content'];
+		const STRETCHING_ALIGNMENTS = ['', 'auto', 'normal', 'stretch'];
+
+		/** Width of the box a tooltip anchors to: its own content, or the full row. */
+		function anchorWidth(anchor: HTMLElement, row: HTMLElement): 'content' | 'full-row' {
+			const anchorStyles = getComputedStyle(anchor);
+			if (SHRINK_WRAPPING_WIDTHS.includes(anchorStyles.width)) return 'content';
+			const isFlexItem = ['flex', 'inline-flex'].includes(getComputedStyle(row).display);
+			const alignment =
+				anchorStyles.alignSelf || (isFlexItem ? getComputedStyle(row).alignItems : '');
+			return STRETCHING_ALIGNMENTS.includes(alignment) ? 'full-row' : 'content';
+		}
+
+		it('anchors the tooltip on the option, not on the full width of the option row', () => {
+			const removeStyles = applyComponentStyles();
+			try {
+				const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+
+				// "Tags: Manage" carries a description, so hovering it shows a tooltip.
+				const option = getByTestId('scope-option-tag-manage');
+				const row = option.closest<HTMLElement>('.optionList');
+				const anchor = [...(row?.children ?? [])].find((child): child is HTMLElement =>
+					child.contains(option),
+				);
+
+				// The tooltip trigger is the option's flex item in the row.
+				expect(anchor?.getAttribute('data-state')).toBe('closed');
+
+				expect(
+					anchorWidth(anchor!, row!),
+					'the tooltip trigger stretches across the option row, so the tooltip opens at the right edge of the card instead of beside the hovered option',
+				).toBe('content');
+			} finally {
+				removeStyles();
+			}
+		});
+	});
+
+	describe('mandatory "Users: View" option', () => {
+		// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
+		// guarantees these scopes are always in `modelValue` — the selector itself
+		// stays a pure function of its props, same as every other option.
+		const withUserView = [...INSTANCE_SCOPE_GROUPS.user.View];
+
+		it('renders checked and disabled', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: withUserView },
+			});
+			const userView = getByTestId('scope-option-user-view');
+			expect(userView.getAttribute('aria-checked')).toBe('true');
+			expect(userView.hasAttribute('disabled')).toBe(true);
+		});
+
+		it('does not emit an update when clicked', async () => {
+			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: withUserView },
+			});
+
+			await userEvent.click(getByTestId('scope-option-user-view'));
+
+			expect(emitted()['update:modelValue']).toBeFalsy();
 		});
 	});
 });

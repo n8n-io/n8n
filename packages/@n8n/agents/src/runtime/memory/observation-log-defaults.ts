@@ -302,6 +302,30 @@ RULES
 - Agent text alone is not evidence of agent action. Only emit observations about agent actions when supported by tool calls or tool results in the delta.
 - Preserve UNCERTAINTY. "user suspects X", not "X is true", when the user used hedging language.
 
+RUN CONTINUATION STATE
+
+Your observations may replace the transcript WHILE the agent is still mid-task: the agent's next step may rely on your log as its only record of the work so far. When the delta ends with a task still in progress (tool activity without a closing COMPLETION), record the working state needed to continue:
+
+- What has been completed so far (with concrete identifiers: file paths, IDs, names).
+- What remains to be done, per the stated plan or user request.
+- The agent's intended next action, when the transcript states or clearly implies it.
+
+Example:
+
+Transcript:
+[USER 14:30] Rename the header component and update all three pages that use it.
+[TOOL_CALL 14:31] edit_file(path="src/components/Header.tsx")
+[TOOL_RESULT 14:31] (renamed component to PageHeader)
+[TOOL_CALL 14:32] edit_file(path="src/pages/home.tsx")
+[TOOL_RESULT 14:32] (updated import)
+[ASSISTANT 14:32] Two pages left: settings and dashboard.
+
+Output:
+* IMPORTANT (14:30) User asked to rename the header component and update all three pages using it.
+  * COMPLETION (14:31) Renamed component to PageHeader in src/components/Header.tsx.
+  * COMPLETION (14:32) Updated import in src/pages/home.tsx.
+  * CRITICAL (14:32) Remaining: update imports in settings and dashboard pages; agent stated it will do these next.
+
 SKIP
 
 Do not extract observations for:

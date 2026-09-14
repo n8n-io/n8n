@@ -4,7 +4,6 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -14,9 +13,9 @@ import { triggerResourceGate } from '../resource-gate';
 import {
 	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 @Service()
@@ -34,19 +33,16 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 	readonly scopes = FORM_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
 	async resolveByPath(pathname: string) {
-		if (!isFormOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.form}/`)) {
 			return undefined;
 		}

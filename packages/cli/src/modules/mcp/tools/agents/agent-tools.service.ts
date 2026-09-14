@@ -5,6 +5,7 @@ import {
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from '@n8n/ai-utilities/agent-config';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_MODEL_PROVIDERS,
 	AgentJsonConfigBaseSchema,
@@ -12,22 +13,22 @@ import {
 	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -53,7 +54,7 @@ import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-fact
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
 import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
-import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
@@ -132,12 +133,19 @@ function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 	);
 }
 
-const TELEGRAM_SETTINGS_JSON_SCHEMA = zodToJsonSchema(AgentTelegramSettingsSchema);
+const TELEGRAM_SETTINGS_JSON_SCHEMA = zodSchemaToJsonSchema(AgentTelegramSettingsSchema);
 
 const httpUrlSchema = z
 	.string()
 	.url()
 	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
+
+/**
+ * A registry server's endpoint can be an unresolved `$self`-expression instead
+ * of a literal URL. The registry connection substitutes it per-credential
+ * before the connection is opened, so it only validates as a URL after that.
+ */
+const mcpEndpointUrlSchema = z.union([httpUrlSchema, z.string().startsWith('=')]);
 
 const agentIdentityShape = {
 	agentId: z.string().min(1).describe('Agent ID'),
@@ -252,6 +260,12 @@ const mutationOperationSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('skill.upsert'),
 		skillId: z.string().optional(),
+		baseSkillHash: z
+			.string()
+			.optional()
+			.describe(
+				'skillHashes[skillId] from get_agent; when set, the replace is rejected if the skill changed since',
+			),
 		skill: agentSkillSchema,
 	}),
 	z.object({ type: z.literal('skill.delete'), skillId: z.string().min(1) }),
@@ -303,10 +317,12 @@ const verifyMcpServerInput = {
 		.min(1)
 		.max(64)
 		.regex(/^[a-zA-Z0-9_-]+$/),
-	url: httpUrlSchema.describe('HTTP(S) MCP server endpoint'),
+	url: mcpEndpointUrlSchema.describe(
+		'HTTP(S) MCP server endpoint, or a registry `$self`-expression when metadata.nodeTypeName is set',
+	),
 	transport: z.enum(['sse', 'streamableHttp']).optional().default('streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 		.optional()
 		.default('none')
 		.describe('Authentication method; every value other than none requires credential'),
@@ -315,6 +331,7 @@ const verifyMcpServerInput = {
 		.min(1)
 		.optional()
 		.describe('Accessible credential ID; required when authentication is not none'),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
 } satisfies z.ZodRawShape;
 
@@ -403,8 +420,6 @@ export class McpAgentToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
 	) {}
@@ -470,7 +485,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
+					'Search Agents the current user can access. Use excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -580,7 +595,10 @@ export class McpAgentToolsService {
 								projectId,
 								initialConfig,
 								user,
-								{ modifiedBy: 'mcp' },
+								{
+									baseConfigHash: getAgentConfigHash(this.configFromEntity(agent)),
+									modifiedBy: 'mcp',
+								},
 							);
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;
@@ -645,12 +663,22 @@ export class McpAgentToolsService {
 							};
 						}
 
-						const { resource, config: newConfig } = await this.applyMutation(
-							user,
-							input,
-							config,
-							projectId,
-						);
+						let mutation: Awaited<ReturnType<typeof this.applyMutation>>;
+						try {
+							mutation = await this.applyMutation(user, input, config, projectId, configHash);
+						} catch (error) {
+							if (!(error instanceof ConflictError)) throw error;
+							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
+							if (latestConfigHash === configHash) throw error;
+							return {
+								ok: false,
+								code: 'stale_config',
+								agentId: input.agentId,
+								configHash: latestConfigHash,
+								message: 'Call get_agent before retrying the mutation.',
+							};
+						}
+						const { resource, config: newConfig } = mutation;
 						return {
 							ok: true,
 							agentId: input.agentId,
@@ -941,7 +969,7 @@ export class McpAgentToolsService {
 			name: 'discover_agent_assets',
 			config: {
 				description:
-					'Discover model catalogs, chat integrations, attachable workflows, published sub-agents, or MCP registry servers.',
+					'Discover model catalogs, chat integrations, attachable workflows, saved sub-agents, or MCP registry servers.',
 				inputSchema: discoverAssetsInput,
 				annotations: {
 					title: 'Discover Agent Assets',
@@ -1080,6 +1108,9 @@ export class McpAgentToolsService {
 			isRunnable: runnable.missing.length === 0,
 			missing: runnable.missing,
 			skills,
+			skillHashes: Object.fromEntries(
+				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+			),
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1158,7 +1189,7 @@ export class McpAgentToolsService {
 		abortSignal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
 		const { id: agentId, projectId } = agent;
-		const previewUrl = `${this.getAgentUrl(projectId, agentId)}/preview`;
+		const previewUrl = `${this.getAgentUrl(projectId, agentId)}?openPreview=true`;
 
 		try {
 			let result: AgentTestRunResult;
@@ -1284,6 +1315,7 @@ export class McpAgentToolsService {
 		input: MutateAgentInput,
 		config: AgentJsonConfig,
 		projectId: string,
+		baseConfigHash: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
 		const telemetryContext = { user, modifiedBy: 'mcp' as const };
@@ -1300,7 +1332,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.config,
 					user,
-					{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+					{ baseConfigHash, clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 				);
 				return { config: result.config };
 			}
@@ -1324,6 +1356,7 @@ export class McpAgentToolsService {
 					patched,
 					user,
 					{
+						baseConfigHash,
 						clearOmittedOptionalFields: true,
 						modifiedBy: 'mcp',
 					},
@@ -1338,6 +1371,7 @@ export class McpAgentToolsService {
 						operation.skillId,
 						operation.skill,
 						telemetryContext,
+						operation.baseSkillHash,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
@@ -1374,6 +1408,7 @@ export class McpAgentToolsService {
 							operation.taskId,
 							operation.enabled,
 							config,
+							baseConfigHash,
 						);
 						return { resource: { type: 'task', id: result.id }, config: updated };
 					}
@@ -1415,6 +1450,7 @@ export class McpAgentToolsService {
 				};
 				await this.assertAccessibleCredentials(next, user, projectId);
 				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+					baseConfigHash,
 					modifiedBy: 'mcp',
 				});
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
@@ -1507,6 +1543,7 @@ export class McpAgentToolsService {
 		taskId: string,
 		enabled: boolean,
 		config: AgentJsonConfig,
+		baseConfigHash: string,
 	): Promise<AgentJsonConfig> {
 		let found = false;
 		const tasks = (config.tasks ?? []).map((task) => {
@@ -1518,6 +1555,7 @@ export class McpAgentToolsService {
 		const next = { ...config, tasks };
 		await this.assertAccessibleCredentials(next, user, projectId);
 		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+			baseConfigHash,
 			modifiedBy: 'mcp',
 		});
 		return result.config;
@@ -1542,7 +1580,15 @@ export class McpAgentToolsService {
 			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];
-		const missing = [...new Set(configuration.issues.map((issue) => issue.path))];
+		const missing = [
+			...new Set(
+				configuration.issues.map((issue) =>
+					issue.reason === 'not_published'
+						? `${issue.path} (workflow "${issue.capability.id}" is not published; publish it first with publish_workflow)`
+						: issue.path,
+				),
+			),
+		];
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
@@ -1592,7 +1638,6 @@ export class McpAgentToolsService {
 			case 'subagents': {
 				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
 					query: input.query?.trim() || undefined,
-					publishedOnly: true,
 					excludeAgentId: input.excludeAgentId,
 				});
 				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
@@ -1606,6 +1651,11 @@ export class McpAgentToolsService {
 
 	private async verifyMcpServer(user: User, input: VerifyMcpServerInput) {
 		await this.assertScope(user, input.projectId, 'agent:read');
+		if (input.url.startsWith('=') && !input.metadata?.nodeTypeName) {
+			throw new UserError(
+				'A templated server URL needs metadata.nodeTypeName so the registry can resolve it',
+			);
+		}
 		const credentialProvider = this.credentialProvider(user, input.projectId);
 		if (input.authentication !== 'none') {
 			if (!input.credential) {
@@ -1621,6 +1671,7 @@ export class McpAgentToolsService {
 				transport: input.transport,
 				authentication: input.authentication,
 				credential: input.credential,
+				metadata: input.metadata,
 				...(input.connectionTimeoutMs !== undefined
 					? { connectionTimeoutMs: input.connectionTimeoutMs }
 					: {}),
@@ -1629,11 +1680,9 @@ export class McpAgentToolsService {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(
-					this.outboundHttp,
-					this.ssrfConfig,
-					this.ssrfProtectionService,
-				),
+				proxyFetch: createAiMcpFetch(this.outboundHttp),
+				resolveRegistryConnection: async (nodeTypeName) =>
+					await this.mcpRegistryService.getConnection(nodeTypeName),
 			},
 		);
 		return { ok: true, tools };

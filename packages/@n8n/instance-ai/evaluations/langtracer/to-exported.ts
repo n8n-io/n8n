@@ -3,6 +3,7 @@
 // network call so the disk→API key-renaming contract is unit-testable without a server.
 
 import type { CaseSeed, EvalTestCaseInput } from '../harness/schema';
+import type { TestCaseCredential } from '../types';
 
 /** One scenario in the create-case payload (`executionScenarios` renamed to `scenarios`). */
 export interface LangTracerScenario {
@@ -37,7 +38,9 @@ export interface LangTracerCreateCaseBody {
 	outcomeExpectations?: string[];
 	datasets?: string[];
 	messageBudget?: number;
-	credentials?: Array<{ type: string; name?: string }>;
+	/** Forwarded verbatim, so the declared shape has to carry every authored
+	 *  field — an understated type silently drops `valid`/`blank` from review. */
+	credentials?: TestCaseCredential[];
 	/** Inline seed, forwarded verbatim — lang-tracer stores it at `metadata.seed`.
 	 *  Only the authored arm: a replay seed is derived from a source thread by
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
@@ -57,11 +60,31 @@ export interface ToLangTracerOptions {
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	if (testCase.promptVersion !== undefined) {
+		return 'pins promptVersion, which the current case-write contract does not carry. Keep the case on disk.';
+	}
+	if (testCase.buildMode !== undefined) {
+		return 'pins buildMode, which the current LangTracer write/export contract does not carry. Keep the case on disk until that contract supports the mode.';
+	}
+	if (testCase.allowUserExecution) {
+		return 'enables user execution, which the current LangTracer write/export contract does not carry.';
+	}
 	const seed = testCase.seed;
 	switch (seed?.mode) {
 		case undefined:
-		case 'inline':
 			return null;
+		case 'inline':
+			// The write API validates `metadata.seed` against a fixed key set
+			// (`additionalProperties: false`), so it does NOT store `projects` — a push
+			// would either 400 or land the case with the fixture stripped. A stripped
+			// project-scope case is the worst outcome available: it still runs, the seeded
+			// project never exists, and the agent's refusal is graded against a project
+			// list it never saw. Refuse until lang-tracer carries the key.
+			return seed.projects.length > 0
+				? 'seeds projects, which the case-write API does not store yet — pushing it would ' +
+						'land the case without its seeded project and grade the agent against a project ' +
+						'list it never saw. Keep it on disk until lang-tracer carries `seed.projects`.'
+				: null;
 		case 'replay':
 			return (
 				'uses a replay seed — reconstructed from a LangSmith trace at run time, so it has no ' +

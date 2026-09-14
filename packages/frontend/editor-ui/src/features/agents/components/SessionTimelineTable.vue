@@ -50,6 +50,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.approvalRequested');
 		case 'hitl-requested':
 			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
 		case 'approved':
 			return i18n.baseText('agentSessions.timeline.approved');
 		case 'responded':

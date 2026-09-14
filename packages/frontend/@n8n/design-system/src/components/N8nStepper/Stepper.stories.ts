@@ -71,7 +71,7 @@ const Template: StoryFn<Args> = (args, { argTypes }) => ({
 		N8nText,
 	},
 	template: `
-		<div style="max-width: 1100px; padding: var(--spacing--md);">
+		<div style="max-width: 1100px;">
 			<n8n-stepper v-bind="args">
 				<template #default="{ step }">
 					<div style="margin-top: var(--spacing--sm); padding-right: var(--spacing--md);">
@@ -103,8 +103,8 @@ const Template: StoryFn<Args> = (args, { argTypes }) => ({
 	`,
 });
 
-export const InstallProcess = Template.bind({});
-InstallProcess.args = {
+export const Default = Template.bind({});
+Default.args = {
 	showIndex: true,
 	steps: [
 		{
@@ -132,6 +132,6 @@ InstallProcess.args = {
 
 export const WithoutIndex = Template.bind({});
 WithoutIndex.args = {
-	...InstallProcess.args,
+	...Default.args,
 	showIndex: false,
 };

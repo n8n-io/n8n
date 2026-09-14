@@ -1,5 +1,6 @@
 import type { INodeUi } from '@/Interface';
 import type {
+	CredentialFetchScope,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -38,8 +39,37 @@ const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth',
 
 export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
+export type { CredentialFetchScope };
+
+const scopeKey = (scope: CredentialFetchScope): string =>
+	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
+
+	/**
+	 * Credentials the backend says are usable in the workflow/project currently open.
+	 * Kept apart from `state.credentials`, which any of ~20 unscoped
+	 * `fetchAllCredentials` callers can replace while a canvas is open — the last
+	 * fetch to resolve would otherwise own the credential picker.
+	 */
+	const usableCredentials = ref<ICredentialMap>({});
+	/**
+	 * An unfetched slice reads as empty, never as a fallback to the flat map —
+	 * falling back is the bug. Callers that must not act on "no credentials yet"
+	 * check this.
+	 */
+	const hasFetchedUsableCredentials = ref(false);
+	/** The scope the slice currently holds, so it can be refreshed and invalidated. */
+	const usableCredentialsScope = ref<CredentialFetchScope | null>(null);
+	/** Bumped per scoped fetch, so only the most recent one publishes its response. */
+	let usableCredentialsRequestId = 0;
+
+	const clearUsableCredentials = () => {
+		usableCredentials.value = {};
+		usableCredentialsScope.value = null;
+		hasFetchedUsableCredentials.value = false;
+	};
 
 	type CredentialTestStatus = 'pending' | 'success' | 'error';
 	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
@@ -89,19 +119,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const allUsableCredentialsByType = computed(() => {
-		const credentials = allCredentials.value;
-		const types = allCredentialTypes.value;
+		const byType: { [type: string]: ICredentialsResponse[] } = {};
 
-		return types.reduce(
-			(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
-				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
-					return cred.type === type.name;
-				});
+		for (const credential of Object.values(usableCredentials.value)) {
+			(byType[credential.type] ??= []).push(credential);
+		}
 
-				return accu;
-			},
-			{},
-		);
+		for (const credentials of Object.values(byType)) {
+			credentials.sort((a, b) => a.name.localeCompare(b.name));
+		}
+
+		return byType;
 	});
 
 	const allUsableCredentialsForNode = computed(() => {
@@ -110,7 +138,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (nodeType?.credentials) {
 				nodeType.credentials.forEach((cred) => {
-					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name]);
+					credentials = credentials.concat(allUsableCredentialsByType.value[cred.name] ?? []);
 				});
 			}
 			return credentials.sort((a, b) => {
@@ -326,16 +354,68 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credentials;
 	};
 
-	const fetchAllCredentialsForWorkflow = async (
-		options: { workflowId: string } | { projectId: string },
+	const fetchUsableCredentials = async (
+		options: CredentialFetchScope,
 	): Promise<ICredentialsResponse[]> => {
-		const credentials = await credentialsApi.getAllCredentialsForWorkflow(
+		const requestedScope = scopeKey(options);
+		// Opening another workflow or project invalidates the slice up front: while the
+		// new scope is in flight consumers must read "not fetched yet", never the
+		// previous scope's credentials.
+		if (usableCredentialsScope.value && scopeKey(usableCredentialsScope.value) !== requestedScope) {
+			clearUsableCredentials();
+		}
+		const requestId = ++usableCredentialsRequestId;
+
+		const credentials = await credentialsApi.getUsableCredentials(
 			rootStore.restApiContext,
 			options,
 		);
+		// The flat map keeps replace semantics for its existing consumers; the slice is
+		// what the credential picker reads.
 		setCredentials(credentials);
+
+		// Only the newest request publishes. Several scoped fetches can be in flight at
+		// once — a mount racing the refresh a quick connect triggers, say — and an older
+		// response landing last would reinstate a list we already know is out of date,
+		// whether or not it was fetched for the same scope.
+		if (requestId !== usableCredentialsRequestId) {
+			return credentials;
+		}
+
+		usableCredentials.value = credentials.reduce((accu: ICredentialMap, cred) => {
+			if (cred.id) {
+				accu[cred.id] = cred;
+			}
+			return accu;
+		}, {});
+		usableCredentialsScope.value = options;
+		hasFetchedUsableCredentials.value = true;
 		return credentials;
 	};
+
+	/**
+	 * Re-reads the slice for the scope it was last fetched for. Flows that create a
+	 * credential outside a scoped fetch (OAuth quick connect) call this instead of
+	 * inserting locally: only the server can say whether the new credential is usable
+	 * in the scope currently open.
+	 */
+	const refreshUsableCredentials = async (): Promise<void> => {
+		const scope = usableCredentialsScope.value;
+		if (!scope) return;
+		await fetchUsableCredentials(scope);
+	};
+
+	/**
+	 * Whether the usable-credentials slice currently holds the given scope. The
+	 * slice is last-writer-wins across workflows/projects, so consumers reading
+	 * it for a specific scope must check this before trusting the answer.
+	 */
+	const hasUsableCredentialsForScope = computed(() => {
+		return (scope: CredentialFetchScope): boolean =>
+			hasFetchedUsableCredentials.value &&
+			usableCredentialsScope.value !== null &&
+			scopeKey(usableCredentialsScope.value) === scopeKey(scope);
+	});
 
 	const getCredentialData = async ({
 		id,
@@ -548,6 +628,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	return {
 		state,
+		usableCredentials,
+		hasFetchedUsableCredentials,
+		hasUsableCredentialsForScope,
+		refreshUsableCredentials,
 		credentialTestResults,
 		isCredentialTestedOk,
 		isCredentialTestPending,
@@ -576,7 +660,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,
-		fetchAllCredentialsForWorkflow,
+		fetchUsableCredentials,
 		createNewCredential,
 		updateCredential,
 		getCredentialData,

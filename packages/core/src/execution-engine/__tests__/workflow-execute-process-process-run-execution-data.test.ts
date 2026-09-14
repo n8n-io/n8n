@@ -7,6 +7,7 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import {
 	BaseError,
@@ -126,6 +127,52 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteBefore', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(5, 'nodeExecuteAfter', expect.any(Array));
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
+	});
+
+	describe('a handler that throws at workflowExecuteBefore', () => {
+		const blocked = new UnexpectedError('blocked before the first node ran');
+		const node = createNodeData({ name: 'node', type: types.passThrough });
+		const workflow = new DirectedGraph()
+			.addNodes(node)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const runBlocked = async (executionData: IRunExecutionData) => {
+			runHook.mockImplementation(async (hookName: string) => {
+				if (hookName === 'workflowExecuteBefore') throw blocked;
+			});
+
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				executionData,
+			).processRunExecutionData(workflow);
+
+			return { result, hooks: (runHook.mock.calls as Array<[string]>).map(([name]) => name) };
+		};
+
+		test('aborts the execution and keeps the error it was given', async () => {
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({
+					startData: { startNodes: [{ name: node.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+					},
+				}),
+			);
+
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
+
+		// Empty for e.g. a Chat Trigger-only workflow, which used to mask the error with a TypeError.
+		test('keeps the error when there is no node on the execution stack', async () => {
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({ executionData: { nodeExecutionStack: [] } }),
+			);
+
+			expect(result.data.resultData.error?.message).toBe(blocked.message);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+		});
 	});
 
 	test('agent node emits nodeExecuteBefore only once when resuming after tool execution', async () => {

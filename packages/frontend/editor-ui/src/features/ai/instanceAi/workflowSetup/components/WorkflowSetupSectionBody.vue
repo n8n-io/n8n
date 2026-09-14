@@ -234,6 +234,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:node="displayNode"
 			:override-cred-type="credentialType"
 			:project-id="ctx.projectId.value"
+			:workflow-id="ctx.workflowId.value"
 			standalone
 			hide-issues
 			:instance-ai-credential-help="instanceAiCredentialHelp"

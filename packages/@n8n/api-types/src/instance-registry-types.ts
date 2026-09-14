@@ -13,6 +13,8 @@ const InstanceRegistrationSchemaV1 = z
 		version: z.string(),
 		registeredAt: z.number(),
 		lastSeen: z.number(),
+		/** Worker pool label. Present (possibly empty) on worker registrations; absent on main/webhook. */
+		poolName: z.string().optional(),
 	})
 	.passthrough();
 

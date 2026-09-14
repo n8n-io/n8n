@@ -25,6 +25,13 @@ export function useNodeCredentialOptions(
 	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
 	overrideCredType: MaybeRefOrGetter<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
+	/** When provided, build dropdown options from this list instead of the
+	 *  shared usable-credentials slice. Hosts that already hold the exact,
+	 *  project-scoped, type-matched credential list (e.g. the Instance AI
+	 *  setup card, which receives it in the suspend payload) pass it here so
+	 *  the dropdown does not depend on a slice that may be empty or cleared
+	 *  by a competing scoped fetch. */
+	overrideCredentials: MaybeRefOrGetter<ICredentialsResponse[] | undefined> = undefined,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
@@ -53,15 +60,21 @@ export function useNodeCredentialOptions(
 	);
 
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
+		const override = toValue(overrideCredentials);
 		let options: CredentialDropdownOption[] = [];
 		types.forEach((type) => {
+			// The override is a host-supplied, already-scoped list; fall back to the
+			// shared usable-credentials slice when no override is given. An unfetched
+			// slice reads as empty, never as a fallback to the flat map — falling
+			// back is the bug this override exists to avoid.
+			const source = override
+				? override.filter((credential) => credential.type === type)
+				: credentialsStore.allUsableCredentialsByType[type];
 			options = options.concat(
-				credentialsStore.allUsableCredentialsByType[type]?.map<CredentialDropdownOption>(
-					(option: ICredentialsResponse) => ({
-						...option,
-						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
-					}),
-				) ?? [],
+				source?.map<CredentialDropdownOption>((option: ICredentialsResponse) => ({
+					...option,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
+				})) ?? [],
 			);
 		});
 
@@ -146,6 +159,9 @@ export function useNodeCredentialOptions(
 		// Gateway-managed credentials have no real DB record but are properly configured
 		if (credential?.__aiGatewayManaged) return true;
 		if (!credential?.id) return false;
+		// Until the scoped fetch lands there is nothing to match against, and reporting
+		// a configured credential as missing raises a credential issue that isn't one.
+		if (!credentialsStore.hasFetchedUsableCredentials) return true;
 		const options = getCredentialOptions([credentialType.name]);
 		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
 	}

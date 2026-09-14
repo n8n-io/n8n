@@ -298,6 +298,52 @@ describe('CredentialsFinderService', () => {
 			expect(credential).toEqual(globalCredential);
 		});
 
+		test('should return global end-user credential for credential:connect scope', async () => {
+			const globalCredential = mock<CredentialsEntity>({
+				id: credentialsId,
+				isGlobal: true,
+				isResolvable: true,
+			});
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:connect' as const],
+			);
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+					usageScope: 'project',
+				},
+				relations: {
+					shared: { project: true },
+				},
+			});
+			expect(credential).toEqual(globalCredential);
+		});
+
+		test('should not grant connect access to a global credential that is not an end-user credential', async () => {
+			const staticGlobalCredential = mock<CredentialsEntity>({
+				id: credentialsId,
+				isGlobal: true,
+				isResolvable: false,
+			});
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findOne.mockResolvedValueOnce(staticGlobalCredential);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:connect' as const],
+			);
+
+			expect(credential).toBeNull();
+		});
+
 		test('should not fallback to global credential for write scopes', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
 
@@ -909,6 +955,26 @@ describe('CredentialsFinderService', () => {
 			});
 		});
 
+		test('should include global end-user credentials for connect scope', async () => {
+			const ids = ['cred-1', 'global-1'];
+			sharedCredentialsRepository.find.mockResolvedValueOnce([
+				mock<SharedCredentials>({ credentialsId: 'cred-1' }),
+			]);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'global-1' }),
+			]);
+
+			const result = await credentialsFinderService.findCredentialIdsWithScopeForUser(ids, member, [
+				'credential:connect',
+			]);
+
+			expect(result).toEqual(new Set(['cred-1', 'global-1']));
+			expect(credentialsRepository.find).toHaveBeenCalledWith({
+				where: { id: In(ids), isGlobal: true, usageScope: 'project', isResolvable: true },
+				select: ['id'],
+			});
+		});
+
 		test('should not include global credentials for write scopes', async () => {
 			const ids = ['cred-1'];
 			sharedCredentialsRepository.find.mockResolvedValueOnce([
@@ -1166,6 +1232,35 @@ describe('CredentialsFinderService', () => {
 
 		test('should return false for credential:shareGlobally scope', () => {
 			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:shareGlobally']);
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('hasGlobalConnectAccess', () => {
+		test('should return true for single credential:connect scope', () => {
+			const result = credentialsFinderService.hasGlobalConnectAccess(['credential:connect']);
+
+			expect(result).toBe(true);
+		});
+
+		test('should return false for multiple scopes including credential:connect', () => {
+			const result = credentialsFinderService.hasGlobalConnectAccess([
+				'credential:connect',
+				'credential:read',
+			]);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for single non-connect scope', () => {
+			const result = credentialsFinderService.hasGlobalConnectAccess(['credential:read']);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for empty scopes array', () => {
+			const result = credentialsFinderService.hasGlobalConnectAccess([]);
 
 			expect(result).toBe(false);
 		});

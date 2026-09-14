@@ -60,6 +60,7 @@ vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
 			'agents.chat.toolNames.webSearch': 'Web search',
+			'agents.chat.toolNames.flagMemory': 'Memory noted',
 			'instanceAi.tools.search_nodes': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
 			'agents.chat.difficulty.medium': 'Medium',
@@ -179,6 +180,43 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('shows a completed memory flag as a compact acknowledgement', () => {
+		const running = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-running',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(running.text()).toContain('Flag memory');
+		expect(running.text()).not.toContain('Memory noted');
+
+		const missingResult = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-no-result',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(missingResult.text()).toContain('Flag memory');
+		expect(missingResult.text()).not.toContain('Memory noted');
+
+		const completed = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-done',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+				output: { status: 'noted' },
+			},
+		]);
+		expect(completed.text()).toContain('Memory noted');
+		expect(completed.find('button').exists()).toBe(false);
+		expect(completed.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
 	});
 
 	it('shows one Fix with Assistant callout with deduplicated failures', async () => {

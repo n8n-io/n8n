@@ -197,6 +197,28 @@ describe('browser_capture_secret', () => {
 			expect(mockConn.adapter.getElementValue).not.toHaveBeenCalled();
 		});
 
+		// A console presents the issued value ready to paste, so the field holds a
+		// prefix the page wrote as well as the token. The marker the snapshot shows
+		// must resolve to the token: storing the framing with it fails only once the
+		// provider is called.
+		it('captures the token rather than the framing from a presented field', async () => {
+			const token = 'notreal-IMzLaCKsU6ZxAbt2qFc9XYdRpQ7vNtBmKL';
+			mockProbe(
+				`<html><body><div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="Bearer ${token}"><button type="button">Copy</button></div></body></html>`,
+			);
+
+			await getTool().execute(
+				{
+					credentialsKey: 'k1',
+					field: 'apiKey',
+					element: { redactedKey: '[REDACTED:password:1]' },
+				},
+				makeContext({ secretsBuffer: buffer }),
+			);
+
+			expect(buffer.capture).toHaveBeenCalledWith('k1', 'apiKey', token);
+		});
+
 		it('returns an error result when the redactedKey does not match any marker', async () => {
 			mockProbe(htmlWithPasswordInput('top-secret-pwd'));
 
@@ -480,6 +502,24 @@ describe('browser_create_credential', () => {
 			expect(createCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'My Cred', type: 'googleApi', projectId: 'proj-1' }),
 			);
+		});
+	});
+
+	describe('getAffectedResources', () => {
+		it('reports the credentials resource and names the credential in the description', async () => {
+			const resources = await getTool().getAffectedResources(
+				{ credentialsKey: 'k1', type: 'googleApi', name: 'My Cred' },
+				ctx(),
+			);
+
+			expect(resources).toEqual([
+				{
+					toolGroup: 'browser',
+					kind: 'credential-write',
+					resource: 'credentials',
+					description: 'Create credential "My Cred" (googleApi)',
+				},
+			]);
 		});
 	});
 

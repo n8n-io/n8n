@@ -387,7 +387,6 @@ describe('decideSuccessors over loop iterations', () => {
 	const key = (nodeId: string, iteration: number): StepKey => ({ nodeId, iteration });
 
 	it('queues the body at the batch row iteration, and leaves the exit undecided', () => {
-		// B filled its loop slot, so the loop runs on and its end is unknown
 		const steps = makeSteps(at('B', 0, 'completed', [false, true]));
 
 		expect(decide(key('B', 0), steps)).toEqual({ toQueue: [key('x', 0)], toSkip: [] });
@@ -403,8 +402,6 @@ describe('decideSuccessors over loop iterations', () => {
 	});
 
 	it('skips the next iteration when the body returns nothing', () => {
-		// a dead return edge ends the loop: (B, 1) is skipped at birth, and skipped
-		// rows fire nothing, which makes it the terminal row
 		const steps = makeSteps(
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [false]),
@@ -414,7 +411,6 @@ describe('decideSuccessors over loop iterations', () => {
 	});
 
 	it('queues what follows the loop from the terminal row only', () => {
-		// B filled its done slot instead, so the loop has ended at iteration 2
 		const steps = makeSteps(at('B', 2, 'completed', [true, false]));
 		const terminals = new Map([['B', 2]]);
 
@@ -425,8 +421,6 @@ describe('decideSuccessors over loop iterations', () => {
 	});
 
 	it('plans no body row at the terminal iteration', () => {
-		// the cascade this prevents: a skipped body row would settle, its return edge
-		// would plan another batch row, and that row would end the loop in turn
 		const steps = makeSteps(at('B', 2, 'completed', [true, false]));
 		const terminals = new Map([['B', 2]]);
 
@@ -437,8 +431,6 @@ describe('decideSuccessors over loop iterations', () => {
 	});
 
 	it('leaves what follows the loop undecided while the loop still runs', () => {
-		// B@1 has a dead done slot, and d is not skipped on the strength of it: an
-		// empty toSkip is the assertion, since a later row may still fire that slot
 		const steps = makeSteps(
 			at('B', 0, 'completed', [false, true]),
 			at('x', 0, 'completed', [true]),
@@ -479,14 +471,11 @@ describe('decideSuccessors over loop iterations', () => {
 			at('p', 0, 'completed', [true]),
 		);
 
-		// p settling makes d a candidate, but the loop has not ended, so the exit
-		// edge has no row to read and d gets no fate at all
 		expect(decideSuccessors(joined, joinedLoops, key('p', 0), steps, new Map())).toEqual({
 			toQueue: [],
 			toSkip: [],
 		});
 
-		// once it has ended, the same settlement queues d
 		const ended = makeSteps(
 			at('B', 2, 'completed', [true, false]),
 			at('p', 0, 'completed', [true]),
@@ -501,8 +490,6 @@ describe('decideSuccessors over loop iterations', () => {
 		const entry = makeSteps(at('trigger', 0, 'completed', [true]));
 		expect(decide(key('trigger', 0), entry)).toEqual({ toQueue: [key('B', 0)], toSkip: [] });
 
-		// at iteration 1 the entry edge connects nothing, so the return edge alone
-		// decides, and B is queued on its strength
 		const second = makeSteps(
 			at('trigger', 0, 'completed', [true]),
 			at('B', 0, 'completed', [false, true]),

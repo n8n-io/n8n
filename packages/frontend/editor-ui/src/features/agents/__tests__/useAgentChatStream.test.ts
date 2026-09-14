@@ -1,7 +1,13 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, nextTick } from 'vue';
-import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
+import { ref, reactive, nextTick, effectScope } from 'vue';
+import { flushPromises } from '@vue/test-utils';
+import {
+	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
+	type AgentChatMessagesResponse,
+	type AgentSseEvent,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -18,6 +24,26 @@ vi.mock('@n8n/composables/useToast', () => ({
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+
+const pushListeners: Array<(event: unknown) => void> = [];
+const pushConnectMock = vi.fn();
+const connectionState = reactive({ isConnected: false });
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: pushConnectMock,
+		get isConnected() {
+			return connectionState.isConnected;
+		},
+		addEventListener: (handler: (event: unknown) => void) => {
+			pushListeners.push(handler);
+			return () => {
+				const index = pushListeners.indexOf(handler);
+				if (index >= 0) pushListeners.splice(index, 1);
+			};
+		},
+	}),
+}));
 
 vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
@@ -92,7 +118,7 @@ function makeAbortableSseResponse(events: AgentSseEvent[], signal: AbortSignal |
 function makeControllableSseResponse(
 	events: AgentSseEvent[],
 	signal: AbortSignal | null,
-): { response: Response; close: () => void } {
+): { response: Response; close: (finalEvents?: AgentSseEvent[]) => void } {
 	const encoder = new TextEncoder();
 	let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
 	let settled = false;
@@ -119,20 +145,32 @@ function makeControllableSseResponse(
 			status: 200,
 			headers: { 'Content-Type': 'text/event-stream' },
 		}),
-		close: () => {
+		close: (finalEvents = []) => {
 			if (settled) return;
 			settled = true;
+			for (const event of finalEvents) {
+				streamController?.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+			}
 			streamController?.close();
 		},
 	};
 }
 
+const hookScopes: ReturnType<typeof effectScope>[] = [];
+afterEach(() => {
+	for (const scope of hookScopes.splice(0)) scope.stop();
+});
+
 function buildHook(continueSessionId?: string) {
-	return useAgentChatStream({
-		projectId: ref('p1'),
-		agentId: ref('a1'),
-		...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
-	});
+	const scope = effectScope();
+	hookScopes.push(scope);
+	return scope.run(() =>
+		useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
+		}),
+	)!;
 }
 
 describe('useAgentChatStream — SDK-aligned event handling', () => {
@@ -360,6 +398,116 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				}),
 			}),
 		);
+	});
+
+	// An abandoned waiting card from an earlier turn must not become the steering
+	// target: cancelling it would answer the wrong tool call and leave the
+	// question the user is actually looking at open.
+	it('steers the current turn question, not a waiting card left open earlier', async () => {
+		const waitTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-wait',
+				toolName: 'long_wait_workflow',
+				input: {},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-wait',
+					runId: 'run-wait',
+					toolName: 'long_wait_workflow',
+					input: {
+						type: 'workflow_wait',
+						title: 'Waiting on "Long wait"',
+						components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+					},
+				},
+			},
+		]);
+		const questionTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-question',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: {
+					action: 'respond',
+					input: {
+						message: {
+							card: { components: [{ type: 'button', label: 'Continue', value: 'continue' }] },
+						},
+					},
+				},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-question',
+					runId: 'run-question',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: { type: 'integration_action' },
+				},
+			},
+		]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(waitTurn)
+			.mockResolvedValueOnce(questionTurn)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.sendMessage('ask me a question');
+		await hook.cancelAndSteer('take another approach');
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			3,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: expect.stringContaining('"toolCallId":"tc-question"'),
+			}),
+		);
+		expect(fetchMock.mock.calls[2][1].body).not.toContain('tc-wait');
+	});
+
+	// Only the workflow, the card's own button, or Stop may end a wait. Steering it
+	// would abandon the run and leave the sub-workflow finishing into nothing.
+	it('refuses to steer a waiting card even when it is the current turn', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-wait',
+					toolName: 'long_wait_workflow',
+					input: {},
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-wait',
+						runId: 'run-wait',
+						toolName: 'long_wait_workflow',
+						input: {
+							type: 'workflow_wait',
+							title: 'Waiting on "Long wait"',
+							components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+						},
+					},
+				},
+			]),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.cancelAndSteer('never mind, do something else');
+
+		// Only the original turn was sent — no resume, so the wait stays parked.
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const assistant = hook.messages.value[hook.messages.value.length - 1];
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
+		expect(assistant.interactive?.cancelled).toBeUndefined();
 	});
 
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
@@ -1955,10 +2103,7 @@ describe('useAgentChatStream — loadHistory', () => {
 		});
 
 		// loadHistory uses getTestChatMessages when no continue session id is set
-		const hook = useAgentChatStream({
-			projectId: ref('p1'),
-			agentId: ref('a1'),
-		});
+		const hook = buildHook();
 		await hook.loadHistory();
 
 		const msg = hook.messages.value.at(-1)!;
@@ -1991,11 +2136,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			openSuspensions: [{ toolCallId: 'tc-continued', runId: 'run-continued' }],
 		});
 
-		const hook = useAgentChatStream({
-			projectId: ref('p1'),
-			agentId: ref('a1'),
-			continueSessionId: ref('thread-1'),
-		});
+		const hook = buildHook('thread-1');
 		await hook.loadHistory();
 
 		expect(getChatMessagesMock).toHaveBeenCalledWith(
@@ -2266,5 +2407,335 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
 		// No backend cancel call — there is no runId/suspension to cancel.
 		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('useAgentChatStream — transcript push', () => {
+	/** The subscription is eager, so an effect scope is enough — no mount needed. */
+	function scopedHook(continueSessionId?: string) {
+		const scope = effectScope();
+		const hook = scope.run(() => buildHook(continueSessionId))!;
+		return { hook, dispose: () => scope.stop() };
+	}
+
+	const update = (overrides: Record<string, unknown> = {}) => ({
+		type: 'agentExecutionUpdated',
+		data: {
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+			...overrides,
+		},
+	});
+
+	const emitPush = (event: unknown) => {
+		for (const listener of [...pushListeners]) listener(event);
+	};
+
+	beforeEach(() => {
+		pushListeners.length = 0;
+		pushConnectMock.mockClear();
+		getTestChatMessagesMock.mockReset();
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+	});
+
+	function history(content: string): AgentChatMessagesResponse {
+		return {
+			messages: [{ id: content, role: 'assistant', content: [{ type: 'text', text: content }] }],
+			openSuspensions: [],
+		};
+	}
+
+	it('discards a snapshot when a newer push arrives during its request', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		const fresh = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock
+			.mockResolvedValueOnce(history('saved'))
+			.mockReturnValueOnce(stale.promise)
+			.mockReturnValueOnce(fresh.promise);
+		const { hook, dispose } = scopedHook('thread-1');
+		await hook.loadHistory();
+		emitPush(update());
+		await flushPromises();
+		emitPush(update());
+		stale.resolve(history('old reply'));
+		await flushPromises();
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['saved']);
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(3);
+		fresh.resolve(history('new reply'));
+		await flushPromises();
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['new reply']);
+		dispose();
+	});
+
+	it('discards a snapshot when a complete stream runs during its request', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		const fresh = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+		const fetchMock = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(
+				makeSseResponse([
+					{ type: 'text-delta', id: 'reply', delta: 'new reply' },
+					{ type: 'done' },
+				]),
+			);
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			emitPush(update());
+			await flushPromises();
+			await hook.sendMessage('hello');
+			stale.resolve(history('old reply'));
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['hello', 'new reply']);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			fresh.resolve(history('new reply'));
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['new reply']);
+		} finally {
+			dispose();
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('discards a snapshot requested during a stream that finishes before the response', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		const fresh = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+		const stream = makeControllableSseResponse(
+			[{ type: 'text-delta', id: 'reply', delta: 'new reply' }],
+			null,
+		);
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			const sending = hook.sendMessage('hello');
+			await flushPromises();
+			const loading = hook.loadHistory();
+			stream.close([{ type: 'done' }]);
+			await sending;
+			stale.resolve(history('old reply'));
+			await loading;
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['hello', 'new reply']);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			fresh.resolve(history('new reply'));
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['new reply']);
+		} finally {
+			dispose();
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('refreshes after a local stream ends when pushes arrived during the stream', async () => {
+		const stream = makeControllableSseResponse([], null);
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			const sending = hook.sendMessage('hello');
+			await flushPromises();
+			emitPush(update());
+			await flushPromises();
+			expect(getChatMessagesMock).not.toHaveBeenCalled();
+			stream.close([{ type: 'done' }]);
+			await sending;
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+		} finally {
+			dispose();
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('refreshes on reconnect and tab visibility without a recurring timer', async () => {
+		vi.useFakeTimers();
+		connectionState.isConnected = false;
+		const { dispose } = scopedHook('thread-1');
+		try {
+			connectionState.isConnected = true;
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+			const visibility = vi.spyOn(document, 'visibilityState', 'get');
+			visibility.mockReturnValue('hidden');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await nextTick();
+			visibility.mockReturnValue('visible');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			visibility.mockRestore();
+		} finally {
+			dispose();
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the last state through bounded retries and recovers on the next push', async () => {
+		vi.useFakeTimers();
+		getChatMessagesMock
+			.mockResolvedValueOnce(history('saved'))
+			.mockRejectedValue(new Error('offline'));
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			await hook.loadHistory();
+			hook.refresh();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(4);
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['saved']);
+			getChatMessagesMock.mockResolvedValue(history('current'));
+			emitPush(update());
+			await flushPromises();
+			expect(hook.messages.value.map((message) => message.content)).toEqual(['current']);
+		} finally {
+			dispose();
+			vi.useRealTimers();
+		}
+	});
+
+	it('discards a snapshot from a previous session', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockResolvedValue(history('current'));
+		const scope = effectScope();
+		const threadId = ref('thread-1');
+		const hook = scope.run(() =>
+			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
+		)!;
+		const loading = hook.loadHistory();
+		threadId.value = 'thread-2';
+		await flushPromises();
+		stale.resolve(history('old session'));
+		await loading;
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['current']);
+		scope.stop();
+	});
+
+	// The turn was recorded server-side with no stream attached — re-reading the
+	// transcript is the only way the answer reaches the open chat.
+	it('re-reads the transcript when this agent’s thread is updated', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	it.each([
+		['another agent', { agentId: 'other-agent' }],
+		['another project', { projectId: 'other-project' }],
+	])('ignores an update for %s', async (_label, overrides) => {
+		const { dispose } = scopedHook();
+
+		emitPush(update(overrides));
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	it('ignores unrelated push messages', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush({ type: 'executionFinished', data: { projectId: 'p1', agentId: 'a1' } });
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	// A continued session shows one thread, so an update to a sibling is not it.
+	it('ignores an update for a different thread of a continued session', async () => {
+		const { dispose } = scopedHook('thread-1');
+		getChatMessagesMock.mockClear();
+
+		emitPush(update({ threadId: 'thread-2' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+
+		emitPush(update({ threadId: 'thread-1' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	// Updates are broadcast per record and again on finalize, for every surface of
+	// the agent, so bursts are the norm rather than the exception.
+	it('coalesces a burst of updates into one trailing refetch', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		emitPush(update());
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+		dispose();
+	});
+
+	// The send may start while the refetch is in flight, so the guard has to hold
+	// after the fetch too — otherwise stale history overwrites the live transcript.
+	it('drops a background refetch that lands after a send has started', async () => {
+		const { hook, dispose } = scopedHook();
+		let release!: () => void;
+		getTestChatMessagesMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				release = () =>
+					resolve({ messages: [{ role: 'user', content: 'stale' }], openSuspensions: [] });
+			}),
+		);
+
+		emitPush(update());
+		await flushPromises();
+
+		// A send begins before the refetch resolves.
+		hook.messages.value = [{ role: 'user', content: 'live' }] as never;
+		(hook.isStreaming as { value: boolean }).value = true;
+		release();
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([{ role: 'user', content: 'live' }]);
+		dispose();
+	});
+
+	it('drops queued refreshes when the chat closes', async () => {
+		const { dispose } = scopedHook('thread-1');
+		emitPush(update());
+		dispose();
+		await flushPromises();
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+	});
+
+	it('drops an in-flight response and its queued refresh when the chat closes', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockResolvedValueOnce(history('saved')).mockReturnValueOnce(stale.promise);
+		const { hook, dispose } = scopedHook('thread-1');
+		await hook.loadHistory();
+		emitPush(update());
+		await flushPromises();
+		hook.refresh();
+		dispose();
+		stale.resolve(history('late reply'));
+		await flushPromises();
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['saved']);
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('stops listening once the chat is torn down', () => {
+		const { dispose } = scopedHook();
+		expect(pushListeners).toHaveLength(1);
+
+		dispose();
+
+		expect(pushListeners).toHaveLength(0);
 	});
 });

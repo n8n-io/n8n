@@ -291,6 +291,9 @@ function createBuilderDelegate(
 
 		listAgents: async () => await Promise.resolve([]),
 
+		listAgentCapabilities: async () =>
+			await Promise.resolve({ channels: [], agentCapabilities: [], limitations: [] }),
+
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
@@ -314,10 +317,6 @@ function createEventBusStub(): InstanceAiEventBus {
 	return {
 		publish: () => {},
 		subscribe: () => () => {},
-		getEventsAfter: () => [],
-		getEventsForRun: () => [],
-		getEventsForRuns: () => [],
-		getNextEventId: async () => await Promise.resolve(1),
 	};
 }
 

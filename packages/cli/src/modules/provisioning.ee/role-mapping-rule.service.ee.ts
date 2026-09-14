@@ -4,6 +4,7 @@ import {
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
 import {
+	isUniqueConstraintError,
 	ProjectRepository,
 	RoleMappingRule,
 	RoleMappingRuleRepository,
@@ -11,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { type EntityManager, type FindOptionsOrder, In, QueryFailedError } from '@n8n/typeorm';
+import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -167,7 +168,7 @@ export class RoleMappingRuleService {
 
 				return saved;
 			} catch (error) {
-				if (attempt < maxAttempts - 1 && isUniqueOrderViolation(error)) {
+				if (attempt < maxAttempts - 1 && isUniqueConstraintError(error)) {
 					continue;
 				}
 
@@ -271,21 +272,40 @@ export class RoleMappingRuleService {
 		return result;
 	}
 
-	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {
+	async delete({
+		id,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
 
-		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
 
 		if (!rule) {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const ruleType = rule.type as 'instance' | 'project';
+		const result = this.toResponse(rule);
+
 		await this.roleMappingRuleRepository.remove(rule);
-		await this.normalizeOrderForType(ruleType);
-		return { ruleType };
+		await this.normalizeOrderForType(result.type);
+
+		this.eventService.emit('role-mapping-rule-deleted', {
+			user: { id: userId, email: userEmail },
+			ruleId: id,
+			ruleType: result.type,
+		});
+
+		return result;
 	}
 
 	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
@@ -415,21 +435,4 @@ export class RoleMappingRuleService {
 			updatedAt: loaded.updatedAt.toISOString(),
 		};
 	}
-}
-
-function isUniqueOrderViolation(error: unknown) {
-	if (!(error instanceof QueryFailedError)) return false;
-
-	const driverError = error.driverError as
-		| { code?: string; message?: string; detail?: string }
-		| undefined;
-	const code = driverError?.code;
-	const message = `${error.message} ${driverError?.message ?? ''} ${driverError?.detail ?? ''}`;
-
-	return (
-		code === '23505' ||
-		code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-		code === 'ER_DUP_ENTRY' ||
-		(code === 'SQLITE_CONSTRAINT' && message.includes('UNIQUE constraint failed'))
-	);
 }

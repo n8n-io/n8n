@@ -173,6 +173,9 @@ function serializeNode(
 	if (config.extendsCredential) {
 		n8nNode.extendsCredential = config.extendsCredential;
 	}
+	if (config.customTelemetryTags?.tag?.length) {
+		n8nNode.customTelemetryTags = deepCopy(config.customTelemetryTags);
+	}
 
 	return normalizeNodeShape(n8nNode);
 }
