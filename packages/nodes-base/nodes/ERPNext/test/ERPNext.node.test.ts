@@ -64,18 +64,12 @@ describe('ERPNext node', () => {
 
 			expect(requestOptions().uri).toBe(`https://erp.example.com${getdoctype}`);
 			expect(requestOptions().qs).toEqual({ doctype: 'Customer' });
+			// Exactly these: the child table's `credit_limit` is in the bundle too,
+			// and taking the wrong entry would offer it.
 			expect(result).toEqual<INodePropertyOptions[]>([
 				{ name: 'Customer Name', value: 'customer_name' },
 				{ name: 'Territory', value: 'territory' },
 			]);
-		});
-
-		it('takes the fields of the requested doctype, not of a child table', async () => {
-			respondWith(metaBundle);
-
-			const result = await node.methods.loadOptions.getDocFields.call(loadOptionsFunctions);
-
-			expect(result.map((option) => option.value)).not.toContain('credit_limit');
 		});
 
 		it('sends the decoded doctype name, because the query string encodes again', async () => {
