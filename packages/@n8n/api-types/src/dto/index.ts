@@ -255,6 +255,7 @@ export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
 	FolderListPublicDto,
 	FolderPublicDto,
+	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
 	folderPublicSchema,
 } from './folders/folder-public.dto';
