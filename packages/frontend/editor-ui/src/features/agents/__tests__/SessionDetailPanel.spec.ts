@@ -293,7 +293,7 @@ describe('SessionDetailPanel — other kinds', () => {
 			content: 'Model request failed',
 		});
 
-		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+		expect(w.get('[data-test-id="execution-error-callout"]').text()).toContain(
 			'Model request failed',
 		);
 		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
@@ -503,7 +503,7 @@ it('shows each task and its translated status in signal details', () => {
 		},
 	});
 	expect(wrapper.text()).toContain('Background task results received');
-	const details = wrapper.get('[data-testid="background-job-signal-details"]');
+	const details = wrapper.get('[data-test-id="background-job-signal-details"]');
 	expect(details.findAll('li')).toHaveLength(2);
 	expect(details.text()).toContain('Check invoices — Completed');
 	expect(details.text()).toContain('Wait for reply — Canceled');

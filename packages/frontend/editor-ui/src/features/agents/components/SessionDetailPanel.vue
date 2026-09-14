@@ -333,14 +333,14 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 
 				<div :class="$style.output">
 					<template v-if="item.kind === 'background-task-signal'">
-						<ul :class="$style.backgroundJobs" data-testid="background-job-signal-details">
+						<ul :class="$style.backgroundJobs" data-test-id="background-job-signal-details">
 							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
 								{{ backgroundJobResultLabel(job, i18n) }}
 							</li>
 						</ul>
 					</template>
 					<template v-else-if="item.kind === 'execution-error'">
-						<N8nCallout theme="danger" data-testid="execution-error-callout">
+						<N8nCallout theme="danger" data-test-id="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
 					</template>
