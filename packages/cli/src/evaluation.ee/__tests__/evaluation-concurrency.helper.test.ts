@@ -1,5 +1,5 @@
 import type { ExecutionsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	EVALUATION_TIER_DEFAULTS,
@@ -17,9 +17,9 @@ const buildConfig = (evaluationLimit: number): ExecutionsConfig =>
 	}) as ExecutionsConfig;
 
 const buildLicense = (planName: string, licenseQuota?: number): License => {
-	const getValue = jest.fn((feature: string) => (feature === QUOTA_KEY ? licenseQuota : undefined));
+	const getValue = vi.fn((feature: string) => (feature === QUOTA_KEY ? licenseQuota : undefined));
 	return mock<License>({
-		getPlanName: jest.fn().mockReturnValue(planName),
+		getPlanName: vi.fn().mockReturnValue(planName),
 		getValue: getValue as never,
 	});
 };

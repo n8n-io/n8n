@@ -8,11 +8,11 @@ describe('MailerLiteTriggerHelpers', () => {
 	const testPayload = Buffer.from('{"events":[{"type":"subscriber.created"}]}');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -20,7 +20,7 @@ describe('MailerLiteTriggerHelpers', () => {
 		it('should return true if no secret is configured', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -38,7 +38,7 @@ describe('MailerLiteTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'signature') return expectedSignature;
 					return null;
 				}),
@@ -57,7 +57,7 @@ describe('MailerLiteTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'signature') return wrongSignature;
 					return null;
 				}),
@@ -74,7 +74,7 @@ describe('MailerLiteTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -88,7 +88,7 @@ describe('MailerLiteTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue('any-signature'),
+				header: vi.fn().mockReturnValue('any-signature'),
 				rawBody: undefined,
 			});
 

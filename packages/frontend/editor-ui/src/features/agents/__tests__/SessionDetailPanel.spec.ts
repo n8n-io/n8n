@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
@@ -9,10 +8,18 @@ vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
 }));
 vi.mock('../components/ToolIoView.vue', () => ({
-	default: { template: '<div data-test-id="tool-io-view"></div>' },
+	default: {
+		name: 'ToolIoView',
+		props: ['input', 'nodeParameters'],
+		template: '<div data-test-id="tool-io-view"></div>',
+	},
 }));
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
+}));
+// Reads useRootStore for download URLs — irrelevant to panel behavior.
+vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
+	default: { template: '<div data-test-id="user-attachments"></div>' },
 }));
 
 function makeRouter(): Router {
@@ -28,12 +35,93 @@ function makeRouter(): Router {
 	});
 }
 
-function mountIt(item: TimelineItem | null) {
+function mountIt(
+	item: TimelineItem | null,
+	extraProps: { projectId?: string; agentId?: string } = {},
+) {
 	return mount(SessionDetailPanel, {
-		props: { item },
+		props: { item, ...extraProps },
 		global: { plugins: [makeRouter()] },
 	});
 }
+
+describe('SessionDetailPanel — user attachments', () => {
+	const userItem: TimelineItem = {
+		kind: 'user',
+		executionId: 'e1',
+		timestamp: 0,
+		content: 'look at this',
+		attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+	};
+
+	it('renders the attachments block for a user item with files', () => {
+		const w = mountIt(userItem, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(true);
+	});
+
+	it('skips the attachments block without the project/agent scope for download URLs', () => {
+		const w = mountIt(userItem);
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+
+	it('skips the attachments block for user items without files', () => {
+		const w = mountIt({ ...userItem, attachments: undefined }, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+});
+
+describe('SessionDetailPanel — integration action cards', () => {
+	const cardInput = {
+		action: 'respond',
+		input: {
+			message: {
+				card: {
+					title: 'Renewal Risk',
+					components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+				},
+			},
+		},
+	};
+
+	it('renders the interaction card for any <platform>_action tool call', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: cardInput,
+			toolOutput: { type: 'button', value: 'approve' },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+		expect(w.text()).toContain('Approve');
+	});
+
+	it('renders the interaction card for chat_action with JSON-string input', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'chat_action',
+			toolInput: JSON.stringify(cardInput),
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+	});
+
+	it('falls back to JSON for tool calls without a card', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: { action: 'add_reaction', input: { emoji: 'tada' } },
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).not.toContain('Renewal Risk');
+		// Raw JSON view is shown instead of a card.
+		expect(w.text()).toContain('"add_reaction"');
+	});
+});
 
 describe('SessionDetailPanel — workflow branches', () => {
 	it('renders the WorkflowExecutionLogViewer when workflowExecutionId is set', () => {
@@ -46,6 +134,24 @@ describe('SessionDetailPanel — workflow branches', () => {
 			workflowExecutionId: 'exec-1',
 		});
 		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+	});
+
+	it('shows a soft-failure callout alongside the workflow execution viewer', () => {
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			workflowExecutionId: 'exec-1',
+			toolSuccess: true,
+			toolOutput: { status: 'error', error: 'Node X failed' },
+		});
+		const callout = w.find('[data-test-id="workflow-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Node X failed');
+		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
 	});
 
 	it('opens the full execution in a new tab when the header button is clicked', async () => {
@@ -110,7 +216,89 @@ describe('SessionDetailPanel — workflow branches', () => {
 	});
 });
 
+describe('SessionDetailPanel — HITL sequence', () => {
+	it('keeps the original node call focused on its input and configuration', () => {
+		const toolInput = { query: 'open entries' };
+		const nodeParameters = { operation: 'get', returnAll: true };
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'check_ledger',
+			toolInput,
+			toolOutcome: undefined,
+			nodeType: 'n8n-nodes-base.dataTableTool',
+			nodeTypeVersion: 1.1,
+			nodeDisplayName: 'Check ledger',
+			nodeParameters,
+		});
+
+		const toolIoView = w.getComponent({ name: 'ToolIoView' });
+		expect(toolIoView.props('input')).toEqual(toolInput);
+		expect(toolIoView.props('nodeParameters')).toEqual(nodeParameters);
+		expect(w.find('[data-test-id="detail-hitl-response-badge"]').exists()).toBe(false);
+	});
+
+	it('shows the linked tool and full request details on the HITL request', () => {
+		const w = mountIt({
+			kind: 'suspension',
+			executionId: 'e1',
+			timestamp: 100,
+			toolName: 'check_ledger',
+			hitlRequestType: 'approval',
+			hitlToolDisplayName: 'Check ledger',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'check_ledger',
+				args: { returnAll: true },
+			},
+		});
+
+		expect(w.text()).toContain('Approval request for Check ledger');
+		expect(w.text()).toContain('Check ledger');
+		expect(w.get('[data-test-id="hitl-request-details"]').text()).toContain('returnAll');
+	});
+
+	it.each([
+		['approved', 'Approved'],
+		['declined', 'Declined'],
+		['responded', 'Response received'],
+	] as const)('shows a %s status and response on the HITL response', (status, label) => {
+		const w = mountIt({
+			kind: 'hitl-response',
+			executionId: 'e2',
+			timestamp: 200,
+			toolName: 'check_ledger',
+			hitlRequestType: status === 'responded' ? 'interaction' : 'approval',
+			hitlResponseStatus: status,
+			hitlResponse: { value: status },
+		});
+
+		expect(w.get('[data-test-id="detail-hitl-response-badge"]').text()).toBe(label);
+		expect(w.text()).toContain(
+			status === 'responded' ? 'User response' : 'Approval response for Check ledger',
+		);
+		expect(w.get('[data-test-id="hitl-response-details"]').text()).toContain(status);
+		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+	});
+});
+
 describe('SessionDetailPanel — other kinds', () => {
+	it('shows a fatal execution error in a danger callout', () => {
+		const w = mountIt({
+			kind: 'execution-error',
+			executionId: 'e1',
+			executionStatus: 'error',
+			timestamp: 100,
+			content: 'Model request failed',
+		});
+
+		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+			'Model request failed',
+		);
+		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
+	});
+
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',
@@ -124,6 +312,65 @@ describe('SessionDetailPanel — other kinds', () => {
 		expect(w.text()).toContain('Output');
 		// Tool kind should NOT use ToolIoView (it's reserved for node-backed calls).
 		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('shows a generic tool soft-failure message and header icon', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			toolSuccess: true,
+			toolOutput: { success: false, error: 'Skill not found' },
+		});
+		const callout = w.find('[data-test-id="tool-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Skill not found');
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
+	});
+
+	it('shows a nested integration error message', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolSuccess: true,
+			toolOutput: {
+				ok: false,
+				error: { code: 'NO_MESSAGE_CONTEXT', message: 'No message context' },
+			},
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('No message context');
+	});
+
+	it('shows an MCP structuredContent error message', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'github_create_issue',
+			toolSuccess: true,
+			toolOutput: {
+				isError: true,
+				content: [{ type: 'text', text: '{"error":"Repository not found"}' }],
+				structuredContent: { error: 'Repository not found' },
+			},
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('Repository not found');
+	});
+
+	it('does not show a failure callout or header icon for a successful tool', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http',
+			toolSuccess: true,
+			toolOutput: { ok: true },
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('renders the ToolIoView for node tool calls', () => {
@@ -152,13 +399,12 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'Telegram',
 			toolInput: { chatId: '1' },
 			toolOutput: { error: 'Node does not have any credentials set' },
-			toolSuccess: false,
+			toolOutcome: 'error',
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
-		expect(callout.text()).toContain(
-			'Tool experienced an error: Node does not have any credentials set',
-		);
+		expect(callout.text()).toContain('Tool call failed: Node does not have any credentials set');
+		expect(w.get('[data-test-id="detail-tool-error-badge"]').text()).toBe('Error');
 	});
 
 	it('falls back to the prefix-only message when the failed node output has no error string', () => {
@@ -176,7 +422,7 @@ describe('SessionDetailPanel — other kinds', () => {
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
-		expect(callout.text()).toContain('Tool experienced an error');
+		expect(callout.text()).toContain('Tool call failed');
 		expect(callout.text()).not.toContain(':');
 	});
 
@@ -191,9 +437,10 @@ describe('SessionDetailPanel — other kinds', () => {
 			nodeDisplayName: 'HTTP Request',
 			toolInput: { url: 'https://x' },
 			toolOutput: { status: 200 },
-			toolSuccess: true,
+			toolOutcome: 'success',
 		});
 		expect(w.find('[data-test-id="node-error-callout"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('renders markdown for user messages', () => {

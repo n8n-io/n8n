@@ -4,24 +4,24 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_c2a794257dee48af7c9abf681de | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| PK_e226d0001b9e6097cbfe70617cb | PRIMARY KEY | PRIMARY KEY (id) |
+| UQ_b23096ef747281ac944d28e8b0d | UNIQUE | UNIQUE ("projectId", name) |
 | data_table_createdAt_not_null | n | NOT NULL "createdAt" |
 | data_table_id_not_null | n | NOT NULL id |
 | data_table_name_not_null | n | NOT NULL name |
 | data_table_projectId_not_null | n | NOT NULL "projectId" |
 | data_table_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_c2a794257dee48af7c9abf681de | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
-| PK_e226d0001b9e6097cbfe70617cb | PRIMARY KEY | PRIMARY KEY (id) |
-| UQ_b23096ef747281ac944d28e8b0d | UNIQUE | UNIQUE ("projectId", name) |
 
 ## Indexes
 
@@ -39,31 +39,31 @@ erDiagram
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.data_table" {
+  timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
   varchar_36_ projectId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.data_table_column" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
   varchar_36_ id
+  integer index
   varchar_128_ name
   varchar_32_ type
-  integer index
-  varchar_36_ dataTableId FK
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  json icon
-  varchar_512_ description
-  uuid creatorId FK
-  json customTelemetryTags
 }
 ```
 

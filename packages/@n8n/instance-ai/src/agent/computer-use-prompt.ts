@@ -13,6 +13,17 @@ export function getComputerUsePrompt({
 	if (localGateway && localGateway.status !== 'disabledGlobally') {
 		const promptParts: string[] = [];
 
+		// Not connected: cover only what CU is and how to connect, not the operational rules.
+		if (localGateway.status === 'disconnected' || localGateway.status === 'disabled') {
+			return `## Computer Use
+
+This instance supports "Computer Use": connecting to the user's computer with the capabilities *filesystem* (read/write local files), *shell* (run local commands), *browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL}), and *screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested). Users choose which capabilities to enable and can reconnect with a different set.
+
+Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: credential/OAuth/API-key setup through a service's web portal (*browser*); a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*); authenticated web research or form/frontend testing (*browser*); local commands or debugging (*shell*); or migration from Make/Zapier or similar (*browser* + *filesystem*).
+
+To connect, the user should select the + button beside the chat input. They should select "Connect browser" for browser automation, or "Connect local computer" for filesystem, shell, and other local capabilities, then follow the instructions in the setup dialog.`;
+		}
+
 		promptParts.push(`
 ## Computer Use
 This instance support "Computer Use", which allows connecting to user's computer and execute following functionality:
@@ -84,12 +95,13 @@ secrets; never ask the user to paste secret values into chat.
 
 #### When browser tools fail at runtime
 
+The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					} else {
 						promptParts.push(`
 ### Browser Automation (Disabled in Computer Use)
 
-Browser tools are not enabled in the user's Computer Use configuration. If the user asks for browser automation, tell them to (1) enable browser tools in their Computer Use config, and (2) install the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
+Browser tools are not connected. If the user asks for browser automation, tell them to select the + button beside the chat input, select "Connect browser", and follow the setup instructions. The setup requires the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					}
 				} else {
 					promptParts.push(
@@ -97,22 +109,6 @@ Browser tools are not enabled in the user's Computer Use configuration. If the u
 					);
 				}
 
-				break;
-			case 'disconnected':
-				promptParts.push(
-					`Computer Use is not connected. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on the "..." button next to "Computer Use"
-3. click on "Connect" and follow the instructions in the dialog`,
-				);
-				break;
-			case 'disabled':
-				promptParts.push(
-					`Computer Use is not connected and not set-up. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on "Setup computer use"
-3. follow the instructions in the dialog`,
-				);
 				break;
 			default:
 		}

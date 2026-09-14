@@ -4,6 +4,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CustomFetch } from '@n8n/backend-network/transport';
 import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
@@ -48,6 +49,8 @@ export class AiWorkflowBuilderService {
 		private readonly nodeDefinitionDirs?: string[],
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 		private readonly ssrf?: SsrfGuard,
+		/** Proxy-aware `fetch` for AI provider calls (see `createAiProxyFetch` in cli). */
+		private readonly modelFetch?: CustomFetch,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
@@ -63,7 +66,7 @@ export class AiWorkflowBuilderService {
 		this.sessionManager.updateNodeTypes(this.nodeTypes);
 	}
 
-	private static async getAnthropicClaudeModel({
+	private async getAnthropicClaudeModel({
 		baseUrl,
 		authHeaders = {},
 		apiKey = '-',
@@ -80,6 +83,7 @@ export class AiWorkflowBuilderService {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				'anthropic-beta': 'prompt-caching-2024-07-31',
 			},
+			fetch: this.modelFetch,
 		});
 	}
 
@@ -121,7 +125,7 @@ export class AiWorkflowBuilderService {
 					authHeaders,
 				};
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(modelConfig);
+				const anthropicClaude = await this.getAnthropicClaudeModel(modelConfig);
 
 				const tracingClient = new TracingClient({
 					apiKey: '-',
@@ -140,7 +144,7 @@ export class AiWorkflowBuilderService {
 
 			// If base URL is not set, use environment variables
 			const envConfig = { apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '' };
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(envConfig);
+			const anthropicClaude = await this.getAnthropicClaudeModel(envConfig);
 
 			return { anthropicClaude };
 		} catch (error) {

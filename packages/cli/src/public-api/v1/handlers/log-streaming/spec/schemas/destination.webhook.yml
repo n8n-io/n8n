@@ -1,0 +1,110 @@
+allOf:
+  - $ref: './destination.common.yml'
+  - type: object
+    additionalProperties: true
+    required:
+      - type
+      - url
+    properties:
+      type:
+        type: string
+        enum: [webhook]
+        description: Sends each event as an HTTP request to a URL.
+        example: webhook
+      url:
+        type: string
+        format: uri
+        description: Target URL that receives the event payload.
+        example: https://example.com/n8n-events
+      method:
+        type: string
+        description: HTTP method used for the request.
+        example: POST
+      sendHeaders:
+        type: boolean
+        description: Whether to attach custom headers to the request.
+        example: false
+      specifyHeaders:
+        type: string
+        description: How custom headers are provided — `keypair` or `json`.
+        example: keypair
+      headerParameters:
+        $ref: './parameter-list.yml'
+      jsonHeaders:
+        type: string
+        description: Custom headers as a JSON string when `specifyHeaders` is `json`.
+      sendQuery:
+        type: boolean
+        description: Whether to attach query parameters to the request.
+        example: false
+      specifyQuery:
+        type: string
+        description: How query parameters are provided — `keypair` or `json`.
+      queryParameters:
+        $ref: './parameter-list.yml'
+      jsonQuery:
+        type: string
+        description: Query parameters as a JSON string when `specifyQuery` is `json`.
+      options:
+        type: object
+        additionalProperties: true
+        description: Additional HTTP request options.
+        properties:
+          timeout:
+            type: integer
+            description: Request timeout in milliseconds.
+          allowUnauthorizedCerts:
+            type: boolean
+            description: Accept self-signed or otherwise invalid TLS certificates.
+          queryParameterArrays:
+            type: string
+            enum: [indices, brackets, repeat]
+            description: How array-valued query parameters are serialized into the query string.
+          redirect:
+            type: object
+            additionalProperties: true
+            description: Redirect-following behaviour.
+            properties:
+              redirect:
+                type: object
+                additionalProperties: true
+                properties:
+                  followRedirects:
+                    type: boolean
+                    description: Whether to follow HTTP redirects.
+                  maxRedirects:
+                    type: integer
+                    description: Maximum number of redirects to follow.
+          proxy:
+            type: object
+            additionalProperties: true
+            description: Outbound proxy configuration.
+            properties:
+              proxy:
+                type: object
+                additionalProperties: true
+                properties:
+                  protocol:
+                    type: string
+                    enum: [https, http]
+                    description: Proxy protocol.
+                  host:
+                    type: string
+                    description: Proxy host, without protocol or port.
+                  port:
+                    type: integer
+                    description: Proxy port.
+          socket:
+            type: object
+            additionalProperties: true
+            description: Connection socket options.
+            properties:
+              keepAlive:
+                type: boolean
+                description: Whether to keep sockets open for reuse.
+              maxSockets:
+                type: integer
+                description: Maximum sockets per host kept open at once.
+              maxFreeSockets:
+                type: integer
+                description: Maximum idle sockets per host kept open.

@@ -16,6 +16,7 @@ import {
 	buildToolContext,
 	extractToolCallId,
 	buildMessagesFromSteps,
+	cleanupOrphanedMessages,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
@@ -214,6 +215,180 @@ describe('memoryManagement', () => {
 
 			expect(result).toEqual(chatHistory);
 			expect(trimMessages).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('cleanupOrphanedMessages', () => {
+		it('should return empty array when all messages are orphans', () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new AIMessage({
+					content: 'Call',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should remove orphaned AIMessage with tool_calls at end (missing trailing ToolMessage)', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove orphaned ToolMessages at end (no preceding AIMessage with tool_calls)', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should preserve valid tool call pair at end', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+		});
+
+		it('should handle trimming that splits mid-turn at end', () => {
+			// Simulates slice that kept AIMessage(tool_calls) but lost its ToolMessage
+			const chatHistory = [
+				new HumanMessage('Hello'),
+				new AIMessage('Response'),
+				new HumanMessage('Use tool'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[0].content).toBe('Hello');
+			expect(result[1]).toBeInstanceOf(AIMessage);
+			expect(result[2]).toBeInstanceOf(HumanMessage);
+			expect(result[2].content).toBe('Use tool');
+		});
+
+		it('should handle trimming that splits mid-turn at start', () => {
+			// Simulates slice that lost AIMessage but kept ToolMessage
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new HumanMessage('Next question'),
+				new AIMessage('Answer'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should preserve complete tool call sequences', () => {
+			const chatHistory = [
+				new HumanMessage('Hello'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' }),
+				new AIMessage('Done'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect(result[3]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should not mutate the original array', () => {
+			const chatHistory = [
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
+				new HumanMessage('Question'),
+			];
+
+			const originalLength = chatHistory.length;
+			cleanupOrphanedMessages(chatHistory);
+
+			expect(chatHistory).toHaveLength(originalLength);
+		});
+
+		it('should preserve parallel tool call results at end', () => {
+			// Parallel tool calls: one AIMessage with multiple tool_calls, followed by multiple ToolMessages
+			const aiMessage = new AIMessage({
+				content: 'Calling tools',
+				tool_calls: [
+					{ id: 'call-1', name: 'tool1', args: {}, type: 'tool_call' as const },
+					{ id: 'call-2', name: 'tool2', args: {}, type: 'tool_call' as const },
+				],
+			});
+
+			const chatHistory = [
+				new HumanMessage('Question'),
+				aiMessage,
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2', name: 'tool2' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBe(aiMessage);
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect(result[3]).toBeInstanceOf(ToolMessage);
+		});
+
+		it('should remove orphaned parallel tool results when AIMessage is missing', () => {
+			// Multiple ToolMessages at end but no preceding AIMessage with tool_calls
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new ToolMessage({ content: 'Result 1', tool_call_id: 'call-1', name: 'tool1' }),
+				new ToolMessage({ content: 'Result 2', tool_call_id: 'call-2', name: 'tool2' }),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
 		});
 	});
 
@@ -434,6 +609,66 @@ describe('memoryManagement', () => {
 			expect(result[3]).toBeInstanceOf(ToolMessage);
 		});
 
+		it('should not fabricate an AIMessage for parallel tool calls with an empty messageLog', () => {
+			// Parallel Gemini calls: a single shared AIMessage (with all tool_calls and the
+			// thought signature) on the first step, empty messageLog on the rest.
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			// Expected: [sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b)]
+			// NOT a spurious second AIMessage for tool_b.
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(sharedAIMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect((result[1] as ToolMessage).tool_call_id).toBe('call-a');
+			expect((result[1] as ToolMessage).name).toBe('tool_a');
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect((result[2] as ToolMessage).tool_call_id).toBe('call-b');
+			expect((result[2] as ToolMessage).name).toBe('tool_b');
+
+			// The shared message retains its thought signatures untouched.
+			expect((result[0] as AIMessage).additional_kwargs).toEqual({
+				signatures: ['', 'sig-a', ''],
+				__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+			});
+		});
+
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);
@@ -489,6 +724,65 @@ describe('memoryManagement', () => {
 			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
 			expect(savedMessages[3]).toBeInstanceOf(AIMessage);
 			expect(savedMessages[3].content).toBe('The answer is 4');
+		});
+
+		it('should save parallel tool calls as a single AI tool-call message (no spurious AIMessage)', async () => {
+			const sharedAIMessage = new AIMessage({
+				content: 'Calling tools: tool_a, tool_b',
+				tool_calls: [
+					{ id: 'call-a', name: 'tool_a', args: { input: 'test' }, type: 'tool_call' },
+					{ id: 'call-b', name: 'tool_b', args: { input: 'test' }, type: 'tool_call' },
+				],
+				additional_kwargs: {
+					signatures: ['', 'sig-a', ''],
+					__gemini_function_call_thought_signatures__: { 'call-a': 'sig-a' },
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'tool_a',
+						toolInput: { input: 'test' },
+						log: 'Calling tools: tool_a, tool_b',
+						messageLog: [sharedAIMessage],
+						toolCallId: 'call-a',
+						type: 'tool_call',
+					},
+					observation: 'tool_a executed',
+				},
+				{
+					action: {
+						tool: 'tool_b',
+						toolInput: { input: 'test' },
+						log: 'Calling tool_b',
+						messageLog: [],
+						toolCallId: 'call-b',
+						type: 'tool_call',
+					},
+					observation: 'tool_b executed',
+				},
+			];
+
+			await saveToMemory('Hello', 'done', mockMemory, steps);
+
+			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
+			const savedMessages = mockChatHistory.addMessages.mock.calls[0][0];
+
+			// Human, sharedAIMessage, ToolMessage(tool_a), ToolMessage(tool_b), final AIMessage
+			expect(savedMessages).toHaveLength(5);
+			expect(savedMessages[0]).toBeInstanceOf(HumanMessage);
+			expect(savedMessages[1]).toBe(sharedAIMessage);
+			expect(savedMessages[2]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[3]).toBeInstanceOf(ToolMessage);
+			expect(savedMessages[4]).toBeInstanceOf(AIMessage);
+			expect(savedMessages[4].content).toBe('done');
+
+			// Exactly one AI tool-call message — no consecutive AIMessages.
+			const aiToolCallMessages = savedMessages.filter(
+				(m: AIMessage) => m instanceof AIMessage && (m.tool_calls?.length ?? 0) > 0,
+			);
+			expect(aiToolCallMessages).toHaveLength(1);
 		});
 
 		it('should fall back to string format when addMessages is not available', async () => {

@@ -23,6 +23,7 @@ export async function searxngSearch(
 	baseUrl: string,
 	query: string,
 	options: WebSearchOptions,
+	fetchImpl: typeof globalThis.fetch = globalThis.fetch,
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
 
@@ -43,10 +44,11 @@ export async function searxngSearch(
 		pageno: '1',
 	});
 
-	const response = await fetch(`${normalizedUrl}/search?${params}`, {
+	const response = await fetchImpl(`${normalizedUrl}/search?${params}`, {
 		headers: {
 			Accept: 'application/json',
 		},
+		...(options.abortSignal ? { signal: options.abortSignal } : {}),
 	});
 
 	if (!response.ok) {

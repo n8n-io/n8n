@@ -1,10 +1,9 @@
 {
-  "compilerOptions": {
-    "module": "esnext",
-    "target": "esnext",
-    "checkJs": true,
-    "moduleResolution": "bundler"
-  },
-  "exclude": ["node_modules"]
+	"compilerOptions": {
+		"module": "esnext",
+		"target": "esnext",
+		"checkJs": true,
+		"moduleResolution": "bundler"
+	},
+	"exclude": ["node_modules"]
 }
-

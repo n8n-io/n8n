@@ -16,7 +16,7 @@ import LogsPanelHeader from '@/features/execution/logs/components/LogsPanelHeade
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useClipboard } from '@vueuse/core';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useChatState } from '@/features/execution/logs/composables/useChatState';
 
 interface Props {

@@ -22,7 +22,7 @@ describe('RuntimeCredentialProxyService', () => {
 
 	it('forwards arguments to the registered provider and returns its result', async () => {
 		const provider: RuntimeCredentialProvider = {
-			getRuntimeCredential: jest.fn().mockResolvedValue('Bearer xyz'),
+			getRuntimeCredential: vi.fn().mockResolvedValue('Bearer xyz'),
 		};
 		service.registerProvider(provider);
 
@@ -34,10 +34,10 @@ describe('RuntimeCredentialProxyService', () => {
 
 	it('uses the last-registered provider when registerProvider is called multiple times', async () => {
 		const providerA: RuntimeCredentialProvider = {
-			getRuntimeCredential: jest.fn().mockResolvedValue('from-a'),
+			getRuntimeCredential: vi.fn().mockResolvedValue('from-a'),
 		};
 		const providerB: RuntimeCredentialProvider = {
-			getRuntimeCredential: jest.fn().mockResolvedValue('from-b'),
+			getRuntimeCredential: vi.fn().mockResolvedValue('from-b'),
 		};
 
 		service.registerProvider(providerA);

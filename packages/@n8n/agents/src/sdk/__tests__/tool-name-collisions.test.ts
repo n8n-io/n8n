@@ -3,9 +3,9 @@ import { z } from 'zod';
 import {
 	createDelegateSubAgentTool,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
-} from '../../runtime/delegate-sub-agent-tool';
-import { isSdkOwnedBuiltInTool } from '../../runtime/sdk-owned-tool';
-import { createWriteTodosTool, WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
+} from '../../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../../runtime/tools/sdk-owned-tool';
+import { createWriteTodosTool, WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
 import { Agent } from '../agent';
 import { Tool } from '../tool';
 
@@ -48,5 +48,17 @@ describe('SDK reserved built-in tool names', () => {
 			WRITE_TODOS_TOOL_NAME,
 		]);
 		expect(agent.declaredTools.every((tool) => isSdkOwnedBuiltInTool(tool))).toBe(true);
+	});
+
+	it('allows a delegate tool renamed to a non-reserved name', () => {
+		const agent = makeAgent().tool(createDelegateSubAgentTool({ name: 'agent' }));
+
+		expect(agent.declaredTools.map((tool) => tool.name)).toEqual(['agent']);
+	});
+
+	it('rejects a delegate tool renamed to another reserved built-in name', () => {
+		expect(() =>
+			makeAgent().tool(createDelegateSubAgentTool({ name: WRITE_TODOS_TOOL_NAME })),
+		).toThrow(`Tool name "${WRITE_TODOS_TOOL_NAME}" is reserved for SDK built-in tools`);
 	});
 });

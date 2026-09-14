@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+} from '@n8n/design-system';
 /**
  * PlanReviewPanel.vue
  *
@@ -6,11 +12,9 @@
  * expandable specs, dependency info, and approve/ask-for-edits/deny controls.
  * "Ask for edits" hands off feedback collection to the main chat input.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
@@ -85,12 +89,20 @@ function isTaskExpandedByDefault(task: PlannedTaskArg): boolean {
 	return !isVerificationTask(task);
 }
 
+/**
+ * Plans saved before titles were required can hold a blank one, which would
+ * render a task row with a number and no label.
+ */
+function getTitle(task: PlannedTaskArg): string {
+	return task.title.trim() || i18n.baseText('instanceAi.tasks.untitled');
+}
+
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
 	if (task.deps.length) {
 		const depNames = task.deps.map((depId) => {
 			const dep = props.plannedTasks.find((t) => t.id === depId);
-			return dep?.title ?? depId;
+			return dep ? getTitle(dep) : depId;
 		});
 		text += `\nDepends on: ${depNames.join(', ')}`;
 	}
@@ -120,7 +132,7 @@ function handleDeny() {
 <template>
 	<CollapsibleRoot
 		v-model:open="isExpanded"
-		:class="$style.root"
+		:class="[$style.root, showActions && $style.awaitingInput]"
 		:aria-busy="isShimmering ? 'true' : undefined"
 		:data-loading="isShimmering ? 'true' : undefined"
 		data-test-id="instance-ai-plan-review"
@@ -189,7 +201,7 @@ function handleDeny() {
 						<button type="button" :class="$style.taskRow">
 							<span :class="$style.taskNumber">{{ idx + 1 }}</span>
 							<span :class="$style.taskTitleGroup">
-								<N8nText bold size="large" :class="$style.taskTitle">{{ task.title }}</N8nText>
+								<N8nText bold size="large" :class="$style.taskTitle">{{ getTitle(task) }}</N8nText>
 								<N8nIcon
 									icon="chevron-right"
 									size="medium"
@@ -270,6 +282,13 @@ function handleDeny() {
 	overflow: hidden;
 	background-color: var(--color--background--light-3);
 	max-width: 90%;
+}
+
+// Elevate the plan while it is waiting for review; read-only / resolved /
+// building cards keep the regular border.
+.awaitingInput {
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .expiredHint {

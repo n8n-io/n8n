@@ -15,8 +15,8 @@ import {
 } from '@n8n/db';
 import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -50,7 +50,7 @@ describe('OwnershipService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkflowProjectCached()', () => {
@@ -287,18 +287,19 @@ describe('OwnershipService', () => {
 	});
 
 	describe('getInstanceOwner()', () => {
-		test('should find owner using global owner role ID', async () => {
+		test('should find owner using global owner role ID, with the role relation loaded', async () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				relations: ['role'],
 			});
 		});
 	});
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+			userRepository.exists.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);

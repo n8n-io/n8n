@@ -1,0 +1,37 @@
+[
+	{
+		"type": "webhook",
+		"timestamp": 1782476984606,
+		"platform": "linear",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/linear",
+		"headers": {
+			"content-type": "application/json; charset=utf-8",
+			"host": "https://n8n.host.com",
+			"linear-event": "AgentSessionEvent",
+			"user-agent": "Linear-Webhook",
+			"x-forwarded-for": "111.111.111.111",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https"
+		},
+		"body": "{\"type\":\"AgentSessionEvent\",\"action\":\"created\",\"createdAt\":\"2026-06-26T12:29:43.714Z\",\"organizationId\":\"ORG_LINEAR\",\"appUserId\":\"USER_APP\",\"agentSession\":{\"id\":\"AGENT_SESSION_1\",\"createdAt\":\"2026-06-26T12:29:42.928Z\",\"updatedAt\":\"2026-06-26T12:29:42.928Z\",\"creatorId\":\"USER_ALICE\",\"appUserId\":\"USER_APP\",\"commentId\":\"COMMENT_SOURCE\",\"issueId\":\"ISSUE_1\",\"url\":\"https://linear.app/workspace/issue/YEH-1/get-familiar-with-linear#agent-session-AGENT_SESSION_1\",\"creator\":{\"id\":\"USER_ALICE\",\"name\":\"alice\",\"displayName\":\"Alice Developer\",\"email\":\"alice@example.com\",\"url\":\"https://linear.app/workspace/profiles/alice\"},\"comment\":{\"id\":\"COMMENT_SOURCE\",\"body\":\"@testapp hey\",\"userId\":\"USER_ALICE\",\"issueId\":\"ISSUE_1\"},\"issue\":{\"id\":\"ISSUE_1\",\"title\":\"Get familiar with Linear\",\"teamId\":\"TEAM_1\",\"team\":{\"id\":\"TEAM_1\",\"key\":\"YEH\",\"name\":\"Recorded Team\"},\"identifier\":\"YEH-1\",\"url\":\"https://linear.app/workspace/issue/YEH-1/get-familiar-with-linear\",\"description\":\"Welcome to Linear!\"}},\"previousComments\":[{\"id\":\"COMMENT_SOURCE\",\"body\":\"@testapp hey\",\"userId\":\"USER_ALICE\",\"issueId\":\"ISSUE_1\"}],\"guidance\":null,\"promptContext\":\"<issue identifier=\\\"YEH-1\\\"><title>Get familiar with Linear</title></issue>\"}"
+	},
+	{
+		"type": "fetch",
+		"timestamp": 1782476990071,
+		"method": "POST",
+		"url": "https://api.linear.app/graphql",
+		"durationMs": 268,
+		"requestHeaders": {
+			"Content-Type": "application/json",
+			"Authorization": "[REDACTED]",
+			"User-Agent": "n8n-monorepo@2.28.0"
+		},
+		"requestBody": "{\"query\":\"mutation createAgentActivity($input: AgentActivityCreateInput!) { agentActivityCreate(input: $input) { success } }\",\"variables\":{\"input\":{\"agentSessionId\":\"AGENT_SESSION_1\",\"content\":{\"type\":\"response\",\"body\":\"Hey! I'm here and ready to help.\"}}}}",
+		"status": 200,
+		"responseHeaders": {
+			"content-type": "application/json; charset=utf-8"
+		},
+		"responseBody": "{\"data\":{\"agentActivityCreate\":{\"agentActivity\":{\"id\":\"AGENT_ACTIVITY_1\"},\"lastSyncId\":2170157622,\"success\":true}}}"
+	}
+]

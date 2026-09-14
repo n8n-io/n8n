@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { TimeSaved } from '../TimeSaved.node';
@@ -17,16 +17,16 @@ describe('TimeSaved node', () => {
 			continueOnFail = false,
 		} = options ?? {};
 
-		const setMetadata = jest.fn();
-		const continueOnFailMock = jest.fn().mockReturnValue(continueOnFail);
+		const setMetadata = vi.fn();
+		const continueOnFailMock = vi.fn().mockReturnValue(continueOnFail);
 
 		return {
 			executeFunctions: mock<IExecuteFunctions>({
-				getInputData: jest.fn().mockReturnValue(items),
-				getNodeParameter: jest.fn().mockReturnValueOnce(mode).mockReturnValueOnce(minutesSaved),
+				getInputData: vi.fn().mockReturnValue(items),
+				getNodeParameter: vi.fn().mockReturnValueOnce(mode).mockReturnValueOnce(minutesSaved),
 				continueOnFail: continueOnFailMock,
 				setMetadata,
-				getNode: jest.fn().mockReturnValue({ name: 'TimeSaved', type: 'timeSaved' }),
+				getNode: vi.fn().mockReturnValue({ name: 'TimeSaved', type: 'timeSaved' }),
 			}),
 			setMetadata,
 			continueOnFail: continueOnFailMock,

@@ -1,7 +1,8 @@
+import { InviteUsersRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { Project } from '@n8n/db';
 import {
+	Project,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -11,22 +12,30 @@ import {
 	User,
 	UserRepository,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
+import type { ExternalHooks } from '@/external-hooks';
+import type { License } from '@/license';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
+import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
+import { JwtService } from '../jwt.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
-import { JwtService } from '../jwt.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -36,6 +45,7 @@ describe('UserService', () => {
 		listen_address: '::',
 		protocol: 'http',
 		editorBaseUrl: '',
+		webhookUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
 	const manager = mock<EntityManager>();
@@ -50,8 +60,11 @@ describe('UserService', () => {
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
 	const projectService = mock<ProjectService>();
+	const eventService = mock<EventService>();
+	const license = mock<License>();
+	const externalHooks = mock<ExternalHooks>();
 	const jwtService = mockInstance(JwtService, {
-		sign: jest.fn().mockReturnValue('mock-jwt-token'),
+		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
 	const userService = new UserService(
 		mock(),
@@ -59,13 +72,17 @@ describe('UserService', () => {
 		projectRepository,
 		mailer,
 		urlService,
-		mock(),
+		eventService,
 		ownershipService,
 		publicApiKeyService,
 		roleService,
 		globalConfig,
 		jwtService,
 		projectService,
+		license,
+		externalHooks,
+		mock(),
+		mock(),
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -75,7 +92,7 @@ describe('UserService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Restore default transaction implementation after each test (because some mock it)
 		manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 			const runInTransaction = (arg2 ?? arg1) as (entityManager: EntityManager) => Promise<unknown>;
@@ -295,7 +312,10 @@ describe('UserService', () => {
 
 	describe('changeUserRole', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
+			// The new license guard calls isRoleLicensed; default it to licensed so the
+			// existing branch tests below exercise the role-change logic, not the guard.
+			roleService.isRoleLicensed.mockReturnValue(true);
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -498,6 +518,38 @@ describe('UserService', () => {
 				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 			);
 		});
+
+		it('assigns a custom global role when it is licensed', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' });
+
+			expect(roleService.isRoleLicensed).toHaveBeenCalledWith('global:custom-role-abc');
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:custom-role-abc' } },
+			);
+		});
+
+		it('rejects assigning a role that is not covered by the license', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+			roleService.isRoleLicensed.mockReturnValueOnce(false);
+
+			await expect(
+				userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(manager.update).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getInvitationIdsFromPayload', () => {
@@ -681,6 +733,239 @@ describe('UserService', () => {
 			await expect(userService.assertGetUsersAccess(member, 'unknown-project')).rejects.toThrow(
 				NotFoundError,
 			);
+		});
+	});
+
+	describe('getUser', () => {
+		it('looks up by id when the identifier is a uuid', async () => {
+			const id = uuid();
+			const user = Object.assign(new User(), {
+				id,
+				email: 'member@example.com',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			userRepository.findByIdWithRole.mockResolvedValue(user);
+
+			const result = await userService.getUser(id);
+
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith(id);
+			expect(result).toBe(user);
+		});
+
+		it('looks up by email when the identifier is not a uuid', async () => {
+			const user = Object.assign(new User(), {
+				id: uuid(),
+				email: 'member@example.com',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			userRepository.findByEmailWithRole.mockResolvedValue(user);
+
+			const result = await userService.getUser('member@example.com');
+
+			expect(userRepository.findByEmailWithRole).toHaveBeenCalledWith('member@example.com');
+			expect(result).toBe(user);
+		});
+	});
+
+	describe('getUsersAndCount', () => {
+		it('returns paginated users and the unfiltered total count', async () => {
+			const users = [
+				Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE }),
+				Object.assign(new User(), { id: uuid(), role: GLOBAL_OWNER_ROLE }),
+			];
+			userRepository.findManyByIds.mockResolvedValue(users);
+			userRepository.count.mockResolvedValue(10);
+
+			const ids = [users[0].id];
+			const { users: result, count } = await userService.getUsersAndCount({
+				limit: 2,
+				offset: 0,
+				ids,
+			});
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith(ids, {
+				includeRole: true,
+				offset: 0,
+				limit: 2,
+			});
+			expect(userRepository.count).toHaveBeenCalled();
+			expect(count).toBe(10);
+			expect(result).toEqual(users);
+		});
+
+		it('lists all users when no ids are given', async () => {
+			const users = [Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE })];
+			userRepository.findMany.mockResolvedValue(users);
+			userRepository.count.mockResolvedValue(1);
+
+			const { users: result, count } = await userService.getUsersAndCount({
+				limit: 10,
+				offset: 0,
+			});
+
+			expect(userRepository.findMany).toHaveBeenCalledWith({
+				includeRole: true,
+				offset: 0,
+				limit: 10,
+			});
+			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
+			expect(count).toBe(1);
+			expect(result).toEqual(users);
+		});
+	});
+
+	describe('inviteUser', () => {
+		const inviter = mock<User>({ id: '123', email: 'owner@example.com' });
+		const payload = new InviteUsersRequestDto({
+			email: 'valid@email.com',
+			role: 'global:member',
+		});
+
+		beforeEach(() => {
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			license.isWithinUsersLimit.mockReturnValue(true);
+			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
+			ownershipService.hasInstanceOwner.mockResolvedValue(true);
+		});
+
+		it('throws a BadRequestError if SSO is enabled', async () => {
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(BadRequestError);
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+			);
+		});
+
+		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
+			license.isWithinUsersLimit.mockReturnValue(false);
+
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(ForbiddenError);
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(
+				RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED,
+			);
+		});
+
+		it('throws a BadRequestError if the owner account is not set up', async () => {
+			ownershipService.hasInstanceOwner.mockResolvedValue(false);
+
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(BadRequestError);
+			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(
+				'You must set up your own account before inviting others',
+			);
+		});
+
+		it('throws a ForbiddenError when inviting an admin without advanced permissions', async () => {
+			license.isAdvancedPermissionsLicensed.mockReturnValue(false);
+			const adminPayload = new InviteUsersRequestDto({
+				email: 'admin@example.com',
+				role: 'global:admin',
+			});
+
+			await expect(userService.inviteUser(inviter, adminPayload)).rejects.toThrow(ForbiddenError);
+			await expect(userService.inviteUser(inviter, adminPayload)).rejects.toThrow(
+				'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
+			);
+		});
+
+		it('invites users and runs the invited hook', async () => {
+			const inviteUsersResult = {
+				usersInvited: [
+					{
+						user: {
+							id: '123',
+							email: 'valid@email.com',
+							emailSent: false,
+							role: 'global:member' as const,
+							inviteAcceptUrl: 'https://n8n.io/signup?inviterId=123&inviteeId=123',
+						},
+						error: '',
+					},
+				],
+				usersCreated: ['123'],
+			};
+			vi.spyOn(userService, 'inviteUsers').mockResolvedValue(inviteUsersResult);
+
+			await expect(userService.inviteUser(inviter, payload)).resolves.toEqual(
+				inviteUsersResult.usersInvited,
+			);
+			expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
+				{ email: 'valid@email.com', role: 'global:member' },
+			]);
+			expect(externalHooks.run).toHaveBeenCalledWith('user.invited', [
+				inviteUsersResult.usersCreated,
+			]);
+		});
+	});
+
+	describe('changeGlobalRole', () => {
+		const provisioningService = mock<ProvisioningService>();
+		let containerGetSpy: ReturnType<typeof vi.spyOn>;
+		let changeUserRoleSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+			containerGetSpy = vi.spyOn(Container, 'get').mockReturnValue(provisioningService);
+			changeUserRoleSpy = vi.spyOn(userService, 'changeUserRole').mockResolvedValue();
+		});
+
+		afterEach(() => {
+			containerGetSpy.mockRestore();
+		});
+
+		it('should emit event user-changed-role', async () => {
+			const actor = mock<User>({ id: '123', role: { slug: GLOBAL_OWNER_ROLE.slug } });
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({ id: '456', role: GLOBAL_MEMBER_ROLE }),
+			);
+
+			await userService.changeGlobalRole(actor, '456', { newRoleName: 'global:member' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('user-changed-role', {
+				userId: '123',
+				targetUserId: '456',
+				targetUserNewRole: 'global:member',
+				publicApi: false,
+			});
+		});
+
+		it('rejects an owner changing another owner, protecting the last owner', async () => {
+			const actor = mock<User>({ id: '123', role: { slug: GLOBAL_OWNER_ROLE.slug } });
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({ id: '456', role: { slug: GLOBAL_OWNER_ROLE.slug } }),
+			);
+
+			await expect(
+				userService.changeGlobalRole(actor, '456', { newRoleName: 'global:custom-role-abc' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(changeUserRoleSpy).not.toHaveBeenCalled();
+		});
+
+		it('rejects an admin changing an owner', async () => {
+			const actor = mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } });
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({ id: '456', role: { slug: GLOBAL_OWNER_ROLE.slug } }),
+			);
+
+			await expect(
+				userService.changeGlobalRole(actor, '456', { newRoleName: 'global:admin' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(changeUserRoleSpy).not.toHaveBeenCalled();
+		});
+
+		it('rejects a user changing their own global role', async () => {
+			const actor = mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } });
+			userRepository.findByIdWithRole.mockResolvedValue(
+				mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } }),
+			);
+
+			await expect(
+				userService.changeGlobalRole(actor, '123', { newRoleName: 'global:member' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(changeUserRoleSpy).not.toHaveBeenCalled();
 		});
 	});
 });

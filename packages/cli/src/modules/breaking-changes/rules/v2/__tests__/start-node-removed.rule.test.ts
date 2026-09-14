@@ -6,7 +6,7 @@ describe('StartNodeRemovedRule', () => {
 	let rule: StartNodeRemovedRule;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		rule = new StartNodeRemovedRule();
 	});
 

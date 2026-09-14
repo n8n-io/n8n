@@ -4,23 +4,26 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [public.test_run](public.test_run.md) [public.evaluation_collection](public.evaluation_collection.md) |  |  |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
-| name | varchar(128) |  | false |  |  |  |
-| status | varchar(16) | 'valid'::character varying | false |  |  |  |
-| invalidReason | varchar(64) |  | true |  |  |  |
-| datasetSource | varchar(32) |  | false |  |  |  |
-| datasetRef | json |  | false |  |  |  |
-| startNodeName | varchar(255) |  | false |  |  |  |
-| endNodeName | varchar(255) |  | false |  |  |  |
-| metrics | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| datasetRef | json |  | false |  |  |  |
+| datasetSource | varchar(32) |  | false |  |  |  |
+| endNodeName | varchar(255) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.evaluation_collection](public.evaluation_collection.md) [public.test_run](public.test_run.md) |  |  |
+| invalidReason | varchar(64) |  | true |  |  |  |
+| metrics | json |  | false |  |  |  |
+| name | varchar(128) |  | false |  |  |  |
+| startNodeName | varchar(255) |  | false |  |  |  |
+| status | varchar(16) | 'valid'::character varying | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_fd7542bb123074760285dc1bbf3 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_59c14dccf8989df94070c2dcfda | PRIMARY KEY | PRIMARY KEY (id) |
+| UQ_3c3c99a712e971835c52292e44c | UNIQUE | UNIQUE ("workflowId", name) |
 | evaluation_config_createdAt_not_null | n | NOT NULL "createdAt" |
 | evaluation_config_datasetRef_not_null | n | NOT NULL "datasetRef" |
 | evaluation_config_datasetSource_not_null | n | NOT NULL "datasetSource" |
@@ -32,91 +35,88 @@
 | evaluation_config_status_not_null | n | NOT NULL status |
 | evaluation_config_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | evaluation_config_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_fd7542bb123074760285dc1bbf3 | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| PK_59c14dccf8989df94070c2dcfda | PRIMARY KEY | PRIMARY KEY (id) |
-| UQ_3c3c99a712e971835c52292e44c | UNIQUE | UNIQUE ("workflowId", name) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_fd7542bb123074760285dc1bbf | CREATE INDEX "IDX_fd7542bb123074760285dc1bbf" ON public.evaluation_config USING btree ("workflowId") |
 | PK_59c14dccf8989df94070c2dcfda | CREATE UNIQUE INDEX "PK_59c14dccf8989df94070c2dcfda" ON public.evaluation_config USING btree (id) |
 | UQ_3c3c99a712e971835c52292e44c | CREATE UNIQUE INDEX "UQ_3c3c99a712e971835c52292e44c" ON public.evaluation_config USING btree ("workflowId", name) |
-| IDX_fd7542bb123074760285dc1bbf | CREATE INDEX "IDX_fd7542bb123074760285dc1bbf" ON public.evaluation_config USING btree ("workflowId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.test_run" }o--o| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE SET NULL"
 "public.evaluation_collection" }o--|| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE CASCADE"
+"public.test_run" }o--o| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE SET NULL"
 "public.evaluation_config" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.evaluation_config" {
-  varchar_36_ id
-  varchar_36_ workflowId FK
-  varchar_128_ name
-  varchar_16_ status
-  varchar_64_ invalidReason
-  varchar_32_ datasetSource
+  timestamp_3__with_time_zone createdAt
   json datasetRef
-  varchar_255_ startNodeName
+  varchar_32_ datasetSource
   varchar_255_ endNodeName
-  json metrics
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.test_run" {
   varchar_36_ id
-  varchar_36_ workflowId FK
-  varchar status
-  varchar errorCode
-  json errorDetails
-  timestamp_3__with_time_zone runAt
-  timestamp_3__with_time_zone completedAt
+  varchar_64_ invalidReason
   json metrics
-  timestamp_3__with_time_zone createdAt
+  varchar_128_ name
+  varchar_255_ startNodeName
+  varchar_16_ status
   timestamp_3__with_time_zone updatedAt
-  varchar_255_ runningInstanceId
-  boolean cancelRequested
-  varchar_36_ workflowVersionId
-  varchar_36_ evaluationConfigId FK
-  jsonb evaluationConfigSnapshot
-  varchar_36_ collectionId FK
+  varchar_36_ workflowId FK
 }
 "public.evaluation_collection" {
-  varchar_36_ id
-  varchar_128_ name
-  text description
-  varchar_36_ workflowId FK
-  varchar_36_ evaluationConfigId FK
-  uuid createdById FK
-  json insightsCache
   timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  text description
+  varchar_36_ evaluationConfigId FK
+  varchar_36_ id
+  json insightsCache
+  varchar_128_ name
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.test_run" {
+  boolean cancelRequested
+  varchar_36_ collectionId FK
+  timestamp_3__with_time_zone completedAt
+  timestamp_3__with_time_zone createdAt
+  varchar errorCode
+  json errorDetails
+  varchar_36_ evaluationConfigId FK
+  jsonb evaluationConfigSnapshot
+  varchar_36_ id
+  json metrics
+  timestamp_3__with_time_zone runAt
+  varchar_255_ runningInstanceId
+  varchar status
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

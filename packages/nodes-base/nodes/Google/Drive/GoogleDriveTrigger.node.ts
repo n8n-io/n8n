@@ -7,6 +7,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	Failure,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
@@ -443,7 +444,10 @@ export class GoogleDriveTrigger implements INodeType {
 
 		const query = ['trashed = false'];
 
-		if (triggerOn === 'specificFolder' && event !== 'watchFolderUpdated') {
+		const queryTargetsWatchedFolder =
+			triggerOn === 'specificFolder' && event !== 'watchFolderUpdated';
+
+		if (queryTargetsWatchedFolder) {
 			const folderToWatch = extractId(
 				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
 			);
@@ -479,12 +483,36 @@ export class GoogleDriveTrigger implements INodeType {
 
 		let files;
 
-		if (this.getMode() === 'manual') {
-			qs.pageSize = 1;
-			files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
-			files = files.files;
-		} else {
-			files = await googleApiRequestAllItems.call(this, 'files', 'GET', '/drive/v3/files', {}, qs);
+		try {
+			if (this.getMode() === 'manual') {
+				qs.pageSize = 1;
+				files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+				files = files.files;
+			} else {
+				files = await googleApiRequestAllItems.call(
+					this,
+					'files',
+					'GET',
+					'/drive/v3/files',
+					{},
+					qs,
+				);
+			}
+		} catch (error) {
+			if (!(error instanceof NodeApiError)) {
+				throw error;
+			}
+
+			const failure = driveFailureFromError(error, queryTargetsWatchedFolder);
+			if (failure) {
+				error.failure = failure;
+				// A 404 is only classified when the query filters on the watched folder.
+				if (error.httpCode === '404') {
+					error.message =
+						'The folder this node watches no longer exists. Please update it in the workflow.';
+				}
+			}
+			throw error;
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
@@ -519,4 +547,82 @@ export class GoogleDriveTrigger implements INodeType {
 
 		return null;
 	}
+}
+
+const DAILY_QUOTA_TIMEZONE = 'America/Los_Angeles';
+
+const RATE_LIMIT_REASONS = [
+	'rateLimitExceeded',
+	'userRateLimitExceeded',
+	'sharingRateLimitExceeded',
+];
+
+const NESTED_ERROR_KEYS = ['cause', 'errorResponse', 'error', 'errors', 'response', 'body', 'data'];
+
+function collectGoogleErrorReasons(
+	value: unknown,
+	reasons = new Set<string>(),
+	seen = new WeakSet<object>(),
+	depth = 0,
+): Set<string> {
+	if (depth > 6 || typeof value !== 'object' || value === null || seen.has(value)) {
+		return reasons;
+	}
+	seen.add(value);
+
+	if (Array.isArray(value)) {
+		for (const entry of value) {
+			collectGoogleErrorReasons(entry, reasons, seen, depth + 1);
+		}
+		return reasons;
+	}
+
+	const record = value as IDataObject;
+	if (typeof record.reason === 'string') {
+		reasons.add(record.reason);
+	}
+	for (const key of NESTED_ERROR_KEYS) {
+		collectGoogleErrorReasons(record[key], reasons, seen, depth + 1);
+	}
+
+	return reasons;
+}
+
+/**
+ * Why a failed Drive API call failed, or `null` for anything this node cannot
+ * classify with confidence.
+ */
+function driveFailureFromError(
+	error: NodeApiError,
+	queryTargetsWatchedFolder: boolean,
+): Failure | null {
+	if (error.httpCode === '401') {
+		return { cause: 'credential-invalid' };
+	}
+
+	if (error.httpCode === '429') {
+		return { cause: 'rate-limited' };
+	}
+
+	if (error.httpCode === '403') {
+		const reasons = collectGoogleErrorReasons(error);
+		if (RATE_LIMIT_REASONS.some((reason) => reasons.has(reason))) {
+			return { cause: 'rate-limited' };
+		}
+		if (reasons.has('dailyLimitExceeded')) {
+			return { cause: 'quota-exhausted', resetsAtEpochMs: nextDailyQuotaReset() };
+		}
+		return null;
+	}
+
+	if (error.httpCode === '404' && queryTargetsWatchedFolder) {
+		return { cause: 'configuration-invalid' };
+	}
+
+	return null;
+}
+
+/** Google Drive daily quotas reset at midnight Pacific Time. Unix epoch ms. */
+function nextDailyQuotaReset(): number {
+	return moment.tz(DAILY_QUOTA_TIMEZONE).add(1, 'day').startOf('day').valueOf();
 }

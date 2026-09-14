@@ -2,8 +2,11 @@ import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ProjectHeader } from './components/ProjectHeader';
 
 export class ProjectSettingsPage extends BasePage {
+	readonly projectHeader = new ProjectHeader(this.page);
+
 	async goto(projectId: string) {
 		await this.page.goto(`/projects/${projectId}/settings`);
 	}
@@ -62,13 +65,38 @@ export class ProjectSettingsPage extends BasePage {
 		return this.page.getByTestId('project-members-table');
 	}
 
+	getMemberRows(): Locator {
+		return this.getMembersTable().locator('tbody tr');
+	}
+
+	getMembersTableHeader(name: string): Locator {
+		return this.getMembersTable().getByText(name);
+	}
+
+	getMemberRoleDropdownForRow(row: Locator): Locator {
+		return row.getByTestId('project-member-role-dropdown');
+	}
+
+	getMemberRoleTextForRow(row: Locator, role: string): Locator {
+		return row.getByText(role);
+	}
+
 	async expectTableHasMemberCount(expectedCount: number) {
-		const rows = this.getMembersTable().locator('tbody tr');
-		await expect(rows).toHaveCount(expectedCount);
+		await expect(this.getMemberRows()).toHaveCount(expectedCount);
+	}
+
+	getDangerZoneTitle(): Locator {
+		return this.page.getByText('Danger zone');
+	}
+
+	getDangerZoneDescription(): Locator {
+		return this.page.getByText(
+			'When deleting a project, you can also choose to move all workflows and credentials to another project.',
+		);
 	}
 
 	getTitle() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	// Robust value assertions on inner form controls
@@ -101,6 +129,10 @@ export class ProjectSettingsPage extends BasePage {
 	// Icon picker methods
 	getIconPickerButton() {
 		return this.page.getByTestId('icon-picker-button');
+	}
+
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
 	}
 
 	async clickIconPickerButton() {

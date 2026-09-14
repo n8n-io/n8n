@@ -9,7 +9,7 @@
  * `executionData.store.test.ts`. These tests verify the shape of the canvas
  * output and that renderData values flow into the right fields.
  */
-import type { ITaskData, IConnections } from 'n8n-workflow';
+import type { ITaskData, IConnections, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
@@ -18,10 +18,12 @@ import {
 	type CanvasRenderData,
 } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
+import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -275,6 +277,159 @@ describe('useCanvasMapping — mapped nodes', () => {
 	});
 });
 
+describe('useCanvasMapping — node display sizes', () => {
+	it('uses the agent card width and measured height for Message an Agent nodes', () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Message an Agent',
+			type: CanvasNodeRenderType.Agent,
+		}) as INodeUi;
+		const measuredHeight = ref<number | undefined>();
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Agent,
+			options: {},
+		};
+		rd.renderTypeByNodeId.set(
+			agent.id,
+			computed(() => render),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([agent]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+			getAgentNodeHeight: () => measuredHeight.value,
+		});
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: AGENT_NODE_SIZE[1],
+		});
+
+		measuredHeight.value = 224;
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: 224,
+		});
+	});
+});
+
+describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
+	it('reads hasExecutionError from executionIssuesByNodeId (single-node parity)', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		rd.executionIssuesByNodeId.set(
+			'a',
+			computed(() => ['Boom']),
+		);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		const snapshot = getNodeExecutionSnapshot('a');
+		expect(snapshot.hasExecutionError).toBe(true);
+		expect(snapshot.hasValidationError).toBe(false);
+	});
+
+	it('reads hasValidationError without flagging an execution error', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		rd.validationErrorsByNodeId.set(
+			'a',
+			computed(() => ['Missing parameter']),
+		);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		const snapshot = getNodeExecutionSnapshot('a');
+		expect(snapshot.hasValidationError).toBe(true);
+		expect(snapshot.hasExecutionError).toBe(false);
+	});
+
+	it.each(['error', 'crashed'] as const)(
+		'flags hasExecutionError on %s status even without execution-issue text',
+		(status) => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			setStatus(rd, 'a', status);
+
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+		},
+	);
+
+	it('flags hasExecutionError from a last-task error when no issue text exists', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		setRunData(rd, 'a', [{ error: { message: 'Boom' } } as unknown as ITaskData]);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+	});
+
+	describe('iterations', () => {
+		function getIterations(tasks: ITaskData[] | null | undefined) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			if (tasks !== undefined) {
+				setRunData(rd, 'a', tasks);
+			}
+
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			return getNodeExecutionSnapshot('a').iterations;
+		}
+
+		function task(executionStatus: ITaskData['executionStatus']) {
+			return { executionStatus } as ITaskData;
+		}
+
+		it('is 0 when the node has no run data', () => {
+			expect(getIterations(undefined)).toBe(0);
+			expect(getIterations(null)).toBe(0);
+		});
+
+		it('is 0 for an empty task list', () => {
+			expect(getIterations([])).toBe(0);
+		});
+
+		it('counts every task when none was canceled', () => {
+			expect(getIterations([task('success'), task('success'), task('error')])).toBe(3);
+		});
+
+		it('is 0 when every task was canceled', () => {
+			expect(getIterations([task('canceled'), task('canceled'), task('canceled')])).toBe(0);
+		});
+
+		it('skips only the canceled tasks', () => {
+			expect(getIterations([task('success'), task('canceled'), task('error')])).toBe(2);
+		});
+	});
+});
+
 describe('useCanvasMapping — mapped connections', () => {
 	function makeWorkflow(connections: IConnections, nodes: INodeUi[] = []) {
 		const alpha = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
@@ -355,6 +510,46 @@ describe('useCanvasMapping — mapped connections', () => {
 		});
 
 		expect(mapped.value[0].data?.status).toBe('pinned');
+	});
+
+	it('marks the connection as "pinned" when source has execution pin data and run data', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+		rd.executionPinDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { ok: true } }]),
+		);
+		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
+
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(rd),
+		});
+
+		expect(mapped.value[0].data?.status).toBe('pinned');
+	});
+
+	it('does not mark a connection as pinned from workflow pin data while displaying an execution', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+		rd.pinnedDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { stale: true } }]),
+		);
+		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
+
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(rd),
+		});
+
+		expect(mapped.value[0].data?.status).not.toBe('pinned');
 	});
 
 	it('marks the connection as "success" when source produced run data and target has run data too', () => {
@@ -515,6 +710,136 @@ describe('useCanvasMapping — mapped connections', () => {
 			});
 
 			expect(mapped.value[0].data?.status).toBe('running');
+		});
+	});
+
+	describe('collapsed group merged edge status', () => {
+		// Two grouped nodes feeding the same external input merge into a single
+		// edge when the group is collapsed; the edge must surface the
+		// highest-priority status among the underlying connections.
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['m1', 'm2'] };
+		const collapsedView = { isGroupCollapsed: () => true } as unknown as CanvasNodeGroupView;
+
+		function fanInWorkflow() {
+			const m1 = createTestNode({ id: 'm1', name: 'M1' }) as INodeUi;
+			const m2 = createTestNode({ id: 'm2', name: 'M2' }) as INodeUi;
+			const external = createTestNode({ id: 'x', name: 'X' }) as INodeUi;
+			const connections: IConnections = {
+				M1: { main: [[{ node: 'X', type: NodeConnectionTypes.Main, index: 0 }]] },
+				M2: { main: [[{ node: 'X', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+			return { nodes: [m1, m2, external], connections };
+		}
+
+		it('surfaces the status of a non-first merged connection (only the second member ran)', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'm2', [{ executionStatus: 'success' } as ITaskData]);
+			rd.executionRunDataOutputMapByNodeId.set('m2', {
+				main: { '0': { total: 1, iterations: 1 } },
+			});
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value).toHaveLength(1);
+			expect(mapped.value[0].source).toBe('group:g1');
+			expect(mapped.value[0].target).toBe('x');
+			expect(mapped.value[0].data?.status).toBe('success');
+		});
+
+		it('picks the highest-priority status across merged connections, not the first one', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			// Both members ran, the second one is pinned — pinned outranks success,
+			// so it must win even though the first connection comes first.
+			setRunData(rd, 'm1', [{ executionStatus: 'success' } as ITaskData]);
+			setRunData(rd, 'm2', [{ executionStatus: 'success' } as ITaskData]);
+			rd.executionRunDataOutputMapByNodeId.set('m1', {
+				main: { '0': { total: 1, iterations: 1 } },
+			});
+			rd.executionRunDataOutputMapByNodeId.set('m2', {
+				main: { '0': { total: 1, iterations: 1 } },
+			});
+			rd.pinnedDataByNodeId.set(
+				'm2',
+				computed(() => [{ json: {} }]),
+			);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value).toHaveLength(1);
+			expect(mapped.value[0].data?.status).toBe('pinned');
+		});
+
+		it('resolves the item-count label through the canonical source (not the group id)', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'm1', [{ executionStatus: 'success' } as ITaskData]);
+			rd.executionRunDataOutputMapByNodeId.set('m1', {
+				main: { '0': { total: 5, iterations: 1 } },
+			});
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value).toHaveLength(1);
+			expect(mapped.value[0].source).toBe('group:g1');
+			expect(mapped.value[0].label).toBe('5 items');
+		});
+
+		it('resolves the pinned item-count label through the canonical source', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			rd.pinnedDataByNodeId.set(
+				'm1',
+				computed(() => [{ json: {} }, { json: {} }]),
+			);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value[0].label).toBe('2 items');
+		});
+
+		it('does not show item-count label from workflow pin data while displaying an execution', () => {
+			const { allNodes, connections } = makeWorkflow({
+				Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+			});
+			const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
+			rd.pinnedDataByNodeId.set(
+				'a',
+				computed(() => [{ json: { x: 1 } }, { json: { x: 2 } }]),
+			);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].label).toBe('');
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { type MockProxy, mock } from 'jest-mock-extended';
+import { type MockProxy, mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import {
@@ -19,7 +19,7 @@ describe('Slack Utility Functions', () => {
 		mockExecuteFunctions.getSignedResumeUrl.mockReturnValueOnce(
 			'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
 		);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('toMultiOptionsCsv', () => {

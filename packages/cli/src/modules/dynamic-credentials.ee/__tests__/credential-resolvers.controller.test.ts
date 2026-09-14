@@ -1,7 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { CredentialResolverValidationError } from '@n8n/decorators';
+import { CredentialResolverValidationError, type ICredentialResolver } from '@n8n/decorators';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -23,7 +24,7 @@ describe('CredentialResolversController', () => {
 	const res = mock<Response>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('listResolvers', () => {
@@ -62,6 +63,86 @@ describe('CredentialResolversController', () => {
 
 			expect(result[0]).not.toHaveProperty('decryptedConfig');
 			expect(result[0].config).toBe('');
+		});
+	});
+
+	describe('secret redaction', () => {
+		const secretTypeMetadata = [
+			{
+				metadata: {
+					name: 'credential-resolver.slack-1.0',
+					description: 'Slack resolver',
+					options: [
+						{
+							displayName: 'Signing Secret',
+							name: 'signingSecret',
+							type: 'string',
+							typeOptions: { password: true },
+						},
+						{ displayName: 'Subject Claim', name: 'subjectClaim', type: 'options' },
+					],
+				},
+			},
+		] as unknown as ICredentialResolver[];
+
+		const secretResolver = {
+			id: 'row-id',
+			name: 'Slack Resolver',
+			type: 'credential-resolver.slack-1.0',
+			config: 'encrypted',
+			decryptedConfig: { signingSecret: 'REAL-SECRET', subjectClaim: 'user_id' },
+			createdAt: new Date('2024-01-01'),
+			updatedAt: new Date('2024-01-01'),
+		} as unknown as DynamicCredentialResolver;
+
+		beforeEach(() => {
+			service.getAvailableTypes.mockReturnValue(secretTypeMetadata);
+		});
+
+		it('getResolver blanks password-typed fields but keeps non-secret fields', async () => {
+			service.findById.mockResolvedValue(secretResolver);
+
+			const result = await controller.getResolver(req, res, 'row-id');
+
+			expect(result.decryptedConfig?.signingSecret).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(result.decryptedConfig?.subjectClaim).toBe('user_id');
+			expect(result.config).toBe('');
+		});
+
+		it('createResolver blanks password-typed fields in the response', async () => {
+			service.create.mockResolvedValue(secretResolver);
+
+			const result = await controller.createResolver(req, res, {
+				name: 'Slack Resolver',
+				type: 'credential-resolver.slack-1.0',
+				config: { signingSecret: 'REAL-SECRET', subjectClaim: 'user_id' },
+			});
+
+			expect(result.decryptedConfig?.signingSecret).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(result.decryptedConfig?.subjectClaim).toBe('user_id');
+		});
+
+		it('updateResolver blanks password-typed fields in the response', async () => {
+			service.update.mockResolvedValue(secretResolver);
+
+			const result = await controller.updateResolver(req, res, 'row-id', {
+				config: { signingSecret: CREDENTIAL_BLANKING_VALUE, subjectClaim: 'user_id' },
+			});
+
+			expect(result.decryptedConfig?.signingSecret).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(result.decryptedConfig?.subjectClaim).toBe('user_id');
+		});
+
+		it('getResolver drops the decrypted config when the resolver type is not registered', async () => {
+			service.findById.mockResolvedValue({
+				...secretResolver,
+				type: 'credential-resolver.unregistered-9.9',
+			} as unknown as DynamicCredentialResolver);
+
+			const result = await controller.getResolver(req, res, 'row-id');
+
+			expect(result.decryptedConfig).toBeUndefined();
+			expect(result.config).toBe('');
 		});
 	});
 

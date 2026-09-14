@@ -9,15 +9,15 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { retryUntil } from '@test-integration/retry-until';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createOwner } from '../shared/db/users';
-
 import { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { retryUntil } from '@test-integration/retry-until';
+
+import { createOwner } from '../shared/db/users';
 
 let workflowIndexService: WorkflowIndexService;
 let eventService: EventService;
@@ -335,6 +335,8 @@ describe('WorkflowIndexService Integration', () => {
 			eventService.emit('workflow-deleted', {
 				user: createUserPayload(owner),
 				workflowId: workflow.id,
+				workflowName: workflow.name,
+				projectId: undefined,
 				publicApi: false,
 			});
 

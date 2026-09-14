@@ -4,10 +4,11 @@
  * properly distinguishing between root executions and subworkflow executions.
  *
  * This test actually executes workflows (not just mocking) to ensure end-to-end correctness.
- * It configures the system for fast compaction and waits for automatic processing.
+ * It configures the system for fast flushing and drives compaction explicitly.
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -15,7 +16,6 @@ import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
 import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -30,7 +30,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// Configure insights for fast flushing and compaction BEFORE loading modules
 		process.env.N8N_INSIGHTS_FLUSH_BATCH_SIZE = '10'; // Flush after 10 events
 		process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
-		process.env.N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES = '0.05'; // Compact every ~3 seconds
 		process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
 
 		await testModules.loadModules(['insights']);
@@ -69,7 +68,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsCompactionService: InsightsCompactionService;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
-	let insightsRawRepository: InsightsRawRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflowRunner: WorkflowRunner;
 	let executionRepository: ExecutionRepository;
@@ -89,21 +87,12 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCollectionService = Container.get(InsightsCollectionService);
 		insightsCompactionService = Container.get(InsightsCompactionService);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsRawRepository = Container.get(InsightsRawRepository);
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 		workflowRunner = Container.get(WorkflowRunner);
 		executionRepository = Container.get(ExecutionRepository);
 
 		// Initialize insights collection service (config already set via env vars)
 		insightsCollectionService.init();
-
-		// Start automatic compaction timer
-		insightsCompactionService.startCompactionTimer();
-	});
-
-	afterAll(() => {
-		// Stop compaction timer
-		insightsCompactionService.stopCompactionTimer();
 	});
 
 	beforeEach(async () => {
@@ -149,8 +138,15 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expectedCount: number,
 		timeout = 10000,
 	): Promise<void> {
+		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
+			if (isPostgres) {
+				await workflowStatisticsRepository.rollupIncrements(
+					workflowStatisticsRepository.manager,
+					10_000,
+				);
+			}
 			const stats = await workflowStatisticsRepository.findOne({
 				where: {
 					workflowId,
@@ -168,14 +164,25 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	}
 
 	/**
-	 * Helper to wait for insights to be compacted (raw insights cleared and compacted data available)
+	 * Helper to compact insights and wait for the result.
+	 *
+	 * Runs a compaction pass per poll (the periodic cadence lives on the `insights-compaction`
+	 * system task, which is not running here) and polls until the compacted success count
+	 * reaches the expected total. Waiting on the terminal count (rather than "some compacted
+	 * data exists and raw is drained") avoids a race where events still buffered in the
+	 * collection service haven't been flushed to InsightsRaw yet, so compaction runs on a
+	 * partial set and the count comes up short.
 	 */
-	async function waitForCompaction(workflowId: string, timeout = 10000): Promise<void> {
+	async function waitForCompaction(
+		workflowId: string,
+		expectedSuccessCount: number,
+		timeout = 20000,
+	): Promise<void> {
+		const controller = new AbortController();
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			// Check if raw insights have been compacted (should be low or zero)
-			const rawInsights = await insightsRawRepository.find();
-			// Check if compacted insights exist for this workflow
+			await insightsCompactionService.compactInsights(controller.signal);
+
 			const compactedInsights = await insightsByPeriodRepository.find({
 				where: {
 					metadata: { workflowId },
@@ -183,13 +190,18 @@ describe('Insights vs Workflow Statistics Integration', () => {
 				relations: ['metadata'],
 			});
 
-			// Compaction is done if we have compacted data and few/no raw insights
-			if (compactedInsights.length > 0 && rawInsights.length < 10) {
+			const successCount = compactedInsights
+				.filter((insight) => insight.type === 'success')
+				.reduce((sum, insight) => sum + insight.value, 0);
+
+			if (successCount >= expectedSuccessCount) {
 				return;
 			}
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
-		throw new Error(`Insights compaction did not complete within ${timeout}ms`);
+		throw new Error(
+			`Insights compaction did not reach ${expectedSuccessCount} successes within ${timeout}ms`,
+		);
 	}
 
 	/**
@@ -229,8 +241,8 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// Wait for workflow statistics to be recorded
 		await waitForStatistics(workflow.id, 10);
 
-		// Wait for automatic compaction to complete
-		await waitForCompaction(workflow.id);
+		// Compact and wait for the result
+		await waitForCompaction(workflow.id, 10);
 
 		// ============================================================
 		// ASSERT: Query workflow statistics
@@ -274,5 +286,46 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const insights1TimeSaved = allInsights1.filter((insight) => insight.type === 'time_saved_min');
 		const totalTimeSaved1 = insights1TimeSaved.reduce((sum, insight) => sum + insight.value, 0);
 		expect(totalTimeSaved1).toBe(10 * 5); // 10 executions * 5 minutes saved per execution
+	}, 60000);
+
+	test('should keep billable insights in sync with root production executions', async () => {
+		const executionCount = 10;
+		const executionIds: string[] = [];
+		for (let i = 0; i < executionCount; i++) {
+			executionIds.push(await executeWorkflow(workflow, 'webhook'));
+		}
+
+		await Promise.all(executionIds.map(async (id) => await waitForExecution(id)));
+		await waitForStatistics(workflow.id, executionCount);
+		await waitForCompaction(workflow.id, executionCount);
+
+		const productionSuccess = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionSuccess,
+			},
+		});
+		const productionError = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionError,
+			},
+		});
+
+		const rootProductionCount =
+			(productionSuccess?.rootCount ?? 0) + (productionError?.rootCount ?? 0);
+
+		const compactedInsights = await insightsByPeriodRepository.find({
+			where: {
+				metadata: { workflowId: workflow.id },
+			},
+			relations: ['metadata'],
+		});
+		const billableCount = compactedInsights
+			.filter((insight) => insight.type === 'billable')
+			.reduce((sum, insight) => sum + insight.value, 0);
+
+		expect(rootProductionCount).toBe(executionCount);
+		expect(billableCount).toBe(rootProductionCount);
 	}, 60000);
 });

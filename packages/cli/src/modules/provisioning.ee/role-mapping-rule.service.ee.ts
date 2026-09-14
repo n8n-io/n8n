@@ -4,6 +4,7 @@ import {
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
 import {
+	isUniqueConstraintError,
 	ProjectRepository,
 	RoleMappingRule,
 	RoleMappingRuleRepository,
@@ -17,6 +18,8 @@ import type { z } from 'zod';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
@@ -47,6 +50,7 @@ export class RoleMappingRuleService {
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	async list(query: ListRoleMappingRuleQueryInput): Promise<RoleMappingRuleListResponse> {
@@ -80,7 +84,7 @@ export class RoleMappingRuleService {
 		};
 	}
 
-	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	async create(dto: CreateRoleMappingRuleInput, user: UserLike): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
 
 		const role = await this.roleRepository.findOne({ where: { slug: dto.role } });
@@ -99,47 +103,93 @@ export class RoleMappingRuleService {
 			throw new BadRequestError('One or more projects were not found');
 		}
 
-		const existingRules = await this.roleMappingRuleRepository.find({
-			where: { type: dto.type },
-			select: ['id', 'order'],
-			order: { order: 'ASC' },
-		});
-
-		// Clamp the requested index into the valid range. Omitted order appends.
-		const requestedOrder = dto.order ?? existingRules.length;
-		const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
-
-		// Save the new rule at a temporary order beyond any currently-used slot,
-		// so the unique (type, order) constraint cannot fire on the initial insert.
-		const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
-		const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
-
-		const rule = new RoleMappingRule();
-		rule.expression = dto.expression;
-		rule.role = role;
-		rule.type = dto.type;
-		rule.order = tempOrder;
-		rule.projects = projects;
-
-		const saved = await this.roleMappingRuleRepository.save(rule);
-
-		// Build the final ordering: existing rules in their current order, with the
-		// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
-		// everything to [0..n-1] using its two-phase transaction.
-		const reorderedIds = existingRules.map((r) => r.id);
-		reorderedIds.splice(targetIndex, 0, saved.id);
-
-		await this.applyOrder(reorderedIds);
+		const saved = await this.saveWithOrderRetry(dto, role, projects);
 
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-created', {
+			user: { id: user.id, email: user.email },
+			ruleId: result.id,
+			ruleType: result.type,
+			expression: result.expression,
+			role: result.role,
+		});
+
+		return result;
 	}
 
-	async patch(id: string, dto: PatchRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
+	private async saveWithOrderRetry(
+		dto: CreateRoleMappingRuleInput,
+		role: RoleMappingRule['role'],
+		projects: RoleMappingRule['projects'],
+	): Promise<RoleMappingRule> {
+		const maxAttempts = 3;
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			const existingRules = await this.roleMappingRuleRepository.find({
+				where: { type: dto.type },
+				select: ['id', 'order'],
+				order: { order: 'ASC' },
+			});
+
+			// Clamp the requested index into the valid range. Omitted order appends.
+			const requestedOrder = dto.order ?? existingRules.length;
+			const targetIndex = Math.min(Math.max(requestedOrder, 0), existingRules.length);
+
+			// Save the new rule at a temporary order beyond any currently-used slot,
+			// so the unique (type, order) constraint cannot fire on the initial insert
+			// unless another create for the same type uses the same snapshot concurrently.
+			const maxOrder =
+				existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
+			const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
+
+			const rule = new RoleMappingRule();
+			rule.expression = dto.expression;
+			rule.role = role;
+			rule.type = dto.type;
+			rule.order = tempOrder;
+			rule.projects = projects;
+
+			try {
+				const saved = await this.roleMappingRuleRepository.save(rule);
+
+				// Build the final ordering: existing rules in their current order, with the
+				// newly saved rule spliced in at targetIndex. applyOrder atomically renumbers
+				// everything to [0..n-1] using its two-phase transaction.
+				const reorderedIds = existingRules.map((r) => r.id);
+				reorderedIds.splice(targetIndex, 0, saved.id);
+
+				await this.applyOrder(reorderedIds);
+
+				return saved;
+			} catch (error) {
+				if (attempt < maxAttempts - 1 && isUniqueConstraintError(error)) {
+					continue;
+				}
+
+				throw error;
+			}
+		}
+
+		throw new ConflictError('Could not create role mapping rule due to an order conflict');
+	}
+
+	async patch({
+		id,
+		dto,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		dto: PatchRoleMappingRuleInput;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -210,24 +260,52 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-updated', {
+			user: { id: userId, email: userEmail },
+			ruleId: result.id,
+			ruleType: result.type,
+			patchedFields: Object.keys(dto),
+		});
+
+		return result;
 	}
 
-	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {
+	async delete({
+		id,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
 
-		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
 
 		if (!rule) {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const ruleType = rule.type as 'instance' | 'project';
+		const result = this.toResponse(rule);
+
 		await this.roleMappingRuleRepository.remove(rule);
-		await this.normalizeOrderForType(ruleType);
-		return { ruleType };
+		await this.normalizeOrderForType(result.type);
+
+		this.eventService.emit('role-mapping-rule-deleted', {
+			user: { id: userId, email: userEmail },
+			ruleId: id,
+			ruleType: result.type,
+		});
+
+		return result;
 	}
 
 	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
@@ -236,7 +314,17 @@ export class RoleMappingRuleService {
 		return result.affected ?? 0;
 	}
 
-	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+	async move({
+		id,
+		targetIndex,
+		userId,
+		userEmail,
+	}: {
+		id: string;
+		targetIndex: number;
+		userId: string;
+		userEmail?: string;
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -272,7 +360,16 @@ export class RoleMappingRuleService {
 			relations: ['projects', 'role'],
 		});
 
-		return this.toResponse(loaded);
+		const result = this.toResponse(loaded);
+
+		this.eventService.emit('role-mapping-rule-updated', {
+			user: { id: userId, email: userEmail },
+			ruleId: result.id,
+			ruleType: result.type,
+			patchedFields: ['order'],
+		});
+
+		return result;
 	}
 
 	private async applyOrder(orderedIds: string[]): Promise<void> {

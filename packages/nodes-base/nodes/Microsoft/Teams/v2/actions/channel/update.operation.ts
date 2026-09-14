@@ -3,7 +3,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { channelRLC, teamRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	teamRLC,
@@ -64,7 +64,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/v1.0/teams/${teamId}/channels/${channelId}`,
+		buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels/', { id: channelId }]),
 		body,
 	);
 	return { success: true };

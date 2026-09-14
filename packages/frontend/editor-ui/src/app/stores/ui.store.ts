@@ -1,107 +1,41 @@
-import {
-	ABOUT_MODAL_KEY,
-	CHAT_EMBED_MODAL_KEY,
-	CHANGE_PASSWORD_MODAL_KEY,
-	DUPLICATE_MODAL_KEY,
-	IMPORT_CURL_MODAL_KEY,
-	LOG_STREAM_MODAL_KEY,
-	MFA_SETUP_MODAL_KEY,
-	NPS_SURVEY_MODAL_KEY,
-	VERSIONS_MODAL_KEY,
-	VIEWS,
-	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-	WORKFLOW_SHARE_MODAL_KEY,
-	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
-	DELETE_SECRETS_PROVIDER_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
-	SETUP_CREDENTIALS_MODAL_KEY,
-	NEW_ASSISTANT_SESSION_MODAL,
-	PROMPT_MFA_CODE_MODAL_KEY,
-	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
-	FROM_AI_PARAMETERS_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
-	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
-	LOCAL_STORAGE_THEME,
-	LOCAL_STORAGE_SIDEBAR_WIDTH,
-	WHATS_NEW_MODAL_KEY,
-	WORKFLOW_DIFF_MODAL_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
-	CONFIRM_PASSWORD_MODAL_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	WORKFLOW_PUBLISH_MODAL_KEY,
-	BINARY_DATA_VIEW_MODAL_KEY,
-	STOP_MANY_EXECUTIONS_MODAL_KEY,
-	WORKFLOW_DESCRIPTION_MODAL_KEY,
-	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
-	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
-	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
-	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-	AI_BUILDER_DIFF_MODAL_KEY,
-	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
-	AI_GATEWAY_TOP_UP_MODAL_KEY,
-	AGENT_CONFIRMATION_MODAL_KEY,
-} from '@/app/constants';
-import {
-	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
-	TAGS_MANAGER_MODAL_KEY,
-} from '@/features/shared/tags/tags.constants';
-import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
-import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
-import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
-import {
-	CREDENTIAL_EDIT_MODAL_KEY,
-	CREDENTIAL_SELECT_MODAL_KEY,
-} from '@/features/credentials/credentials.constants';
-import {
-	DELETE_USER_MODAL_KEY,
-	INVITE_USER_MODAL_KEY,
-	PERSONALIZATION_MODAL_KEY,
-} from '@/features/settings/users/users.constants';
+import { VIEWS, LOCAL_STORAGE_THEME, LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { DELETE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';
 import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
 import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
-	SOURCE_CONTROL_PULL_MODAL_KEY,
-	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
-} from '@/features/integrations/sourceControl.ee/sourceControl.constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/features/settings/communityNodes/communityNodes.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
-	NotificationOptions,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
 	INodeUi,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
-import { computed, ref } from 'vue';
+import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
+import { computed, ref, watch } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -115,6 +49,54 @@ try {
 
 type UiStore = ReturnType<typeof useUIStore>;
 
+/** State a modal key resolves to while it is not registered. */
+const CLOSED_MODAL_STATE: ModalState = Object.freeze({ open: false });
+
+/**
+ * Read-only view of `source` in which an unknown key reads as `fallback` instead
+ * of `undefined`. Modals register at different points in the boot sequence (shell
+ * keys eagerly, module keys post-login), so a reader can legitimately run before
+ * its key exists — it should see a closed modal, not throw.
+ */
+function withFallback<T>(source: Record<string, T>, fallback: T): Record<string, T> {
+	return new Proxy(source, {
+		get: (target, key) =>
+			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key),
+	});
+}
+
+/**
+ * Definitions (the key and the state it starts in) for every modal the app knows
+ * about: the shell's own catalogue plus whatever modules have registered.
+ *
+ * The registry is shallow-reactive, so reading it here is enough to make callers
+ * re-derive when a module registers or unregisters a modal — the store keeps no
+ * mirror of it.
+ *
+ * `shellDefaults` is the caller's own copy of the catalogue (see `ownedCopyOf`) —
+ * a definition resolved from here is handed straight to components, and several
+ * of them still write to modal state in place.
+ */
+function modalDefinitionsById(shellDefaults: Record<string, ModalState>) {
+	const definitions: Record<string, ModalState> = { ...shellDefaults };
+
+	for (const [key, definition] of modalRegistry.getAll()) {
+		definitions[key] = definition.initialState ?? CLOSED_MODAL_STATE;
+	}
+
+	return definitions;
+}
+
+/**
+ * Deep copy of the initial-state catalogue, so nothing the store resolves is a
+ * reference into a module-level constant that outlives every store instance.
+ * `structuredClone` preserves shared references within the input, so the entries
+ * that share a closed-state object still share one copy.
+ */
+function ownedCopyOf(catalogue: Readonly<Record<string, ModalState>>): Record<string, ModalState> {
+	return structuredClone(catalogue) as Record<string, ModalState>;
+}
+
 export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
 	const activeActions = ref<string[]>([]);
@@ -126,158 +108,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: identity,
 		},
 	});
-	const modalsById = ref<Record<string, ModalState>>({
-		...Object.fromEntries(
-			[
-				ABOUT_MODAL_KEY,
-				CHAT_EMBED_MODAL_KEY,
-				CHANGE_PASSWORD_MODAL_KEY,
-				CONFIRM_PASSWORD_MODAL_KEY,
-				CREDENTIAL_SELECT_MODAL_KEY,
-				DUPLICATE_MODAL_KEY,
-				PERSONALIZATION_MODAL_KEY,
-				INVITE_USER_MODAL_KEY,
-				TAGS_MANAGER_MODAL_KEY,
-				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
-				NPS_SURVEY_MODAL_KEY,
-				VERSIONS_MODAL_KEY,
-				WORKFLOW_SETTINGS_MODAL_KEY,
-				WORKFLOW_SHARE_MODAL_KEY,
-				WORKFLOW_ACTIVE_MODAL_KEY,
-				COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-				MFA_SETUP_MODAL_KEY,
-				PROMPT_MFA_CODE_MODAL_KEY,
-				SOURCE_CONTROL_PUSH_MODAL_KEY,
-				SOURCE_CONTROL_PULL_MODAL_KEY,
-				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
-				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
-				SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
-				DELETE_SECRETS_PROVIDER_MODAL_KEY,
-				DEBUG_PAYWALL_MODAL_KEY,
-				WORKFLOW_HISTORY_VERSION_RESTORE,
-				SETUP_CREDENTIALS_MODAL_KEY,
-				PROJECT_MOVE_RESOURCE_MODAL,
-				NEW_ASSISTANT_SESSION_MODAL,
-				IMPORT_WORKFLOW_URL_MODAL_KEY,
-				WORKFLOW_DIFF_MODAL_KEY,
-				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-				VARIABLE_MODAL_KEY,
-				BINARY_DATA_VIEW_MODAL_KEY,
-				WORKFLOW_DESCRIPTION_MODAL_KEY,
-				WORKFLOW_PUBLISH_MODAL_KEY,
-				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
-				WORKFLOW_HISTORY_DIFF_MODAL_KEY,
-				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
-				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-				AI_BUILDER_DIFF_MODAL_KEY,
-				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
-				AI_GATEWAY_TOP_UP_MODAL_KEY,
-				AGENT_CONFIRMATION_MODAL_KEY,
-			].map((modalKey) => [modalKey, { open: false }]),
-		),
-		[DELETE_USER_MODAL_KEY]: {
-			open: false,
-			activeId: null,
-		},
-		[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
-			open: false,
-			mode: '',
-			activeId: null,
-		},
-		[IMPORT_CURL_MODAL_KEY]: {
-			open: false,
-			data: {
-				curlCommands: {},
-			},
-		},
-		[LOG_STREAM_MODAL_KEY]: {
-			open: false,
-			data: undefined,
-		},
-		[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: {
-			open: false,
-			data: {
-				activeId: null,
-				mode: '',
-			},
-		},
-		[CREDENTIAL_EDIT_MODAL_KEY]: {
-			open: false,
-			mode: '',
-			activeId: null,
-			showAuthSelector: false,
-			closeOnSave: false,
-		} as ModalState,
-		[DELETE_FOLDER_MODAL_KEY]: {
-			open: false,
-			activeId: null,
-			data: {
-				workflowListEventBus: undefined,
-				content: {
-					workflowCount: 0,
-					subFolderCount: 0,
-				},
-			},
-		},
-		[MOVE_FOLDER_MODAL_KEY]: {
-			open: false,
-			activeId: null,
-			data: {
-				workflowListEventBus: undefined,
-			},
-		},
-		[COMMUNITY_PLUS_ENROLLMENT_MODAL]: {
-			open: false,
-			data: {
-				customHeading: undefined,
-			},
-		},
-		[WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY]: {
-			open: false,
-			data: {
-				triggerType: '',
-				workflowName: '',
-				workflowId: '',
-				webhookPath: '',
-				node: '',
-			},
-		},
-		[FROM_AI_PARAMETERS_MODAL_KEY]: {
-			open: false,
-			data: {
-				nodeName: undefined,
-			},
-		},
-		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
-			open: false,
-			data: {},
-		},
-		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
-			open: false,
-			data: {
-				url: '',
-			},
-		},
-		[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
-			open: false,
-			data: {
-				workflowName: '',
-			},
-		},
-		[WHATS_NEW_MODAL_KEY]: {
-			open: false,
-			data: {
-				articleId: undefined,
-			},
-		},
-		[EXPERIMENT_TEMPLATE_RECO_V2_KEY]: {
-			open: false,
-			data: {
-				nodeName: '',
-			},
-		},
-	});
+
+	/** This store instance's copy of the shell catalogue (`ownedCopyOf`). */
+	const shellModalDefaults = ownedCopyOf(SHELL_MODAL_INITIAL_STATE);
+
+	/**
+	 * Runtime modal state, keyed by modal key — only the keys actually touched at
+	 * runtime (opened, closed, given data) are present. It is deliberately NOT a
+	 * mirror of the definitions: those live in `modalRegistry` (module modals) and
+	 * `shellModalDefaults` (shell modals), and `modalsById` below resolves the two
+	 * together.
+	 */
+	const modalStateById = ref<Record<string, ModalState>>({});
 
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null, {
@@ -296,9 +138,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
-	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const areNotificationsSuppressed = ref(false);
-	const allowErrorNotificationsWhenSuppressed = ref(false);
+	// Optional source for the auto-opened node creator (e.g. opened from Instance
+	// AI), so the 'User opened nodes panel' event is attributed to its origin.
+	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -410,11 +252,33 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
+	/**
+	 * The public read surface: every known modal key resolved to its current state
+	 * — its definition's initial state with whatever runtime state has accumulated
+	 * on top. An unknown key reads as closed rather than `undefined`, so a reader
+	 * that runs before its modal registers renders nothing instead of throwing.
+	 *
+	 * This is the single derivation that replaced the store's copy of the registry;
+	 * writes go to `modalStateById` through the actions below.
+	 */
+	const modalsById = computed<Record<string, ModalState>>(() => {
+		const resolved = modalDefinitionsById(shellModalDefaults);
+
+		for (const [key, runtimeState] of Object.entries(modalStateById.value)) {
+			resolved[key] = key in resolved ? { ...resolved[key], ...runtimeState } : runtimeState;
+		}
+
+		return withFallback(resolved, CLOSED_MODAL_STATE);
+	});
+
 	const isModalActiveById = computed(() =>
-		Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
-			acc[name] = name === modalStack.value[0];
-			return acc;
-		}, {}),
+		withFallback(
+			Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
+				acc[name] = name === modalStack.value[0];
+				return acc;
+			}, {}),
+			false,
+		),
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
@@ -466,39 +330,85 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		applyThemeToBody(newTheme);
 	};
 
+	/**
+	 * Materialize a modal's runtime state on first touch. Only the fields written
+	 * at runtime are stored; the rest is resolved from the definition on read, so
+	 * a key that was never registered still works (dataTable builds per-row keys).
+	 */
+	const patchModalState = (name: ModalKey, patch: Partial<ModalState>): void => {
+		modalStateById.value[name] = {
+			...modalStateById.value[name],
+			...patch,
+		} as ModalState;
+	};
+
+	/** Discard everything runtime has accumulated for a key, open or not. */
+	const forgetModalState = (name: ModalKey): void => {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete modalStateById.value[name];
+		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
+	};
+
+	/**
+	 * Runtime state lives exactly as long as the definition it accumulated under:
+	 * a modal unregistered while open must not stay open, and must come back in its
+	 * declared initial state if it registers again.
+	 *
+	 * Ad-hoc keys are told apart from unregistered ones by the registry itself —
+	 * only a key that was in it can be taken out of it. dataTable's per-row keys are
+	 * never registered, so they never appear in `previouslyRegistered` and are never
+	 * swept. Same for the shell catalogue, whose definitions are static.
+	 */
+	watch(
+		() => new Set(modalRegistry.getAll().keys()),
+		(registered, previouslyRegistered) => {
+			for (const key of previouslyRegistered) {
+				if (!registered.has(key)) forgetModalState(key);
+			}
+		},
+		{ flush: 'sync' },
+	);
+
 	const setMode = (name: keyof Modals, mode: string): void => {
-		modalsById.value[name] = {
-			...modalsById.value[name],
-			mode,
-		};
+		patchModalState(name, { mode });
 	};
 
 	const setActiveId = (name: keyof Modals, activeId: string | null): void => {
-		modalsById.value[name] = {
-			...modalsById.value[name],
-			activeId,
-		};
+		patchModalState(name, { activeId });
 	};
 
 	const setShowAuthSelector = (name: keyof Modals, showAuthSelector: boolean): void => {
-		modalsById.value[name] = {
-			...modalsById.value[name],
-			showAuthSelector,
-		} as NewCredentialsModal;
+		patchModalState(name, { showAuthSelector } as Partial<NewCredentialsModal>);
 	};
 
 	const setModalData = (payload: { name: keyof Modals; data: Record<string, unknown> }) => {
-		modalsById.value[payload.name] = {
-			...modalsById.value[payload.name],
-			data: payload.data,
-		};
+		patchModalState(payload.name, { data: payload.data });
+	};
+
+	/**
+	 * An unknown key resolves to a closed state instead of throwing, so a forgotten
+	 * registration reads as "it just doesn't open". This makes that visible, and it
+	 * belongs on the open path: by then the key has no `<ModalRoot>` and
+	 * `DynamicModalLoader` only walks registered keys, so nothing reads it. Needs
+	 * the click, so a modal nobody opens in dev stays silent.
+	 */
+	const warnIfUnknownModalKey = (name: ModalKey): void => {
+		if (!import.meta.env.DEV) return;
+
+		const key = String(name);
+		if (key in shellModalDefaults || modalRegistry.has(key) || modalRegistry.isAdHocKey(key)) {
+			return;
+		}
+
+		console.warn(
+			`[modals] Opening "${key}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
+				"Register it from the owning feature's `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.",
+		);
 	};
 
 	const openModal = (name: ModalKey) => {
-		modalsById.value[name] = {
-			...modalsById.value[name],
-			open: true,
-		};
+		warnIfUnknownModalKey(name);
+		patchModalState(name, { open: true });
 		modalStack.value = [name].concat(modalStack.value) as string[];
 	};
 
@@ -508,11 +418,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const closeModal = (name: ModalKey) => {
-		modalsById.value[name] = {
-			...modalsById.value[name],
-			open: false,
-		};
+		patchModalState(name, { open: false });
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
+	};
+
+	const closeAllModals = () => {
+		for (const name of modalStack.value) {
+			modalsById.value[name] = {
+				...modalsById.value[name],
+				open: false,
+			};
+		}
+		modalStack.value = [];
 	};
 
 	const openDeleteUserModal = (id: string) => {
@@ -520,16 +437,27 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string, options: { hideAskAssistant?: boolean } = {}) => {
+	const openExistingCredential = (
+		id: string,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			workflowId?: string;
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
-		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
-			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			projectId: undefined,
 			contextNode: undefined,
 			closeOnSave: false,
+			workflowId: options.workflowId,
+			onCredentialCreated: undefined,
 			hideAskAssistant: options.hideAskAssistant,
-		} as NewCredentialsModal;
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+		} as Partial<NewCredentialsModal>);
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
@@ -541,20 +469,34 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		suggestedName?: string,
 		nodeName?: string,
 		contextNode?: INodeUi,
-		options: { hideAskAssistant?: boolean; closeOnSave?: boolean } = {},
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			closeOnSave?: boolean;
+			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			usageScope?: NewCredentialsModal['usageScope'];
+			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			workflowId?: string;
+		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
-		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
-			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
+			onCredentialCreated: options.onCredentialCreated,
 			projectId,
 			suggestedName,
+			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
-		} as NewCredentialsModal;
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			usageScope: options.usageScope,
+			credentialSetupHint: options.credentialSetupHint,
+		} as Partial<NewCredentialsModal>);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -621,15 +563,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		});
 	};
 
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
-	};
-
-	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
-		areNotificationsSuppressed.value = suppressed;
-		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
-	};
-
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -673,54 +606,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		hasUnsavedWorkflowChanges.value = false;
 	};
 
-	/**
-	 * Register a modal dynamically
-	 */
-	const registerModal = (modalKey: string, initialState?: ModalState) => {
-		if (!modalsById.value[modalKey]) {
-			modalsById.value[modalKey] = initialState || { open: false };
-		}
-	};
-
-	/**
-	 * Unregister a modal
-	 */
-	const unregisterModal = (modalKey: string) => {
-		if (modalsById.value[modalKey]) {
-			// Close the modal if it's open
-			if (modalsById.value[modalKey].open) {
-				closeModal(modalKey);
-			}
-			delete modalsById.value[modalKey];
-		}
-	};
-
-	/**
-	 * Initialize modals from the registry
-	 */
-	const initializeModalsFromRegistry = () => {
-		modalRegistry.getAll().forEach((modalDef, key) => {
-			registerModal(key, modalDef.initialState);
-		});
-	};
-
-	// Subscribe to registry changes
-	const unsubscribeFromModalRegistry = modalRegistry.subscribe((modals) => {
-		// Add new modals that aren't registered yet
-		modals.forEach((modalDef, key) => {
-			if (!modalsById.value[key]) {
-				registerModal(key, modalDef.initialState);
-			}
-		});
-	});
-
-	/**
-	 * Clean up modal registry subscription
-	 */
-	const cleanup = () => {
-		unsubscribeFromModalRegistry();
-	};
-
 	return {
 		appGridDimensions,
 		settingsSidebarItems,
@@ -744,15 +629,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
+		addFirstStepOnLoadSource,
 		sidebarMenuCollapsed,
 		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
+		modalStateById,
 		currentView,
 		isAnyModalOpen,
-		pendingNotificationsForViews,
-		areNotificationsSuppressed,
-		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -760,6 +644,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData,
 		openModal,
 		closeModal,
+		closeAllModals,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,
@@ -768,8 +653,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addActiveAction,
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
-		setNotificationsForView,
-		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,
@@ -779,15 +662,19 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs,
 		registerCustomTabs,
 		registerSettingsPages,
-		registerModal,
-		unregisterModal,
-		initializeModalsFromRegistry,
-		cleanup,
 	};
 });
 
 /**
- * Helper function for listening to model opening and closings in the store
+ * Listen for modals opening and closing.
+ *
+ * Derived from which modals are open, not from which actions were called: there
+ * is more than one way a modal closes — `closeModal`, and its definition being
+ * unregistered — and an observer keyed on action names sees only the first. That
+ * shape breaks silently, with no type error, every time a close path is added.
+ *
+ * Returns a stop handle, and is owned by the effect scope it is created in, so a
+ * caller inside `effectScope()` disposes it by stopping that scope.
  */
 export const listenForModalChanges = (opts: {
 	store: UiStore;
@@ -795,34 +682,23 @@ export const listenForModalChanges = (opts: {
 	onModalClosed?: (name: keyof Modals) => void;
 }) => {
 	const { store, onModalClosed, onModalOpened } = opts;
-	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
 
-	return store.$onAction((result) => {
-		const { name, after, args } = result;
-		after(() => {
-			if (!listeningForActions.includes(name)) {
-				return;
+	return watch(
+		() => store.activeModals,
+		(openList, previouslyOpenList) => {
+			// Deduplicated: the same key can sit on the stack more than once (two
+			// callers opening the credential modal), and that must still read as one
+			// modal opening once and closing once.
+			const open = new Set(openList);
+			const previouslyOpen = new Set(previouslyOpenList);
+
+			for (const name of open) {
+				if (!previouslyOpen.has(name)) onModalOpened?.(name);
 			}
-
-			switch (name) {
-				case 'openModal': {
-					const modalName = args[0];
-					onModalOpened?.(modalName);
-					break;
-				}
-
-				case 'openModalWithData': {
-					const { name: modalName } = args[0] ?? {};
-					onModalOpened?.(modalName);
-					break;
-				}
-
-				case 'closeModal': {
-					const modalName = args[0];
-					onModalClosed?.(modalName);
-					break;
-				}
+			for (const name of previouslyOpen) {
+				if (!open.has(name)) onModalClosed?.(name);
 			}
-		});
-	});
+		},
+		{ flush: 'sync' },
+	);
 };

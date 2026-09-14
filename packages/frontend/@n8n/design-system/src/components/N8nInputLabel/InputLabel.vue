@@ -22,7 +22,7 @@ interface InputLabelProps {
 }
 
 defineOptions({ name: 'N8nInputLabel' });
-withDefaults(defineProps<InputLabelProps>(), {
+const props = withDefaults(defineProps<InputLabelProps>(), {
 	compact: false,
 	bold: true,
 	size: 'medium',
@@ -30,6 +30,12 @@ withDefaults(defineProps<InputLabelProps>(), {
 
 const addTargetBlank = (html: string) =>
 	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
+
+const onLabelClick = (event: MouseEvent) => {
+	// Per the HTML spec, clicking a label without a `for` target activates its
+	// first labelable descendant, unintentionally triggering slotted controls
+	if (!props.inputName) event.preventDefault();
+};
 </script>
 
 <template>
@@ -53,6 +59,7 @@ const addTargetBlank = (html: string) =>
 					[$style[size]]: true,
 					[$style.overflow]: !!$slots.options,
 				}"
+				@click="onLabelClick"
 			>
 				<div :class="$style['main-content']">
 					<div v-if="label" :class="$style.title">

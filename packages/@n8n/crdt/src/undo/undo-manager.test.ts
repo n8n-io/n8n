@@ -628,7 +628,7 @@ describe('UndoManager - provider-specific tests', () => {
 		});
 
 		it('should emit undoRedo origin when undo/redo is triggered', async () => {
-			const { ChangeOrigin } = await import('../types');
+			const { ChangeOrigin } = await import('../types.js');
 			const provider = new YjsProvider();
 			const doc = provider.createDoc('test');
 			const nodesMap = doc.getMap('nodes');
@@ -664,7 +664,7 @@ describe('UndoManager - provider-specific tests', () => {
 		});
 
 		it('should emit position changes on undo via onTransactionBatch', async () => {
-			const { ChangeOrigin, isMapChange } = await import('../types');
+			const { ChangeOrigin, isMapChange } = await import('../types.js');
 			const provider = new YjsProvider();
 			const doc = provider.createDoc('test');
 			const nodesMap = doc.getMap('nodes');
@@ -729,7 +729,7 @@ describe('UndoManager - provider-specific tests', () => {
 		});
 
 		it('should emit position changes with correct path structure', async () => {
-			const { isMapChange } = await import('../types');
+			const { isMapChange } = await import('../types.js');
 			const provider = new YjsProvider();
 			const doc = provider.createDoc('test');
 			const nodesMap = doc.getMap('nodes');
@@ -786,7 +786,7 @@ describe('UndoManager - provider-specific tests', () => {
 		});
 
 		it('should receive nested changes via observeDeep on the root map', async () => {
-			const { isMapChange } = await import('../types');
+			const { isMapChange } = await import('../types.js');
 			const provider = new YjsProvider();
 			const doc = provider.createDoc('test');
 			const nodesMap = doc.getMap('nodes');

@@ -15,9 +15,9 @@ CREATE TABLE "token_exchange_jti" ("jti" varchar(255) PRIMARY KEY NOT NULL, "exp
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| jti | varchar(255) |  | false |  |  |  |
-| expiresAt | datetime(3) |  | false |  |  |  |
 | createdAt | datetime(3) |  | false |  |  |  |
+| expiresAt | datetime(3) |  | false |  |  |  |
+| jti | varchar(255) |  | false |  |  |  |
 
 ## Constraints
 
@@ -39,9 +39,9 @@ erDiagram
 
 
 "token_exchange_jti" {
-  varchar_255_ jti PK
-  datetime_3_ expiresAt
   datetime_3_ createdAt
+  datetime_3_ expiresAt
+  varchar_255_ jti PK
 }
 ```
 

@@ -13,6 +13,7 @@ import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	parseFormFields,
+	parseJsonFormFields,
 	prepareFormData,
 	prepareFormFields,
 	prepareFormReturnItem,
@@ -31,7 +32,7 @@ import type { IEmail } from './interfaces';
 export type SendAndWaitConfig = {
 	title: string;
 	message: string;
-	options: Array<{ label: string; url: string; style: string }>;
+	options: Array<{ label: string; url: string; style: string; approved: boolean }>;
 	appendAttribution?: boolean;
 };
 
@@ -224,6 +225,8 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -291,7 +294,6 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
 	];
 
 	return updateDisplayOptions(
@@ -405,7 +407,18 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
-				workflowData: [[{ json: { data: { text: data[INPUT_FIELD_IDENTIFIER] } } }]],
+				workflowData: [
+					[
+						{
+							json: {
+								data: {
+									text: data[INPUT_FIELD_IDENTIFIER],
+									respondedAt: new Date().toISOString(),
+								},
+							},
+						},
+					],
+				],
 			};
 		}
 	}
@@ -461,7 +474,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			delete json.submittedAt;
 			delete json.formMode;
 
-			returnItem.json = { data: json };
+			// respondedAt is applied last so a form field of the same name can't override
+			// the server-set response timestamp.
+			returnItem.json = { data: { ...json, respondedAt: new Date().toISOString() } };
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
@@ -474,11 +489,27 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved } } }]],
+		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],
 	};
 }
 
 // Send and Wait Config -----------------------------------------------------------
+
+// The response form is only built when it is requested, from data that may no longer resolve
+// by then. Parse it here, exactly as the webhook will, so a form that cannot be built fails
+// the node instead of sending a message with a link that can never render.
+function validateCustomFormFields(context: IExecuteFunctions) {
+	const defineForm = context.getNodeParameter('defineForm', 0, 'fields') as 'fields' | 'json';
+	// The 'fields' branch has nothing that needs to be validated
+	if (defineForm !== 'json') return;
+
+	const getJsonOutput = () =>
+		context.getNodeParameter('jsonOutput', 0, '', {
+			rawExpressions: true,
+		}) as string;
+	parseJsonFormFields(context, getJsonOutput);
+}
+
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
 		.replace(/\\n/g, '\n')
@@ -503,6 +534,10 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
+	if (responseType === 'customForm') {
+		validateCustomFormFields(context);
+	}
+
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
@@ -511,6 +546,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label,
 			url: approvedSignedResumeUrl,
 			style: 'primary',
+			approved: true,
 		});
 	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
@@ -523,11 +559,13 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label: disapproveLabel,
 			url: disapprovedSignedResumeUrl,
 			style: buttonDisapprovalStyle,
+			approved: false,
 		});
 		config.options.push({
 			label: approveLabel,
 			url: approvedSignedResumeUrl,
 			style: buttonApprovalStyle,
+			approved: true,
 		});
 	} else {
 		const label = escapeHtml(approvalOptions.approveLabel || 'Approve');
@@ -536,6 +574,7 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 			label,
 			url: approvedSignedResumeUrl,
 			style,
+			approved: true,
 		});
 	}
 

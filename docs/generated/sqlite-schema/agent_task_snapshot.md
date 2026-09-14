@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, PRIMARY KEY ("versionId", "taskId"))
+CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" varchar(32) NOT NULL, "enabled" boolean NOT NULL, "name" varchar(128) NOT NULL, "objective" text NOT NULL, "cronExpression" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "timezone" varchar(64), CONSTRAINT "FK_1acedce6690392ef1611cca8b88" FOREIGN KEY ("versionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("versionId", "taskId"))
 ```
 
 </details>
@@ -15,23 +15,24 @@ CREATE TABLE "agent_task_snapshot" ("versionId" varchar(36) NOT NULL, "taskId" v
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| versionId | varchar(36) |  | false |  | [agent_history](agent_history.md) |  |
-| taskId | varchar(32) |  | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| cronExpression | varchar(128) |  | false |  |  |  |
 | enabled | boolean |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | objective | TEXT |  | false |  |  |  |
-| cronExpression | varchar(128) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| taskId | varchar(32) |  | false |  |  |  |
+| timezone | varchar(64) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| versionId | varchar(36) |  | false |  | [agent_history](agent_history.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
-| taskId | PRIMARY KEY | PRIMARY KEY (taskId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_agent_task_snapshot_1 | PRIMARY KEY | PRIMARY KEY (versionId, taskId) |
+| taskId | PRIMARY KEY | PRIMARY KEY (taskId) |
+| versionId | PRIMARY KEY | PRIMARY KEY (versionId) |
 
 ## Indexes
 
@@ -47,25 +48,26 @@ erDiagram
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_task_snapshot" {
-  varchar_36_ versionId PK
-  varchar_32_ taskId PK
+  datetime_3_ createdAt
+  varchar_128_ cronExpression
   boolean enabled
   varchar_128_ name
   TEXT objective
-  varchar_128_ cronExpression
-  datetime_3_ createdAt
+  varchar_32_ taskId PK
+  varchar_64_ timezone
   datetime_3_ updatedAt
+  varchar_36_ versionId PK
 }
 "agent_history" {
-  varchar_36_ versionId PK
   varchar_36_ agentId FK
-  TEXT schema
-  TEXT tools
-  TEXT skills
-  varchar publishedById FK
   varchar_255_ author
   datetime_3_ createdAt
+  varchar publishedById FK
+  TEXT schema
+  TEXT skills
+  TEXT tools
   datetime_3_ updatedAt
+  varchar_36_ versionId PK
 }
 ```
 

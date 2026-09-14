@@ -37,7 +37,11 @@ jobs:
       - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm build
+          # Windows runners intermittently hit OS-level process-init crashes
+          # (STATUS_DLL_INIT_FAILED) when turbo fans out many tsc processes at once.
+          # Cap concurrency to ease the pressure and retry once — turbo's cache makes
+          # the retry rebuild only the crashed package.
+          build-command: node .github/scripts/retry.mjs --attempts 2 --delay 5 -- pnpm build --concurrency=5
 
       - name: Smoke test pnpm start -- -- --version
         shell: pwsh

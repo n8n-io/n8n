@@ -13,11 +13,4 @@ export class PublicApiConfig {
 	/** When true, the Swagger UI for the Public API is not served. */
 	@Env('N8N_PUBLIC_API_SWAGGERUI_DISABLED')
 	swaggerUiDisabled: boolean = false;
-
-	/**
-	 * When true, the n8n-packages public API endpoints are enabled. This feature is
-	 * currently in beta and disabled by default.
-	 */
-	@Env('N8N_PUBLIC_API_PACKAGES_ENABLED')
-	packagesEnabled: boolean = false;
 }

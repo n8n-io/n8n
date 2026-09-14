@@ -2,6 +2,8 @@ import { BaseFilesystem } from '../../workspace/filesystem/base-filesystem';
 import { BaseSandbox } from '../../workspace/sandbox/base-sandbox';
 import { ProcessHandle, SandboxProcessManager } from '../../workspace/types';
 import type {
+	AbortableOptions,
+	AppendOptions,
 	CommandResult,
 	FileContent,
 	FileEntry,
@@ -19,6 +21,8 @@ import type {
 // ---------------------------------------------------------------------------
 // In-memory filesystem (fake)
 // ---------------------------------------------------------------------------
+
+const fileDate = new Date('2026-01-01T00:00:00.000Z');
 
 export class InMemoryFilesystem extends BaseFilesystem {
 	readonly id: string;
@@ -71,7 +75,11 @@ export class InMemoryFilesystem extends BaseFilesystem {
 		this.files.set(p, Buffer.from(content));
 	}
 
-	async appendFile(filePath: string, content: FileContent): Promise<void> {
+	async appendFile(
+		filePath: string,
+		content: FileContent,
+		_options?: AppendOptions,
+	): Promise<void> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
 		const existing = this.files.get(p) ?? Buffer.alloc(0);
@@ -167,24 +175,23 @@ export class InMemoryFilesystem extends BaseFilesystem {
 		return entries;
 	}
 
-	async exists(filePath: string): Promise<boolean> {
+	async exists(filePath: string, _options?: AbortableOptions): Promise<boolean> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
 		return this.files.has(p) || this.dirs.has(p);
 	}
 
-	async stat(filePath: string): Promise<FileStat> {
+	async stat(filePath: string, _options?: AbortableOptions): Promise<FileStat> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
-		const now = new Date();
 		if (this.dirs.has(p)) {
 			return {
 				name: p.split('/').pop() ?? '/',
 				path: filePath,
 				type: 'directory',
 				size: 0,
-				createdAt: now,
-				modifiedAt: now,
+				createdAt: fileDate,
+				modifiedAt: fileDate,
 			};
 		}
 		const buf = this.files.get(p);
@@ -194,8 +201,8 @@ export class InMemoryFilesystem extends BaseFilesystem {
 			path: filePath,
 			type: 'file',
 			size: buf.length,
-			createdAt: now,
-			modifiedAt: now,
+			createdAt: fileDate,
+			modifiedAt: fileDate,
 		};
 	}
 

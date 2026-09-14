@@ -56,6 +56,7 @@ const BASE_CONFIG: ResolvedConfig = {
 	defaultBrowser: 'chrome',
 	browsers: new Map(),
 	adapter: 'agent-browser',
+	mode: 'local',
 };
 
 // ---------------------------------------------------------------------------
@@ -305,6 +306,13 @@ describe('AgentBrowserAdapter', () => {
 			await adapter.type('t1', { ref: 'e1' }, 'hello', { submit: true });
 			expect(getRunArgs(0)).toEqual(['type', '@e1', 'hello']);
 			expect(getRunArgs(1)).toEqual(['press', 'Enter']);
+		});
+
+		it('accepts paste mode but still types, having no atomic insert of its own yet', async () => {
+			stubRun({ success: true });
+			await adapter.type('t1', { ref: 'e1' }, '{"a": 1}', { mode: 'paste' });
+
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '{"a": 1}']);
 		});
 
 		it('splits a single leading dash into a separate type call', async () => {

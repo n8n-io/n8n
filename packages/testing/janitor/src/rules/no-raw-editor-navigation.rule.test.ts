@@ -86,6 +86,41 @@ test('imports', async ({ n8n }) => {
 		expect(violations).toHaveLength(0);
 	});
 
+	test('respects a janitor-disable-next-line directive naming the rule', ({
+		project,
+		createFile,
+	}) => {
+		const file = createFile(
+			'/tests/e2e/example.spec.ts',
+			`
+test('benchmark', async ({ n8n }) => {
+	// janitor-disable-next-line no-raw-editor-navigation -- measures cold load
+	await n8n.page.goto(\`/workflow/\${workflowId}\`);
+});
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(0);
+	});
+
+	test('does not suppress when the directive names a different rule', ({ project, createFile }) => {
+		const file = createFile(
+			'/tests/e2e/example.spec.ts',
+			`
+test('benchmark', async ({ n8n }) => {
+	// janitor-disable-next-line selector-purity
+	await n8n.page.goto(\`/workflow/\${workflowId}\`);
+});
+`,
+		);
+
+		const violations = rule.analyzeProject(project, [file]);
+
+		expect(violations).toHaveLength(1);
+	});
+
 	test('reports correct line number', ({ project, createFile }) => {
 		const file = createFile(
 			'/tests/e2e/example.spec.ts',

@@ -1,0 +1,101 @@
+import type { WorkflowSourceFileBinding } from './workflow-file-bindings';
+import type { InstanceAiContext } from '../../types';
+import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+
+export type BuildTelemetryResult = 'success' | 'failure' | 'blocked' | 'denied' | 'suspended';
+export type BuildTelemetryStage =
+	| 'source_read'
+	| 'permission'
+	| 'hitl'
+	| 'parse'
+	| 'validation'
+	| 'grouping'
+	| 'name'
+	| 'save'
+	| 'conflict'
+	| 'folder';
+
+export function trackWorkflowSourceBuild(
+	context: InstanceAiContext,
+	input: {
+		result: BuildTelemetryResult;
+		stage: BuildTelemetryStage;
+		binding: WorkflowSourceFileBinding;
+		targetWorkflowId?: string;
+		savedWorkflowId?: string;
+		saveOperation?: 'create' | 'update';
+		isSupportingWorkflow?: boolean;
+		isAuxiliarySupportingWorkflow?: boolean;
+		remediation?: RemediationMetadata;
+		errorCount?: number;
+		warningCount?: number;
+		droppedGroupCount?: number;
+		topLevelItemCount?: number;
+		groupCount?: number;
+		groupingDecision?: 'grouped' | 'not_warranted' | 'under_ceiling' | 'missing';
+		groupingReasonProvided?: boolean;
+	},
+): void {
+	const buildContext = context.workflowBuildContext;
+	context.trackTelemetry?.('instance_ai_workflow_source_build', {
+		source_transport: 'workspace_file',
+		result: input.result,
+		stage: input.stage,
+		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
+		work_item_id: buildContext?.workItemId ?? 'unknown',
+		task_id: buildContext?.taskId ?? 'unknown',
+		file_path: input.binding.filePath,
+		identity_bound: Boolean(input.binding.workflowId),
+		is_supporting_workflow: input.isSupportingWorkflow === true,
+		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
+		error_count: input.errorCount ?? 0,
+		warning_count: input.warningCount ?? 0,
+		dropped_group_count: input.droppedGroupCount ?? 0,
+		...(input.topLevelItemCount !== undefined
+			? {
+					top_level_item_count: input.topLevelItemCount,
+					group_count: input.groupCount ?? 0,
+					grouping_decision: input.groupingDecision ?? 'under_ceiling',
+					grouping_reason_provided: input.groupingReasonProvided === true,
+				}
+			: {}),
+		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
+		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
+		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),
+		...(input.saveOperation ? { save_operation: input.saveOperation } : {}),
+		...(input.remediation
+			? {
+					remediation_category: input.remediation.category,
+					remediation_should_edit: input.remediation.shouldEdit,
+					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
+				}
+			: {}),
+	});
+}
+
+/**
+ * Emitted once per successful build whose plan halts wait gates, so we learn
+ * how often scripted verification applies and whether multi-gate loop shapes
+ * (currently always halt-fallback) occur in the wild.
+ */
+export function trackWaitGateVerificationPlan(
+	context: InstanceAiContext,
+	input: {
+		haltedGateCount: number;
+		scriptedGateCount: number;
+		savedWorkflowId: string;
+	},
+): void {
+	if (input.haltedGateCount === 0) return;
+	const buildContext = context.workflowBuildContext;
+	context.trackTelemetry?.('instance_ai_wait_gate_verification_plan', {
+		halted_gate_count: input.haltedGateCount,
+		scripted_gate_count: input.scriptedGateCount,
+		multi_gate: input.haltedGateCount >= 2,
+		scripted: input.scriptedGateCount > 0,
+		workflow_id: input.savedWorkflowId,
+		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
+	});
+}

@@ -31,16 +31,16 @@ export class CalApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			qs: {
-				apiKey: '={{$credentials.apiKey}}',
+			headers: {
+				Authorization: '=Bearer {{ $credentials.apiKey }}',
 			},
 		},
 	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.host}}',
-			url: '=/v1/memberships',
+			baseURL: '={{ $credentials.host }}',
+			url: '=/v2/me',
 		},
 	};
 }

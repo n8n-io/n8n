@@ -14,8 +14,8 @@ import type { SortData, FileRecord } from '../shared/GenericFunctions';
 import {
 	downloadFiles,
 	extractBlockId,
-	extractDatabaseId,
 	extractDatabaseMentionRLC,
+	extractResourceId,
 	getPageId,
 	formatBlocks,
 	formatTitle,
@@ -175,7 +175,7 @@ export class NotionV2 implements INodeType {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const databaseId = extractDatabaseId(
+						const databaseId = extractResourceId(
 							this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string,
 						);
 						responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);

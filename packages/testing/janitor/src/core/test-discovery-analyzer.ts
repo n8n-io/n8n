@@ -1,12 +1,19 @@
 /**
  * Test Discovery Analyzer
  *
- * Statically discovers test specs and their capabilities via AST analysis.
+ * Statically discovers test specs and their worker requirements via AST analysis.
  * Replaces the Playwright `--list` + regex approach used by distribute-tests.mjs.
  */
 
 import type { DiscoveredSpec } from '@n8n/test-impact';
-import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
+import {
+	Node,
+	SyntaxKind,
+	type CallExpression,
+	type Expression,
+	type Project,
+	type SourceFile,
+} from 'ts-morph';
 
 import { getConfig } from '../config.js';
 import { getSourceFiles } from './project-loader.js';
@@ -32,6 +39,11 @@ interface TestCallInfo {
 	isDescribe: boolean;
 	/** Tags parsed from the title string */
 	tags: string[];
+}
+
+interface WorkerRequirements {
+	capabilities: string[];
+	services: string[];
 }
 
 const TAG_PATTERN = /@[\w:-]+/g;
@@ -69,26 +81,161 @@ export class TestDiscoveryAnalyzer {
 		const hasActiveTest = calls.some((call) => !call.skipped && !call.isDescribe);
 		if (!hasActiveTest) return null;
 
-		// Collect tags from all calls (including describes) for capability extraction
-		const allTags = new Set<string>();
-		for (const call of calls) {
-			for (const tag of call.tags) {
-				allTags.add(tag);
-			}
-		}
+		const path = getRelativePath(file.getFilePath());
+		const isOrchestrated =
+			!config.orchestration.specFilter || path.startsWith(config.orchestration.specFilter);
+		const requirements = isOrchestrated
+			? this.extractWorkerRequirements(file)
+			: { capabilities: [], services: [] };
 
-		// Extract capabilities from tags matching the configured prefix
-		const capabilities: string[] = [];
-		for (const tag of allTags) {
-			if (tag.startsWith(config.capabilityPrefix)) {
-				capabilities.push(tag.slice(config.capabilityPrefix.length));
+		return {
+			path,
+			capabilities: requirements.capabilities,
+			services: requirements.services,
+		};
+	}
+
+	private extractWorkerRequirements(file: SourceFile): WorkerRequirements {
+		const capabilities = new Set<string>();
+		const services = new Set<string>();
+
+		// Playwright reports only opaque worker identities. Resolve image requirements from source.
+		for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+			if (call.getExpression().getText() !== 'test.use') continue;
+
+			const useExpression = call.getArguments()[0];
+			if (!useExpression || !Node.isExpression(useExpression)) continue;
+
+			const resolvedUse = this.resolveExpression(useExpression, new Set());
+			if (!resolvedUse || !Node.isObjectLiteralExpression(resolvedUse)) {
+				if (useExpression.getType().getProperty('capability')) {
+					throw new Error(`Cannot resolve test.use() in ${getRelativePath(file.getFilePath())}`);
+				}
+				continue;
 			}
+
+			const capability = this.resolveObjectProperty(resolvedUse, 'capability', new Set());
+			if (!capability) continue;
+
+			const capabilityName = this.resolveString(capability, new Set());
+			if (capabilityName) {
+				capabilities.add(capabilityName);
+				continue;
+			}
+
+			const resolvedCapability = this.resolveExpression(capability, new Set());
+			if (!resolvedCapability || !Node.isObjectLiteralExpression(resolvedCapability)) {
+				throw new Error(
+					`Cannot resolve the test.use() capability in ${getRelativePath(file.getFilePath())}`,
+				);
+			}
+
+			const serviceExpression = this.resolveObjectProperty(
+				resolvedCapability,
+				'services',
+				new Set(),
+			);
+			if (!serviceExpression) continue;
+
+			const resolvedServices = this.resolveStringArray(serviceExpression, new Set());
+			if (!resolvedServices) {
+				throw new Error(
+					`Cannot resolve test.use() capability services in ${getRelativePath(file.getFilePath())}`,
+				);
+			}
+			for (const service of resolvedServices) services.add(service);
 		}
 
 		return {
-			path: getRelativePath(file.getFilePath()),
-			capabilities: capabilities.sort(),
+			capabilities: [...capabilities].sort(),
+			services: [...services].sort(),
 		};
+	}
+
+	private resolveExpression(expression: Expression, seen: Set<Node>): Expression | undefined {
+		if (seen.has(expression)) return undefined;
+		seen.add(expression);
+
+		if (
+			Node.isAsExpression(expression) ||
+			Node.isParenthesizedExpression(expression) ||
+			Node.isSatisfiesExpression(expression)
+		) {
+			return this.resolveExpression(expression.getExpression(), seen);
+		}
+
+		if (Node.isIdentifier(expression)) {
+			let symbol = expression.getSymbol();
+			if (symbol?.isAlias()) symbol = symbol.getAliasedSymbol();
+			const declaration = symbol?.getValueDeclaration() ?? symbol?.getDeclarations()[0];
+			if (Node.isVariableDeclaration(declaration) || Node.isPropertyAssignment(declaration)) {
+				const initializer = declaration.getInitializer();
+				return initializer ? this.resolveExpression(initializer, seen) : undefined;
+			}
+			return undefined;
+		}
+
+		if (Node.isPropertyAccessExpression(expression)) {
+			const owner = this.resolveExpression(expression.getExpression(), seen);
+			return owner ? this.resolveObjectProperty(owner, expression.getName(), seen) : undefined;
+		}
+
+		return expression;
+	}
+
+	private resolveObjectProperty(
+		expression: Expression,
+		name: string,
+		seen: Set<Node>,
+	): Expression | undefined {
+		const resolved = Node.isObjectLiteralExpression(expression)
+			? expression
+			: this.resolveExpression(expression, seen);
+		if (!resolved || !Node.isObjectLiteralExpression(resolved)) return undefined;
+
+		for (const property of [...resolved.getProperties()].reverse()) {
+			if (Node.isPropertyAssignment(property) && property.getName() === name) {
+				return property.getInitializer();
+			}
+			if (Node.isShorthandPropertyAssignment(property) && property.getName() === name) {
+				const symbol = property.getValueSymbol();
+				const declaration = symbol?.getValueDeclaration() ?? symbol?.getDeclarations()[0];
+				if (Node.isVariableDeclaration(declaration)) return declaration.getInitializer();
+			}
+			if (Node.isSpreadAssignment(property)) {
+				const value = this.resolveObjectProperty(property.getExpression(), name, seen);
+				if (value) return value;
+			}
+		}
+		return undefined;
+	}
+
+	private resolveString(expression: Expression, seen: Set<Node>): string | undefined {
+		const resolved = this.resolveExpression(expression, seen);
+		if (Node.isStringLiteral(resolved) || Node.isNoSubstitutionTemplateLiteral(resolved)) {
+			return resolved.getLiteralText();
+		}
+		return undefined;
+	}
+
+	private resolveStringArray(expression: Expression, seen: Set<Node>): string[] | undefined {
+		const resolved = this.resolveExpression(expression, seen);
+		if (!resolved || !Node.isArrayLiteralExpression(resolved)) return undefined;
+
+		const values: string[] = [];
+		for (const element of resolved.getElements()) {
+			if (Node.isSpreadElement(element)) {
+				const spreadValues = this.resolveStringArray(element.getExpression(), seen);
+				if (!spreadValues) return undefined;
+				values.push(...spreadValues);
+				continue;
+			}
+			if (!Node.isExpression(element)) return undefined;
+			const value = this.resolveString(element, seen);
+			if (!value) return undefined;
+			values.push(value);
+		}
+		return values;
 	}
 
 	/**

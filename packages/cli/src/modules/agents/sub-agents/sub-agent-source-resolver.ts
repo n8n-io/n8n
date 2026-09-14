@@ -1,3 +1,4 @@
+import type { ToolDescriptor } from '@n8n/agents';
 import {
 	type AgentSkill,
 	RunnableAgentJsonConfigSchema,
@@ -5,7 +6,6 @@ import {
 	type ResolvedSubAgentSource,
 	type SubAgentSource,
 } from '@n8n/api-types';
-import type { ToolDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -13,12 +13,17 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
+	/**
+	 * Resolve the published version instead of the current draft. Set for
+	 * production runs, mirroring how sub-workflows and "Message an Agent"
+	 * resolve referenced entities.
+	 */
+	usePublishedVersion?: boolean;
 }
 
 export interface ResolvedSubAgentRuntimeSource {
@@ -36,8 +41,9 @@ export class SubAgentSourceResolver {
 	) {}
 
 	/**
-	 * Resolve a saved n8n agent (its current draft, or a pinned published
-	 * version) into a runnable config plus its tool/skill assets.
+	 * Resolve a saved n8n agent into a runnable config plus its tool/skill
+	 * assets: a pinned historical version (resumes), the published version
+	 * (production runs), or the current draft (test runs).
 	 */
 	async resolveForRuntime(
 		source: SubAgentSource,
@@ -77,16 +83,32 @@ export class SubAgentSourceResolver {
 			};
 		}
 
-		const config = composeJsonConfig(agent);
-		if (!config) {
-			throw new UserError(`Agent "${source.agentId}" has no config`);
+		if (context.usePublishedVersion) {
+			const activeVersion = agent.activeVersion;
+			if (!activeVersion?.schema) {
+				throw new UserError(
+					`Sub-agent "${agent.name}" is not published. Publish it before delegating to it in a production run.`,
+				);
+			}
+
+			return {
+				source: {
+					sourceId: source.agentId,
+					versionId: activeVersion.versionId,
+					config: this.toRunnableConfig(activeVersion.schema),
+				},
+				...getAgentRuntimeAssets(activeVersion),
+			};
+		}
+
+		if (!agent.schema) {
+			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
 		return {
 			source: {
 				sourceId: source.agentId,
-				versionId: agent.versionId ?? undefined,
-				config: this.toRunnableConfig(config),
+				config: this.toRunnableConfig(agent.schema),
 			},
 			...getAgentRuntimeAssets(agent),
 		};

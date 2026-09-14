@@ -15,13 +15,13 @@ CREATE TABLE "deployment_key" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" var
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| type | varchar(64) |  | false |  |  |  |
-| value | TEXT |  | false |  |  |  |
 | algorithm | varchar(20) |  | true |  |  |  |
-| status | varchar(20) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
+| status | varchar(20) |  | false |  |  |  |
+| type | varchar(64) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| value | TEXT |  | false |  |  |  |
 
 ## Constraints
 
@@ -34,12 +34,12 @@ CREATE TABLE "deployment_key" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" var
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_deployment_key_data_encryption_active | CREATE UNIQUE INDEX "IDX_deployment_key_data_encryption_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'data_encryption' |
+| IDX_deployment_key_instance_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_instance_id_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'instance.id' |
 | IDX_deployment_key_jwe_private_key_active | CREATE UNIQUE INDEX "IDX_deployment_key_jwe_private_key_active" ON "deployment_key" ("type", "algorithm") WHERE status = 'active' AND type = 'jwe.private-key' |
 | IDX_deployment_key_signing_binary_data_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_binary_data_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.binary_data' |
 | IDX_deployment_key_signing_hmac_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_hmac_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.hmac' |
 | IDX_deployment_key_signing_jwt_active | CREATE UNIQUE INDEX "IDX_deployment_key_signing_jwt_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'signing.jwt' |
-| IDX_deployment_key_instance_id_active | CREATE UNIQUE INDEX "IDX_deployment_key_instance_id_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'instance.id' |
-| IDX_deployment_key_data_encryption_active | CREATE UNIQUE INDEX "IDX_deployment_key_data_encryption_active" ON "deployment_key" ("type") WHERE status = 'active' AND type = 'data_encryption' |
 | sqlite_autoindex_deployment_key_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -49,13 +49,13 @@ erDiagram
 
 
 "deployment_key" {
-  varchar_36_ id PK
-  varchar_64_ type
-  TEXT value
   varchar_20_ algorithm
-  varchar_20_ status
   datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_20_ status
+  varchar_64_ type
   datetime_3_ updatedAt
+  TEXT value
 }
 ```
 

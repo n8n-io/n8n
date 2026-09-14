@@ -380,13 +380,18 @@ test('should preserve versionMetadata from JSON file when importing', async () =
 describe('--activeState flag', () => {
 	const globalConfig = Container.get(GlobalConfig);
 	const originalMode = globalConfig.executions.mode;
+	const originalUseWorkflowPublicationService =
+		globalConfig.workflows.useWorkflowPublicationService;
 
+	// Asserts on the legacy activation path (`ActiveWorkflowManager` calls).
 	beforeAll(() => {
 		globalConfig.executions.mode = 'queue';
+		globalConfig.workflows.useWorkflowPublicationService = false;
 	});
 
 	afterAll(() => {
 		globalConfig.executions.mode = originalMode;
+		globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 	});
 
 	// TODO: fix this workaround being needed for these tests to run.
@@ -395,15 +400,15 @@ describe('--activeState flag', () => {
 	beforeEach(() => {
 		// Bypass webhook conflict detection to avoid infrastructure dependencies
 		// (getWorkflowExecutionData → VariablesService.getAllCached → CacheService/Redis)
-		jest
-			.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks')
-			.mockResolvedValue([]);
+		vi.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks').mockResolvedValue(
+			[],
+		);
 
 		mockNodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
 			if (nodeType === 'n8n-nodes-base.webhook') {
 				return {
 					description: { webhooks: undefined, properties: [] },
-					webhook: jest.fn(),
+					webhook: vi.fn(),
 				} as unknown as INodeType;
 			}
 			return { description: { properties: [] } } as unknown as INodeType;
@@ -489,8 +494,8 @@ describe('--activeState flag', () => {
 			expect(active.activeVersionId).toBe(active.versionId);
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-			jest.mocked(activeWorkflowManager.add).mockClear();
-			jest.mocked(activeWorkflowManager.remove).mockClear();
+			vi.mocked(activeWorkflowManager.add).mockClear();
+			vi.mocked(activeWorkflowManager.remove).mockClear();
 
 			await command.run([`--input=${fixture}`, '--activeState=false']);
 

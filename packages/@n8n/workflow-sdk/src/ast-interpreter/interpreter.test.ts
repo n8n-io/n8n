@@ -8,13 +8,14 @@ import {
 	SecurityError,
 	UnsupportedNodeError,
 	UnknownIdentifierError,
+	ResourceLimitError,
 } from './errors';
 import { expr } from '../expression';
 import type { SDKFunctions } from './interpreter';
 import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
-/** Helper to get the first call argument from a Jest mock with proper typing */
+/** Helper to get the first call argument from a Vitest mock with proper typing */
 function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;
@@ -840,6 +841,22 @@ describe('AST Interpreter', () => {
 			interpretSDKCode(code, sdkFunctions);
 			expect(connectMock).toHaveBeenCalledWith('source', 0, 'target', 0);
 		});
+
+		it("should forward group()'s options object to the workflow builder", () => {
+			const groupMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
+				group: groupMock,
+			}));
+			// Members are irrelevant here — this pins the third argument surviving evaluation.
+			const code = `
+				const wf = workflow('id', 'name');
+				export default wf.group('Ingestion', [], { description: 'Pulls the CRM contacts' });
+			`;
+			interpretSDKCode(code, sdkFunctions);
+			expect(groupMock).toHaveBeenCalledWith('Ingestion', [], {
+				description: 'Pulls the CRM contacts',
+			});
+		});
 	});
 
 	describe('Security - dangerous globals (defense-in-depth)', () => {
@@ -1047,6 +1064,288 @@ describe('AST Interpreter', () => {
 			const code = 'const padded = "  x  "; export default padded.trim();';
 			const result = interpretSDKCode(code, sdkFunctions);
 			expect(result).toBe('x');
+		});
+	});
+
+	describe('Resource limits', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should reject exponential array-spread doubling before completing', () => {
+			const doublings = 25; // 2^25 elements if unbounded — must abort far earlier
+			const lines = ['const a0 = [1];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [...a${i - 1}, ...a${i - 1}];`);
+			}
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject cumulative object-spread growth across many statements', () => {
+			// Object spread merges by key (duplicate keys overwrite rather than
+			// duplicate), so it can't blow up exponentially the way array spread
+			// does — but copying a large object's keys over and over still adds
+			// up, so the shared budget must catch it across statements.
+			const keyCount = 2000;
+			const props = Array.from({ length: keyCount }, (_, i) => `k${i}: ${i}`).join(', ');
+			// Each merge copies keyCount slots but adds only ~23 characters of
+			// source, so the cost outgrows the source-derived budget.
+			const mergeCount = 500;
+			const lines = [`const big = { ${props} };`];
+
+			for (let i = 0; i < mergeCount; i++) {
+				lines.push(`const m${i} = { ...big };`);
+			}
+
+			lines.push('export default m0;');
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a huge String.repeat count', () => {
+			const code = 'export default "a".repeat(100000000);';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a huge String.repeat count passed as a numeric string', () => {
+			// Native String.prototype.repeat coerces its argument, so a string-typed
+			// count must be charged the same as a numeric one.
+			const code = 'export default "a".repeat("100000000");';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject exponential string growth from repeated + concatenation', () => {
+			const doublings = 25; // 2^25 characters if unbounded — must abort far earlier
+			const lines = ['const s0 = "a";'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const s${i} = s${i - 1} + s${i - 1};`);
+			}
+
+			lines.push(`export default s${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a reference DAG (Directed Acyclic Graph) that doubles without ever spreading', () => {
+			// [a, a] is two references, no copy — must still cost what `a` holds.
+			const doublings = 25;
+			const lines = ['const a0 = [1];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should count empty containers when sizing repeated references', () => {
+			const doublings = 18;
+			const lines = ['const a0 = [];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject chained JSON.stringify that doubles its own output each round', () => {
+			// Each round wraps the previous string in a 2-element array and
+			// re-serializes it. Serializing writes both references out in full,
+			// so the output doubles while the structure stays tiny.
+			const rounds = 15;
+			const lines = ['const s0 = "x".repeat(1000);'];
+			for (let i = 1; i <= rounds; i++) {
+				lines.push(`const a${i} = [s${i - 1}, s${i - 1}];`, `const s${i} = JSON.stringify(a${i});`);
+			}
+
+			lines.push(`export default s${rounds};`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a DAG whose members were filled in by property assignment', () => {
+			// Nothing is serialized here, so only the recorded size of `holder` can
+			// catch the doubling: left at the size it had when it was built, the
+			// whole chain measures empty.
+			const code = [
+				'const big = "x".repeat(50000);',
+				'const holder = {};',
+				'holder.a = big;',
+				'const a0 = [holder, holder];',
+				'const a1 = [a0, a0];',
+				'const a2 = [a1, a1];',
+				'export default a2;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a DAG that repeats a long property name', () => {
+			// The name is written out once per occurrence, so it counts towards the
+			// output even though it is not part of any value. Sized like the case
+			// above, so a late limit would surface as a RangeError instead.
+			const doublings = 14;
+			const lines = [`const k = { "${'K'.repeat(20_000)}": 1 };`, 'const a0 = [k, k];'];
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [a${i - 1}, a${i - 1}];`);
+			}
+
+			lines.push(`export default JSON.stringify(a${doublings});`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should still allow ordinary property assignment', () => {
+			const code = [
+				'const cfg = {};',
+				'cfg.name = "hello";',
+				'cfg.items = [1, 2, 3];',
+				'export default JSON.stringify(cfg);',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should reject deep nesting serialized with a wide indent', () => {
+			// Indentation grows with depth, so it has to be counted per node: left
+			// out, this reaches the engine's string ceiling and raises a RangeError
+			// while building instead.
+			const depth = 4900;
+			const lines = ['const d0 = [1];'];
+			for (let i = 1; i <= depth; i++) {
+				lines.push(`const d${i} = [d${i - 1}];`);
+			}
+
+			lines.push(`export default JSON.stringify(d${depth}, null, 10);`);
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject JSON.stringify traversing an externally produced oversized structure', () => {
+			// Untracked value (no tracked size) must still trip the JSON.stringify guard.
+			const bigArray = Array.from({ length: 200_001 }, (_, i) => i); // above the floor budget
+			const funcs: SDKFunctions = {
+				...sdkFunctions,
+				getBig: vi.fn(() => bigArray),
+			};
+			const code = 'export default JSON.stringify(getBig());';
+
+			expect(() => interpretSDKCode(code, funcs)).toThrow(ResourceLimitError);
+		});
+
+		it('should accumulate JSON.stringify traversal across separate calls', () => {
+			// Each call stays under the limit on its own; together they must not.
+			const bigArray = Array.from({ length: 50_000 }, (_, i) => i);
+			const funcs: SDKFunctions = {
+				...sdkFunctions,
+				getBig: vi.fn(() => bigArray),
+			};
+			const code = [
+				'const s1 = JSON.stringify(getBig());',
+				'const s2 = JSON.stringify(getBig());',
+				'const s3 = JSON.stringify(getBig());',
+				'const s4 = JSON.stringify(getBig());',
+				'const s5 = JSON.stringify(getBig());',
+				'export default s5;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, funcs)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject a JSON.stringify replacer, which would displace the size guard', () => {
+			const code = 'export default JSON.stringify({ a: 1, b: 2 }, ["a"]);';
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
+		});
+
+		it('should still allow JSON.stringify on a reasonably large legitimate structure', () => {
+			const code = [
+				'const items = [1, 2, 3, 4, 5];',
+				'export default JSON.stringify({ items, name: "test" });',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should allow a large embedded literal to be serialized into a parameter', () => {
+			// The documented way to embed a page in a Code node. Passing the same
+			// string along must not be charged again for every hop it makes.
+			const html = 'y'.repeat(150_000);
+			const code = [
+				`const html = "${html}";`,
+				'const jsCode = JSON.stringify(html);',
+				'export default { parameters: { jsCode } };',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should allow a multi-part concatenation around a large embedded literal', () => {
+			// Charging each step its whole result would make this cost O(n^2).
+			const html = 'y'.repeat(120_000);
+			const code = [
+				`const html = "${html}";`,
+				'const jsCode = "var h=" + JSON.stringify(html) + "; return h;";',
+				'export default { parameters: { jsCode } };',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should reject unbounded template-literal growth from repeated big values', () => {
+			const code = [
+				'const big = "x".repeat(150000);',
+				'const t1 = `${big}${big}`;',
+				'const t2 = `${t1}${t1}`;',
+				'export default t2;',
+			].join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should reject programs with too many top-level statements', () => {
+			const lines: string[] = [];
+			for (let i = 0; i < 6000; i++) {
+				lines.push(`const v${i} = ${i};`);
+			}
+
+			lines.push('export default v0;');
+			const code = lines.join('\n');
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
+		});
+
+		it('should still allow reasonably large legitimate literals and spreads', () => {
+			const items = Array.from({ length: 500 }, (_, i) => i).join(',');
+			const code = `const items = [${items}]; export default { ...{ items } };`;
+
+			expect(() => interpretSDKCode(code, sdkFunctions)).not.toThrow();
+		});
+
+		it('should cap unbounded recursion reached via template-literal runtime-variable detection', () => {
+			// Builds a deeply nested $-prefixed member chain inside a template literal,
+			// which is resolved via isN8nRuntimeVariable/expressionToString, not evaluate().
+			let expression = '$json';
+			for (let i = 0; i < 600; i++) {
+				expression += '.a';
+			}
+
+			const code = `export default \`\${${expression}}\`;`;
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(ResourceLimitError);
 		});
 	});
 

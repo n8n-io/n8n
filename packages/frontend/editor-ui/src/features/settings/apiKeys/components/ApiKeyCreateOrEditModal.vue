@@ -1,16 +1,20 @@
 <script lang="ts" setup>
 import ApiKeyScopes from './ApiKeyScopes.vue';
-import CopyInput from '@/app/components/CopyInput.vue';
+import RevokeApiKeyConfirmModal from './RevokeApiKeyConfirmModal.vue';
 import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
+import { isApiKeyExpired } from '../apiKeys.utils';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
@@ -19,7 +23,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { ElDatePicker } from 'element-plus';
 import {
 	N8nButton,
-	N8nCard,
+	N8nCopyInput,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -35,12 +39,18 @@ const EXPIRATION_OPTIONS = {
 	NO_EXPIRATION: 0,
 };
 
+const API_KEY_DATE_FORMAT = 'ccc, MMM d yyyy';
+
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();
-const { createApiKey, updateApiKey, apiKeysById, availableScopes } = useApiKeysStore();
+const apiKeysStore = useApiKeysStore();
+const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
+const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
@@ -54,7 +64,8 @@ const showExpirationDateSelector = ref(false);
 const apiKeyCreationDate = ref('');
 const selectedScopes = ref<ApiKeyScope[]>([]);
 
-const apiKeyStore = useApiKeysStore();
+const showRevokeConfirm = ref(false);
+const revoking = ref(false);
 
 const calculateExpirationDate = (daysFromNow: number) => {
 	const date = DateTime.now()
@@ -81,7 +92,7 @@ const getExpirationOptionLabel = (value: number) => {
 };
 
 const expirationDate = ref(
-	calculateExpirationDate(expirationDaysFromNow.value).toFormat('ccc, MMM d yyyy'),
+	calculateExpirationDate(expirationDaysFromNow.value).toFormat(API_KEY_DATE_FORMAT),
 );
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
@@ -90,10 +101,13 @@ const props = withDefaults(
 	defineProps<{
 		mode?: 'new' | 'edit';
 		activeId?: string;
+		/** When set, the modal opens straight into the created view to show a freshly rotated key. */
+		rotatedApiKey?: ApiKeyWithRawValue | null;
 	}>(),
 	{
 		mode: 'new',
 		activeId: '',
+		rotatedApiKey: null,
 	},
 );
 
@@ -110,10 +124,63 @@ const allFormFieldsAreSet = computed(() => {
 	);
 });
 
+const currentApiKey = computed<ApiKey | null>(() =>
+	props.mode === 'edit' ? (apiKeysById[props.activeId] ?? null) : null,
+);
+
+const isOwnKey = computed(() => {
+	const apiKey = currentApiKey.value;
+	if (!apiKey?.owner || !usersStore.currentUser) return true;
+	return apiKey.owner.id === usersStore.currentUser.id;
+});
+
+// Someone else's key is always view-only; own keys become view-only when the
+// role doesn't allow editing them.
+const isReadOnly = computed(() => {
+	if (!currentApiKey.value) return false;
+	return !isOwnKey.value || !rbacStore.hasScope('apiKey:update');
+});
+
+// Copy for "expires on X" / "expired on X" / "never expires", shared by the
+// create-form hint and the read-only edit view so the two can't drift.
+const expirationCopy = (expirationDate: string, expired = false) =>
+	i18n.baseText(
+		expired
+			? 'settings.api.view.modal.form.expirationText.expired'
+			: 'settings.api.view.modal.form.expirationText',
+		{ interpolate: { expirationDate } },
+	);
+const neverExpiresCopy = () => i18n.baseText('settings.api.view.modal.form.expirationText.never');
+
+// Helper copy under the expiration select. Always present so "Never" explains
+// itself (the key stays active until revoked) instead of silently clearing.
+const expirationHint = computed(() => {
+	if (expirationDaysFromNow.value === EXPIRATION_OPTIONS.NO_EXPIRATION) return neverExpiresCopy();
+	return expirationDate.value ? expirationCopy(expirationDate.value) : '';
+});
+
+// Expiration can't be changed after creation, so edit/view modes surface it as
+// read-only text using the same copy as the create form.
+const editExpirationText = computed(() => {
+	const apiKey = currentApiKey.value;
+	if (!apiKey) return '';
+	if (!apiKey.expiresAt) return neverExpiresCopy();
+	return expirationCopy(
+		DateTime.fromSeconds(apiKey.expiresAt).toFormat(API_KEY_DATE_FORMAT),
+		isApiKeyExpired(apiKey),
+	);
+});
+
 const isCustomDateInThePast = (date: Date) => Date.now() > date.getTime();
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.api'));
+
+	if (props.rotatedApiKey) {
+		newApiKey.value = props.rotatedApiKey;
+		rawApiKey.value = props.rotatedApiKey.rawApiKey;
+		return;
+	}
 
 	setTimeout(() => {
 		inputRef.value?.focus();
@@ -123,9 +190,7 @@ onMounted(() => {
 		const apiKey = apiKeysById[props.activeId];
 		label.value = apiKey.label ?? '';
 		apiKeyCreationDate.value = getApiKeyCreationTime(apiKey);
-		selectedScopes.value = apiKey.scopes.filter((scope) =>
-			apiKeyStore.availableScopes.includes(scope),
-		);
+		selectedScopes.value = apiKey.scopes.filter((scope) => availableScopes.includes(scope));
 	} else {
 		selectedScopes.value = [...availableScopes];
 	}
@@ -140,7 +205,7 @@ function onScopeSelectionChanged(scopes: ApiKeyScope[]) {
 }
 
 const getApiKeyCreationTime = (apiKey: ApiKey): string => {
-	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat('ccc, MMM d yyyy');
+	const time = DateTime.fromMillis(Date.parse(apiKey.createdAt)).toFormat(API_KEY_DATE_FORMAT);
 	return i18n.baseText('settings.api.creationTime', { interpolate: { time } });
 };
 
@@ -199,7 +264,35 @@ const onSave = async () => {
 	}
 };
 
+const API_KEY_VISIBLE_CHARS_PER_SIDE = 30;
+
+// Middle-truncated display value: the key's start and end stay visible so the
+// user can eyeball what they copied, while the input never holds the full key.
+const apiKeyDisplay = computed(() => {
+	const raw = rawApiKey.value;
+	const visible = API_KEY_VISIBLE_CHARS_PER_SIDE;
+	return raw.length > visible * 2 ? `${raw.slice(0, visible)}...${raw.slice(-visible)}` : raw;
+});
+
+function onApiKeyCopied() {
+	showMessage({
+		title: i18n.baseText('settings.api.view.copy.toast'),
+		type: 'success',
+	});
+}
+
 const modalTitle = computed(() => {
+	if (props.rotatedApiKey) {
+		return i18n.baseText('settings.api.rotate.success.title');
+	}
+	if (isReadOnly.value) {
+		// Own key that the role can't edit vs. a key owned by someone else.
+		return isOwnKey.value || !currentApiKey.value?.owner
+			? i18n.baseText('settings.api.view.modal.title.readonly.own')
+			: i18n.baseText('settings.api.view.modal.title.readonly', {
+					interpolate: { email: currentApiKey.value.owner.email },
+				});
+	}
 	let path = 'edit';
 	if (props.mode === 'new') {
 		if (newApiKey.value) {
@@ -211,6 +304,22 @@ const modalTitle = computed(() => {
 	return i18n.baseText(`settings.api.view.modal.title.${path}` as BaseTextKey);
 });
 
+async function onRevokeConfirm() {
+	if (!currentApiKey.value) return;
+	revoking.value = true;
+	try {
+		await deleteApiKey(props.activeId);
+		showMessage({ type: 'success', title: i18n.baseText('settings.api.revoke.toast') });
+		showRevokeConfirm.value = false;
+		closeModal();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.delete.error'));
+	} finally {
+		revoking.value = false;
+		telemetry.track('User clicked delete API key button', { is_own: false });
+	}
+}
+
 const onSelect = (value: number) => {
 	if (value === EXPIRATION_OPTIONS.CUSTOM) {
 		showExpirationDateSelector.value = true;
@@ -219,7 +328,7 @@ const onSelect = (value: number) => {
 	}
 
 	if (value !== EXPIRATION_OPTIONS.NO_EXPIRATION) {
-		expirationDate.value = calculateExpirationDate(value).toFormat('ccc, MMM d yyyy');
+		expirationDate.value = calculateExpirationDate(value).toFormat(API_KEY_DATE_FORMAT);
 		showExpirationDateSelector.value = false;
 		return;
 	}
@@ -230,6 +339,7 @@ const onSelect = (value: number) => {
 
 async function handleEnterKey(event: KeyboardEvent) {
 	if (event.key === 'Enter') {
+		if (isReadOnly.value) return;
 		if (props.mode === 'new') {
 			await onSave();
 		} else {
@@ -252,16 +362,19 @@ async function handleEnterKey(event: KeyboardEvent) {
 	>
 		<template #content>
 			<div @keyup.enter="handleEnterKey">
-				<N8nCard v-if="newApiKey" class="mb-4xs">
-					<CopyInput
-						:label="newApiKey.label"
-						:value="newApiKey.rawApiKey"
-						:redact-value="true"
-						:copy-button-text="i18n.baseText('generic.clickToCopy')"
-						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
-						:hint="i18n.baseText('settings.api.view.copy')"
+				<div v-if="newApiKey" :class="$style.createdView">
+					<N8nText size="small">{{ i18n.baseText('settings.api.view.copy') }}</N8nText>
+					<N8nCopyInput
+						:value="rawApiKey"
+						:display-value="apiKeyDisplay"
+						size="large"
+						:copy-label="i18n.baseText('generic.copy')"
+						:copied-label="i18n.baseText('generic.copiedToClipboard')"
+						class="ph-no-capture"
+						data-test-id="copy-input"
+						@copy="onApiKeyCopied"
 					/>
-				</N8nCard>
+				</div>
 
 				<div v-else :class="$style.form">
 					<N8nInputLabel
@@ -276,6 +389,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 							type="text"
 							:placeholder="i18n.baseText('settings.api.view.modal.form.label.placeholder')"
 							:maxlength="50"
+							:disabled="isReadOnly"
 							data-test-id="api-key-label"
 							@update:model-value="onInput"
 						/>
@@ -306,11 +420,6 @@ async function handleEnterKey(event: KeyboardEvent) {
 								</N8nOption>
 							</N8nSelect>
 						</N8nInputLabel>
-						<N8nText v-if="expirationDate" class="mb-xs">{{
-							i18n.baseText('settings.api.view.modal.form.expirationText', {
-								interpolate: { expirationDate },
-							})
-						}}</N8nText>
 						<ElDatePicker
 							v-if="showExpirationDateSelector"
 							v-model="customExpirationDate"
@@ -320,38 +429,84 @@ async function handleEnterKey(event: KeyboardEvent) {
 							value-format="X"
 							:disabled-date="isCustomDateInThePast"
 						/>
+						<N8nText
+							v-if="expirationHint"
+							size="small"
+							color="text-light"
+							data-test-id="api-key-expiration-hint"
+						>
+							{{ expirationHint }}
+						</N8nText>
 					</div>
+					<N8nInputLabel
+						v-else
+						:label="i18n.baseText('settings.api.view.modal.form.expiration')"
+						color="text-dark"
+					>
+						<N8nText size="small" color="text-light" data-test-id="api-key-expiration-readonly">
+							{{ editExpirationText }}
+						</N8nText>
+					</N8nInputLabel>
 					<ApiKeyScopes
 						v-model="selectedScopes"
 						:available-scopes="availableScopes"
+						:disabled="isReadOnly"
 						@update:model-value="onScopeSelectionChanged"
 					/>
 				</div>
+				<RevokeApiKeyConfirmModal
+					:api-key="currentApiKey"
+					:open="showRevokeConfirm"
+					:loading="revoking"
+					:revoking-for-other="!isOwnKey"
+					@confirm="onRevokeConfirm"
+					@cancel="showRevokeConfirm = false"
+					@update:open="showRevokeConfirm = $event"
+				/>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton
-					v-if="mode === 'new' && !newApiKey"
-					:loading="loading"
-					:disabled="!allFormFieldsAreSet"
-					:label="i18n.baseText('settings.api.view.modal.save.button')"
-					@click="onSave"
-				/>
-				<N8nButton
-					v-else-if="mode === 'new'"
-					:label="i18n.baseText('settings.api.view.modal.done.button')"
-					@click="closeModal"
-				/>
-				<N8nButton
-					v-if="mode === 'edit'"
-					:disabled="!allFormFieldsAreSet"
-					:label="i18n.baseText('settings.api.view.modal.save.button')"
-					@click="onEdit"
-				/>
-				<N8nText v-if="mode === 'edit'" size="small" color="text-light">{{
-					apiKeyCreationDate
-				}}</N8nText>
+				<template v-if="isReadOnly">
+					<div :class="$style.readonlyActions">
+						<N8nButton
+							variant="destructive"
+							:label="i18n.baseText('settings.api.revoke.button')"
+							data-test-id="api-key-readonly-revoke"
+							@click="showRevokeConfirm = true"
+						/>
+						<N8nButton
+							variant="outline"
+							:label="i18n.baseText('settings.api.view.modal.close.button')"
+							data-test-id="api-key-readonly-close"
+							@click="closeModal"
+						/>
+					</div>
+					<N8nText size="small" color="text-light">{{ apiKeyCreationDate }}</N8nText>
+				</template>
+				<template v-else>
+					<N8nButton
+						v-if="mode === 'new' && !newApiKey"
+						:loading="loading"
+						:disabled="!allFormFieldsAreSet"
+						:label="i18n.baseText('settings.api.view.modal.save.button')"
+						@click="onSave"
+					/>
+					<N8nButton
+						v-else-if="mode === 'new'"
+						:label="i18n.baseText('settings.api.view.modal.done.button')"
+						@click="closeModal"
+					/>
+					<N8nButton
+						v-if="mode === 'edit'"
+						:disabled="!allFormFieldsAreSet"
+						:label="i18n.baseText('settings.api.view.modal.save.button')"
+						@click="onEdit"
+					/>
+					<N8nText v-if="mode === 'edit'" size="small" color="text-light">{{
+						apiKeyCreationDate
+					}}</N8nText>
+				</template>
 			</div>
 		</template>
 	</Modal>
@@ -361,23 +516,35 @@ async function handleEnterKey(event: KeyboardEvent) {
 	margin: 0;
 }
 
+.createdView {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--md);
 }
 
 .expirationSection {
 	display: flex;
-	flex-direction: row;
-	align-items: flex-end;
-	gap: var(--spacing--xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--3xs);
 }
 
 .footer {
 	display: flex;
 	flex-direction: row-reverse;
 	justify-content: space-between;
+	align-items: center;
+}
+
+.readonlyActions {
+	display: flex;
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 </style>

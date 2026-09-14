@@ -101,3 +101,18 @@ export class UnknownIdentifierError extends InterpreterError {
 		this.identifier = identifier;
 	}
 }
+
+/**
+ * Error thrown when interpretation exceeds a bound on statement count,
+ * total produced data, or expression nesting depth.
+ */
+export class ResourceLimitError extends InterpreterError {
+	readonly limitType: string;
+
+	/** Pass `detail` for sentence-style messages to avoid double-wrapping `limitType`. */
+	constructor(limitType: string, location?: SourceLocation, sourceCode?: string, detail?: string) {
+		super(detail ?? `Resource limit exceeded: '${limitType}'`, location, sourceCode);
+		this.name = 'ResourceLimitError';
+		this.limitType = limitType;
+	}
+}

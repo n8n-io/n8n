@@ -28,7 +28,7 @@ describe('SessionManager', () => {
 			await manager.registerSession('session-1', server, transport);
 
 			expect(mockStore.register).toHaveBeenCalledWith('session-1');
-			expect(manager.getSession('session-1')).toEqual({
+			expect(manager.getSession('session-1')).toMatchObject({
 				sessionId: 'session-1',
 				server,
 				transport,
@@ -96,6 +96,35 @@ describe('SessionManager', () => {
 			await expect(manager.destroySession('non-existent')).resolves.not.toThrow();
 			expect(mockStore.unregister).toHaveBeenCalledWith('non-existent');
 		});
+
+		it('should close the server it held to release the transport', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+
+			await manager.destroySession('session-1');
+
+			expect(server.close).toHaveBeenCalled();
+		});
+
+		it('should not recurse when closing the server re-enters destroySession', async () => {
+			const server = createMockServer();
+			// Production wires transport.onclose -> cleanupSession -> destroySession, so
+			// server.close() re-enters this method for the same session.
+			let reentered = false;
+			server.close.mockImplementation(async () => {
+				if (!reentered) {
+					reentered = true;
+					await manager.destroySession('session-1');
+				}
+			});
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+
+			await expect(manager.destroySession('session-1')).resolves.not.toThrow();
+
+			// Deleted before close, so the re-entrant call finds nothing and skips close.
+			expect(server.close).toHaveBeenCalledTimes(1);
+			expect(manager.getSession('session-1')).toBeUndefined();
+		});
 	});
 
 	describe('getSession', () => {
@@ -106,7 +135,7 @@ describe('SessionManager', () => {
 
 			const session = manager.getSession('session-1');
 
-			expect(session).toEqual({
+			expect(session).toMatchObject({
 				sessionId: 'session-1',
 				server,
 				transport,
@@ -115,6 +144,89 @@ describe('SessionManager', () => {
 
 		it('should return undefined for unregistered session', () => {
 			expect(manager.getSession('non-existent')).toBeUndefined();
+		});
+	});
+
+	describe('activity tracking', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should stamp lastActivityAt on register', async () => {
+			vi.setSystemTime(1_000);
+			await manager.registerSession(
+				'session-1',
+				createMockServer(),
+				createMockTransport('session-1'),
+			);
+
+			expect(manager.getSession('session-1')?.lastActivityAt).toBe(1_000);
+		});
+
+		it('should refresh lastActivityAt on touch', async () => {
+			vi.setSystemTime(1_000);
+			await manager.registerSession(
+				'session-1',
+				createMockServer(),
+				createMockTransport('session-1'),
+			);
+
+			vi.setSystemTime(5_000);
+			manager.touch('session-1');
+
+			expect(manager.getSession('session-1')?.lastActivityAt).toBe(5_000);
+		});
+
+		it('should ignore touch for unknown session without creating it', () => {
+			manager.touch('non-existent');
+			expect(manager.getSession('non-existent')).toBeUndefined();
+		});
+
+		describe('getIdleSessions', () => {
+			it('should return sessions idle for at least the ttl', async () => {
+				vi.setSystemTime(0);
+				await manager.registerSession('stale', createMockServer(), createMockTransport('stale'));
+
+				expect(manager.getIdleSessions(1_000, 2_500)).toEqual(['stale']);
+			});
+
+			it('should treat exactly-ttl as idle', async () => {
+				vi.setSystemTime(1_000);
+				await manager.registerSession(
+					'session-1',
+					createMockServer(),
+					createMockTransport('session-1'),
+				);
+
+				expect(manager.getIdleSessions(1_000, 2_000)).toEqual(['session-1']);
+			});
+
+			it('should exclude recently touched sessions', async () => {
+				vi.setSystemTime(0);
+				await manager.registerSession('active', createMockServer(), createMockTransport('active'));
+				await manager.registerSession('stale', createMockServer(), createMockTransport('stale'));
+
+				vi.setSystemTime(5_000);
+				manager.touch('active');
+
+				expect(manager.getIdleSessions(1_000, 5_500)).toEqual(['stale']);
+			});
+
+			it('should not return destroyed sessions', async () => {
+				vi.setSystemTime(0);
+				await manager.registerSession(
+					'session-1',
+					createMockServer(),
+					createMockTransport('session-1'),
+				);
+				await manager.destroySession('session-1');
+
+				expect(manager.getIdleSessions(1_000, 10_000)).toEqual([]);
+			});
 		});
 	});
 

@@ -1,7 +1,8 @@
 import { generateKeyPairSync } from 'node:crypto';
 
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { OutboundHttp } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
 import type { JwksKeySource } from '../../token-exchange.schemas';
@@ -45,7 +46,7 @@ function mockFetchResponse(
 	if (options?.cacheControl) {
 		headers.set('cache-control', options.cacheControl);
 	}
-	return jest.fn().mockResolvedValue({
+	return vi.fn().mockResolvedValue({
 		ok: status >= 200 && status < 300,
 		status,
 		headers,
@@ -54,11 +55,11 @@ function mockFetchResponse(
 }
 
 function mockFetchError(error: Error): typeof fetch {
-	return jest.fn().mockRejectedValue(error);
+	return vi.fn().mockRejectedValue(error);
 }
 
 function mockFetchInvalidJson(): typeof fetch {
-	return jest.fn().mockResolvedValue({
+	return vi.fn().mockResolvedValue({
 		ok: true,
 		status: 200,
 		headers: new Headers(),
@@ -72,13 +73,13 @@ function mockFetchInvalidJson(): typeof fetch {
 // Tests
 // ──────────────────────────────────────────────────────────────────────
 
-const mockLogger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+const mockLogger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 
 describe('JwksResolverService', () => {
 	let service: JwksResolverService;
 
 	beforeEach(() => {
-		service = new JwksResolverService(mockLogger);
+		service = new JwksResolverService(mockLogger, mock<OutboundHttp>());
 	});
 
 	describe('happy path', () => {

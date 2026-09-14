@@ -5,11 +5,14 @@ desc: Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 dsn: ${TBLS_DSN}
 docPath: docs/generated/sqlite-schema
 
+# Skip the machine-readable schema.json dump; only the Markdown docs are committed.
+disableOutputSchema: true
+
 er:
   format: mermaid
 
 format:
-  sortTablesByName: true
+  sort: true
 
 # The migrations bookkeeping table is operational noise, not part of the schema.
 exclude:

@@ -28,6 +28,11 @@ export class CommandBar {
 		await expect(this.getContainer()).toBeVisible();
 	}
 
+	async openWithShortcut(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+k');
+		await expect(this.getContainer()).toBeVisible();
+	}
+
 	async search(query: string): Promise<void> {
 		await this.open();
 		await this.getInput().fill(query);

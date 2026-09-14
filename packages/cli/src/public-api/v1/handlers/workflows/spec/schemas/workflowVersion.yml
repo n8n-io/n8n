@@ -28,6 +28,12 @@ properties:
     example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
     description: Connections as they were in this version
     readOnly: true
+  nodeGroups:
+    type: array
+    readOnly: true
+    description: Node groups as they were in this version
+    items:
+      $ref: './workflowNodeGroup.yml'
   authors:
     type: string
     readOnly: true

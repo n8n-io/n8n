@@ -1,9 +1,10 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as utilities from '../../../../utils/utilities';
 import { Github } from '../../Github.node';
+import type * as _importType0 from '../../../../utils/utilities';
 
 describe('Test Github Node', () => {
 	describe('Workflow Dispatch', () => {
@@ -60,7 +61,7 @@ describe('Test Github Node', () => {
 		};
 
 		beforeAll(async () => {
-			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
+			vi.useFakeTimers({ now });
 		});
 
 		describe('removeTrailingSlash Function', () => {
@@ -70,26 +71,26 @@ describe('Test Github Node', () => {
 			beforeEach(() => {
 				githubNode = new Github();
 				mockExecutionContext = {
-					getNode: jest.fn().mockReturnValue({ name: 'Github' }),
-					getNodeParameter: jest.fn(),
-					getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-					continueOnFail: jest.fn().mockReturnValue(false),
-					getCredentials: jest.fn().mockResolvedValue({
+					getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+					getNodeParameter: vi.fn(),
+					getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+					continueOnFail: vi.fn().mockReturnValue(false),
+					getCredentials: vi.fn().mockResolvedValue({
 						server: 'https://api.github.com',
 						user: 'test',
 						accessToken: 'test',
 					}),
 					helpers: {
-						returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
-						requestWithAuthentication: jest.fn().mockResolvedValue({}),
-						constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+						returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+						requestWithAuthentication: vi.fn().mockResolvedValue({}),
+						constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
 					},
 				};
 
-				jest.spyOn(utilities, 'removeTrailingSlash');
-				jest.mock('../../../../utils/utilities', () => ({
-					...jest.requireActual('../../../../utils/utilities'),
-					getFileSha: jest.fn().mockResolvedValue('mockedSHA'),
+				vi.spyOn(utilities, 'removeTrailingSlash');
+				vi.mock('../../../../utils/utilities', async () => ({
+					...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
+					getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
 				}));
 			});
 
@@ -161,21 +162,21 @@ describe('Test Github Node', () => {
 		beforeEach(() => {
 			githubNode = new Github();
 			mockExecutionContext = {
-				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
-				getNodeParameter: jest.fn(),
-				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-				continueOnFail: jest.fn().mockReturnValue(false),
-				putExecutionToWait: jest.fn(),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: vi.fn(),
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				putExecutionToWait: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
 					server: 'https://api.github.com',
 					user: 'test',
 					accessToken: 'test',
 				}),
 				helpers: {
-					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
-					httpRequest: jest.fn(),
-					httpRequestWithAuthentication: jest.fn(),
-					requestWithAuthentication: jest
+					returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+					httpRequest: vi.fn(),
+					httpRequestWithAuthentication: vi.fn(),
+					requestWithAuthentication: vi
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
 							if (options.uri.includes('dispatches') && options.method === 'POST') {
@@ -186,12 +187,12 @@ describe('Test Github Node', () => {
 							}
 							return {};
 						}),
-					request: jest.fn(),
-					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
-					assertBinaryData: jest.fn(),
-					prepareBinaryData: jest.fn(),
+					request: vi.fn(),
+					constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
+					assertBinaryData: vi.fn(),
+					prepareBinaryData: vi.fn(),
 				},
-				getWorkflowDataProxy: jest.fn().mockReturnValue({
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
 					$execution: {
 						resumeUrl: 'https://example.com/webhook',
 					},
@@ -312,7 +313,7 @@ describe('Test Github Node', () => {
 			const repository = 'testRepository';
 			const workflowId = 147025216;
 
-			mockExecutionContext.getWorkflowDataProxy = jest.fn().mockReturnValue({
+			mockExecutionContext.getWorkflowDataProxy = vi.fn().mockReturnValue({
 				$execution: {
 					resumeUrl: 'https://example.com/webhook',
 				},
@@ -380,19 +381,19 @@ describe('Test Github Node', () => {
 		beforeEach(() => {
 			githubNode = new Github();
 			mockExecutionContext = {
-				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
-				getNodeParameter: jest.fn(),
-				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-				continueOnFail: jest.fn().mockReturnValue(false),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: vi.fn(),
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				getCredentials: vi.fn().mockResolvedValue({
 					server: 'https://api.github.com',
 					user: 'test',
 					accessToken: 'test',
 				}),
 				helpers: {
-					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
-					requestWithAuthentication: jest.fn().mockResolvedValue({}),
-					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+					returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: vi.fn().mockResolvedValue({}),
+					constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
 				},
 			};
 		});
@@ -601,19 +602,19 @@ describe('Test Github Node', () => {
 		beforeEach(() => {
 			githubNode = new Github();
 			mockExecutionContext = {
-				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
-				getNodeParameter: jest.fn(),
-				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-				continueOnFail: jest.fn().mockReturnValue(false),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: vi.fn(),
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				getCredentials: vi.fn().mockResolvedValue({
 					server: 'https://api.github.com',
 					user: 'test',
 					accessToken: 'test',
 				}),
 				helpers: {
-					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
-					requestWithAuthentication: jest.fn().mockResolvedValue({}),
-					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+					returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: vi.fn().mockResolvedValue({}),
+					constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
 				},
 			};
 		});
@@ -696,6 +697,105 @@ describe('Test Github Node', () => {
 					qs: expect.objectContaining({ labels: 'bug' }),
 				}),
 			);
+		});
+	});
+
+	describe('Dispatch and Wait - Limit Wait Time', () => {
+		const now = 1683028800000;
+		let githubNode: Github;
+		let mockExecutionContext: any;
+
+		// Only the `limitWaitTime` values vary between these tests; everything else is a
+		// valid dispatchAndWait configuration.
+		const setLimitWaitTime = (values: object | undefined) => {
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, _itemIndex: number, defaultValue: unknown) => {
+					if (parameterName === 'options.limitWaitTime.values') return values ?? defaultValue;
+					if (parameterName === 'resource') return 'workflow';
+					if (parameterName === 'operation') return 'dispatchAndWait';
+					if (parameterName === 'authentication') return 'accessToken';
+					if (parameterName === 'owner') return 'testOwner';
+					if (parameterName === 'repository') return 'testRepository';
+					if (parameterName === 'workflowId') return 147025216;
+					if (parameterName === 'ref') return 'main';
+					if (parameterName === 'inputs') return '{}';
+					return defaultValue;
+				},
+			);
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers({ now });
+			githubNode = new Github();
+			mockExecutionContext = {
+				getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: vi.fn(),
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				putExecutionToWait: vi.fn(),
+				setMetadata: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
+					server: 'https://api.github.com',
+					user: 'test',
+					accessToken: 'test',
+				}),
+				helpers: {
+					returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: vi.fn().mockResolvedValue({}),
+					constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
+				},
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
+					$execution: { resumeUrl: 'https://example.com/webhook' },
+				}),
+			};
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should wait indefinitely when no limit is set', async () => {
+			setLimitWaitTime(undefined);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(WAIT_INDEFINITELY);
+		});
+
+		it('should wait for the configured time interval', async () => {
+			setLimitWaitTime({
+				limitType: 'afterTimeInterval',
+				resumeAmount: 30,
+				resumeUnit: 'minutes',
+			});
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(
+				new Date(now + 30 * 60 * 1000),
+			);
+		});
+
+		it('should wait until the configured date and time', async () => {
+			const maxDateAndTime = '2023-05-02T12:00:00.000Z';
+			setLimitWaitTime({ limitType: 'atSpecifiedTime', maxDateAndTime });
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(
+				new Date(maxDateAndTime),
+			);
+		});
+
+		it('should throw for an invalid date and time without dispatching the workflow', async () => {
+			setLimitWaitTime({ limitType: 'atSpecifiedTime', maxDateAndTime: 'not-a-date' });
+
+			await expect(githubNode.execute.call(mockExecutionContext)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockExecutionContext.putExecutionToWait).not.toHaveBeenCalled();
 		});
 	});
 });

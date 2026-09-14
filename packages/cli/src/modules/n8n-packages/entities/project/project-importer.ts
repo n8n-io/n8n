@@ -1,0 +1,166 @@
+import { LicenseState } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { decideMatchedProject } from './project-conflict-policy';
+import type {
+	PreparedProject,
+	ProjectImportPlan,
+	ProjectPlanFields,
+	ProjectPlanItem,
+} from './project-import.types';
+import type {
+	ImportedProjectSummary,
+	ProjectConflict,
+	ProjectConflictPolicy,
+} from '../../n8n-packages.types';
+
+@Service()
+export class ProjectImporter {
+	constructor(
+		private readonly projectService: ProjectService,
+		private readonly licenseState: LicenseState,
+	) {}
+
+	async plan(
+		user: User,
+		projects: PreparedProject[],
+		policy: ProjectConflictPolicy,
+	): Promise<ProjectImportPlan> {
+		const items: ProjectPlanItem[] = [];
+		const conflicts: ProjectConflict[] = [];
+		const decision = decideMatchedProject(policy);
+
+		for (const project of projects) {
+			const existing = await this.projectService.findProject(project.sourceProjectId);
+
+			if (existing) {
+				// Never import over a personal project
+				if (existing.type !== 'team') {
+					throw new ForbiddenError(
+						`Cannot import project "${project.name}": its id belongs to a non-team project on this instance.`,
+					);
+				}
+				// Required for `merge` too: the package's contents are still written into the project.
+				const authorized = await this.projectService.getProjectWithScope(user, existing.id, [
+					'project:update',
+				]);
+				if (!authorized) {
+					throw new ForbiddenError(
+						`You do not have permission to update the existing project "${project.name}".`,
+					);
+				}
+
+				if (decision.blocked) {
+					conflicts.push({
+						kind: 'fail-policy',
+						sourceProjectId: project.sourceProjectId,
+						name: project.name,
+					});
+					continue;
+				}
+
+				items.push(
+					decision.action === 'update'
+						? { action: 'update', ...toFields(project) }
+						: { action: 'skip', existingName: existing.name, ...toFields(project) },
+				);
+			} else {
+				this.assertCanCreateProjects(user);
+				items.push({ action: 'create', ...toFields(project) });
+			}
+		}
+
+		return { items, conflicts };
+	}
+
+	async apply(user: User, items: ProjectPlanItem[]): Promise<ImportedProjectSummary[]> {
+		const summaries: ImportedProjectSummary[] = [];
+
+		for (const item of items) {
+			switch (item.action) {
+				case 'skip':
+					// `merge`: the existing project is left untouched; only its contents come in.
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: item.sourceProjectId,
+						name: item.existingName,
+						status: 'skipped',
+					});
+					break;
+
+				case 'create': {
+					const project = await this.projectService.createTeamProject(
+						user,
+						{ name: item.name, icon: item.icon },
+						{
+							id: item.sourceProjectId,
+							description: item.description ?? null,
+							customTelemetryTags: item.customTelemetryTags,
+						},
+					);
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: project.id,
+						name: project.name,
+						status: 'created',
+					});
+					break;
+				}
+
+				case 'update':
+					await this.projectService.updateProject(user, item.sourceProjectId, {
+						name: item.name,
+						icon: item.icon,
+						description: item.description,
+						customTelemetryTags: item.customTelemetryTags,
+					});
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: item.sourceProjectId,
+						name: item.name,
+						status: 'updated',
+					});
+					break;
+
+				default: {
+					// A new action must decide for itself whether it writes; never fall into `update`.
+					const unhandled: never = item;
+					throw new UnexpectedError(
+						`Unhandled project import action: ${JSON.stringify(unhandled)}`,
+					);
+				}
+			}
+		}
+
+		return summaries;
+	}
+
+	private assertCanCreateProjects(user: User): void {
+		if (!hasGlobalScope(user, 'project:create')) {
+			throw new ForbiddenError('You do not have permission to create projects.');
+		}
+		if (!this.licenseState.isLicensed('feat:projectRole:admin')) {
+			throw new ForbiddenError(
+				'Your license does not allow creating team projects. Project import requires a license that supports team projects.',
+			);
+		}
+	}
+}
+
+function toFields(project: PreparedProject): ProjectPlanFields {
+	return {
+		sourceProjectId: project.sourceProjectId,
+		name: project.name,
+		...(project.description !== undefined ? { description: project.description } : {}),
+		...(project.icon !== undefined ? { icon: project.icon } : {}),
+		...(project.customTelemetryTags !== undefined
+			? { customTelemetryTags: project.customTelemetryTags }
+			: {}),
+	};
+}

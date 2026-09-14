@@ -42,6 +42,10 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	anonymizeAuditMessages: boolean;
 
+	// Raw configured circuit-breaker options as received, used for serializing.
+	// Needed to be set this way so that we do not send default settings, only what user saved.
+	readonly circuitBreakerOptions?: MessageEventBusDestinationOptions['circuitBreaker'];
+
 	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationOptions) {
 		// @TODO: Use DI
 		this.logger = Container.get(Logger);
@@ -63,6 +67,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			failureWindow,
 			maxConcurrentHalfOpenRequests,
 		});
+
+		this.circuitBreakerOptions = options.circuitBreaker;
 
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
@@ -97,6 +103,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			enabled: this.enabled,
 			subscribedEvents: this.subscribedEvents,
 			anonymizeAuditMessages: this.anonymizeAuditMessages,
+			circuitBreaker: this.circuitBreakerOptions,
 		};
 	}
 

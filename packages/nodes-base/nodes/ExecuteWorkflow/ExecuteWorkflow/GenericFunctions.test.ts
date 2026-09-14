@@ -1,19 +1,19 @@
 import { readFile as fsReadFile } from 'fs/promises';
-import { mockDeep, type DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
 
-jest.mock('fs/promises', () => ({ readFile: jest.fn() }));
+vi.mock('fs/promises', () => ({ readFile: vi.fn() }));
 
-const mockReadFile = jest.mocked(fsReadFile);
+const mockReadFile = vi.mocked(fsReadFile);
 const enoentError = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 
 describe('ExecuteWorkflow node - GenericFunctions', () => {
 	let executeFunctionsMock: DeepMockProxy<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		executeFunctionsMock = mockDeep<IExecuteFunctions>();
 		executeFunctionsMock.helpers.resolvePath.mockResolvedValue('path/to/file' as never);
 	});

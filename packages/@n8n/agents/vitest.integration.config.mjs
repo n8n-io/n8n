@@ -9,6 +9,7 @@ loadEnv({ path: resolve(__dirname, '.env') });
 export default defineConfig({
 	test: {
 		include: ['src/__tests__/integration/**/*.test.ts'],
+		setupFiles: ['vitest.integration.setup.ts'],
 		testTimeout: 120_000,
 		hookTimeout: 30_000,
 	},

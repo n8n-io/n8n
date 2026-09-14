@@ -1,0 +1,128 @@
+import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
+import { HttpProxyAgent } from 'http-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import type http from 'node:http';
+import type https from 'node:https';
+import { mock } from 'vitest-mock-extended';
+
+import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
+import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { OutboundHttp } from '../outbound-http';
+
+function makeFacade(bridge?: SsrfBridge): OutboundHttp {
+	const service = bridge
+		? mock<SsrfProtectionService>(bridge)
+		: mock<SsrfProtectionService>({ createSecureLookup: vi.fn().mockReturnValue(makeLookupFn()) });
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>());
+}
+
+// HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
+// (unlike http.Agent and HttpProxyAgent which use `options`).
+function getAgentLookup(agent: http.Agent | https.Agent): unknown {
+	const a = agent as {
+		options?: { lookup?: unknown };
+		connectOpts?: { lookup?: unknown };
+	};
+	return a.options?.lookup ?? a.connectOpts?.lookup;
+}
+
+// ---------------------------------------------------------------------------
+// getNodeAgent — proxy routing
+// ---------------------------------------------------------------------------
+
+describe('getNodeAgent', () => {
+	// Proxy-mode → agent-class matrix is owned by `node-agents.test.ts`
+	// (`buildNodeAgents` → `describe('agent classes per proxy mode')`); this is a
+	// representative case proving the facade forwards to it correctly.
+	it('proxy: explicit URL → HttpProxyAgent / HttpsProxyAgent', () => {
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport({ proxy: 'http://proxy.internal:3128' })
+			.getNodeAgent();
+
+		expect(httpAgent).toBeInstanceOf(HttpProxyAgent);
+		expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+	});
+
+	it('returns the same agent instances on repeated calls', () => {
+		const client = makeFacade().transport();
+		const a1 = client.getNodeAgent();
+		const a2 = client.getNodeAgent();
+
+		expect(a1.httpAgent).toBe(a2.httpAgent);
+		expect(a1.httpsAgent).toBe(a2.httpsAgent);
+	});
+
+	it('builds fresh agents that forward per-call agent options', () => {
+		const client = makeFacade().transport({ proxy: false });
+		const cached = client.getNodeAgent();
+		const custom = client.getNodeAgent({ rejectUnauthorized: false });
+
+		expect(custom.httpsAgent).not.toBe(cached.httpsAgent);
+		expect(custom.httpsAgent.options.rejectUnauthorized).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getNodeAgent — connection-reuse options propagate across all routing paths
+//
+// Callers may pass connection-management options (e.g. `keepAlive`,
+// `maxSockets`) to enable connection reuse. Regardless of how the request is
+// routed, those options must reach the constructed agent — otherwise a proxied
+// deployment would silently drop them.
+// ---------------------------------------------------------------------------
+
+describe('getNodeAgent connection-reuse options', () => {
+	// keep-alive/maxSockets are connection-management options, so Node's Agent (and
+	// the proxy agents that extend it) expose them as instance properties.
+	function getReuseOptions(agent: http.Agent | https.Agent): {
+		keepAlive: unknown;
+		maxSockets: unknown;
+	} {
+		const a = agent as { keepAlive?: unknown; maxSockets?: unknown };
+		return { keepAlive: a.keepAlive, maxSockets: a.maxSockets };
+	}
+
+	it.each([
+		['direct (proxy: false)', { proxy: false } as const],
+		['env proxy', { proxy: 'env' } as const],
+		['explicit proxy URL', { proxy: 'http://proxy.internal:3128' } as const],
+	])('forwards keepAlive/maxSockets on the %s path', (_label, transportOptions) => {
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport(transportOptions)
+			.getNodeAgent({ keepAlive: true, maxSockets: 50 });
+
+		expect(getReuseOptions(httpAgent)).toEqual({ keepAlive: true, maxSockets: 50 });
+		expect(getReuseOptions(httpsAgent)).toEqual({ keepAlive: true, maxSockets: 50 });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getNodeAgent — SSRF lookup injection
+// ---------------------------------------------------------------------------
+
+describe('getNodeAgent SSRF lookup injection', () => {
+	// The full proxy-mode matrix is owned by `node-agents.test.ts`
+	// (`buildNodeAgents` → `describe('SSRF lookup placement')`); this is a
+	// representative case proving the facade forwards to it correctly.
+	it('the agents carry the lookup created by the SSRF bridge', () => {
+		const lookupFn = makeLookupFn();
+		const bridge = makeSsrfBridge({
+			createSecureLookup: vi.fn().mockReturnValue(lookupFn),
+		});
+
+		const { httpAgent, httpsAgent } = makeFacade(bridge).transport({ proxy: false }).getNodeAgent();
+
+		expect(getAgentLookup(httpAgent)).toBe(lookupFn);
+		expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
+	});
+
+	it('no lookup when SSRF is disabled', () => {
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport({ useDefaultSsrfPolicy: 'unsafe', proxy: false })
+			.getNodeAgent();
+
+		expect(getAgentLookup(httpAgent)).toBeUndefined();
+		expect(getAgentLookup(httpsAgent)).toBeUndefined();
+	});
+});

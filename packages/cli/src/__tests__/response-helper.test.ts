@@ -1,17 +1,24 @@
-import { QueryFailedError } from '@n8n/db';
-import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { Request, Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { isUniqueConstraintError, sendErrorResponse } from '@/response-helper';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { reportError, sendErrorResponse } from '@/response-helper';
 
 describe('sendErrorResponse', () => {
 	let mockResponse: Response;
 
 	beforeEach(() => {
 		mockResponse = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 	});
 
@@ -51,78 +58,78 @@ describe('sendErrorResponse', () => {
 			}),
 		);
 	});
+
+	describe('form pages', () => {
+		const responseFor = (originalUrl: string) =>
+			mock<Response>({
+				req: mock<Request>({ originalUrl }),
+				status: vi.fn().mockReturnThis(),
+				json: vi.fn().mockReturnThis(),
+				render: vi.fn().mockReturnThis(),
+			});
+
+		it('should sandbox the form 404 page', () => {
+			const res = responseFor('/form/does-not-exist');
+
+			sendErrorResponse(res, new NotFoundError('not found'));
+
+			expect(res.render).toHaveBeenCalledWith('form-trigger-404', { isTestWebhook: false });
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+		});
+
+		it('should sandbox the form 409 page', () => {
+			const res = responseFor('/form-waiting/123');
+
+			sendErrorResponse(res, new ConflictError('already finished'));
+
+			expect(res.render).toHaveBeenCalledWith('form-trigger-409', { message: 'already finished' });
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.stringContaining('sandbox'),
+			);
+		});
+	});
 });
 
-describe('isUniqueConstraintError', () => {
-	const makeQueryFailedError = (
-		message: string,
-		driverError: { code?: string } = {},
-	): QueryFailedError => {
-		return new QueryFailedError('Query', [], Object.assign(new Error(message), driverError));
-	};
+describe('reportError', () => {
+	const errorReporter = mockInstance(ErrorReporter);
 
-	describe('returns true for actual database unique-constraint violations', () => {
-		it('SQLite extended code SQLITE_CONSTRAINT_UNIQUE', () => {
-			const error = makeQueryFailedError('UNIQUE constraint failed: workflow_entity.name', {
-				code: 'SQLITE_CONSTRAINT_UNIQUE',
-			});
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
-
-		it('SQLite base code SQLITE_CONSTRAINT when message mentions UNIQUE constraint', () => {
-			const error = makeQueryFailedError(
-				'SQLITE_CONSTRAINT: UNIQUE constraint failed: workflow_entity.name',
-				{ code: 'SQLITE_CONSTRAINT' },
-			);
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
-
-		it('PostgreSQL unique_violation (code 23505)', () => {
-			const error = makeQueryFailedError(
-				'duplicate key value violates unique constraint "users_email_key"',
-				{ code: '23505' },
-			);
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
+	beforeEach(() => {
+		vi.resetAllMocks();
 	});
 
-	describe('returns false for errors that previously triggered false positives (#25012)', () => {
-		it('plain Error whose message mentions a workflow named "Duplicate Detection"', () => {
-			const error = new Error(
-				'Cannot publish workflow: Node "Execute Workflow" references workflow "Duplicate Detection" which is not published',
-			);
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
+	it('skips a client error that extends ResponseError', () => {
+		reportError(new ForbiddenError('Nope'));
 
-		it('plain Error whose message mentions "unique"', () => {
-			const error = new Error('The value must be unique across all entries');
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
-
-		it('plain Error mentioning both trigger words', () => {
-			const error = new Error('Unique identifier duplicate found in configuration');
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
+		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	describe('returns false for unrelated database errors', () => {
-		it('SQLite base code SQLITE_CONSTRAINT for a NOT NULL violation', () => {
-			const error = makeQueryFailedError('NOT NULL constraint failed: workflow_entity.name', {
-				code: 'SQLITE_CONSTRAINT',
-			});
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
+	it('skips a client error that only duck-types ResponseError', () => {
+		reportError(
+			new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check', message: 'blocked' },
+			]),
+		);
 
-		it('PostgreSQL not_null_violation (code 23502)', () => {
-			const error = makeQueryFailedError('null value in column violates not-null constraint', {
-				code: '23502',
-			});
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
+		expect(errorReporter.error).not.toHaveBeenCalled();
+	});
 
-		it('QueryFailedError with no driver code', () => {
-			const error = makeQueryFailedError('Connection timeout after 30000ms');
-			expect(isUniqueConstraintError(error)).toBe(false);
-		});
+	it('reports a server error', () => {
+		const error = new InternalServerError('Broken');
+
+		reportError(error);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(error, undefined);
+	});
+
+	it('reports an error carrying no response fields', () => {
+		const error = new UserError('Something the user did');
+
+		reportError(error);
+
+		expect(errorReporter.error).toHaveBeenCalledWith(error, undefined);
 	});
 });

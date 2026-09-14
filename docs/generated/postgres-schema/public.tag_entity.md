@@ -4,10 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| name | varchar(24) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| id | varchar(36) |  | false | [public.folder_tag](public.folder_tag.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
+| name | varchar(24) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.workflows_tags](public.workflows_tags.md) [public.folder_tag](public.folder_tag.md) |  |  |
 
 ## Constraints
 
@@ -16,8 +16,8 @@
 | tag_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | tag_entity_id_not_null1 | n | NOT NULL id |
 | tag_entity_name_not_null | n | NOT NULL name |
-| tag_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | tag_entity_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| tag_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
@@ -32,22 +32,22 @@
 ```mermaid
 erDiagram
 
-"public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 "public.folder_tag" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
+"public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
 "public.tag_entity" {
-  varchar_24_ name
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   varchar_36_ id
-}
-"public.workflows_tags" {
-  varchar_36_ workflowId FK
-  varchar_36_ tagId FK
+  varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
 }
 "public.folder_tag" {
   varchar_36_ folderId FK
   varchar_36_ tagId FK
+}
+"public.workflows_tags" {
+  varchar_36_ tagId FK
+  varchar_36_ workflowId FK
 }
 ```
 

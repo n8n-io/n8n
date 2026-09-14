@@ -7,6 +7,8 @@ import { stringifyWorkspaceJson } from '../workspace-file-content';
 
 const ROOT = '/home/daytona/workspace';
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
+
 function createSandboxWorkspace(files: Map<string, string>): {
 	workspace: SandboxWorkspace;
 	writes: Map<string, string>;
@@ -62,6 +64,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -85,6 +88,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -113,6 +117,7 @@ describe('loadPrebakedWorkspaceBundle', () => {
 		);
 
 		const result = await loadPrebakedWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			manifestPath,
 			expectedHash: bundle.contentHash,
@@ -148,6 +153,7 @@ describe('materializeWorkspaceBundle', () => {
 		const { workspace, writes } = createSandboxWorkspace(new Map());
 
 		const result = await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () => await Promise.resolve(undefined),
@@ -176,6 +182,7 @@ describe('materializeWorkspaceBundle', () => {
 		};
 
 		await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () => await Promise.resolve(undefined),
@@ -196,10 +203,12 @@ describe('materializeWorkspaceBundle', () => {
 		);
 
 		const result = await materializeWorkspaceBundle({
+			logger: mockLogger,
 			workspace,
 			resourceLabel: 'Test bundle file',
 			loadPrebaked: async () =>
 				await loadPrebakedWorkspaceBundle({
+					logger: mockLogger,
 					workspace,
 					manifestPath,
 					expectedHash: bundle.contentHash,

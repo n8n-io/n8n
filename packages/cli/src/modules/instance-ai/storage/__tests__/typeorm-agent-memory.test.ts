@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentDbMessage } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
+import type { AgentDbMessage, Thread } from '@n8n/agents';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
@@ -39,7 +39,7 @@ function createMemory(deps: {
 	const logger =
 		deps.logger ??
 		mock<Logger>({
-			scoped: jest.fn(() => scopedLogger),
+			scoped: vi.fn(() => scopedLogger),
 		});
 
 	return {
@@ -62,6 +62,57 @@ function getToolInputs(message: AgentDbMessage | undefined): unknown[] {
 }
 
 describe('TypeORMAgentMemory', () => {
+	it('persists active skills without replacing other thread metadata or another agent state', async () => {
+		const thread = mock<InstanceAiThread>({
+			id: 'thread-1',
+			resourceId: 'user-1',
+			metadata: { titleSource: 'user' },
+		});
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValue(thread);
+		threadRepo.updateThread.mockImplementation(async ({ update }) => {
+			const current: Thread = {
+				id: thread.id,
+				resourceId: thread.resourceId,
+				metadata: thread.metadata ?? undefined,
+				createdAt: thread.createdAt,
+				updatedAt: thread.updatedAt,
+			};
+			const patch = update(current);
+			if (patch?.metadata !== undefined) thread.metadata = patch.metadata;
+			return { ...current, ...patch };
+		});
+		const { memory } = createMemory({ threadRepo });
+		const scope = { threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' };
+		await Promise.all([
+			memory.skillState.save(scope, ['workflow-builder']),
+			memory.skillState.save({ ...scope, agentName: 'reviewer' }, ['review']),
+		]);
+		await expect(memory.skillState.load(scope)).resolves.toEqual(['workflow-builder']);
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
+			'review',
+		]);
+		await expect(
+			memory.skillState.load({ ...scope, resourceId: 'other-user' }),
+		).resolves.toBeUndefined();
+		expect(thread.metadata).toHaveProperty('titleSource', 'user');
+
+		await memory.skillState.save(scope, []);
+		await expect(memory.skillState.load(scope)).resolves.toEqual([]);
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
+			'review',
+		]);
+	});
+
+	it('treats missing skill metadata as a legacy thread', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValue(mock<InstanceAiThread>({ metadata: null }));
+		const { memory } = createMemory({ threadRepo });
+		await expect(
+			memory.skillState.load({ threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' }),
+		).resolves.toBeUndefined();
+	});
+
 	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		messageRepo.find.mockResolvedValueOnce([makeMessageRow()]);
@@ -151,6 +202,32 @@ describe('TypeORMAgentMemory', () => {
 		expect(getToolInputs(persisted)[0]).toEqual({
 			value: 'plain-text',
 		});
+	});
+
+	it('persists rows keyed by message id so re-saving the same id upserts (no duplicate)', async () => {
+		// The runtime saves a turn's input eagerly and again at end of turn, so the same
+		// message id is written twice. The store must key each row on the message id (the
+		// primary key) so TypeORM's save() updates the existing row instead of duplicating.
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
+		const { memory } = createMemory({ messageRepo });
+
+		const message: AgentDbMessage = {
+			id: 'message-1',
+			createdAt: new Date('2026-06-04T09:00:00.000Z'),
+			role: 'user',
+			content: [{ type: 'text', text: 'hello' }],
+		};
+
+		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
+		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
+
+		const savedIds = messageRepo.save.mock.calls.map(([entities]) => {
+			const [entity] = entities as Array<{ id: string }>;
+			return entity.id;
+		});
+		// Both writes target the same primary key, so the DB upserts a single row.
+		expect(savedIds).toEqual(['message-1', 'message-1']);
 	});
 
 	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {
@@ -273,7 +350,8 @@ describe('TypeORMAgentMemory', () => {
 	it('saveThread derives a sub-agent thread project from its parent', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const parentThreadId = '00000000-0000-4000-8000-000000000001';
-		threadRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
+		threadRepo.updateThread.mockResolvedValueOnce(null);
+		threadRepo.findOneBy.mockResolvedValueOnce({
 			id: parentThreadId,
 			resourceId: 'user-1',
 			title: '',
@@ -311,5 +389,58 @@ describe('TypeORMAgentMemory', () => {
 		).rejects.toThrow('without a project');
 
 		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
+
+	describe('deleteThreadsByResourceId', () => {
+		const findOperatorValue = (arg: unknown): unknown[] => {
+			const id = (arg as { id?: { value?: unknown } }).id;
+			return (id?.value as unknown[]) ?? [];
+		};
+
+		it('deletes owner threads, their sub-agent threads, and all working-memory resources', async () => {
+			const threadRepo = mock<InstanceAiThreadRepository>();
+			const resourceRepo = mock<InstanceAiResourceRepository>();
+			const ownerThreadId = '00000000-0000-4000-8000-000000000001';
+			const subAgentResourceId = `instance-ai-subagent:${ownerThreadId}:workflow-builder`;
+
+			threadRepo.find
+				.mockResolvedValueOnce([{ id: ownerThreadId } as InstanceAiThread])
+				.mockResolvedValueOnce([
+					{ id: 'sub-thread-1', resourceId: subAgentResourceId } as InstanceAiThread,
+				]);
+			threadRepo.delete.mockResolvedValue({ affected: 2, raw: [] });
+			resourceRepo.delete.mockResolvedValue({ affected: 3, raw: [] });
+
+			const { memory } = createMemory({ threadRepo, resourceRepo });
+
+			const deleted = await memory.deleteThreadsByResourceId('user-1');
+
+			expect(deleted).toBe(1);
+			// Resources have no FK to threads, so the user resource, both thread
+			// resources, and the sub-agent's own resource are removed explicitly.
+			expect(findOperatorValue(resourceRepo.delete.mock.calls[0][0]).sort()).toEqual(
+				['user-1', `thread:${ownerThreadId}`, subAgentResourceId, 'thread:sub-thread-1'].sort(),
+			);
+			// Threads cascade to their downstream rows; owner + sub-agent are deleted.
+			expect(findOperatorValue(threadRepo.delete.mock.calls[0][0]).sort()).toEqual(
+				[ownerThreadId, 'sub-thread-1'].sort(),
+			);
+		});
+
+		it('still clears the user resource when the user has no threads', async () => {
+			const threadRepo = mock<InstanceAiThreadRepository>();
+			const resourceRepo = mock<InstanceAiResourceRepository>();
+			threadRepo.find.mockResolvedValueOnce([]);
+
+			const { memory } = createMemory({ threadRepo, resourceRepo });
+
+			const deleted = await memory.deleteThreadsByResourceId('user-1');
+
+			expect(deleted).toBe(0);
+			// Only the owner-thread query runs; no sub-agent lookup without threads.
+			expect(threadRepo.find).toHaveBeenCalledTimes(1);
+			expect(findOperatorValue(resourceRepo.delete.mock.calls[0][0])).toEqual(['user-1']);
+			expect(threadRepo.delete).not.toHaveBeenCalled();
+		});
 	});
 });

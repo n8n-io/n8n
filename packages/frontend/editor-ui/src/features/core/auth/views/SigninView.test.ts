@@ -4,9 +4,10 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@/app/constants';
 
 vi.mock('vue-router', () => {
@@ -26,7 +27,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -35,10 +36,19 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
+const showMessage = vi.fn();
+const showError = vi.fn();
+const clearAllStickyNotifications = vi.fn();
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError, clearAllStickyNotifications }),
+}));
+
 const renderComponent = createComponentRenderer(SigninView);
 
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+let notificationsStore: ReturnType<typeof mockedStore<typeof useNotificationsStore>>;
 
 let router: ReturnType<typeof useRouter>;
 let telemetry: ReturnType<typeof useTelemetry>;
@@ -78,6 +88,7 @@ describe('SigninView', () => {
 		createTestingPinia();
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
+		notificationsStore = mockedStore(useNotificationsStore);
 
 		router = useRouter();
 		telemetry = useTelemetry();
@@ -89,6 +100,62 @@ describe('SigninView', () => {
 
 	it('should not throw error when opened', () => {
 		expect(() => renderComponent()).not.toThrow();
+	});
+
+	it('should show a session expired toast when the sessionExpired query parameter is set', () => {
+		const route = useRoute();
+		vi.spyOn(route, 'query', 'get').mockReturnValue({
+			redirect: '/home/workflows',
+			sessionExpired: 'true',
+		});
+
+		renderComponent();
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Session expired',
+			message: 'Your session has expired. Please log in again to continue using n8n.',
+			type: 'info',
+		});
+		// Stepped around suppression to show this toast, then put it right back.
+		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
+	});
+
+	it('should not show a session expired toast when the sessionExpired query parameter is absent', () => {
+		renderComponent();
+
+		expect(showMessage).not.toHaveBeenCalled();
+	});
+
+	it('should show a no-access toast when the SSO login was denied by role mapping', () => {
+		const route = useRoute();
+		vi.spyOn(route, 'query', 'get').mockReturnValue({
+			ssoError: 'access-denied',
+		});
+
+		renderComponent();
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: "You don't have access to n8n",
+			message:
+				'Your role or permissions do not currently give you access to n8n. Please speak to your administrator if you think this is incorrect.',
+			type: 'error',
+			duration: 0,
+		});
+		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
+	});
+
+	it('should show an error toast when the SSO login failed', () => {
+		const route = useRoute();
+		vi.spyOn(route, 'query', 'get').mockReturnValue({
+			ssoError: 'login-failed',
+		});
+
+		renderComponent();
+
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'error', duration: 0 }),
+		);
+		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
 	});
 
 	it('should show and submit email/password form (happy path)', async () => {
@@ -106,6 +173,20 @@ describe('SigninView', () => {
 		});
 
 		expect(router.push).toHaveBeenCalledWith('/home/workflows');
+	});
+
+	it('should unsuppress notifications as soon as a login attempt is submitted', async () => {
+		await signInWithValidUser();
+
+		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
+	});
+
+	it('should unsuppress notifications when leaving via a route other than a login attempt', () => {
+		const { unmount } = renderComponent();
+
+		unmount();
+
+		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
 	});
 
 	describe('when redirect query parameter is set', () => {

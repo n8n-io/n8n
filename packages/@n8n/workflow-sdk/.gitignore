@@ -5,8 +5,10 @@ test-fixtures/real-workflows/*.json
 # Commit the zip file containing all workflows
 !test-fixtures/real-workflows/public_published_templates.zip
 
-# Generated TypeScript files from test runs
+# Generated TypeScript files from test runs (see real-workflow.test.ts —
+# .txt suffix avoids the Vitest/Rolldown loader treating them as source)
 test-fixtures/real-workflows/*.generated.ts
+test-fixtures/real-workflows/*.generated.ts.txt
 
 # Compiled JS files from scripts (should use tsx to run directly)
 scripts/*.js

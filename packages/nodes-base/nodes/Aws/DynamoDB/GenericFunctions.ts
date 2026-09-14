@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { getAwsCredentials } from '../GenericFunctions';
 import type { IRequestBody } from './types';
@@ -48,13 +48,13 @@ export async function awsApiRequest(
 
 		if (statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new ApplicationError('The AWS credentials are not valid!', { level: 'warning' });
+				throw new UserError('The AWS credentials are not valid!', { level: 'warning' });
 			} else if (
 				errorMessage.startsWith(
 					'The request signature we calculated does not match the signature you provided',
 				)
 			) {
-				throw new ApplicationError('The AWS credentials are not valid!', { level: 'warning' });
+				throw new UserError('The AWS credentials are not valid!', { level: 'warning' });
 			}
 		}
 
@@ -64,7 +64,7 @@ export async function awsApiRequest(
 			} catch (ex) {}
 		}
 
-		throw new ApplicationError(`AWS error response [${statusCode}]: ${errorMessage}`, {
+		throw new OperationalError(`AWS error response [${statusCode}]: ${errorMessage}`, {
 			level: 'warning',
 		});
 	}

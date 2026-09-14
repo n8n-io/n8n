@@ -10,7 +10,7 @@ import type {
 	SortDirection,
 	ColDef,
 } from 'ag-grid-community';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { onClickOutside } from '@vueuse/core';
 
 export type UseAgGridOptions = {
@@ -45,6 +45,11 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		if (!focusedCell || isEditing) return;
 		const row = initializedGridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
 		if (!row) return;
+
+		// setDataValue bypasses colDef.editable, so check it explicitly — pasting
+		// must respect the same rules as regular editing (read-only grid, add-row
+		// row, oversized values).
+		if (!focusedCell.column.isCellEditable(row)) return;
 
 		const colDef = focusedCell.column.getColDef();
 		if (colDef.cellDataType === 'text') {

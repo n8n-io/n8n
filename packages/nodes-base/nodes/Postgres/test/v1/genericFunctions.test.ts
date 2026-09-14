@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import pgPromise from 'pg-promise';
 
 import * as PostgresFun from '../../v1/genericFunctions';
@@ -11,7 +11,7 @@ const db = mock<PgpDatabase>();
 
 describe('pgUpdate', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('runs query to update db', async () => {
@@ -155,7 +155,7 @@ describe('pgUpdate', () => {
 
 describe('pgInsert', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('runs query to insert', async () => {

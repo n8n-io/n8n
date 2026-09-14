@@ -40,11 +40,13 @@ import type {
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
 import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
-import get from 'lodash/get';
-import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
+// `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
+// `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
+// subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
+import get from 'lodash/get.js';
+import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
-import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
-
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
@@ -296,21 +298,21 @@ function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
 }
 
 function handleRowSelectionChange(updaterOrValue: Updater<RowSelectionState>) {
-	if (typeof updaterOrValue === 'function') {
-		rowSelection.value = updaterOrValue(rowSelection.value);
-	} else {
-		rowSelection.value = updaterOrValue;
-	}
+	const newValue =
+		typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection.value) : updaterOrValue;
 
 	if (props.returnObject) {
-		selection.value = Object.keys(rowSelection.value).map((id) => table.getRow(id).original);
+		selection.value = Object.keys(newValue).map((id) => table.getRow(id).original);
 	} else {
-		selection.value = Object.keys(rowSelection.value);
+		selection.value = Object.keys(newValue);
 	}
 }
 
 const selection = defineModel<string[] | T[]>('selection');
-const rowSelection = ref(
+
+// Derived from the selection model so external writes (e.g. a parent
+// clearing it) reach the row checkboxes
+const rowSelection = computed(() =>
 	(selection.value ?? []).reduce<RowSelectionState>((acc, item, index) => {
 		const key = typeof item === 'string' ? item : getRowId(item, index);
 		acc[key] = true;
@@ -325,7 +327,7 @@ const emitUpdateOptions = useThrottleFn(
 );
 
 function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-based indexing)
+	// Calculate the maximum available page (0-indexed)
 	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
 	const newPage = Math.min(page.value, maxPage);
 
@@ -336,7 +338,11 @@ function handlePageSizeChange(newPageSize: number) {
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
-	columns: columnsDefinition.value,
+	// A getter keeps the column set reactive, so tables can add/remove columns
+	// after mount (e.g. contextual columns that depend on the active tab).
+	get columns() {
+		return columnsDefinition.value;
+	},
 	get rowCount() {
 		return props.itemsLength;
 	},
@@ -491,16 +497,15 @@ const table = useVueTable({
 				</table>
 			</div>
 		</div>
-		<div v-if="showPagination" class="table-pagination" data-test-id="pagination">
+		<div v-if="showPagination" class="table-pagination">
 			<N8nPagination
-				:current-page="page + 1"
-				:page-size="itemsPerPage"
-				:page-sizes="pageSizes"
-				layout="prev, pager, next"
+				:page="page + 1"
+				:items-per-page="itemsPerPage"
 				:total="itemsLength"
-				@update:current-page="page = $event - 1"
-			>
-			</N8nPagination>
+				:show-total="false"
+				:show-sizes="false"
+				@update:page="page = $event - 1"
+			/>
 			<div class="table-pagination__sizes">
 				<div class="table-pagination__sizes__label">Page size</div>
 				<ElSelect

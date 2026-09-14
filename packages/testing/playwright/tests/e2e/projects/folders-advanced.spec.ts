@@ -57,8 +57,7 @@ test.describe(
 				);
 				await n8n.navigate.toCanvas(workflowId);
 
-				await n8n.workflowSettingsModal.getWorkflowMenu().click();
-				await n8n.workflowSettingsModal.getDuplicateMenuItem().click();
+				await n8n.workflowMenu.openDuplicate();
 				const duplicatePage = await n8n.start.fromNewPage(async () => {
 					await n8n.modal.clickButton('Duplicate');
 				});

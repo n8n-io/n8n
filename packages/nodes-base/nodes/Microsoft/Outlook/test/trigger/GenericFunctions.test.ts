@@ -1,17 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INode, IPollFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { getPollResponse } from '../../trigger/GenericFunctions';
 
-jest.mock('../../v2/helpers/utils', () => ({
-	prepareFilterString: jest.fn(),
-	simplifyOutputMessages: jest.fn(),
+vi.mock('../../v2/helpers/utils', () => ({
+	prepareFilterString: vi.fn(),
+	simplifyOutputMessages: vi.fn(),
 }));
 
-jest.mock('../../v2/transport', () => ({
-	downloadAttachments: jest.fn(),
-	microsoftApiRequest: jest.fn(),
-	microsoftApiRequestAllItems: jest.fn(),
+vi.mock('../../v2/transport', () => ({
+	downloadAttachments: vi.fn(),
+	microsoftApiRequest: vi.fn(),
+	microsoftApiRequestAllItems: vi.fn(),
 }));
 
 import { prepareFilterString, simplifyOutputMessages } from '../../v2/helpers/utils';
@@ -20,9 +20,10 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../v2/transport';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft Outlook Trigger GenericFunctions', () => {
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -36,11 +37,11 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			parameters: {},
 		};
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getPollResponse', () => {
@@ -74,35 +75,66 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				},
 			);
 
-			const mockJsonArray = jest
+			const mockJsonArray = vi
 				.fn()
 				.mockImplementation((data: IDataObject[]) =>
 					data.map((item, index) => ({ json: item, pairedItem: { item: index } })),
 				);
 			mockPollFunctions.helpers.returnJsonArray = mockJsonArray;
 
-			(prepareFilterString as jest.Mock).mockReturnValue('');
-			(simplifyOutputMessages as jest.Mock).mockReturnValue(mockMessages);
+			(prepareFilterString as Mock).mockReturnValue('');
+			(simplifyOutputMessages as Mock).mockReturnValue(mockMessages);
 		});
 
 		describe('successful execution', () => {
 			describe('manual mode', () => {
 				beforeEach(() => {
 					mockPollFunctions.getMode.mockReturnValue('manual');
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
 				});
 
 				it('should handle simple output format in manual mode', async () => {
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select:
 							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).toHaveBeenCalledWith([mockMessages[0]]);
 					expect(result).toHaveLength(2);
 					expect(result[0].json).toEqual(mockMessages[0]);
+				});
+
+				it('should prepend a receivedDateTime clause to user filters in manual mode', async () => {
+					const customFilter = 'isRead eq false';
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
+
+					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
+						$select:
+							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+						$top: 1,
+						$orderby: 'receivedDateTime desc',
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
+					});
+				});
+
+				it('should wrap user filters in parentheses so or does not mix with the date clause', async () => {
+					const customFilter = "isRead eq false or from/emailAddress/address eq 'test@example.com'";
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
+
+					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
+						$select:
+							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+						$top: 1,
+						$orderby: 'receivedDateTime desc',
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
+					});
 				});
 
 				it('should handle fields output format in manual mode', async () => {
@@ -117,13 +149,14 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							return params[paramName] ?? defaultValue;
 						},
 					);
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,from',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
 					expect(result).toHaveLength(1);
@@ -146,16 +179,17 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							return params[paramName] ?? defaultValue;
 						},
 					);
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
-					(downloadAttachments as jest.Mock).mockResolvedValue(mockExecutionData);
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
+					(downloadAttachments as Mock).mockResolvedValue(mockExecutionData);
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,from,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
-					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 			});
@@ -163,7 +197,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			describe('trigger mode', () => {
 				beforeEach(() => {
 					mockPollFunctions.getMode.mockReturnValue('trigger');
-					(microsoftApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
+					(microsoftApiRequestAllItems as Mock).mockResolvedValue(mockMessages);
 				});
 
 				it('should handle simple output format in trigger mode', async () => {
@@ -173,6 +207,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select:
@@ -203,6 +238,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select: 'id,subject,receivedDateTime',
@@ -215,7 +251,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 				it('should combine custom filters with date filters in trigger mode', async () => {
 					const customFilter = 'isRead eq false';
-					(prepareFilterString as jest.Mock).mockReturnValue(customFilter);
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
@@ -223,6 +259,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select:
@@ -250,11 +287,11 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							return params[paramName] ?? defaultValue;
 						},
 					);
-					(downloadAttachments as jest.Mock).mockResolvedValue(mockExecutionData);
+					(downloadAttachments as Mock).mockResolvedValue(mockExecutionData);
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 
@@ -276,11 +313,11 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							return params[paramName] ?? defaultValue;
 						},
 					);
-					(downloadAttachments as jest.Mock).mockResolvedValue(mockExecutionData);
+					(downloadAttachments as Mock).mockResolvedValue(mockExecutionData);
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_', 0);
 				});
 			});
 
@@ -291,7 +328,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				describe('trigger mode', () => {
 					beforeEach(() => {
 						mockPollFunctions.getMode.mockReturnValue('trigger');
-						(microsoftApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
+						(microsoftApiRequestAllItems as Mock).mockResolvedValue(mockMessages);
 					});
 
 					it('should query folder endpoint instead of /messages when foldersToInclude is set', async () => {
@@ -312,6 +349,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							{
 								$select:
@@ -325,7 +363,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					it('should query each folder endpoint and merge results when multiple foldersToInclude are set', async () => {
 						const folder1Messages = [mockMessages[0]];
 						const folder2Messages = [mockMessages[1]];
-						(microsoftApiRequestAllItems as jest.Mock)
+						(microsoftApiRequestAllItems as Mock)
 							.mockResolvedValueOnce(folder1Messages)
 							.mockResolvedValueOnce(folder2Messages);
 
@@ -351,6 +389,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -358,6 +397,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId2}/messages`,
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -401,6 +441,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							'/messages',
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -410,7 +451,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				describe('manual mode', () => {
 					beforeEach(() => {
 						mockPollFunctions.getMode.mockReturnValue('manual');
-						(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+						(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
 					});
 
 					it('should query all folder endpoints with $top=1 in manual mode', async () => {
@@ -431,21 +472,25 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						expect(microsoftApiRequest).toHaveBeenCalledWith(
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							{
 								$select:
 									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 								$top: 1,
+								$orderby: 'receivedDateTime desc',
 							},
 						);
 						expect(microsoftApiRequest).toHaveBeenCalledWith(
 							'GET',
 							`/mailFolders/${folderId2}/messages`,
+							0,
 							undefined,
 							{
 								$select:
 									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 								$top: 1,
+								$orderby: 'receivedDateTime desc',
 							},
 						);
 						expect(microsoftApiRequestAllItems).not.toHaveBeenCalled();
@@ -462,7 +507,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 								return params[paramName] ?? defaultValue;
 							},
 						);
-						(microsoftApiRequest as jest.Mock)
+						(microsoftApiRequest as Mock)
 							.mockResolvedValueOnce({ value: [] }) // folder A: no emails
 							.mockResolvedValueOnce({ value: [mockMessages[1]] }); // folder B: 1 email
 
@@ -482,7 +527,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			describe('output formats', () => {
 				beforeEach(() => {
 					mockPollFunctions.getMode.mockReturnValue('manual');
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
 				});
 
 				it('should handle full output format', async () => {
@@ -499,8 +544,9 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
 					expect(result).toHaveLength(1);
@@ -513,8 +559,8 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				});
 
 				it('should handle empty response', async () => {
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: [] });
-					(simplifyOutputMessages as jest.Mock).mockReturnValue([]);
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: [] });
+					(simplifyOutputMessages as Mock).mockReturnValue([]);
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
@@ -523,8 +569,8 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				});
 
 				it('should handle null response values', async () => {
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: null });
-					const mockJsonArray = jest.fn().mockReturnValue([]);
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: null });
+					const mockJsonArray = vi.fn().mockReturnValue([]);
 					mockPollFunctions.helpers.returnJsonArray = mockJsonArray;
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
@@ -544,14 +590,15 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							return params[paramName] ?? defaultValue;
 						},
 					);
-					(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
-					(downloadAttachments as jest.Mock).mockResolvedValue([]);
+					(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
+					(downloadAttachments as Mock).mockResolvedValue([]);
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 				});
 			});
@@ -561,7 +608,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			it('should throw NodeApiError when microsoftApiRequest fails', async () => {
 				const originalError = new Error('API request failed');
 				mockPollFunctions.getMode.mockReturnValue('manual');
-				(microsoftApiRequest as jest.Mock).mockRejectedValue(originalError);
+				(microsoftApiRequest as Mock).mockRejectedValue(originalError);
 
 				await expect(
 					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
@@ -573,7 +620,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			it('should throw NodeApiError when microsoftApiRequestAllItems fails', async () => {
 				const originalError = new Error('All items request failed');
 				mockPollFunctions.getMode.mockReturnValue('trigger');
-				(microsoftApiRequestAllItems as jest.Mock).mockRejectedValue(originalError);
+				(microsoftApiRequestAllItems as Mock).mockRejectedValue(originalError);
 
 				await expect(
 					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
@@ -595,8 +642,8 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						return params[paramName] ?? defaultValue;
 					},
 				);
-				(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
-				(downloadAttachments as jest.Mock).mockRejectedValue(originalError);
+				(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
+				(downloadAttachments as Mock).mockRejectedValue(originalError);
 
 				await expect(
 					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
@@ -606,8 +653,8 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			it('should throw NodeApiError when simplifyOutputMessages fails', async () => {
 				const originalError = new Error('Simplify output failed');
 				mockPollFunctions.getMode.mockReturnValue('manual');
-				(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
-				(simplifyOutputMessages as jest.Mock).mockImplementation(() => {
+				(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
+				(simplifyOutputMessages as Mock).mockImplementation(() => {
 					throw originalError;
 				});
 
@@ -619,7 +666,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 			it('should throw NodeApiError when prepareFilterString fails', async () => {
 				const originalError = new Error('Filter preparation failed');
 				mockPollFunctions.getMode.mockReturnValue('trigger');
-				(prepareFilterString as jest.Mock).mockImplementation(() => {
+				(prepareFilterString as Mock).mockImplementation(() => {
 					throw originalError;
 				});
 
@@ -634,7 +681,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					description: 'Custom error description',
 				};
 				mockPollFunctions.getMode.mockReturnValue('manual');
-				(microsoftApiRequest as jest.Mock).mockRejectedValue(originalError);
+				(microsoftApiRequest as Mock).mockRejectedValue(originalError);
 
 				await expect(
 					getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate),
@@ -650,7 +697,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					message: 'Error without description',
 				};
 				mockPollFunctions.getMode.mockReturnValue('manual');
-				(microsoftApiRequest as jest.Mock).mockRejectedValue(originalError);
+				(microsoftApiRequest as Mock).mockRejectedValue(originalError);
 
 				try {
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
@@ -664,7 +711,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 		describe('parameter validation', () => {
 			beforeEach(() => {
 				mockPollFunctions.getMode.mockReturnValue('manual');
-				(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+				(microsoftApiRequest as Mock).mockResolvedValue({ value: mockMessages });
 			});
 
 			it('should handle missing filters parameter', async () => {
@@ -718,9 +765,10 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 				const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-				expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+				expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 					$select: '',
 					$top: 1,
+					$orderby: 'receivedDateTime desc',
 				});
 				expect(result).toHaveLength(1);
 			});
@@ -741,8 +789,8 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						return params[paramName] ?? defaultValue;
 					},
 				);
-				(prepareFilterString as jest.Mock).mockReturnValue(complexFilter);
-				(microsoftApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
+				(prepareFilterString as Mock).mockReturnValue(complexFilter);
+				(microsoftApiRequestAllItems as Mock).mockResolvedValue(mockMessages);
 
 				const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
@@ -753,6 +801,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					'value',
 					'GET',
 					'/messages',
+					0,
 					undefined,
 					{
 						$select: 'id,subject,from,isRead',
@@ -781,9 +830,9 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						return params[paramName] ?? defaultValue;
 					},
 				);
-				(prepareFilterString as jest.Mock).mockReturnValue('isRead eq false');
-				(microsoftApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
-				(downloadAttachments as jest.Mock).mockResolvedValue(mockExecutionData);
+				(prepareFilterString as Mock).mockReturnValue('isRead eq false');
+				(microsoftApiRequestAllItems as Mock).mockResolvedValue(mockMessages);
+				(downloadAttachments as Mock).mockResolvedValue(mockExecutionData);
 
 				const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
@@ -791,13 +840,14 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					'value',
 					'GET',
 					'/messages',
+					0,
 					undefined,
 					{
 						$select: 'id,subject,hasAttachments',
 						$filter: `isRead eq false and receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`,
 					},
 				);
-				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_');
+				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_', 0);
 				expect(result).toEqual(mockExecutionData);
 			});
 		});

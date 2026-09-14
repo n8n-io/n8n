@@ -21,7 +21,7 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(License, {
-	getUsersLimit: jest.fn().mockReturnValue(-1),
+	getUsersLimit: vi.fn().mockReturnValue(-1),
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -291,7 +291,7 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
+		mockInstance(License, { getUsersLimit: vi.fn().mockReturnValue(null) });
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);

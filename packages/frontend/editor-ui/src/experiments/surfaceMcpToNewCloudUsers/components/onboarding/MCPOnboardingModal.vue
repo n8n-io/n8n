@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import MCPAccessToggle from '@/features/ai/mcpAccess/components/header/McpAccessToggle.vue';
-import { MCP_ENDPOINT, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import MCPAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.vue';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -19,7 +18,7 @@ import MCPOnboardingClientSetup from './MCPOnboardingClientSetup.vue';
 import MCPOnboardingCopyBlock from './MCPOnboardingCopyBlock.vue';
 import type { MCPOnboardingClient, MCPOnboardingClientOption } from './types';
 
-type MCPOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
+type MCPOnboardingSurface = 'tile' | 'workflow_card';
 type MCPOnboardingPromptClient = Exclude<MCPOnboardingClient, 'chatgpt'>;
 type MCPOnboardingCopiedParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type MCPOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
@@ -35,7 +34,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
 const mcpStore = useMCPStore();
 const experimentStore = useSurfaceMcpToNewCloudUsersStore();
 const modalBus = createEventBus();
@@ -81,7 +79,7 @@ const clientOptions = computed<MCPOnboardingClientOption[]>(() => [
 	},
 ]);
 
-const serverUrl = computed(() => `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`);
+const serverUrl = computed(() => mcpStore.serverUrl);
 const isChatGptClient = computed(() => activeClient.value === 'chatgpt');
 const showServerUrlStep = computed(() => activeClient.value === 'claude');
 const showRestartStep = computed(
@@ -188,10 +186,6 @@ async function handleToggleMcpAccess() {
 
 function handleModalClosed() {
 	if (!enabledDuringThisOpen.value && !mcpStore.mcpAccessEnabled) {
-		if (surface.value === 'first_open_modal') {
-			experimentStore.dismissFirstOpenModal();
-		}
-
 		experimentStore.trackDismissed(surface.value, {
 			activeClient: activeClient.value,
 			enabledDuringThisOpen: enabledDuringThisOpen.value,
@@ -456,7 +450,7 @@ onBeforeUnmount(() => {
 						>
 							{{
 								i18n.baseText(
-									'experiments.surfaceMcpToNewCloudUsers.onboarding.intro.settingsLink' as BaseTextKey,
+									'experiments.surfaceMcpToNewCloudUsers.onboarding.footer.settingsLink',
 								)
 							}}
 						</N8nLink>

@@ -1,12 +1,13 @@
 import * as search from '../../../../v2/actions/record/search.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string) {
+		apiRequest: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					records: [
@@ -21,7 +22,7 @@ jest.mock('../../../../v2/transport', () => {
 				};
 			}
 		}),
-		apiRequestAllItems: jest.fn(async function (method: string) {
+		apiRequestAllItems: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					records: [
@@ -43,7 +44,7 @@ jest.mock('../../../../v2/transport', () => {
 				};
 			}
 		}),
-		downloadRecordAttachments: jest.fn(async function () {
+		downloadRecordAttachments: vi.fn(async function () {
 			return [
 				{
 					json: {
@@ -166,7 +167,7 @@ describe('Test AirtableV2, search operation', () => {
 		});
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	it('should search records with attachments and nested fields structure for v2.2', async () => {
 		const nodeParameters = {

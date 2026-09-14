@@ -36,12 +36,15 @@ const createExecuteFunctionsMock = (parameters: IDataObject) => {
 			},
 			assertBinaryData() {
 				return {
-					filename: 'filenale.flac',
-					contentType: 'audio/flac',
+					fileName: 'filenale.flac',
+					mimeType: 'audio/flac',
 				};
 			},
 			getBinaryDataBuffer() {
-				return 'data buffer data';
+				return Buffer.from('data buffer data');
+			},
+			async binaryToBuffer(data: unknown) {
+				return Buffer.isBuffer(data) ? data : Buffer.from('data buffer data');
 			},
 		},
 	} as unknown as IExecuteFunctions;

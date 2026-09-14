@@ -4,10 +4,10 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 
@@ -26,7 +26,7 @@ describe('WorkflowIndexService', () => {
 		mock<WorkflowsConfig>({ indexingBatchSize: 10, ...overrides });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 
@@ -390,6 +390,30 @@ describe('WorkflowIndexService', () => {
 						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
 					}),
 				]),
+			);
+		});
+
+		it('should not throw when a webhook node has undefined parameters', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				{
+					id: 'node-1',
+					name: 'node-1',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: undefined as unknown as INode['parameters'],
+				},
+			]);
+
+			await expect(service.updateIndexForDraft(workflow)).resolves.not.toThrow();
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dependencies = call[1].dependencies;
+
+			expect(dependencies).not.toContainEqual(
+				expect.objectContaining({ dependencyType: 'webhookPath' }),
 			);
 		});
 

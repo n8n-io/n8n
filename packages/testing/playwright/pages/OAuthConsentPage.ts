@@ -15,7 +15,26 @@ export class OAuthConsentPage extends BasePage {
 		return this.page.getByTestId('consent-content');
 	}
 
+	/**
+	 * Tick the "I recognize and trust this URL" checkbox shown alongside the
+	 * redirect URI warning. Allow is gated on this until the user acknowledges
+	 * the destination they will be sent back to.
+	 */
+	async acknowledgeRedirectUri() {
+		await this.page.getByLabel('I recognize and trust this URL').click();
+	}
+
+	getScopesSelector() {
+		return this.page.getByTestId('consent-scopes');
+	}
+
+	/** Pick the "Read only" preset in the scope picker. */
+	async selectReadOnlyScopes() {
+		await this.clickByTestId('scopes-mode-read-only');
+	}
+
 	async allow() {
+		await this.acknowledgeRedirectUri();
 		await this.clickByTestId('consent-allow-button');
 	}
 }

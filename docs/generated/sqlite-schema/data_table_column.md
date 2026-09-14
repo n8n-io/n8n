@@ -15,29 +15,29 @@ CREATE TABLE "data_table_column" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| dataTableId | varchar(36) |  | false |  | [data_table](data_table.md) |  |
 | id | varchar(36) |  | false |  |  |  |
+| index | INTEGER |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
-| index | INTEGER |  | false |  |  |  |
-| dataTableId | varchar(36) |  | false |  | [data_table](data_table.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_data_table_column_2 | UNIQUE | UNIQUE (dataTableId, name) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_data_table_column_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_data_table_column_2 | UNIQUE | UNIQUE (dataTableId, name) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_data_table_column_2 | UNIQUE (dataTableId, name) |
 | sqlite_autoindex_data_table_column_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_data_table_column_2 | UNIQUE (dataTableId, name) |
 
 ## Relations
 
@@ -47,19 +47,19 @@ erDiagram
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "data_table_column" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
   varchar_36_ id PK
+  INTEGER index
   varchar_128_ name
   varchar_32_ type
-  INTEGER index
-  varchar_36_ dataTableId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "data_table" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ projectId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

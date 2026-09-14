@@ -1,6 +1,7 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import type oracledb from 'oracledb';
+import type { Mocked } from 'vitest';
 
 vi.mock('n8n-nodes-base/dist/nodes/Oracle/Sql/transport', () => ({
 	configureOracleDB: vi.fn(),
@@ -14,32 +15,32 @@ const normalizeSql = (sql: string) => sql.replace(/\s+/g, ' ').trim();
 
 describe('EmbeddingsOracleDB listModels', () => {
 	const connection = {
-		execute: jest.fn(),
-		close: jest.fn(),
+		execute: vi.fn(),
+		close: vi.fn(),
 	};
 
 	const pool = {
-		getConnection: jest.fn(),
+		getConnection: vi.fn(),
 	};
 
 	const context = {
-		getCredentials: jest.fn(),
+		getCredentials: vi.fn(),
 		logger: {
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
 		},
-	} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+	} as unknown as Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockConfigureOracleDB.mockResolvedValue(pool as unknown as oracledb.Pool);
-		pool.getConnection = jest.fn().mockResolvedValue(connection);
-		connection.execute = jest.fn().mockResolvedValue({
+		pool.getConnection = vi.fn().mockResolvedValue(connection);
+		connection.execute = vi.fn().mockResolvedValue({
 			rows: [['MODEL_A'], ['MODEL_B']],
 		});
-		connection.close = jest.fn().mockResolvedValue(undefined);
+		connection.close = vi.fn().mockResolvedValue(undefined);
 		context.getCredentials.mockResolvedValue({ user: 'user', password: 'pw' });
 	});
 

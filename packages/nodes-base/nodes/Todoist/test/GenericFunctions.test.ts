@@ -1,14 +1,14 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { Context } from '../GenericFunctions';
 import { todoistApiGetAllRequest, todoistSyncRequest } from '../GenericFunctions';
 
 const createMockContext = (typeVersion: number = 2.2) => {
-	const mockRequestWithAuth = jest.fn();
+	const mockRequestWithAuth = vi.fn();
 	const mockCtx = mock<IExecuteFunctions>({
 		getNode: () => mock<INode>({ typeVersion }),
-		getNodeParameter: jest.fn((param: string) => {
+		getNodeParameter: vi.fn((param: string) => {
 			if (param === 'authentication') return 'oAuth2';
 			return '';
 		}) as any,
@@ -27,7 +27,7 @@ const createMockContext = (typeVersion: number = 2.2) => {
 
 describe('GenericFunctions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('todoistSyncRequest', () => {

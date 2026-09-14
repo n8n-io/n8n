@@ -2,8 +2,6 @@ export const RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION = 1 as const;
 
 export const RUNTIME_SKILL_FILE_NAME = 'SKILL.md';
 
-export const LIST_SKILLS_TOOL_NAME = 'list_skills';
-
 export const SKILL_LOAD_TOOL_NAME = 'load_skill';
 
 export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
@@ -155,6 +153,18 @@ export interface RuntimeSkillSource {
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
+}
+
+export interface RuntimeSkillStateScope {
+	threadId: string;
+	resourceId: string;
+	agentName: string;
+}
+
+/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillStateStore {
+	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
+	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

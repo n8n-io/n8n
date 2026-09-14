@@ -1,9 +1,15 @@
+import fastGlob from 'fast-glob';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { textOf } from '../test-utils';
 import { searchFilesTool } from './search-files';
+
+vi.mock('fast-glob', async (importOriginal) => {
+	const actual = await importOriginal<{ default: typeof fastGlob }>();
+	return { default: vi.fn(actual.default) };
+});
 
 type FileMatch = { path: string };
 type ContentMatch = { path: string; lineNumber: number; line: string };
@@ -252,6 +258,10 @@ describe('searchFilesTool', () => {
 	});
 
 	describe('execute — security', () => {
+		afterEach(() => {
+			vi.mocked(fastGlob).mockClear();
+		});
+
 		it.each(['/etc/passwd', '../../etc/passwd', '../../../etc/**'])(
 			'rejects pattern that escapes the base directory: %s',
 			async (pattern) => {
@@ -260,6 +270,73 @@ describe('searchFilesTool', () => {
 				);
 			},
 		);
+
+		it('drops matches that resolve outside the base even when the pattern passes', async () => {
+			// The pattern contains no literal `..`, but glob expansion produces a match
+			// that resolves outside the base directory.
+			vi.mocked(fastGlob).mockResolvedValueOnce(['../SECRET.txt']);
+
+			const result = await searchFilesTool.execute({ name: '{a,..}/SECRET.txt' }, context);
+			const data = parseResult<NameOnlyResult>(result);
+
+			expect(data.matches).toEqual([]);
+			expect(data.totalMatches).toBe(0);
+		});
+
+		it('does not read the contents of a match that resolves outside the base', async () => {
+			// `query` is set, so a match that slipped through would be read and returned.
+			vi.mocked(fastGlob).mockResolvedValueOnce(['../SECRET.txt']);
+
+			const result = await searchFilesTool.execute(
+				{ name: '{a,..}/SECRET.txt', query: 'SECRET' },
+				context,
+			);
+			const data = parseResult<ContentResult>(result);
+
+			expect(data.matches).toEqual([]);
+			expect(data.totalMatches).toBe(0);
+		});
+
+		it('keeps in-base matches while dropping ones outside the base', async () => {
+			await writeFile(baseDir, 'inside.txt', 'value');
+			// Glob expansion can yield both an in-base and an out-of-base match.
+			vi.mocked(fastGlob).mockResolvedValueOnce(['inside.txt', '../SECRET.txt']);
+
+			const result = await searchFilesTool.execute({ name: '{.,..}/inside.txt' }, context);
+			const data = parseResult<NameOnlyResult>(result);
+
+			expect(data.matches).toEqual([{ path: 'inside.txt' }]);
+			expect(data.totalMatches).toBe(1);
+		});
+
+		it('does not return a file that lives outside the base directory', async () => {
+			// The target file sits one level above the sandbox base.
+			const outerDir = await fs.mkdtemp(path.join(os.tmpdir(), 'search-files-outer-'));
+			const sandbox = path.join(outerDir, 'sandbox');
+			await fs.mkdir(sandbox);
+			await fs.writeFile(path.join(outerDir, 'SECRET.txt'), 'SECRET=topsecret');
+
+			// The tool either rejects the pattern or, on glob versions that expand it
+			// differently, returns no match — never the outside file's content.
+			const runSearch = async (): Promise<string> => {
+				try {
+					const result = await searchFilesTool.execute(
+						{ name: '{a,..}/SECRET.txt', query: 'SECRET' },
+						{ dir: sandbox },
+					);
+					return textOf(result);
+				} catch (error) {
+					expect(String(error)).toContain('escapes the base directory');
+					return '';
+				}
+			};
+
+			try {
+				expect(await runSearch()).not.toContain('topsecret');
+			} finally {
+				await fs.rm(outerDir, { recursive: true, force: true });
+			}
+		});
 	});
 
 	describe('CallToolResult shape', () => {

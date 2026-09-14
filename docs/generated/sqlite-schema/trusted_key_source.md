@@ -15,13 +15,13 @@ CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type"
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [trusted_key](trusted_key.md) |  |  |
-| type | varchar(32) |  | false |  |  |  |
 | config | TEXT |  | false |  |  |  |
-| status | varchar(32) | 'pending' | false |  |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(36) |  | false | [trusted_key](trusted_key.md) |  |  |
 | lastError | TEXT |  | true |  |  |  |
 | lastRefreshedAt | datetime(3) |  | true |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| status | varchar(32) | 'pending' | false |  |  |  |
+| type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -45,20 +45,20 @@ erDiagram
 "trusted_key" |o--|| "trusted_key_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "trusted_key_source" {
-  varchar_36_ id PK
-  varchar_32_ type
   TEXT config
-  varchar_32_ status
+  datetime_3_ createdAt
+  varchar_36_ id PK
   TEXT lastError
   datetime_3_ lastRefreshedAt
-  datetime_3_ createdAt
+  varchar_32_ status
+  varchar_32_ type
   datetime_3_ updatedAt
 }
 "trusted_key" {
-  varchar_36_ sourceId PK
-  varchar_255_ kid PK
-  TEXT data
   datetime_3_ createdAt
+  TEXT data
+  varchar_255_ kid PK
+  varchar_36_ sourceId PK
 }
 ```
 

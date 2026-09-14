@@ -2,6 +2,10 @@
 	"$schema": "../../../../node_modules/@biomejs/biome/configuration_schema.json",
 	"extends": ["../../../../biome.jsonc"],
 	"formatter": {
-		"ignore": ["theme/**"]
+		"ignore": [
+			"theme/**",
+			"src/components/N8nIconPicker/emojiData.ts",
+			"src/components/N8nIconPicker/lucideIconData.ts"
+		]
 	}
 }

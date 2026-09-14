@@ -14,12 +14,13 @@ describe('nodeExecuteBefore', () => {
 	let options: PushHandlerOptions;
 	let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
-	function makeEvent(executionId = 'exec-1'): NodeExecuteBefore {
+	function makeEvent(executionId = 'exec-1', sequenceNumber = 0): NodeExecuteBefore {
 		return {
 			type: 'nodeExecuteBefore',
 			data: {
 				executionId,
 				nodeName: 'Test Node',
+				sequenceNumber,
 				data: { startTime: 0, executionIndex: 0, source: [] },
 			},
 		};
@@ -39,11 +40,12 @@ describe('nodeExecuteBefore', () => {
 		workflowExecutionStateStore.setActiveExecutionId('exec-1');
 	});
 
-	it('adds the executing node when the execution id matches the active execution', async () => {
-		await nodeExecuteBefore(makeEvent('exec-1'), options);
+	it('adds the executing node with its sequence number when the execution id matches', async () => {
+		await nodeExecuteBefore(makeEvent('exec-1', 4), options);
 
 		expect(workflowExecutionStateStore.executingNode.addExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
+			4,
 		);
 	});
 

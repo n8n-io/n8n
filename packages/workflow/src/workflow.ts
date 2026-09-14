@@ -354,13 +354,7 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(
-					this.renameNodeInParameterValue(
-						currentValue as NodeParameterValueType,
-						currentName,
-						newName,
-					),
-				);
+				returnArray.push(this.renameNodeInParameterValue(currentValue, currentName, newName));
 			}
 
 			return returnArray;
@@ -612,9 +606,8 @@ export class Workflow {
 		nodeName: string,
 		connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
-		checkedNodesIncoming?: string[],
 	): string[] {
-		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
+		return getConnectedNodes(connections, nodeName, connectionType, depth);
 	}
 
 	/**

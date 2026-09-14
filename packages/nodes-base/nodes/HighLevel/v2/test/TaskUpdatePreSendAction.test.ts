@@ -1,15 +1,16 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
 import { taskUpdatePreSendAction } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('taskUpdatePreSendAction', () => {
 	let mockThis: Partial<IExecuteSingleFunctions>;
 
 	beforeEach(() => {
 		mockThis = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			} as any,
 		};
 	});
@@ -32,16 +33,14 @@ describe('taskUpdatePreSendAction', () => {
 	});
 
 	it('should fetch missing title and dueDate from the API', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
+		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
 
 		const mockApiResponse = {
 			title: 'Fetched Task Title',
 			dueDate: '2024-12-25T02:00:00+02:00',
 		};
 
-		(mockThis.helpers?.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
-			mockApiResponse,
-		);
+		(mockThis.helpers?.httpRequestWithAuthentication as Mock).mockResolvedValue(mockApiResponse);
 
 		const requestOptions: IHttpRequestOptions = {
 			url: 'https://api.example.com',
@@ -63,16 +62,14 @@ describe('taskUpdatePreSendAction', () => {
 	});
 
 	it('should only fetch title if dueDate is provided', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
+		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
 
 		const mockApiResponse = {
 			title: 'Fetched Task Title',
 			dueDate: '2024-12-25T02:00:00+02:00',
 		};
 
-		(mockThis.helpers?.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
-			mockApiResponse,
-		);
+		(mockThis.helpers?.httpRequestWithAuthentication as Mock).mockResolvedValue(mockApiResponse);
 
 		const requestOptions: IHttpRequestOptions = {
 			url: 'https://api.example.com',
@@ -94,16 +91,14 @@ describe('taskUpdatePreSendAction', () => {
 	});
 
 	it('should only fetch dueDate if title is provided', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
+		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
 
 		const mockApiResponse = {
 			title: 'Fetched Task Title',
 			dueDate: '2024-12-25T02:00:00+02:00',
 		};
 
-		(mockThis.helpers?.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(
-			mockApiResponse,
-		);
+		(mockThis.helpers?.httpRequestWithAuthentication as Mock).mockResolvedValue(mockApiResponse);
 
 		const requestOptions: IHttpRequestOptions = {
 			url: 'https://api.example.com',

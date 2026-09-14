@@ -12,6 +12,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'Group.ReadWrite.All',
 		'Chat.ReadWrite',
 		'ChannelMessage.Read.All',
+		'OnlineMeetings.ReadWrite',
 	];
 
 	// Shared OAuth2 configuration
@@ -70,7 +71,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
 		);
 	});
 
@@ -87,6 +88,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(authUri).toContain('Group.ReadWrite.All');
 			expect(authUri).toContain('Chat.ReadWrite');
 			expect(authUri).toContain('ChannelMessage.Read.All');
+			expect(authUri).toContain('OnlineMeetings.ReadWrite');
 			expect(authUri).toContain(`client_id=${clientId}`);
 			expect(authUri).toContain('response_type=code');
 		});
@@ -104,6 +106,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(token.data.scope).toContain('Group.ReadWrite.All');
 			expect(token.data.scope).toContain('Chat.ReadWrite');
 			expect(token.data.scope).toContain('ChannelMessage.Read.All');
+			expect(token.data.scope).toContain('OnlineMeetings.ReadWrite');
 		});
 	});
 

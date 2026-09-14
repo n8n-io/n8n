@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import type { SelectSize } from '@n8n/design-system/types';
+import { isIconOrEmoji, type IconOrEmoji, type SelectSize } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
@@ -8,7 +7,8 @@ import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import type { ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 import {
 	N8nBadge,
@@ -29,7 +29,6 @@ type Props = {
 	roles?: AllRolesMap['workflow' | 'credential' | 'project'];
 	readonly?: boolean;
 	static?: boolean;
-	hideAddInput?: boolean;
 	placeholder?: string;
 	emptyOptionsText?: string;
 	size?: SelectSize;
@@ -38,6 +37,8 @@ type Props = {
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
 	disabledTooltip?: string;
+	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
+	showSuffix?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -108,9 +109,12 @@ const filteredProjects = computed(() => {
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
+	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
+		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-		...filteredProjects.value,
+		...projects,
 	];
 });
 
@@ -214,11 +218,12 @@ watch(
 		<N8nTooltip :disabled="!props.disabledTooltip" placement="top">
 			<template #content>{{ props.disabledTooltip }}</template>
 			<N8nSelect
-				v-if="!props.hideAddInput && (!props.static || props.disabledTooltip)"
+				v-if="!props.static || props.disabledTooltip"
 				:model-value="selectedProject"
 				data-test-id="project-sharing-select"
 				filterable
 				remote
+				:remote-show-suffix="props.showSuffix"
 				:remote-method="setFilter"
 				:placeholder="selectPlaceholder"
 				:default-first-option="true"

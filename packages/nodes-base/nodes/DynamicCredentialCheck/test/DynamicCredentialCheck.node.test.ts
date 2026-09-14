@@ -32,7 +32,7 @@ describe('DynamicCredentialCheck Node', () => {
 	}) => {
 		const helpers: Record<string, unknown> = {};
 		if (opts.checkCredentialStatus !== null) {
-			helpers.checkCredentialStatus = opts.checkCredentialStatus ?? jest.fn();
+			helpers.checkCredentialStatus = opts.checkCredentialStatus ?? vi.fn();
 		}
 
 		return {
@@ -75,7 +75,7 @@ describe('DynamicCredentialCheck Node', () => {
 
 			const fns = createMockExecuteFunctions({
 				workflowId: 'workflow-1',
-				checkCredentialStatus: jest.fn().mockResolvedValue(mockResult),
+				checkCredentialStatus: vi.fn().mockResolvedValue(mockResult),
 			});
 
 			const output = await node.execute.call(fns);
@@ -101,7 +101,7 @@ describe('DynamicCredentialCheck Node', () => {
 
 			const fns = createMockExecuteFunctions({
 				workflowId: 'workflow-1',
-				checkCredentialStatus: jest.fn().mockResolvedValue(mockResult),
+				checkCredentialStatus: vi.fn().mockResolvedValue(mockResult),
 			});
 
 			const output = await node.execute.call(fns);

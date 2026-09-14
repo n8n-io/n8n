@@ -29,6 +29,7 @@ import {
 	type ExtensionNotConnectedPhase,
 } from './errors';
 import { createLogger } from './logger';
+import type { DisconnectDetails } from './types';
 
 const log = createLogger('relay');
 
@@ -54,6 +55,8 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 export interface CDPRelayServerOptions {
 	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
+	/** Run without an internal HTTP server; feed connections via `attachExtension()`/`attachController()`. */
+	noServer?: boolean;
 }
 
 export interface WaitForExtensionOptions {
@@ -62,10 +65,11 @@ export interface WaitForExtensionOptions {
 }
 
 export class CDPRelayServer {
-	private readonly httpServer: http.Server;
-	private readonly wss: WebSocketServer;
+	private readonly httpServer?: http.Server;
+	private readonly wss?: WebSocketServer;
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
+	private boundPort?: number;
 
 	private playwrightWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
@@ -86,8 +90,16 @@ export class CDPRelayServer {
 	private extensionConnectedReject?: (error: Error) => void;
 	private extensionConnectedPromise: Promise<void>;
 
+	private blockingExtensionIds: string[] = [];
+
 	/** Called when the extension disconnects with a typed reason. */
-	onExtensionDisconnect?: (reason: ConnectionLostReason) => void;
+	onExtensionDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+
+	/** Fired before any teardown, so an in-flight action can fail fast. */
+	onTabBlocked?: (details: DisconnectDetails) => void;
+
+	/** Called when the extension (re)connects. */
+	onExtensionConnect?: () => void;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -111,35 +123,61 @@ export class CDPRelayServer {
 		});
 		this.extensionConnectedPromise.catch(() => {});
 
-		this.httpServer = http.createServer((_req, res) => {
-			res.writeHead(404);
-			res.end();
-		});
-
-		this.wss = new WebSocketServer({ server: this.httpServer });
-		this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		if (!options?.noServer) {
+			this.httpServer = http.createServer((_req, res) => {
+				res.writeHead(404);
+				res.end();
+			});
+			this.wss = new WebSocketServer({ server: this.httpServer });
+			this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		}
 	}
 
 	/** Start listening on a random available port. Returns the bound port. */
 	async listen(): Promise<number> {
+		const server = this.httpServer;
+		if (!server) {
+			throw new Error('CDPRelayServer was created with noServer — cannot listen');
+		}
+
 		return await new Promise((resolve, reject) => {
-			this.httpServer.listen(0, '127.0.0.1', () => {
-				const addr = this.httpServer.address() as net.AddressInfo;
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as net.AddressInfo;
 				log.debug('listening on port', addr.port);
+				this.boundPort = addr.port;
 				resolve(addr.port);
 			});
-			this.httpServer.on('error', reject);
+			server.on('error', reject);
 		});
 	}
 
+	/** Attach an already-upgraded extension WebSocket (embedder owns the handshake and auth). */
+	attachExtension(ws: WebSocket): void {
+		this.handleExtensionConnection(ws);
+	}
+
+	/** Attach an already-upgraded CDP-client (Playwright or agent-browser) WebSocket. */
+	attachController(ws: WebSocket): void {
+		this.handlePlaywrightConnection(ws);
+	}
+
+	private resolvePort(port?: number): number {
+		const resolved = port ?? this.boundPort;
+		if (resolved === undefined) {
+			throw new Error('Relay port is unknown - call listen() or pass a port');
+		}
+
+		return resolved;
+	}
+
 	/** The WebSocket URL Playwright should connectOverCDP to. */
-	cdpEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.cdpPath}`;
+	cdpEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.cdpPath}`;
 	}
 
 	/** The WebSocket URL the extension should connect to. */
-	extensionEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.extensionPath}`;
+	extensionEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.extensionPath}`;
 	}
 
 	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance.
@@ -189,8 +227,8 @@ export class CDPRelayServer {
 		}
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
-		this.wss.close();
-		this.httpServer.close();
+		this.wss?.close();
+		this.httpServer?.close();
 	}
 
 	// =========================================================================
@@ -598,6 +636,8 @@ export class CDPRelayServer {
 	/** Handle tabOpened event from extension. */
 	private handleTabOpened(id: string, title: string, url: string): void {
 		if (this.tabCache.has(id)) return;
+		// A new tab is the agent recovering; the earlier block is history.
+		this.blockingExtensionIds = [];
 
 		log.debug('tabOpened:', id, url);
 		this.tabCache.set(id, { title, url });
@@ -606,8 +646,21 @@ export class CDPRelayServer {
 	}
 
 	/** Handle tabClosed event from extension. */
-	private handleTabClosed(id: string): void {
-		log.debug('tabClosed:', id);
+	private handleTabClosed(
+		id: string,
+		reason?: 'blocked_by_extension',
+		blockingExtensionIds?: string[],
+	): void {
+		if (reason === 'blocked_by_extension') {
+			log.debug('tabClosed:', id, 'blocked by', blockingExtensionIds);
+			this.blockingExtensionIds = blockingExtensionIds ?? [];
+			this.onTabBlocked?.({ blockingExtensionIds: this.blockingExtensionIds });
+		} else {
+			log.debug('tabClosed:', id);
+			// The session carried on past the block, so stop attributing later
+			// disconnects to it.
+			this.blockingExtensionIds = [];
+		}
 
 		this.tabCache.delete(id);
 		const wasActivated = this.activatedTabs.delete(id);
@@ -662,12 +715,20 @@ export class CDPRelayServer {
 		}
 
 		log.debug('extension connected');
+		// A fresh session must not inherit the previous one's block.
+		this.blockingExtensionIds = [];
 		this.extensionConn = new ExtensionConnection(ws);
 
 		this.extensionConn.onclose = () => {
-			const rawReason = this.extensionConn?.closeReason;
-			log.debug('extension disconnected, reason:', rawReason ?? '(none)');
-			this.onExtensionDisconnect?.(asConnectionLostReason(rawReason));
+			const blockingExtensionIds = this.blockingExtensionIds;
+			// A recorded block outranks the socket's own reason: it says why the tab
+			// went, which the close frame never does.
+			const reason: ConnectionLostReason =
+				blockingExtensionIds.length > 0
+					? 'blocked_by_extension'
+					: asConnectionLostReason(this.extensionConn?.closeReason);
+			log.debug('extension disconnected, reason:', reason);
+			this.onExtensionDisconnect?.(reason, { blockingExtensionIds });
 
 			// Clear extension ref but KEEP tabCache, activatedTabs, and Playwright connection.
 			// Pending requests are already rejected by ExtensionConnection.handleClose.
@@ -698,6 +759,7 @@ export class CDPRelayServer {
 		}
 
 		this.extensionConnectedResolve?.();
+		this.onExtensionConnect?.();
 	}
 
 	/** Wire up event handlers for the current extension connection. */
@@ -794,7 +856,7 @@ export class CDPRelayServer {
 				this.handleTabOpened(p.id, p.title, p.url);
 			} else if (method === 'tabClosed') {
 				const p = params as ExtensionEvents['tabClosed']['params'];
-				this.handleTabClosed(p.id);
+				this.handleTabClosed(p.id, p.reason, p.blockingExtensionIds);
 			}
 		};
 	}
@@ -845,6 +907,7 @@ export class CDPRelayServer {
 		this.activatedTabs.clear();
 		this.primaryTabId = undefined;
 		this.lastCreatedTabId = undefined;
+		this.blockingExtensionIds = [];
 		this.browserContextId = 'n8n-default-context';
 		this.extensionConn = null;
 		this.extensionConnectedPromise = new Promise((resolve, reject) => {
@@ -1048,6 +1111,7 @@ const VALID_REASONS = new Set<ConnectionLostReason>([
 	'browser_closed',
 	'extension_disconnected',
 	'debugger_detached',
+	'blocked_by_extension',
 	'network_error',
 	'heartbeat_timeout',
 ]);

@@ -5,13 +5,15 @@ import {
 	PROJECT_EDITOR_ROLE,
 	PROJECT_OWNER_ROLE,
 	PROJECT_VIEWER_ROLE,
+	ProjectRepository,
 	RoleRepository,
+	UserRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { cleanupRolesAndScopes } from '../shared/db/roles';
-import { createMember, createOwner } from '../shared/db/users';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { createMember, createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -248,6 +250,116 @@ describe('RoleController - Integration Tests', () => {
 			await memberAgent
 				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
 				.expect(403);
+		});
+	});
+
+	describe('project assignments visibility for a delegated role manager', () => {
+		let roleManager: User;
+		let roleManagerAgent: SuperAgentTest;
+		let ownProject: Project;
+		let otherProject: Project;
+		// Projects a single test creates for itself. Tracked here so cleanup still runs when
+		// that test fails — a leaked relation to a custom role makes the outer hook's role
+		// delete fail on the FK, which would mask the real failure.
+		const scratchProjectIds: string[] = [];
+
+		const projectNamesOf = (body: { data: { projects: Array<{ projectName: string }> } }) =>
+			body.data.projects.map((project) => project.projectName);
+
+		beforeEach(async () => {
+			scratchProjectIds.length = 0;
+
+			// A non-admin caller whose custom global role only lets it manage project roles.
+			const role = await createCustomRoleWithScopeSlugs(['role:read', 'role:manageProject'], {
+				roleType: 'global',
+				displayName: 'Project Role Manager',
+			});
+			roleManager = await createUser({ role });
+			roleManagerAgent = testServer.authAgentFor(roleManager);
+
+			ownProject = await createTeamProject('Own Project', owner);
+			await linkUserToProject(roleManager, ownProject, 'project:admin');
+			await linkUserToProject(member, ownProject, 'project:editor');
+
+			otherProject = await createTeamProject('Other Project', owner);
+			await linkUserToProject(member, otherProject, 'project:editor');
+		});
+
+		afterEach(async () => {
+			// The user holds an FK to the custom role, so it has to go before the
+			// outer hook deletes non-system roles.
+			await Container.get(UserRepository).delete({ id: roleManager.id });
+			await Container.get(ProjectRepository).delete([
+				ownProject.id,
+				otherProject.id,
+				...scratchProjectIds,
+			]);
+		});
+
+		it('should only list the projects the caller can list, while keeping the total intact', async () => {
+			const asOwner = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+			const asRoleManager = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+
+			expect(projectNamesOf(asOwner.body)).toEqual(
+				expect.arrayContaining(['Own Project', 'Other Project']),
+			);
+			expect(projectNamesOf(asRoleManager.body)).toContain('Own Project');
+			expect(projectNamesOf(asRoleManager.body)).not.toContain('Other Project');
+
+			// the instance-wide count stays honest so the delete-impact signal is not understated
+			expect(asRoleManager.body.data.totalProjects).toBe(asOwner.body.data.totalProjects);
+			expect(asRoleManager.body.data.projects.length).toBeLessThan(
+				asRoleManager.body.data.totalProjects,
+			);
+		});
+
+		it('should return the members of a project the caller can list', async () => {
+			const response = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${ownProject.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toHaveLength(1);
+			expect(response.body.data.members[0].email).toBe(member.email);
+		});
+
+		it('should not return the members of a project the caller cannot list', async () => {
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${otherProject.id}/members`)
+				.expect(404);
+		});
+
+		it('should not return the members of a project that does not exist', async () => {
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/non-existing-project/members`)
+				.expect(404);
+		});
+
+		// `project:list` only lands on a custom project role as the auto-added companion to
+		// `project:read` (see projectAutoAddedListScopes), so a role built from workflow scopes
+		// alone carries neither. Such a member fails closed here, matching what
+		// `GET /rest/users?filter[projectId]` already does for the same caller.
+		it('should not return the members of a project the caller joined with a role lacking project scopes', async () => {
+			const minimalRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+				roleType: 'project',
+				displayName: 'Workflow Reader Only',
+			});
+			const minimalProject = await createTeamProject('Minimal Role Project', owner);
+			scratchProjectIds.push(minimalProject.id);
+			await linkUserToProject(roleManager, minimalProject, minimalRole.slug);
+			await linkUserToProject(member, minimalProject, 'project:editor');
+
+			const assignments = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+			expect(projectNamesOf(assignments.body)).not.toContain('Minimal Role Project');
+
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${minimalProject.id}/members`)
+				.expect(404);
 		});
 	});
 });

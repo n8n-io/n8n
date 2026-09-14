@@ -1,3 +1,5 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
 describe('CreateWorkflowDto', () => {
@@ -19,7 +21,6 @@ describe('CreateWorkflowDto', () => {
 					connections: {},
 					description: 'A test workflow',
 					settings: { saveExecutionProgress: true },
-					staticData: { key: 'value' },
 					meta: { version: '1.0' },
 					pinData: {},
 					hash: 'abc123',
@@ -68,6 +69,22 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'with a group description at the length cap',
+				request: {
+					name: 'Grouped Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'group1',
+							name: 'Data Fetching',
+							nodeIds: ['node1'],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH),
+						},
+					],
+				},
+			},
+			{
 				name: 'with empty nodeGroups array',
 				request: {
 					name: 'Empty Groups Workflow',
@@ -88,9 +105,40 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 			},
+			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: { id: 'folder123', name: 'Some Folder' },
+				},
+			},
+			{
+				name: 'with parentFolder null (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
 		});
 
 		test('should transform tags from objects to string array', () => {
@@ -265,11 +313,6 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
-				name: 'staticData as array',
-				request: { name: 'Test', nodes: [], connections: {}, staticData: [] },
-				expectedErrorPath: ['staticData'],
-			},
-			{
 				name: 'pinData as array',
 				request: { name: 'Test', nodes: [], connections: {}, pinData: [] },
 				expectedErrorPath: ['pinData'],
@@ -338,6 +381,23 @@ describe('CreateWorkflowDto', () => {
 					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }],
 				},
 				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
+			},
+			{
+				name: 'nodeGroups with description over the length cap',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'g1',
+							name: 'Group',
+							nodeIds: [],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 1),
+						},
+					],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);
@@ -472,6 +532,18 @@ describe('CreateWorkflowDto', () => {
 
 				expect(result.success).toBe(true);
 				expect(result.data).not.toHaveProperty('isArchived');
+			});
+
+			test('should not accept staticData field', () => {
+				const result = CreateWorkflowDto.safeParse({
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('staticData');
 			});
 		});
 

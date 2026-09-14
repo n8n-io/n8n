@@ -18,6 +18,10 @@ export const description: INodeProperties[] = [
 				action: 'Message a model',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period, n8n-nodes-base/node-param-description-missing-final-period
 				description: 'Generate a model response with GPT 3, 4, 5, etc. using Responses API',
+				builderHint: {
+					propertyHint:
+						"Use operation: 'response' for text generation. Do NOT use 'message' — that v1 value is invalid on v2 and fails validation.",
+				},
 			},
 			{
 				name: 'Classify Text for Violations',

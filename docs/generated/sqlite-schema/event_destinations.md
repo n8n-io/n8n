@@ -15,9 +15,9 @@ CREATE TABLE "event_destinations" ("id"	varchar(36) PRIMARY KEY NOT NULL,"destin
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
-| destination | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')' | false |  |  |  |
+| destination | TEXT |  | false |  |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')' | false |  |  |  |
 
 ## Constraints
@@ -40,9 +40,9 @@ erDiagram
 
 
 "event_destinations" {
-  varchar_36_ id PK
-  TEXT destination
   datetime_3_ createdAt
+  TEXT destination
+  varchar_36_ id PK
   datetime_3_ updatedAt
 }
 ```

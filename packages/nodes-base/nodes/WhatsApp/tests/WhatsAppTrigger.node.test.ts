@@ -1,26 +1,35 @@
 import crypto from 'crypto';
 import type * as express from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IHookFunctions, INode, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
 import type { WhatsAppAppWebhookSubscription, WhatsAppPageEvent } from '../types';
 import { WhatsAppTrigger, filterStatuses } from '../WhatsAppTrigger.node';
+import type { Mock, Mocked, MockInstance } from 'vitest';
+
+// The node is loaded through vite here, so vi.mock intercepts its `createHmac` import.
+// Expose the same mock as both the named export (used by the node) and on default (used
+// by this test's `import crypto from 'crypto'`).
+vi.mock('crypto', () => {
+	const createHmac = vi.fn();
+	return { createHmac, default: { createHmac } };
+});
 
 describe('WhatsAppTrigger', () => {
 	let node: WhatsAppTrigger;
-	let mockHookFunctions: jest.Mocked<IHookFunctions>;
-	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
-	let mockNode: jest.Mocked<INode>;
+	let mockHookFunctions: Mocked<IHookFunctions>;
+	let mockWebhookFunctions: Mocked<IWebhookFunctions>;
+	let mockNode: Mocked<INode>;
 
-	let appWebhookSubscriptionListSpy: jest.SpyInstance;
-	let appWebhookSubscriptionCreateSpy: jest.SpyInstance;
-	let appWebhookSubscriptionDeleteSpy: jest.SpyInstance;
+	let appWebhookSubscriptionListSpy: MockInstance;
+	let appWebhookSubscriptionCreateSpy: MockInstance;
+	let appWebhookSubscriptionDeleteSpy: MockInstance;
 
 	beforeEach(() => {
-		appWebhookSubscriptionListSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionList');
-		appWebhookSubscriptionCreateSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionCreate');
-		appWebhookSubscriptionDeleteSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionDelete');
+		appWebhookSubscriptionListSpy = vi.spyOn(GenericFunctions, 'appWebhookSubscriptionList');
+		appWebhookSubscriptionCreateSpy = vi.spyOn(GenericFunctions, 'appWebhookSubscriptionCreate');
+		appWebhookSubscriptionDeleteSpy = vi.spyOn(GenericFunctions, 'appWebhookSubscriptionDelete');
 
 		node = new WhatsAppTrigger();
 		mockHookFunctions = mockDeep<IHookFunctions>();
@@ -34,11 +43,11 @@ describe('WhatsAppTrigger', () => {
 			parameters: {},
 		});
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('filterStatuses', () => {
@@ -228,10 +237,10 @@ describe('WhatsAppTrigger', () => {
 					rawBody: Buffer.from('test'),
 				};
 				const mockResponse = {
-					status: jest.fn().mockReturnThis(),
-					type: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
-					end: jest.fn(),
+					status: vi.fn().mockReturnThis(),
+					type: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
+					end: vi.fn(),
 				} as unknown as express.Response;
 
 				mockWebhookFunctions.getWebhookName.mockReturnValue('setup');
@@ -280,10 +289,10 @@ describe('WhatsAppTrigger', () => {
 					'x-hub-signature-256': 'sha256=test-signature',
 				} as any);
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
@@ -328,15 +337,15 @@ describe('WhatsAppTrigger', () => {
 				mockWebhookFunctions.getNodeParameter.mockReturnValue({});
 
 				// Mock crypto.createHmac to return predictable signature
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
 				// Mock helpers.returnJsonArray
-				(mockWebhookFunctions.helpers.returnJsonArray as jest.Mock).mockReturnValue([
+				(mockWebhookFunctions.helpers.returnJsonArray as Mock).mockReturnValue([
 					{ json: { statuses: [{ status: 'sent' }], field: 'messages' } },
 				]);
 
@@ -360,10 +369,10 @@ describe('WhatsAppTrigger', () => {
 					'x-hub-signature-256': 'sha256=wrong-signature',
 				});
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('correct-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('correct-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
@@ -387,10 +396,10 @@ describe('WhatsAppTrigger', () => {
 					'x-hub-signature-256': 'sha256=test-signature',
 				} as any);
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
@@ -442,15 +451,15 @@ describe('WhatsAppTrigger', () => {
 					messageStatusUpdates: ['sent', 'delivered'],
 				});
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
 				// Mock helpers.returnJsonArray for filtered results
-				(mockWebhookFunctions.helpers.returnJsonArray as jest.Mock).mockReturnValue([
+				(mockWebhookFunctions.helpers.returnJsonArray as Mock).mockReturnValue([
 					{ json: { statuses: [{ status: 'sent' }], field: 'messages' } },
 					{ json: { statuses: [{ status: 'delivered' }], field: 'messages' } },
 				]);
@@ -497,10 +506,10 @@ describe('WhatsAppTrigger', () => {
 					messageStatusUpdates: ['sent', 'delivered'],
 				});
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
@@ -540,15 +549,15 @@ describe('WhatsAppTrigger', () => {
 					messageStatusUpdates: ['sent'],
 				});
 
-				const createHmacSpy = jest.spyOn(crypto, 'createHmac');
+				const createHmacSpy = vi.mocked(crypto.createHmac);
 				const mockHmac = {
-					update: jest.fn().mockReturnThis(),
-					digest: jest.fn().mockReturnValue('test-signature'),
+					update: vi.fn().mockReturnThis(),
+					digest: vi.fn().mockReturnValue('test-signature'),
 				};
 				createHmacSpy.mockReturnValue(mockHmac as unknown as ReturnType<typeof crypto.createHmac>);
 
 				// Mock helpers.returnJsonArray for events without statuses
-				(mockWebhookFunctions.helpers.returnJsonArray as jest.Mock).mockReturnValue([
+				(mockWebhookFunctions.helpers.returnJsonArray as Mock).mockReturnValue([
 					{ json: { field: 'messages' } },
 				]);
 

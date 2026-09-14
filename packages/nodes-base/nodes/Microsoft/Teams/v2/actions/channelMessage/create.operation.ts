@@ -2,9 +2,10 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { channelRLC, teamRLC } from '../../descriptions';
+import { channelRLC, includeLinkToWorkflowOption, teamRLC } from '../../descriptions';
 import { prepareMessage } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
+import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	teamRLC,
@@ -45,14 +46,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
-			{
-				displayName: 'Include Link to Workflow',
-				name: 'includeLinkToWorkflow',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
-			},
+			includeLinkToWorkflowOption,
 			{
 				displayName: 'Reply to ID',
 				name: 'makeReply',
@@ -60,7 +54,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. 1673348720590',
 				description:
-					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL.',
+					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL. The Reply operation does the same thing and is easier to find.',
 			},
 		],
 	},
@@ -70,6 +64,9 @@ const displayOptions = {
 	show: {
 		resource: ['channelMessage'],
 		operation: ['create'],
+	},
+	hide: {
+		...SP_HIDE,
 	},
 };
 
@@ -83,6 +80,8 @@ export async function execute(
 ) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
+
+	throwIfChannelMessageSendUnsupported.call(this, i);
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
@@ -108,14 +107,28 @@ export async function execute(
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
+			buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages/',
+				{ id: replyToId },
+				'/replies',
+			]),
 			body,
 		);
 	} else {
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages`,
+			buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages',
+			]),
 			body,
 		);
 	}

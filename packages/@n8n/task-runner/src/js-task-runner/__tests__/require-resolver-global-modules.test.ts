@@ -13,7 +13,7 @@ import * as path from 'node:path';
  * 2. NODE_PATH must not be clobbered by load-nodes-and-credentials.ts
  * 3. Module._initPaths() must be called to pick up NODE_PATH at runtime
  *
- * Tests use child processes because Jest intercepts require() with its own
+ * Tests use child processes because Vitest intercepts require() with its own
  * resolver which doesn't respect NODE_PATH changes.
  *
  * IMPORTANT: Scripts are placed in a separate directory from the installed
@@ -58,7 +58,9 @@ try {
   console.log(JSON.stringify({ success: false, error: e.message }));
 }`,
 		);
-	});
+		// `npm install` hits the registry and can exceed the default 10s hook
+		// timeout on a loaded CI runner, so give it ample headroom.
+	}, 60_000);
 
 	afterAll(() => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });

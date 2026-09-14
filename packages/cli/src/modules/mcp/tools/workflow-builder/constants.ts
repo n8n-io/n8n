@@ -1,3 +1,6 @@
+/** Upper bound on workflow SDK code accepted by the validate/create MCP tools. */
+export const MAX_WORKFLOW_CODE_LENGTH = 300_000;
+
 /**
  * Re-export code-builder tool constants for use in MCP tool definitions.
  * Keeps tool names and labels consistent between the code-builder agent and the MCP server.

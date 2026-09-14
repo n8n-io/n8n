@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { createFolder } from '../shared/db/folders';
 import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/users';
@@ -14,6 +15,7 @@ import * as utils from '../shared/utils/';
 let owner: User;
 let member: User;
 let ownerPersonalProject: Project;
+let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
@@ -56,7 +58,7 @@ beforeEach(async () => {
 	};
 
 	ownerPersonalProject = await createPersonalProject(owner);
-	await createPersonalProject(member);
+	memberPersonalProject = await createPersonalProject(member);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -175,15 +177,45 @@ describe('POST /projects/:projectId/folders', () => {
 
 	test('should return 500 when createFolder throws an unexpected error', async () => {
 		testServer.license.enable('feat:folders');
-		jest
-			.spyOn(Container.get(FolderService), 'createFolder')
-			.mockRejectedValueOnce(new Error('Unexpected create error'));
+		vi.spyOn(Container.get(FolderService), 'createFolder').mockRejectedValueOnce(
+			new Error('Unexpected create error'),
+		);
 
 		const response = await authOwnerAgent
 			.post(`/projects/${ownerPersonalProject.id}/folders`)
 			.send({ name: 'Folder' });
 
 		expect(response.statusCode).toBe(500);
+	});
+
+	test('should create a folder in the calling users personal project when projectId is "personal"', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post('/projects/personal/folders')
+			.send({ name: 'Personal Shortcut Folder' });
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('name', 'Personal Shortcut Folder');
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerPersonalProject.id}/folders`)
+			.query({ filter: JSON.stringify({ name: 'Personal Shortcut Folder' }) });
+
+		expect(listResponse.body.count).toBe(1);
+		expect(listResponse.body.data[0].id).toBe(response.body.id);
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent
+			.post('/projects/personal/folders')
+			.send({ name: 'Folder' });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
 	});
 });
 
@@ -264,6 +296,18 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body.data).toHaveLength(2);
 	});
 
+	test('should list folders in their own personal project when user is a member', async () => {
+		testServer.license.enable('feat:folders');
+
+		await createFolder(memberPersonalProject, { name: 'Member Folder' });
+
+		const response = await authMemberAgent.get(`/projects/${memberPersonalProject.id}/folders`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
+	});
+
 	test('should list folders in a team project when user is a member', async () => {
 		testServer.license.enable('feat:folders');
 		testServer.license.setQuota('quota:maxTeamProjects', -1);
@@ -313,9 +357,9 @@ describe('GET /projects/:projectId/folders', () => {
 
 	test('should return 500 when getManyAndCount throws an unexpected error', async () => {
 		testServer.license.enable('feat:folders');
-		jest
-			.spyOn(Container.get(FolderService), 'getManyAndCount')
-			.mockRejectedValueOnce(new Error('Unexpected list error'));
+		vi.spyOn(Container.get(FolderService), 'getManyAndCount').mockRejectedValueOnce(
+			new Error('Unexpected list error'),
+		);
 
 		const response = await authOwnerAgent.get(`/projects/${ownerPersonalProject.id}/folders`);
 
@@ -516,9 +560,9 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const { agent, personalProject } = await createDeleteScopedAgent();
 
 		const folder = await createFolder(personalProject, { name: 'Folder' });
-		jest
-			.spyOn(Container.get(FolderService), 'deleteFolder')
-			.mockRejectedValueOnce(new Error('Unexpected delete error'));
+		vi.spyOn(Container.get(FolderService), 'deleteFolder').mockRejectedValueOnce(
+			new Error('Unexpected delete error'),
+		);
 
 		const response = await agent.delete(`/projects/${personalProject.id}/folders/${folder.id}`);
 

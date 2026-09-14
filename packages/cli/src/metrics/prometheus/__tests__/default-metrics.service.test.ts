@@ -4,7 +4,7 @@ import promClient from 'prom-client';
 
 import { PrometheusDefaultMetricsService } from '../default-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusDefaultMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -19,7 +19,7 @@ describe('PrometheusDefaultMetricsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {

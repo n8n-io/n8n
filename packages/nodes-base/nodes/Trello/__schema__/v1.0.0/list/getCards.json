@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "agent": {
+            "type": "null"
+        },
         "badges": {
             "type": "object",
             "properties": {
@@ -40,6 +43,9 @@
                 },
                 "dueComplete": {
                     "type": "boolean"
+                },
+                "externalSource": {
+                    "type": "null"
                 },
                 "fogbugz": {
                     "type": "string"
@@ -90,11 +96,20 @@
                 "brightness": {
                     "type": "string"
                 },
+                "color": {
+                    "type": "null"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -154,6 +169,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -174,6 +192,9 @@
                     }
                 }
             }
+        },
+        "manifest": {
+            "type": "null"
         },
         "manualCoverAttachment": {
             "type": "boolean"
@@ -203,5 +224,5 @@
             "type": "string"
         }
     },
-    "version": 8
+    "version": 11
 }

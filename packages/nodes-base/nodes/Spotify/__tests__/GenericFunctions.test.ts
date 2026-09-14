@@ -2,6 +2,7 @@ import type { IExecuteFunctions, IHookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { spotifyApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('Spotify -> GenericFunctions', () => {
 	let mockThis: IHookFunctions | IExecuteFunctions;
@@ -9,9 +10,9 @@ describe('Spotify -> GenericFunctions', () => {
 	beforeEach(() => {
 		mockThis = {
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			},
-			getNode: jest.fn().mockReturnValue({}),
+			getNode: vi.fn().mockReturnValue({}),
 		} as unknown as IHookFunctions | IExecuteFunctions;
 	});
 
@@ -22,7 +23,7 @@ describe('Spotify -> GenericFunctions', () => {
 		const query = { limit: 10 };
 		const response = { data: 'test' };
 
-		(mockThis.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue(response);
+		(mockThis.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue(response);
 
 		const result = await spotifyApiRequest.call(mockThis, method, endpoint, body, query);
 
@@ -50,7 +51,7 @@ describe('Spotify -> GenericFunctions', () => {
 		const query = { limit: 10 };
 		const error = new Error('Request failed');
 
-		(mockThis.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValue(error);
+		(mockThis.helpers.httpRequestWithAuthentication as Mock).mockRejectedValue(error);
 
 		await expect(spotifyApiRequest.call(mockThis, method, endpoint, body, query)).rejects.toThrow(
 			NodeApiError,

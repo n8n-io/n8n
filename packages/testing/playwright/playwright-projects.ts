@@ -1,36 +1,17 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
-import {
-	CONTAINER_ONLY_CAPABILITIES,
-	CONTAINER_ONLY_MODES,
-	LICENSED_TAG,
-} from './fixtures/capabilities';
+import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
 // Matches:
-// - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
 // - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	[
-		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
-		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
-		`@${LICENSED_TAG}`,
-		'@db:reset',
-	].join('|'),
+	[`@mode:(${CONTAINER_ONLY_MODES.join('|')})`, `@${LICENSED_TAG}`, '@db:reset'].join('|'),
 );
-
-// Escape hatch: allow `@capability:*` tests to run against a pre-started local
-// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
-// etc.) must detect the no-container case and skip or fall back to direct
-// network calls. Used by `pnpm test:local:isolated` and similar workflows.
-const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
-
-/** TODO: Temporarily disable all instance ai e2e tests. Re-enable when ready. */
-const INSTANCE_AI_E2E_IGNORE = '**/instance-ai/**';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
@@ -38,7 +19,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: { mains: 2, workers: 1 },
 	},
 ];
 
@@ -220,7 +201,6 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
-			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
@@ -240,7 +220,6 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
-					testIgnore: INSTANCE_AI_E2E_IGNORE,
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
@@ -248,7 +227,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:infrastructure`,
 					testDir: './tests/infrastructure',
-					grep: new RegExp(`@mode:${name}|@capability:${name}`),
+					grep: new RegExp(`@mode:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },
@@ -259,11 +238,13 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
-			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			timeout: 60000,
 			fullyParallel: true,
 			use: {
 				containerConfig: {},
+				// workers:1 + V8 collection makes cold boot slow enough to blow the 10s
+				// global; a retry gets a fresh container, so one slow boot burns all 3.
+				navigationTimeout: 30_000,
 				// Capture only on failure (global default is `on`). The shard artifact
 				// is downloaded and aggregated each run, so keep it to coverage data
 				// plus failure diagnostics, not full traces/videos for every test.

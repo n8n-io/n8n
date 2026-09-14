@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { PROVIDER_CAPABILITIES, REASONING_EFFORT_OPTIONS } from '../provider-capabilities';
+import {
+	PROVIDER_CAPABILITIES,
+	REASONING_EFFORT_OPTIONS,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
+} from '../provider-capabilities';
 
 describe('provider-capabilities', () => {
 	it('keeps the canonical reasoning-effort order', () => {
@@ -9,9 +13,17 @@ describe('provider-capabilities', () => {
 		expect([...REASONING_EFFORT_OPTIONS]).toEqual(['low', 'medium', 'high']);
 	});
 
-	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI', () => {
+	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI/xAI/custom', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.openrouter.thinking).toBe(false);
+		expect(PROVIDER_CAPABILITIES.xai.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.custom.thinking).toBe('reasoningEffort');
+	});
+
+	it('keeps the canonical Anthropic cache-ttl order', () => {
+		// AgentAdvancedPanel renders this as a select in this exact order.
+		expect([...ANTHROPIC_CACHE_TTL_OPTIONS]).toEqual(['5m', '1h']);
 	});
 
 	it('enables native web search for Anthropic and OpenAI', () => {
@@ -27,6 +39,7 @@ describe('provider-capabilities', () => {
 			'deepseek',
 			'mistral',
 			'openrouter',
+			'custom',
 			'cohere',
 			'ollama',
 		];
@@ -36,16 +49,7 @@ describe('provider-capabilities', () => {
 	});
 
 	it('marks providers without thinking support as `false`', () => {
-		const noThinking = [
-			'google',
-			'xai',
-			'groq',
-			'deepseek',
-			'mistral',
-			'openrouter',
-			'cohere',
-			'ollama',
-		];
+		const noThinking = ['google', 'groq', 'deepseek', 'mistral', 'cohere', 'ollama'];
 		for (const provider of noThinking) {
 			expect(PROVIDER_CAPABILITIES[provider]?.thinking).toBe(false);
 		}

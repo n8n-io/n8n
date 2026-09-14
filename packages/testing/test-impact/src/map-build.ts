@@ -13,7 +13,8 @@ export function forceSpecTn(lcov: string, spec: string): string {
 }
 
 export interface EmitPerSpecLcovsOptions {
-	/** Dir of per-spec raw-coverage folders, each with a `.spec` marker + `raw-*.json`. */
+	/** Dir of per-spec raw-coverage folders, each with a `.spec` marker + `raw-*` file
+	 *  (`.json` backend `{result}` object, or `.jsonl` frontend one-entry-per-line). */
 	bySpecDir: string;
 	/** Where to write `<slug><suffix>.lcov`. */
 	outDir: string;
@@ -63,7 +64,9 @@ export async function emitPerSpecLcovs(opts: EmitPerSpecLcovsOptions): Promise<E
 		if (!existsSync(specMarker)) continue;
 		stats.withMarker++;
 		const spec = readFileSync(specMarker, 'utf8').trim();
-		const rawFiles = readdirSync(dir).filter((f) => f.startsWith('raw-') && f.endsWith('.json'));
+		const rawFiles = readdirSync(dir).filter(
+			(f) => f.startsWith('raw-') && (f.endsWith('.json') || f.endsWith('.jsonl')),
+		);
 		if (!rawFiles.length) continue;
 		stats.withRaw++;
 

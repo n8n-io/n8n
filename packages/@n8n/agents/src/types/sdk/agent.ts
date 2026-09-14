@@ -1,29 +1,42 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel, smoothStream } from 'ai';
+import type {
+	GenerateTextStepEndEvent,
+	GenerateTextStepStartEvent,
+	LanguageModel,
+	smoothStream,
+} from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
-import type { ProviderId, ProviderCredentials } from '../../runtime/provider-credentials';
+import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
 	AgentEventHandler,
+	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONValue } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
 
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
-export type FinishReason =
-	| 'stop'
-	| 'max-iterations'
-	| 'length'
-	| 'content-filter'
-	| 'tool-calls'
-	| 'error'
-	| 'other';
+export const FINISH_REASONS = [
+	'stop',
+	'max-iterations',
+	'length',
+	'content-filter',
+	'tool-calls',
+	'error',
+	'other',
+] as const;
+
+export type FinishReason = (typeof FINISH_REASONS)[number];
+
+export function isFinishReason(value: unknown): value is FinishReason {
+	return typeof value === 'string' && FINISH_REASONS.some((reason) => reason === value);
+}
 
 export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
 	promptTokens: number;
@@ -32,6 +45,8 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	/** Estimated cost in USD, computed from models.dev pricing. */
 	cost?: number;
 	inputTokenDetails?: {
+		/** Uncached input tokens (billed at the full input rate). */
+		noCache?: number;
 		cacheRead?: number;
 		cacheWrite?: number;
 	};
@@ -89,7 +104,7 @@ export type StreamChunk = ContentMetadata &
 		| {
 				/**
 				 * Emitted just before a tool handler starts executing. Bridged from
-				 * the runtime event bus (not part of the AI SDK fullStream). Pairs
+				 * the runtime event bus (not part of the AI SDK stream). Pairs
 				 * with the subsequent `tool-result` to let consumers show a
 				 * mid-flight indicator between "LLM picked a tool" and "result arrived".
 				 */
@@ -135,6 +150,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
+		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {
 				type: 'finish';
 				finishReason: FinishReason;
@@ -143,6 +159,17 @@ export type StreamChunk = ContentMetadata &
 				structuredOutput?: unknown;
 		  }
 		| { type: 'error'; error: unknown }
+		| {
+				/**
+				 * Non-fatal warning emitted during a run. The run continues — this
+				 * chunk only signals an MCP server that failed to connect so its tools were skipped.
+				 */
+				type: 'warning';
+				message: string;
+				code?: string;
+				source?: 'mcp';
+				server?: string;
+		  }
 	);
 
 export interface RunOptions {
@@ -159,16 +186,94 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/**
+	 * Cap on completion tokens for each model call (`max_tokens` /
+	 * `maxOutputTokens`). When unset, provider/model defaults from
+	 * `resolveDefaultMaxOutputTokens` apply.
+	 */
+	maxOutputTokens?: number;
 	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
+	/**
+	 * Request the provider's raw stream events so a run aborted mid-turn can still
+	 * be billed for the tokens it consumed before the stop. Off by default — only
+	 * hosts that bill stopped runs (e.g. Instance AI) need it; leaving it off avoids
+	 * streaming raw provider events that nothing consumes.
+	 */
+	recoverUsageOnAbort?: boolean;
+	/**
+	 * Max silence in milliseconds between model stream chunks (after the turn
+	 * has streamed content) before the turn fails with a stall error. Healthy
+	 * streaming responses emit chunks continuously, so prolonged chunk silence
+	 * means a dead connection that the long AI network timeouts (raised to 1h
+	 * for slow non-streaming calls) would otherwise keep open. 0 disables the
+	 * stall watchdog entirely. Defaults to 90 seconds.
+	 */
+	modelStreamIdleTimeoutMs?: number;
+	/**
+	 * Max silence in milliseconds before the turn's first content chunk.
+	 * Longer than the idle limit by design — large cache-miss prompts spend
+	 * minutes in prompt processing before the provider sends anything — and a
+	 * trip here is recovered by a silent retry instead of a user-facing error.
+	 * Clamped to at least `modelStreamIdleTimeoutMs`. Defaults to 3 minutes.
+	 */
+	modelStreamFirstOutputTimeoutMs?: number;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
 	executionCounter?: AgentExecutionCounter;
+	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
+	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/** @deprecated Use `onStepEnd` instead. */
+	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/**
+	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
+	 * checkpoint at every step boundary (after a tool batch settles, before the
+	 * next model call) so a crash loses only the in-flight step. Requires a
+	 * persistence-backed CheckpointStore; recover via `crashResume()`.
+	 */
+	stepCheckpoints?: boolean;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface AnthropicPromptCachingConfig {
+	/**
+	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
+	 * tool loops, eval waves) and a 1h breakpoint fails cheaper than 5m under
+	 * that pattern. Use `'5m'` for continuously warm chat loops to avoid the
+	 * 2x write premium.
+	 */
+	ttl?: '5m' | '1h';
+}
+
+export interface OpenAIPromptCachingConfig {
+	/**
+	 * Routing hint combined with OpenAI's prefix hash to improve cache-hit
+	 * stickiness. Auto-generated at agent-version granularity when omitted
+	 * (agent name + model id + a hash of the base instructions). Set
+	 * explicitly for per-tenant routing.
+	 */
+	promptCacheKey?: string;
+	/** Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+). */
+	promptCacheRetention?: 'in_memory' | '24h';
+}
+
+/**
+ * Opt-in prompt caching config set via `Agent.promptCaching()`. Generates
+ * provider-specific `providerOptions` (Anthropic cache breakpoints, OpenAI
+ * cache key + retention) on top of the model's provider. Caller-supplied
+ * `providerOptions` always take precedence on conflicts.
+ */
+export interface PromptCachingConfig {
+	/** Master switch. Defaults to `true` when this config is set. */
+	enabled?: boolean;
+	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	anthropic?: false | AnthropicPromptCachingConfig;
+	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
+	openai?: false | OpenAIPromptCachingConfig;
 }
 
 export interface ToolResultEntry {
@@ -229,6 +334,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {
@@ -308,6 +415,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
 			runId: string;
 	  }
 	| {
@@ -331,4 +439,14 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	hostMetadata?: JSONObject;
+	/** Internal child runs must only be resumed through their suspended parent. */
+	delegated?: true;
+	/**
+	 * The host application's own run id (distinct from the agent-SDK runId that
+	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.
+	 * Instance AI's interrupted-run sweep) can match a checkpoint to its run
+	 * exactly instead of guessing by recency.
+	 */
+	hostRunId?: string;
 };

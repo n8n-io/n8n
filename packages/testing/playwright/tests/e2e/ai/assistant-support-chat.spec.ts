@@ -24,7 +24,7 @@ test.describe(
 		test.describe('Support Chat', () => {
 			test('assistant returns code snippet', async ({ n8n, setupRequirements }) => {
 				await setupRequirements(aiEnabledWithCodeSnippetRequirements);
-				await n8n.page.goto('/workflow/new');
+				await n8n.start.fromBlankCanvas();
 
 				await expect(n8n.aiAssistant.getAskAssistantCanvasActionButton()).toBeVisible();
 				await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();

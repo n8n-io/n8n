@@ -17,11 +17,11 @@ describe('NetlifyTriggerHelpers', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -29,7 +29,7 @@ describe('NetlifyTriggerHelpers', () => {
 		it('should return true when no secret is configured', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -45,7 +45,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return token;
 					return null;
 				}),
@@ -64,7 +64,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return token;
 					return null;
 				}),
@@ -83,7 +83,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return token;
 					return null;
 				}),
@@ -106,7 +106,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return token;
 					return null;
 				}),
@@ -123,7 +123,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -137,7 +137,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return 'not-a-jwt';
 					return null;
 				}),
@@ -156,7 +156,7 @@ describe('NetlifyTriggerHelpers', () => {
 				webhookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name) => {
+				header: vi.fn().mockImplementation((name) => {
 					if (name === 'x-webhook-signature') return token;
 					return null;
 				}),

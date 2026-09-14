@@ -18,6 +18,9 @@ then use IDs and narrow filters.
 - **Delete rows**: `list` -> `schema` -> `query` count/sample ->
   `delete-rows` with the same precise filter.
 - **Delete table**: `list` -> `delete` with `dataTableName`.
+- **Fix a wrong schema**: `list` -> `schema` -> `add-column` for missing
+  columns / `delete-column` for extras; for a wrong column type, `delete` +
+  `create` when the table is empty, or stop and ask when it holds data.
 
 ## Schema Patterns
 
@@ -166,6 +169,12 @@ Delete rows:
 
 - **Name conflict**: list tables, inspect the matching schema, then reuse it or
   ask whether to create a differently named table.
+- **Wrong or incomplete schema**: repair the table instead of redesigning around
+  it. Add missing columns with `add-column`; remove extras with `delete-column`.
+  Column types cannot be changed in place; for an empty or just-created table,
+  `delete` then `create` with the correct columns; for a populated table, stop
+  and ask before recreating. Never weaken a workflow's design to fit a wrong
+  schema.
 - **Ambiguous project**: ask which project before creating or deleting. Do not
   guess when the same table name exists in multiple projects.
 - **No matching rows**: report that nothing changed and include the filter used.

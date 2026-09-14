@@ -17,16 +17,22 @@ test.describe(
 		}) => {
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
+			await n8n.page.keyboard.press('Escape');
 
 			await n8n.canvas.publishWorkflow();
 			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 			await n8n.workflowActivationModal.close();
 
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeVisible();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 			await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
+
+			// The checklist reopens from the workflow menu
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.openProductionChecklist();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 		});
 
 		test('should display evaluations action when AI node exists and feature is enabled', async ({
@@ -65,8 +71,8 @@ test.describe(
 			await expect(errorAction).toBeVisible();
 			await errorAction.click();
 
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeVisible();
-			await expect(n8n.page.getByTestId('workflow-settings-error-workflow')).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getErrorWorkflowField()).toBeVisible();
 		});
 
 		test('should open workflow settings modal when time saved action is clicked', async ({
@@ -83,10 +89,10 @@ test.describe(
 			await expect(timeAction).toBeVisible();
 			await timeAction.click();
 
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeVisible();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 		});
 
-		test('should allow ignoring individual actions', async ({ n8n }) => {
+		test('should keep the checklist available after closing it', async ({ n8n }) => {
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.publishWorkflow();
 			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -94,14 +100,12 @@ test.describe(
 
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
-			await expect(n8n.canvas.getProductionChecklistActionItem().first()).toContainText('error');
-			await n8n.canvas.getProductionChecklistActionItem().first().getByTitle('Ignore').click();
-			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			// The close button only dismisses the popover; nothing is persisted
+			await n8n.canvas.closeProductionChecklist();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
 
-			await n8n.page.locator('body').click({ position: { x: 0, y: 0 } });
-			await n8n.canvas.clickProductionChecklistButton();
-
-			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			await n8n.canvas.openProductionChecklist();
+			await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 		});
 
@@ -136,36 +140,12 @@ test.describe(
 
 			await n8n.workflowSettingsModal.selectErrorWorkflow('Error Handler');
 			await n8n.workflowSettingsModal.clickSave();
-			await expect(n8n.page.getByTestId('workflow-settings-dialog')).toBeHidden();
+			await expect(n8n.workflowSettingsModal.getModal()).toBeHidden();
 
-			await n8n.canvas.clickProductionChecklistButton();
+			await n8n.canvas.openProductionChecklist();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
-			await expect(
-				n8n.canvas
-					.getProductionChecklistActionItem()
-					.first()
-					.locator('svg[data-icon="circle-check"]'),
-			).toBeVisible();
-		});
-
-		test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.publishWorkflow();
-			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
-			await n8n.workflowActivationModal.close();
-
-			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-
-			await n8n.canvas.clickProductionChecklistIgnoreAll();
-
-			await expect(n8n.page.locator('.el-message-box')).toBeVisible();
-			await n8n.page
-				.locator('.el-message-box__btns button')
-				.filter({ hasText: /ignore for all workflows/i })
-				.click();
-
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
+			await expect(n8n.canvas.getProductionChecklistActionCompletedIcon()).toBeVisible();
 		});
 	},
 );

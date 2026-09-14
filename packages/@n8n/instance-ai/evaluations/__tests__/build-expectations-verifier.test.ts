@@ -148,4 +148,43 @@ describe('verifyBuildExpectations', () => {
 		expect(sentMessages).toContain('0. expectation zero');
 		expect(sentMessages).toContain('turnCount');
 	});
+
+	it('appends the artifact context to the cached build block alongside the workflow block', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyBuildExpectations(['an agent was created'], {
+			transcript: TRANSCRIPT,
+			artifactContext: '## Agent\n\n(no agent produced)',
+		});
+
+		const [messages] = generate.mock.calls[0] as [
+			Array<{ content: Array<{ text: string; providerOptions?: unknown }> }>,
+			unknown,
+		];
+		const [buildBlock] = messages[0].content;
+		// The workflow fallback and the artifact section share one cached block.
+		expect(buildBlock.text).toContain('(no workflow built)');
+		expect(buildBlock.text).toContain('## Agent\n\n(no agent produced)');
+		expect(buildBlock.providerOptions).toEqual({});
+	});
+
+	it('sends only the workflow block when there is no artifact context', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyBuildExpectations(['the workflow posts to Slack'], { transcript: TRANSCRIPT });
+
+		const [messages] = generate.mock.calls[0] as [
+			Array<{ content: Array<{ text: string }> }>,
+			unknown,
+		];
+		const [buildBlock] = messages[0].content;
+		expect(buildBlock.text).toContain('(no workflow built)');
+		expect(buildBlock.text).not.toContain('## Agent');
+	});
 });

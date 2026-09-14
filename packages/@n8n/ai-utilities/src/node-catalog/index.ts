@@ -11,7 +11,7 @@
 export { NodeTypeParser } from './node-type-parser';
 export type { ParsedNodeType } from './node-type-parser';
 
-export { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from './search-engine';
+export { NodeSearchEngine, SCORE_WEIGHTS } from './search-engine';
 
 export { searchCodeBuilderNodes, formatNodeResult } from './search';
 export type {
@@ -20,11 +20,13 @@ export type {
 } from './search';
 
 export {
+	getNodeTypeDefinition,
 	getNodeTypes,
 	isValidPathComponent,
 	validatePathWithinBase,
 	parseNodeId,
 	toSnakeCase,
+	versionDirToNumber,
 } from './get';
 export type { NodeRequest, CodeBuilderGetToolOptions } from './get';
 
@@ -59,4 +61,29 @@ export type {
 	ExtractOptions,
 } from './resource-operation-extractor';
 
-export type { SubnodeRequirement, CodeBuilderNodeSearchResult } from './types';
+export {
+	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findNodeParameterProperty,
+	formatResourceLocatorOptionsForLLM,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from './dynamic-node-parameters';
+export type {
+	DynamicNodeParameterLookup,
+	DynamicNodeParameterPath,
+	RequiredNodeCredentialSlot,
+} from './dynamic-node-parameters';
+
+export { AI_CONNECTION_TYPES } from './types';
+export type {
+	AiGatewayNodeMeta,
+	NodeSearchResult,
+	SearchableNodeType,
+	SubnodeRequirement,
+} from './types';

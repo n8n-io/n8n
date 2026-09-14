@@ -5,9 +5,9 @@ const BACKGROUND_CANCELLED_TEXT = 'The background workflow-builder task was canc
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI background lifecycle @capability:proxy',
+	'Instance AI background lifecycle',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -16,7 +16,7 @@ test.describe(
 			async ({ api, n8n }, testInfo) => {
 				test.skip(
 					testInfo.project.name.includes('multi-main'),
-					'Background task simulation state is process-local and not stable in multi-main mode',
+					'Background task simulation is not yet stable on the multi-main project',
 				);
 
 				const owner = await api.signin('owner');

@@ -53,6 +53,22 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			delete resultData.error;
 		}
 
+		const executionData = execution.data.executionData;
+
+		if (executionData) {
+			for (const executeData of executionData.nodeExecutionStack ?? []) {
+				if (executeData.data) {
+					this.redactConnections(executeData.data, reason);
+				}
+			}
+
+			for (const runIndexMap of Object.values(executionData.waitingExecution ?? {})) {
+				for (const waitingExecution of Object.values(runIndexMap)) {
+					this.redactConnections(waitingExecution, reason);
+				}
+			}
+		}
+
 		execution.data.redactionInfo = {
 			...execution.data.redactionInfo,
 			isRedacted: true,

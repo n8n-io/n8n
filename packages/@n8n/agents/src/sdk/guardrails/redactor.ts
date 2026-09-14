@@ -1,23 +1,25 @@
-import type { RedactionCategory } from './patterns';
-import { resolvePatterns } from './patterns';
+import {
+	findMatchRanges as findMatchRangesWith,
+	redactDeep as redactDeepWith,
+	redactText as redactTextWith,
+	type DeepRedactionResult,
+	type RedactionOptions,
+	type RedactionResult,
+} from '@n8n/utils/redaction/redact-text';
+
+import { PII_PATTERNS } from './patterns';
 import type { BuiltGuardrail, PiiDetectionType } from '../../types';
 
-export const DEFAULT_PLACEHOLDER = '[REDACTED]';
+export { DEFAULT_PLACEHOLDER } from '@n8n/utils/redaction/redact-text';
+export type { RedactionOptions, RedactionResult, DeepRedactionResult };
 
-export interface RedactionOptions {
-	/** Scan for credential/secret patterns. Defaults to `true`. */
-	secrets?: boolean;
-	/** PII categories to scan for. Defaults to none. */
-	detect?: readonly PiiDetectionType[];
-	/** Replacement text for a match. Defaults to `[REDACTED]`. */
-	placeholder?: string;
-}
-
-export interface RedactionResult {
-	/** The input with every detected match replaced by the placeholder. */
-	text: string;
-	/** One entry per replaced match (category only — never the value). */
-	matches: Array<{ category: RedactionCategory }>;
+/**
+ * The engine lives in `@n8n/utils` so the frontend can apply the same policy.
+ * These wrappers bind it to the Node detection table (checksum-verified crypto
+ * wallets); everything else is shared code.
+ */
+function withNodePatterns(opts: RedactionOptions): RedactionOptions {
+	return { ...opts, piiPatterns: opts.piiPatterns ?? PII_PATTERNS };
 }
 
 /**
@@ -37,26 +39,7 @@ export function redactionOptionsFromGuardrail(guardrail: BuiltGuardrail): Redact
  * already-redacted placeholders are left untouched by the underlying patterns.
  */
 export function redactText(input: string, opts: RedactionOptions = {}): RedactionResult {
-	const placeholder = opts.placeholder ?? DEFAULT_PLACEHOLDER;
-	const patterns = resolvePatterns({
-		secrets: opts.secrets ?? true,
-		detect: opts.detect ?? [],
-	});
-
-	const matches: Array<{ category: RedactionCategory }> = [];
-	let text = input;
-
-	for (const pattern of patterns) {
-		// `replace` with a global regex scans from 0 and resets lastIndex, so the
-		// shared precompiled regex is safe to reuse across calls.
-		text = text.replace(pattern.regex, (match) => {
-			if (pattern.validate && !pattern.validate(match)) return match;
-			matches.push({ category: pattern.category });
-			return placeholder;
-		});
-	}
-
-	return { text, matches };
+	return redactTextWith(input, withNodePatterns(opts));
 }
 
 /**
@@ -68,75 +51,18 @@ export function findMatchRanges(
 	input: string,
 	opts: RedactionOptions = {},
 ): Array<[number, number]> {
-	const patterns = resolvePatterns({
-		secrets: opts.secrets ?? true,
-		detect: opts.detect ?? [],
-	});
-
-	const ranges: Array<[number, number]> = [];
-	for (const pattern of patterns) {
-		const { regex } = pattern;
-		// Reset before the scan loop; reusing the shared global regex is safe
-		// because usage is synchronous and the loop always runs to completion.
-		regex.lastIndex = 0;
-		let match: RegExpExecArray | null;
-		while ((match = regex.exec(input)) !== null) {
-			if (match[0].length === 0) {
-				regex.lastIndex++;
-				continue;
-			}
-			if (pattern.validate && !pattern.validate(match[0])) continue;
-			ranges.push([match.index, match.index + match[0].length]);
-		}
-	}
-	return ranges;
-}
-
-const MAX_DEEP_DEPTH = 8;
-
-export interface DeepRedactionResult {
-	value: unknown;
-	matches: Array<{ category: RedactionCategory }>;
+	return findMatchRangesWith(input, withNodePatterns(opts));
 }
 
 /**
  * Recursively redact string values inside an arbitrary JSON-like value
  * (tool results, structured payloads). Object keys are left intact; only
- * string values are scanned. Recursion is depth-bounded as a cheap guard
- * against pathological/cyclic structures.
+ * string values are scanned.
  */
 export function redactDeep(
 	value: unknown,
 	opts: RedactionOptions = {},
 	depth = 0,
 ): DeepRedactionResult {
-	if (typeof value === 'string') {
-		const { text, matches } = redactText(value, opts);
-		return { value: text, matches };
-	}
-
-	if (depth >= MAX_DEEP_DEPTH) return { value, matches: [] };
-
-	if (Array.isArray(value)) {
-		const matches: Array<{ category: RedactionCategory }> = [];
-		const next = value.map((item) => {
-			const result = redactDeep(item, opts, depth + 1);
-			matches.push(...result.matches);
-			return result.value;
-		});
-		return { value: next, matches };
-	}
-
-	if (value !== null && typeof value === 'object') {
-		const matches: Array<{ category: RedactionCategory }> = [];
-		const next: Record<string, unknown> = {};
-		for (const [key, item] of Object.entries(value)) {
-			const result = redactDeep(item, opts, depth + 1);
-			matches.push(...result.matches);
-			next[key] = result.value;
-		}
-		return { value: next, matches };
-	}
-
-	return { value, matches: [] };
+	return redactDeepWith(value, withNodePatterns(opts), depth);
 }

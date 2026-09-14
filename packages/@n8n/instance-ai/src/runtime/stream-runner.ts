@@ -1,14 +1,18 @@
-import type { RedactionOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
+import type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunStopSignal,
+} from './orchestrator-run-control';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
 	type ResumableStreamSource,
 	type TraceStatus,
 } from './resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import { resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -25,15 +29,17 @@ export interface StreamRunOptions {
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	onActivity?: () => void;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
+	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 }
 
 export interface StreamRunResult {
 	status: TraceStatus;
 	agentRunId: string;
 	text?: Promise<string>;
+	error?: unknown;
 	workSummary: WorkSummary;
+	usage?: RunTokenUsage;
+	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -78,7 +84,7 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
-			outputRedaction: options.outputRedaction,
+			stopSignal: options.stopSignal,
 		},
 		control: { mode: 'manual' },
 		initialAgentRunId: options.agentRunId,
@@ -90,6 +96,7 @@ async function consumeStream(
 			agentRunId: result.agentRunId,
 			text: result.text,
 			workSummary: result.workSummary,
+			usage: result.usage,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -104,6 +111,9 @@ async function consumeStream(
 					: 'completed',
 		agentRunId: result.agentRunId,
 		text: result.text,
+		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
+		usage: result.usage,
+		...(result.stopReason ? { stopReason: result.stopReason } : {}),
 	};
 }

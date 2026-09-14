@@ -11,18 +11,18 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_role | FOREIGN KEY | FOREIGN KEY ("roleSlug") REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE |
+| FK_scope | FOREIGN KEY | FOREIGN KEY ("scopeSlug") REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE |
+| PK_role_scope | PRIMARY KEY | PRIMARY KEY ("roleSlug", "scopeSlug") |
 | role_scope_roleSlug_not_null | n | NOT NULL "roleSlug" |
 | role_scope_scopeSlug_not_null | n | NOT NULL "scopeSlug" |
-| FK_scope | FOREIGN KEY | FOREIGN KEY ("scopeSlug") REFERENCES scope(slug) ON UPDATE CASCADE ON DELETE CASCADE |
-| FK_role | FOREIGN KEY | FOREIGN KEY ("roleSlug") REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE |
-| PK_role_scope | PRIMARY KEY | PRIMARY KEY ("roleSlug", "scopeSlug") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_role_scope | CREATE UNIQUE INDEX "PK_role_scope" ON public.role_scope USING btree ("roleSlug", "scopeSlug") |
 | IDX_role_scope_scopeSlug | CREATE INDEX "IDX_role_scope_scopeSlug" ON public.role_scope USING btree ("scopeSlug") |
+| PK_role_scope | CREATE UNIQUE INDEX "PK_role_scope" ON public.role_scope USING btree ("roleSlug", "scopeSlug") |
 
 ## Relations
 
@@ -37,18 +37,18 @@ erDiagram
   varchar_128_ scopeSlug FK
 }
 "public.role" {
-  varchar_128_ slug
-  text displayName
-  text description
-  text roleType
-  boolean systemRole
   timestamp_3__with_time_zone createdAt
+  text description
+  text displayName
+  text roleType
+  varchar_128_ slug
+  boolean systemRole
   timestamp_3__with_time_zone updatedAt
 }
 "public.scope" {
-  varchar_128_ slug
-  text displayName
   text description
+  text displayName
+  varchar_128_ slug
 }
 ```
 

@@ -7,6 +7,7 @@ withDefaults(
 	defineProps<{
 		modelValue?: string;
 		placeholder?: string;
+		ariaActiveDescendant?: string;
 	}>(),
 	{
 		modelValue: '',
@@ -16,11 +17,7 @@ withDefaults(
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
-	'key:escape': [];
-	'key:navigate': [direction: 'up' | 'down'];
-	'key:arrow-right': [];
-	'key:arrow-left': [];
-	'key:enter': [];
+	keydown: [event: KeyboardEvent];
 }>();
 
 const slots = defineSlots<{
@@ -40,36 +37,11 @@ const handleInput = (event: Event) => {
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		emit('key:escape');
-	} else if (event.key === 'Tab' && !event.shiftKey) {
-		event.preventDefault();
-		emit('key:navigate', 'down');
-	} else if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		emit('key:navigate', 'down');
-	} else if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		emit('key:navigate', 'up');
-	} else if (event.key === 'ArrowRight') {
-		if (
-			event.target instanceof HTMLInputElement &&
-			event.target.selectionStart === event.target.value.length
-		) {
-			emit('key:arrow-right');
-		}
-	} else if (event.key === 'ArrowLeft') {
-		if (event.target instanceof HTMLInputElement && event.target.selectionStart === 0) {
-			emit('key:arrow-left');
-		}
-	} else if (event.key === 'Enter') {
-		event.preventDefault();
-		emit('key:enter');
-	}
+	emit('keydown', event);
 };
 
-const focus = () => {
-	inputRef.value?.focus();
+const focus = (options?: FocusOptions) => {
+	inputRef.value?.focus(options);
 };
 
 defineExpose({ focus, inputRef });
@@ -86,6 +58,7 @@ defineExpose({ focus, inputRef });
 			:class="$style['search-input']"
 			:placeholder="placeholder"
 			:value="modelValue"
+			:aria-activedescendant="ariaActiveDescendant"
 			@input="handleInput"
 			@keydown.stop="handleKeydown"
 		/>
@@ -126,7 +99,8 @@ defineExpose({ focus, inputRef });
 	font-family: inherit;
 	font-size: var(--font-size--sm);
 	color: var(--color--text--base);
-	padding: var(--spacing--4xs) 0;
+	padding: 0 var(--spacing--3xs);
+	height: var(--height--sm);
 
 	&::placeholder {
 		color: var(--color--text--tint-1);

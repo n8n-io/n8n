@@ -4,17 +4,17 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| created | integer |  | false |  |  |  |
+| disabled | integer |  | false |  |  |  |
+| endedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
+| error | text |  | true |  |  |  |
 | id | integer | nextval('auth_provider_sync_history_id_seq'::regclass) | false |  |  |  |
 | providerType | varchar(32) |  | false |  |  |  |
 | runMode | text |  | false |  |  |  |
-| status | text |  | false |  |  |  |
-| startedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
-| endedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
 | scanned | integer |  | false |  |  |  |
-| created | integer |  | false |  |  |  |
+| startedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
+| status | text |  | false |  |  |  |
 | updated | integer |  | false |  |  |  |
-| disabled | integer |  | false |  |  |  |
-| error | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -24,13 +24,13 @@
 | auth_provider_sync_history_disabled_not_null | n | NOT NULL disabled |
 | auth_provider_sync_history_endedAt_not_null | n | NOT NULL "endedAt" |
 | auth_provider_sync_history_id_not_null | n | NOT NULL id |
+| auth_provider_sync_history_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | auth_provider_sync_history_providerType_not_null | n | NOT NULL "providerType" |
 | auth_provider_sync_history_runMode_not_null | n | NOT NULL "runMode" |
 | auth_provider_sync_history_scanned_not_null | n | NOT NULL scanned |
 | auth_provider_sync_history_startedAt_not_null | n | NOT NULL "startedAt" |
 | auth_provider_sync_history_status_not_null | n | NOT NULL status |
 | auth_provider_sync_history_updated_not_null | n | NOT NULL updated |
-| auth_provider_sync_history_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -45,17 +45,17 @@ erDiagram
 
 
 "public.auth_provider_sync_history" {
+  integer created
+  integer disabled
+  timestamp_3__with_time_zone endedAt
+  text error
   integer id
   varchar_32_ providerType
   text runMode
-  text status
-  timestamp_3__with_time_zone startedAt
-  timestamp_3__with_time_zone endedAt
   integer scanned
-  integer created
+  timestamp_3__with_time_zone startedAt
+  text status
   integer updated
-  integer disabled
-  text error
 }
 ```
 

@@ -2,9 +2,9 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User } from '@n8n/db';
 
-import { createSearchProjectsTool } from '../tools/search-projects.tool';
-
 import { Telemetry } from '@/telemetry';
+
+import { createSearchProjectsTool } from '../tools/search-projects.tool';
 
 describe('search-projects MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -21,16 +21,16 @@ describe('search-projects MCP tool', () => {
 		const teamProjectsEnabled = overrides?.teamProjectsEnabled ?? true;
 
 		const projectRepository = mockInstance(ProjectRepository, {
-			getAccessibleProjectsAndCount: jest.fn().mockResolvedValue([projects, count]),
-			getAccessibleProjectsByExactName: jest.fn().mockResolvedValue(exactProjects),
+			getAccessibleProjectsAndCount: vi.fn().mockResolvedValue([projects, count]),
+			getAccessibleProjectsByExactName: vi.fn().mockResolvedValue(exactProjects),
 		});
 
 		const licenseState = mockInstance(LicenseState, {
-			isTeamProjectsLicensed: jest.fn().mockReturnValue(teamProjectsEnabled),
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(teamProjectsEnabled),
 		});
 
 		const telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 
 		return { projectRepository, licenseState, telemetry };
@@ -383,12 +383,12 @@ describe('search-projects MCP tool', () => {
 
 	test('handles errors', async () => {
 		const projectRepository = mockInstance(ProjectRepository, {
-			getAccessibleProjectsAndCount: jest.fn().mockRejectedValue(new Error('DB error')),
+			getAccessibleProjectsAndCount: vi.fn().mockRejectedValue(new Error('DB error')),
 		});
 		const licenseState = mockInstance(LicenseState, {
-			isTeamProjectsLicensed: jest.fn().mockReturnValue(true),
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(true),
 		});
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 
 		const tool = createSearchProjectsTool(
 			user,

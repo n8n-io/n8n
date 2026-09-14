@@ -15,9 +15,9 @@ CREATE TABLE "scope" ("slug" varchar(128) PRIMARY KEY NOT NULL, "displayName" te
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| slug | varchar(128) |  | false | [role_scope](role_scope.md) |  |  |
-| displayName | TEXT |  | true |  |  |  |
 | description | TEXT |  | true |  |  |  |
+| displayName | TEXT |  | true |  |  |  |
+| slug | varchar(128) |  | false | [role_scope](role_scope.md) |  |  |
 
 ## Constraints
 
@@ -40,9 +40,9 @@ erDiagram
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "scope" {
-  varchar_128_ slug PK
-  TEXT displayName
   TEXT description
+  TEXT displayName
+  varchar_128_ slug PK
 }
 "role_scope" {
   VARCHAR_128_ roleSlug PK

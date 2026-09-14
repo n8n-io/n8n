@@ -1,8 +1,9 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
-import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
@@ -11,12 +12,13 @@ import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -53,6 +55,7 @@ export class SamlController {
 	 * Return SAML config
 	 */
 	@Get('/config', { middlewares: [samlLicensedMiddleware] })
+	@GlobalScope('saml:manage')
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
 		return {
@@ -189,6 +192,11 @@ export class SamlController {
 				userEmail: 'unknown',
 				authenticationMethod: 'saml',
 			});
+			// A login denied by role mapping is not a failure to authenticate: send the
+			// user to the sign-in page, which explains they have no access.
+			if (error instanceof SsoAccessDeniedError) {
+				return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_ACCESS_DENIED_REDIRECT_PATH);
+			}
 			// Need to manually send the error response since we're using templates
 			return sendErrorResponse(
 				res,
@@ -255,7 +263,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
@@ -266,7 +276,9 @@ export class SamlController {
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
-			return res.send(getInitSSOFormView(result.context as PostBindingContext));
+			return res.send(
+				getInitSSOFormView(result.context as PostBindingContext, res.locals.cspNonce),
+			);
 		} else {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}

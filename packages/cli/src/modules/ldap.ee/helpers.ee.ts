@@ -254,8 +254,8 @@ export const processUsers = async (
  */
 export const saveLdapSynchronization = async (
 	data: Omit<AuthProviderSyncHistory, 'id' | 'providerType'>,
-): Promise<void> => {
-	await Container.get(AuthProviderSyncHistoryRepository).save(
+): Promise<AuthProviderSyncHistory> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).save(
 		{
 			...data,
 			providerType: 'ldap',
@@ -277,6 +277,22 @@ export const getLdapSynchronizations = async (
 		order: { id: 'DESC' },
 		take: perPage,
 		skip: _page * perPage,
+	});
+};
+
+/**
+ * Retrieve an offset-based page of LDAP synchronizations together with the total count,
+ * for cursor pagination in the public API.
+ */
+export const getLdapSynchronizationsWithCount = async (
+	offset: number,
+	limit: number,
+): Promise<[AuthProviderSyncHistory[], number]> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).findAndCount({
+		where: { providerType: 'ldap' },
+		order: { id: 'DESC' },
+		skip: offset,
+		take: limit,
 	});
 };
 

@@ -3,7 +3,7 @@ import { setActivePinia } from 'pinia';
 import type { Scope } from '@n8n/permissions';
 import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -107,7 +107,37 @@ describe('useAgentPermissions', () => {
 		expect(canUnpublish.value).toBe(false);
 	});
 
-	it('blocks every flag when source control puts the branch in read-only mode', () => {
+	// A project viewer holds execute and nothing else — the role that exists to look
+	// at an agent and check it behaves, which is exactly what running evals is.
+	it('grants execute to a role that cannot edit the agent', () => {
+		projectsStore.myProjects = [makeProject(['agent:read', 'agent:list', 'agent:execute'])];
+
+		const { canExecute, canUpdate } = useAgentPermissions(PROJECT_ID);
+
+		expect(canExecute.value).toBe(true);
+		expect(canUpdate.value).toBe(false);
+	});
+
+	it('withholds execute when neither scope source allows it', () => {
+		projectsStore.myProjects = [makeProject(['agent:update'])];
+		usersStore.currentUser = { globalScopes: [] } as never;
+
+		expect(useAgentPermissions(PROJECT_ID).canExecute.value).toBe(false);
+	});
+
+	// Running an agent writes no config, so a read-only branch is no reason to stop
+	// it — unlike every mutating flag below.
+	it('keeps execute available in a read-only branch', () => {
+		projectsStore.myProjects = [makeProject(['agent:execute', 'agent:update'])];
+		sourceControlStore.preferences = { branchReadOnly: true } as never;
+
+		const { canExecute, canUpdate } = useAgentPermissions(PROJECT_ID);
+
+		expect(canExecute.value).toBe(true);
+		expect(canUpdate.value).toBe(false);
+	});
+
+	it('blocks every mutating flag when source control puts the branch in read-only mode', () => {
 		projectsStore.myProjects = [
 			makeProject([
 				'agent:create',

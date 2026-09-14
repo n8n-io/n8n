@@ -1,16 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { nanoid } from 'nanoid';
-import type {
-	PlannedTaskGraph,
-	PlannedTaskRecord,
-	PlannedTaskSchedulerAction,
-	PlannedTaskService,
-	PlannedWorkflowVerification,
-	WorkflowBuildOutcome,
+import {
+	orchestratorAgentId,
+	type PlannedTaskGraph,
+	type PlannedTaskRecord,
+	type PlannedTaskSchedulerAction,
+	type PlannedTaskService,
+	type PlannedWorkflowVerification,
+	type WorkflowBuildOutcome,
 } from '@n8n/instance-ai';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
+import { nanoid } from 'nanoid';
 
 export type PlannedBuildFollowUp = {
 	isPlannedBuildFollowUp: true;
@@ -186,7 +185,7 @@ export class PlannedTaskActionRunner {
 			? `${action.graph.planRunId}:default`
 			: `wi_${nanoid(8)}`;
 		await this.deps.plannedTaskService.markRunning(scope.threadId, buildTask.id, {
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(action.graph.planRunId),
 		});
 		const graphAfterMark =
 			(await this.deps.plannedTaskService.getGraph(scope.threadId)) ?? action.graph;
@@ -226,7 +225,7 @@ export class PlannedTaskActionRunner {
 		}
 
 		await this.deps.plannedTaskService.markRunning(scope.threadId, checkpoint.id, {
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(action.graph.planRunId),
 		});
 		const graphAfterMark =
 			(await this.deps.plannedTaskService.getGraph(scope.threadId)) ?? action.graph;

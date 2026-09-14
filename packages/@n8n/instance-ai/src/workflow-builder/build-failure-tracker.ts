@@ -27,6 +27,31 @@ const SDK_LANGUAGE_GUIDANCE =
 	'native array/string methods or globals. Build strings with template literals or explicit lines, ' +
 	'and move runtime joining, aggregation, or transforms into a Code node or an n8n expression.';
 
+const HTTP_REQUEST_RAW_BODY_GUIDANCE =
+	'HTTP Request body rule: specifyBody is only for contentType="json" or ' +
+	'contentType="form-urlencoded". For SOAP/XML/raw payloads, set sendBody=true and ' +
+	'contentType="raw", put the payload directly in body, set rawContentType to an XML media ' +
+	'type such as "text/xml" or "application/xml", and omit specifyBody.';
+
+function repeatedFailureGuidance(errors: string[]): string | undefined {
+	const text = errors.join('\n').toLowerCase();
+	if (
+		text.includes('invalid_parameter') &&
+		(text.includes('http request') ||
+			text.includes('httprequest') ||
+			(text.includes('raw') && text.includes('body') && text.includes('xml'))) &&
+		(text.includes('specifybody') ||
+			text.includes('jsonbody') ||
+			text.includes('body field') ||
+			text.includes('body') ||
+			text.includes('json body') ||
+			(text.includes('xml') && text.includes('json')))
+	) {
+		return HTTP_REQUEST_RAW_BODY_GUIDANCE;
+	}
+	return undefined;
+}
+
 /** Tracks repeated build-failure signatures per work item within a tool instance. */
 export class BuildFailureTracker {
 	private readonly history = new Map<string, Set<string>>();
@@ -46,7 +71,11 @@ export class BuildFailureTracker {
 		seen.add(signature);
 		this.history.set(workItemKey, seen);
 		return repeated
-			? [GENERIC_ESCALATION, options.includeSdkLanguageGuidance ? SDK_LANGUAGE_GUIDANCE : '']
+			? [
+					GENERIC_ESCALATION,
+					repeatedFailureGuidance(errors),
+					options.includeSdkLanguageGuidance ? SDK_LANGUAGE_GUIDANCE : '',
+				]
 					.filter(Boolean)
 					.join(' ')
 			: undefined;

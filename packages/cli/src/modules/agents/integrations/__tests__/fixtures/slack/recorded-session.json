@@ -1,0 +1,215 @@
+[
+	{
+		"type": "webhook",
+		"timestamp": 1782378393751,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "758",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782378393",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"context_team_id\":\"T_TEAM\",\"context_enterprise_id\":null,\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"message\",\"subtype\":\"channel_join\",\"user\":\"U_BOT\",\"text\":\"<@U_BOT> has joined the channel\",\"inviter\":\"U_USER\",\"ts\":\"1782378393.393439\",\"channel\":\"C_CHANNEL\",\"event_ts\":\"1782378393.393439\",\"channel_type\":\"channel\"},\"type\":\"event_callback\",\"event_id\":\"Ev_CHANNEL_JOIN\",\"event_time\":1782378393,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-channel-join-context\"}"
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782378398889,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "758",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782378396",
+			"x-slack-retry-num": "1",
+			"x-slack-retry-reason": "http_timeout",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"context_team_id\":\"T_TEAM\",\"context_enterprise_id\":null,\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"message\",\"subtype\":\"channel_join\",\"user\":\"U_BOT\",\"text\":\"<@U_BOT> has joined the channel\",\"inviter\":\"U_USER\",\"ts\":\"1782378393.393439\",\"channel\":\"C_CHANNEL\",\"event_ts\":\"1782378393.393439\",\"channel_type\":\"channel\"},\"type\":\"event_callback\",\"event_id\":\"Ev_CHANNEL_JOIN\",\"event_time\":1782378393,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-channel-join-context\"}"
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782378398886,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "944",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782378393",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"app_mention\",\"user\":\"U_USER\",\"ts\":\"1782378390.841549\",\"client_msg_id\":\"mock-client-message-id\",\"text\":\"<@U_BOT> hey\",\"team\":\"T_TEAM\",\"blocks\":[{\"type\":\"rich_text\",\"block_id\":\"mention-block\",\"elements\":[{\"type\":\"rich_text_section\",\"elements\":[{\"type\":\"user\",\"user_id\":\"U_BOT\"},{\"type\":\"text\",\"text\":\" hey\"}]}]}],\"channel\":\"C_CHANNEL\",\"action_token\":\"mock-action-token\",\"event_ts\":\"1782378390.841549\"},\"type\":\"event_callback\",\"event_id\":\"Ev_APP_MENTION\",\"event_time\":1782378390,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-app-mention-context\"}"
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782378398892,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "944",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782378397",
+			"x-slack-retry-num": "1",
+			"x-slack-retry-reason": "http_timeout",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"app_mention\",\"user\":\"U_USER\",\"ts\":\"1782378390.841549\",\"client_msg_id\":\"mock-client-message-id\",\"text\":\"<@U_BOT> hey\",\"team\":\"T_TEAM\",\"blocks\":[{\"type\":\"rich_text\",\"block_id\":\"mention-block\",\"elements\":[{\"type\":\"rich_text_section\",\"elements\":[{\"type\":\"user\",\"user_id\":\"U_BOT\"},{\"type\":\"text\",\"text\":\" hey\"}]}]}],\"channel\":\"C_CHANNEL\",\"action_token\":\"mock-action-token\",\"event_ts\":\"1782378390.841549\"},\"type\":\"event_callback\",\"event_id\":\"Ev_APP_MENTION\",\"event_time\":1782378390,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-app-mention-context\"}"
+	},
+	{
+		"type": "api-call",
+		"timestamp": 1782378403298,
+		"platform": "slack",
+		"method": "postMessage",
+		"args": [
+			"slack:C_CHANNEL:1782378390.841549",
+			{
+				"markdown": "Hey! 👋 How can I help you today?"
+			}
+		],
+		"response": {
+			"id": "1782378403.317389",
+			"threadId": "slack:C_CHANNEL:1782378390.841549",
+			"raw": {
+				"ok": true,
+				"channel": "C_CHANNEL",
+				"ts": "1782378403.317389",
+				"message": {
+					"user": "U_BOT",
+					"type": "message",
+					"ts": "1782378403.317389",
+					"bot_id": "B_BOT",
+					"app_id": "A_APP",
+					"text": "Hey! :wave: How can I help you today?",
+					"team": "T_TEAM",
+					"thread_ts": "1782378390.841549",
+					"parent_user_id": "U_USER"
+				}
+			}
+		}
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782378403654,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "1489",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782378403",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"context_team_id\":\"T_TEAM\",\"context_enterprise_id\":null,\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"message\",\"user\":\"U_BOT\",\"ts\":\"1782378403.317389\",\"bot_id\":\"B_BOT\",\"app_id\":\"A_APP\",\"text\":\"Hey! :wave: How can I help you today?\",\"team\":\"T_TEAM\",\"bot_profile\":{\"id\":\"B_BOT\",\"deleted\":false,\"name\":\"Test agent\",\"updated\":1782378094,\"app_id\":\"A_APP\",\"user_id\":\"U_BOT\",\"icons\":{},\"team_id\":\"T_TEAM\"},\"thread_ts\":\"1782378390.841549\",\"parent_user_id\":\"U_USER\",\"blocks\":[],\"channel\":\"C_CHANNEL\",\"event_ts\":\"1782378403.317389\",\"channel_type\":\"channel\"},\"type\":\"event_callback\",\"event_id\":\"Ev_BOT_CHANNEL_RESPONSE\",\"event_time\":1782378403,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-bot-channel-response-context\"}"
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782379186355,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "1012",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782379186",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"context_team_id\":\"T_TEAM\",\"context_enterprise_id\":null,\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"message\",\"user\":\"U_USER\",\"ts\":\"1782379185.654229\",\"client_msg_id\":\"mock-dm-client-message-id\",\"text\":\"DM message. What's your name?\",\"team\":\"T_TEAM\",\"blocks\":[],\"channel\":\"D_DM\",\"action_token\":\"mock-dm-action-token\",\"event_ts\":\"1782379185.654229\",\"channel_type\":\"im\"},\"type\":\"event_callback\",\"event_id\":\"Ev_DM_MESSAGE\",\"event_time\":1782379185,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-dm-message-context\"}"
+	},
+	{
+		"type": "api-call",
+		"timestamp": 1782379192134,
+		"platform": "slack",
+		"method": "postMessage",
+		"args": [
+			"slack:D_DM:",
+			{
+				"markdown": "I'm Assistant."
+			}
+		],
+		"response": {
+			"id": "1782379192.163089",
+			"threadId": "slack:D_DM:",
+			"raw": {
+				"ok": true,
+				"channel": "D_DM",
+				"ts": "1782379192.163089",
+				"message": {
+					"user": "U_BOT",
+					"type": "message",
+					"ts": "1782379192.163089",
+					"bot_id": "B_BOT",
+					"app_id": "A_APP",
+					"text": "I'm Assistant.",
+					"team": "T_TEAM"
+				}
+			}
+		}
+	},
+	{
+		"type": "webhook",
+		"timestamp": 1782379192852,
+		"platform": "slack",
+		"method": "POST",
+		"url": "https://n8n.host.com/rest/projects/project-1/agents/v2/agent-1/webhooks/slack",
+		"headers": {
+			"accept": "*/*",
+			"accept-encoding": "gzip,deflate",
+			"content-length": "1991",
+			"content-type": "application/json",
+			"host": "https://n8n.host.com",
+			"user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+			"x-forwarded-for": "https://n8n.host.com",
+			"x-forwarded-host": "https://n8n.host.com",
+			"x-forwarded-proto": "https",
+			"x-slack-request-timestamp": "1782379192",
+			"x-slack-signature": "[REDACTED]"
+		},
+		"body": "{\"token\":\"SLACK_VERIFICATION_TOKEN\",\"team_id\":\"T_TEAM\",\"context_team_id\":\"T_TEAM\",\"context_enterprise_id\":null,\"api_app_id\":\"A_APP\",\"event\":{\"type\":\"message\",\"user\":\"U_BOT\",\"ts\":\"1782379192.163089\",\"bot_id\":\"B_BOT\",\"app_id\":\"A_APP\",\"text\":\"I'm Assistant.\",\"team\":\"T_TEAM\",\"bot_profile\":{\"id\":\"B_BOT\",\"deleted\":false,\"name\":\"Test agent\",\"updated\":1782378094,\"app_id\":\"A_APP\",\"user_id\":\"U_BOT\",\"icons\":{},\"team_id\":\"T_TEAM\"},\"blocks\":[],\"channel\":\"D_DM\",\"event_ts\":\"1782379192.163089\",\"channel_type\":\"im\"},\"type\":\"event_callback\",\"event_id\":\"Ev_BOT_DM_RESPONSE\",\"event_time\":1782379192,\"authorizations\":[{\"enterprise_id\":null,\"team_id\":\"T_TEAM\",\"user_id\":\"U_BOT\",\"is_bot\":true,\"is_enterprise_install\":false}],\"is_ext_shared_channel\":false,\"event_context\":\"mock-bot-dm-response-context\"}"
+	}
+]

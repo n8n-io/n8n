@@ -3,13 +3,15 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { WooCommerceTrigger } from '../WooCommerceTrigger.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	woocommerceApiRequest: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
+	woocommerceApiRequest: vi.fn(),
 }));
 
-const woocommerceApiRequestMock = GenericFunctions.woocommerceApiRequest as jest.Mock;
+const woocommerceApiRequestMock = GenericFunctions.woocommerceApiRequest as Mock;
 
 describe('WooCommerceTrigger Node', () => {
 	describe('webhook method', () => {
@@ -21,7 +23,7 @@ describe('WooCommerceTrigger Node', () => {
 
 		let webhookData: Record<string, unknown>;
 		let headers: Record<string, string | undefined>;
-		let response: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+		let response: { status: Mock; send: Mock; end: Mock };
 		let mockThis: any;
 
 		beforeEach(() => {
@@ -31,19 +33,19 @@ describe('WooCommerceTrigger Node', () => {
 				'x-wc-webhook-signature': validSignature,
 			};
 			response = {
-				status: jest.fn().mockReturnThis(),
-				send: jest.fn().mockReturnThis(),
-				end: jest.fn(),
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
 			};
 
 			mockThis = {
-				getWorkflowStaticData: jest.fn().mockImplementation(() => webhookData),
-				getHeaderData: jest.fn().mockImplementation(() => headers),
-				getRequestObject: jest.fn().mockReturnValue({ rawBody, body }),
-				getResponseObject: jest.fn().mockReturnValue(response),
-				getNode: jest.fn().mockReturnValue({ name: 'WooCommerce Trigger' }),
+				getWorkflowStaticData: vi.fn().mockImplementation(() => webhookData),
+				getHeaderData: vi.fn().mockImplementation(() => headers),
+				getRequestObject: vi.fn().mockReturnValue({ rawBody, body }),
+				getResponseObject: vi.fn().mockReturnValue(response),
+				getNode: vi.fn().mockReturnValue({ name: 'WooCommerce Trigger' }),
 				helpers: {
-					returnJsonArray: jest.fn().mockImplementation((data) => [data]),
+					returnJsonArray: vi.fn().mockImplementation((data) => [data]),
 				},
 			};
 		});
@@ -106,17 +108,17 @@ describe('WooCommerceTrigger Node', () => {
 		const event = 'order.created';
 
 		let webhookData: Record<string, unknown>;
-		let logger: { warn: jest.Mock };
+		let logger: { warn: Mock };
 		let mockThis: any;
 
 		beforeEach(() => {
 			webhookData = { secret: 'stored-secret' };
-			logger = { warn: jest.fn() };
+			logger = { warn: vi.fn() };
 
 			mockThis = {
-				getNodeWebhookUrl: jest.fn().mockReturnValue(webhookUrl),
-				getWorkflowStaticData: jest.fn().mockImplementation(() => webhookData),
-				getNodeParameter: jest.fn().mockReturnValue(event),
+				getNodeWebhookUrl: vi.fn().mockReturnValue(webhookUrl),
+				getWorkflowStaticData: vi.fn().mockImplementation(() => webhookData),
+				getNodeParameter: vi.fn().mockReturnValue(event),
 				logger,
 			};
 

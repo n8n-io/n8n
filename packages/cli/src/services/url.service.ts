@@ -10,13 +10,20 @@ export class UrlService {
 		this.baseUrl = this.generateBaseUrl();
 	}
 
-	/** Returns the base URL of the webhooks */
+	/** Returns the base URL of the production webhooks */
 	getWebhookBaseUrl() {
-		let urlBaseWebhook = this.trimQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
-		if (!urlBaseWebhook.endsWith('/')) {
-			urlBaseWebhook += '/';
-		}
-		return urlBaseWebhook;
+		// N8N_WEBHOOK_URL (config `webhookUrl`, already normalized by @n8n/config) is the successor to the
+		// deprecated WEBHOOK_URL; we prefer it when set. Only the legacy env var still needs quote trimming.
+		let base =
+			this.globalConfig.webhookUrl || this.trimQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
+		if (!base.endsWith('/')) base += '/';
+		return base;
+	}
+
+	getTestWebhookBaseUrl() {
+		let base = this.globalConfig.webhookUrl || this.getInstanceBaseUrl();
+		if (!base.endsWith('/')) base += '/';
+		return base;
 	}
 
 	/** Return the n8n instance base URL without trailing slash */

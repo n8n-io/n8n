@@ -7,7 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
 
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import { documentFields, documentOperations } from './DocumentDescription';
@@ -363,11 +365,18 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				await Promise.all(
 					items.map(async (_: IDataObject, i: number) => {
 						const query = this.getNodeParameter('query', i) as string;
+						const queryParameters = this.getNodeParameter('queryParameters', i, '[]');
+						const body = parseAndResolveQueryParameters(
+							query,
+							queryParameters,
+							this.getNode(),
+							i,
+						) as IDataObject;
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
 							`/${projectId}/databases/${database}/documents:runQuery`,
-							jsonParse(query),
+							body,
 						);
 
 						responseData = responseData.map(

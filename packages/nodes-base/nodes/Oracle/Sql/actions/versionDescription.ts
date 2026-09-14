@@ -9,7 +9,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'oracleDatabase',
 	icon: 'file:oracle.svg',
 	group: ['input'],
-	version: [1],
+	version: [1, 1.1],
 	subtitle: '={{ $parameter["operation"] }}',
 	description: 'Get, add and update data in Oracle database',
 	defaults: {

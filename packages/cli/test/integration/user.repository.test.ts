@@ -83,6 +83,45 @@ describe('UserRepository', () => {
 		});
 	});
 
+	describe('findMany()', () => {
+		let users: User[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['User']);
+			users = await Promise.all([createMember(), createMember(), createMember()]);
+		});
+
+		test('should return offset pages in stable id order', async () => {
+			const expectedIds = users.map((user) => user.id).sort();
+
+			const page1 = await userRepository.findMany({ offset: 0, limit: 2 });
+			const page2 = await userRepository.findMany({ offset: 2, limit: 2 });
+
+			expect(page1.map((user) => user.id)).toEqual(expectedIds.slice(0, 2));
+			expect(page2.map((user) => user.id)).toEqual(expectedIds.slice(2));
+		});
+	});
+
+	describe('findManyByIds()', () => {
+		let users: User[];
+
+		beforeAll(async () => {
+			await testDb.truncate(['User']);
+			users = await Promise.all([createMember(), createMember(), createMember()]);
+		});
+
+		test('should return offset pages in stable id order', async () => {
+			const expectedIds = users.map((user) => user.id).sort();
+			const ids = [...expectedIds].reverse();
+
+			const page1 = await userRepository.findManyByIds(ids, { offset: 0, limit: 2 });
+			const page2 = await userRepository.findManyByIds(ids, { offset: 2, limit: 2 });
+
+			expect(page1.map((user) => user.id)).toEqual(expectedIds.slice(0, 2));
+			expect(page2.map((user) => user.id)).toEqual(expectedIds.slice(2));
+		});
+	});
+
 	describe('buildUserQuery()', () => {
 		let user1: User;
 		let user2: User;

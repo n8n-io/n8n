@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequest } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
@@ -45,6 +46,11 @@ export async function execute(
 				this,
 				'POST',
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				i,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
@@ -62,7 +68,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

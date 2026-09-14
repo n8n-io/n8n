@@ -7,11 +7,10 @@ import {
 import type { IWorkflowDb, Project, User, WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
-import { NodeApiError, Workflow } from 'n8n-workflow';
+import { NodeApiError, validateWorkflowHasTriggerLikeNode, Workflow } from 'n8n-workflow';
 import type * as N8nWorkflow from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -19,12 +18,14 @@ import type {
 	WorkflowActivateMode,
 	INodeTypeData,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -41,7 +42,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(WorkflowService);
 mockInstance(OwnershipService, {
-	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+	getWorkflowProjectCached: vi.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
 });
 
 const webhookService = mockInstance(WebhookService);
@@ -55,22 +56,18 @@ let createActiveWorkflow: (
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
 let owner: User;
 
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual<typeof N8nWorkflow>('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof N8nWorkflow>('n8n-workflow');
 	return {
 		...actual,
-		validateWorkflowHasTriggerLikeNode: jest.fn(
+		validateWorkflowHasTriggerLikeNode: vi.fn(
 			(...args: Parameters<typeof actual.validateWorkflowHasTriggerLikeNode>) =>
 				actual.validateWorkflowHasTriggerLikeNode(...args),
 		),
 	};
 });
 
-const { validateWorkflowHasTriggerLikeNode } = jest.requireMock<typeof N8nWorkflow>('n8n-workflow');
-const validateWorkflowHasTriggerLikeNodeSpy =
-	validateWorkflowHasTriggerLikeNode as jest.MockedFunction<
-		typeof N8nWorkflow.validateWorkflowHasTriggerLikeNode
-	>;
+const validateWorkflowHasTriggerLikeNodeSpy = vi.mocked(validateWorkflowHasTriggerLikeNode);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -108,7 +105,7 @@ afterEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 	]);
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 afterAll(async () => {
@@ -140,6 +137,21 @@ describe('init()', () => {
 
 		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
 	});
+
+	// Startup reactivation is a publish in its own right. Spied rather than registered
+	// via `setImplementation`, which is single-shot and would leak; `restoreMocks` undoes
+	// a spy between tests.
+	it('should enforce the publish policy for each workflow it reactivates', async () => {
+		const policyEnforcementService = Container.get(PolicyEnforcementService);
+		vi.spyOn(policyEnforcementService, 'hasChecksFor').mockReturnValue(true);
+		const enforceSpy = vi.spyOn(policyEnforcementService, 'enforceWorkflowPublish');
+		await Promise.all([createActiveWorkflow(), createActiveWorkflow()]);
+
+		await activeWorkflowManager.init();
+
+		expect(enforceSpy).toHaveBeenCalledTimes(2);
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(2);
+	});
 });
 
 describe('add()', () => {
@@ -150,8 +162,8 @@ describe('add()', () => {
 				await activeWorkflowManager.init();
 
 				const dbWorkflow = await createActiveWorkflow();
-				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-				const addNonWebhookTriggersSpy = jest.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
+				const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+				const addNonWebhookTriggersSpy = vi.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 
 				await activeWorkflowManager.add(dbWorkflow.id, mode);
 
@@ -161,8 +173,8 @@ describe('add()', () => {
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
 				expect(addNonWebhookTriggersSpy).toHaveBeenCalledTimes(1);
 
-				if (!(argWorkflow instanceof Workflow)) fail();
-				if (!(_argWorkflow instanceof Workflow)) fail();
+				if (!(argWorkflow instanceof Workflow)) expect.fail();
+				if (!(_argWorkflow instanceof Workflow)) expect.fail();
 
 				expect(argWorkflow.id).toBe(dbWorkflow.id);
 				expect(_argWorkflow.id).toBe(dbWorkflow.id);
@@ -172,7 +184,7 @@ describe('add()', () => {
 
 	test('should count workflow triggers correctly when node has multiple webhooks', async () => {
 		const workflowRepositoryInstance = Container.get(WorkflowRepository);
-		const updateWorkflowTriggerCountSpy = jest.spyOn(
+		const updateWorkflowTriggerCountSpy = vi.spyOn(
 			workflowRepositoryInstance,
 			'updateWorkflowTriggerCount',
 		);
@@ -252,9 +264,9 @@ describe('remove()', () => {
 
 		it('should remove all webhooks of a workflow from external service', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			jest
-				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				mock<IWebhookData>({ path: 'some-path' }),
+			]);
 
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
@@ -264,7 +276,7 @@ describe('remove()', () => {
 
 		it('should stop running non-webhook triggers', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			const removeNonWebhookTriggersSpy = jest.spyOn(
+			const removeNonWebhookTriggersSpy = vi.spyOn(
 				activeWorkflowManager,
 				'removeNonWebhookTriggers',
 			);
@@ -282,7 +294,7 @@ describe('executeErrorWorkflow()', () => {
 	// 	const dbWorkflow = await createActiveWorkflow();
 	// 	const [node] = dbWorkflow.nodes;
 
-	// 	const executeSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
+	// 	const executeSpy = vi.spyOn(AdditionalData, 'executeErrorWorkflow');
 
 	// 	await activeWorkflowManager.init();
 
@@ -298,9 +310,9 @@ describe('executeErrorWorkflow()', () => {
 	it('should be called on failure to activate due to 401', async () => {
 		const dbWorkflow = await createActiveWorkflow();
 		const [node] = dbWorkflow.nodes;
-		const executeSpy = jest.spyOn(activeWorkflowManager, 'executeErrorWorkflow');
+		const executeSpy = vi.spyOn(activeWorkflowManager, 'executeErrorWorkflow');
 
-		jest.spyOn(activeWorkflowManager, 'add').mockImplementation(() => {
+		vi.spyOn(activeWorkflowManager, 'add').mockImplementation(() => {
 			throw new NodeApiError(node, {
 				httpCode: '401',
 				message: 'Authorization failed - please check your credentials',
@@ -321,7 +333,7 @@ describe('addWebhooks()', () => {
 		const webhook = mock<IWebhookData>({ path: 'some-path' });
 		const webhookEntity = mock<WebhookEntity>({ webhookPath: 'some-path' });
 
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+		vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 		webhookService.createWebhook.mockReturnValue(webhookEntity);
 
@@ -342,7 +354,7 @@ describe('addWebhooks()', () => {
 
 		const [node] = dbWorkflow.nodes;
 
-		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
+		vi.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
 		webhookService.createWebhookIfNotExists.mockResolvedValue(undefined);
 
 		await activeWorkflowManager.addWebhooks(workflow, additionalData, 'trigger', 'init');

@@ -1,51 +1,38 @@
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { proxyFetch } from '@n8n/ai-utilities';
+import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import OpenAI from 'openai';
 
 import { mergeCustomHeaders } from '../../../../utils/helpers';
-import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
+import { assertOpenAiCredentialAllowsUrl } from '../../../vendors/OpenAi/helpers/credentials';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('openAiApi');
-	const baseURL =
-		(this.getNodeParameter('options.baseURL', '') as string) ||
-		(credentials.url as string) ||
-		'https://api.openai.com/v1';
+	const baseUrlOverride = this.getNodeParameter('options.baseURL', '') as string;
+	if (baseUrlOverride) {
+		assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, baseUrlOverride);
+	}
+	const baseURL = baseUrlOverride || (credentials.url as string) || 'https://api.openai.com/v1';
 	const { openAiDefaultHeaders } = Container.get(AiConfig);
-	const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
+	const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+	const headers = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
-	const openai = new OpenAI({
-		baseURL,
+	// Shared with the agents model catalog: endpoint, auth, chat-model filtering
+	// (including include-all on custom hosts) live in @n8n/ai-utilities/model-discovery.
+	const models = await listOpenAiModels({
 		apiKey: credentials.apiKey as string,
-		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL),
-		},
-		defaultHeaders,
+		baseURL,
+		headers,
+		fetch: async (input, init) => await proxyFetch({ input, init, lookup }),
 	});
-	const { data: models = [] } = await openai.models.list();
-
-	const url = baseURL && new URL(baseURL);
-	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
-
-	const filteredModels = models.filter((model: { id: string }) => {
-		const includeModel = shouldIncludeModel(model.id, isCustomAPI);
-
-		if (!filter) return includeModel;
-
-		return includeModel && model.id.toLowerCase().includes(filter.toLowerCase());
-	});
-
-	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
 
 	return {
-		results: filteredModels.map((model: { id: string }) => ({
-			name: model.id,
-			value: model.id,
-		})),
+		results: models
+			.filter((model) => !filter || model.id.toLowerCase().includes(filter.toLowerCase()))
+			.map((model) => ({ name: model.id, value: model.id })),
 	};
 }

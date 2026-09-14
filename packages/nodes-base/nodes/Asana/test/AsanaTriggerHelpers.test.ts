@@ -8,11 +8,11 @@ describe('AsanaTriggerHelpers', () => {
 	const testPayload = Buffer.from('{"events":[{"action":"changed"}]}');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getWorkflowStaticData: jest.fn(),
+			getRequestObject: vi.fn(),
+			getWorkflowStaticData: vi.fn(),
 		};
 	});
 
@@ -20,7 +20,7 @@ describe('AsanaTriggerHelpers', () => {
 		it('should return true if no secret is configured (backward compatibility)', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -38,7 +38,7 @@ describe('AsanaTriggerHelpers', () => {
 				hookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-hook-signature') return expectedSignature;
 					return null;
 				}),
@@ -57,7 +57,7 @@ describe('AsanaTriggerHelpers', () => {
 				hookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
+				header: vi.fn().mockImplementation((header) => {
 					if (header === 'x-hook-signature') return wrongSignature;
 					return null;
 				}),
@@ -74,7 +74,7 @@ describe('AsanaTriggerHelpers', () => {
 				hookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testPayload,
 			});
 
@@ -93,7 +93,7 @@ describe('AsanaTriggerHelpers', () => {
 				hookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'x-hook-signature') return expectedSignature;
 					return null;
 				}),
@@ -110,7 +110,7 @@ describe('AsanaTriggerHelpers', () => {
 				hookSecret: testSecret,
 			});
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue('any'),
+				header: vi.fn().mockReturnValue('any'),
 				rawBody: undefined,
 			});
 

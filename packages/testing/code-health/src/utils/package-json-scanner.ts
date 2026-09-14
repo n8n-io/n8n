@@ -13,6 +13,7 @@ export interface PackageJsonDep {
 export interface PackageJsonInfo {
 	filePath: string;
 	packageName: string;
+	private: boolean;
 	deps: PackageJsonDep[];
 }
 
@@ -24,6 +25,11 @@ export async function findPackageJsonFiles(rootDir: string): Promise<string[]> {
 	});
 }
 
+/** A package's directory relative to the repo root, normalized to forward slashes. */
+export function relativeDir(rootDir: string, filePath: string): string {
+	return path.relative(rootDir, path.dirname(filePath)).split(path.sep).join('/');
+}
+
 export function parsePackageJson(filePath: string): PackageJsonInfo {
 	const content = fs.readFileSync(filePath, 'utf-8');
 	const lines = content.split('\n');
@@ -31,7 +37,12 @@ export function parsePackageJson(filePath: string): PackageJsonInfo {
 	try {
 		pkg = JSON.parse(content) as Record<string, unknown>;
 	} catch {
-		return { filePath, packageName: path.basename(path.dirname(filePath)), deps: [] };
+		return {
+			filePath,
+			packageName: path.basename(path.dirname(filePath)),
+			private: false,
+			deps: [],
+		};
 	}
 	const packageName = (pkg.name as string) ?? path.basename(path.dirname(filePath));
 
@@ -53,7 +64,7 @@ export function parsePackageJson(filePath: string): PackageJsonInfo {
 		}
 	}
 
-	return { filePath, packageName, deps };
+	return { filePath, packageName, private: pkg.private === true, deps };
 }
 
 function findLineNumber(lines: string[], depName: string, section: string): number {

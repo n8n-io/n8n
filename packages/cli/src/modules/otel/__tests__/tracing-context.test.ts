@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { TraceContextService } from '../tracing-context';
 
@@ -11,7 +11,7 @@ describe('TraceContextService', () => {
 		let service: TraceContextService;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			service = new TraceContextService(executionRepository, logger);
 		});
 
@@ -58,7 +58,7 @@ describe('TraceContextService', () => {
 		let service: TraceContextService;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			service = new TraceContextService(executionRepository, logger);
 		});
 

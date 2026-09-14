@@ -15,27 +15,27 @@ CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(36) |  | false | [data_table_column](data_table_column.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_data_table_2 | UNIQUE | UNIQUE (projectId, name) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_data_table_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_data_table_2 | UNIQUE | UNIQUE (projectId, name) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| sqlite_autoindex_data_table_2 | UNIQUE (projectId, name) |
 | sqlite_autoindex_data_table_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_data_table_2 | UNIQUE (projectId, name) |
 
 ## Relations
 
@@ -46,31 +46,31 @@ erDiagram
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "data_table" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ projectId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "data_table_column" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
   varchar_36_ id PK
+  INTEGER index
   varchar_128_ name
   varchar_32_ type
-  INTEGER index
-  varchar_36_ dataTableId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
 }
 ```
 

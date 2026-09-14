@@ -17,10 +17,17 @@ export async function getApiKeys(
 		skip?: number;
 		ownership?: ApiKeyOwnership;
 		label?: string;
+		ownerIds?: string[];
 		sortBy?: string;
 	} = {},
 ): Promise<ApiKeyList> {
-	return await makeRestApiRequest(context, 'GET', '/api-keys', options);
+	const { ownerIds, ...rest } = options;
+	return await makeRestApiRequest(context, 'GET', '/api-keys', {
+		...rest,
+		// Comma-joined so it survives query-string serialization; the backend
+		// splits it back into an array.
+		...(ownerIds?.length ? { ownerIds: ownerIds.join(',') } : {}),
+	});
 }
 
 export async function getApiKeyScopes(context: IRestApiContext): Promise<ApiKeyScope[]> {
@@ -47,4 +54,11 @@ export async function updateApiKey(
 	payload: UpdateApiKeyRequestDto,
 ): Promise<{ success: boolean }> {
 	return await makeRestApiRequest(context, 'PATCH', `/api-keys/${id}`, payload);
+}
+
+export async function rotateApiKey(
+	context: IRestApiContext,
+	id: string,
+): Promise<ApiKeyWithRawValue> {
+	return await makeRestApiRequest(context, 'POST', `/api-keys/${id}/rotate`);
 }

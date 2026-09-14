@@ -15,17 +15,17 @@ CREATE TABLE "role_mapping_rule_project" ("roleMappingRuleId" varchar(16) NOT NU
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| roleMappingRuleId | varchar(16) |  | false |  | [role_mapping_rule](role_mapping_rule.md) |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
+| roleMappingRuleId | varchar(16) |  | false |  | [role_mapping_rule](role_mapping_rule.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| roleMappingRuleId | PRIMARY KEY | PRIMARY KEY (roleMappingRuleId) |
-| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
+| roleMappingRuleId | PRIMARY KEY | PRIMARY KEY (roleMappingRuleId) |
 | sqlite_autoindex_role_mapping_rule_project_1 | PRIMARY KEY | PRIMARY KEY (roleMappingRuleId, projectId) |
 
 ## Indexes
@@ -40,32 +40,32 @@ CREATE TABLE "role_mapping_rule_project" ("roleMappingRuleId" varchar(16) NOT NU
 ```mermaid
 erDiagram
 
-"role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "role_mapping_rule_project" {
-  varchar_16_ roleMappingRuleId PK
   varchar_36_ projectId PK
-}
-"role_mapping_rule" {
-  varchar_16_ id PK
-  TEXT expression
-  varchar_128_ role FK
-  varchar_64_ type
-  INTEGER order
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
+  varchar_16_ roleMappingRuleId PK
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
+}
+"role_mapping_rule" {
+  datetime_3_ createdAt
+  TEXT expression
+  varchar_16_ id PK
+  INTEGER order
+  varchar_128_ role FK
+  varchar_64_ type
+  datetime_3_ updatedAt
 }
 ```
 

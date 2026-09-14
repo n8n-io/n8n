@@ -63,9 +63,7 @@ test.describe(
 			await n8n.projectSettings.clickSaveButton();
 
 			// Wait for success notification
-			await expect(
-				n8n.page.getByText('Project Updated Project Name saved successfully', { exact: false }),
-			).toBeVisible();
+			await expect(n8n.notifications.getNotificationByTitle(/saved successfully/)).toBeVisible();
 
 			// Verify the form shows the updated values
 			await n8n.projectSettings.expectProjectNameValue(newName);
@@ -81,20 +79,17 @@ test.describe(
 			await n8n.navigate.toProjectSettings(projectId);
 			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
 
-			const table = n8n.projectSettings.getMembersTable();
-
 			// Verify table headers are present
-			await expect(table.getByText('User')).toBeVisible();
-			await expect(table.getByText('Role')).toBeVisible();
+			await expect(n8n.projectSettings.getMembersTableHeader('User')).toBeVisible();
+			await expect(n8n.projectSettings.getMembersTableHeader('Role')).toBeVisible();
 
 			// Verify the owner is displayed in the table
-			const memberRows = table.locator('tbody tr');
+			const memberRows = n8n.projectSettings.getMemberRows();
 			await expect(memberRows).toHaveCount(1);
 
 			// Verify owner cannot change their own role
 			const ownerRow = memberRows.first();
-			const roleDropdown = ownerRow.getByTestId('project-member-role-dropdown');
-			await expect(roleDropdown).toHaveCount(0);
+			await expect(n8n.projectSettings.getMemberRoleDropdownForRow(ownerRow)).toHaveCount(0);
 		});
 
 		test('should display role dropdown for members but not for current user @auth:owner', async ({
@@ -109,11 +104,13 @@ test.describe(
 			await expect(n8n.projectSettings.getTitle()).toHaveText(projectName);
 
 			// Current user (owner) should not have a role dropdown
-			const currentUserRow = n8n.page.locator('tbody tr').first();
-			await expect(currentUserRow.getByTestId('project-member-role-dropdown')).toHaveCount(0);
+			const currentUserRow = n8n.projectSettings.getMemberRows().first();
+			await expect(n8n.projectSettings.getMemberRoleDropdownForRow(currentUserRow)).toHaveCount(0);
 
 			// The role should be displayed as static text for the current user
-			await expect(currentUserRow.getByText('Admin')).toBeVisible();
+			await expect(
+				n8n.projectSettings.getMemberRoleTextForRow(currentUserRow, 'Admin'),
+			).toBeVisible();
 		});
 
 		test('should show project settings form validation @auth:owner', async ({ n8n }) => {
@@ -180,12 +177,8 @@ test.describe(
 
 			// Verify danger section is visible with warning
 			// Copy was updated in UI to use sentence case and expanded description
-			await expect(n8n.page.getByText('Danger zone')).toBeVisible();
-			await expect(
-				n8n.page.getByText(
-					'When deleting a project, you can also choose to move all workflows and credentials to another project.',
-				),
-			).toBeVisible();
+			await expect(n8n.projectSettings.getDangerZoneTitle()).toBeVisible();
+			await expect(n8n.projectSettings.getDangerZoneDescription()).toBeVisible();
 			await expect(n8n.projectSettings.getDeleteButton()).toBeVisible();
 		});
 
@@ -258,10 +251,8 @@ test.describe(
 			await n8n.projectSettings.fillProjectDescription(projectDescription);
 			await n8n.projectSettings.clickSaveButton();
 
-			// Wait for save confirmation (partial match to include project name)
-			await expect(
-				n8n.page.getByText('Project Persisted Project Name saved successfully', { exact: false }),
-			).toBeVisible();
+			// Wait for save confirmation
+			await expect(n8n.notifications.getNotificationByTitle(/saved successfully/)).toBeVisible();
 
 			// Reload the page
 			await n8n.page.reload();

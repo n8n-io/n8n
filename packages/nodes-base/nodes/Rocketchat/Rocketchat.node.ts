@@ -7,7 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { rocketchatApiRequest, validateJSON } from './GenericFunctions';
+import {
+	rocketchatApiRequest,
+	rocketchatApiRequestAllItems,
+	validateJSON,
+} from './GenericFunctions';
 
 interface IField {
 	short?: boolean;
@@ -43,6 +47,15 @@ interface IPostMessageBody {
 	attachments?: IAttachment[];
 }
 
+interface ISubscriptionsResponse {
+	update?: IDataObject[];
+	remove?: IDataObject[];
+}
+
+interface IDirectMessagesResponse {
+	messages?: IDataObject[];
+}
+
 export class Rocketchat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RocketChat',
@@ -75,6 +88,14 @@ export class Rocketchat implements INodeType {
 						name: 'Chat',
 						value: 'chat',
 					},
+					{
+						name: 'Subscription',
+						value: 'subscriptions',
+					},
+					{
+						name: 'Direct Message',
+						value: 'dm',
+					},
 				],
 				default: 'chat',
 			},
@@ -97,6 +118,96 @@ export class Rocketchat implements INodeType {
 					},
 				],
 				default: 'postMessage',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['subscriptions'],
+					},
+				},
+				options: [
+					{
+						name: 'Get Many',
+						value: 'get',
+						description: 'Retrieve a list of subscriptions',
+						action: 'Get Subscriptions',
+					},
+					{
+						name: 'Mark As Read',
+						value: 'read',
+						description: 'Mark the subscription as read',
+						action: 'Mark As Read',
+					},
+				],
+				default: 'get',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['dm'],
+					},
+				},
+				options: [
+					{
+						name: 'Get Messages',
+						value: 'messages',
+						description: 'Retrieve a list of messages',
+						action: 'Get Messages',
+					},
+				],
+				default: 'messages',
+			},
+			{
+				displayName: 'Room ID',
+				name: 'roomId',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['subscriptions', 'dm'],
+						operation: ['read', 'messages'],
+					},
+				},
+				default: '',
+				description: 'The room identifier',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['dm'],
+						operation: ['messages'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['dm'],
+						operation: ['messages'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 50,
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Channel',
@@ -372,7 +483,7 @@ export class Rocketchat implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		let responseData;
+		let responseData: IDataObject | IDataObject[] = {};
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -477,6 +588,54 @@ export class Rocketchat implements INodeType {
 							'postMessage',
 							body,
 						);
+					}
+				} else if (resource === 'subscriptions') {
+					if (operation === 'get') {
+						const subscriptionsResponse = (await rocketchatApiRequest.call(
+							this,
+							'/subscriptions',
+							'GET',
+							'get',
+							{},
+						)) as ISubscriptionsResponse;
+						responseData = [
+							...(subscriptionsResponse.update ?? []).map((update) => ({ update })),
+							...(subscriptionsResponse.remove ?? []).map((remove) => ({ remove })),
+						];
+					} else if (operation === 'read') {
+						const roomId = this.getNodeParameter('roomId', i) as string;
+						responseData = await rocketchatApiRequest.call(this, '/subscriptions', 'POST', 'read', {
+							rid: roomId,
+						});
+					}
+				} else if (resource === 'dm') {
+					if (operation === 'messages') {
+						const roomId = this.getNodeParameter('roomId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const qs: IDataObject = { roomId };
+
+						if (returnAll) {
+							responseData = await rocketchatApiRequestAllItems.call(
+								this,
+								'messages',
+								'/dm',
+								'GET',
+								'messages',
+								{},
+								qs,
+							);
+						} else {
+							qs.count = this.getNodeParameter('limit', i);
+							const messagesResponse = (await rocketchatApiRequest.call(
+								this,
+								'/dm',
+								'GET',
+								'messages',
+								{},
+								qs,
+							)) as IDirectMessagesResponse;
+							responseData = messagesResponse.messages ?? [];
+						}
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

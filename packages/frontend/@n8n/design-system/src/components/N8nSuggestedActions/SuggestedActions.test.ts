@@ -1,5 +1,5 @@
 import { render, fireEvent } from '@testing-library/vue';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import N8nSuggestedActions from './SuggestedActions.vue';
 
@@ -68,7 +68,7 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('0 / 2');
 	});
 
-	it('does not render the suggested actions count if all are completed', () => {
+	it('still renders the suggested actions count if all are completed', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: [
@@ -81,7 +81,7 @@ describe('N8nSuggestedActions', () => {
 			global: { stubs },
 		});
 
-		expect(wrapper.baseElement).not.toContainHTML('data-test-id="suggested-action-count"');
+		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('2 / 2');
 	});
 
 	it('renders the suggested actions count with completed actions', async () => {
@@ -157,9 +157,7 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.emitted('action-click')[0]).toEqual(['action1']);
 	});
 
-	it('emits ignore-click event when ignore link is clicked', async () => {
-		vi.useFakeTimers();
-
+	it('emits update:open false when the close button is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
@@ -169,16 +167,10 @@ describe('N8nSuggestedActions', () => {
 			global: { stubs },
 		});
 
-		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
-		await fireEvent.click(ignoreLinks[0]);
+		await fireEvent.click(wrapper.getByTestId('suggested-actions-close'));
 
-		// Advance timers to trigger the delayed emission
-		vi.advanceTimersByTime(600);
-
-		expect(wrapper.emitted('ignore-click')).toBeTruthy();
-		expect(wrapper.emitted('ignore-click')[0]).toEqual(['action1']);
-
-		vi.useRealTimers();
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+		expect(wrapper.emitted('update:open')[0]).toEqual([false]);
 	});
 
 	it('emits update:open event when popover state changes', async () => {
@@ -199,39 +191,6 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.emitted('update:open')[0]).toEqual([true]);
 	});
 
-	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				open: true,
-				title: 'Test Title',
-				ignoreAllLabel: 'Ignore for all',
-			},
-			global: { stubs },
-		});
-
-		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
-		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
-	});
-
-	it('emits ignore-all event when turn off link is clicked', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				open: true,
-				title: 'Test Title',
-				ignoreAllLabel: 'Ignore for all',
-			},
-			global: { stubs },
-		});
-
-		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-all');
-		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
-		await fireEvent.click(turnOffLink);
-
-		expect(wrapper.emitted('ignore-all')).toBeTruthy();
-	});
-
 	it('renders more info link when moreInfoLink is provided', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
@@ -247,26 +206,6 @@ describe('N8nSuggestedActions', () => {
 
 		const link = moreInfoLinks[0].closest('a') as HTMLAnchorElement;
 		expect(link.getAttribute('href')).toBe('https://docs.n8n.io/evaluations');
-	});
-
-	it('applies ignoring class when action is being ignored', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				open: true,
-				title: 'Test Title',
-			},
-			global: { stubs },
-		});
-
-		const actionItems = wrapper.getAllByTestId('suggested-action-item');
-		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
-
-		// Click ignore on first action
-		await fireEvent.click(ignoreLinks[0]);
-
-		// Check if the action item has the ignoring class
-		expect(actionItems[0]).toHaveClass('ignoring');
 	});
 
 	it('respects popoverAlignment prop', async () => {

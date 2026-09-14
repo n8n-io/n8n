@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	AssignmentCollectionValue,
 	IBinaryData,
@@ -12,6 +12,7 @@ import { NodeOperationError, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import type { SetNodeOptions } from '../interfaces';
 import { INCLUDE } from '../interfaces';
 import { parseJsonParameter, prepareReturnItem } from '../utils';
+import type { Mock } from 'vitest';
 
 describe('prepareReturnItem', () => {
 	const mockNode = mock<INode>({
@@ -20,10 +21,10 @@ describe('prepareReturnItem', () => {
 	});
 
 	const mockContext = mock<IExecuteFunctions>({
-		getNodeParameter: jest.fn(),
-		getWorkflowSettings: jest.fn(() => ({})),
+		getNodeParameter: vi.fn(),
+		getWorkflowSettings: vi.fn(() => ({})),
 		helpers: {
-			assertBinaryData: jest.fn(),
+			assertBinaryData: vi.fn(),
 		},
 	});
 
@@ -46,9 +47,32 @@ describe('prepareReturnItem', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(mockContext.getNodeParameter as jest.Mock).mockReturnValue('');
-		(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({});
+		vi.clearAllMocks();
+		(mockContext.getNodeParameter as Mock).mockReturnValue('');
+		(mockContext.getWorkflowSettings as Mock).mockReturnValue({});
+	});
+
+	describe('when an assignment name is an inherited object member', () => {
+		// Guard the shared prototype so a regression here cannot cascade to other tests.
+		const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+		afterEach(() => {
+			if (!hadOwnCall) {
+				delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+			}
+		});
+
+		it('keeps built-in object prototypes intact', () => {
+			const value: AssignmentCollectionValue = {
+				assignments: [{ id: '1', name: 'toString.call', value: 'x', type: 'string' }],
+			};
+
+			const result = prepareReturnItem(mockContext, value, 0, baseItem, mockNode, baseOptions);
+
+			// Prototype untouched; the value lands as an own property on the item's json.
+			expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+			expect(Object.prototype.toString.call([])).toBe('[object Array]');
+			expect((result.json as { toString?: { call?: unknown } }).toString?.call).toBe('x');
+		});
 	});
 
 	describe('JSON assignments', () => {
@@ -190,8 +214,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'image.png',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'default' });
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({ binaryMode: 'default' });
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -217,8 +241,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'doc.pdf',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'separate' });
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({ binaryMode: 'separate' });
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -246,8 +270,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'file.txt',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({
 					binaryMode: BINARY_MODE_COMBINED,
 				});
 
@@ -277,8 +301,8 @@ describe('prepareReturnItem', () => {
 					id: 'binary-id-123',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryDataWithId);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({
 					binaryMode: BINARY_MODE_COMBINED,
 				});
 
@@ -313,10 +337,10 @@ describe('prepareReturnItem', () => {
 					id: 'binary-id-456',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock)
+				(mockContext.helpers.assertBinaryData as Mock)
 					.mockReturnValueOnce(mockBinaryDataNoId)
 					.mockReturnValueOnce(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({
 					binaryMode: BINARY_MODE_COMBINED,
 				});
 
@@ -355,8 +379,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'file.txt',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataEmptyId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryDataEmptyId);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({
 					binaryMode: BINARY_MODE_COMBINED,
 				});
 
@@ -385,8 +409,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'data.json',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'default' });
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({ binaryMode: 'default' });
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -416,8 +440,8 @@ describe('prepareReturnItem', () => {
 					fileName: 'image.png',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({ binaryMode: 'default' });
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({ binaryMode: 'default' });
 
 				const value: AssignmentCollectionValue = {
 					assignments: [
@@ -457,8 +481,8 @@ describe('prepareReturnItem', () => {
 					id: 'video-id-789',
 				};
 
-				(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryDataWithId);
-				(mockContext.getWorkflowSettings as jest.Mock).mockReturnValue({
+				(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryDataWithId);
+				(mockContext.getWorkflowSettings as Mock).mockReturnValue({
 					binaryMode: BINARY_MODE_COMBINED,
 				});
 
@@ -502,7 +526,7 @@ describe('prepareReturnItem', () => {
 				fileName: 'document.pdf',
 			};
 
-			(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const value: AssignmentCollectionValue = {
 				assignments: [
@@ -541,7 +565,7 @@ describe('prepareReturnItem', () => {
 				fileName: 'image2.jpg',
 			};
 
-			(mockContext.helpers.assertBinaryData as jest.Mock)
+			(mockContext.helpers.assertBinaryData as Mock)
 				.mockReturnValueOnce(mockBinaryData1)
 				.mockReturnValueOnce(mockBinaryData2);
 
@@ -586,7 +610,7 @@ describe('prepareReturnItem', () => {
 				fileName: 'test.txt',
 			};
 
-			(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const value: AssignmentCollectionValue = {
 				assignments: [
@@ -614,7 +638,7 @@ describe('prepareReturnItem', () => {
 		});
 
 		it('should throw error when binary data is not found', () => {
-			(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue('not-binary-data');
+			(mockContext.helpers.assertBinaryData as Mock).mockReturnValue('not-binary-data');
 
 			const value: AssignmentCollectionValue = {
 				assignments: [
@@ -644,7 +668,7 @@ describe('prepareReturnItem', () => {
 				fileName: 'data.json',
 			};
 
-			(mockContext.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockContext.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const value: AssignmentCollectionValue = {
 				assignments: [

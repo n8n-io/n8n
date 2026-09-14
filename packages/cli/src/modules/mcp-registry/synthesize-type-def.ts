@@ -3,25 +3,32 @@ import type { NodeTypeDescription as SdkNodeTypeDescription } from '@n8n/workflo
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 /**
- * Generate TypeScript type-definition content for a synthetic MCP registry
- * node by running its in-memory description through the SDK's standard
- * generator. The output shape matches the on-disk `dist/node-definitions/`
- * files produced for native nodes at build time, so consumers
- * (Agent Builder's `get_node_types`, Instance AI's `type-definition`) can
- * treat it identically.
+ * Generate TypeScript type-definition content for an in-memory node
+ * description by running it through the SDK's standard generator. The output
+ * shape matches the on-disk `dist/node-definitions/` files produced for
+ * built-in nodes at build time, so consumers (MCP `get_node_types`, Instance
+ * AI's `type-definition`) treat synthesized and on-disk defs identically.
  *
- * Hidden properties (pre-configured connection details like the endpoint
- * URL and server transport) are stripped before generation so the agent's
- * schema only surfaces parameters the agent is meant to set.
+ * Used for nodes that have no on-disk artifact: MCP registry servers, custom
+ * nodes (`N8N_CUSTOM_EXTENSIONS` / `~/.n8n/custom`) and community packages.
+ *
+ * Hidden properties (e.g. pre-configured connection details) are stripped
+ * before generation so the agent's schema only surfaces parameters it is
+ * meant to set.
+ *
+ * Throws when the description is malformed (non-array group/properties,
+ * unexpected connection or credential shapes). Callers batching multiple
+ * nodes should catch and degrade gracefully rather than failing the whole
+ * request.
  */
-export function synthesizeMcpRegistryTypeDef(description: INodeTypeDescription): string {
+export function synthesizeNodeTypeDef(description: INodeTypeDescription): string {
 	const visibleDescription = {
 		...description,
 		properties: description.properties.filter((property) => property.type !== 'hidden'),
 	};
 
 	if (!isSdkNodeTypeDescription(visibleDescription)) {
-		throw new Error(`Cannot synthesize MCP registry type definition for ${description.name}`);
+		throw new Error(`Cannot synthesize type definition for ${description.name}`);
 	}
 
 	return generateNodeTypeFile(visibleDescription);
@@ -33,8 +40,6 @@ function isSdkNodeTypeDescription(
 	return (
 		Array.isArray(description.group) &&
 		Array.isArray(description.properties) &&
-		typeof description.inputs !== 'string' &&
-		typeof description.outputs !== 'string' &&
 		hasSdkConnections(description.inputs) &&
 		hasSdkConnections(description.outputs) &&
 		hasSdkCredentials(description.credentials)
@@ -45,6 +50,11 @@ function hasSdkConnections(
 	connections: INodeTypeDescription['inputs'] | INodeTypeDescription['outputs'],
 ): connections is (INodeTypeDescription['inputs'] | INodeTypeDescription['outputs']) &
 	SdkNodeTypeDescription['inputs'] {
+	// Expression strings (dynamic connections, e.g. the AI Agent's
+	// parameter-dependent inputs) are handled lexically by the generator —
+	// the same way built-in node defs are produced at build time.
+	if (typeof connections === 'string') return true;
+
 	return (
 		Array.isArray(connections) &&
 		connections.every(

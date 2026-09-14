@@ -11,11 +11,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_6596a328affd8d4967ffb303eee | FOREIGN KEY | FOREIGN KEY ("toolId") REFERENCES chat_hub_tools(id) ON DELETE CASCADE |
+| FK_e649bf1295f4ed8d4299ed290f9 | FOREIGN KEY | FOREIGN KEY ("sessionId") REFERENCES chat_hub_sessions(id) ON DELETE CASCADE |
+| PK_87aea76ff4c274c4a5ac838ebe3 | PRIMARY KEY | PRIMARY KEY ("sessionId", "toolId") |
 | chat_hub_session_tools_sessionId_not_null | n | NOT NULL "sessionId" |
 | chat_hub_session_tools_toolId_not_null | n | NOT NULL "toolId" |
-| FK_e649bf1295f4ed8d4299ed290f9 | FOREIGN KEY | FOREIGN KEY ("sessionId") REFERENCES chat_hub_sessions(id) ON DELETE CASCADE |
-| FK_6596a328affd8d4967ffb303eee | FOREIGN KEY | FOREIGN KEY ("toolId") REFERENCES chat_hub_tools(id) ON DELETE CASCADE |
-| PK_87aea76ff4c274c4a5ac838ebe3 | PRIMARY KEY | PRIMARY KEY ("sessionId", "toolId") |
 
 ## Indexes
 
@@ -36,29 +36,29 @@ erDiagram
   uuid toolId FK
 }
 "public.chat_hub_sessions" {
-  uuid id
-  varchar_256_ title
-  uuid ownerId FK
-  timestamp_3__with_time_zone lastMessageAt
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_256_ model
-  varchar_36_ workflowId FK
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
   uuid agentId FK
   varchar_128_ agentName
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
+  uuid id
+  timestamp_3__with_time_zone lastMessageAt
+  varchar_256_ model
+  uuid ownerId FK
+  varchar_16_ provider
+  varchar_256_ title
   varchar_16_ type
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.chat_hub_tools" {
-  uuid id
-  varchar_255_ name
-  varchar_255_ type
-  double_precision typeVersion
-  uuid ownerId FK
+  timestamp_3__with_time_zone createdAt
   json definition
   boolean enabled
-  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_255_ name
+  uuid ownerId FK
+  varchar_255_ type
+  double_precision typeVersion
   timestamp_3__with_time_zone updatedAt
 }
 ```

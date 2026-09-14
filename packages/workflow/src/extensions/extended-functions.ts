@@ -4,6 +4,7 @@
 // Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
 // from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
 
@@ -36,7 +37,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 
 	const result: Record<string, unknown> = {};
 	for (let i = 0; i < keys.length; i++) {
-		result[keys[i] as string] = values[i];
+		defineField(result, keys[i] as PropertyKey, values[i]);
 	}
 	return result;
 };
