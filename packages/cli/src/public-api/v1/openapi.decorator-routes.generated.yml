@@ -35,6 +35,9 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /projects/{projectId}/folders/{folderId}:
+    patch:
+      $ref: ./handlers/projects/spec/paths/updateFolder.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml

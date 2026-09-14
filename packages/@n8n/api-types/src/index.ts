@@ -135,6 +135,7 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	executionIdParamSchema,
+	folderIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
