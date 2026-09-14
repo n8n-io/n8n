@@ -207,6 +207,8 @@ export async function createInstanceAgent(
 		{
 			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 			formBaseUrl: orchestrationContext?.formBaseUrl,
+			webhookTestBaseUrl: orchestrationContext?.webhookTestBaseUrl,
+			formTestBaseUrl: orchestrationContext?.formTestBaseUrl,
 			localGateway: context.localGatewayStatus,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,

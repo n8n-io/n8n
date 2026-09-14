@@ -16,6 +16,8 @@ import type { LocalGatewayStatus } from '../types';
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
+	webhookTestBaseUrl?: string;
+	formTestBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
@@ -45,11 +47,23 @@ The user's current local date and time is: ${isoTime}${tzLabel}.
 When you need to reference "now", use this date and time.`;
 }
 
-function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
+function getInstanceInfoSection(urls: {
+	webhookBaseUrl: string;
+	formBaseUrl: string;
+	webhookTestBaseUrl?: string;
+	formTestBaseUrl?: string;
+}): string {
+	const testUrls =
+		urls.webhookTestBaseUrl && urls.formTestBaseUrl
+			? `
+Webhook test base URL: ${urls.webhookTestBaseUrl}
+Form test base URL: ${urls.formTestBaseUrl}
+Test URLs answer only while executions(action="listen") has armed the trigger; production URLs need a published workflow.`
+			: '';
 	return `## Instance Info
 
-Webhook base URL: ${webhookBaseUrl}
-Form base URL: ${formBaseUrl}`;
+Webhook base URL: ${urls.webhookBaseUrl}
+Form base URL: ${urls.formBaseUrl}${testUrls}`;
 }
 
 function getToolDiscoverySection(
@@ -220,6 +234,8 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		webhookBaseUrl,
 		formBaseUrl,
+		webhookTestBaseUrl,
+		formTestBaseUrl,
 		localGateway,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
@@ -234,7 +250,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 
 	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
 
-${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
+${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection({ webhookBaseUrl, formBaseUrl, webhookTestBaseUrl, formTestBaseUrl }) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}

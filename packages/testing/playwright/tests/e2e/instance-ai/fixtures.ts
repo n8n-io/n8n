@@ -4,7 +4,9 @@ import { join } from 'path';
 
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
+// `||`, not `??`: an exported but empty key must fall back to the mock key.
+// An empty key makes the container report no model, and every spec fails at page load.
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'mock-anthropic-api-key';
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 const EXPECTATIONS_DIR = './expectations';
 const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
