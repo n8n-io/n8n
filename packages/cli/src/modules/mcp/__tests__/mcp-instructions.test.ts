@@ -124,22 +124,27 @@ describe('getMcpInstructions', () => {
 			);
 		});
 
-		test('shows the pointer even when the builder is disabled', () => {
-			expect(
-				getMcpInstructions({ isBuilderEnabled: false, isUserPreferencesEnabled: true }),
-			).toContain(HINT);
-		});
-
-		test('is identical for every caller with the same options', () => {
-			const options = {
+		// Claude Code keeps only the first 2048 characters of the instructions and the full text
+		// is over 9000, so a pointer below that line never arrives. This is what the ordering
+		// test above is really protecting; assert it directly so a new section inserted above
+		// the pointer fails here rather than silently in a client.
+		test('lands inside the 2048-character budget a client may truncate to', () => {
+			const instructions = getMcpInstructions({
 				isBuilderEnabled: true,
 				isN8nConnectAvailable: true,
 				canvasGroupsEnabled: true,
 				isAgentsEnabled: true,
 				isUserPreferencesEnabled: true,
-			};
+			});
 
-			expect(getMcpInstructions(options)).toBe(getMcpInstructions(options));
+			expect(instructions.length).toBeGreaterThan(2048);
+			expect(instructions.indexOf(HINT) + HINT.length).toBeLessThan(2048);
+		});
+
+		test('shows the pointer even when the builder is disabled', () => {
+			expect(
+				getMcpInstructions({ isBuilderEnabled: false, isUserPreferencesEnabled: true }),
+			).toContain(HINT);
 		});
 	});
 });

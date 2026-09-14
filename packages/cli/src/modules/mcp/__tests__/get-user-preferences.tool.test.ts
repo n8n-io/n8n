@@ -113,7 +113,11 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
 			expect(result.structuredContent).toEqual({
 				hasPreferences: true,
-				preferences: ['Use British English.', 'Keep replies short.', 'Prefer HubSpot nodes.'],
+				preferences: [
+					{ scope: 'instance', text: 'Use British English.' },
+					{ scope: 'user', text: 'Keep replies short.' },
+					{ scope: 'project', project: 'Marketing', text: 'Prefer HubSpot nodes.' },
+				],
 			});
 		});
 
@@ -141,8 +145,8 @@ describe('get-user-preferences MCP tool', () => {
 		 * Same decision table `ai-preference.service.test.ts` uses for `renderAiPreferences` and
 		 * `flattenAiPreferences`, applied here to the tool's own output: each group is either
 		 * absent or present, independently. Also pins the invariant between the two structured
-		 * fields — `hasPreferences` and `preferences` are built by separate code paths
-		 * (`renderAiPreferences` and `flattenAiPreferences`) and must agree in every class.
+		 * fields: `hasPreferences` now reports on the same list it ships, so they must agree in
+		 * every class.
 		 */
 		describe('structured output (decision table over the three groups)', () => {
 			const MARKETING = { id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] };
@@ -193,10 +197,14 @@ describe('get-user-preferences MCP tool', () => {
 
 					const result = await tool.handler({});
 
-					expect(result.structuredContent).toEqual({
+					expect(result.structuredContent).toMatchObject({
 						hasPreferences: expected.length > 0,
-						preferences: expected,
 					});
+					expect(
+						(result.structuredContent as { preferences: Array<{ text: string }> }).preferences.map(
+							(item) => item.text,
+						),
+					).toEqual(expected);
 				},
 			);
 		});

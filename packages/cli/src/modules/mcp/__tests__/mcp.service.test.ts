@@ -2,7 +2,13 @@ import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
@@ -394,7 +400,7 @@ describe('McpService', () => {
 				mockInstance(AiPreferenceService),
 			);
 
-		const user = Object.assign(new User(), { id: 'user-1' });
+		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 		it('resolves every feature with a single PostHog lookup', async () => {
 			const postHogClient = mockInstance(PostHogClient);
@@ -591,7 +597,7 @@ describe('McpService', () => {
 
 	describe('getServer', () => {
 		it('should create MCP server with registered tools', async () => {
-			const user = Object.assign(new User(), { id: 'user-1' });
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 			const server = await mcpService.getServer(user, mcpFeatureFlags());
 
@@ -610,7 +616,7 @@ describe('McpService', () => {
 					.map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
 
 			const buildHandler = async (flags = mcpFeatureFlags(), auth?: McpAuthContext) => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				return createMcpHandler(
 					async () => await mcpService.getServer(user, flags, undefined, auth),
 					{ legacy: 'stateless' },
@@ -1109,7 +1115,7 @@ describe('McpService', () => {
 		});
 
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
-			const user = Object.assign(new User(), { id: 'user-1' });
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
@@ -1164,7 +1170,7 @@ describe('McpService', () => {
 		});
 
 		it('should register builder tools when mcpBuilderEnabled is true', async () => {
-			const user = Object.assign(new User(), { id: 'user-1' });
+			const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
@@ -1305,7 +1311,7 @@ describe('McpService', () => {
 			});
 
 			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const postHogClient = mockInstance(PostHogClient);
 
 				const service = buildService({ postHogClient });
@@ -1340,7 +1346,7 @@ describe('McpService', () => {
 			});
 
 			it('does not inject write key or telemetry URLs when diagnostics are disabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const service = buildService({ diagnosticsEnabled: false });
 
 				await service.getServer(user, appsEnabled);
@@ -1361,7 +1367,7 @@ describe('McpService', () => {
 			});
 
 			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const service = buildService({ instanceBaseUrl: 'not-a-url' });
 
 				await expect(service.getServer(user, appsEnabled)).resolves.toBeDefined();
@@ -1382,7 +1388,7 @@ describe('McpService', () => {
 			});
 
 			it('tracks render requested when the preview resource is read', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 				const telemetry = mockInstance(Telemetry);
 
 				const service = buildService({ telemetry });
@@ -1402,7 +1408,7 @@ describe('McpService', () => {
 			});
 
 			it('does not register the preview app when MCP Apps is disabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 				const server = await buildService().getServer(user, mcpFeatureFlags());
 
@@ -1411,7 +1417,7 @@ describe('McpService', () => {
 			});
 
 			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 				await buildService({ builderEnabled: false }).getServer(user, appsEnabled);
 

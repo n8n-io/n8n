@@ -21,6 +21,7 @@ import {
 import {
 	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 } from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
@@ -69,8 +70,14 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 
 	// Deliberately one sentence: its only job is to make the client load and call the
 	// tool. The tool's description carries the rest once it has been loaded.
+	//
+	// It is placed second, right after the intro, and that placement is load-bearing: a client
+	// may keep only the first part of these instructions (Claude Code truncates at 2048
+	// characters, and the full text is over 9000), so anything below the truncation point never
+	// arrives. That is what happened to the preferences block this replaces. A test pins the
+	// sentence inside the budget — do not push it down the list.
 	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
-		? `Before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
+		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
 		: '';
 
 	// Only appended when the flag is on; keeps the paid-per-session string short.

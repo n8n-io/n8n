@@ -16,6 +16,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { hasGlobalScope } from '@n8n/permissions';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -423,9 +424,14 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
-		// Same rationale again: never point a caller at a tool it cannot see.
-		const userPreferencesInstructionsEnabled =
+		// Same rationale again: never point a caller at a tool it cannot see. The OAuth grant is
+		// only half of the answer here — a role without `aiPreference:read` cannot read
+		// preferences either, and a full-access or legacy session has no granted-scope list to
+		// filter on, so the RBAC scope is checked too. One flag for the tool and the sentence
+		// that points at it, so the two can never disagree.
+		const userPreferencesEnabled =
 			featureFlags.aiPreferencesEnabled &&
+			hasGlobalScope(user, 'aiPreference:read') &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
@@ -438,7 +444,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
-					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					isUserPreferencesEnabled: userPreferencesEnabled,
 				}),
 			},
 		);
@@ -624,7 +630,7 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		if (featureFlags.aiPreferencesEnabled) {
+		if (userPreferencesEnabled) {
 			registerIfAllowed(
 				createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry),
 			);

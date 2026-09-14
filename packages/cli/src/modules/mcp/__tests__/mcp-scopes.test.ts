@@ -1,7 +1,14 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	GLOBAL_CHAT_USER_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -97,7 +104,9 @@ describe('getAllowedToolNames', () => {
 });
 
 describe('McpService scope enforcement', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	// A real MCP caller always arrives with its role loaded: `get_user_preferences` and
+	// `list_workflow_tags` both read the role to check a scope.
+	const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
 		new McpService(
@@ -220,6 +229,19 @@ describe('McpService scope enforcement', () => {
 
 		it('is not a builder tool, so it stays out of the builder-gated set', () => {
 			expect(BUILDER_TOOLS.has('get_user_preferences')).toBe(false);
+		});
+
+		// A full-access or legacy session has no granted-scope list to filter on, so without the
+		// RBAC check such a caller would be offered a tool whose handler refuses it.
+		it('does not register the tool for a role without aiPreference:read', async () => {
+			const chatUser = Object.assign(new User(), {
+				id: 'user-2',
+				role: GLOBAL_CHAT_USER_ROLE,
+			});
+
+			const server = await buildService().getServer(chatUser, mcpFeatureFlags());
+
+			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
 		});
 
 		it('is out of reach of a grant that does not hold the preferences scope', async () => {

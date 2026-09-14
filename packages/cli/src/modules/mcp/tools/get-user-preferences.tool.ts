@@ -6,21 +6,30 @@ import type { AiPreferenceService } from '@/services/ai-preference.service';
 import { flattenAiPreferences, renderAiPreferences } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
-import { MCP_GET_USER_PREFERENCES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import {
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
 /**
- * Whether the tool is called at all, and whether the result keeps being applied, is decided by
- * this text rather than by anything in the code. Each clause does a job: "for the remainder of
- * the task" stops the result being treated as a preamble that was satisfied once, and the
- * precedence clause makes a conflict visible instead of resolved arbitrarily, so text written
- * by other people never outranks the person the assistant is talking to. Named artifacts beat
- * "anything in n8n", which is too vague to act on. Covered verbatim by a test — see
- * CONTEXT-132 before editing.
+ * The wording agreed in CONTEXT-132, and a requirement of that ticket rather than a choice made
+ * here, so it is covered verbatim by a test — read the ticket before editing it.
+ *
+ * Each clause has a job. "For the remainder of the task" stops the result being treated as a
+ * preamble that was satisfied once, and the precedence clause makes a conflict visible instead
+ * of resolved arbitrarily, so text written by other people never outranks the person the
+ * assistant is talking to.
+ *
+ * What this text does NOT do is make the model obey: the manual test report on CONTEXT-132
+ * measured no change in what the model built across three wordings and 13 runs. It states the
+ * contract clearly and it makes the client load and call the tool. Anything that has to hold
+ * needs to be a rule the server checks.
  */
 const DESCRIPTION = [
 	'Returns the preferences saved for this n8n instance, the caller, and their projects: node and credential choices, naming, how work is organised, and patterns to avoid.',
-	'Call this before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — and apply what it returns to every change you make for the remainder of the task, not only the first one. If a preference conflicts with something the user asks for directly, follow the user and say which preference you set aside.',
+	`Call this before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} and apply what it returns to every change you make for the remainder of the task, not only the first one. If a preference conflicts with something the user asks for directly, follow the user and say which preference you set aside.`,
 ].join('\n\n');
 
 /** A definite answer, so the assistant does not call again looking for one. */
@@ -32,10 +41,23 @@ const outputSchema = {
 	hasPreferences: z
 		.boolean()
 		.describe(
-			'False when nothing is saved for the instance, the caller, or their projects. The preferences themselves are in the text content.',
+			'False when nothing is saved for the instance, the caller, or their projects. True when `preferences` holds at least one item.',
 		),
 	preferences: z
-		.array(z.string())
+		.array(
+			z.object({
+				scope: z
+					.enum(['instance', 'user', 'personalProject', 'project'])
+					.describe(
+						"Where the preference is saved: `instance` is set by an admin for everyone, `user` is what the caller saved for themselves, `personalProject` is the caller's own personal project, and `project` is a team project named in `project`.",
+					),
+				project: z
+					.string()
+					.optional()
+					.describe("The team project's name. Set only when scope is `project`."),
+				text: z.string().describe('The preference as the person wrote it.'),
+			}),
+		)
 		.describe(
 			'Every saved preference as its own item, instance first, then personal, then projects. Empty when hasPreferences is false.',
 		),
@@ -86,15 +108,18 @@ export const createGetUserPreferencesTool = (
 			// A failed read throws rather than answering "no preferences": that answer would
 			// send the assistant off to build against nothing.
 			const preferences = await aiPreferenceService.getApplicableAcrossProjects(user);
-			const text = renderAiPreferences(preferences);
-			const hasPreferences = text !== '';
+			// One source for "is there anything", so the flag and the list cannot disagree.
+			const items = flattenAiPreferences(preferences);
+			const hasPreferences = items.length > 0;
 
 			telemetryPayload.results = { success: true, data: { hasPreferences } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: hasPreferences ? text : NOTHING_SAVED }],
-				structuredContent: { hasPreferences, preferences: flattenAiPreferences(preferences) },
+				content: [
+					{ type: 'text', text: hasPreferences ? renderAiPreferences(preferences) : NOTHING_SAVED },
+				],
+				structuredContent: { hasPreferences, preferences: items },
 			};
 		} catch (error) {
 			telemetryPayload.results = {
