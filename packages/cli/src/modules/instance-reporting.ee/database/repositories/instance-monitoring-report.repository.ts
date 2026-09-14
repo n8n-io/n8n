@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { InstanceReportDataPoint } from '../entities/instance-monitoring-report';
@@ -83,6 +83,19 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 		);
 
 		return days.length ? days.reduce((a, b) => (a > b ? a : b)) : null;
+	}
+
+	/**
+	 * When the receiver last accepted a report, or `null` when it never did.
+	 */
+	async findLastDeliveryTime(): Promise<Date | null> {
+		const report = await this.findOne({
+			where: { status: 'delivered', deliveredAt: Not(IsNull()) },
+			order: { deliveredAt: 'DESC' },
+			select: ['deliveredAt'],
+		});
+
+		return report?.deliveredAt ?? null;
 	}
 
 	async markDelivered(id: string, deliveredAt: Date): Promise<void> {

@@ -166,6 +166,43 @@ describe('InstanceMonitoringReportRepository', () => {
 		});
 	});
 
+	describe('findLastDeliveryTime', () => {
+		test('is null when nothing was ever delivered', async () => {
+			await repository.createPending(DATA_POINTS);
+
+			await expect(repository.findLastDeliveryTime()).resolves.toBeNull();
+		});
+
+		test('returns the latest delivery time across delivered reports', async () => {
+			const earlier = await repository.createPending(DATA_POINTS);
+			await repository.markDelivered(earlier.id, new Date('2026-03-24T07:42:00.000Z'));
+
+			const latest = await repository.createPending(DATA_POINTS);
+			const latestDeliveredAt = new Date('2026-03-25T07:42:13.000Z');
+			await repository.markDelivered(latest.id, latestDeliveredAt);
+
+			const lastDelivery = await repository.findLastDeliveryTime();
+
+			expect(lastDelivery?.toISOString()).toBe(latestDeliveredAt.toISOString());
+		});
+
+		test('ignores reports that never reached the receiver', async () => {
+			const delivered = await repository.createPending(DATA_POINTS);
+			const deliveredAt = new Date('2026-03-24T07:42:00.000Z');
+			await repository.markDelivered(delivered.id, deliveredAt);
+
+			const failed = await repository.createPending(DATA_POINTS);
+			await repository.recordFailure(failed.id, 'Network error', new Date());
+			const skipped = await repository.createPending(DATA_POINTS);
+			await repository.markSkipped(skipped.id);
+			await repository.createPending(DATA_POINTS);
+
+			const lastDelivery = await repository.findLastDeliveryTime();
+
+			expect(lastDelivery?.toISOString()).toBe(deliveredAt.toISOString());
+		});
+	});
+
 	describe('markDelivered', () => {
 		test('stamps the delivery time, counts the attempt and clears any earlier error', async () => {
 			const { id } = await repository.createPending(DATA_POINTS);

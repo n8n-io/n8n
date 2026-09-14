@@ -11,6 +11,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './instance-reporting';
 export type * from './worker-pools';
 export type * from './node-type-availability';
 export * from './redaction-enforcement';
@@ -141,6 +142,7 @@ export {
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
+	tagIdParamSchema,
 	userIdParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,
@@ -447,6 +449,7 @@ export {
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
@@ -544,6 +547,7 @@ export type {
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
