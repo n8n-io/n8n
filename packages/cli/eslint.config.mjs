@@ -416,14 +416,10 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-<<<<<<< HEAD
 			'./src/license.ts',
 			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
 			'./src/modules/instance-ai/instance-ai.service.ts',
-			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
-=======
 			'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
->>>>>>> c70e754d (feat(core): Include reportTime and lastSuccessfulReport of instance-reporting in module-settings endpoint (no-changelog) (#38458))
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
