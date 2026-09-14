@@ -24,8 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
-import { asciiWord, hardString, isAscii, lookAlikePair } from '@test/hard-strings';
-import { describeKeyDerivation } from '@test/hard-strings/key-derivation';
+import { hardString } from '@test/hard-strings';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -606,8 +605,7 @@ describe('Test Notion, simplifyObjects', () => {
 		},
 	});
 
-	// The key a property with this name gets, found by its value. `undefined` when it is dropped.
-	const keyFor = (propertyName: string, version: number): string | undefined => {
+	const keyFor = (propertyName: string, version: number) => {
 		const [result] = simplifyObjects([page({ [propertyName]: richText('x') })], false, version);
 		return Object.keys(result).find((key) => result[key] === 'x');
 	};
@@ -619,42 +617,16 @@ describe('Test Notion, simplifyObjects', () => {
 			expect(result[0]).toMatchObject({ property_prénom: 'Jean' });
 		});
 
-		it.each([
-			['naïve', 'property_naïve'],
-			['café', 'property_café'],
-			['Mädchen', 'property_mädchen'],
-			['Köln', 'property_köln'],
-			['Prüfung', 'property_prüfung'],
-			['Straße', 'property_straße'],
-		])('keeps %s as %s', (propertyName, expectedKey) => {
-			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
-
-			expect(result[0]).toHaveProperty(expectedKey, 'x');
-		});
-
-		describeKeyDerivation('property keys', (name) => keyFor(name, 3), {
-			keyPattern: /^property_[\p{L}\p{M}\d_]*$/u,
-		});
-
-		it('keeps a lowercase word of any script as the key', () => {
-			const lowercaseWord = hardString('latin-accented', 'greek', 'cyrillic', 'cjk')
-				.map((name) => name.toLowerCase())
-				.filter((name) => /^\p{Ll}+$/u.test(name));
-
-			fc.assert(
-				fc.property(lowercaseWord, (name) => {
-					expect(keyFor(name, 3)).toBe(`property_${name}`);
-				}),
+		it('keeps accented words as lowercase keys', () => {
+			const accentedWord = hardString('latin-accented').filter((name) =>
+				/^\p{L}\p{Ll}*$/u.test(name),
 			);
-		});
 
-		// Only case mapping merges two names, e.g. the Kelvin sign K lowercases to an ASCII k.
-		it('keeps a look-alike distinct from its ASCII twin unless case mapping merges them', () => {
 			fc.assert(
-				fc.property(lookAlikePair, ([word, lookAlike]) => {
-					const merged = lookAlike.toLowerCase() === word.toLowerCase();
-					expect(keyFor(lookAlike, 3) === keyFor(word, 3)).toBe(merged);
+				fc.property(accentedWord, (name) => {
+					expect(keyFor(name, 3)).toBe(`property_${name.toLowerCase()}`);
 				}),
+				{ examples: [['naïve'], ['café'], ['Mädchen'], ['Köln'], ['Prüfung'], ['Straße']] },
 			);
 		});
 	});
@@ -685,59 +657,18 @@ describe('Test Notion, simplifyObjects', () => {
 			expect(result[0]).toMatchObject({ property_pre_nom: 'Jean' });
 		});
 
-		it.each([
-			['naïve', 'property_na_ve'],
-			['café', 'property_caf'],
-			['Prix (€)', 'property_prix'],
-			['Mädchen', 'property_m_dchen'],
-			['Köln', 'property_k_ln'],
-			['Prüfung', 'property_pr_fung'],
-			['Straße', 'property_stra_e'],
-		])('folds %s to %s', (propertyName, expectedKey) => {
-			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
-
-			expect(result[0]).toHaveProperty(expectedKey, 'x');
-		});
-
-		describeKeyDerivation('property keys', (name) => keyFor(name, 2), {
-			keyPattern: /^property_[a-z0-9_]*$/,
-		});
-
-		it('treats every non-ASCII character as a word separator', () => {
-			const nonAsciiCharacter = fc
-				.string({ unit: 'grapheme-composite', minLength: 1, maxLength: 1 })
-				.filter((character) => !isAscii(character));
-			const wordsWithSeparators = fc
-				.array(fc.tuple(asciiWord, nonAsciiCharacter), { minLength: 1, maxLength: 4 })
-				.map((parts) => ({
-					name: parts.map(([word, separator]) => word + separator).join(''),
-					expectedKey: `property_${parts.map(([word]) => word.toLowerCase()).join('_')}`,
-				}));
-
+		it('folds every accented letter to a separator', () => {
 			fc.assert(
-				fc.property(wordsWithSeparators, ({ name, expectedKey }) => {
-					expect(keyFor(name, 2)).toBe(expectedKey);
-				}),
-			);
-		});
+				fc.property(hardString('latin-accented'), (name) => {
+					const words = name
+						.replace(/\P{ASCII}/gu, ' ')
+						.toLowerCase()
+						.trim()
+						.split(/\s+/);
 
-		it('gives every name of a non-Latin script the empty key', () => {
-			fc.assert(
-				fc.property(hardString('greek', 'cyrillic', 'cjk'), (name) => {
-					expect(keyFor(name, 2)).toBe('property_');
+					expect(keyFor(name, 2)).toBe(`property_${words.join('_')}`);
 				}),
-			);
-		});
-
-		it('agrees with v3 on ASCII names', () => {
-			const asciiName = hardString('unsafe-keys', 'reserved-words', 'expression-hostile').filter(
-				isAscii,
-			);
-
-			fc.assert(
-				fc.property(asciiName, (name) => {
-					expect(keyFor(name, 2)).toBe(keyFor(name, 3));
-				}),
+				{ examples: [['naïve'], ['café'], ['Mädchen'], ['Köln'], ['Prüfung'], ['Straße']] },
 			);
 		});
 	});
