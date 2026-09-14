@@ -231,7 +231,10 @@ describe('AgentChatController background tasks', () => {
 				},
 			],
 		});
-		expect(backgroundJobService.listCurrentGroupForThread).toHaveBeenCalledWith('thread-1');
+		expect(backgroundJobService.listCurrentGroupForThread).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 		expect(backgroundJobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 

@@ -14,6 +14,7 @@ import type { AgentBackgroundJob } from '../entities/agent-background-job.entity
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
+	type BackgroundJobGroupItem,
 	type NewSubAgentJob,
 	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
@@ -264,11 +265,14 @@ export class AgentBackgroundJobService {
 	 * Return only the latest group while any job runs or has results that await consumption.
 	 * The preview can show completed jobs alongside jobs that still run.
 	 */
-	async listCurrentGroupForThread(parentThreadId: string): Promise<BackgroundJobView[]> {
-		const jobs = (await this.jobRepository.findByParentThread(parentThreadId))
-			.map((job) => this.toJobView(job))
-			.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
-		let group: BackgroundJobView[] = [];
+	async listCurrentGroupForThread(
+		parentAgentId: string,
+		parentThreadId: string,
+	): Promise<BackgroundJobGroupItem[]> {
+		const jobs = (await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId)).sort(
+			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+		);
+		let group: BackgroundJobGroupItem[] = [];
 		let groupEndsAt = Number.NEGATIVE_INFINITY;
 
 		for (const job of jobs) {

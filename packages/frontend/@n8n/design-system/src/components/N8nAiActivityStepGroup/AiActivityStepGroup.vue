@@ -47,10 +47,10 @@ provide(aiActivityStepGroupContext, true);
 				:size="size"
 				:loading="loading"
 				:full-width="fullWidth"
-				:aria-live="$slots['header-trailing'] ? 'off' : 'polite'"
+				aria-live="off"
 			>
 				<template v-if="$slots.prefix" #prefix><slot name="prefix" /></template>
-				{{ label }}
+				<span aria-live="polite" aria-atomic="true">{{ label }}</span>
 				<template #suffix>
 					<slot name="header-trailing" />
 					<N8nAiActivityStepChevron

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, ref, nextTick } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
@@ -19,6 +19,7 @@ const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
+const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
@@ -138,16 +139,28 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
 }));
 
-vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
-	default: {
-		name: 'ChatInputBase',
-		template:
-			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
-		emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
-		methods: { focus: vi.fn() },
-	},
-}));
+vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
+	const { defineComponent, ref } = await import('vue');
+	return {
+		default: defineComponent({
+			name: 'ChatInputBase',
+			template:
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
+			props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
+			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
+			setup(_, { expose }) {
+				const input = ref<HTMLTextAreaElement>();
+				expose({
+					focus: (options?: FocusOptions) => {
+						focusInputMock(options);
+						input.value?.focus(options);
+					},
+				});
+				return { input };
+			},
+		}),
+	};
+});
 
 vi.mock('../components/AgentChatEmptyState.vue', () => ({
 	default: { template: '<div data-testid="empty-state-stub" />' },
@@ -218,6 +231,7 @@ describe('AgentChatPanel', () => {
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 		}> = {},
+		attachTo?: HTMLElement,
 	) {
 		const router = createRouter({
 			history: createMemoryHistory(),
@@ -231,6 +245,7 @@ describe('AgentChatPanel', () => {
 			],
 		});
 		return mount(AgentChatPanel, {
+			attachTo,
 			global: { plugins: [router] },
 			props: {
 				projectId: 'p1',
@@ -252,6 +267,107 @@ describe('AgentChatPanel', () => {
 			status: 'running',
 			startedAt: '2026-09-09T10:00:00.000Z',
 		};
+
+		it.each(['trigger', 'trace'])(
+			'moves focus from the %s to the composer on completion',
+			async (target) => {
+				backgroundJobsMock.value = [job];
+				const wrapper = mountPanel(
+					{ backgroundJobsActive: true, continueSessionId: 't1' },
+					document.body,
+				);
+				try {
+					const trigger = wrapper.get('[data-testid="agent-background-jobs"] button');
+					await trigger.trigger('click');
+					const focused =
+						target === 'trigger'
+							? trigger
+							: wrapper.get('[data-testid="agent-background-jobs-trace"]');
+					(focused.element as HTMLElement).focus();
+					expect(document.activeElement).toBe(focused.element);
+					backgroundJobsMock.value = [];
+					await flushPromises();
+					expect(document.activeElement).toBe(wrapper.get('textarea').element);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
+
+		it('keeps focus outside the card when jobs finish', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			const outside = document.createElement('button');
+			document.body.append(outside);
+			try {
+				outside.focus();
+				backgroundJobsMock.value = [];
+				await flushPromises();
+				expect(document.activeElement).toBe(outside);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		});
+
+		it('keeps a new focus target chosen while the card is removed', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			const outside = document.createElement('button');
+			document.body.append(outside);
+			try {
+				(
+					wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement
+				).focus();
+				backgroundJobsMock.value = [];
+				await nextTick();
+				outside.focus();
+				await flushPromises();
+				expect(document.activeElement).toBe(outside);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		});
+
+		it('does not focus the composer when the session changes', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				(
+					wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement
+				).focus();
+				backgroundJobsMock.value = [];
+				await wrapper.setProps({ continueSessionId: 't2' });
+				await flushPromises();
+				expect(document.activeElement).not.toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('does not restore focus after the panel unmounts', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			(wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement).focus();
+			backgroundJobsMock.value = [];
+			await nextTick();
+			wrapper.unmount();
+			await flushPromises();
+			expect(focusInputMock).not.toHaveBeenCalled();
+		});
 
 		it('keeps finished rows and expansion until the entire group finishes', async () => {
 			vi.useFakeTimers();

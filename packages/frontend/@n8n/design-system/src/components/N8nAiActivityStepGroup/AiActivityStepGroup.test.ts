@@ -4,6 +4,20 @@ import { render, fireEvent } from '@testing-library/vue';
 import AiActivityStepGroup from './AiActivityStepGroup.vue';
 
 describe('AiActivityStepGroup', () => {
+	it('keeps label updates in a live region without the timer', async () => {
+		const { getByRole, getByText, rerender } = render(AiActivityStepGroup, {
+			props: { label: 'Running 2 background tasks' },
+			slots: { 'header-trailing': '<span aria-live="off">0:31</span>' },
+		});
+		const label = getByText('Running 2 background tasks');
+		expect(getByRole('button')).toHaveAttribute('aria-live', 'off');
+		expect(label).toHaveAttribute('aria-live', 'polite');
+		expect(label).toHaveAttribute('aria-atomic', 'true');
+		expect(label).not.toContainElement(getByText('0:31'));
+		await rerender({ label: 'Background tasks finished' });
+		expect(label).toHaveTextContent('Background tasks finished');
+	});
+
 	it.each(['above', 'below'] as const)(
 		'supports slots and keyboard expansion %s the header',
 		async (contentPosition) => {

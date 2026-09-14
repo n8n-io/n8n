@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	ref,
+	toRef,
+	watch,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	nextTick,
+} from 'vue';
 import {
 	N8nAiActivityStepGroup,
 	N8nCallout,
@@ -206,10 +215,52 @@ const backgroundElapsed = computed(() => {
 
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const showBackgroundJobs = computed(
+	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+);
 
 function focusInput(options?: FocusOptions) {
 	chatInput.value?.focus(options);
 }
+
+watch(
+	[
+		showBackgroundJobs,
+		() => props.projectId,
+		() => props.agentId,
+		() => props.continueSessionId,
+		() => props.visible,
+	],
+	async ([shown, ...target], [wasShown, ...previousTarget], onCleanup) => {
+		if (
+			shown ||
+			!wasShown ||
+			!props.visible ||
+			target.some((value, index) => value !== previousTarget[index]) ||
+			!backgroundJobCard.value?.contains(document.activeElement)
+		) {
+			return;
+		}
+
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		// Check focus before the card disappears, then wait for the composer to update.
+		await nextTick();
+		if (
+			cancelled ||
+			disposed ||
+			!props.visible ||
+			showBackgroundJobs.value ||
+			document.activeElement !== document.body
+		) {
+			return;
+		}
+		focusInput({ preventScroll: true });
+	},
+);
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -576,8 +627,12 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="backgroundJobsActive && backgroundJobs.length" #header>
-					<div :class="$style.backgroundJobs" data-testid="agent-background-jobs">
+				<template v-if="showBackgroundJobs" #header>
+					<div
+						ref="backgroundJobCard"
+						:class="$style.backgroundJobs"
+						data-testid="agent-background-jobs"
+					>
 						<N8nAiActivityStepGroup
 							:key="continueSessionId"
 							:label="backgroundTitle"

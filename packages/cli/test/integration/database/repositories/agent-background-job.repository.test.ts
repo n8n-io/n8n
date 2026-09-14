@@ -76,6 +76,39 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	}
 
+	it('returns only group fields for the selected agent and thread', async () => {
+		const id = uuid();
+		const createdAt = new Date('2026-09-01T10:00:00Z');
+		const settledAt = new Date('2026-09-01T10:01:00Z');
+		await insertJob({
+			id,
+			parentThreadId: 'thread-1',
+			createdAt,
+			settledAt,
+			result: 'Stored result',
+			error: 'Stored error',
+		});
+		const otherAgent = agentRepository.create(
+			await agentRepository.findOneByOrFail({ id: agentId }),
+		);
+		otherAgent.id = uuid();
+		await agentRepository.save(otherAgent);
+		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentAgentId: otherAgent.id });
+		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
+
+		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
+		expect(jobs).toHaveLength(1);
+		expect({ ...jobs[0] }).toEqual({
+			id,
+			kind: 'subagent',
+			title: 'Research',
+			status: 'completed',
+			createdAt,
+			settledAt,
+			notifiedAt: null,
+		});
+	});
+
 	it('returns unconsumed settled rows of one thread, oldest settlement first', async () => {
 		const olderId = uuid();
 		const newerId = uuid();

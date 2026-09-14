@@ -79,6 +79,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfRunning.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
+	jobRepository.findGroupCandidates.mockResolvedValue([]);
 	jobRepository.findRunningJobs.mockResolvedValue([]);
 	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
@@ -367,22 +368,22 @@ describe('listCurrentGroupForThread', () => {
 				settledAt: new Date(3000),
 			});
 			const running = makeJob({ id: 'job-2', createdAt: new Date(2000) });
-			const list = jobRepository.findByParentThread.mockResolvedValue([running, finished]);
-			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+			const list = jobRepository.findGroupCandidates.mockResolvedValue([running, finished]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
 				expect.objectContaining({ id: finished.id }),
 				expect.objectContaining({ id: running.id }),
 			]);
-			expect(list).toHaveBeenCalledWith('thread-1');
+			expect(list).toHaveBeenCalledWith('agent-1', 'thread-1');
 			const terminal = { ...running, status, settledAt: new Date(4000) };
 			list.mockResolvedValue([finished, terminal]);
-			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
 				expect.objectContaining({ id: finished.id, status }),
 				expect.objectContaining({ id: terminal.id, status }),
 			]);
 			list.mockResolvedValue(
 				[finished, terminal].map((job) => ({ ...job, notifiedAt: new Date(5000) })),
 			);
-			expect(await service.listCurrentGroupForThread('thread-1')).toEqual([]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
 		},
 	);
 
@@ -407,8 +408,8 @@ describe('listCurrentGroupForThread', () => {
 			settledAt: new Date(7000),
 		});
 		const running = makeWorkflowJob({ id: 'running', createdAt: new Date(6000) });
-		jobRepository.findByParentThread.mockResolvedValue([running, earlier, second, first]);
-		expect(await service.listCurrentGroupForThread('thread-1')).toEqual(
+		jobRepository.findGroupCandidates.mockResolvedValue([running, earlier, second, first]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual(
 			[first, second, running].map(({ id }) => expect.objectContaining({ id })),
 		);
 	});
@@ -421,15 +422,15 @@ describe('listCurrentGroupForThread', () => {
 			settledAt: new Date(2000),
 		});
 		const next = makeJob({ id: 'next', createdAt: new Date(3000) });
-		jobRepository.findByParentThread.mockResolvedValue([finished, next]);
-		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([
+		jobRepository.findGroupCandidates.mockResolvedValue([finished, next]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
 			expect.objectContaining({ id: next.id }),
 		]);
 	});
 
 	it('returns no group when the thread has no jobs', async () => {
 		const { service } = setup();
-		expect(await service.listCurrentGroupForThread('thread-1')).toEqual([]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
 	});
 });
 
@@ -961,13 +962,13 @@ describe('background task update failures', () => {
 			setup({ backgroundTasksEnabled: true });
 		const wake = mock<AgentWakeService>();
 		Container.set(AgentWakeService, wake);
-		jobRepository.findByParentThread.mockResolvedValue([makeJob(), makeWorkflowJob()]);
+		jobRepository.findGroupCandidates.mockResolvedValue([makeJob(), makeWorkflowJob()]);
 		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
 			new Map([['child-thread-1', 'error']]),
 		);
 		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
 
-		expect(await service.listCurrentGroupForThread('thread-1')).toHaveLength(2);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toHaveLength(2);
 		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
 		expect(executionPersistence.findStatusesByIds).not.toHaveBeenCalled();
 		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
@@ -977,21 +978,20 @@ describe('background task update failures', () => {
 
 	it('uses the start time when a terminal job has no settlement time and orders ties by ID', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.findByParentThread.mockResolvedValue([
+		jobRepository.findGroupCandidates.mockResolvedValue([
 			makeJob({ id: 'b', createdAt: new Date(1000), status: 'completed' }),
 			makeJob({ id: 'a', createdAt: new Date(1000), status: 'failed' }),
 		]);
-		expect((await service.listCurrentGroupForThread('thread-1')).map(({ id }) => id)).toEqual([
-			'a',
-			'b',
-		]);
-		jobRepository.findByParentThread.mockResolvedValue([
+		expect(
+			(await service.listCurrentGroupForThread('agent-1', 'thread-1')).map(({ id }) => id),
+		).toEqual(['a', 'b']);
+		jobRepository.findGroupCandidates.mockResolvedValue([
 			makeJob({ id: 'a', createdAt: new Date(1000), status: 'completed' }),
 			makeJob({ id: 'b', createdAt: new Date(2000), status: 'completed' }),
 		]);
-		expect((await service.listCurrentGroupForThread('thread-1')).map(({ id }) => id)).toEqual([
-			'b',
-		]);
+		expect(
+			(await service.listCurrentGroupForThread('agent-1', 'thread-1')).map(({ id }) => id),
+		).toEqual(['b']);
 	});
 
 	it('preserves settlement when the job lookup fails', async () => {

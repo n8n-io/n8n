@@ -274,12 +274,15 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
+
 		// A new preview session has no thread until its first execution starts.
 		if (!thread) return { tasks: [] };
+
 		if (!threadBelongsTo(thread, projectId, agentId)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		const jobs = await this.backgroundJobService.listCurrentGroupForThread(threadId);
+
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return {
 			pendingTaskIds: jobs
 				.filter((job) => job.status !== 'running' && !job.notifiedAt)
