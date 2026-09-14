@@ -239,6 +239,13 @@ export {
 } from './api-keys/list-api-keys-query.dto';
 
 export { CreateFolderDto } from './folders/create-folder.dto';
+export {
+	folderProjectIdParamSchema,
+	folderPublicSchema,
+	FolderPublicDto,
+	CreateFolderPublicDto,
+} from './folders/folder-public.dto';
+export type { FolderPublic } from './folders/folder-public.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
 export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
