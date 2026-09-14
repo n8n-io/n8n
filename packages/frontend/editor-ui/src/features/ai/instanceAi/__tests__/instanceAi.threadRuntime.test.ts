@@ -2754,6 +2754,36 @@ describe('createThreadRuntime - pending plan review', () => {
 		expect(runtime.pendingConfirmations).toHaveLength(1);
 		expect(runtime.pendingPlanReview).toBeNull();
 	});
+
+	// Nothing else retires the marker: request-changes never re-arms the run, so
+	// `isStreaming` stays true across the whole revision and its fallback clear
+	// never fires. The superseded card would shimmer "Updating plan..." forever.
+	it('retires the updating marker of the card a revised plan supersedes', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+
+		// The backend settles the suspended call, then suspends a revised card.
+		seedPlanCards([
+			planCard({ isLoading: false }),
+			planCard({ toolCallId: 'tc-plan-2', confirmation: { requestId: 'req-plan-revised' } }),
+		]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
+	});
+
+	// The superseded call settles before the revised card suspends, so there is a
+	// gap with no pending plan review at all — and that gap is exactly the wait.
+	it('keeps the updating marker while the revised plan is still being written', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+
+		seedPlanCards([planCard({ isLoading: false })]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+	});
 });
 
 describe('createThreadRuntime - requestPlanChanges', () => {

@@ -1402,6 +1402,21 @@ export function createThreadRuntime(
 		updatingPlanRequestIds.delete(requestId);
 	}
 
+	// A revised card takes over the review, so the card it supersedes is no longer
+	// updating. Nothing else retires that marker: request-changes never re-arms the
+	// run, so the stream below stays live for the whole revision. A null review is
+	// not a supersede — the old call settles before the revised card suspends, and
+	// that gap is the wait itself.
+	watch(
+		() => pendingPlanReview.value?.requestId,
+		(requestId) => {
+			if (!requestId) return;
+			for (const id of updatingPlanRequestIds) {
+				if (id !== requestId) updatingPlanRequestIds.delete(id);
+			}
+		},
+	);
+
 	// Defensive cleanup: if a stream ends without a matching clear, drop the
 	// pending markers so we don't leave a card stuck in "Updating plan…".
 	watch(isStreaming, (streaming) => {
