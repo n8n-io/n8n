@@ -132,6 +132,30 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: "request/body must have required property 'name'",
+		});
+	});
+
+	test('should return 400 when folder name is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: '' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Folder name cannot be empty');
+	});
+
+	test('should return 400 when the body carries an unknown key', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: 'Folder', unknownKey: 'nope' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should return 404 when parentFolderId is invalid', async () => {
@@ -162,8 +186,30 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({ name: 'My Folder' });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body).toHaveProperty('id');
-		expect(response.body).toHaveProperty('name', 'My Folder');
+		expect(response.body).toEqual({
+			id: expect.any(String),
+			name: 'My Folder',
+			parentFolderId: null,
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('should not expose internal folder fields', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: 'My Folder' });
+
+		expect(response.statusCode).toBe(201);
+		expect(Object.keys(response.body as Record<string, unknown>).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'updatedAt',
+		]);
 	});
 
 	test('should create a folder with parentFolderId', async () => {
@@ -177,6 +223,7 @@ describe('POST /projects/:projectId/folders', () => {
 
 		expect(response.statusCode).toBe(201);
 		expect(response.body).toHaveProperty('name', 'Child');
+		expect(response.body).toHaveProperty('parentFolderId', parentFolder.id);
 	});
 
 	test('should return 500 when createFolder throws an unexpected error', async () => {

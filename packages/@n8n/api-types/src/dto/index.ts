@@ -267,14 +267,17 @@ export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export {
+	CreateFolderPublicDto,
+	CreatedFolderPublicDto,
 	DeleteFolderQueryPublicDto,
+	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	FolderPublicDto,
-	FolderDetailsPublicDto,
 	ListFoldersQueryPublicDto,
-	folderPublicSchema,
 	UpdateFolderPublicDto,
 	UpdatedFolderPublicDto,
+	folderProjectIdParamSchema,
+	folderPublicSchema,
 } from './folders/folder-public.dto';
 export type { FolderPublic } from './folders/folder-public.dto';
 

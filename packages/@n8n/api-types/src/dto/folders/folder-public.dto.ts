@@ -10,6 +10,7 @@ import {
 	folderListQueryFieldDocs,
 	folderProjectFieldDocs,
 	folderProjectIconOpenApi,
+	folderProjectIdParamDocs,
 	updateFolderFieldDocs,
 } from './folder-public.openapi';
 import {
@@ -23,6 +24,9 @@ import { folderIdSchema, folderNameSchema } from '../../schemas/folder.schema';
 import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import { projectTypeSchema, type ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
+
+/** `personal` is accepted next to a real id, so this cannot reuse `projectIdParamSchema`. */
+export const folderProjectIdParamSchema = z.string().openapi(folderProjectIdParamDocs);
 
 const folderProjectPublicSchema = z.object({
 	id: z.string().openapi(folderProjectFieldDocs.id),
@@ -141,3 +145,14 @@ export class DeleteFolderQueryPublicDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
+
+export class CreateFolderPublicDto extends Z.class(
+	{
+		name: folderNameSchema.openapi(folderFieldDocs.name),
+		parentFolderId: folderIdSchema.optional().openapi(folderFieldDocs.parentFolderId),
+	},
+	{ strict: true },
+) {}
+
+// Own class so create does not share UpdatedFolderPublicDto's OpenAPI component.
+export class CreatedFolderPublicDto extends Z.class(folderCorePublicShape, { strict: true }) {}
