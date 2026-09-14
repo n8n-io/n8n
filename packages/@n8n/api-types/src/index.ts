@@ -141,6 +141,7 @@ export {
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
+	tagIdParamSchema,
 	userIdParamSchema,
 	variableIdParamSchema,
 	workflowIdParamSchema,
