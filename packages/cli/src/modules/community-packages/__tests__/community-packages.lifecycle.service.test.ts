@@ -471,7 +471,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
 			communityPackagesService.updatePackage.mockRejectedValue(
 				new IncompatibleNodesApiVersionError(
-					'This community node requires n8n node API version 3, but this instance supports up to 1.',
+					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
 					{ requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
 				),
 			);
@@ -486,6 +486,31 @@ describe('CommunityPackagesLifecycleService', () => {
 				httpStatusCode: 400,
 				meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
 			});
+		});
+
+		it('should keep the still-loaded previous version on a compatibility rejection', async () => {
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+			communityPackagesService.updatePackage.mockRejectedValue(
+				new IncompatibleNodesApiVersionError('Not compatible', {
+					requiredNodesApiVersion: 3,
+					supportedNodesApiVersion: 1,
+				}),
+			);
+
+			await expect(
+				lifecycle.update({ name: 'n8n-nodes-test', version: '2.0.0' }, user, 'badRequest'),
+			).rejects.toBeInstanceOf(IncompatibleNodesApiVersionError);
+
+			// The check runs before the previous version is unloaded, so its node types
+			// must stay in the UI.
+			expect(push.broadcast).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'removeNodeType' }),
+			);
 		});
 	});
 });

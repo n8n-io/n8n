@@ -263,7 +263,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 
 		test('rejects an update and leaves directory, ledger, and database unchanged', async () => {
 			await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
-				'requires n8n node API version',
+				"isn't compatible with your version of n8n",
 			);
 
 			// The original directory is still the one on disk, marker and all.
@@ -322,7 +322,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 						packageName: PACKAGE_NAME,
 						packageVersion: '2.0.0',
 						error: expect.objectContaining({
-							message: expect.stringContaining('requires n8n node API version'),
+							message: expect.stringContaining("isn't compatible with your version of n8n"),
 						}),
 					}),
 				);

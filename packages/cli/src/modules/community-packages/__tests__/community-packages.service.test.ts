@@ -609,7 +609,7 @@ describe('CommunityPackagesService', () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
-					`This community node requires n8n node API version ${N8N_NODES_API_VERSION + 1}, but this instance supports up to ${N8N_NODES_API_VERSION}. Install an older compatible version of the package or upgrade n8n.`,
+					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
 				);
 
 				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();

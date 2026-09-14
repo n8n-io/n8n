@@ -310,6 +310,10 @@ export class CommunityPackagesLifecycleService {
 
 			return newInstalledPackage;
 		} catch (error) {
+			// Before the broadcast: the rejected version was never loaded, so the
+			// previous one is still working and must keep its node types.
+			if (error instanceof IncompatibleNodesApiVersionError) throw error;
+
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
 				this.push.broadcast({
 					type: 'removeNodeType',
@@ -319,9 +323,6 @@ export class CommunityPackagesLifecycleService {
 					},
 				});
 			});
-
-			// Same as on install: keep the actionable copy unwrapped.
-			if (error instanceof IncompatibleNodesApiVersionError) throw error;
 
 			const message = [
 				`Error updating package "${name}"`,
