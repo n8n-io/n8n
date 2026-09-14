@@ -32,6 +32,8 @@ packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
   s_b04c58447561ba::t_bf91e547ed5510 766-768,770-772
   s_b04c58447561ba::t_fcac57c011d893 727,765,773,799-800
   s_b04c58447561ba::t_0fffd6e3920eb6 454
+  s_b04c58447561ba::t_114651016944e6 748,754-755
+  s_b04c58447561ba::t_e54bd846545e8d 15
 packages/cli/src/modules/agents/agent-execution.service.ts
   s_b04c58447561ba::t_e4c6db8d04d308 44-45,71-74
   s_b04c58447561ba::t_bf655d8608eb72 75-77
@@ -117,6 +119,8 @@ packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-ha
   s_b04c58447561ba::t_b1327c34662994 53
   s_b04c58447561ba::t_ccec5b85416176 54
   s_b04c58447561ba::t_54315667a542b4 1-2,5-13,15-22,25-27,32,34-35,41-44,58,70-71,74,76-80,86-99,101-114,116-126,128-180,182-210,212-220
+  s_b04c58447561ba::t_bb82da677763c5 28-31
+  s_b04c58447561ba::t_834bcc4981a3d8 181
 packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
   s_b04c58447561ba::t_b99461f834beb3 17,20,31-79
 packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
