@@ -1089,6 +1089,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 		return;
 	}
 
+	// The request now belongs to the assistant composer beside it, so leaving the
+	// preview chat open reads as two places to ask the same thing.
+	isAgentPreviewDockOpen.value = false;
+
 	const context = buildInstanceAiAgentPreviewHandoffContext(params);
 	stashPendingHandoffContext(props.threadId, context);
 	pendingComposerContext.value = context;

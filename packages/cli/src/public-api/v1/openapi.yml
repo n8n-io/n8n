@@ -45,6 +45,8 @@ tags:
     description: Operations about log streaming destinations
   - name: N8nPackage
     description: Beta — breaking changes may still occur without major version bump.
+  - name: NodeTypePolicy
+    description: Operations about node type availability policies
   - name: Projects
     description: Operations about projects
   - name: Promotions
@@ -121,10 +123,6 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /users/{id}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /variables:
-    $ref: './handlers/variables/spec/paths/variables.yml'
-  /variables/{id}:
-    $ref: './handlers/variables/spec/paths/variables.id.yml'
   /data-tables:
     $ref: './handlers/data-tables/spec/paths/data-tables.yml'
   /data-tables/{dataTableId}:
@@ -143,10 +141,6 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
   /data-tables/{dataTableId}/columns/{columnId}:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
-  /projects/{projectId}/users:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.yml'
-  /projects/{projectId}/users/{userId}:
-    $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
   /community-packages:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
   /community-packages/{name}:

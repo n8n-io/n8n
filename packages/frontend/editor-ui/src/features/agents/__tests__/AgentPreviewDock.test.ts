@@ -100,7 +100,7 @@ vi.mock('@n8n/design-system', () => ({
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: ['beforeSend'],
+	props: ['beforeSend', 'visible'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
 		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
@@ -241,6 +241,17 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
+	});
+
+	it('keeps the preview page mounted when the dock closes and reopens', async () => {
+		const wrapper = mountDock();
+		const chatPage = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		expect(chatPage.props('visible')).toBe(true);
+		await wrapper.setProps({ isOpen: false });
+		expect(chatPage.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).vm).toBe(chatPage.vm);
+		await wrapper.setProps({ isOpen: true });
+		expect(chatPage.props('visible')).toBe(true);
 	});
 
 	it('forwards chat events to the preview page', () => {
@@ -482,6 +493,22 @@ describe('AgentPreviewChatPage', () => {
 
 	it('uses a neutral root inside the complementary dock landmark', () => {
 		expect(mountChatPage().element.tagName).toBe('DIV');
+	});
+
+	it('keeps the standalone chat visible when no dock state is provided', () => {
+		const wrapper = mountChatPage();
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('visible')).toBe(true);
+	});
+
+	it('keeps the chat panel mounted when visibility changes', async () => {
+		const wrapper = mountChatPage();
+		const chatPanel = wrapper.findComponent({ name: 'AgentChatPanel' });
+		await wrapper.setProps({ visible: false });
+		expect(chatPanel.props('visible')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).vm).toBe(chatPanel.vm);
+		await wrapper.setProps({ visible: true });
+		expect(chatPanel.props('visible')).toBe(true);
 	});
 
 	it('forwards the pre-send guard to the chat panel', () => {

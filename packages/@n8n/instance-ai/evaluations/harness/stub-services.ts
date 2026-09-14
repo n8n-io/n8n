@@ -253,7 +253,7 @@ export async function createStubServices(
 		async getNodeOutput(_executionId: string, nodeName: string) {
 			return {
 				nodeName,
-				items: [],
+				outputs: [],
 				totalItems: 0,
 				returned: { from: 0, to: 0 },
 			};
