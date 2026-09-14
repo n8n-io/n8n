@@ -158,7 +158,7 @@ import {
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
-import { resolveConnectableComputerUseChannels } from './computer-use-availability';
+import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -171,7 +171,7 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -2626,42 +2626,19 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		const connectableComputerUseChannels = resolveConnectableComputerUseChannels({
+		// The two channels connect through independent services, so the prompt gets
+		// one state per channel instead of a single merged status.
+		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
+			localGatewayDisabledForUser,
 			browserUseEnabledGlobally,
 			computerUseExperimentEnabled,
 			browserUseExperimentEnabled,
+			localComputerToolCategories: gatewayMcpServer
+				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
+				: undefined,
+			browserConnected: browserMcpServer !== undefined,
 		});
-		context.connectableComputerUseChannels = connectableComputerUseChannels;
-
-		// Compute gateway status for the system prompt. The direct browser
-		// session contributes a `browser` capability even without the daemon.
-		if (gatewayMcpServer || browserMcpServer) {
-			const capabilities = new Set<string>();
-			if (gatewayMcpServer) {
-				// getStatus() already drops excluded categories (e.g. browser when disabled).
-				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
-					if (enabled) {
-						capabilities.add(name);
-					}
-				}
-			}
-
-			if (browserMcpServer) {
-				capabilities.add(BROWSER_TOOL_CATEGORY);
-			}
-
-			context.localGatewayStatus = {
-				status: 'connected',
-				capabilities: [...capabilities],
-			};
-		} else if (connectableComputerUseChannels.length === 0) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else {
-			context.localGatewayStatus = {
-				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
-			};
-		}
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;

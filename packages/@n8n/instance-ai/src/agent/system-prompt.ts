@@ -11,18 +11,16 @@ import {
 	getSandboxWorkspaceSection,
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
-import type { LocalGatewayChannel, LocalGatewayStatus } from '../types';
+import type { ComputerUseState } from '../types';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
-	localGateway?: LocalGatewayStatus;
-	connectableComputerUseChannels?: readonly LocalGatewayChannel[];
+	computerUseState?: ComputerUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
-	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	projectId?: string;
@@ -221,12 +219,10 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		webhookBaseUrl,
 		formBaseUrl,
-		localGateway,
-		connectableComputerUseChannels,
+		computerUseState,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
 		licenseHints,
-		browserAvailable,
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
@@ -284,7 +280,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ browserAvailable, localGateway, connectable: connectableComputerUseChannels })}
+${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}`;
 }

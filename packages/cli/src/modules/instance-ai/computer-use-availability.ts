@@ -1,24 +1,65 @@
-import type { LocalGatewayChannel } from '@n8n/instance-ai';
+import type { ComputerUseChannelState, ComputerUseState } from '@n8n/instance-ai';
 
-export function resolveConnectableComputerUseChannels({
+const BROWSER_TOOL_CATEGORY = 'browser';
+
+/** The categories a connected channel serves. `getStatus()` already drops the
+ *  ones instance policy excludes. */
+export function enabledToolCategories(
+	declared: Array<{ name: string; enabled: boolean }>,
+): string[] {
+	return declared.filter(({ enabled }) => enabled).map(({ name }) => name);
+}
+
+function resolveLocalComputer({
 	localGatewayDisabledGlobally,
-	browserUseEnabledGlobally,
+	localGatewayDisabledForUser,
 	computerUseExperimentEnabled,
-	browserUseExperimentEnabled,
+	localComputerToolCategories,
 }: {
 	localGatewayDisabledGlobally: boolean;
+	localGatewayDisabledForUser: boolean;
+	computerUseExperimentEnabled: boolean;
+	localComputerToolCategories: string[] | undefined;
+}): ComputerUseChannelState {
+	if (!computerUseExperimentEnabled || localGatewayDisabledGlobally) {
+		return { status: 'unavailable' };
+	}
+	if (localGatewayDisabledForUser) return { status: 'disabledByUser' };
+	if (localComputerToolCategories) {
+		return { status: 'connected', toolCategories: localComputerToolCategories };
+	}
+	return { status: 'disconnected' };
+}
+
+function resolveBrowser({
+	browserUseEnabledGlobally,
+	browserUseExperimentEnabled,
+	browserConnected,
+}: {
+	browserUseEnabledGlobally: boolean;
+	browserUseExperimentEnabled: boolean;
+	browserConnected: boolean;
+}): ComputerUseChannelState {
+	if (!browserUseExperimentEnabled || !browserUseEnabledGlobally) {
+		return { status: 'unavailable' };
+	}
+	if (browserConnected) {
+		return { status: 'connected', toolCategories: [BROWSER_TOOL_CATEGORY] };
+	}
+	return { status: 'disconnected' };
+}
+
+export function resolveComputerUseState(input: {
+	localGatewayDisabledGlobally: boolean;
+	localGatewayDisabledForUser: boolean;
 	browserUseEnabledGlobally: boolean;
 	computerUseExperimentEnabled: boolean;
 	browserUseExperimentEnabled: boolean;
-}): LocalGatewayChannel[] {
-	const channels: LocalGatewayChannel[] = [];
-
-	if (computerUseExperimentEnabled && !localGatewayDisabledGlobally) {
-		channels.push('localComputer');
-	}
-	if (browserUseExperimentEnabled && browserUseEnabledGlobally) {
-		channels.push('browser');
-	}
-
-	return channels;
+	localComputerToolCategories: string[] | undefined;
+	browserConnected: boolean;
+}): ComputerUseState {
+	return {
+		localComputer: resolveLocalComputer(input),
+		browser: resolveBrowser(input),
+	};
 }

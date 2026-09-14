@@ -1,108 +1,166 @@
-import { type LocalGatewayChannel, type LocalGatewayStatus } from '@/types';
+import type { ComputerUseChannel, ComputerUseState } from '@/types';
 
 const BROWSER_USE_EXTENSION_URL =
 	'https://chromewebstore.google.com/detail/n8n-browser-use/cegmdpndekdfpnafgacidejijecomlhh';
 
-function joinPhrases(parts: string[], conjunction: string): string {
+/** Prose order for the + menu entries. */
+const CHANNEL_ORDER: ComputerUseChannel[] = ['localComputer', 'browser'];
+
+/**
+ * One table owns which channel provides each capability, in both prose forms the
+ * prompt needs, so the connected and not-connected sections cannot disagree about
+ * what the user can reach.
+ */
+const CAPABILITIES: Array<{
+	channel: ComputerUseChannel;
+	/** Compact, for the not-connected paragraph. */
+	compact: string;
+	/** Bulleted, for the connected preamble. */
+	bullet: string;
+}> = [
+	{
+		channel: 'localComputer',
+		compact: '*filesystem* (read/write local files)',
+		bullet:
+			'- *filesystem* - read and write files. Use it when users want to include their own files in the automation.',
+	},
+	{
+		channel: 'localComputer',
+		compact: '*shell* (run local commands)',
+		bullet:
+			"- *shell* - Execute shell commands. Use it when you need or are asked to execute commands on user's computer",
+	},
+	{
+		channel: 'browser',
+		compact: `*browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL})`,
+		bullet: `- *browser* - Automate user's browser to access web pages and do tasks on user's behalf. Use it when you require access to user's browser session for example when creating credentials with user's accounts. Requires installing the "n8n Browser Use" Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`,
+	},
+	{
+		channel: 'localComputer',
+		compact: '*screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested)',
+		bullet:
+			"- *screenshot*, *mouse-keyboard* - control user's computer mouse, keyboard and do screenshots (do not advertise or use this functionality if user does not explicitly ask for it)",
+	},
+];
+
+/** `channels` lists every channel a signal needs, so a signal spanning both is
+ *  dropped unless both are available. `compact` is absent where the compact
+ *  paragraph folds a signal into its neighbour. */
+const SIGNALS: Array<{
+	channels: ComputerUseChannel[];
+	bullet: string;
+	compact?: string;
+}> = [
+	{
+		channels: ['browser'],
+		compact: "credential/OAuth/API-key setup through a service's web portal (*browser*)",
+		bullet:
+			'- **Credential / OAuth setup** — user needs to set up, create, configure, or connect credentials for any service that requires OAuth or API key generation through a web portal (Slack, Google, Microsoft, HubSpot, Notion, Stripe, Twilio, etc.) → *browser*',
+	},
+	{
+		channels: ['localComputer'],
+		compact:
+			'a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*)',
+		bullet:
+			'- **Local file as context** — user mentions a file, PDF, CSV, spec, or requirements doc they want to use as reference while building a workflow → *filesystem*',
+	},
+	{
+		channels: ['localComputer'],
+		bullet:
+			'- **Documentation / output to files** — user asks to document, write up, export, or save a workflow description, runbook, or handover doc → *filesystem*',
+	},
+	{
+		channels: ['browser'],
+		compact: 'authenticated web research or form/frontend testing (*browser*)',
+		bullet:
+			'- **Authenticated web research** — user wants to check something on a site they’re logged into, or gather data from a web-based tool → *browser*',
+	},
+	{
+		channels: ['browser'],
+		bullet:
+			'- **Form / frontend testing** — user is building n8n forms or a web app with n8n as backend and wants end-to-end testing → *browser*',
+	},
+	{
+		channels: ['localComputer'],
+		compact: 'local commands or debugging (*shell*)',
+		bullet:
+			'- **Shell / environment** — user asks to run a command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*',
+	},
+	{
+		channels: ['browser', 'localComputer'],
+		compact: 'migration from Make/Zapier or similar (*browser* + *filesystem*)',
+		bullet:
+			'- **Platform migration** — user wants to migrate from Make, Zapier, or another automation platform, or replicate an existing workflow from it → *browser* + *filesystem*',
+	},
+];
+
+/** "a", "a and b", "a, b, and c" — Oxford comma, matching the prose style below. */
+function joinPhrases(parts: string[]): string {
 	if (parts.length <= 1) return parts[0] ?? '';
-	if (parts.length === 2) return `${parts[0]} ${conjunction} ${parts[1]}`;
-	return `${parts.slice(0, -1).join(', ')}, ${conjunction} ${parts[parts.length - 1]}`;
+	if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+	return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
 }
 
+/** Semicolon-separated, "; or " before the last — the not-connected signal list. */
 function joinSignals(parts: string[]): string {
 	if (parts.length <= 1) return parts[0] ?? '';
 	return `${parts.slice(0, -1).join('; ')}; or ${parts[parts.length - 1]}`;
 }
 
-const CAPABILITY_BLURBS: Array<{ channel: LocalGatewayChannel; text: string }> = [
-	{ channel: 'localComputer', text: '*filesystem* (read/write local files)' },
-	{ channel: 'localComputer', text: '*shell* (run local commands)' },
-	{
-		channel: 'browser',
-		text: `*browser* (automate the user's real browser session; requires the "n8n Browser Use" Chrome extension: ${BROWSER_USE_EXTENSION_URL})`,
-	},
-	{
-		channel: 'localComputer',
-		text: '*screenshot*/*mouse-keyboard* (never advertise or use unless explicitly requested)',
-	},
-];
+function availableChannels(state: ComputerUseState): ComputerUseChannel[] {
+	return CHANNEL_ORDER.filter((channel) => state[channel].status !== 'unavailable');
+}
 
-const SUGGESTION_SIGNALS: Array<{ channels: LocalGatewayChannel[]; text: string }> = [
-	{
-		channels: ['browser'],
-		text: "credential/OAuth/API-key setup through a service's web portal (*browser*)",
-	},
-	{
-		channels: ['localComputer'],
-		text: 'a local file (PDF, CSV, spec) as context, or docs/exports written to files (*filesystem*)',
-	},
-	{
-		channels: ['browser'],
-		text: 'authenticated web research or form/frontend testing (*browser*)',
-	},
-	{ channels: ['localComputer'], text: 'local commands or debugging (*shell*)' },
-	{
-		channels: ['browser', 'localComputer'],
-		text: 'migration from Make/Zapier or similar (*browser* + *filesystem*)',
-	},
-];
+/** Tool categories every connected channel serves. The daemon can serve browser
+ *  tools too, so a category is not tied to one channel. */
+function liveToolCategories(state: ComputerUseState): string[] {
+	return CHANNEL_ORDER.flatMap((channel) => {
+		const channelState = state[channel];
+		return channelState.status === 'connected' ? channelState.toolCategories : [];
+	});
+}
 
-function getConnectInstructions(connectable: readonly LocalGatewayChannel[]): string {
+function getCapabilityList(available: ComputerUseChannel[], form: 'compact' | 'bullet'): string[] {
+	return CAPABILITIES.filter((c) => available.includes(c.channel)).map((c) => c[form]);
+}
+
+function getSignalList(available: ComputerUseChannel[], form: 'compact' | 'bullet'): string[] {
+	return SIGNALS.filter((s) => s.channels.every((c) => available.includes(c)))
+		.map((s) => (form === 'bullet' ? s.bullet : s.compact))
+		.filter((text): text is string => text !== undefined);
+}
+
+function getConnectInstructions(available: ComputerUseChannel[]): string {
 	const lead = 'To connect, the user should select the + button beside the chat input.';
 	const localClause =
 		'"Connect local computer" for filesystem, shell, and other local capabilities';
 
-	if (connectable.includes('browser') && connectable.includes('localComputer')) {
+	if (available.includes('browser') && available.includes('localComputer')) {
 		return `${lead} They should select "Connect browser" for browser automation, or ${localClause}, then follow the instructions in the setup dialog.`;
 	}
-	if (connectable.includes('browser')) {
+	if (available.includes('browser')) {
 		return `${lead} They should select "Connect browser", then follow the instructions in the setup dialog.`;
 	}
 	return `${lead} They should select ${localClause}, then follow the instructions in the setup dialog.`;
 }
 
-function getNotConnectedPrompt(connectable: readonly LocalGatewayChannel[]): string {
-	const capabilities = joinPhrases(
-		CAPABILITY_BLURBS.filter((c) => connectable.includes(c.channel)).map((c) => c.text),
-		'and',
-	);
-	const signals = joinSignals(
-		SUGGESTION_SIGNALS.filter((s) => s.channels.every((c) => connectable.includes(c))).map(
-			(s) => s.text,
-		),
-	);
-
+/** Not connected: cover only what Computer Use is and how to connect, not the
+ *  operational rules. */
+function getNotConnectedPrompt(available: ComputerUseChannel[]): string {
 	return `## Computer Use
 
-This instance supports "Computer Use": connecting to the user's computer with the capabilities ${capabilities}. Users choose which capabilities to enable and can reconnect with a different set.
+This instance supports "Computer Use": connecting to the user's computer with the capabilities ${joinPhrases(getCapabilityList(available, 'compact'))}. Users choose which capabilities to enable and can reconnect with a different set.
 
-Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: ${signals}.
+Computer Use is NOT currently connected — do NOT attempt to use Computer Use tools. Proactively suggest connecting when the user needs: ${joinSignals(getSignalList(available, 'compact'))}.
 
-${getConnectInstructions(connectable)}`;
+${getConnectInstructions(available)}`;
 }
 
-export function getComputerUsePrompt({
-	browserAvailable,
-	localGateway,
-	connectable = [],
-}: {
-	browserAvailable: boolean | undefined;
-	localGateway: LocalGatewayStatus | undefined;
-	connectable?: readonly LocalGatewayChannel[];
-}) {
-	if (localGateway && localGateway.status !== 'disabledGlobally') {
-		const promptParts: string[] = [];
-
-		if (localGateway.status === 'disconnected' || localGateway.status === 'disabled') {
-			return connectable.length === 0 ? '' : getNotConnectedPrompt(connectable);
-		}
-		promptParts.push(`
+function getConnectedPreamble(available: ComputerUseChannel[]): string {
+	return `
 ## Computer Use
 This instance support "Computer Use", which allows connecting to user's computer and execute following functionality:
-- *filesystem* - read and write files. Use it when users want to include their own files in the automation.
-- *shell* - Execute shell commands. Use it when you need or are asked to execute commands on user's computer
-- *browser* - Automate user's browser to access web pages and do tasks on user's behalf. Use it when you require access to user's browser session for example when creating credentials with user's accounts. Requires installing the "n8n Browser Use" Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}
-- *screenshot*, *mouse-keyboard* - control user's computer mouse, keyboard and do screenshots (do not advertise or use this functionality if user does not explicitly ask for it)
+${getCapabilityList(available, 'bullet').join('\n')}
 
 Users have control over this functionality and can enable only the tools they want to provide.
 Users can reconnect Computer Use with different set of functionality, so always rely on Computer Use status and the available tools and not the conversation history.
@@ -111,32 +169,42 @@ Users can reconnect Computer Use with different set of functionality, so always 
 
 Proactively suggest Computer Use (or use it directly if connected) when you detect these signals:
 
-- **Credential / OAuth setup** — user needs to set up, create, configure, or connect credentials for any service that requires OAuth or API key generation through a web portal (Slack, Google, Microsoft, HubSpot, Notion, Stripe, Twilio, etc.) → *browser*
-- **Local file as context** — user mentions a file, PDF, CSV, spec, or requirements doc they want to use as reference while building a workflow → *filesystem*
-- **Documentation / output to files** — user asks to document, write up, export, or save a workflow description, runbook, or handover doc → *filesystem*
-- **Authenticated web research** — user wants to check something on a site they're logged into, or gather data from a web-based tool → *browser*
-- **Form / frontend testing** — user is building n8n forms or a web app with n8n as backend and wants end-to-end testing → *browser*
-- **Shell / environment** — user asks to run a command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*
-- **Platform migration** — user wants to migrate from Make, Zapier, or another automation platform, or replicate an existing workflow from it → *browser* + *filesystem*
-`);
+${getSignalList(available, 'bullet').join('\n')}
+`;
+}
 
+export function getComputerUsePrompt({ state }: { state: ComputerUseState | undefined }): string {
+	if (!state) return '';
+
+	const available = availableChannels(state);
+	if (available.length === 0) return '';
+
+	const connectedChannels = CHANNEL_ORDER.filter(
+		(channel) => state[channel].status === 'connected',
+	);
+	if (connectedChannels.length === 0) return getNotConnectedPrompt(available);
+
+	const liveCategories = liveToolCategories(state);
+	const promptParts: string[] = [getConnectedPreamble(available), '\n### Computer Use status'];
+
+	if (liveCategories.length === 0) {
+		promptParts.push('Computer Use is connected, but the user did not enable any capabilities');
+		return promptParts.join('\n');
+	}
+
+	promptParts.push(
+		`Computer Use is connected, the user has enabled following capabilities: ${liveCategories.join(',')}`,
+	);
+
+	if (liveCategories.includes('filesystem')) {
 		promptParts.push(`
-### Computer Use status`);
-
-		switch (localGateway.status) {
-			case 'connected':
-				if (localGateway.capabilities.length > 0) {
-					promptParts.push(
-						`Computer Use is connected, the user has enabled following capabilities: ${localGateway.capabilities.join(',')}`,
-					);
-					if (localGateway.capabilities.includes('filesystem')) {
-						promptParts.push(`
 ### Computer Use - Filesystem Exploration
 
 Keep exploration shallow: start at depth 1–2, prefer \`search\` over browsing, and read specific files rather than whole directories.`);
-					}
-					if (browserAvailable) {
-						promptParts.push(`
+	}
+
+	if (liveCategories.includes('browser')) {
+		promptParts.push(`
 ### Computer Use - Browser Automation rules
 
 You can control the user's browser using the browser_* tools. Since this is their real browser, you share it with them.
@@ -169,29 +237,32 @@ secrets; never ask the user to paste secret values into chat.
 
 The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
-					} else if (connectable.includes('browser')) {
-						promptParts.push(`
+	} else if (available.includes('browser')) {
+		promptParts.push(`
 ### Browser Automation (Disabled in Computer Use)
 
 Browser tools are not connected. If the user asks for browser automation, tell them to select the + button beside the chat input, select "Connect browser", and follow the setup instructions. The setup requires the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
-					} else {
-						promptParts.push(`
+	} else {
+		promptParts.push(`
 ### Browser Automation (Unavailable)
 
 Browser automation is not available on this instance. If the user asks for it, say so plainly — do not point them at a setup flow or a browser extension.`);
-					}
-				} else {
-					promptParts.push(
-						'Computer Use is connected, but the user did not enable any capabilities',
-					);
-				}
-
-				break;
-			default:
-		}
-
-		return promptParts.join('\n');
 	}
 
-	return '';
+	// The channels connect separately, so one can be live while the other is
+	// still only offered. Say so rather than implying the local tools exist.
+	const localComputer = state.localComputer;
+	if (localComputer.status === 'disconnected') {
+		promptParts.push(`
+### Local Computer (Not Connected)
+
+The user's local computer is not connected, so filesystem, shell, and other local tools are unavailable. If the user needs them, tell them to select the + button beside the chat input, select "Connect local computer", and follow the setup instructions.`);
+	} else if (localComputer.status === 'disabledByUser') {
+		promptParts.push(`
+### Local Computer (Turned Off)
+
+The user turned their local computer connection off in their own settings, so filesystem, shell, and other local tools are unavailable. If the user needs them, tell them to turn the connection back on in their n8n Assistant settings.`);
+	}
+
+	return promptParts.join('\n');
 }

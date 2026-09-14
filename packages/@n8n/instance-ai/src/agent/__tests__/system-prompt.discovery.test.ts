@@ -11,15 +11,14 @@
  */
 
 import { createCredentialsTool } from '../../tools/credentials.tool';
-import type { LocalGatewayStatus } from '../../types';
+import type { ComputerUseState } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
-const browserCapableOptions: {
-	browserAvailable: boolean;
-	localGateway: LocalGatewayStatus;
-} = {
-	browserAvailable: true,
-	localGateway: { status: 'connected', capabilities: ['browser', 'filesystem'] },
+const browserCapableOptions: { computerUseState: ComputerUseState } = {
+	computerUseState: {
+		localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+		browser: { status: 'connected', toolCategories: ['browser'] },
+	},
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
@@ -48,7 +47,12 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 
 		it('omits the Computer Use section when computer use is disabled globally', () => {
-			const prompt = getSystemPrompt({ localGateway: { status: 'disabledGlobally' } });
+			const prompt = getSystemPrompt({
+				computerUseState: {
+					localComputer: { status: 'unavailable' },
+					browser: { status: 'unavailable' },
+				},
+			});
 
 			expect(prompt).not.toContain('## Computer Use');
 			expect(prompt).not.toContain('When to suggest or use Computer Use');
@@ -56,8 +60,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 		it('omits the Computer Use section when the client renders no + menu entry for this user', () => {
 			const prompt = getSystemPrompt({
-				localGateway: { status: 'disconnected' },
-				connectableComputerUseChannels: [],
+				computerUseState: {
+					localComputer: { status: 'unavailable' },
+					browser: { status: 'unavailable' },
+				},
 			});
 
 			expect(prompt).not.toContain('## Computer Use');
@@ -66,8 +72,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
 			const prompt = getSystemPrompt({
-				localGateway: { status: 'disconnected' },
-				connectableComputerUseChannels: ['localComputer', 'browser'],
+				computerUseState: {
+					localComputer: { status: 'disconnected' },
+					browser: { status: 'disconnected' },
+				},
 			});
 
 			expect(prompt).toContain('Proactively suggest connecting');
@@ -76,8 +84,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 		it('still includes proactive suggestions when computer use has not been set up', () => {
 			const prompt = getSystemPrompt({
-				localGateway: { status: 'disabled' },
-				connectableComputerUseChannels: ['localComputer', 'browser'],
+				computerUseState: {
+					localComputer: { status: 'disabledByUser' },
+					browser: { status: 'disconnected' },
+				},
 			});
 
 			expect(prompt).toContain('Proactively suggest connecting');
@@ -198,8 +208,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	describe('browser availability state propagates to the prompt', () => {
 		it('includes browser automation rules when browser is available', () => {
 			const prompt = getSystemPrompt({
-				browserAvailable: true,
-				localGateway: { status: 'connected', capabilities: ['browser'] },
+				computerUseState: {
+					localComputer: { status: 'disconnected' },
+					browser: { status: 'connected', toolCategories: ['browser'] },
+				},
 			});
 
 			expect(prompt).toContain('Browser Automation rules');
@@ -207,9 +219,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 		it('shows the browser-disabled notice when computer use is connected without browser', () => {
 			const prompt = getSystemPrompt({
-				browserAvailable: false,
-				localGateway: { status: 'connected', capabilities: ['filesystem'] },
-				connectableComputerUseChannels: ['localComputer', 'browser'],
+				computerUseState: {
+					localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+					browser: { status: 'disconnected' },
+				},
 			});
 
 			expect(prompt).toContain('Browser Automation (Disabled in Computer Use)');

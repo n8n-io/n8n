@@ -725,8 +725,9 @@ export type {
 	ConversationHistorySearchResult,
 	ConversationHistoryMessage,
 	ConversationHistoryMessagesResult,
-	LocalGatewayChannel,
-	LocalGatewayStatus,
+	ComputerUseChannel,
+	ComputerUseChannelState,
+	ComputerUseState,
 } from './types';
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
