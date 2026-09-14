@@ -749,6 +749,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.terminalEventReceived = true;
 				return { done: true };
 			case 'queued': {
+				// The turn runs once the session's running turn ends. The execution
+				// update push then reloads the answer into history.
 				if (session.submittedUserMessage) {
 					session.submittedUserMessage.executionId = event.executionId;
 				}
@@ -924,7 +926,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string, files?: File[]): Promise<void> {
+	async function streamChat(
+		message: string,
+		files: File[] | undefined,
+		submittedUserMessage: ChatMessage,
+	): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
@@ -945,7 +951,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}),
 			);
 		}
-		await postAndConsume(url, body);
+		await postAndConsume(url, body, submittedUserMessage);
 	}
 
 	/**
@@ -1086,7 +1092,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
-		messages.value.push({
+		const submittedUserMessage = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
@@ -1100,7 +1106,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				})),
 			}),
 		});
-		await streamChat(trimmed, files);
+		messages.value.push(submittedUserMessage);
+		await streamChat(trimmed, files, submittedUserMessage);
 	}
 
 	function dismissFatalError(): void {

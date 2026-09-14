@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -91,10 +92,10 @@ describe('AgentTurnQueueService', () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});
 
-	it('runs a blocked resume before an earlier queued message', async () => {
-		const { service, ran, finish, orchestrator } = makeService();
-		const first = await service.tryRunNow(messageTurn('first'));
-		if (!first) throw new Error('Expected the first turn to be claimed');
+	it('runs blocked messages in FIFO order', async () => {
+		const { service, rows, ran, finish } = makeService();
+		const first = await service.submit(messageTurn('first'));
+		if (first.status !== 'claimed') throw new Error('Expected the first turn to be claimed');
 		expect(await service.submit(messageTurn('second'))).toEqual({
 			status: 'queued',
 			executionId: 'exec-2',
@@ -103,15 +104,88 @@ describe('AgentTurnQueueService', () => {
 			status: 'queued',
 			executionId: 'exec-3',
 		});
+		expect(await service.tryRunNow(messageTurn('wake'))).toBeNull();
+
+		finish(first.claim);
+		await first.claim.release();
+
+		await settled(() => expect(ran).toEqual(['second', 'third']));
+		expect(rows.map((row) => row.status)).toEqual(['success', 'success', 'success']);
+	});
+
+	it('hands off attachment ownership after persistence and before claiming', async () => {
+		const { service, rows, executionService } = makeService();
+		const claimError = new Error('claim failed');
+		const onPersisted = vi.fn();
+		const attachment = {
+			id: 'attachment-1',
+			fileName: 'notes.txt',
+			mimeType: 'text/plain',
+			sizeBytes: 5,
+		};
+		executionService.claimQueuedExecution.mockRejectedValue(claimError);
+
+		await expect(
+			service.submit({ ...messageTurn('hello'), attachments: [attachment] }, onPersisted),
+		).rejects.toBe(claimError);
+
+		expect(rows).toEqual([
+			expect.objectContaining({
+				id: 'exec-1',
+				status: 'queued',
+				attachments: [attachment],
+			}),
+		]);
+		expect(onPersisted).toHaveBeenCalledWith('exec-1');
+	});
+
+	it('keeps concurrent messages in enqueue order when both observe an idle thread', async () => {
+		const { service, rows, executionService } = makeService();
+		const recordQueuedExecution = executionService.recordQueuedExecution.getMockImplementation();
+		if (!recordQueuedExecution) throw new Error('Expected queued recording implementation');
+		const firstInserted = createDeferredPromise();
+		const releaseFirst = createDeferredPromise();
+		executionService.recordQueuedExecution.mockImplementation(async (params) => {
+			if (params.userMessage === 'second') await firstInserted.promise;
+			const executionId = await recordQueuedExecution(params);
+			if (params.userMessage === 'first') {
+				firstInserted.resolve();
+				await releaseFirst.promise;
+			}
+			return executionId;
+		});
+
+		const firstSubmission = service.submit(messageTurn('first'));
+		const secondSubmission = service.submit(messageTurn('second'));
+		const second = await secondSubmission;
+		releaseFirst.resolve();
+		const first = await firstSubmission;
+
+		expect(first).toEqual({
+			status: 'claimed',
+			claim: expect.objectContaining({ executionId: 'exec-1', threadId }),
+		});
+		expect(second).toEqual({ status: 'queued', executionId: 'exec-2' });
+		expect(rows.map(({ userMessage, status }) => ({ userMessage, status }))).toEqual([
+			{ userMessage: 'first', status: 'running' },
+			{ userMessage: 'second', status: 'queued' },
+		]);
+	});
+
+	it('runs a blocked resume before older message rows', async () => {
+		const { service, ran, finish, orchestrator } = makeService();
+		const first = await service.tryRunNow(messageTurn('first'));
+		if (!first) throw new Error('Expected the first turn to be claimed');
+		await service.submit(messageTurn('second'));
 		expect(await service.submit(resumeTurn(false))).toEqual({
 			status: 'queued',
-			executionId: 'exec-4',
+			executionId: 'exec-3',
 		});
 
 		finish(first);
 		await first.release();
 
-		await settled(() => expect(ran).toEqual(['resume:run-1', 'second', 'third']));
+		await settled(() => expect(ran).toEqual(['resume:run-1', 'second']));
 		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({ previewChat: false }),
 			expect.objectContaining({ threadId }),
@@ -129,6 +203,43 @@ describe('AgentTurnQueueService', () => {
 		expect(rows).toEqual([
 			expect.objectContaining({ id: resume.claim.executionId, status: 'running' }),
 		]);
+	});
+
+	it('holds a message while the thread awaits a human response', async () => {
+		const { service, rows, ran, executionService, checkpointStorage, finish } = makeService();
+		executionService.hasSuspendedRun.mockResolvedValue(true);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
+
+		expect(await service.submit(messageTurn('while waiting'))).toEqual({
+			status: 'queued',
+			executionId: 'exec-1',
+		});
+		const resume = await service.submit(resumeTurn());
+		if (resume.status !== 'claimed') throw new Error('Expected the resume to be claimed');
+
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+		finish(resume.claim);
+		await resume.claim.release();
+
+		await settled(() => expect(ran).toEqual(['while waiting']));
+		expect(rows.map((row) => row.status)).toEqual(['success', 'success']);
+	});
+
+	it('fails a blocked message whose sender is no longer active and continues the drain', async () => {
+		const { service, rows, ran, finish } = makeService();
+		const first = await service.submit(messageTurn('first'));
+		if (first.status !== 'claimed') throw new Error('Expected the first turn to be claimed');
+		await service.submit(messageTurn('disabled sender', 'draft-chat:user-2'));
+		await service.submit(messageTurn('third'));
+
+		finish(first.claim);
+		await first.claim.release();
+
+		await settled(() => expect(ran).toEqual(['third']));
+		expect(rows[1]).toMatchObject({
+			status: 'error',
+			error: 'The user who sent this message is no longer active',
+		});
 	});
 
 	it('runs a blocked channel resume through its reconstructed bridge', async () => {

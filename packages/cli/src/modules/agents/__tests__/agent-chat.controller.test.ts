@@ -13,6 +13,7 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
+import { AgentThreadQueueFullError } from '../agent-turn-queue.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
@@ -268,6 +269,33 @@ describe('AgentChatController SSE done payload', () => {
 		});
 	});
 
+	it('ends a blocked message with its queued execution', async () => {
+		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
+		agentTestRunService.submitDraftRun.mockResolvedValue({
+			status: 'queued',
+			sessionId: 'thread-1',
+			executionId: 'exec-queued-message',
+		});
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'wait for me', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()));
+		expect(events).toEqual([
+			{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-message' },
+		]);
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(res.end).toHaveBeenCalled();
+	});
+
 	it('ends a blocked resume with its queued execution', async () => {
 		const { controller, agentTestRunService } = makeController();
 		agentTestRunService.submitDraftResume.mockResolvedValue({
@@ -292,6 +320,28 @@ describe('AgentChatController SSE done payload', () => {
 			{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-resume' },
 		]);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('returns a coded error when the thread queue is full', async () => {
+		const { controller, agentTestRunService } = makeController();
+		const error = new AgentThreadQueueFullError();
+		agentTestRunService.submitDraftRun.mockRejectedValue(error);
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'one too many', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()));
+		expect(events).toEqual([
+			{ type: 'error', message: error.message, errorCode: 'agent_turn_queue_full' },
+		]);
 	});
 
 	it.each([
@@ -390,9 +440,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		return { res, events };
 	}
 
-	it('deletes stored attachments when the run fails before an execution is recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('deletes stored attachments when submission fails before queue persistence', async () => {
+		const { controller, agentTestRunService, agentChatAttachmentService } = makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -400,11 +449,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			fileSizeBytes: 5,
 		} as never);
 		agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-			throw new Error('model unavailable');
-		});
+		agentTestRunService.submitDraftRun.mockRejectedValue(new Error('queue persistence failed'));
 		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
@@ -414,24 +459,21 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
 		);
 
-		expect(events()).toContainEqual({ type: 'error', message: 'model unavailable' });
+		expect(events()).toContainEqual({ type: 'error', message: 'queue persistence failed' });
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('keeps stored attachments when submission fails after queue persistence', async () => {
+		const { controller, agentTestRunService, agentChatAttachmentService } = makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
+		agentTestRunService.submitDraftRun.mockImplementation(async (config) => {
 			config.onExecutionRecorded?.('exec-1');
-			yield* [];
-			throw new Error('flaky post-persist failure');
+			throw new Error('claim failed');
 		});
 		const { res } = makeCleanupSseResponse();
 

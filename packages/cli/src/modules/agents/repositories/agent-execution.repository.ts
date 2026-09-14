@@ -7,12 +7,26 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { AgentActionAlreadyHandledError } from '../agent-action-already-handled.error';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+
+/** Queued turns per thread. The running turn does not count. */
+export const MAX_QUEUED_TURNS_PER_THREAD = 50;
+export const AGENT_TURN_QUEUE_FULL_ERROR_CODE = 'agent_turn_queue_full';
+
+export class AgentThreadQueueFullError extends UserError {
+	readonly errorCode = AGENT_TURN_QUEUE_FULL_ERROR_CODE;
+
+	constructor() {
+		super(
+			`This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+		);
+	}
+}
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -63,7 +77,8 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/**
 	 * Insert a queued or running row. For a running row with `runContext`, the
 	 * partial unique index turns a second claim on the same thread into
-	 * {@link AgentThreadClaimConflictError}. Queued rows get a per-thread sequence.
+	 * {@link AgentThreadClaimConflictError}. Queued message rows enforce the
+	 * per-thread cap in the same critical section that assigns their sequence.
 	 */
 	async insertExecution(
 		values: NewAgentExecution,
@@ -82,17 +97,26 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 						.execute();
 
 					const repository = entityManager.getRepository(AgentExecution);
-					if (values.runContext?.kind === 'resume') {
-						const active = await repository.find({
-							select: ['runContext'],
-							where: [
-								{ threadId: values.threadId, status: 'queued' },
-								{ threadId: values.threadId, status: 'running' },
-							],
-						});
-						if (active.some((row) => row.runContext?.kind === 'resume')) {
-							throw new AgentActionAlreadyHandledError();
-						}
+					const active = await repository.find({
+						select: ['status', 'runContext'],
+						where: [
+							{ threadId: values.threadId, status: 'queued' },
+							{ threadId: values.threadId, status: 'running' },
+						],
+					});
+					const queued = active.filter((row) => row.status === 'queued');
+					const queuedMessages = queued.filter((row) => row.runContext?.kind === 'message').length;
+					if (
+						values.runContext?.kind === 'resume' &&
+						active.some((row) => row.runContext?.kind === 'resume')
+					) {
+						throw new AgentActionAlreadyHandledError();
+					}
+					if (
+						queued.length >= MAX_QUEUED_TURNS_PER_THREAD + 1 ||
+						(values.runContext?.kind === 'message' && queuedMessages >= MAX_QUEUED_TURNS_PER_THREAD)
+					) {
+						throw new AgentThreadQueueFullError();
 					}
 					const latest = await repository
 						.createQueryBuilder('execution')

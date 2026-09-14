@@ -212,16 +212,19 @@ export class AgentTestRunService {
 	}
 
 	/** Store the message as the session's next turn; see {@link DraftTurnSubmission}. */
-	async submitDraftRun(
-		input: DraftRunInput,
-	): Promise<Extract<DraftTurnSubmission, { status: 'claimed' }>> {
-		const claim = await this.agentTurnQueueService.tryRunNow(this.messageTurn(input));
-		if (!claim) throw new AgentThreadBusyError();
-		return {
-			status: 'claimed',
-			sessionId: input.sessionId,
-			stream: this.streamDraftRun(input, claim),
-		};
+	async submitDraftRun(input: DraftRunInput): Promise<DraftTurnSubmission> {
+		const { onExecutionRecorded, ...run } = input;
+		const submitted = await this.agentTurnQueueService.submit(
+			this.messageTurn(run),
+			onExecutionRecorded,
+		);
+		return submitted.status === 'queued'
+			? { ...submitted, sessionId: run.sessionId }
+			: {
+					status: 'claimed',
+					sessionId: run.sessionId,
+					stream: this.streamDraftRun(run, submitted.claim),
+				};
 	}
 
 	/**
@@ -338,6 +341,7 @@ export class AgentTestRunService {
 			userMessage: input.message,
 			attachments: input.attachments,
 			source: input.source,
+			resourceId: draftChatMemoryResourceId(input.user.id),
 			runContext: { kind: 'message' },
 		};
 	}

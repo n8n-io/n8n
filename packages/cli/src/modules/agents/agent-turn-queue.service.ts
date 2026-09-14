@@ -22,14 +22,19 @@ import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import {
+	AGENT_TURN_QUEUE_FULL_ERROR_CODE,
 	AgentExecutionRepository,
 	AgentThreadClaimConflictError,
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
 } from './repositories/agent-execution.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import {
 	draftChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
+
+export { AGENT_TURN_QUEUE_FULL_ERROR_CODE, AgentThreadQueueFullError, MAX_QUEUED_TURNS_PER_THREAD };
 
 /**
  * The claimed running row of a turn. Whoever runs the turn records into this
@@ -99,8 +104,9 @@ export class AgentTurnQueueService {
 	/**
 	 * Store the turn and claim the thread for it when nothing is ahead of it.
 	 * A message keeps arrival order behind queued rows and yields to a pending
-	 * human response; a resume is that response and claims at once.
-	 * `onPersisted` runs before the claim attempt.
+	 * human response; a resume is that response and claims at once. Throws
+	 * {@link AgentThreadQueueFullError} when the repository rejects queue
+	 * admission. `onPersisted` runs before the claim attempt.
 	 */
 	async submit(
 		turn: AgentTurnSubmission,

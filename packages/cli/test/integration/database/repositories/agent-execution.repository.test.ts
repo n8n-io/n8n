@@ -16,6 +16,8 @@ import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/ag
 import {
 	AgentExecutionRepository,
 	AgentThreadClaimConflictError,
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
 } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -584,5 +586,76 @@ describe('AgentExecutionRepository', () => {
 		);
 		expect(await repository.failQueued(waitingMessage.id, 'drained', new Date(), null)).toBe(true);
 		expect(await repository.findThreadIdsWithQueued()).toEqual([]);
+	});
+
+	it('atomically limits queued messages without blocking the next resume', async () => {
+		const thread = await createThread();
+		const messageValues = (message: string) => ({
+			threadId: thread.id,
+			status: 'queued' as const,
+			startedAt: null,
+			stoppedAt: null,
+			duration: 0,
+			userMessage: message,
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: 'n8n-chat',
+			attachments: null,
+			resourceId: 'draft-chat:user-1',
+			runContext: { kind: 'message' as const },
+		});
+		await repository.save(
+			Array.from({ length: MAX_QUEUED_TURNS_PER_THREAD - 1 }, (_, index) =>
+				repository.create({
+					...messageValues(`waiting ${index + 1}`),
+					enqueueSequence: index + 1,
+				}),
+			),
+		);
+
+		const competingMessages = await Promise.allSettled([
+			repository.insertExecution(messageValues('last slot A')),
+			repository.insertExecution(messageValues('last slot B')),
+		]);
+
+		expect(competingMessages.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+		expect(competingMessages.filter(({ status }) => status === 'rejected')).toEqual([
+			expect.objectContaining({ reason: expect.any(AgentThreadQueueFullError) }),
+		]);
+		const resume = await repository.insertExecution({
+			...messageValues(''),
+			userMessage: null,
+			runContext: {
+				kind: 'resume',
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				resumeData: { approved: true },
+			},
+		});
+		expect(resume.enqueueSequence).toBe(MAX_QUEUED_TURNS_PER_THREAD + 1);
+		await expect(repository.insertExecution(messageValues('one too many'))).rejects.toBeInstanceOf(
+			AgentThreadQueueFullError,
+		);
+		await expect(
+			repository.insertExecution({
+				...messageValues(''),
+				userMessage: null,
+				runContext: {
+					kind: 'resume',
+					runId: 'run-2',
+					toolCallId: 'tool-2',
+					resumeData: { approved: false },
+				},
+			}),
+		).rejects.toBeInstanceOf(AgentThreadQueueFullError);
 	});
 });

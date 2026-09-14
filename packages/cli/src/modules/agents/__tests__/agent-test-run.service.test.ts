@@ -179,6 +179,42 @@ describe('AgentTestRunService', () => {
 		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 
+	it('stores a blocked draft message with its sender and attachments', async () => {
+		const { service, agentTurnQueueService, agentExecutionOrchestratorService } = makeService();
+		const onExecutionRecorded = vi.fn();
+		agentTurnQueueService.submit.mockImplementation(async (_turn, onPersisted) => {
+			onPersisted?.('execution-2');
+			return { status: 'queued', executionId: 'execution-2' };
+		});
+
+		const result = await service.submitDraftRun({
+			agentId,
+			projectId,
+			sessionId: 'session-1',
+			message: 'Wait for me',
+			user,
+			attachments: [{ id: 'attachment-1' } as never],
+			onExecutionRecorded,
+		});
+
+		expect(result).toEqual({
+			status: 'queued',
+			sessionId: 'session-1',
+			executionId: 'execution-2',
+		});
+		expect(agentTurnQueueService.submit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'Wait for me',
+				resourceId: 'draft-chat:user-1',
+				attachments: [{ id: 'attachment-1' }],
+				runContext: { kind: 'message' },
+			}),
+			onExecutionRecorded,
+		);
+		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-2');
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+	});
+
 	it('returns partial text and every suspension for a continued session', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		const chunks: StreamChunk[] = [
