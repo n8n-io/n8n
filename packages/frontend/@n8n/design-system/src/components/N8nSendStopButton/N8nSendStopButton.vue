@@ -52,7 +52,6 @@ function handleStop() {
 		v-else
 		variant="solid"
 		:size="size"
-		icon-size="large"
 		:icon-only="!label"
 		:icon="label ? undefined : 'arrow-up'"
 		:aria-label="label ? undefined : t('sendStopButton.send')"

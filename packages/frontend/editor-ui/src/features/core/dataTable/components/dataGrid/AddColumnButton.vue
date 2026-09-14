@@ -154,7 +154,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 				<template #trigger>
 					<template v-if="props.useTextTrigger">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="data-table-add-column-trigger-button"
 							:disabled="isDisabled"
 						>

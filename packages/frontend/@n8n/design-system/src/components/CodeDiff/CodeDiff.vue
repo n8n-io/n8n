@@ -113,7 +113,7 @@ const diffs = computed(() => {
 			</div>
 			<div v-else-if="replaced">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="xsmall"
 					icon="undo-2"
 					data-test-id="undo-replace-button"
@@ -128,7 +128,7 @@ const diffs = computed(() => {
 			</div>
 			<N8nButton
 				v-else
-				:variant="replacing ? 'subtle' : 'solid'"
+				:variant="replacing ? 'outline' : 'solid'"
 				size="xsmall"
 				icon="refresh-cw"
 				data-test-id="replace-code-button"

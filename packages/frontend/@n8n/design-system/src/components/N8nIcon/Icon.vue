@@ -46,7 +46,7 @@ const sizesInPixels: Record<IconSize, number> = {
 	xsmall: 10,
 	small: 12,
 	medium: 14,
-	large: 18,
+	large: 16,
 	xlarge: 20,
 	xxlarge: 40,
 };
