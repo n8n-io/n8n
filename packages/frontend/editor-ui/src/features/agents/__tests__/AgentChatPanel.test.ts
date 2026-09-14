@@ -348,7 +348,7 @@ describe('AgentChatPanel', () => {
 			expect(link.text()).toBe('View trace');
 			expect(link.attributes('href')).toBe('/projects/p1/agents/a1/sessions/t1');
 			expect(
-				link.element.compareDocumentPosition(trigger.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+				trigger.element.compareDocumentPosition(link.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
 			await link.trigger('click');
 			await flushPromises();

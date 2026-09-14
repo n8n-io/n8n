@@ -11,7 +11,7 @@ import type {
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
-import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from './utils/background-job-labels';
+import { backgroundJobResultLabel } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
 	formatToolNameForDisplay,
@@ -129,10 +129,14 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
-export function backgroundJobSignalSummary(item: TimelineItem, i18n: TimelineI18n): string {
-	return (item.backgroundJobSignal?.tasks ?? [])
-		.map((job) => `${job.title} — ${i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status])}`)
-		.join(', ');
+export function backgroundJobSignalSummary(
+	item: TimelineItem,
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText' | 'locale'>,
+): string {
+	const labels = (item.backgroundJobSignal?.tasks ?? []).map((job) =>
+		backgroundJobResultLabel(job, i18n),
+	);
+	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(labels);
 }
 
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {

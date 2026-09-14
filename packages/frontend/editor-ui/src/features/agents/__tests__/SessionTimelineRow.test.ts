@@ -3,10 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { TimelineItem } from '../session-timeline.types';
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
 }));
@@ -114,6 +110,6 @@ it('shows task titles and translated statuses in a signal row', async () => {
 			},
 		}),
 	);
-	expect(wrapper.text()).toContain('Check invoices — agents.chat.backgroundTasks.status.failed');
+	expect(wrapper.text()).toContain('Check invoices — Failed');
 	expect(wrapper.find('[data-kind="background-task-signal"]').exists()).toBe(true);
 });

@@ -37,7 +37,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
-import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from '../utils/background-job-labels';
+import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -335,8 +335,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<template v-if="item.kind === 'background-task-signal'">
 						<ul :class="$style.backgroundJobs" data-testid="background-job-signal-details">
 							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
-								{{ job.title }} —
-								{{ i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status]) }}
+								{{ backgroundJobResultLabel(job, i18n) }}
 							</li>
 						</ul>
 					</template>

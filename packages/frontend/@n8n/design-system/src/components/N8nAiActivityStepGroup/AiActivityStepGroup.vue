@@ -38,10 +38,10 @@ provide(aiActivityStepGroupContext, true);
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }">
-		<N8nAnimatedCollapsibleContent v-if="contentPosition === 'above'">
-			<slot />
-		</N8nAnimatedCollapsibleContent>
+	<CollapsibleRoot
+		v-slot="{ open: isOpen }"
+		:class="{ [$style.contentAbove]: contentPosition === 'above' }"
+	>
 		<CollapsibleTrigger as-child>
 			<N8nAiActivityStepButton
 				:size="size"
@@ -60,8 +60,20 @@ provide(aiActivityStepGroupContext, true);
 				</template>
 			</N8nAiActivityStepButton>
 		</CollapsibleTrigger>
-		<N8nAnimatedCollapsibleContent v-if="contentPosition === 'below'">
+		<N8nAnimatedCollapsibleContent :class="$style.content">
 			<slot />
 		</N8nAnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>
+
+<style lang="scss" module>
+.contentAbove {
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: flex-start;
+
+	> .content {
+		width: 100%;
+	}
+}
+</style>

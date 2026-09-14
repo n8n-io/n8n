@@ -28,9 +28,7 @@ describe('AiActivityStepGroup', () => {
 			expect(button).toHaveAttribute('aria-expanded', 'true');
 			expect(getByText('Check escalations')).toBeVisible();
 			expect(button.compareDocumentPosition(getByText('Check escalations'))).toBe(
-				contentPosition === 'above'
-					? Node.DOCUMENT_POSITION_PRECEDING
-					: Node.DOCUMENT_POSITION_FOLLOWING,
+				Node.DOCUMENT_POSITION_FOLLOWING,
 			);
 			await user.keyboard(' ');
 			expect(button).toHaveAttribute('aria-expanded', 'false');

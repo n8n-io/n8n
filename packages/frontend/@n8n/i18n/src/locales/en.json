@@ -7569,6 +7569,7 @@
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.stop.error": "Couldn't stop the agent. Try again.",
 	"agents.chat.backgroundTasks.resultsReceived": "Background task results received",
+	"agents.chat.backgroundTasks.result": "{title} — {status}",
 	"agents.chat.backgroundTasks.runningCount": "Running {count} background task | Running {count} background tasks",
 	"agents.chat.backgroundTasks.finished": "Background task finished | Background tasks finished",
 	"agents.chat.backgroundTasks.subagent": "Sub-agent — {title}",

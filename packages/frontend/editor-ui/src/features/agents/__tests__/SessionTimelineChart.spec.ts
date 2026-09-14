@@ -292,10 +292,13 @@ it('shows the signal label and task status in the chart popover', async () => {
 			}),
 		],
 	});
-	await wrapper.get('[data-test-id="timeline-block"]').trigger('focus');
-	await vi.runAllTimersAsync();
-	expect(wrapper.text()).toContain('Background task results received');
-	expect(wrapper.text()).toContain('Check invoices — Failed');
-	wrapper.unmount();
-	vi.useRealTimers();
+	try {
+		await wrapper.get('[data-test-id="timeline-block"]').trigger('focus');
+		await vi.runAllTimersAsync();
+		expect(wrapper.text()).toContain('Background task results received');
+		expect(wrapper.text()).toContain('Check invoices — Failed');
+	} finally {
+		wrapper.unmount();
+		vi.useRealTimers();
+	}
 });
