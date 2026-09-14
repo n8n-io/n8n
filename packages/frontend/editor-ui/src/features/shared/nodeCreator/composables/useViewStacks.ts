@@ -62,9 +62,8 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -128,7 +127,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
-	const settingsStore = useSettingsStore();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -710,8 +708,43 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = getLastActiveStack();
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		const items = collectStackItems(stack);
-		const mapped = stack.itemsMapper ? items.map(stack.itemsMapper) : items;
+		let stackItems = stack?.items ?? [];
+
+		if (!stack?.items) {
+			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
+			// Copy: `stackItems` is mutated below via `forceIncludeNodes`, and the
+			// source array lives inside the `itemsBySubcategory` computed.
+			const itemsInSubcategory: INodeCreateElement[] = [
+				...(itemsBySubcategory.value[subcategory] ?? []),
+			];
+
+			const sections = stack.sections;
+
+			if (sections) {
+				stackItems = groupItemsInSections(itemsInSubcategory, sections);
+			} else {
+				stackItems = itemsInSubcategory;
+			}
+		}
+
+		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
+		// regardless of whether the subcategory is matched
+		if ((stack.forceIncludeNodes ?? []).length > 0) {
+			const matchedNodes = nodeCreatorStore.mergedNodes
+				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
+				.map((item) => transformNodeType(item, stack.subcategory));
+
+			stackItems.push(...matchedNodes);
+		}
+
+		if (stack.baseFilter) {
+			stackItems = stackItems.filter(stack.baseFilter);
+		}
+
+		if (stack.itemsMapper) {
+			stackItems = stackItems.map(stack.itemsMapper);
+		}
+
 		// Sort only if non-root view
 		updateCurrentViewStack({
 			baselineItems: stack.items ? mapped : sortNodeCreateElements(mapped),
