@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiView from '../InstanceAiView.vue';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { INSTANCE_AI_VIEW } from '../constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -47,10 +49,18 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: TEST_INSTANCE_ID }),
 }));
 
+const InstanceAiThreadListStub = {
+	emits: ['collapse', 'deleted'],
+	template: `<div data-test-id="thread-list-stub">
+		<button data-test-id="thread-list-delete-active" @click="$emit('deleted', true)" />
+		<button data-test-id="thread-list-delete-inactive" @click="$emit('deleted', false)" />
+	</div>`,
+};
+
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
 		stubs: {
-			InstanceAiThreadList: { template: '<div data-test-id="thread-list-stub" />' },
+			InstanceAiThreadList: InstanceAiThreadListStub,
 			InstanceAiOnboardingView: {
 				emits: ['completed'],
 				template: '<button data-test-id="onboarding-view-stub" @click="$emit(\'completed\')" />',
@@ -62,12 +72,18 @@ const renderView = createComponentRenderer(InstanceAiView, {
 
 describe('InstanceAiView', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
+	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		const settingsStore = useInstanceAiSettingsStore();
 		settingsStore.refreshModuleSettings = vi.fn().mockResolvedValue(undefined);
 		settingsStore.ensurePreferencesLoaded = vi.fn().mockResolvedValue(undefined);
+		store = mockedStore(useInstanceAiStore);
+		store.threads = [
+			{ id: 'thread-1', title: 'First', createdAt: '2026-04-01', updatedAt: '2026-04-01' },
+			{ id: 'thread-2', title: 'Second', createdAt: '2026-04-02', updatedAt: '2026-04-02' },
+		] as typeof store.threads;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		routerPush.mockClear();
 		routerReplace.mockClear();
@@ -75,6 +91,33 @@ describe('InstanceAiView', () => {
 		routerHistoryState.back = null;
 		routeState.name = INSTANCE_AI_VIEW;
 		sessionStorage.clear();
+	});
+
+	it('pushes to the next thread when the deleted thread was active', async () => {
+		sessionStorage.setItem('instanceAi.sidebarCollapsed', 'false');
+		const { getByTestId } = renderView({ pinia });
+		// Production calls store.deleteThread, which removes thread-1, before emitting.
+		store.threads = store.threads.filter((thread) => thread.id !== 'thread-1');
+		await fireEvent.click(getByTestId('thread-list-delete-active'));
+		expect(routerPush).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-2' },
+		});
+	});
+
+	it('pushes to the empty view when the active thread was deleted and none remain', async () => {
+		sessionStorage.setItem('instanceAi.sidebarCollapsed', 'false');
+		store.threads = [];
+		const { getByTestId } = renderView({ pinia });
+		await fireEvent.click(getByTestId('thread-list-delete-active'));
+		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('does not navigate when a non-active thread is deleted', async () => {
+		sessionStorage.setItem('instanceAi.sidebarCollapsed', 'false');
+		const { getByTestId } = renderView({ pinia });
+		await fireEvent.click(getByTestId('thread-list-delete-inactive'));
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('keeps the tab title off the workflow previewed inside a thread', () => {

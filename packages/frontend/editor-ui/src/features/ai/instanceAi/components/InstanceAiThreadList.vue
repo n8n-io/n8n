@@ -9,26 +9,36 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
+import type { RouteLocationRaw } from 'vue-router';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 
-const emit = defineEmits<{ collapse: [] }>();
+const props = defineProps<{
+	/** Defaults to `store.threads` — pass a filtered list to scope the history shown. */
+	threads?: InstanceAiThreadSummary[];
+	activeThreadId?: string;
+	/** Given → renders a `RouterLink` per thread (the page). Omitted → a `<button>` that emits `select` (an embedding host, which has no thread route). */
+	linkTo?: (threadId: string) => RouteLocationRaw;
+	/** Given → the new-thread button is a `RouterLink` (so cmd/middle-click open in a new tab). Omitted → a `<button>` that emits `new`. */
+	newThreadTo?: RouteLocationRaw;
+}>();
+
+const emit = defineEmits<{
+	collapse: [];
+	select: [threadId: string];
+	new: [];
+	deleted: [wasActive: boolean];
+}>();
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
-const router = useRouter();
-const route = useRoute();
-
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
-const activeThreadId = computed(() =>
-	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
-);
+const threadsToRender = computed(() => props.threads ?? store.threads);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -54,13 +64,13 @@ const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 
 const groupedThreads = computed(() => {
 	const now = new Date();
-	const groups = new Map<string, typeof store.threads>();
+	const groups = new Map<string, InstanceAiThreadSummary[]>();
 
 	// Group by last activity, not creation date — a thread created weeks ago
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of store.threads) {
+	for (const thread of threadsToRender.value) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -77,21 +87,11 @@ const groupedThreads = computed(() => {
 });
 
 async function handleDeleteThread(threadId: string) {
-	const wasActive = threadId === activeThreadId.value;
+	const wasActive = threadId === props.activeThreadId;
 	const deleted = await store.deleteThread(threadId);
 	if (!deleted) return;
 	clearPendingThreadHandoff(threadId);
-
-	if (wasActive) {
-		if (store.threads.length > 0) {
-			void router.push({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.threads[0].id },
-			});
-		} else {
-			void router.push({ name: INSTANCE_AI_VIEW });
-		}
-	}
+	emit('deleted', wasActive);
 }
 
 function startRename(threadId: string, currentTitle: string) {
@@ -106,7 +106,7 @@ function startRename(threadId: string, currentTitle: string) {
 async function confirmRename(threadId: string) {
 	const title = editingTitle.value.trim();
 	try {
-		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
+		if (title && title !== threadsToRender.value.find((t) => t.id === threadId)?.title) {
 			await store.renameThread(threadId, title);
 		}
 	} finally {
@@ -122,7 +122,7 @@ function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
-		const thread = store.threads.find((t) => t.id === threadId);
+		const thread = threadsToRender.value.find((t) => t.id === threadId);
 		if (thread) {
 			startRename(threadId, thread.title);
 		}
@@ -158,7 +158,7 @@ function handleThreadAction(action: string, threadId: string) {
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+					<RouterLink v-if="newThreadTo" v-slot="{ href, navigate }" :to="newThreadTo" custom>
 						<N8nIconButton
 							:href="href"
 							icon="plus"
@@ -170,6 +170,16 @@ function handleThreadAction(action: string, threadId: string) {
 							@click="navigate"
 						/>
 					</RouterLink>
+					<N8nIconButton
+						v-else
+						icon="plus"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:aria-label="i18n.baseText('instanceAi.thread.new')"
+						data-test-id="instance-ai-new-thread-button"
+						@click="emit('new')"
+					/>
 				</N8nTooltip>
 			</div>
 		</div>
@@ -184,7 +194,7 @@ function handleThreadAction(action: string, threadId: string) {
 					<div
 						v-for="thread in group.threads"
 						:key="thread.id"
-						:class="[$style.threadItem, { [$style.active]: thread.id === activeThreadId }]"
+						:class="[$style.threadItem, { [$style.active]: thread.id === props.activeThreadId }]"
 						data-test-id="instance-ai-thread-item"
 					>
 						<!-- Inline rename mode -->
@@ -202,7 +212,8 @@ function handleThreadAction(action: string, threadId: string) {
 						<!-- Normal display mode -->
 						<template v-else>
 							<RouterLink
-								:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
+								v-if="linkTo"
+								:to="linkTo(thread.id)"
 								:class="$style.threadLink"
 								:title="thread.title"
 								:active-class="$style.threadLinkActive"
@@ -210,6 +221,16 @@ function handleThreadAction(action: string, threadId: string) {
 							>
 								<span :class="$style.threadTitle">{{ thread.title }}</span>
 							</RouterLink>
+							<button
+								v-else
+								type="button"
+								:class="[$style.threadLink, $style.threadLinkButton]"
+								:title="thread.title"
+								@click="emit('select', thread.id)"
+								@dblclick.prevent="startRename(thread.id, thread.title)"
+							>
+								<span :class="$style.threadTitle">{{ thread.title }}</span>
+							</button>
 							<N8nActionDropdown
 								:items="threadActions"
 								:class="$style.actionDropdown"
@@ -341,6 +362,14 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadLinkActive {
 	// Active background handled by .threadItem.active
+}
+
+.threadLinkButton {
+	width: 100%;
+	background: none;
+	border: none;
+	font: inherit;
+	text-align: left;
 }
 
 .threadIcon {

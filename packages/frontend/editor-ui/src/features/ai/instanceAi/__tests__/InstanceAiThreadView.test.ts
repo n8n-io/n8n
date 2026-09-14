@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, inject, reactive, ref, type PropType, type Ref, nextTick } from 'vue';
+import { ResponseError } from '@n8n/rest-api-client';
+import { defineComponent, h, inject, ref, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -13,14 +14,13 @@ import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
-import { NEW_CONVERSATION_TITLE } from '../constants';
+import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
 	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
 } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
-	FrontendModuleSettings,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
 	InstanceAiMessage,
@@ -33,6 +33,15 @@ import {
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import {
+	defaultModuleSettings,
+	InstanceAiInputStub,
+	inputFocusSpy,
+	inputSetTextSpy,
+	inputState,
+	makeThread,
+	planEditSubmitState,
+} from './createThreadComponentRenderer';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -42,21 +51,14 @@ const mockThreadAreaSizeState = vi.hoisted(() => ({
 	width: { value: 1600 } as Ref<number>,
 }));
 
-const planEditSubmitState = vi.hoisted(() => ({
-	message: 'Make the plan simpler',
-}));
-
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const routerPushSpy = vi.hoisted(() => vi.fn());
+const routerReplaceSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
 const showErrorSpy = vi.hoisted(() => vi.fn());
 const FIX_WITH_ASSISTANT_DRAFT = 'Investigate the tool errors in this agent run and fix the agent';
 const localStorageState = vi.hoisted(() => ({
 	store: new Map<string, string>(),
-}));
-const inputState = vi.hoisted(() => ({
-	initialDraft: '',
-	hasAttachments: false,
 }));
 
 Object.defineProperty(globalThis, 'localStorage', {
@@ -130,7 +132,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	}),
 	useRouter: () => ({
 		push: routerPushSpy,
-		replace: vi.fn(),
+		replace: routerReplaceSpy,
 		currentRoute: {
 			get value() {
 				return { params: mockRouteState.params };
@@ -155,127 +157,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	};
 });
 
-const inputFocusSpy = vi.fn();
-const inputSetTextSpy = vi.fn();
 const mockSidebarCollapsed = ref(false);
-
-const InstanceAiInputStub = defineComponent({
-	name: 'InstanceAiInputStub',
-	props: {
-		suggestions: { type: Array, required: false },
-		isStreaming: { type: Boolean, required: false },
-		isPlanEditMode: { type: Boolean, required: false },
-		isWorkflowBuilderAvailable: { type: Boolean, required: false },
-		contextChip: { type: Object, required: false },
-	},
-	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
-	setup(props, { emit, expose }) {
-		const inputDraft = ref(inputState.initialDraft);
-		const hasAttachments = ref(inputState.hasAttachments);
-		const setText = (text: string) => {
-			inputDraft.value = text;
-			inputSetTextSpy(text);
-		};
-		const clearTextIfMatches = (text: string) => {
-			if (inputDraft.value === text) setText('');
-		};
-		const isDirty = () => inputDraft.value.trim().length > 0 || hasAttachments.value;
-		expose({ focus: inputFocusSpy, setText, clearTextIfMatches, isDirty });
-		return () =>
-			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
-				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isPlanEditMode ? 'plan-edit' : 'normal',
-				),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-availability' },
-					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
-				),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-context-chip' },
-					props.contextChip?.label ?? '',
-				),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
-					props.contextChip?.icon ?? '',
-				),
-				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
-				h(
-					'span',
-					{ 'data-test-id': 'instance-ai-input-attachments' },
-					hasAttachments.value ? 'attached' : '',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'instance-ai-input-edit-draft',
-						onClick: () => setText('Edited user draft'),
-					},
-					'Edit draft',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'instance-ai-input-add-attachment',
-						onClick: () => {
-							hasAttachments.value = true;
-						},
-					},
-					'Add attachment',
-				),
-				h(
-					'button',
-					{
-						'data-test-id': 'instance-ai-input-submit',
-						onClick: () => {
-							const message = props.isPlanEditMode
-								? planEditSubmitState.message
-								: inputDraft.value || 'Normal message';
-							const submittedHasAttachments = hasAttachments.value;
-							if (submittedHasAttachments) {
-								emit('submit', message, undefined, () => {
-									if (isDirty()) return false;
-									setText(message);
-									hasAttachments.value = submittedHasAttachments;
-									return true;
-								});
-							} else {
-								emit('submit', message, undefined);
-							}
-							inputDraft.value = '';
-							hasAttachments.value = false;
-						},
-					},
-					'Submit',
-				),
-				props.contextChip
-					? h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-input-dismiss-context-chip',
-								onClick: () => emit('dismiss-context-chip'),
-							},
-							'Dismiss context',
-						)
-					: null,
-				props.isPlanEditMode
-					? h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-input-cancel-plan-edit',
-								onClick: () => emit('cancel-plan-edit'),
-							},
-							'Cancel',
-						)
-					: null,
-			]);
-	},
-});
 
 let workflowPreviewEmit:
 	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
@@ -457,18 +339,6 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 	},
 });
 
-const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
-
 function makePlanReviewMessage(): InstanceAiMessage {
 	const orchestrator: InstanceAiAgentNode = {
 		agentId: 'root',
@@ -533,41 +403,7 @@ describe('InstanceAiThreadView', () => {
 		};
 		workflowPreviewEmit = null;
 
-		thread = reactive({
-			id: 'thread-1',
-			messages: [],
-			hasMessages: false,
-			sseState: 'connected',
-			isStreaming: false,
-			isSendingMessage: false,
-			isAwaitingConfirmation: false,
-			isHydratingThread: false,
-			amendContext: null,
-			activePlanEdit: null,
-			updatingPlanRequestIds: new Set<string>(),
-			contextualSuggestion: null,
-			currentTasks: null,
-			producedArtifacts: new Map(),
-			resourceNameIndex: new Map(),
-			linkableResourceNameIndex: new Map(),
-			feedbackByResponseId: {},
-			rateableResponseId: null,
-			pendingConfirmations: [],
-			resolvedConfirmationIds: new Map(),
-			debugEvents: [],
-			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
-			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
-			connectSSE: vi.fn(),
-			closeSSE: vi.fn(),
-			sendMessage: vi.fn().mockResolvedValue(true),
-			cancelRun: vi.fn().mockResolvedValue(undefined),
-			resolveConfirmation: vi.fn(),
-			confirmAction: vi.fn().mockResolvedValue(true),
-			markPlanUpdatePending: vi.fn(),
-			clearPlanUpdatePending: vi.fn(),
-			copyFullTrace: vi.fn(),
-			submitFeedback: vi.fn(),
-		}) as unknown as ThreadRuntime;
+		thread = makeThread();
 		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
 		// chat-input submission path can read activePlanEdit back out.
 		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
@@ -604,6 +440,7 @@ describe('InstanceAiThreadView', () => {
 		showErrorSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		routerPushSpy.mockClear();
+		routerReplaceSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
@@ -1121,6 +958,34 @@ describe('InstanceAiThreadView', () => {
 				'preview-thread-1',
 			);
 		});
+	});
+
+	it('redirects to the empty view when the thread cannot be found', async () => {
+		store.threads = [];
+		const notFound = new ResponseError('Not found');
+		notFound.httpStatusCode = 404;
+		store.loadThread.mockRejectedValue(notFound);
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() =>
+			expect(routerReplaceSpy).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW }),
+		);
+	});
+
+	it('does not redirect when the user already navigated away from the missing thread', async () => {
+		store.threads = [];
+		const notFound = new ResponseError('Not found');
+		notFound.httpStatusCode = 404;
+		store.loadThread.mockRejectedValue(notFound);
+
+		renderView({ props: { threadId: 'thread-1' } });
+		// User navigated to a different thread before the load rejected.
+		mockRouteState.params = { threadId: 'thread-2' };
+
+		await flushPromises();
+
+		expect(routerReplaceSpy).not.toHaveBeenCalled();
 	});
 
 	it('prefills pending composer state before the thread finishes loading', async () => {
