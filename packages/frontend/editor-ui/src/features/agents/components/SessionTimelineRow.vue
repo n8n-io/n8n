@@ -8,7 +8,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import {
-	backgroundTaskSignalSummary,
+	backgroundJobSignalSummary,
 	executionErrorLabel,
 	executionErrorMessage,
 	hitlRequestLabelKey,
@@ -50,7 +50,7 @@ const infoText = computed((): string => {
 	const it = props.item;
 	switch (it.kind) {
 		case 'background-task-signal':
-			return backgroundTaskSignalSummary(it, i18n);
+			return backgroundJobSignalSummary(it, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 500);

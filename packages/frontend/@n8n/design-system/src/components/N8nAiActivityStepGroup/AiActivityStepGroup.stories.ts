@@ -170,12 +170,12 @@ export const Default: StoryFn = () => ({
 	`,
 });
 
-export const BackgroundTasks: StoryFn = (args) => ({
+export const BackgroundJobs: StoryFn = (args) => ({
 	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon },
 	setup: () => ({ args }),
 	data: () => ({
 		message: '',
-		tasks: [
+		jobs: [
 			{ title: 'Sub-agent — Berlin weather, week 1', waiting: false },
 			{ title: 'Sub-agent — Berlin weather, week 2', waiting: false },
 			{ title: "Workflow (Wait node) — waiting for tomorrow's forecast refresh", waiting: true },
@@ -185,15 +185,15 @@ export const BackgroundTasks: StoryFn = (args) => ({
 		<div style="width: 32rem; max-width: 100%">
 			<n8n-chat-input v-model="message" placeholder="Message Research Assistant..." @submit="message = ''">
 				<template #leading>
-					<div class="background-tasks-story">
+					<div class="background-jobs-story">
 						<n8n-ai-activity-step-group v-bind="args">
-							<template #prefix><n8n-icon icon="loader-circle" spin size="small" aria-hidden="true" class="task-spinner" style="color: var(--color--primary)" /></template>
+							<template #prefix><n8n-icon icon="loader-circle" spin size="small" aria-hidden="true" class="job-spinner" style="color: var(--color--primary)" /></template>
 							<template #header-trailing><span aria-live="off" style="font-variant-numeric: tabular-nums; color: var(--text-color--subtler)">0:42</span></template>
 							<div style="padding: var(--spacing--sm); border-bottom: var(--border); border-bottom-style: dashed;">
 								<ul style="list-style: none; padding: 0; margin: 0 0 var(--spacing--xs); max-height: 20vh; overflow-y: auto">
-									<li v-for="task in tasks" :key="task.title" style="display: flex; align-items: flex-start; gap: var(--spacing--2xs); padding-block: var(--spacing--3xs); font-size: var(--font-size--sm); line-height: var(--line-height--lg); color: var(--text-color--subtle); overflow-wrap: anywhere">
-										<n8n-icon :icon="task.waiting ? 'circle' : 'loader-circle'" :spin="!task.waiting" size="small" aria-hidden="true" :class="task.waiting ? 'waiting' : 'task-spinner'" :style="{ flexShrink: 0, color: task.waiting ? 'var(--text-color--subtler)' : 'var(--color--primary)' }" />
-										<span>{{ task.title }}</span>
+									<li v-for="job in jobs" :key="job.title" style="display: flex; align-items: flex-start; gap: var(--spacing--2xs); padding-block: var(--spacing--3xs); font-size: var(--font-size--sm); line-height: var(--line-height--lg); color: var(--text-color--subtle); overflow-wrap: anywhere">
+										<n8n-icon :icon="job.waiting ? 'circle' : 'loader-circle'" :spin="!job.waiting" size="small" aria-hidden="true" :class="job.waiting ? 'waiting' : 'job-spinner'" :style="{ flexShrink: 0, color: job.waiting ? 'var(--text-color--subtler)' : 'var(--color--primary)' }" />
+										<span>{{ job.title }}</span>
 									</li>
 								</ul>
 								<a href="#session-trace" style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); font-size: var(--font-size--sm); color: var(--text-color); text-decoration: underline"><n8n-icon icon="arrow-right" size="small" />View trace</a>
@@ -205,15 +205,15 @@ export const BackgroundTasks: StoryFn = (args) => ({
 		</div>
 	`,
 });
-BackgroundTasks.args = {
+BackgroundJobs.args = {
 	label: 'Running 3 background tasks',
 	fullWidth: true,
 	contentPosition: 'above',
 };
 
-export const LongBackgroundTaskHeader = BackgroundTasks.bind({});
-LongBackgroundTaskHeader.args = {
-	...BackgroundTasks.args,
+export const LongBackgroundJobHeader = BackgroundJobs.bind({});
+LongBackgroundJobHeader.args = {
+	...BackgroundJobs.args,
 	label: 'Running background tasks to check outstanding invoices and reply to requests',
 };
 

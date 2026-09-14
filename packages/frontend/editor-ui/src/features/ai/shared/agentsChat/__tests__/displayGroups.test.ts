@@ -4,7 +4,7 @@ import { buildDisplayGroups, isGroupable } from '../displayGroups';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
-	it('keeps the signal before its turn with the same key as output arrives', () => {
+	it('keeps the results entry unchanged when the assistant reply arrives', () => {
 		const previous: AgentsChatMessage = {
 			id: 'previous',
 			role: 'assistant',
@@ -16,22 +16,22 @@ describe('shared agents chat display groups', () => {
 			executionId: 'wake',
 			role: 'assistant',
 			content: '',
-			backgroundTaskSignal: {
+			backgroundJobSignal: {
 				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 			},
 		};
 		const initial = buildDisplayGroups([previous, wake]);
-		expect(initial.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundTaskSignal']);
+		expect(initial.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundJobSignal']);
 		const updated = buildDisplayGroups([previous, { ...wake, content: 'Done' }]);
-		expect(updated.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundTaskSignal', 'message']);
+		expect(updated.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundJobSignal', 'message']);
 		expect(updated[1]).toEqual(initial[1]);
 		const retry = buildDisplayGroups([
 			wake,
 			{ ...wake, id: 'retry:assistant', executionId: 'retry' },
 		]);
 		expect(retry.map(({ id }) => id)).toEqual([
-			'wake:background-task-signal',
-			'retry:background-task-signal',
+			'wake:background-job-signal',
+			'retry:background-job-signal',
 		]);
 	});
 

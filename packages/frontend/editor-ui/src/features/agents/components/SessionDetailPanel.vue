@@ -37,7 +37,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
-import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from '../utils/background-task-labels';
+import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -333,10 +333,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 
 				<div :class="$style.output">
 					<template v-if="item.kind === 'background-task-signal'">
-						<ul :class="$style.backgroundTasks" data-testid="background-task-signal-details">
-							<li v-for="task in item.backgroundTaskSignal?.tasks" :key="task.id">
-								{{ task.title }} —
-								{{ i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status]) }}
+						<ul :class="$style.backgroundJobs" data-testid="background-job-signal-details">
+							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
+								{{ job.title }} —
+								{{ i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status]) }}
 							</li>
 						</ul>
 					</template>
@@ -474,7 +474,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/markdown';
 
-.backgroundTasks {
+.backgroundJobs {
 	padding-inline-start: var(--spacing--md);
 	overflow-wrap: anywhere;
 }

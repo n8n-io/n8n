@@ -333,7 +333,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
 			...(role === 'assistant' && msg.backgroundTaskSignal
-				? { backgroundTaskSignal: msg.backgroundTaskSignal }
+				? { backgroundJobSignal: msg.backgroundTaskSignal }
 				: {}),
 		};
 		setMessageInteractives(chatMessage, interactives);

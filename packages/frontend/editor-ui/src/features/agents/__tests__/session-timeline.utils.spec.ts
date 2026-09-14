@@ -1001,7 +1001,7 @@ describe('background task signals', () => {
 				kind: 'background-task-signal',
 				executionId: 'e-1',
 				timestamp: 1000,
-				backgroundTaskSignal: signal,
+				backgroundJobSignal: signal,
 			},
 			expect.objectContaining({ kind: 'agent', content: 'Done' }),
 		]);
@@ -1010,7 +1010,7 @@ describe('background task signals', () => {
 	it('filters signals and searches task titles and translated statuses', () => {
 		const event = item({
 			kind: 'background-task-signal',
-			backgroundTaskSignal: { tasks: [...signal.tasks] },
+			backgroundJobSignal: { tasks: [...signal.tasks] },
 		});
 		const labels: Record<string, string> = {
 			'background-task-signal': 'Background task results received',

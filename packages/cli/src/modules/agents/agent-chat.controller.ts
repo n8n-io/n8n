@@ -1,5 +1,5 @@
 import {
-	type AgentBackgroundTasksResponse,
+	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
@@ -267,9 +267,9 @@ export class AgentChatController {
 
 	@Get('/:agentId/chat/:threadId/background-tasks')
 	@ProjectScope('agent:read')
-	async getBackgroundTasks(
+	async getBackgroundJobs(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
-	): Promise<AgentBackgroundTasksResponse> {
+	): Promise<AgentBackgroundJobsResponse> {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);

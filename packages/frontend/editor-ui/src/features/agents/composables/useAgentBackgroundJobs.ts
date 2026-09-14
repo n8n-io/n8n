@@ -1,6 +1,6 @@
 import type {
-	AgentBackgroundTaskSignal,
-	AgentBackgroundTasksResponse,
+	AgentBackgroundJobSignal,
+	AgentBackgroundJobsResponse,
 	PushMessage,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,31 +10,31 @@ import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } 
 import { TIME } from '@/app/constants/durations';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { getAgentBackgroundTasks } from './useAgentApi';
+import { getAgentBackgroundJobs } from './useAgentApi';
 
-interface BackgroundTasksTarget {
+interface BackgroundJobsTarget {
 	projectId: MaybeRefOrGetter<string>;
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
-	receivedTasks?: MaybeRefOrGetter<AgentBackgroundTaskSignal['tasks']>;
+	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
 }
 
 const MAX_RETRIES = 2;
 
-export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
+export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 	const rootStore = useRootStore();
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
-	const group = ref<AgentBackgroundTasksResponse>({ tasks: [] });
-	const tasks = computed(() => {
-		const received = new Map(toValue(target.receivedTasks)?.map((task) => [task.id, task]));
-		// A late task response must not restore a running status after its chat signal arrives.
-		const current = group.value.tasks.map((task) => ({
-			...task,
-			status: received.get(task.id)?.status ?? task.status,
+	const group = ref<AgentBackgroundJobsResponse>({ tasks: [] });
+	const jobs = computed(() => {
+		const received = new Map(toValue(target.receivedJobs)?.map((job) => [job.id, job]));
+		// A late job response must not restore a running status after its chat signal arrives.
+		const current = group.value.tasks.map((job) => ({
+			...job,
+			status: received.get(job.id)?.status ?? job.status,
 		}));
-		if (current.some((task) => task.status === 'running')) return current;
+		if (current.some((job) => job.status === 'running')) return current;
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
@@ -51,7 +51,7 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 		retryTimer = undefined;
 	}
 
-	async function fetchTasks() {
+	async function fetchJobs() {
 		scheduled = false;
 		const projectId = toValue(target.projectId);
 		const agentId = toValue(target.agentId);
@@ -72,7 +72,7 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 			agentId === toValue(target.agentId) &&
 			threadId === toValue(target.threadId);
 		try {
-			const result = await getAgentBackgroundTasks(
+			const result = await getAgentBackgroundJobs(
 				rootStore.restApiContext,
 				projectId,
 				agentId,
@@ -112,7 +112,7 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 		if (disposed || !active.value || scheduled) return;
 		clearRetry();
 		scheduled = true;
-		void Promise.resolve().then(fetchTasks);
+		void Promise.resolve().then(fetchJobs);
 	}
 
 	function refresh() {
@@ -171,5 +171,5 @@ export function useAgentBackgroundTasks(target: BackgroundTasksTarget) {
 		removeListener();
 	});
 
-	return { tasks };
+	return { jobs };
 }

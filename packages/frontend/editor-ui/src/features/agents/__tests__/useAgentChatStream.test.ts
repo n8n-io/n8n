@@ -2413,7 +2413,7 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 describe('useAgentChatStream — transcript push', () => {
 	it('loads a signal before output without starting a local stream', async () => {
 		const { hook, dispose } = scopedHook('thread-1');
-		const backgroundTaskSignal = {
+		const backgroundJobSignal = {
 			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 		};
 		getChatMessagesMock.mockResolvedValue({
@@ -2424,7 +2424,7 @@ describe('useAgentChatStream — transcript push', () => {
 					role: 'assistant',
 					content: [],
 					executionStatus: 'running',
-					backgroundTaskSignal,
+					backgroundTaskSignal: backgroundJobSignal,
 				},
 			],
 			openSuspensions: [],
@@ -2434,7 +2434,7 @@ describe('useAgentChatStream — transcript push', () => {
 			emitPush(update());
 			await flushPromises();
 			expect(hook.messages.value).toHaveLength(1);
-			expect(hook.messages.value[0]).toMatchObject({ backgroundTaskSignal, content: '' });
+			expect(hook.messages.value[0]).toMatchObject({ backgroundJobSignal, content: '' });
 			expect(hook.isStreaming.value).toBe(false);
 			expect(hook.messagingState.value).toBe('idle');
 		} finally {

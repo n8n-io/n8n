@@ -1,4 +1,4 @@
-import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundTaskSignal } from '@n8n/api-types';
+import { WORKFLOW_WAIT_SUSPEND_TYPE, type AgentBackgroundJobSignal } from '@n8n/api-types';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -11,7 +11,7 @@ import type {
 	ToolCallOutcome,
 } from './session-timeline.types';
 import type { AgentExecution } from './composables/useAgentThreadsApi';
-import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from './utils/background-task-labels';
+import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from './utils/background-job-labels';
 import { isDelegateSubAgentTool } from './utils/delegate-tool';
 import {
 	formatToolNameForDisplay,
@@ -129,11 +129,9 @@ export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined
 
 type TimelineI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
-export function backgroundTaskSignalSummary(item: TimelineItem, i18n: TimelineI18n): string {
-	return (item.backgroundTaskSignal?.tasks ?? [])
-		.map(
-			(task) => `${task.title} — ${i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status])}`,
-		)
+export function backgroundJobSignalSummary(item: TimelineItem, i18n: TimelineI18n): string {
+	return (item.backgroundJobSignal?.tasks ?? [])
+		.map((job) => `${job.title} — ${i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status])}`)
 		.join(', ');
 }
 
@@ -278,8 +276,8 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('error'));
 	}
 
-	for (const task of item.backgroundTaskSignal?.tasks ?? []) {
-		parts.push(task.title, labelForKey(`background-task-${task.status}`));
+	for (const job of item.backgroundJobSignal?.tasks ?? []) {
+		parts.push(job.title, labelForKey(`background-task-${job.status}`));
 	}
 
 	parts.push(
@@ -436,10 +434,10 @@ interface RawHitlResponseEvent {
 	timestamp: number;
 }
 
-interface RawBackgroundTaskSignalEvent {
+interface RawBackgroundJobSignalEvent {
 	type: 'background-task-signal';
 	timestamp: number;
-	signal: AgentBackgroundTaskSignal;
+	signal: AgentBackgroundJobSignal;
 }
 
 type RawEvent =
@@ -447,7 +445,7 @@ type RawEvent =
 	| RawTextEvent
 	| RawSuspensionEvent
 	| RawHitlResponseEvent
-	| RawBackgroundTaskSignalEvent;
+	| RawBackgroundJobSignalEvent;
 
 /**
  * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
@@ -617,7 +615,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					kind: 'background-task-signal',
 					executionId: exec.id,
 					timestamp: event.timestamp,
-					backgroundTaskSignal: event.signal,
+					backgroundJobSignal: event.signal,
 				});
 			} else if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;

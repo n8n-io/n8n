@@ -34,7 +34,7 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
 import { TIME } from '@/app/constants/durations';
-import { useAgentBackgroundTasks } from '../composables/useAgentBackgroundTasks';
+import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 
 const props = withDefaults(
 	defineProps<{
@@ -50,7 +50,7 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
-		backgroundTasksActive?: boolean;
+		backgroundJobsActive?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -60,7 +60,7 @@ const props = withDefaults(
 		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
-		backgroundTasksActive: false,
+		backgroundJobsActive: false,
 	},
 );
 
@@ -104,22 +104,21 @@ const {
 	},
 });
 
-const { tasks: backgroundTasks } = useAgentBackgroundTasks({
+const { jobs: backgroundJobs } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => props.backgroundTasksActive,
-	receivedTasks: () =>
-		messages.value.flatMap((message) => message.backgroundTaskSignal?.tasks ?? []),
+	active: () => props.backgroundJobsActive,
+	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
 const backgroundRunningCount = computed(
-	() => backgroundTasks.value.filter((task) => task.status === 'running').length,
+	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
 const backgroundTitle = computed(() => {
 	const count = backgroundRunningCount.value;
 	if (count === 0) {
 		return locale.baseText('agents.chat.backgroundTasks.finished', {
-			adjustToNumber: backgroundTasks.value.length,
+			adjustToNumber: backgroundJobs.value.length,
 		});
 	}
 	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
@@ -135,7 +134,7 @@ const backgroundTraceRoute = computed(() => ({
 		threadId: props.continueSessionId,
 	},
 }));
-const backgroundTaskStatuses = computed(() => ({
+const backgroundJobStatuses = computed(() => ({
 	running: {
 		icon: 'loader-circle',
 		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
@@ -154,18 +153,18 @@ const backgroundTaskStatuses = computed(() => ({
 		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
 	},
 }));
-const backgroundTaskRows = computed(() =>
-	backgroundTasks.value.map((task) => ({
-		...task,
+const backgroundJobRows = computed(() =>
+	backgroundJobs.value.map((job) => ({
+		...job,
 		label: locale.baseText(
-			task.kind === 'workflow'
+			job.kind === 'workflow'
 				? 'agents.chat.backgroundTasks.workflow'
 				: 'agents.chat.backgroundTasks.subagent',
-			{ interpolate: { title: task.title } },
+			{ interpolate: { title: job.title } },
 		),
 		indicator:
-			backgroundTaskStatuses.value[
-				task.kind === 'workflow' && task.status === 'running' ? 'waiting' : task.status
+			backgroundJobStatuses.value[
+				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
 			],
 	})),
 );
@@ -180,7 +179,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 );
 watch(
 	() =>
-		props.backgroundTasksActive &&
+		props.backgroundJobsActive &&
 		backgroundRunningCount.value > 0 &&
 		documentVisibility.value === 'visible',
 	(active) => {
@@ -192,13 +191,11 @@ watch(
 	{ immediate: true },
 );
 const backgroundElapsed = computed(() => {
-	const startedAt = backgroundTasks.value[0]?.startedAt;
+	const startedAt = backgroundJobs.value[0]?.startedAt;
 	const start = startedAt ? Date.parse(startedAt) : now.value;
 	const end = backgroundRunningCount.value
 		? now.value
-		: Math.max(
-				...backgroundTasks.value.map((task) => Date.parse(task.settledAt ?? '') || now.value),
-			);
+		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
 	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
 	const minutes = Math.floor(seconds / 60);
 	const remainder = String(seconds % 60).padStart(2, '0');
@@ -579,8 +576,8 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="backgroundTasksActive && backgroundTasks.length" #header>
-					<div :class="$style.backgroundTasks" data-testid="agent-background-tasks">
+				<template v-if="backgroundJobsActive && backgroundJobs.length" #header>
+					<div :class="$style.backgroundJobs" data-testid="agent-background-jobs">
 						<N8nAiActivityStepGroup
 							:key="continueSessionId"
 							:label="backgroundTitle"
@@ -592,39 +589,39 @@ onBeforeUnmount(() => {
 									:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
 									:spin="backgroundRunningCount > 0"
 									size="small"
-									:class="{ [$style.taskSpinner]: backgroundRunningCount > 0 }"
+									:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
 									aria-hidden="true"
 								/>
 							</template>
 							<template #header-trailing>
 								<span
-									:class="$style.taskTimer"
+									:class="$style.jobTimer"
 									aria-live="off"
-									data-testid="agent-background-tasks-timer"
+									data-testid="agent-background-jobs-timer"
 									>{{ backgroundElapsed }}</span
 								>
 							</template>
-							<div :class="$style.backgroundTaskDetails">
-								<ul :class="$style.backgroundTaskList">
-									<li v-for="task in backgroundTaskRows" :key="task.id">
+							<div :class="$style.backgroundJobDetails">
+								<ul :class="$style.backgroundJobList">
+									<li v-for="job in backgroundJobRows" :key="job.id">
 										<span
 											role="img"
-											:aria-label="task.indicator.label"
-											:title="task.indicator.label"
+											:aria-label="job.indicator.label"
+											:title="job.indicator.label"
 											:class="[
-												$style.taskStatus,
-												{ [$style.taskWaiting]: task.indicator.icon === 'circle' },
+												$style.jobStatus,
+												{ [$style.jobWaiting]: job.indicator.icon === 'circle' },
 											]"
-											:data-status="task.status"
+											:data-status="job.status"
 										>
 											<N8nIcon
-												:icon="task.indicator.icon"
-												:spin="task.indicator.icon === 'loader-circle'"
+												:icon="job.indicator.icon"
+												:spin="job.indicator.icon === 'loader-circle'"
 												size="small"
-												:class="{ [$style.taskSpinner]: task.indicator.icon === 'loader-circle' }"
+												:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
 											/>
 										</span>
-										<span>{{ task.label }}</span>
+										<span>{{ job.label }}</span>
 									</li>
 								</ul>
 								<N8nLink
@@ -633,9 +630,9 @@ onBeforeUnmount(() => {
 									theme="text"
 									size="small"
 									underline
-									data-testid="agent-background-tasks-trace"
+									data-testid="agent-background-jobs-trace"
 								>
-									<span :class="$style.taskTraceLabel">
+									<span :class="$style.jobTraceLabel">
 										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
 										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
 									</span>
@@ -701,7 +698,7 @@ onBeforeUnmount(() => {
 	margin: 0 auto;
 }
 
-.backgroundTasks {
+.backgroundJobs {
 	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
 	border-bottom: var(--border);
 	min-width: 0;
@@ -712,7 +709,7 @@ onBeforeUnmount(() => {
 	--ai-activity-step--color: var(--text-color);
 }
 
-.backgroundTaskDetails {
+.backgroundJobDetails {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
@@ -722,7 +719,7 @@ onBeforeUnmount(() => {
 	border-bottom-style: dashed;
 }
 
-.backgroundTaskList {
+.backgroundJobList {
 	list-style: none;
 	margin: 0;
 	padding: 0;
@@ -742,7 +739,7 @@ onBeforeUnmount(() => {
 	}
 }
 
-.taskStatus {
+.jobStatus {
 	display: inline-flex;
 	flex-shrink: 0;
 	line-height: inherit;
@@ -758,22 +755,22 @@ onBeforeUnmount(() => {
 	}
 }
 
-.taskWaiting circle {
+.jobWaiting circle {
 	fill: currentColor;
 }
 
-.taskTraceLabel {
+.jobTraceLabel {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.taskSpinner {
+.jobSpinner {
 	flex-shrink: 0;
 	color: var(--color--primary);
 }
 
-.taskTimer {
+.jobTimer {
 	font-variant-numeric: tabular-nums;
 	font-size: var(--font-size--xs);
 	color: var(--text-color--subtler);

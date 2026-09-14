@@ -1,4 +1,4 @@
-.background-tasks-story {
+.background-jobs-story {
 	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
 	border-bottom: var(--border);
 
@@ -12,7 +12,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.task-spinner {
+		.job-spinner {
 			animation: none;
 		}
 	}

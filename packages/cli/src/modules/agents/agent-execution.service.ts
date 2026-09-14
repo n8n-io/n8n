@@ -63,9 +63,9 @@ export interface RecordMessageParams {
 	};
 }
 
-export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'> & {
+export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
 	initialTimeline?: TimelineEvent[];
-};
+}
 
 interface TimelineSnapshotParams {
 	executionId: string;
@@ -137,7 +137,7 @@ export class AgentExecutionService {
 				completionTokens: null,
 				totalTokens: null,
 				cost: null,
-				// Store the signal before the start notification lets clients fetch this turn.
+				// Save the background job signal before notifying clients that the execution started.
 				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 				storedAt: 'db',
 				error: null,

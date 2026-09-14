@@ -7572,7 +7572,7 @@
 	"agents.chat.backgroundTasks.runningCount": "Running {count} background task | Running {count} background tasks",
 	"agents.chat.backgroundTasks.finished": "Background task finished | Background tasks finished",
 	"agents.chat.backgroundTasks.subagent": "Sub-agent — {title}",
-	"agents.chat.backgroundTasks.workflow": "Workflow (Wait node) — {title}",
+	"agents.chat.backgroundTasks.workflow": "Workflow — {title}",
 	"agents.chat.backgroundTasks.viewTrace": "View trace",
 	"agents.chat.backgroundTasks.status.waiting": "Waiting",
 	"agents.chat.backgroundTasks.status.running": "Running",

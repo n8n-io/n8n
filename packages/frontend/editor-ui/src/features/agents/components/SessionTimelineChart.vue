@@ -7,7 +7,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
-	backgroundTaskSignalSummary,
+	backgroundJobSignalSummary,
 	executionErrorLabel,
 	executionErrorMessage,
 	formatDuration,
@@ -137,7 +137,7 @@ function popoverName(item: TimelineItem): string {
 	}
 	switch (item.kind) {
 		case 'background-task-signal':
-			return backgroundTaskSignalSummary(item, i18n);
+			return backgroundJobSignalSummary(item, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);

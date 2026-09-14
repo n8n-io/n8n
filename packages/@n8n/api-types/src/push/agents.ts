@@ -8,7 +8,7 @@ export type AgentExecutionUpdated = {
 	};
 };
 
-export type AgentBackgroundTasksUpdated = {
+export type AgentBackgroundJobsUpdated = {
 	type: 'agentBackgroundTasksUpdated';
 	data: {
 		projectId: string;
@@ -25,4 +25,4 @@ export type AgentUpdated = {
 	};
 };
 
-export type AgentsPushMessage = AgentExecutionUpdated | AgentUpdated | AgentBackgroundTasksUpdated;
+export type AgentsPushMessage = AgentExecutionUpdated | AgentUpdated | AgentBackgroundJobsUpdated;

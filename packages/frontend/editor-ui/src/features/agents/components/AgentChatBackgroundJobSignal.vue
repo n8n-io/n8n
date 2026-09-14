@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { N8nAiActivityStep, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { BACKGROUND_TASK_STATUS_LABEL_KEYS } from '../utils/background-task-labels';
+import { BACKGROUND_JOB_STATUS_LABEL_KEYS } from '../utils/background-job-labels';
 
-const props = defineProps<{ signal: AgentBackgroundTaskSignal }>();
+const props = defineProps<{ signal: AgentBackgroundJobSignal }>();
 const i18n = useI18n();
 </script>
 
@@ -12,20 +12,20 @@ const i18n = useI18n();
 	<N8nAiActivityStep
 		:label="i18n.baseText('agents.chat.backgroundTasks.resultsReceived')"
 		wrap-content
-		data-testid="agent-chat-background-task-signal"
+		data-testid="agent-chat-background-job-signal"
 	>
-		<ul :class="$style.tasks">
-			<li v-for="task in props.signal.tasks" :key="task.id" :class="$style.task">
-				<N8nText size="small" color="text-dark" :class="$style.title">{{ task.title }}</N8nText>
+		<ul :class="$style.jobs">
+			<li v-for="job in props.signal.tasks" :key="job.id" :class="$style.job">
+				<N8nText size="small" color="text-dark" :class="$style.title">{{ job.title }}</N8nText>
 				<span :class="$style.outcome">
 					<N8nIcon
-						:icon="task.status === 'completed' ? 'circle-check' : 'circle-x'"
+						:icon="job.status === 'completed' ? 'circle-check' : 'circle-x'"
 						:class="$style.statusIcon"
-						:data-status="task.status"
+						:data-status="job.status"
 						size="small"
 					/>
 					<N8nText size="small" color="text-base">{{
-						i18n.baseText(BACKGROUND_TASK_STATUS_LABEL_KEYS[task.status])
+						i18n.baseText(BACKGROUND_JOB_STATUS_LABEL_KEYS[job.status])
 					}}</N8nText>
 				</span>
 			</li>
@@ -36,7 +36,7 @@ const i18n = useI18n();
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/motion';
 
-.tasks {
+.jobs {
 	list-style: none;
 	margin: 0;
 	padding: var(--spacing--2xs);
@@ -45,7 +45,7 @@ const i18n = useI18n();
 	gap: var(--spacing--xs);
 }
 
-.task {
+.job {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
 	gap: var(--spacing--sm);

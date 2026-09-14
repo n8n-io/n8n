@@ -110,7 +110,7 @@ describe('AgentChatController route access scopes', () => {
 		['chatResume', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
-		['getBackgroundTasks', 'agent:read'],
+		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -140,7 +140,7 @@ describe('AgentChatController background tasks', () => {
 				createdAt: new Date(),
 			},
 		] as never);
-		const response = await controller.getBackgroundTasks(request as never);
+		const response = await controller.getBackgroundJobs(request as never);
 		expect(response.tasks[0].title).toBe('Check [REDACTED]');
 	});
 
@@ -190,7 +190,7 @@ describe('AgentChatController background tasks', () => {
 				notifiedAt: new Date('2026-09-09T10:05:00Z'),
 			},
 		] as never);
-		expect(await controller.getBackgroundTasks(request as never)).toEqual({
+		expect(await controller.getBackgroundJobs(request as never)).toEqual({
 			pendingTaskIds: ['job-3', 'job-4'],
 			tasks: [
 				{
@@ -242,7 +242,7 @@ describe('AgentChatController background tasks', () => {
 				makeController();
 			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 			agentExecutionService.findThreadById.mockResolvedValue({ ...thread, ...overrides });
-			await expect(controller.getBackgroundTasks(request as never)).rejects.toThrow(NotFoundError);
+			await expect(controller.getBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
 			expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
 		},
 	);
@@ -252,10 +252,10 @@ describe('AgentChatController background tasks', () => {
 			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentExecutionService.findThreadById.mockResolvedValue(null);
-		expect(await controller.getBackgroundTasks(request as never)).toEqual({ tasks: [] });
+		expect(await controller.getBackgroundJobs(request as never)).toEqual({ tasks: [] });
 		expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
 		agentsService.findById.mockResolvedValue(null);
-		await expect(controller.getBackgroundTasks(request as never)).rejects.toThrow(NotFoundError);
+		await expect(controller.getBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
 	});
 });
 

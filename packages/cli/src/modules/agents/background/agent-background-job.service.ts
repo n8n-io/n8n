@@ -151,10 +151,7 @@ export class AgentBackgroundJobService {
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
-		this.updateBroadcaster.notifyBackgroundTasksUpdated(
-			params.parentAgentId,
-			params.parentThreadId,
-		);
+		this.updateBroadcaster.notifyBackgroundJobsUpdated(params.parentAgentId, params.parentThreadId);
 
 		return { status: 'started', jobId: params.id };
 	}
@@ -173,7 +170,7 @@ export class AgentBackgroundJobService {
 			childExecutionId: executionId,
 		});
 		if (outcome.inserted) {
-			this.updateBroadcaster.notifyBackgroundTasksUpdated(
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(
 				params.parentAgentId,
 				params.parentThreadId,
 			);
@@ -223,7 +220,7 @@ export class AgentBackgroundJobService {
 	private async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
 		const count = await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
 		// Clear pending cards when a foreground turn consumes results without a signal.
-		if (count > 0 && jobIds[0]) await this.notifyTaskUpdate(jobIds[0]);
+		if (count > 0 && jobIds[0]) await this.notifyJobUpdateById(jobIds[0]);
 		return count;
 	}
 
@@ -265,7 +262,7 @@ export class AgentBackgroundJobService {
 	/**
 	 * A group contains jobs whose execution periods overlap. A gap with no running jobs starts a new group.
 	 * Return only the latest group while any job runs or has results that await consumption.
-	 * This allows to show completed tasks alongside still running tasks.
+	 * The preview can show completed jobs alongside jobs that still run.
 	 */
 	async listCurrentGroupForThread(parentThreadId: string): Promise<BackgroundJobView[]> {
 		const jobs = (await this.jobRepository.findByParentThread(parentThreadId))
@@ -287,7 +284,7 @@ export class AgentBackgroundJobService {
 			);
 		}
 
-		// Keep finished tasks visible until their results consumed.
+		// Keep finished jobs visible until the parent consumes their results.
 		return group.some((job) => job.status === 'running' || !job.notifiedAt) ? group : [];
 	}
 
@@ -310,7 +307,7 @@ export class AgentBackgroundJobService {
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
-		this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
+		this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -339,20 +336,20 @@ export class AgentBackgroundJobService {
 		try {
 			return await this.jobRepository.findById(jobId);
 		} catch (error) {
-			this.logger.warn('Failed to resolve background task update', { jobId, error });
+			this.logger.warn('Failed to resolve background job update', { jobId, error });
 			return null;
 		}
 	}
 
 	private notifyJobUpdate(job: AgentBackgroundJob): void {
 		try {
-			this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 		} catch (error) {
-			this.logger.warn('Failed to notify background task update', { jobId: job.id, error });
+			this.logger.warn('Failed to notify background job update', { jobId: job.id, error });
 		}
 	}
 
-	private async notifyTaskUpdate(jobId: string): Promise<void> {
+	private async notifyJobUpdateById(jobId: string): Promise<void> {
 		const job = await this.findJob(jobId);
 		if (job) this.notifyJobUpdate(job);
 	}
@@ -447,7 +444,7 @@ export class AgentBackgroundJobService {
 		// either way the job is cancelled.
 		const settled = await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
 		if (settled) {
-			this.updateBroadcaster.notifyBackgroundTasksUpdated(job.parentAgentId, job.parentThreadId);
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 		}
 		await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';

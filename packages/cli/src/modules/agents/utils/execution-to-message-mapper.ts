@@ -167,7 +167,7 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		});
 	}
 
-	const backgroundTaskSignal = execution.timeline?.find(
+	const backgroundJobSignal = execution.timeline?.find(
 		(event) => event.type === 'background-task-signal',
 	)?.signal;
 	const assistantContent = assistantContentFromExecution(execution);
@@ -180,12 +180,12 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
 			? execution.error
 			: undefined;
-	if (backgroundTaskSignal || assistantContent.length > 0 || executionError !== undefined) {
+	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
-			...(backgroundTaskSignal ? { backgroundTaskSignal } : {}),
+			...(backgroundJobSignal ? { backgroundTaskSignal: backgroundJobSignal } : {}),
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
 			...(executionError !== undefined ? { executionError } : {}),

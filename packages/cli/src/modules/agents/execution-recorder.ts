@@ -4,7 +4,7 @@ import {
 	emptyChildTrace,
 	settleChildTrace,
 	type PersistedChildTrace,
-	type AgentBackgroundTaskSignal,
+	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -262,7 +262,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
-	| { type: 'background-task-signal'; signal: AgentBackgroundTaskSignal; timestamp: number }
+	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -328,15 +328,15 @@ export class ExecutionRecorder {
 	constructor(
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
-		backgroundTaskSignal?: AgentBackgroundTaskSignal,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	) {
 		this.registry = registry ?? new Map();
-		if (backgroundTaskSignal) {
+		if (backgroundJobSignal) {
 			this.timeline.push({
 				type: 'background-task-signal',
 				timestamp: this.startTime,
 				signal: {
-					tasks: backgroundTaskSignal.tasks.map(({ id, title, kind, status }) => ({
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
 						id,
 						title: scrubSecretsInText(title),
 						kind,

@@ -1,5 +1,5 @@
 import type {
-	AgentBackgroundTasksResponse,
+	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigMutationResponse,
@@ -528,13 +528,13 @@ export const updateAgentSkill = async (
 	);
 };
 
-export const getAgentBackgroundTasks = async (
+export const getAgentBackgroundJobs = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentBackgroundTasksResponse> => {
-	return await makeRestApiRequest<AgentBackgroundTasksResponse>(
+): Promise<AgentBackgroundJobsResponse> => {
+	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'GET',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,

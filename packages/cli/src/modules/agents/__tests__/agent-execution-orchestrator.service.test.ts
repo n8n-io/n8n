@@ -6,7 +6,7 @@ import type {
 } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
-	type AgentBackgroundTaskSignal,
+	type AgentBackgroundJobSignal,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -43,7 +43,7 @@ const aiConfigMock = mock<AiConfig>({
 	modelStreamFirstOutputTimeoutMs: 180_000,
 });
 
-const backgroundTaskSignal: AgentBackgroundTaskSignal = {
+const backgroundJobSignal: AgentBackgroundJobSignal = {
 	tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 };
 
@@ -808,7 +808,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		const wake = service.executeForWake({
-			backgroundTaskSignal,
+			backgroundJobSignal,
 			agentId,
 			projectId,
 			message: '<background-jobs-settled>internal result</background-jobs-settled>',
@@ -825,7 +825,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							{
 								type: 'background-task-signal',
 								timestamp: expect.any(Number),
-								signal: backgroundTaskSignal,
+								signal: backgroundJobSignal,
 							},
 						],
 					}),
@@ -846,7 +846,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					timeline: [
 						expect.objectContaining({
 							type: 'background-task-signal',
-							signal: backgroundTaskSignal,
+							signal: backgroundJobSignal,
 						}),
 						expect.objectContaining({ type: 'text', content: 'Done' }),
 					],
@@ -867,7 +867,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const abortSignal = new AbortController().signal;
 
 		await service.executeForWake({
-			backgroundTaskSignal,
+			backgroundJobSignal,
 			agentId,
 			projectId,
 			message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -921,7 +921,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			await expect(
 				service.executeForWake({
-					backgroundTaskSignal,
+					backgroundJobSignal,
 					agentId,
 					projectId,
 					message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -957,7 +957,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await service.executeForWake({
-			backgroundTaskSignal,
+			backgroundJobSignal,
 			agentId,
 			projectId,
 			message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -991,7 +991,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			service.executeForWake({
-				backgroundTaskSignal,
+				backgroundJobSignal,
 				agentId,
 				projectId,
 				message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -1023,7 +1023,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			await expect(
 				service.executeForWake({
-					backgroundTaskSignal,
+					backgroundJobSignal,
 					agentId,
 					projectId,
 					message: '<background-jobs-settled>[]</background-jobs-settled>',

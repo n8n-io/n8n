@@ -136,7 +136,7 @@ describe('AgentWakeService', () => {
 		await service.attemptWake('thread-1');
 		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
 			expect.objectContaining({
-				backgroundTaskSignal: {
+				backgroundJobSignal: {
 					tasks: [
 						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
 						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },

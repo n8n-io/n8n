@@ -4,7 +4,7 @@ import { computed, defineComponent, h, ref } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentBackgroundTaskDto } from '@n8n/api-types';
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -22,9 +22,9 @@ const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
-const backgroundTasksMock = ref<AgentBackgroundTaskDto[]>([]);
-vi.mock('../composables/useAgentBackgroundTasks', () => ({
-	useAgentBackgroundTasks: () => ({ tasks: backgroundTasksMock }),
+const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
+vi.mock('../composables/useAgentBackgroundJobs', () => ({
+	useAgentBackgroundJobs: () => ({ jobs: backgroundJobsMock }),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
@@ -51,7 +51,7 @@ vi.mock('@n8n/i18n', () => {
 				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
-			'agents.chat.backgroundTasks.workflow': `Workflow (Wait node) — ${options?.interpolate?.title}`,
+			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.viewTrace': 'View trace',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.running': 'Running',
@@ -205,7 +205,7 @@ describe('AgentChatPanel', () => {
 		messagesMock.value = [];
 		isStreamingMock.value = false;
 		isCancellingMock.value = false;
-		backgroundTasksMock.value = [];
+		backgroundJobsMock.value = [];
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
 	});
@@ -216,7 +216,7 @@ describe('AgentChatPanel', () => {
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
-			backgroundTasksActive: boolean;
+			backgroundJobsActive: boolean;
 		}> = {},
 	) {
 		const router = createRouter({
@@ -245,7 +245,7 @@ describe('AgentChatPanel', () => {
 
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());
-		const task: AgentBackgroundTaskDto = {
+		const job: AgentBackgroundJobDto = {
 			id: 'job-1',
 			kind: 'subagent',
 			title: 'Check escalations',
@@ -256,26 +256,24 @@ describe('AgentChatPanel', () => {
 		it('keeps finished rows and expansion until the entire group finishes', async () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-09-09T10:00:31Z'));
-			const wrapper = mountPanel({ backgroundTasksActive: true, continueSessionId: 't1' });
-			expect(wrapper.find('[data-testid="agent-background-tasks"]').exists()).toBe(false);
-			backgroundTasksMock.value = [task, { ...task, id: 'job-2', title: 'Check tickets' }];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			backgroundJobsMock.value = [job, { ...job, id: 'job-2', title: 'Check tickets' }];
 			await flushPromises();
-			const panel = wrapper.get(
-				'[data-testid="chat-input"] [data-testid="agent-background-tasks"]',
-			);
+			const panel = wrapper.get('[data-testid="chat-input"] [data-testid="agent-background-jobs"]');
 			const trigger = panel.get('button');
 			expect(trigger.text()).toContain('Running 2 background tasks');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
-			expect(panel.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('0:31');
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:31');
 			await trigger.trigger('click');
 			expect(trigger.attributes('aria-expanded')).toBe('true');
 			expect(panel.findAll('li').map((li) => li.text())).toEqual([
 				'Sub-agent — Check escalations',
 				'Sub-agent — Check tickets',
 			]);
-			backgroundTasksMock.value = [
-				{ ...task, status: 'completed' },
-				{ ...task, id: 'job-2', title: 'Check tickets' },
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed' },
+				{ ...job, id: 'job-2', title: 'Check tickets' },
 			];
 			await flushPromises();
 			expect(trigger.text()).toContain('Running 1 background task');
@@ -287,15 +285,15 @@ describe('AgentChatPanel', () => {
 			expect(panel.findAll('[data-status="running"]')).toHaveLength(1);
 			expect(trigger.attributes('aria-expanded')).toBe('true');
 			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
-			backgroundTasksMock.value = [];
+			backgroundJobsMock.value = [];
 			await flushPromises();
-			expect(wrapper.find('[data-testid="agent-background-tasks"]').exists()).toBe(false);
-			backgroundTasksMock.value = [task];
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			backgroundJobsMock.value = [job];
 			await flushPromises();
 			expect(
-				wrapper.get('[data-testid="agent-background-tasks"] button').attributes('aria-expanded'),
+				wrapper.get('[data-testid="agent-background-jobs"] button').attributes('aria-expanded'),
 			).toBe('false');
-			expect(wrapper.get('[data-testid="agent-background-tasks"] button').text()).toContain(
+			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).toContain(
 				'Running 1 background task',
 			);
 			wrapper.unmount();
@@ -304,49 +302,49 @@ describe('AgentChatPanel', () => {
 		it('keeps final statuses and expansion with a stopped timer while results await delivery', async () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-09-09T10:00:30Z'));
-			backgroundTasksMock.value = [task, { ...task, id: 'job-2' }];
-			const wrapper = mountPanel({ backgroundTasksActive: true });
-			const panel = wrapper.get('[data-testid="agent-background-tasks"]');
+			backgroundJobsMock.value = [job, { ...job, id: 'job-2' }];
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
 			const trigger = panel.get('button');
 			await trigger.trigger('click');
-			backgroundTasksMock.value = [
-				{ ...task, status: 'completed', settledAt: '2026-09-09T10:00:31Z' },
-				{ ...task, id: 'job-2', status: 'failed', settledAt: '2026-09-09T10:00:32Z' },
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed', settledAt: '2026-09-09T10:00:31Z' },
+				{ ...job, id: 'job-2', status: 'failed', settledAt: '2026-09-09T10:00:32Z' },
 			];
 			await flushPromises();
 			expect(trigger.text()).toContain('Background tasks finished');
 			expect(trigger.attributes('aria-expanded')).toBe('true');
-			expect(panel.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('0:32');
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:32');
 			for (const icon of panel.findAllComponents({ name: 'N8nIcon' })) {
 				expect(icon.props('spin')).toBe(false);
 			}
 			await vi.advanceTimersByTimeAsync(10_000);
-			expect(panel.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('0:32');
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:32');
 			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
 			expect(vi.getTimerCount()).toBe(0);
-			backgroundTasksMock.value = [];
+			backgroundJobsMock.value = [];
 			await flushPromises();
-			expect(wrapper.find('[data-testid="agent-background-tasks"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 
 		it('shows waiting workflows and links to the current parent session trace', async () => {
-			backgroundTasksMock.value = [
-				task,
-				{ ...task, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+			backgroundJobsMock.value = [
+				job,
+				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
 			];
-			const wrapper = mountPanel({ backgroundTasksActive: true, continueSessionId: 't1' });
-			expect(wrapper.find('[data-testid="agent-background-tasks-trace"]').exists()).toBe(false);
-			const trigger = wrapper.get('[data-testid="agent-background-tasks"] button');
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			const trigger = wrapper.get('[data-testid="agent-background-jobs"] button');
 			await trigger.trigger('click');
 			const workflow = wrapper.findAll('li')[1];
-			expect(workflow.text()).toBe('Workflow (Wait node) — Forecast refresh');
+			expect(workflow.text()).toBe('Workflow — Forecast refresh');
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',
 				spin: false,
 			});
-			const link = wrapper.get('[data-testid="agent-background-tasks-trace"]');
+			const link = wrapper.get('[data-testid="agent-background-jobs-trace"]');
 			expect(link.text()).toBe('View trace');
 			expect(link.attributes('href')).toBe('/projects/p1/agents/a1/sessions/t1');
 			expect(
@@ -359,10 +357,10 @@ describe('AgentChatPanel', () => {
 				params: { projectId: 'p1', agentId: 'a1', threadId: 't1' },
 			});
 			await wrapper.setProps({ continueSessionId: 't2' });
-			const newTrigger = wrapper.get('[data-testid="agent-background-tasks"] button');
+			const newTrigger = wrapper.get('[data-testid="agent-background-jobs"] button');
 			expect(newTrigger.attributes('aria-expanded')).toBe('false');
 			await newTrigger.trigger('click');
-			expect(wrapper.get('[data-testid="agent-background-tasks-trace"]').attributes('href')).toBe(
+			expect(wrapper.get('[data-testid="agent-background-jobs-trace"]').attributes('href')).toBe(
 				'/projects/p1/agents/a1/sessions/t2',
 			);
 			wrapper.unmount();
@@ -373,12 +371,12 @@ describe('AgentChatPanel', () => {
 			['failed', 'Failed', 'circle-x'],
 			['cancelled', 'Canceled', 'circle-x'],
 		] as const)('shows the %s status without a spinner', async (status, label, icon) => {
-			backgroundTasksMock.value = [
-				{ ...task, status },
-				{ ...task, id: 'job-2' },
+			backgroundJobsMock.value = [
+				{ ...job, status },
+				{ ...job, id: 'job-2' },
 			];
-			const wrapper = mountPanel({ backgroundTasksActive: true });
-			await wrapper.get('[data-testid="agent-background-tasks"] button').trigger('click');
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
 			const statusIcon = wrapper.get(`[data-status="${status}"]`);
 			expect(statusIcon.attributes('aria-label')).toBe(label);
 			expect(statusIcon.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
@@ -391,25 +389,25 @@ describe('AgentChatPanel', () => {
 		it('advances the local timer through an hour and stops it after the panel hides', async () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-09-09T10:59:59Z'));
-			const wrapper = mountPanel({ backgroundTasksActive: true });
-			backgroundTasksMock.value = [
-				{ ...task, status: 'completed' },
-				{ ...task, id: 'job-2', startedAt: '2026-09-09T10:59:00.000Z' },
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed' },
+				{ ...job, id: 'job-2', startedAt: '2026-09-09T10:59:00.000Z' },
 			];
 			await flushPromises();
-			expect(wrapper.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('59:59');
+			expect(wrapper.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('59:59');
 			await vi.advanceTimersByTimeAsync(1000);
-			expect(wrapper.get('[data-testid="agent-background-tasks-timer"]').text()).toBe('1:00:00');
-			backgroundTasksMock.value = [];
+			expect(wrapper.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('1:00:00');
+			backgroundJobsMock.value = [];
 			await flushPromises();
 			expect(vi.getTimerCount()).toBe(0);
 			wrapper.unmount();
 		});
 
 		it('does not show background tasks outside the active preview', () => {
-			backgroundTasksMock.value = [task];
+			backgroundJobsMock.value = [job];
 			const wrapper = mountPanel();
-			expect(wrapper.find('[data-testid="agent-background-tasks"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 	});

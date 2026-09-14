@@ -132,14 +132,14 @@ describe('AgentChatMessageList', () => {
 			executionId: 'wake',
 			role: 'assistant',
 			content: '',
-			backgroundTaskSignal: {
+			backgroundJobSignal: {
 				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 			},
 		};
 		const wrapper = mount(AgentChatMessageList, {
 			props: { messages: [message], messagingState: 'idle' },
 		});
-		const row = () => wrapper.get('[data-testid="agent-chat-background-task-signal"]');
+		const row = () => wrapper.get('[data-testid="agent-chat-background-job-signal"]');
 		expect(row().get('button').attributes('aria-expanded')).toBe('false');
 		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(false);
 		await row().get('button').trigger('click');
@@ -153,11 +153,9 @@ describe('AgentChatMessageList', () => {
 		expect(row().get('button').attributes('aria-expanded')).toBe('true');
 		expect(
 			wrapper
-				.findAll(
-					'[data-testid="agent-chat-background-task-signal"], [data-testid="markdown-chunk"]',
-				)
+				.findAll('[data-testid="agent-chat-background-job-signal"], [data-testid="markdown-chunk"]')
 				.map((el) => el.attributes('data-testid')),
-		).toEqual(['agent-chat-background-task-signal', 'markdown-chunk']);
+		).toEqual(['agent-chat-background-job-signal', 'markdown-chunk']);
 		expect(wrapper.findAll('[data-test-id="agent-chat-message-copy"]')).toHaveLength(1);
 	});
 

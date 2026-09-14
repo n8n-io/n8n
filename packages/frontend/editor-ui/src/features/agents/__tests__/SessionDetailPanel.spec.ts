@@ -495,7 +495,7 @@ it('shows each task and its translated status in signal details', () => {
 		kind: 'background-task-signal',
 		executionId: 'e1',
 		timestamp: 1000,
-		backgroundTaskSignal: {
+		backgroundJobSignal: {
 			tasks: [
 				{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
 				{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
@@ -503,7 +503,7 @@ it('shows each task and its translated status in signal details', () => {
 		},
 	});
 	expect(wrapper.text()).toContain('Background task results received');
-	const details = wrapper.get('[data-testid="background-task-signal-details"]');
+	const details = wrapper.get('[data-testid="background-job-signal-details"]');
 	expect(details.findAll('li')).toHaveLength(2);
 	expect(details.text()).toContain('Check invoices — Completed');
 	expect(details.text()).toContain('Wait for reply — Canceled');

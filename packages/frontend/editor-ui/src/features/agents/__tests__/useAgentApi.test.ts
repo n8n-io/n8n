@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
-	getAgentBackgroundTasks,
+	getAgentBackgroundJobs,
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
@@ -83,7 +83,7 @@ describe('useAgentApi', () => {
 
 	it('encodes the background task route identifiers', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
-		await getAgentBackgroundTasks(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		await getAgentBackgroundJobs(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',

@@ -1,4 +1,4 @@
-import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
@@ -19,9 +19,9 @@ import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall }
  */
 export type DisplayGroup =
 	| {
-			kind: 'backgroundTaskSignal';
+			kind: 'backgroundJobSignal';
 			id: string;
-			signal: AgentBackgroundTaskSignal;
+			signal: AgentBackgroundJobSignal;
 	  }
 	| {
 			kind: 'message';
@@ -52,7 +52,7 @@ export type DisplayGroup =
 			executionId?: string;
 	  };
 
-export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>;
+export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundJobSignal' }>;
 
 export function isGroupable(message: AgentsChatMessage): boolean {
 	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
@@ -187,12 +187,12 @@ function appendInteractivePayloads(
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
-		if (message.role === 'assistant' && message.backgroundTaskSignal) {
+		if (message.role === 'assistant' && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
 			groups.push({
-				kind: 'backgroundTaskSignal',
-				id: `${message.executionId ?? message.id}:background-task-signal`,
-				signal: message.backgroundTaskSignal,
+				kind: 'backgroundJobSignal',
+				id: `${message.executionId ?? message.id}:background-job-signal`,
+				signal: message.backgroundJobSignal,
 			});
 			if (
 				!message.content &&

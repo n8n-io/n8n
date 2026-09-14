@@ -77,7 +77,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		async (mode) => {
 			Object.defineProperty(instanceSettings, mode, { value: true, configurable: true });
 			const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
-			broadcaster.notifyBackgroundTasksUpdated('agent-1', 'thread-1');
+			broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
 			await vi.waitFor(() =>
 				expect(publisher.publishCommand).toHaveBeenCalledWith({
 					command: 'relay-agent-background-tasks-update',
@@ -92,14 +92,14 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 	);
 
 	it('sends task updates without a relay on a single main', async () => {
-		broadcaster.notifyBackgroundTasksUpdated('agent-1', 'thread-1');
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
 		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalledOnce());
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
 	it('skips task updates for projects without members', async () => {
 		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue([]);
-		broadcaster.notifyBackgroundTasksUpdated('agent-1', 'thread-1');
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
 		await vi.waitFor(() =>
 			expect(projectRelationRepository.findUserIdsByProjectId).toHaveBeenCalledWith('project-1'),
 		);
@@ -109,7 +109,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 
 	it('delivers relayed task updates without another relay', () => {
 		const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
-		broadcaster.handleBackgroundTasksRelay({ data, userIds: ['user-2'] });
+		broadcaster.handleBackgroundJobsRelay({ data, userIds: ['user-2'] });
 		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentBackgroundTasksUpdated', data }, [
 			'user-2',
 		]);
@@ -120,12 +120,12 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		threadRepository.findOneBy
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce({ ...thread, agentId: 'other-agent' });
-		broadcaster.notifyBackgroundTasksUpdated('agent-1', 'missing');
-		broadcaster.notifyBackgroundTasksUpdated('agent-1', 'unrelated');
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'missing');
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'unrelated');
 		await vi.waitFor(() => expect(threadRepository.findOneBy).toHaveBeenCalledTimes(2));
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 		threadRepository.findOneBy.mockRejectedValueOnce(new Error('lookup failed'));
-		broadcaster.notifyBackgroundTasksUpdated('agent-1', 'thread-1');
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledOnce());
 	});
 

@@ -1,14 +1,14 @@
-import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { N8nAiActivityStep, N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import AgentChatBackgroundTaskSignal from '../components/AgentChatBackgroundTaskSignal.vue';
+import AgentChatBackgroundJobSignal from '../components/AgentChatBackgroundJobSignal.vue';
 
 vi.mock('@n8n/i18n', () => ({ useI18n: () => ({ baseText: (key: string) => key }) }));
 
-const signal: AgentBackgroundTaskSignal = {
+const signal: AgentBackgroundJobSignal = {
 	tasks: [
 		{ id: 'job-1', title: 'Research '.repeat(40), kind: 'subagent', status: 'completed' },
 		{ id: 'job-2', title: 'Workflow', kind: 'workflow', status: 'failed' },
@@ -16,10 +16,10 @@ const signal: AgentBackgroundTaskSignal = {
 	],
 };
 
-describe('AgentChatBackgroundTaskSignal', () => {
+describe('AgentChatBackgroundJobSignal', () => {
 	it('uses the activity disclosure without loading animation and supports keyboard expansion', async () => {
 		const user = userEvent.setup();
-		const wrapper = mount(AgentChatBackgroundTaskSignal, {
+		const wrapper = mount(AgentChatBackgroundJobSignal, {
 			props: { signal },
 			attachTo: document.body,
 		});
@@ -32,14 +32,12 @@ describe('AgentChatBackgroundTaskSignal', () => {
 			await user.keyboard('{Enter}');
 			expect(button.attributes('aria-expanded')).toBe('true');
 			expect(wrapper.findAll('li').map((row) => row.text())).toEqual(
-				signal.tasks.map(
-					(task) => `${task.title}agents.chat.backgroundTasks.status.${task.status}`,
-				),
+				signal.tasks.map((job) => `${job.title}agents.chat.backgroundTasks.status.${job.status}`),
 			);
-			for (const [index, task] of signal.tasks.entries()) {
+			for (const [index, job] of signal.tasks.entries()) {
 				const icon = wrapper.findAll('li')[index].getComponent(N8nIcon);
 				expect(icon.props()).toMatchObject({
-					icon: task.status === 'completed' ? 'circle-check' : 'circle-x',
+					icon: job.status === 'completed' ? 'circle-check' : 'circle-x',
 					spin: false,
 				});
 			}

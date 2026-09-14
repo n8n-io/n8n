@@ -1,4 +1,4 @@
-import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 
 export type EventKind =
 	| 'user'
@@ -26,7 +26,7 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
-	backgroundTaskSignal?: AgentBackgroundTaskSignal;
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
 	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */

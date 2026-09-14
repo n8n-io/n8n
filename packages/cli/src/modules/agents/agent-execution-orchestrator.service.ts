@@ -6,7 +6,7 @@ import {
 	type StreamChunk,
 } from '@n8n/agents';
 import type {
-	AgentBackgroundTaskSignal,
+	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -176,7 +176,7 @@ export interface ExecuteForTaskNowConfig {
 }
 
 export interface ExecuteForWakeConfig {
-	backgroundTaskSignal: AgentBackgroundTaskSignal;
+	backgroundJobSignal: AgentBackgroundJobSignal;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -222,7 +222,7 @@ export interface StreamChatResponseConfig {
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
-	backgroundTaskSignal?: AgentBackgroundTaskSignal;
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -841,7 +841,7 @@ export class AgentExecutionOrchestratorService {
 				sandboxPrincipalHash: identity.principalHash,
 				hideUserMessageFromTranscript: true,
 				isWakeRun: true,
-				backgroundTaskSignal: config.backgroundTaskSignal,
+				backgroundJobSignal: config.backgroundJobSignal,
 			});
 
 			// The runtime returns model errors as stream chunks. Throw here so the caller
@@ -916,7 +916,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			hideUserMessageFromTranscript,
 			isWakeRun,
-			backgroundTaskSignal,
+			backgroundJobSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -925,7 +925,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry,
 			() => executionId,
 			{ projectId, agentId, threadId },
-			backgroundTaskSignal,
+			backgroundJobSignal,
 		);
 		const startedAt = recorder.startedAt;
 
@@ -958,7 +958,7 @@ export class AgentExecutionOrchestratorService {
 				...(abortSignal ? { abortSignal } : {}),
 			});
 			const startParams: StartExecutionParams = {
-				...(backgroundTaskSignal
+				...(backgroundJobSignal
 					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
 					: {}),
 				threadId,
@@ -1109,7 +1109,7 @@ export class AgentExecutionOrchestratorService {
 		toolRegistry: ToolRegistry,
 		getExecutionId: () => string | undefined,
 		context: Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>,
-		backgroundTaskSignal?: AgentBackgroundTaskSignal,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	): ExecutionRecorder {
 		return new ExecutionRecorder(
 			toolRegistry,
@@ -1123,7 +1123,7 @@ export class AgentExecutionOrchestratorService {
 					});
 				}
 			},
-			backgroundTaskSignal,
+			backgroundJobSignal,
 		);
 	}
 

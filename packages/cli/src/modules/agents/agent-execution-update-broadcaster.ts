@@ -50,13 +50,13 @@ export class AgentExecutionUpdateBroadcaster {
 		}
 	}
 
-	notifyBackgroundTasksUpdated(agentId: string, threadId: string): void {
-		void this.broadcastBackgroundTasksUpdated(agentId, threadId).catch((error: unknown) => {
-			this.logger.warn('Failed to broadcast background task update', { agentId, threadId, error });
+	notifyBackgroundJobsUpdated(agentId: string, threadId: string): void {
+		void this.broadcastBackgroundJobsUpdated(agentId, threadId).catch((error: unknown) => {
+			this.logger.warn('Failed to broadcast background job update', { agentId, threadId, error });
 		});
 	}
 
-	private async broadcastBackgroundTasksUpdated(agentId: string, threadId: string): Promise<void> {
+	private async broadcastBackgroundJobsUpdated(agentId: string, threadId: string): Promise<void> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
 		if (!thread || thread.agentId !== agentId) return;
 
@@ -74,7 +74,7 @@ export class AgentExecutionUpdateBroadcaster {
 	}
 
 	@OnPubSubEvent('relay-agent-background-tasks-update', { instanceType: 'main' })
-	handleBackgroundTasksRelay({
+	handleBackgroundJobsRelay({
 		data,
 		userIds,
 	}: PubSubCommandMap['relay-agent-background-tasks-update']): void {

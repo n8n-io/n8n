@@ -109,7 +109,7 @@ it('shows task titles and translated statuses in a signal row', async () => {
 	const wrapper = await renderComponent(
 		item({
 			kind: 'background-task-signal',
-			backgroundTaskSignal: {
+			backgroundJobSignal: {
 				tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
 			},
 		}),

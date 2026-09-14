@@ -207,7 +207,7 @@ export class AgentWakeService {
 					agentId: agent.id,
 					projectId: agent.projectId,
 					message: formatWakeMessage(jobs),
-					backgroundTaskSignal: {
+					backgroundJobSignal: {
 						tasks: jobs.flatMap(({ id, title, kind, status }) =>
 							status === 'running' ? [] : [{ id, title, kind, status }],
 						),

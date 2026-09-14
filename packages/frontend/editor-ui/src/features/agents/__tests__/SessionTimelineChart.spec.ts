@@ -286,7 +286,7 @@ it('shows the signal label and task status in the chart popover', async () => {
 			item({
 				kind: 'background-task-signal',
 				timestamp: 1000,
-				backgroundTaskSignal: {
+				backgroundJobSignal: {
 					tasks: [{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'failed' }],
 				},
 			}),
