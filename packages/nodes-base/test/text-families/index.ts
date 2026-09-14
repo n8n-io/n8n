@@ -5,7 +5,7 @@ import {
 	ARABIC,
 	BIDI_CONTROLS,
 	CASE_EDGE,
-	chars,
+	joinCodePoints,
 	CYRILLIC,
 	DEVANAGARI,
 	DIACRITICAL_MARKS,
@@ -55,7 +55,7 @@ const pick = (values: readonly string[]) => fc.nat(values.length - 1).map((index
 const wordOf = (characters: readonly string[]) =>
 	fc.array(pick(characters), { minLength: 1, maxLength: 8 }).map((c) => c.join(''));
 
-/** An ASCII word with at least one letter replaced by one of the given characters. */
+/** An ASCII word with some letters replaced by the given characters. Keeps at least one of each. */
 const mixedWord = (characters: readonly string[]) =>
 	fc
 		.array(
@@ -66,7 +66,7 @@ const mixedWord = (characters: readonly string[]) =>
 			{ minLength: 2, maxLength: 10 },
 		)
 		.map((c) => c.join(''))
-		.filter((word) => !isAscii(word));
+		.filter((word) => /[a-z]/.test(word) && !isAscii(word));
 
 /** ASCII words and the given separators in random order, with at least one separator. */
 const interleaved = (separators: readonly string[]) =>
@@ -182,7 +182,22 @@ export const families = [
 		description: 'ASCII words with one to six combining marks stacked on each letter.',
 		examples: [
 			'nãm̈ë'.normalize('NFD'),
-			chars('T', 0x338, 0x359, 'o', 0x337, 0x34b, 't', 0x335, 0x33c, 'a', 0x336, 0x351, 'l', 0x337),
+			joinCodePoints(
+				'T',
+				0x338,
+				0x359,
+				'o',
+				0x337,
+				0x34b,
+				't',
+				0x335,
+				0x33c,
+				'a',
+				0x336,
+				0x351,
+				'l',
+				0x337,
+			),
 		],
 		word: fc
 			.tuple(
@@ -222,7 +237,7 @@ export const families = [
 				.tuple(fc.constantFrom(...REGIONAL_INDICATORS), fc.constantFrom(...REGIONAL_INDICATORS))
 				.map(([a, b]) => a + b),
 			fc.constantFrom('👨‍👩‍👧', '👩‍💻', '🏳️‍🌈', '🧑‍🚀', '❤️‍🔥'),
-			fc.constantFrom(...'0123456789#*').map((digit) => chars(digit, 0xfe0f, 0x20e3)),
+			fc.constantFrom(...'0123456789#*').map((digit) => joinCodePoints(digit, 0xfe0f, 0x20e3)),
 		),
 	},
 	{
@@ -237,10 +252,10 @@ export const families = [
 		description:
 			'Non-ASCII spaces such as the no-break space, plus leading, trailing and doubled whitespace.',
 		examples: [
-			chars('First', 0xa0, 'Name'),
+			joinCodePoints('First', 0xa0, 'Name'),
 			' Name',
 			'Name ',
-			chars('Name', 0x3000, 'Value'),
+			joinCodePoints('Name', 0x3000, 'Value'),
 			'First  Name',
 			'Tab\tName',
 		],
@@ -251,11 +266,11 @@ export const families = [
 		description:
 			'Zero-width and format characters inside ASCII words. Looks like the plain word, never equals it.',
 		examples: [
-			chars('Na', 0x200b, 'me'),
-			chars(0xfeff, 'Name'),
-			chars('Na', 0xad, 'me'),
-			chars('Name', 0x200d),
-			chars('Na', 0x3164, 'me'),
+			joinCodePoints('Na', 0x200b, 'me'),
+			joinCodePoints(0xfeff, 'Name'),
+			joinCodePoints('Na', 0xad, 'me'),
+			joinCodePoints('Name', 0x200d),
+			joinCodePoints('Na', 0x3164, 'me'),
 		],
 		word: interleaved(INVISIBLE),
 	},
@@ -264,9 +279,9 @@ export const families = [
 		description:
 			'Bidirectional controls, which reorder how text renders without changing its code points.',
 		examples: [
-			chars('Name', 0x202e, 'eman'),
-			chars(0x200f, 'Name'),
-			chars('Total', 0x2067, ' (USD)', 0x2069),
+			joinCodePoints('Name', 0x202e, 'eman'),
+			joinCodePoints(0x200f, 'Name'),
+			joinCodePoints('Total', 0x2067, ' (USD)', 0x2069),
 		],
 		word: interleaved(BIDI_CONTROLS),
 	},

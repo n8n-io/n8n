@@ -19,21 +19,14 @@ import hiragana from '@unicode/unicode-18.0.0/Script/Hiragana/symbols';
 import katakana from '@unicode/unicode-18.0.0/Script/Katakana/symbols';
 import latin from '@unicode/unicode-18.0.0/Script/Latin/symbols';
 
-/**
- * Character sets for the string families, taken from the Unicode 18 tables
- * so a Unicode upgrade is a visible dependency bump.
- */
-
 /** True when every code point of the text is ASCII. */
 export const isAscii = (text: string) => !/\P{ASCII}/u.test(text);
 
-const nonAscii = (characters: readonly string[]) => characters.filter((c) => !isAscii(c));
-
 /** Joins text and code points, so invisible or combining characters stay readable as numbers. */
-export const chars = (...parts: Array<string | number>) =>
+export const joinCodePoints = (...parts: Array<string | number>) =>
 	parts.map((part) => (typeof part === 'number' ? String.fromCodePoint(part) : part)).join('');
 
-export const LATIN_ACCENTED = nonAscii(latin).filter((c) => /^\p{L}$/u.test(c));
+export const LATIN_ACCENTED = latin.filter((c) => !isAscii(c) && /^\p{L}$/u.test(c));
 export const GREEK = greek;
 export const CYRILLIC = cyrillic;
 export const HEBREW = hebrew;
@@ -56,7 +49,7 @@ export const CASE_EDGE = changesWhenCasemapped.filter(
 export const PICTOGRAPHS = emoji;
 export const SKIN_TONES = emojiModifiers;
 export const REGIONAL_INDICATORS = regionalIndicators;
-export const DIGITS = nonAscii(decimalNumber);
+export const DIGITS = decimalNumber.filter((c) => !isAscii(c));
 export const SPACES = whiteSpace;
 export const BIDI_CONTROLS = bidiControls;
 /** Format characters other than bidi controls: soft hyphen, zero width space and joiners, byte order mark, tags. */
