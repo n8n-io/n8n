@@ -23,7 +23,13 @@ describe('ListUsersQueryDto', () => {
 		}
 	});
 
-	test('never exposes an offset field', () => {
-		expect('offset' in ListUsersQueryDto.schema.shape).toBe(false);
+	test('accepts limit and cursor and drops offset', () => {
+		const result = ListUsersQueryDto.safeParse({ limit: '5', cursor: 'abc', offset: '3' });
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data).toMatchObject({ limit: 5, cursor: 'abc' });
+			expect(result.data).not.toHaveProperty('offset');
+		}
 	});
 });

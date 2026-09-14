@@ -28,6 +28,9 @@ describe('UsersPublicController', () => {
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 			role: { slug: 'global:member' },
+			password: 'secret-hash',
+			mfaSecret: 'secret-mfa-key',
+			disabled: false,
 			...overrides,
 		});
 
@@ -55,7 +58,15 @@ describe('UsersPublicController', () => {
 			expect(userService.assertGetUsersAccess).toHaveBeenCalledWith(caller.user, undefined);
 			expect(projectService.findUserIdsByProjectId).not.toHaveBeenCalled();
 			expect(result.data).toHaveLength(1);
+			expect(result.data[0]).toMatchObject({
+				id: 'user-id',
+				email: 'member@example.com',
+				mfaEnabled: false,
+			});
 			expect(result.data[0]).not.toHaveProperty('role');
+			expect(result.data[0]).not.toHaveProperty('password');
+			expect(result.data[0]).not.toHaveProperty('mfaSecret');
+			expect(result.data[0]).not.toHaveProperty('disabled');
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-all-users', {
 				userId: caller.user.id,
 				publicApi: true,
@@ -115,7 +126,15 @@ describe('UsersPublicController', () => {
 			);
 
 			expect(userService.getUser).toHaveBeenCalledWith('user-id');
+			expect(result).toMatchObject({
+				id: 'user-id',
+				email: 'member@example.com',
+				mfaEnabled: false,
+			});
 			expect(result).not.toHaveProperty('role');
+			expect(result).not.toHaveProperty('password');
+			expect(result).not.toHaveProperty('mfaSecret');
+			expect(result).not.toHaveProperty('disabled');
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-user', {
 				userId: caller.user.id,
 				publicApi: true,

@@ -3,11 +3,12 @@ import {
 	ListUsersQueryDto,
 	UserListPublicDto,
 	UserPublicDto,
-	userIdParamSchema,
+	userIdentifierParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
@@ -47,6 +48,7 @@ export class UsersPublicController {
 	@ApiDescription('Retrieve all users from your instance. Only available for the instance owner.')
 	@ApiTags(tags)
 	@ApiResponse(200, UserListPublicDto)
+	@ApiErrorResponse(404, { description: 'The given `projectId` does not exist.' })
 	async getUsers(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -85,10 +87,11 @@ export class UsersPublicController {
 	@ApiDescription('Retrieve a user from your instance. Only available for the instance owner.')
 	@ApiTags(tags)
 	@ApiResponse(200, UserPublicDto)
+	@ApiErrorResponse(404, { description: 'No user with that ID or email.' })
 	async getUser(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('userId', userIdParamSchema) userId: string,
+		@Param('userId', userIdentifierParamSchema) userId: string,
 		@Query query: GetUserQueryDto,
 	): Promise<UserPublicDto> {
 		const { includeRole } = query;
