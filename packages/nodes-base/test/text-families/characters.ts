@@ -1,26 +1,26 @@
-import bidiControls from '@unicode/unicode-17.0.0/Binary_Property/Bidi_Control/symbols';
-import changesWhenCasemapped from '@unicode/unicode-17.0.0/Binary_Property/Changes_When_Casemapped/symbols';
-import emojiModifiers from '@unicode/unicode-17.0.0/Binary_Property/Emoji_Modifier/symbols';
-import emoji from '@unicode/unicode-17.0.0/Binary_Property/Emoji_Presentation/symbols';
-import regionalIndicators from '@unicode/unicode-17.0.0/Binary_Property/Regional_Indicator/symbols';
-import whiteSpace from '@unicode/unicode-17.0.0/Binary_Property/White_Space/symbols';
-import combiningDiacriticalMarks from '@unicode/unicode-17.0.0/Block/Combining_Diacritical_Marks/symbols';
-import halfwidthAndFullwidthForms from '@unicode/unicode-17.0.0/Block/Halfwidth_and_Fullwidth_Forms/symbols';
-import decimalNumber from '@unicode/unicode-17.0.0/General_Category/Decimal_Number/symbols';
-import format from '@unicode/unicode-17.0.0/General_Category/Format/symbols';
-import arabic from '@unicode/unicode-17.0.0/Script/Arabic/symbols';
-import cyrillic from '@unicode/unicode-17.0.0/Script/Cyrillic/symbols';
-import devanagari from '@unicode/unicode-17.0.0/Script/Devanagari/symbols';
-import greek from '@unicode/unicode-17.0.0/Script/Greek/symbols';
-import han from '@unicode/unicode-17.0.0/Script/Han/symbols';
-import hangul from '@unicode/unicode-17.0.0/Script/Hangul/symbols';
-import hebrew from '@unicode/unicode-17.0.0/Script/Hebrew/symbols';
-import hiragana from '@unicode/unicode-17.0.0/Script/Hiragana/symbols';
-import katakana from '@unicode/unicode-17.0.0/Script/Katakana/symbols';
-import latin from '@unicode/unicode-17.0.0/Script/Latin/symbols';
+import bidiControls from '@unicode/unicode-18.0.0/Binary_Property/Bidi_Control/symbols';
+import changesWhenCasemapped from '@unicode/unicode-18.0.0/Binary_Property/Changes_When_Casemapped/symbols';
+import emojiModifiers from '@unicode/unicode-18.0.0/Binary_Property/Emoji_Modifier/symbols';
+import emoji from '@unicode/unicode-18.0.0/Binary_Property/Emoji_Presentation/symbols';
+import regionalIndicators from '@unicode/unicode-18.0.0/Binary_Property/Regional_Indicator/symbols';
+import whiteSpace from '@unicode/unicode-18.0.0/Binary_Property/White_Space/symbols';
+import combiningDiacriticalMarks from '@unicode/unicode-18.0.0/Block/Combining_Diacritical_Marks/symbols';
+import halfwidthAndFullwidthForms from '@unicode/unicode-18.0.0/Block/Halfwidth_and_Fullwidth_Forms/symbols';
+import decimalNumber from '@unicode/unicode-18.0.0/General_Category/Decimal_Number/symbols';
+import format from '@unicode/unicode-18.0.0/General_Category/Format/symbols';
+import arabic from '@unicode/unicode-18.0.0/Script/Arabic/symbols';
+import cyrillic from '@unicode/unicode-18.0.0/Script/Cyrillic/symbols';
+import devanagari from '@unicode/unicode-18.0.0/Script/Devanagari/symbols';
+import greek from '@unicode/unicode-18.0.0/Script/Greek/symbols';
+import han from '@unicode/unicode-18.0.0/Script/Han/symbols';
+import hangul from '@unicode/unicode-18.0.0/Script/Hangul/symbols';
+import hebrew from '@unicode/unicode-18.0.0/Script/Hebrew/symbols';
+import hiragana from '@unicode/unicode-18.0.0/Script/Hiragana/symbols';
+import katakana from '@unicode/unicode-18.0.0/Script/Katakana/symbols';
+import latin from '@unicode/unicode-18.0.0/Script/Latin/symbols';
 
 /**
- * Character sets for the string families, taken from the Unicode 17 tables
+ * Character sets for the string families, taken from the Unicode 18 tables
  * so a Unicode upgrade is a visible dependency bump.
  */
 
