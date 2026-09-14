@@ -479,7 +479,7 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private createDataProxy(data: JsTaskData, workflow: Workflow, itemIndex: number) {
-		return new WorkflowDataProxy(
+		const dataProxy = new WorkflowDataProxy(
 			workflow,
 			data.runExecutionData,
 			data.runIndex,
@@ -509,6 +509,14 @@ export class JsTaskRunner extends TaskRunner {
 			// means we run the getter for '$json', and by default $json throws
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
+
+		// Removed from the Code node in v3. The helper stays available in
+		// expression fields, so it is overridden here instead of in the proxy.
+		dataProxy.$evaluateExpression = () => {
+			throw new UnsupportedFunctionError('$evaluateExpression');
+		};
+
+		return dataProxy;
 	}
 
 	private extractJsonData(result: INodeExecutionData) {

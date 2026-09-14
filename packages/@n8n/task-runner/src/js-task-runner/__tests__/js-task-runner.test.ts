@@ -1820,13 +1820,13 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('expressions', () => {
-		it('should evaluate expressions with $evaluateExpression', async () => {
-			const outcome = await executeForAllItems({
-				code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
-				inputItems: [],
-			});
-
-			expect(outcome.result).toEqual({ val: 2 });
+		it('should throw an unsupported-function error for $evaluateExpression', async () => {
+			await expect(
+				executeForAllItems({
+					code: "return { val: $evaluateExpression('{{ 1 + 1 }}') }",
+					inputItems: [],
+				}),
+			).rejects.toThrow('The function "$evaluateExpression" is not supported in the Code Node');
 		});
 	});
 
