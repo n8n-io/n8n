@@ -564,12 +564,6 @@ describe('Microsoft Dataverse operations', () => {
 		});
 
 		it('allows replacement upsert for an elastic table after acknowledgment', async () => {
-			vi.mocked(resolveTableMetadata).mockResolvedValueOnce({
-				logicalName: 'sensordata',
-				entitySetName: 'sensordatas',
-				primaryIdAttribute: 'sensordataid',
-				tableType: 'Elastic',
-			});
 			withParams({
 				entitySet: 'sensordatas',
 				identifierType: 'guid',
@@ -584,6 +578,7 @@ describe('Microsoft Dataverse operations', () => {
 			const [, method, path] = singleCall();
 			expect(method).toBe('PATCH');
 			expect(path).toBe(`/sensordatas(${ROW_ID})`);
+			expect(resolveTableMetadata).not.toHaveBeenCalled();
 		});
 
 		it('addresses the row by an alternate-key predicate', async () => {

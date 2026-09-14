@@ -354,6 +354,35 @@ describe('Microsoft Dataverse lookups', () => {
 			});
 		});
 
+		it.each(['device?query', 'device#fragment', 'device/path', 'device\\path', 'device\npath'])(
+			'rejects a URL-breaking elastic lookup partition ID: %j',
+			(partitionId) => {
+				const elasticTarget: LookupFieldMap = new Map([
+					[
+						'primarycontactid',
+						[
+							{
+								navigationProperty: 'primarycontactid',
+								referencedEntity: 'contact',
+								targetEntitySet: 'contacts',
+								tableType: 'Elastic',
+								primaryIdAttribute: 'contactid',
+							},
+						],
+					],
+				]);
+
+				expect(() =>
+					applyLookupBindings(
+						ctx,
+						0,
+						{ primarycontactid: { id: guid, partitionId } },
+						elasticTarget,
+					),
+				).toThrow(/must not contain URL delimiters/);
+			},
+		);
+
 		it('passes a full reference path through and selects the matching navigation property', () => {
 			const out = applyLookupBindings(ctx, 0, { customerid: `/accounts(${guid})` }, polymorphic);
 

@@ -221,6 +221,10 @@ const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 // Chars that would truncate or redirect the request URL if interpolated raw.
 const URL_BREAKING_CHARS = /[?#/\\]|[\x00-\x1f]/;
 
+export function hasUrlBreakingChars(value: string): boolean {
+	return URL_BREAKING_CHARS.test(value);
+}
+
 /**
  * Validate a Row ID before interpolating it into the request path. The field is
  * a GUID by definition, so require that shape — a value carrying `?`/`#`/`/`
@@ -261,7 +265,7 @@ export function assertValidAlternateKey(
 	paramName = 'alternateKey',
 ): string {
 	const predicate = assertNonEmptyRecordId(ctx, itemIndex, alternateKey, paramName);
-	if (URL_BREAKING_CHARS.test(predicate)) {
+	if (hasUrlBreakingChars(predicate)) {
 		throw new NodeOperationError(
 			ctx.getNode(),
 			`Parameter "${paramName}" must not contain URL delimiters, path separators, or control characters`,

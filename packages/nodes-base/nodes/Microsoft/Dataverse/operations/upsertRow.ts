@@ -148,9 +148,9 @@ export const upsertRow: OperationDefinition = {
 		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
 		const options = ctx.getNodeParameter('upsertOptions', i, {}) as IDataObject;
 		const behavior = (options.behavior as string) ?? 'upsert';
-		if (behavior === 'upsert') {
+		if (behavior === 'upsert' && !options.allowElasticTableReplacement) {
 			const metadata = await resolveTableMetadata(ctx, credentialType, entitySet);
-			if (metadata && isElasticTable(metadata) && !options.allowElasticTableReplacement) {
+			if (metadata && isElasticTable(metadata)) {
 				throw new NodeOperationError(
 					ctx.getNode(),
 					'Create or Update replaces the complete row for an elastic table. Enable "Allow Elastic Table Replacement" only when the Row Item contains every value to keep.',

@@ -3,7 +3,7 @@ import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { dataverseApiRequest } from '../GenericFunctions';
 import { isElasticTable, resolveTableMetadataByLogicalNames } from './metadata';
-import { normalizeEntitySet } from './shared';
+import { hasUrlBreakingChars, normalizeEntitySet } from './shared';
 
 /**
  * Lookup (relationship) column handling for write operations.
@@ -369,6 +369,13 @@ function buildLookupBinding(
 			throw new NodeOperationError(
 				ctx.getNode(),
 				`Lookup field "${field}" needs a non-empty partition ID and target primary key metadata.`,
+				{ itemIndex },
+			);
+		}
+		if (hasUrlBreakingChars(partitionId)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Lookup field "${field}" partition ID must not contain URL delimiters, path separators, or control characters.`,
 				{ itemIndex },
 			);
 		}
