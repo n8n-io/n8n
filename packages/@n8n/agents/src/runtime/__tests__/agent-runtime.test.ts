@@ -9544,4 +9544,34 @@ describe('AgentRuntime — MCP tool provenance', () => {
 			'mcpServerName',
 		);
 	});
+
+	it('stamps the MCP server name on the tool-result chunk of a resumed tool', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return 'rows';
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const mcpTool: BuiltTool = {
+			...makeSuspendingTool('genie_ask', handler),
+			mcpTool: true,
+			mcpServerName: 'Genie',
+			mcpToolName: 'ask',
+		};
+		const { runtime } = createRuntimeWithTools([mcpTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'genie_ask', args: {} }]),
+		);
+
+		const first = await runtime.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const resumed = await runtime.resume('stream', { approved: true }, { runId, toolCallId });
+		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'tool-result', toolCallId, mcpServerName: 'Genie' }),
+			]),
+		);
+	});
 });

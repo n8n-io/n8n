@@ -564,6 +564,9 @@ export class ToolCallExecutor {
 				toolEntry: processResult.toolEntry,
 				modelOutput: processResult.modelOutput,
 				customMessage: processResult.customMessage,
+				...(processResult.mcpServerName !== undefined
+					? { mcpServerName: processResult.mcpServerName }
+					: {}),
 			});
 		} else if (processResult.outcome === 'cancelled') {
 			results.push({

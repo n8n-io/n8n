@@ -415,6 +415,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const suspended = makeRuntime(
 			[
+				// A sibling Genie tool already returned; the suspended segment is not the reply
+				{ ...genieResult, toolCallId: 'tc-0' },
 				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'Databricks_Genie_ask', input: {} },
 				{
 					type: 'tool-call-suspended',
