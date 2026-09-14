@@ -26,6 +26,7 @@ import './v3/ai-transform-deprecated.rule';
 import './v3/always-output-data-multi-output.rule';
 import './v3/caller-policy-any-removed.rule';
 import './v3/caller-policy-default-any.rule';
+import './v3/chat-hub-deprecated.rule';
 import './v3/chat-trigger-embedded-json.rule';
 import './v3/compression-node-limits.rule';
 import './v3/docker-only-deployment.rule';
