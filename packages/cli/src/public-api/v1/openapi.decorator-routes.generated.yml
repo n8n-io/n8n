@@ -31,6 +31,16 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /node-type-policies/instance:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/putInstancePolicy.generated.yml
+  /node-type-policies/projects/{projectId}:
+    get:
+      $ref: ./handlers/node-type-policies/spec/paths/getProjectPolicy.generated.yml
+    put:
+      $ref: ./handlers/node-type-policies/spec/paths/putProjectPolicy.generated.yml
   /projects:
     get:
       $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
@@ -41,6 +51,16 @@ paths:
       $ref: ./handlers/projects/spec/paths/updateProject.generated.yml
     delete:
       $ref: ./handlers/projects/spec/paths/deleteProject.generated.yml
+  /projects/{projectId}/users:
+    get:
+      $ref: ./handlers/projects/spec/paths/getProjectUsers.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/addUsersToProject.generated.yml
+  /projects/{projectId}/users/{userId}:
+    patch:
+      $ref: ./handlers/projects/spec/paths/changeUserRoleInProject.generated.yml
+    delete:
+      $ref: ./handlers/projects/spec/paths/deleteUserFromProject.generated.yml
   /promotions/providers:
     post:
       $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml
@@ -134,6 +154,13 @@ paths:
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
+    post:
+      $ref: ./handlers/variables/spec/paths/createVariable.generated.yml
+  /variables/{id}:
+    put:
+      $ref: ./handlers/variables/spec/paths/updateVariable.generated.yml
+    delete:
+      $ref: ./handlers/variables/spec/paths/deleteVariable.generated.yml
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml

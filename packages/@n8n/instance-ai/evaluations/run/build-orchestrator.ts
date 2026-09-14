@@ -28,6 +28,7 @@ import { N8nClient } from '../clients/n8n-client';
 import {
 	fetchAgentScenarioContext,
 	findAgentArtifactRef,
+	type AgentScenarioContext,
 	type executeAgentScenario,
 } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
@@ -294,7 +295,7 @@ export interface BuildOrchestratorDeps {
 	transcriptByThreadId: Map<string, TranscriptTurn[]>;
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
-	agentContextByKey: Map<string, Promise<string>>;
+	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
 	sleep?: (ms: number) => Promise<void>;
 }

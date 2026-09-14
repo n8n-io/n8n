@@ -26,6 +26,13 @@ type IODirection = 'inputs' | 'outputs';
 export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
 
 /**
+ * How many boxes a reader should see on the canvas with every group collapsed:
+ * the trigger, each group, and each ungrouped node. Shared by the grouping
+ * guidance and the build-time check so the number cannot drift between them.
+ */
+export const TOP_LEVEL_ITEM_CEILING = 7;
+
+/**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
  */
 export function normalizeGroupDescription(description: unknown): string | undefined {
@@ -85,9 +92,13 @@ export const NODE_GROUPING_RULES = {
 		sdkReference:
 			'**One connected section with a single entry and exit.** The connectable members must ' +
 			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
-			'the group boundary. Sticky notes may accompany the selection without participating in ' +
-			'connectivity, and a sticky-only group is valid.',
+			'unrelated islands — where at most one member takes main input from outside the group and ' +
+			'has no predecessor inside, and at most one member sends main output outside it and has no ' +
+			'successor inside (the one exception: a closed loop whose only exit is the loop node) — so ' +
+			'a gate cannot hold only its dead end. The limit is on members facing outward, not on connections: ' +
+			'several connections may reach that one entry member, and several may leave that one exit ' +
+			'member. Sticky notes may accompany the selection ' +
+			'without participating in connectivity, and a sticky-only group is valid.',
 		violation: 'must form a single connected subgraph with a single entry and exit',
 	},
 	nonMainBoundary: {
@@ -441,7 +452,7 @@ function groupRuleViolationMessage(
 		case 'trigger-selected':
 			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;
 		case 'invalid-subgraph':
-			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}.`;
+			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}${describeSubgraphError(result.errors[0], nodeLabel)}.`;
 		case 'node-already-grouped':
 			return `${label} ${NODE_GROUPING_RULES.nodeAlreadyGrouped.violation}: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
 		case 'non-main-boundary':
@@ -451,6 +462,30 @@ function groupRuleViolationMessage(
 			return `${label} has multiple input branches at node "${result.node}".`;
 		case 'multiple-output-branches':
 			return `${label} has multiple output branches at node "${result.node}".`;
+	}
+}
+
+/**
+ * Names the node(s) the engine blamed, so the reader can fix the boundary
+ * instead of guessing which member faces outward.
+ */
+function describeSubgraphError(
+	error: ExtractableErrorResult | undefined,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	if (!error) {
+		return '';
+	}
+
+	switch (error.errorCode) {
+		case 'Output Edge From Non-Leaf Node':
+		case 'Input Edge To Non-Root Node':
+			return ` (${error.errorCode.toLowerCase()}: "${nodeLabel(error.node)}")`;
+		case 'Multiple Input Nodes':
+		case 'Multiple Output Nodes':
+			return ` (${error.errorCode.toLowerCase()}: ${[...error.nodes].map((node) => `"${nodeLabel(node)}"`).join(', ')})`;
+		case 'No Continuous Path From Root To Leaf In Selection':
+			return ` (no path from "${nodeLabel(error.start)}" to "${nodeLabel(error.end)}")`;
 	}
 }
 
