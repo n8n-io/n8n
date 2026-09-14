@@ -172,7 +172,7 @@ function emitToolChunk(
 			});
 			break;
 		case 'tool-result': {
-			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
+			const toolResultChunk = chunk;
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,

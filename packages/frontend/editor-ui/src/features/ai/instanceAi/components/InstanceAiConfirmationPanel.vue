@@ -130,7 +130,7 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * Title for the floating approval. We resolve a short imperative phrase
  * (e.g. "archive workflow") via i18n keyed by the tool name and optional
  * action — `instanceAi.tools.{tool}.{action}.imperative`. When that key
- * exists we render the unified "Allow AI Assistant to {action}?" prompt;
+ * exists we render the unified "Allow n8n Assistant to {action}?" prompt;
  * otherwise we fall back to the tool's display label. Doing the lookup on
  * the frontend keeps the action phrase translatable without sending
  * English strings over the wire.

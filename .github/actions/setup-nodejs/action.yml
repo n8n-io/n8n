@@ -194,7 +194,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.safe-chain/bin
-        key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
+        key: safe-chain-1.5.20-${{ runner.os }}-${{ runner.arch }}
 
     # Download + install the SafeChain binary. This is the expensive,
     # CDN-backed part and the only part worth gating on the cache. The install
@@ -203,8 +203,8 @@ runs:
     - name: Download Aikido SafeChain
       if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
-        VERSION="1.5.7"
-        EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
+        VERSION="1.5.20"
+        EXPECTED_SHA256="0ad25efe15d1fa56105157a454d647223e78eb0c53d1f85e3d10afcd722e7bfd"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -

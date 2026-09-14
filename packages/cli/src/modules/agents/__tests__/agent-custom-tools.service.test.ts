@@ -8,6 +8,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -58,6 +59,7 @@ function makeService() {
 		agentRepository,
 		runtimeCacheService,
 		modificationTelemetry,
+		mock<AgentUpdateBroadcaster>(),
 	);
 
 	return { service, agentRepository, runtimeCacheService, modificationTelemetry };

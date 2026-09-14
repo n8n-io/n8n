@@ -19,6 +19,27 @@ export interface SetupPanelThreadSource {
 	setupItemsByWorkflowId: Record<string, InstanceAiSetupItem[]>;
 }
 
+function completeCredentialContext(
+	item: InstanceAiSetupItem,
+	fallback: InstanceAiSetupItem | undefined,
+): InstanceAiSetupItem {
+	if (
+		item.kind !== 'credential' ||
+		fallback?.kind !== 'credential' ||
+		item.id !== fallback.id ||
+		item.credentialType !== fallback.credentialType
+	) {
+		return item;
+	}
+	return {
+		...item,
+		nodeBindings: item.nodeBindings?.length ? item.nodeBindings : fallback.nodeBindings,
+		setupHint: item.setupHint ?? fallback.setupHint,
+		reason: item.reason ?? fallback.reason,
+		appDisplayName: item.appDisplayName ?? fallback.appDisplayName,
+	};
+}
+
 /**
  * Row state for the Instance AI setup panel: merges the thread's durable
  * `setup-items` events with the derivation from the workflow document into a
@@ -71,9 +92,17 @@ export function useSetupPanelState(options: {
 
 	const rows = computed<SetupPanelRow[]>(() => {
 		if (rowSource.value === 'events') {
-			return eventItems.value.map((item) => ({ item, isDone: derivation.isItemDone(item) }));
+			// Resolve bindings without remembering temporary parameter issues during a build.
+			const derivedById = new Map(
+				derivation.derivedCredentialItems.value.map((item) => [item.id, item]),
+			);
+			return eventItems.value.map((event) => {
+				const item = completeCredentialContext(event, derivedById.get(event.id));
+				return { item, isDone: derivation.isItemDone(item) };
+			});
 		}
 		const derived = derivation.derivedItems.value;
+		const eventsById = new Map(eventItems.value.map((item) => [item.id, item]));
 		const derivedIds = new Set(derived.map((item) => item.id));
 		// Parameter rows the agent announced that settled before this session's
 		// derivation ever saw them raise issues (e.g. resolved mid-build, then a
@@ -85,11 +114,18 @@ export function useSetupPanelState(options: {
 			(item) =>
 				item.kind === 'parameters' && !derivedIds.has(item.id) && derivation.isItemDone(item),
 		);
-		return [...derived, ...settledEventItems].map((item) => ({
-			item,
-			isDone: derivation.isItemDone(item),
-		}));
+		return [...derived, ...settledEventItems].map((derivedItem) => {
+			const item = completeCredentialContext(derivedItem, eventsById.get(derivedItem.id));
+			return { item, isDone: derivation.isItemDone(item) };
+		});
 	});
 
-	return { rows, rowSource, isAgentBuilding };
+	return {
+		rows,
+		rowSource,
+		isAgentBuilding,
+		getNodeByName: derivation.getNodeByName,
+		workflowProjectId: derivation.workflowProjectId,
+		refreshWorkflow: derivation.refreshWorkflow,
+	};
 }

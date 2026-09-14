@@ -6,6 +6,8 @@ import { UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
+
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
@@ -27,12 +29,19 @@ interface Harness {
 	settingsService: Mocked<InstanceReportingSettingsService>;
 	instanceSettings: Mocked<InstanceSettings>;
 	modulesConfig: Mocked<ModulesConfig>;
+	eventService: Mocked<EventService>;
+	/** Fire the deferred `server-started` listeners (only needed when autoStart is false). */
+	startServer: () => void;
 }
 
 function makeHarness({
 	baseUrl = 'https://example.com',
 	isLeader = true,
 	disabledModules = [] as ModuleName[],
+	// The scheduler arms its first tick on `server-started`. By default the harness
+	// fires that listener the moment it is registered, so `init()` starts reporting
+	// as the tests expect. Pass false to hold it and fire it later via `startServer`.
+	autoStart = true,
 } = {}): Harness {
 	const config = new InstanceReportingConfig();
 	config.instanceReportingBaseUrl = baseUrl;
@@ -54,6 +63,23 @@ function makeHarness({
 	});
 	const modulesConfig = mock<ModulesConfig>({ disabledModules });
 
+	const serverStartedListeners: Array<() => void> = [];
+	const eventService = mock<EventService>();
+	eventService.once.mockImplementation((event, listener) => {
+		if (event === 'server-started') {
+			if (autoStart) (listener as () => void)();
+			else serverStartedListeners.push(listener as () => void);
+		}
+		return eventService;
+	});
+	eventService.off.mockImplementation((event, listener) => {
+		if (event === 'server-started') {
+			const index = serverStartedListeners.indexOf(listener as () => void);
+			if (index !== -1) serverStartedListeners.splice(index, 1);
+		}
+		return eventService;
+	});
+
 	const scheduler = new InstanceReportingScheduler(
 		config,
 		reportingService,
@@ -61,6 +87,7 @@ function makeHarness({
 		settingsService,
 		instanceSettings,
 		modulesConfig,
+		eventService,
 		mockLogger(),
 	);
 
@@ -71,6 +98,8 @@ function makeHarness({
 		settingsService,
 		instanceSettings,
 		modulesConfig,
+		eventService,
+		startServer: () => serverStartedListeners.forEach((listener) => listener()),
 	};
 }
 
@@ -136,6 +165,22 @@ describe('InstanceReportingScheduler', () => {
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(3);
 		});
+
+		test('holds the first tick until the server has started', async () => {
+			// A boot catch-up report must not run before the event bus is up, or its
+			// success/failure event is emitted with nowhere to land.
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, startServer } = makeHarness({ autoStart: false });
+
+			await scheduler.init();
+			await settle();
+			expect(reportingService.sendReport).not.toHaveBeenCalled();
+
+			startServer();
+			await settle();
+
+			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('catch-up', () => {
@@ -192,6 +237,21 @@ describe('InstanceReportingScheduler', () => {
 			await settle();
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
+		});
+
+		test('drops the deferred first tick when it steps down before the server starts', async () => {
+			// Leader at boot, but it loses leadership before `server-started`. The
+			// pending listener must be removed, so it neither leaks nor reports, and a
+			// later takeover cannot start it a second time.
+			vi.setSystemTime(new Date(AFTER_SLOT));
+			const { scheduler, reportingService, startServer } = makeHarness({ autoStart: false });
+
+			await scheduler.init();
+			scheduler.stop();
+			startServer();
+			await settle();
+
+			expect(reportingService.sendReport).not.toHaveBeenCalled();
 		});
 
 		test('stops reporting when this main steps down', async () => {

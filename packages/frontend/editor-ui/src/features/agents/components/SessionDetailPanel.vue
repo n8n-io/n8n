@@ -132,7 +132,7 @@ const toolDisplayName = computed((): string => {
 	) {
 		return '';
 	}
-	return resolveToolNameForDisplay(props.item.toolName, i18n);
+	return resolveToolNameForDisplay(props.item.toolName, i18n, props.item.toolOutput);
 });
 
 const linkedToolName = computed((): string => {
@@ -201,7 +201,7 @@ const headerTitle = computed((): string => {
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
+	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	if (item.kind === 'execution-error') return executionErrorLabel(item, i18n);
 	if (item.kind === 'suspension') {
@@ -460,7 +460,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
 
 .panel {
 	display: flex;
@@ -582,7 +582,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 }
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);

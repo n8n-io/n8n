@@ -20,6 +20,7 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithSubWorkflow,
 	subWorkflowRefOf,
+	WIRE_VERSION_ID,
 	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
 import { executeWorkflowNode } from './utils/test-builders';
@@ -218,14 +219,14 @@ describe('Package import of workflows with sub-workflows', () => {
 		const parent = serializedWorkflow({
 			id: 'CHEDDAR',
 			name: 'Parent',
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode(), executeWorkflowNode('BRIE')],
 		});
 		const subWorkflow = serializedWorkflow({
 			id: 'BRIE',
 			name: 'Sub-workflow',
 			isArchived: true,
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode()],
 		});
 

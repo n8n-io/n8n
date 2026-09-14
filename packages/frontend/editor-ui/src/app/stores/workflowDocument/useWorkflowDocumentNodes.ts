@@ -39,7 +39,6 @@ import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useNodeTypesStore } from '../nodeTypes.store';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 
 // --- Event types ---
 
@@ -124,10 +123,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			}
 
 			if (node.position) {
-				const snappedPosition = snapPositionToGrid(node.position);
-				node.position = isAgentNodeV2(node)
-					? [snappedPosition[0], node.position[1]]
-					: snappedPosition;
+				node.position = snapPositionToGrid(node.position);
 			}
 		}
 

@@ -79,8 +79,9 @@ function handleUpdateDropdownModelValue(open: boolean) {
 				<span :class="$style.trigger">
 					<N8nIconButton
 						icon="plus"
-						variant="outline"
+						variant="ghost"
 						size="medium"
+						icon-size="large"
 						:disabled="props.disabled"
 						:aria-label="tooltip"
 					/>

@@ -197,7 +197,7 @@ describe('SnapshotManager.ensureImage', () => {
 			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
 		);
 		expect(image.dockerfile).toContain(
-			'npm install --ignore-scripts --no-audit --no-fund --prefer-online',
+			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 		);
 
 		const stagingDir = image.contextList[0]?.sourcePath;

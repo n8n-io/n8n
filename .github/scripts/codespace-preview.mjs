@@ -8,6 +8,8 @@
 //   unlabeled    -> down     delete the box
 //   closed       -> down
 //
+// A manual run sets PREVIEW_OPERATION instead, which wins over the event mapping.
+//
 // `refresh` never creates a box. A box that GitHub already deleted (24 h
 // retention) is reported as expired, not as a failure.
 import { spawnSync } from 'node:child_process';
@@ -18,11 +20,16 @@ import { ensureEnvVar, postOrUpdateComment } from './github-helpers.mjs';
 
 export const BOT_MARKER = '<!-- codespace-preview -->';
 export const PREVIEW_LABEL = 'codespace-preview';
-// Copied from `preview.mjs`, which owns them. They cannot be imported: that module
-// runs its command switch on import. They appear in the comment so a reviewer knows
-// how long the instance lasts without reading the script.
-const IDLE_TIMEOUT = '30 minutes';
+// Copied from `preview.mjs`, which owns them, so they move together. They cannot be
+// imported: that module runs its command switch on import. They appear in the comment
+// so a reviewer knows how long the instance lasts without reading the script.
+const IDLE_TIMEOUT = '2 hours';
 const RETENTION_PERIOD = '24 hours';
+// A slept box comes back with a private port, so every recovery hint points here.
+export const WORKFLOW_URL =
+	'https://github.com/n8n-io/n8n/actions/workflows/util-codespace-preview.yml';
+// What a manual run may ask for. `ls` is absent: it needs no PR and posts no comment.
+export const DISPATCH_OPERATIONS = ['up', 'refresh', 'down'];
 // Resolved against this file, so the script runs the same from any directory.
 const PREVIEW_SCRIPT = fileURLToPath(new URL('../../scripts/preview.mjs', import.meta.url));
 
@@ -48,6 +55,19 @@ export function operationFor(action, label) {
 		default:
 			return undefined;
 	}
+}
+
+/**
+ * A manual run says what to do, so its operation wins over the event mapping. An
+ * operation that is not one of ours stops here: `preview.mjs` would only print
+ * usage and exit 1, which reads as a broken preview rather than a bad input.
+ *
+ * @param {{action?: string, label?: string, operation?: string}} context
+ * @returns {'up' | 'refresh' | 'down' | undefined}
+ */
+export function resolveOperation({ action, label, operation }) {
+	if (operation) return DISPATCH_OPERATIONS.includes(operation) ? operation : undefined;
+	return operationFor(action ?? '', label);
 }
 
 /**
@@ -122,7 +142,9 @@ export function readyComment({ url, codespace, sha, orgVisible, pr }) {
 		access,
 		'',
 		`The instance sleeps after ${IDLE_TIMEOUT} of no use and is deleted after ${RETENTION_PERIOD}.`,
-		`Push a commit to serve it again. Remove the \`${PREVIEW_LABEL}\` label to delete it now.`,
+		`A box that slept comes back private, so wake it with [the preview workflow](${WORKFLOW_URL})`,
+		'(`Run workflow` → this PR number → `up`), or by pushing a commit.',
+		`Remove the \`${PREVIEW_LABEL}\` label to delete it now.`,
 	].join('\n');
 }
 
@@ -143,7 +165,7 @@ export function expiredComment({ pr }) {
 		`### Preview instance expired`,
 		'',
 		`The preview box for PR #${pr} no longer exists — GitHub deletes one after ${RETENTION_PERIOD}.`,
-		`Remove and add the \`${PREVIEW_LABEL}\` label to get a new one.`,
+		`Run [the preview workflow](${WORKFLOW_URL}) with \`up\` to get a new one.`,
 	].join('\n');
 }
 
@@ -155,7 +177,8 @@ export function failureComment({ operation, runUrl, message }) {
 		'',
 		`\`preview ${operation}\` did not finish: ${message}`,
 		'',
-		`See [the workflow run](${runUrl}) for the full log. Remove and add the \`${PREVIEW_LABEL}\` label to try again.`,
+		`See [the workflow run](${runUrl}) for the full log.`,
+		`Run [the preview workflow](${WORKFLOW_URL}) with \`${operation}\` to try again.`,
 	].join('\n');
 }
 
@@ -176,19 +199,25 @@ function runPreview(args) {
 
 async function main() {
 	const pr = ensureEnvVar('PULL_REQUEST_NUMBER');
-	const action = ensureEnvVar('EVENT_ACTION');
 	const runUrl = ensureEnvVar('RUN_URL');
+	const requested = process.env.PREVIEW_OPERATION;
+	// A manual run carries no event action, so it cannot be required there.
+	const action = requested ? '' : ensureEnvVar('EVENT_ACTION');
 	const label = process.env.LABEL_NAME;
 
-	const operation = operationFor(action, label);
-	console.log("Operations: ", {
-		action,
-		label,
-		operation
-	})
+	// The dispatch input is free text. Refuse a non-number before anything tries to
+	// comment on it: postOrUpdateComment(NaN) 404s inside the catch below and
+	// reports that instead of the real cause.
+	if (!/^\d+$/.test(pr)) {
+		console.error(`::error::PULL_REQUEST_NUMBER must be a number, got "${pr}".`);
+		process.exitCode = 1;
+		return;
+	}
+
+	const operation = resolveOperation({ action, label, operation: requested });
 	if (!operation) {
 		console.log(
-			`No preview operation for a "${action}" event on "${label ?? ''}" — nothing to do.`,
+			`No preview operation for action="${action}" label="${label ?? ''}" operation="${requested ?? ''}" — nothing to do.`,
 		);
 		return;
 	}

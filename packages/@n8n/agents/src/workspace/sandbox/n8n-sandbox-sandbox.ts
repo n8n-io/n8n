@@ -10,6 +10,8 @@ import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo 
 export interface N8nSandboxServiceSandboxOptions {
 	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
 	id?: string;
+	/** When true, the service deletes the sandbox once it goes idle instead of stopping it. */
+	ephemeral?: boolean;
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
@@ -133,9 +135,10 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	private async createSandbox() {
 		const existingId = this.sandboxId;
-		const creation = existingId
-			? this.client.createSandbox({ id: existingId })
-			: this.client.createSandbox();
+		const creation = this.client.createSandbox({
+			id: existingId,
+			ephemeral: this.options.ephemeral,
+		});
 		try {
 			return await this.withLifecycleTimeout(creation);
 		} catch (error) {

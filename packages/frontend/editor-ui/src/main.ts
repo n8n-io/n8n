@@ -8,7 +8,6 @@ import '@vue-flow/node-resizer/dist/style.css';
 
 import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
-// import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
 import '@/features/ai/assistant/aiBuilderDiff.scss';
@@ -32,6 +31,8 @@ import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { registerEagerModals } from '@/app/modals.manifest';
+import { registerComponentSlots } from '@/app/componentSlots.manifest';
+import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
@@ -52,6 +53,12 @@ registerModuleRoutes(router);
 
 // Always-on modals, needed before login — see modals.manifest.ts
 registerEagerModals();
+
+// Shell-hosted components modules render — see componentSlots.manifest.ts
+registerComponentSlots();
+
+// The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
+registerUpgradeRedirectGuard();
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);

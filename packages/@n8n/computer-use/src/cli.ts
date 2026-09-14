@@ -103,7 +103,7 @@ function shouldShowHelp(): boolean {
 
 function printUsage(): void {
 	console.log(`
-n8n-computer-use — Local AI gateway for n8n AI Assistant
+n8n-computer-use — Local AI gateway for n8n Assistant
 
 Usage:
   npx @n8n/computer-use <url> <token>          Connect directly to n8n instance

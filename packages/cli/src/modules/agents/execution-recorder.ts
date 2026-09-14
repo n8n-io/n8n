@@ -6,6 +6,7 @@ import {
 	type PersistedChildTrace,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
@@ -168,11 +169,6 @@ function normaliseStreamError(error: unknown): string {
 const REDACTED_VALUE = '[REDACTED]';
 const CIRCULAR_VALUE = '[Circular]';
 
-function isSecretKey(key: string): boolean {
-	const probe = `${key}=value`;
-	return scrubSecretsInText(probe) !== probe;
-}
-
 function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
 	if (typeof value === 'string') return scrubSecretsInText(value);
 
@@ -191,7 +187,7 @@ function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>())
 
 	const sanitized: Record<string, unknown> = {};
 	for (const [key, item] of Object.entries(value)) {
-		sanitized[key] = isSecretKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
+		sanitized[key] = isSensitiveKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
 	}
 
 	seen.delete(value);

@@ -134,7 +134,7 @@ export class DynamicCredentialsProxy
 
 		if (executionContext?.credentials) {
 			const decrypted = await cipher.decryptV2(executionContext.credentials);
-			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
+			credentialContext = toCredentialContext(decrypted);
 		}
 
 		if (!credentialContext) {
@@ -148,7 +148,7 @@ export class DynamicCredentialsProxy
 
 		await this.storeIfNeeded(
 			credentialStoreMetadata,
-			{ oauthTokenData } as ICredentialDataDecryptedObject,
+			{ oauthTokenData },
 			credentialContext,
 			staticData,
 			workflowSettings,

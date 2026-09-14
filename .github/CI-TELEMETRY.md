@@ -19,6 +19,39 @@ All telemetry uses the same format:
 }
 ```
 
+Container startup payloads also include:
+
+```json
+{
+  "attempt_id": "uuid",
+  "correlation": {
+    "profile": "sqlite",
+    "shard": "3",
+    "worker": "2",
+    "retry": 1,
+    "restartReason": null
+  },
+  "stages": [
+    {
+      "name": "n8n-startup",
+      "source": "local",
+      "startedAt": "2026-03-16T12:00:00.000Z",
+      "elapsedMs": 4200,
+      "outcome": "failure",
+      "errorMessage": "readiness failed"
+    }
+  ],
+  "failure_phase": "n8n-startup"
+}
+```
+
+`attempt_id` identifies one stack startup. Join all stage records and attached
+Playwright startup evidence with this value. `outcome` is `success`, `failure`,
+or `cancelled`. Stage durations are also sent as `stack-startup-stage` metrics
+with `attempt_id`, `stage`, `source`, and `outcome` dimensions. `profile` is
+resolved from the configured profile or stack shape. Other unavailable
+correlation values stay `null`.
+
 ## Standard Context Fields
 
 ```typescript
