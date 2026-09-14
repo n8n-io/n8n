@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
@@ -115,11 +116,12 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		captured.push(config);
 		return toStream(chunks);
 	});
-	const resumeForChat = vi.fn((config: { beforeResume?: () => Promise<void> }) =>
-		(async function* () {
-			await config.beforeResume?.();
-			yield* toStream(chunks);
-		})(),
+	const resumeForChat = vi.fn(
+		(config: { beforeResume?: (abortSignal: AbortSignal) => Promise<void> }) =>
+			(async function* () {
+				await config.beforeResume?.(new AbortController().signal);
+				yield* toStream(chunks);
+			})(),
 	);
 	return {
 		executeForChatPublished,
@@ -1014,6 +1016,43 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('does not rotate the session after losing its lease', async () => {
+			const lease = new AbortController();
+			const cache = mockCache();
+			cache.get.mockImplementation(async () => {
+				lease.abort();
+				return { generation: 0, lastActivityAt: Date.now() - 31 * 60_000 };
+			});
+			Container.set(LockService, {
+				withLease: async (
+					_namespace: unknown,
+					_key: unknown,
+					fn: (signal: AbortSignal) => Promise<unknown>,
+				) => await fn(lease.signal),
+			} as never);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(cache.set).not.toHaveBeenCalled();
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
 		it('rotates again from an already-rotated generation', async () => {
 			mockCache([
 				sessionGenerationKey('agent-1:thread-1'),
@@ -1796,6 +1835,44 @@ describe('AgentChatBridge — consumeStream', () => {
 			}
 		});
 
+		it.each([
+			{
+				name: 'the thread is busy',
+				admit: async () => null,
+				message: expect.stringContaining('still working'),
+			},
+			{
+				name: 'admission fails',
+				admit: async () => {
+					throw new Error('database unavailable');
+				},
+				message: GENERIC_ERROR_MESSAGE,
+			},
+		])('removes stored attachments when $name', async ({ admit, message: expectedMessage }) => {
+			Container.set(AgentTurnQueueService, { tryRunNow: vi.fn(admit) } as never);
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, {
+				text: 'look at this',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: vi.fn().mockResolvedValue(pngBytes),
+					},
+				],
+			});
+
+			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expectedMessage);
+		});
+
 		it('truncates a platform file name to the fileName column width', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
@@ -2493,22 +2570,23 @@ describe('AgentChatBridge — consumeStream', () => {
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn((config: { beforeResume?: () => Promise<void> }) =>
-					(async function* () {
-						await config.beforeResume?.();
-						yield* toStream([
-							{ type: 'reasoning-start', id: 'reasoning-1' },
-							{
-								type: 'reasoning-delta',
-								id: 'reasoning-1',
-								delta: 'The tool was approved.',
-							},
-							{ type: 'reasoning-end', id: 'reasoning-1' },
-							{ type: 'text-delta', id: 't1', delta: 'Approved ' },
-							{ type: 'text-delta', id: 't1', delta: 'response' },
-							{ type: 'finish', finishReason: 'stop' },
-						]);
-					})(),
+				resumeForChat: vi.fn(
+					(config: { beforeResume?: (abortSignal: AbortSignal) => Promise<void> }) =>
+						(async function* () {
+							await config.beforeResume?.(new AbortController().signal);
+							yield* toStream([
+								{ type: 'reasoning-start', id: 'reasoning-1' },
+								{
+									type: 'reasoning-delta',
+									id: 'reasoning-1',
+									delta: 'The tool was approved.',
+								},
+								{ type: 'reasoning-end', id: 'reasoning-1' },
+								{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+								{ type: 'text-delta', id: 't1', delta: 'response' },
+								{ type: 'finish', finishReason: 'stop' },
+							]);
+						})(),
 				),
 				resolveResumeThread: vi.fn().mockResolvedValue('agent-1:thread-1'),
 			};

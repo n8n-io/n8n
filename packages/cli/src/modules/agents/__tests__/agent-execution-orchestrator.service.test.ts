@@ -323,6 +323,38 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
+	it('does not start the agent after losing its claim during runtime setup', async () => {
+		const { service } = makeService();
+		const runtime = makeRuntime();
+		let resolveRuntime!: (value: typeof runtime) => void;
+		const runtimeReady = new Promise<typeof runtime>((resolve) => {
+			resolveRuntime = resolve;
+		});
+		const getRuntime = vi.fn(async () => await runtimeReady);
+		const claimLost = new AbortController();
+		const claim = { ...claimFor('thread-1'), abortSignal: claimLost.signal };
+
+		const turn = collect(
+			service.streamChatResponse({
+				claim,
+				getRuntime,
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				runType: 'test',
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+		await vi.waitFor(() => expect(getRuntime).toHaveBeenCalledOnce());
+		claimLost.abort(new OperationalError('claim lost'));
+		resolveRuntime(runtime);
+
+		await expect(turn).rejects.toThrow('claim lost');
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		expect(claim.release).toHaveBeenCalledOnce();
+	});
+
 	const genieResult: StreamChunk = {
 		type: 'tool-result',
 		toolCallId: 'tc-1',
@@ -1254,6 +1286,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow();
 
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 		expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
 		expect(markResultsConsumed).not.toHaveBeenCalled();
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -1492,7 +1525,25 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		const abortController = new AbortController();
-		const beforeResume = vi.fn(async () => {});
+		const order: string[] = [];
+		const beforeResume = vi.fn(async () => {
+			order.push('side effects');
+		});
+		runtime.agent.resume.mockImplementationOnce(
+			async (
+				_mode: unknown,
+				_resumeData: unknown,
+				options: { onResumeClaimed?: () => Promise<void> },
+			) => {
+				order.push('checkpoint claimed');
+				await options.onResumeClaimed?.();
+				order.push('runtime resumed');
+				return {
+					runId: 'runtime-run-1',
+					stream: makeReadableStream([{ type: 'finish', finishReason: 'stop' }]),
+				};
+			},
+		);
 		const claim = claimFor('thread-1');
 		await collect(
 			service.resumeForChat(
@@ -1518,12 +1569,10 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				abortSignal: expect.any(AbortSignal),
+				onResumeClaimed: expect.any(Function),
 			}),
 		);
-		// Side effects of the claimed resume run before the model resumes.
-		expect(beforeResume.mock.invocationCallOrder[0]).toBeLessThan(
-			runtime.agent.resume.mock.invocationCallOrder[0],
-		);
+		expect(order).toEqual(['checkpoint claimed', 'side effects', 'runtime resumed']);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(

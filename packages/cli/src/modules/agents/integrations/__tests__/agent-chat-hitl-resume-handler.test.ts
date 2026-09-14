@@ -23,17 +23,19 @@ it.each([
 	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const resumeRuntime = vi.fn();
-	const resumeForChat = vi.fn((config: { beforeResume?: () => Promise<void> }) =>
-		(async function* () {
-			await config.beforeResume?.();
-			resumeRuntime();
-			yield { type: 'finish' as const, finishReason: 'stop' as const };
-		})(),
+	const resumeSignal = new AbortController().signal;
+	const resumeForChat = vi.fn(
+		(config: { beforeResume?: (abortSignal: AbortSignal) => Promise<void> }) =>
+			(async function* () {
+				await config.beforeResume?.(resumeSignal);
+				resumeRuntime();
+				yield { type: 'finish' as const, finishReason: 'stop' as const };
+			})(),
 	);
 	const claim = {
 		executionId: 'execution-1',
 		threadId: 'agent-thread-1',
-		abortSignal: new AbortController().signal,
+		abortSignal: resumeSignal,
 		release: vi.fn(async () => {}),
 		fail: vi.fn(async () => {}),
 	};

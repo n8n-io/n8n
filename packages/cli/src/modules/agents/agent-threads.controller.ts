@@ -47,7 +47,10 @@ export class AgentThreadsController {
 		if (!result) {
 			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
 		}
-		return result;
+		return {
+			...result,
+			executions: result.executions.map(({ runContext: _runContext, ...execution }) => execution),
+		};
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

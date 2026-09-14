@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -485,7 +485,7 @@ export class AgentChatBridge {
 		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
 		const id = await this.withSessionLock(
 			baseId,
-			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
+			async (signal) => await this.computeGeneration(baseId, false, idleTimeoutMinutes, signal),
 		);
 		return toInternalThreadId(id);
 	}
@@ -530,9 +530,11 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
+		await this.withSessionLock(baseId, async (signal) => {
+			this.assertSessionLock(signal);
 			await this.messageContextBridge.unbindSession(baseId);
-			await this.computeGeneration(baseId, true, null);
+			this.assertSessionLock(signal);
+			await this.computeGeneration(baseId, true, null, signal);
 		});
 		await thread.post('🔄 Started a new session.');
 	}
@@ -575,10 +577,13 @@ export class AgentChatBridge {
 		baseId: string,
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
+		signal: AbortSignal,
 	): Promise<string> {
+		this.assertSessionLock(signal);
 		const cache = Container.get(CacheService);
 		const key = this.sessionGenerationCacheKey(baseId);
 		const state = await cache.get<SessionGenerationState>(key);
+		this.assertSessionLock(signal);
 		if (!forceRotate && !state && !idleTimeoutMinutes) return baseId;
 
 		const now = Date.now();
@@ -589,7 +594,9 @@ export class AgentChatBridge {
 			state !== undefined &&
 			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
 		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
-		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+		const hasOpenSuspension = idleExpired ? await this.hasOpenSuspension(currentId) : false;
+		this.assertSessionLock(signal);
+		const rotate = forceRotate || (idleExpired && !hasOpenSuspension);
 		const generation = rotate ? currentGeneration + 1 : currentGeneration;
 
 		// Only persist when it matters: a rotation just happened (so the next
@@ -598,9 +605,14 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
+			this.assertSessionLock(signal);
 			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
+	}
+
+	private assertSessionLock(signal: AbortSignal): void {
+		if (signal.aborted) throw new OperationalError('Agent session lock was lost');
 	}
 
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {

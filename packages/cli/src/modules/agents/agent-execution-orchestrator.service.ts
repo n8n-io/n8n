@@ -140,7 +140,7 @@ export interface ResumeForChatConfig {
 	 * `agentInstance.resume()`. Chat integrations settle the action card and
 	 * update message context here, so a resume that is rejected changes nothing.
 	 */
-	beforeResume?: () => Promise<void>;
+	beforeResume?: (abortSignal: AbortSignal) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
@@ -474,12 +474,15 @@ export class AgentExecutionOrchestratorService {
 		} = config;
 		const { threadId } = claim;
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
+		const turnSignal = turnAbortSignal(claim, abortSignal);
 		let runtime: AgentRuntime | undefined;
 		let recorder = new ExecutionRecorder();
 		let executionSource = source;
 		try {
+			turnSignal.throwIfAborted();
 			// The pre-submit check can go stale while this resume waits in the turn queue.
 			const { sandboxPrincipalHash } = await this.loadResumableCheckpoint(config);
+			turnSignal.throwIfAborted();
 			runtime = await this.runtimeCacheService.getRuntime({
 				agentId,
 				projectId,
@@ -496,6 +499,7 @@ export class AgentExecutionOrchestratorService {
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat: config.previewChat,
 			});
+			turnSignal.throwIfAborted();
 			const { agent: agentInstance, toolRegistry } = runtime;
 			recorder = this.createRecorder(toolRegistry, () => claim.executionId, {
 				projectId,
@@ -521,8 +525,8 @@ export class AgentExecutionOrchestratorService {
 				source: executionSource ?? 'unknown',
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
+			turnSignal.throwIfAborted();
 
-			await beforeResume?.();
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
@@ -533,7 +537,16 @@ export class AgentExecutionOrchestratorService {
 				}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
-				abortSignal: turnAbortSignal(claim, abortSignal),
+				...(beforeResume
+					? {
+							onResumeClaimed: async () => {
+								turnSignal.throwIfAborted();
+								await beforeResume(turnSignal);
+								turnSignal.throwIfAborted();
+							},
+						}
+					: {}),
+				abortSignal: turnSignal,
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
 			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
@@ -896,6 +909,7 @@ export class AgentExecutionOrchestratorService {
 			beforeFinalize,
 		} = config;
 		const { threadId, resourceId } = memory;
+		const turnSignal = turnAbortSignal(claim, abortSignal);
 		let runtime: AgentRuntime | undefined;
 		let recorder = new ExecutionRecorder();
 
@@ -903,7 +917,9 @@ export class AgentExecutionOrchestratorService {
 			if (claim.threadId !== threadId) {
 				throw new UnexpectedError('Agent turn claim does not belong to this thread');
 			}
+			turnSignal.throwIfAborted();
 			runtime = await getRuntime();
+			turnSignal.throwIfAborted();
 			const { agent: agentInstance, toolRegistry } = runtime;
 			recorder = this.createRecorder(toolRegistry, () => claim.executionId, {
 				projectId,
@@ -919,6 +935,7 @@ export class AgentExecutionOrchestratorService {
 				source: source ?? 'test',
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
+			turnSignal.throwIfAborted();
 
 			const input = attachments?.length
 				? buildInboundUserMessage(modelMessage, attachments)
@@ -936,7 +953,7 @@ export class AgentExecutionOrchestratorService {
 				}),
 				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
-				abortSignal: turnAbortSignal(claim, abortSignal),
+				abortSignal: turnSignal,
 			});
 			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {

@@ -96,13 +96,14 @@ export class AgentChatHitlResumeHandler {
 		};
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
 			// Runs only once the resume owns the thread turn.
-			beforeResume: async () =>
+			beforeResume: async (abortSignal) =>
 				await this.runActionBeforeResume(
 					thread,
 					action,
 					{ id: event.messageId, author: event.user, raw: event.raw },
 					parsed.resumeData,
 					{ adapter: event.adapter, threadId: event.threadId },
+					abortSignal,
 				),
 		});
 	}
@@ -185,18 +186,22 @@ export class AgentChatHitlResumeHandler {
 			adapter: thread.adapter,
 			threadId: thread.id,
 		},
+		abortSignal?: AbortSignal,
 	): Promise<void> {
+		abortSignal?.throwIfAborted();
 		let callbackData: { kind?: 'approval'; label?: string } = action;
 		if (this.options.callbackStore) {
 			const resolved = await this.options.callbackStore.resolve(action.actionId);
 			if (resolved) callbackData = resolved;
 		}
+		abortSignal?.throwIfAborted();
 
 		const platformThreadId = this.options.resolvePlatformThreadId(thread);
 		const threadId = this.options.toAgentThreadId(platformThreadId);
 		// Persist the interacting user / messageId into the thread's message
 		// context so tools running on resume can read it via the message
 		// context store — no need to bolt a duplicate copy onto resumeData.
+		abortSignal?.throwIfAborted();
 		await this.options.messageContextBridge.updateLatest(
 			threadId.id,
 			message.author.userId,
@@ -210,7 +215,9 @@ export class AgentChatHitlResumeHandler {
 				replyExpectation: 'required',
 			},
 		);
-		await this.cleanUpBeforeResume(target, message, resumeData, callbackData);
+		abortSignal?.throwIfAborted();
+		await this.cleanUpBeforeResume(target, message, resumeData, callbackData, abortSignal);
+		abortSignal?.throwIfAborted();
 	}
 
 	/** Clean up the action message according to integration policy before resuming. */
@@ -219,7 +226,9 @@ export class AgentChatHitlResumeHandler {
 		message: Pick<Message<unknown>, 'id' | 'author' | 'raw'>,
 		resumeData: unknown,
 		callbackData: { kind?: 'approval'; label?: string },
+		abortSignal?: AbortSignal,
 	): Promise<void> {
+		abortSignal?.throwIfAborted();
 		if (this.options.deleteActionMessageBeforeResume) {
 			try {
 				await target.adapter.deleteMessage(target.threadId, message.id);
@@ -242,6 +251,7 @@ export class AgentChatHitlResumeHandler {
 			});
 			if (!content) return;
 
+			abortSignal?.throwIfAborted();
 			if (this.options.settleActionMessage) {
 				await this.options.settleActionMessage({
 					agentId: this.options.agentId,
@@ -254,6 +264,7 @@ export class AgentChatHitlResumeHandler {
 				await target.adapter.editMessage(target.threadId, message.id, content);
 			}
 		} catch (editError) {
+			abortSignal?.throwIfAborted();
 			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
 				error: editError instanceof Error ? editError.message : String(editError),
 			});
@@ -282,7 +293,7 @@ export class AgentChatHitlResumeHandler {
 			beforeResume,
 		}: {
 			/** Side effects that belong to the claimed resume; see `ResumeForChatConfig`. */
-			beforeResume?: () => Promise<void>;
+			beforeResume?: (abortSignal: AbortSignal) => Promise<void>;
 		} = {},
 	): Promise<void> {
 		const { agentId, projectId, integration } = this.options;
@@ -316,7 +327,9 @@ export class AgentChatHitlResumeHandler {
 	): Promise<void> {
 		let statusHandle: ReturnType<typeof onceStatusHandle> | undefined;
 		try {
+			claim.abortSignal.throwIfAborted();
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
+			claim.abortSignal.throwIfAborted();
 			statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 			const stream = this.options.agentService.resumeForChat(config, claim);
 			await this.options.streamConsumer.consume(stream, thread, {

@@ -232,6 +232,26 @@ describe('AgentExecutionService', () => {
 			await vi.advanceTimersByTimeAsync(30_000);
 			expect(claimLost.aborted).toBe(true);
 		});
+
+		it('stops the heartbeat when ending a pre-runtime claim fails', async () => {
+			agentExecutionRepository.updateIfRunning.mockRejectedValue(new Error('SQLITE_BUSY'));
+			await startClaimed();
+
+			await expect(
+				service.failClaimedExecution(
+					{
+						executionId: 'execution-1',
+						threadId: 'thread-1',
+						agentId: 'agent-1',
+						projectId: 'project-1',
+					},
+					'Runtime setup failed',
+				),
+			).rejects.toThrow('SQLITE_BUSY');
+
+			await vi.advanceTimersByTimeAsync(AgentExecutionService.livenessGraceMs);
+			expect(agentExecutionRepository.touchRunning).not.toHaveBeenCalled();
+		});
 	});
 
 	it('serializes timeline snapshot updates', async () => {

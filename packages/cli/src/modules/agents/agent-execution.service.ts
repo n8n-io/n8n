@@ -186,22 +186,26 @@ export class AgentExecutionService {
 	 */
 	async failClaimedExecution(scope: ExecutionScope, error: string): Promise<boolean> {
 		const stoppedAt = new Date();
-		const finalized = await this.agentExecutionRepository.updateIfRunning(scope.executionId, {
-			status: 'error',
-			stoppedAt,
-			duration: 0,
-			timeline: null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline: [],
+		let finalized: boolean;
+		try {
+			finalized = await this.agentExecutionRepository.updateIfRunning(scope.executionId, {
 				status: 'error',
+				stoppedAt,
+				duration: 0,
+				timeline: null,
+				storedAt: 'db',
 				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
-		});
-		this.stopHeartbeat(scope.executionId);
-		this.executionsNeedingTitleSync.delete(scope.executionId);
+				failureSummary: computeExecutionFailureSummary({
+					timeline: [],
+					status: 'error',
+					error,
+					stoppedAt: stoppedAt.getTime(),
+				}),
+			});
+		} finally {
+			this.stopHeartbeat(scope.executionId);
+			this.executionsNeedingTitleSync.delete(scope.executionId);
+		}
 		if (finalized) this.executionUpdateBroadcaster.notify(scope);
 		return finalized;
 	}
