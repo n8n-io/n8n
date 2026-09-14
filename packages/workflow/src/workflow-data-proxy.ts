@@ -1131,12 +1131,12 @@ export class WorkflowDataProxy {
 	 */
 	/**
 	 * @param opts.throwOnMissingExecutionData Throw when no execution data is available. Default true.
-	 * @param opts.evaluateExpression Expose `$evaluateExpression`. When false, a call throws
-	 * instead. Default true. Proxies returned by `$item()` inherit both options.
+	 * @param opts.throwOnEvaluateExpression Throw when `$evaluateExpression` is called.
+	 * Default false. Proxies returned by `$item()` inherit both options.
 	 */
 	getDataProxy(opts?: {
 		throwOnMissingExecutionData?: boolean;
-		evaluateExpression?: boolean;
+		throwOnEvaluateExpression?: boolean;
 	}): IWorkflowDataProxyData {
 		const that = this;
 
@@ -1650,7 +1650,7 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
-				if (opts?.evaluateExpression === false) {
+				if (opts?.throwOnEvaluateExpression) {
 					throw new ExpressionError(
 						'The function "$evaluateExpression" is not available in this context',
 						{
