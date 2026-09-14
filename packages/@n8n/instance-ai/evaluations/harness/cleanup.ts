@@ -13,6 +13,7 @@ import { classifyScenarioExecutionError } from './transient-error';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { N8nApiError } from '../clients/n8n-client';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { CapturedEvent, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
@@ -130,10 +131,14 @@ export async function cleanupBuild(
 	let clean = true;
 	let workflowsClean = true;
 
+	// A 404 means the workflow is already gone: the end-of-run retry re-runs this
+	// on the same build, so the workflows a first pass deleted 404 here. That is
+	// the state this wants, and only a real failure may hold back the folders.
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
-		} catch {
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && error.status === 404) continue;
 			workflowsClean = false; // Best-effort cleanup
 		}
 	}

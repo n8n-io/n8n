@@ -928,6 +928,31 @@ describe('EvalThreadRestoreService', () => {
 			);
 		});
 
+		it('still deletes the other folders when one delete fails', async () => {
+			// Best-effort: one failed folder must not keep the unrelated ones, or a
+			// failed rollback leaks folders across runs.
+			const siblings = [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'otherFolder01', name: 'Other' },
+			];
+			folderService.deleteFolder.mockRejectedValueOnce(new Error('busy'));
+
+			await service.deleteFolders(
+				siblings,
+				new Map([
+					['odwFolder0001', 'real-odw'],
+					['otherFolder01', 'real-other'],
+				]),
+				'project-1',
+				evalUser,
+			);
+
+			expect(folderService.deleteFolder.mock.calls).toEqual([
+				[evalUser, 'real-odw', 'project-1', { transferToFolderId: '0' }],
+				[evalUser, 'real-other', 'project-1', { transferToFolderId: '0' }],
+			]);
+		});
+
 		it('skips folders the restore never created', async () => {
 			await service.deleteFolders(
 				tree,

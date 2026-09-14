@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
+import { N8nApiError } from '../clients/n8n-client';
 import type { N8nClient } from '../clients/n8n-client';
 import type { BuildResult } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
@@ -214,6 +215,20 @@ describe('cleanupBuild seeded folders', () => {
 
 		expect(mocks.deleteFolder).not.toHaveBeenCalled();
 		expect(mocks.deleteDataTable).toHaveBeenCalledWith('project-1', 'DT1');
+	});
+
+	it('still deletes the folders on a retry whose workflows are already gone', async () => {
+		// The end-of-run retry re-runs cleanupBuild on the same build, so a workflow
+		// the first pass deleted now 404s. That is the state the cleanup wants, not
+		// a failure: gating the folders on it would leak them for good.
+		const { client, mocks } = makeClient({
+			deleteWorkflow: vi.fn().mockRejectedValue(new N8nApiError('HTTP 404', 404)),
+		});
+		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteFolder).toHaveBeenCalledWith('project-1', 'F1');
 	});
 
 	it('does not report a clean folder cleanup when the project lookup failed', async () => {
