@@ -126,6 +126,8 @@ export {
 	AI_PREFERENCE_CONTENT_MAX_LENGTH,
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from './schemas/ai-preference.schema';
 export type {

@@ -4,7 +4,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
+import {
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+} from '@n8n/api-types';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 
 import { setupServer } from '@/__tests__/server';
@@ -240,22 +244,29 @@ describe('router', () => {
 			['/settings/context', VIEWS.SETTINGS_CONTEXT],
 			['/settings/context/preferences', VIEWS.SETTINGS_CONTEXT_PREFERENCES],
 		])('allows enrolled users to reach %s', async (path, name) => {
-			usePostHog().overrides[CONTEXT_PREFERENCES_FLAG] = { value: true };
+			usePostHog().overrides[CONTEXT_PREFERENCES_FLAG] = {
+				value: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			};
 
 			await router.push(path);
 
 			expect(router.currentRoute.value.name).toBe(name);
 		});
 
-		test.each(['/settings/context', '/settings/context/preferences'])(
-			'redirects users without the flag away from %s',
-			async (path) => {
+		test.each([
+			['unassigned', undefined],
+			['control', CONTEXT_PREFERENCES_CONTROL_VARIANT],
+			['a boolean', true],
+		])('redirects %s users away from the context routes', async (_, value) => {
+			if (value !== undefined) usePostHog().overrides[CONTEXT_PREFERENCES_FLAG] = { value };
+
+			for (const path of ['/settings/context', '/settings/context/preferences']) {
 				await router.push(path);
 
 				expect(router.currentRoute.value.name).not.toBe(VIEWS.SETTINGS_CONTEXT);
 				expect(router.currentRoute.value.name).not.toBe(VIEWS.SETTINGS_CONTEXT_PREFERENCES);
-			},
-		);
+			}
+		});
 	});
 
 	describe('resource center route guard', () => {
