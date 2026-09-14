@@ -125,7 +125,16 @@ const previewTheme = ref<PreviewTheme>('system');
 const previewPath = ref(props.artifactPagePath ?? '');
 const buildTab = ref<BuildTab>('build');
 const inspecting = ref(false);
+const previewToolsHovered = ref(false);
+const previewToolsFocused = ref(false);
 const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previewFrame');
+
+const previewToolsPinned = computed(() => inspecting.value || device.value === 'mobile');
+// The toolbar tucks into the pane's bottom edge until hovered (see .previewToolsZone);
+// tooltips on a tucked-away control would float over the preview with no visible anchor.
+const previewToolsShown = computed(
+	() => previewToolsPinned.value || previewToolsHovered.value || previewToolsFocused.value,
+);
 
 const rootPages = computed(() => appsStore.pages.filter((page) => page.parentPageId === null));
 
@@ -777,10 +786,11 @@ watch(
 				/>
 				<div
 					v-if="hasPreviewSource"
-					:class="[
-						$style.previewToolsZone,
-						{ [$style.previewToolsPinned]: inspecting || device === 'mobile' },
-					]"
+					:class="[$style.previewToolsZone, { [$style.previewToolsPinned]: previewToolsPinned }]"
+					@mouseenter="previewToolsHovered = true"
+					@mouseleave="previewToolsHovered = false"
+					@focusin="previewToolsFocused = true"
+					@focusout="previewToolsFocused = false"
 				>
 					<div :class="$style.previewTools" data-test-id="app-preview-tools">
 						<N8nToggleGroup
@@ -797,6 +807,7 @@ watch(
 									icon="monitor"
 									:variant="variant"
 									:size="size"
+									:show-tooltip="previewToolsShown"
 									data-test-id="app-preview-device-desktop"
 								/>
 								<N8nToggle
@@ -805,6 +816,7 @@ watch(
 									icon="smartphone"
 									:variant="variant"
 									:size="size"
+									:show-tooltip="previewToolsShown"
 									data-test-id="app-preview-device-mobile"
 								/>
 							</template>
@@ -824,6 +836,7 @@ watch(
 									icon="sun"
 									:variant="variant"
 									:size="size"
+									:show-tooltip="previewToolsShown"
 									data-test-id="app-preview-theme-light"
 								/>
 								<N8nToggle
@@ -832,6 +845,7 @@ watch(
 									icon="moon"
 									:variant="variant"
 									:size="size"
+									:show-tooltip="previewToolsShown"
 									data-test-id="app-preview-theme-dark"
 								/>
 								<N8nToggle
@@ -840,12 +854,16 @@ watch(
 									icon="laptop"
 									:variant="variant"
 									:size="size"
+									:show-tooltip="previewToolsShown"
 									data-test-id="app-preview-theme-system"
 								/>
 							</template>
 						</N8nToggleGroup>
 						<span :class="$style.previewToolsDivider" />
-						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+						<N8nTooltip
+							:content="i18n.baseText('apps.builder.inspect')"
+							:disabled="!previewToolsShown"
+						>
 							<N8nIconButton
 								icon="mouse-pointer"
 								:variant="inspecting ? 'subtle' : 'ghost'"

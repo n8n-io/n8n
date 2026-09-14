@@ -2,13 +2,14 @@
 import { N8nButton, N8nText, N8nTree2 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
-import { MODAL_CONFIRM } from '@/app/constants';
+import { LOCAL_STORAGE_APP_CODE_LAST_FILE, MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import type { App } from '@/features/apps/apps.types';
 import { useAppsStore } from '@/features/apps/apps.store';
-import { buildFileTree } from '@/features/apps/fileTree.utils';
+import { buildFileTree, pickDefaultFile } from '@/features/apps/fileTree.utils';
 import FileCodeViewer from '@/features/apps/components/FileCodeViewer.vue';
 
 const props = defineProps<{
@@ -35,7 +36,19 @@ const fileContent = ref<string>();
 const editedContent = ref<string>();
 const saveError = ref<string>();
 
+const lastOpenFileByApp = useLocalStorage<Record<string, string>>(
+	LOCAL_STORAGE_APP_CODE_LAST_FILE,
+	{},
+);
+
 const tree = computed(() => buildFileTree(files.value));
+const expanded = ref<string[]>([]);
+// Expand to the open file, so a file selected on load is visible in the tree.
+watch(selectedPath, ([path]) => {
+	const segments = path?.split('/') ?? [];
+	const ancestors = segments.slice(0, -1).map((_, i) => segments.slice(0, i + 1).join('/'));
+	expanded.value = [...new Set([...expanded.value, ...ancestors])];
+});
 const dirty = computed(
 	() => editedContent.value !== undefined && editedContent.value !== fileContent.value,
 );
@@ -72,6 +85,7 @@ const selectFile = async (path: string) => {
 		selectedPath.value = [path];
 		fileContent.value = content;
 		editedContent.value = content;
+		lastOpenFileByApp.value = { ...lastOpenFileByApp.value, [props.appId]: path };
 	} catch (error) {
 		if (requestId === selectRequestId) {
 			toast.showError(error, i18n.baseText('apps.builder.code.error'));
@@ -97,9 +111,11 @@ const loadFiles = async () => {
 		const current = selectedPath.value[0];
 		if (current && files.value.includes(current)) {
 			if (!dirty.value) await selectFile(current);
-		} else {
-			clearSelection();
+			return;
 		}
+		clearSelection();
+		const initial = pickDefaultFile(files.value, lastOpenFileByApp.value[props.appId]);
+		if (initial) await selectFile(initial);
 	} catch (error) {
 		if (requestId !== loadRequestId) return;
 		// A stale/broken list shouldn't stay on screen looking editable.
@@ -198,6 +214,7 @@ watch([() => props.appId, () => props.refreshKey], loadFiles, {
 					v-else
 					:items="tree"
 					:model-value="selectedPath"
+					v-model:expanded="expanded"
 					data-test-id="app-code-tree"
 					@update:model-value="onSelect"
 				/>

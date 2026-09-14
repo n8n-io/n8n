@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, waitAllPromises } from '@/__tests__/utils';
 
@@ -60,7 +61,13 @@ describe('AppCodeViewer', () => {
 		showError.mockReset();
 		showMessage.mockReset();
 		confirm.mockReset().mockResolvedValue('confirm');
+		localStorage.clear();
 	});
+
+	const clickFile = async (tree: HTMLElement, name: string) => {
+		await userEvent.click(within(tree).getByText(name));
+		await waitAllPromises();
+	};
 
 	it('shows an empty state when the app has no source yet', async () => {
 		appsStore.fetchAppDraftFiles.mockResolvedValue(null);
@@ -75,32 +82,81 @@ describe('AppCodeViewer', () => {
 		expect(appsStore.fetchAppVersionFileContent).not.toHaveBeenCalled();
 	});
 
-	it('lists the files in a tree and shows a placeholder before any file is selected', async () => {
+	it('lists the files in a tree and opens the first file when the app has no pages', async () => {
 		appsStore.fetchAppDraftFiles.mockResolvedValue({
 			versionId: 'v-1',
 			files: ['main.ts', 'index.html'],
 		});
-		const { getByText, queryByTestId } = renderViewer({
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
 		expect(appsStore.fetchAppDraftFiles).toHaveBeenCalledWith('proj-1', 'app-1');
-		expect(getByText('main.ts')).toBeInTheDocument();
-		expect(getByText('index.html')).toBeInTheDocument();
-		expect(getByText('Select a file to view its contents')).toBeInTheDocument();
-		expect(queryByTestId('file-code-viewer-stub')).not.toBeInTheDocument();
+		const tree = getByTestId('app-code-tree');
+		expect(within(tree).getByText('main.ts')).toBeInTheDocument();
+		expect(within(tree).getByText('index.html')).toBeInTheDocument();
+		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};');
 	});
 
-	it("loads a clicked file's content into the viewer", async () => {
-		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
-		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
-		const { getByText, getByTestId } = renderViewer({
+	it('opens src/pages/Home.vue by default', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({
+			versionId: 'v-1',
+			files: ['src/App.vue', 'src/pages/About.vue', 'src/pages/Home.vue'],
+		});
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('<template />');
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
-		await userEvent.click(getByText('main.ts'));
+		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			'v-1',
+			'src/pages/Home.vue',
+		);
+		expect(getByTestId('fcv-content')).toHaveTextContent('src/pages/Home.vue:<template />');
+	});
+
+	it('falls back to the first page when there is no Home.vue', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({
+			versionId: 'v-1',
+			files: ['src/App.vue', 'src/pages/About.vue'],
+		});
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('<template />');
+		const { getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1' },
+		});
+		await waitAllPromises();
+
+		expect(getByTestId('fcv-content')).toHaveTextContent('src/pages/About.vue:<template />');
+	});
+
+	it('reopens the file that was last open in this app over the default', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({
+			versionId: 'v-1',
+			files: ['src/pages/About.vue', 'src/pages/Home.vue'],
+		});
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('<template />');
+		const first = renderViewer({ props: { projectId: 'proj-1', appId: 'app-1' } });
+		await waitAllPromises();
+		await clickFile(first.getByTestId('app-code-tree'), 'About.vue');
+		first.unmount();
+
+		const { getByTestId } = renderViewer({ props: { projectId: 'proj-1', appId: 'app-1' } });
+		await waitAllPromises();
+
+		expect(getByTestId('fcv-content')).toHaveTextContent('src/pages/About.vue:<template />');
+	});
+
+	it("loads the opened file's content into the viewer", async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		const { getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1' },
+		});
 		await waitAllPromises();
 
 		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledWith(
@@ -118,11 +174,10 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppVersionFileContent.mockImplementationOnce(
 			async () => await new Promise((resolve) => (resolveA = resolve)),
 		);
-		const { getByText, getByTestId } = renderViewer({
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('a.ts'));
 		resolveA('a content');
 		await waitAllPromises();
 
@@ -130,7 +185,7 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppVersionFileContent.mockImplementationOnce(
 			async () => await new Promise((resolve) => (resolveB = resolve)),
 		);
-		await userEvent.click(getByText('b.ts'));
+		await userEvent.click(within(getByTestId('app-code-tree')).getByText('b.ts'));
 
 		// While b.ts's content is still in flight, the viewer must keep showing
 		// a.ts's own pairing — never b.ts's path against a.ts's stale content.
@@ -157,8 +212,6 @@ describe('AppCodeViewer', () => {
 		const { getByText, getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
-		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
 		await waitAllPromises();
 
 		expect(getByTestId('app-code-save')).toHaveAttribute('aria-disabled', 'true');
@@ -187,8 +240,6 @@ describe('AppCodeViewer', () => {
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
-		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 
 		await userEvent.click(getByTestId('app-code-save'));
@@ -204,8 +255,6 @@ describe('AppCodeViewer', () => {
 		const { getByText, getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
-		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
 		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 
@@ -229,12 +278,9 @@ describe('AppCodeViewer', () => {
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('a.ts'));
-		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 
-		await userEvent.click(getByText('b.ts'));
-		await waitAllPromises();
+		await clickFile(getByTestId('app-code-tree'), 'b.ts');
 
 		expect(confirm).toHaveBeenCalled();
 		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledTimes(1);
@@ -251,12 +297,9 @@ describe('AppCodeViewer', () => {
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('a.ts'));
-		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 
-		await userEvent.click(getByText('b.ts'));
-		await waitAllPromises();
+		await clickFile(getByTestId('app-code-tree'), 'b.ts');
 
 		expect(confirm).toHaveBeenCalled();
 		expect(getByTestId('fcv-content')).toHaveTextContent('b.ts:b content');
@@ -268,8 +311,6 @@ describe('AppCodeViewer', () => {
 		const { getByText, getByTestId, queryByTestId, rerender } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
-		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
 		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 		expect(getByTestId('file-code-viewer-stub')).toBeInTheDocument();
@@ -291,8 +332,6 @@ describe('AppCodeViewer', () => {
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
-		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 		await userEvent.click(getByTestId('app-code-save'));
 
@@ -310,7 +349,7 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppDraftFiles.mockImplementationOnce(
 			async () => await new Promise<string[]>((resolve) => (resolveV1 = resolve)).then(draft),
 		);
-		const { queryByText, rerender } = renderViewer({
+		const { queryAllByText, rerender } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1', refreshKey: 0 },
 		});
 		await waitAllPromises();
@@ -327,8 +366,8 @@ describe('AppCodeViewer', () => {
 		resolveV1(['v1-file.ts']);
 		await waitAllPromises();
 
-		expect(queryByText('v2-file.ts')).toBeInTheDocument();
-		expect(queryByText('v1-file.ts')).not.toBeInTheDocument();
+		expect(queryAllByText('v2-file.ts')).not.toHaveLength(0);
+		expect(queryAllByText('v1-file.ts')).toHaveLength(0);
 	});
 
 	it('shows a loading indicator instead of an empty tree while the first file list request is pending', async () => {
@@ -362,8 +401,6 @@ describe('AppCodeViewer', () => {
 			props: { projectId: 'proj-1', appId: 'app-1', refreshKey: 0 },
 		});
 		await waitAllPromises();
-		await userEvent.click(getByText('main.ts'));
-		await waitAllPromises();
 		await userEvent.click(getByTestId('fcv-edit'));
 
 		appsStore.fetchAppDraftFiles.mockResolvedValue({
@@ -373,7 +410,7 @@ describe('AppCodeViewer', () => {
 		await rerender({ projectId: 'proj-1', appId: 'app-1', refreshKey: 1 });
 		await waitAllPromises();
 
-		expect(getByText('new.ts')).toBeInTheDocument();
+		expect(within(getByTestId('app-code-tree')).getByText('new.ts')).toBeInTheDocument();
 		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledTimes(1);
 		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};!');
 	});

@@ -44,3 +44,15 @@ export function buildFileTree(paths: string[]): TreeBranch[] {
 
 	return sortTree(root);
 }
+
+const isPage = (path: string) => /^src\/pages\/[^/]+\.vue$/.test(path);
+
+/**
+ * The file to open before the user picks one: the file they had open last,
+ * then the home page, then any page, then any Vue file, then anything.
+ */
+export function pickDefaultFile(paths: string[], remembered?: string): string | undefined {
+	if (remembered && paths.includes(remembered)) return remembered;
+	if (paths.includes('src/pages/Home.vue')) return 'src/pages/Home.vue';
+	return paths.find(isPage) ?? paths.find((path) => path.endsWith('.vue')) ?? paths[0];
+}
