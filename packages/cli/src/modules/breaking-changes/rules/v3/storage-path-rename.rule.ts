@@ -54,7 +54,7 @@ export class StoragePathRenameRule implements IBreakingChangeInstanceRule {
 				recommendations: [
 					{
 						action: 'Resolve the directory conflict',
-						description: `Move or remove "${newPath}" before you update, or set N8N_STORAGE_PATH to the directory you want to use.`,
+						description: `Before you update, move the contents of "${oldPath}" into "${newPath}" and remove "${oldPath}", or set N8N_STORAGE_PATH to the directory you want to use.`,
 					},
 				],
 			};
