@@ -10,6 +10,10 @@ const HEAD = `import { defineConfig } from 'eslint/config';
 import { backendConfig } from '@n8n/eslint-config/backend';
 `;
 
+const OXLINT_HEAD = `import { baseConfig } from '@n8n/oxlint-config/base';
+import { defineConfig } from 'oxlint';
+`;
+
 describe('LintConfigLayeringRule', () => {
 	let rootDir: string;
 	let rule: LintConfigLayeringRule;
@@ -23,11 +27,14 @@ describe('LintConfigLayeringRule', () => {
 		fs.rmSync(rootDir, { recursive: true, force: true });
 	});
 
-	function writePackage(dir: string, config: string | null): void {
+	function writePackage(dir: string, config: string | null, oxlintConfig?: string): void {
 		const full = path.join(rootDir, dir);
 		fs.mkdirSync(full, { recursive: true });
 		fs.writeFileSync(path.join(full, 'package.json'), JSON.stringify({ name: dir }));
 		if (config !== null) fs.writeFileSync(path.join(full, 'eslint.config.mjs'), config);
+		if (oxlintConfig !== undefined) {
+			fs.writeFileSync(path.join(full, 'oxlint.config.mts'), oxlintConfig);
+		}
 	}
 
 	async function analyze(options: Record<string, unknown> = {}): Promise<string[]> {
@@ -103,8 +110,33 @@ export default defineConfig(backendConfig, {
 			expect(await analyze()).toEqual([]);
 		});
 
-		it('a package with no ESLint config', async () => {
+		it('a package with no lint config at all', async () => {
 			writePackage('packages/a', null);
+
+			expect(await analyze()).toEqual([]);
+		});
+
+		it('an oxlint config that only extends its layer', async () => {
+			writePackage(
+				'packages/a',
+				null,
+				`${OXLINT_HEAD}\nexport default defineConfig({ extends: [baseConfig], options: { typeAware: true } });\n`,
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
+		it('an oxlint relaxation scoped to paths via overrides', async () => {
+			writePackage(
+				'packages/a',
+				null,
+				`${OXLINT_HEAD}
+export default defineConfig({
+	extends: [baseConfig],
+	overrides: [{ files: ['**/*.test.ts'], rules: { 'typescript/no-explicit-any': 'off' } }],
+});
+`,
+			);
 
 			expect(await analyze()).toEqual([]);
 		});
@@ -122,6 +154,48 @@ export default defineConfig(backendConfig, {
 	});
 
 	describe('reports', () => {
+		it('an oxlint config that turns a rule down for the whole package', async () => {
+			writePackage(
+				'packages/a',
+				null,
+				`${OXLINT_HEAD}
+export default defineConfig({
+	extends: [baseConfig],
+	rules: { 'typescript/no-explicit-any': 'off' },
+});
+`,
+			);
+
+			expect(await analyze()).toEqual([
+				"packages/a/oxlint.config.mts:6 packages/a turns 'typescript/no-explicit-any' down to 'off' for the whole package.",
+			]);
+		});
+
+		it('an oxlint config that extends no shared layer', async () => {
+			writePackage(
+				'packages/a',
+				null,
+				"import { defineConfig } from 'oxlint';\nexport default defineConfig({ rules: {} });\n",
+			);
+
+			expect(await analyze()).toEqual([
+				'packages/a/oxlint.config.mts:1 packages/a does not extend a shared oxlint layer.',
+			]);
+		});
+
+		it('both configs of a package mid-migration', async () => {
+			writePackage(
+				'packages/a',
+				`${HEAD}\nexport default defineConfig(backendConfig, { rules: { 'no-void': 'warn' } });\n`,
+				`${OXLINT_HEAD}\nexport default defineConfig({ extends: [baseConfig], rules: { 'no-void': 'warn' } });\n`,
+			);
+
+			expect(await analyze()).toEqual([
+				"packages/a/eslint.config.mjs:4 packages/a turns 'no-void' down to 'warn' for the whole package.",
+				"packages/a/oxlint.config.mts:4 packages/a turns 'no-void' down to 'warn' for the whole package.",
+			]);
+		});
+
 		it('a package-wide downgrade', async () => {
 			writePackage(
 				'packages/a',

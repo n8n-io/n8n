@@ -34,6 +34,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -350,7 +351,10 @@ const outputSchema = {
 				reason: z.string(),
 			}),
 		)
-		.optional(),
+		.optional()
+		.describe(
+			'Existing groups this update made invalid and removed. Repair them before you report the workflow as done.',
+		),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -1347,6 +1351,35 @@ export const createUpdateWorkflowTool = (
 					skippedOperations,
 					result.groupOperations,
 				);
+
+				// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+				// A canvas that was already this wide before the update is marked pre-existing,
+				// so the agent does not rework a layout it did not make.
+				const ceilingWarning = canvasGroupsEnabled
+					? topLevelItemsWarning(updatedWorkflow)
+					: undefined;
+
+				if (ceilingWarning) {
+					const preExistingUngroupedNodeNames = new Set(
+						summarizeUngroupedNodeNames(existingWorkflow),
+					);
+
+					const hasNewlyAddedUngroupedNodeNames = summarizeUngroupedNodeNames(updatedWorkflow).some(
+						(name) => !preExistingUngroupedNodeNames.has(name),
+					);
+
+					const wasOverCeilingBefore = topLevelItemsWarning(existingWorkflow) !== undefined;
+					const preExisting = wasOverCeilingBefore && !hasNewlyAddedUngroupedNodeNames;
+					validationWarnings.push(
+						preExisting
+							? {
+									...ceilingWarning,
+									message: `[pre-existing] ${ceilingWarning.message}`,
+									preExisting: true,
+								}
+							: ceilingWarning,
+					);
+				}
 
 				const output: UpdateWorkflowOutput = {
 					workflowId: updatedWorkflow.id,
