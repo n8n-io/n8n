@@ -42,6 +42,11 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/**
+ * Marks a subtree that edits credential fields. The focus panel lives on the
+ * canvas, behind the credential modal overlay, so it cannot host these fields.
+ */
+export const CredentialEditContextKey: InjectionKey<boolean> = Symbol('CredentialEditContext');
 /** Whether resource mappers may reconcile cached schemas without an explicit user action. */
 export const ResourceMapperSchemaAutoRefreshKey: InjectionKey<boolean> = Symbol(
 	'ResourceMapperSchemaAutoRefresh',

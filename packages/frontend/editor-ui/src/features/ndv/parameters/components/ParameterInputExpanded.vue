@@ -12,11 +12,19 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, ref, useTemplateRef, type ComputedRef } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	provide,
+	ref,
+	useTemplateRef,
+	type ComputedRef,
+} from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
+import { CredentialEditContextKey } from '@/app/constants';
 
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -57,6 +65,10 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { activeCredentialType } = storeToRefs(uiStore);
+
+// Nested fields (e.g. inside a fixedCollection) render their own options, so the
+// context marker travels with the subtree instead of one prop for each level.
+provide(CredentialEditContextKey, true);
 
 const isFixedCollectionType = computed(() => {
 	return props.parameter.type === 'fixedCollection';

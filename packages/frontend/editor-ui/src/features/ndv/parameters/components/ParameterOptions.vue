@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import { isValueExpression } from '@/app/utils/nodeTypesUtils';
 import { computed, inject } from 'vue';
-import { ChatHubToolContextKey } from '@/app/constants';
+import { ChatHubToolContextKey, CredentialEditContextKey } from '@/app/constants';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
@@ -63,6 +63,7 @@ const isDefault = computed(() => props.parameter.default === props.value);
 const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const isChatHubToolContext = inject(ChatHubToolContextKey, false);
+const isCredentialEditContext = inject(CredentialEditContextKey, false);
 
 const shouldShowExpressionSelector = computed(
 	() =>
@@ -77,6 +78,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const canBeOpenedInFocusPanel = computed(() => {
 	if (!props.showFocusPanel) return false;
 	if (isChatHubToolContext) return false;
+	if (isCredentialEditContext) return false;
 	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
 		return false;
 	}
