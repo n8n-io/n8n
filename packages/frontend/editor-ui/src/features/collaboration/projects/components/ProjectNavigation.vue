@@ -6,22 +6,30 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
-import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import {
+	INSTANCE_AI_THREADS_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
+} from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
+const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
 
 type Props = {
 	collapsed: boolean;
@@ -31,12 +39,14 @@ type Props = {
 const props = defineProps<Props>();
 
 const locale = useI18n();
+const route = useRoute();
 const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
+const instanceAiStore = useInstanceAiStore();
 
 const {
 	favoriteGroups,
@@ -64,11 +74,27 @@ const FAVORITES_COLLAPSED_KEY = computed(
 
 const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY.value) === 'true');
 const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
+const instanceAiChatsCollapsed = ref(
+	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
+);
+
+watch(
+	[isInstanceAiNavVisible, () => props.collapsed],
+	([visible, collapsed]) => {
+		if (visible && !collapsed) {
+			void instanceAiStore.loadThreads({ limit: 5, once: true });
+		}
+	},
+	{ immediate: true },
+);
 
 watch(favoritesCollapsed, (val) =>
 	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),
 );
 watch(projectsCollapsed, (val) => localStorage.setItem(PROJECTS_COLLAPSED_KEY, String(val)));
+watch(instanceAiChatsCollapsed, (val) =>
+	localStorage.setItem(INSTANCE_AI_CHATS_COLLAPSED_KEY, String(val)),
+);
 
 const home = computed<IMenuItem>(() => ({
 	id: 'home',
@@ -122,6 +148,21 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
+const recentInstanceAiThreads = computed(() => instanceAiStore.threads.slice(0, 5));
+const isInstanceAiThreadView = computed(() => route.name === INSTANCE_AI_THREAD_VIEW);
+const sidebarActiveTabId = computed(() =>
+	isInstanceAiThreadView.value ? undefined : activeTabId.value,
+);
+
+const getInstanceAiThreadMenuItem = (thread: InstanceAiThreadSummary): IMenuItem => ({
+	id: `instance-ai-thread-${thread.id}`,
+	icon: 'message-circle',
+	label: thread.title,
+	route: {
+		to: { name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } },
+	},
+});
+
 const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
 
 const workflowReviews = computed<IMenuItem>(() => ({
@@ -136,7 +177,6 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	preview: true,
 }));
 
 async function onSourceControlPull() {
@@ -161,20 +201,24 @@ onBeforeUnmount(() => {
 				v-if="isInstanceAiNavVisible"
 				:item="instanceAi"
 				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai'"
+				:active="activeTabId === 'instance-ai' && !isInstanceAiThreadView"
+				:class="{ [$style.instanceAiParentInactive]: isInstanceAiThreadView }"
 				data-test-id="project-instance-ai-menu-item"
 			/>
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
-				:active="activeTabId === 'home'"
+				:active="sidebarActiveTabId === 'home'"
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					projectsStore.personalProject?.id &&
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled)
+				"
 				:item="personalProject"
 				:compact="props.collapsed"
-				:active="activeTabId === personalProject.id"
+				:active="sidebarActiveTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
 			/>
 			<N8nMenuItem
@@ -184,21 +228,21 @@ onBeforeUnmount(() => {
 				"
 				:item="shared"
 				:compact="props.collapsed"
-				:active="activeTabId === 'shared'"
+				:active="sidebarActiveTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isWorkflowReviewsNavVisible"
 				:item="workflowReviews"
 				:compact="props.collapsed"
-				:active="activeTabId === 'workflow-reviews'"
+				:active="sidebarActiveTabId === 'workflow-reviews'"
 				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"
 				:item="chat"
 				:compact="props.collapsed"
-				:active="activeTabId === 'chat'"
+				:active="sidebarActiveTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
 			/>
 		</div>
@@ -234,7 +278,7 @@ onBeforeUnmount(() => {
 							<N8nMenuItem
 								:item="entry.menuItem"
 								:compact="props.collapsed"
-								:active="activeTabId === entry.menuItem.id"
+								:active="sidebarActiveTabId === entry.menuItem.id"
 							/>
 							<button
 								v-if="!props.collapsed"
@@ -250,6 +294,42 @@ onBeforeUnmount(() => {
 				</template>
 			</div>
 		</template>
+		<div
+			v-if="isInstanceAiNavVisible && !props.collapsed && recentInstanceAiThreads.length > 0"
+			:class="$style.instanceAiSidebar"
+			data-test-id="instance-ai-sidebar-chats"
+		>
+			<div :class="$style.instanceAiChatsHeader">
+				<button
+					type="button"
+					:class="$style.instanceAiChatsToggle"
+					:aria-expanded="!instanceAiChatsCollapsed"
+					@click="instanceAiChatsCollapsed = !instanceAiChatsCollapsed"
+				>
+					<N8nText size="small" bold color="text-light">
+						{{ locale.baseText('instanceAi.threads.chats') }}
+					</N8nText>
+					<N8nIcon
+						icon="chevron-down"
+						size="medium"
+						:class="[$style.chevron, instanceAiChatsCollapsed ? $style.chevronCollapsed : '']"
+					/>
+				</button>
+				<RouterLink :to="{ name: INSTANCE_AI_THREADS_VIEW }" :class="$style.instanceAiChatsViewAll">
+					{{ locale.baseText('instanceAi.threads.viewAll') }}
+				</RouterLink>
+			</div>
+			<template v-if="!instanceAiChatsCollapsed">
+				<div :class="$style.instanceAiChatItems">
+					<N8nMenuItem
+						v-for="thread in recentInstanceAiThreads"
+						:key="thread.id"
+						:item="getInstanceAiThreadMenuItem(thread)"
+						scroll-label-on-overflow
+					/>
+				</div>
+			</template>
+		</div>
 		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
 			<button
 				v-if="!props.collapsed"
@@ -281,7 +361,7 @@ onBeforeUnmount(() => {
 				}"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
-				:active="activeTabId === project.id"
+				:active="sidebarActiveTabId === project.id"
 				data-test-id="project-menu-item"
 			/>
 		</div>
@@ -302,6 +382,90 @@ onBeforeUnmount(() => {
 
 .projectItems {
 	padding: var(--spacing--2xs) var(--spacing--3xs);
+}
+
+.instanceAiSidebar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
+}
+
+.instanceAiParentInactive {
+	:global(.router-link-active) {
+		background-color: transparent;
+	}
+
+	:global(.router-link-active:hover) {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+	}
+}
+
+.instanceAiChatsHeader {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	box-sizing: border-box;
+	margin-top: var(--spacing--4xs);
+	border-radius: var(--spacing--4xs);
+	color: inherit;
+
+	&:hover {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+
+		.chevron {
+			color: var(--color--text--shade-1);
+		}
+	}
+}
+
+.instanceAiChatsToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: inherit;
+
+	&:focus-visible {
+		outline: 1px solid var(--color--secondary);
+		outline-offset: -1px;
+	}
+}
+
+.instanceAiChatsViewAll {
+	flex-shrink: 0;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	text-decoration: none;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color--subtle);
+		text-decoration: none;
+	}
+}
+
+@media (hover: hover) {
+	.instanceAiChatsViewAll {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.instanceAiChatsHeader:hover .instanceAiChatsViewAll,
+	.instanceAiChatsHeader:has(.instanceAiChatsToggle:focus-visible) .instanceAiChatsViewAll,
+	.instanceAiChatsViewAll:focus-visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 .upgradeLink {
