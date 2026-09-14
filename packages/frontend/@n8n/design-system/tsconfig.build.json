@@ -12,7 +12,8 @@
 		"noUnusedParameters": false,
 		"types": ["vite/client", "unplugin-icons/types/vue", "vue-router"],
 		"paths": {
-			"@n8n/design-system*": ["./src*"]
+			"@n8n/design-system": ["./src/index.ts"],
+			"@n8n/design-system/*": ["./src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"],
