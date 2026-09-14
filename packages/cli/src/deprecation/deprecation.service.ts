@@ -101,6 +101,11 @@ export class DeprecationService {
 			checkValue: (value?: string) => value !== undefined,
 		},
 		{
+			envVar: 'N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION',
+			message: `A throw from workflow.preExecute never creates an execution. ${SAFE_TO_REMOVE}`,
+			checkValue: (value?: string) => value !== undefined,
+		},
+		{
 			envVar: 'N8N_OUTBOUND_PROXY_MODE',
 			message:
 				'This variable exists only for backward compatibility and will be removed in a future version. Remove it and list every internal endpoint that must be reached directly in NO_PROXY. Until that is in place, `main-only` keeps the historical behavior where only the main process routes its default outbound HTTP through the proxy environment variables (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY).',
