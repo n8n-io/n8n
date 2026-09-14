@@ -1820,6 +1820,11 @@ describe('JsTaskRunner', () => {
 	});
 
 	describe('expressions', () => {
+		beforeEach(() => {
+			// $item marks all nodes as needed, which makes the runner request node types
+			vi.spyOn(defaultTaskRunner, 'requestNodeTypes').mockResolvedValue([]);
+		});
+
 		it('should throw an unsupported-function error for $evaluateExpression', async () => {
 			await expect(
 				executeForAllItems({
@@ -1830,9 +1835,6 @@ describe('JsTaskRunner', () => {
 		});
 
 		it('should throw an unsupported-function error for $evaluateExpression on $item()', async () => {
-			// $item marks all nodes as needed, which makes the runner request node types
-			vi.spyOn(defaultTaskRunner, 'requestNodeTypes').mockResolvedValue([]);
-
 			await expect(
 				executeForAllItems({
 					code: "return { val: $item(0).$item(0).$evaluateExpression('{{ 1 + 1 }}') }",
