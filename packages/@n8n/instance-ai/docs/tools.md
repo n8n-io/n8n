@@ -579,7 +579,7 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
-**Returns**: `{ executionId, status, nodeName, inputMode, fabricatedNodeNames, reusedFromExecutionId?, data?, error?, ... }`
+**Returns**: `{ executionId, status, nodeName, inputMode, fabricatedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
 
 **Input modes**, in descending order of what the result proves:
 
@@ -589,8 +589,11 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `chain` | neither option | The node ran on data its ancestors really produced in this run |
 | `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
 
-`executedNodeNames` excludes the fabricated nodes: they carry run data without
-ever having run, so counting them would report the whole chain as executed.
+`executedNodeNames` counts only what ran in *this* execution. Fabricated and
+replayed nodes carry run data without having run, so they are excluded —
+otherwise a step run on a ten-node workflow would report ten nodes as executed
+when one was. `data` still shows their output, listed under
+`fabricatedNodeNames` and `replayedNodeNames`.
 
 `mocked` also fabricates a placeholder item for every node between the trigger
 and the target, because `findStartNodes` walks down from the trigger and stops

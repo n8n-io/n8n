@@ -5493,6 +5493,35 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(result.executedNodeNames).toEqual(['Trigger', 'Fetch', 'Send']);
 	});
 
+	it('does not report a replayed node as executed', async () => {
+		const priorRunData = {
+			Trigger: [makeTaskData([{}])],
+			Fetch: [makeTaskData([{ id: 9 }])],
+			Send: [makeTaskData([{ old: true }])],
+		};
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			// The engine keeps the replayed entries in the final run data, so the
+			// execution looks like the whole chain ran.
+			execution: makeExecution({ status: 'success', runData: priorRunData }),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' });
+
+		// Only the target re-runs: `dirtyNodeNames` drops its stale data and the
+		// run stops there.
+		expect(result.executedNodeNames).toEqual(['Send']);
+		expect(result.replayedNodeNames?.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.fabricatedNodeNames).toEqual([]);
+	});
+
+	it('omits the replayed list for a chain run', async () => {
+		const { result } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(result).not.toHaveProperty('replayedNodeNames');
+	});
+
 	it('reports the step in telemetry', async () => {
 		const { mockTelemetry } = await runStepOn(
 			chainWorkflow,

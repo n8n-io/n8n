@@ -2190,21 +2190,32 @@ export class InstanceAiAdapterService {
 					});
 				};
 
-				const fabricated = new Set(plan.fabricatedNodeNames);
+				// Nodes carried over from the reused execution. The target is excluded:
+				// `dirtyNodeNames` forces it to re-run, and a step run stops there, so
+				// it is the only node of the reused set that executes again.
+				const replayedNodeNames = priorRunData
+					? Object.keys(priorRunData).filter((name) => name !== nodeName)
+					: [];
+
+				// `extractExecutionOutcome` derives `executedNodeNames` from the run data
+				// keys, and both a fabricated stub and a replayed entry carry run data
+				// without having run in *this* execution. Leaving them in reports a whole
+				// chain as executed when one node was — the false-coverage signal this
+				// tool must never emit.
+				const notExecutedHere = new Set([...plan.fabricatedNodeNames, ...replayedNodeNames]);
 				const describe = (result: ExecutionResult): StepExecutionResult => ({
 					...result,
-					// `extractExecutionOutcome` derives this from the run data keys, and a
-					// fabricated node has run data without ever having run. Leaving it in
-					// would report four nodes as executed when one was, which is exactly
-					// the false-coverage signal this tool must not emit.
 					...(result.executedNodeNames
 						? {
-								executedNodeNames: result.executedNodeNames.filter((name) => !fabricated.has(name)),
+								executedNodeNames: result.executedNodeNames.filter(
+									(name) => !notExecutedHere.has(name),
+								),
 							}
 						: {}),
 					nodeName,
 					inputMode: plan.inputMode,
 					fabricatedNodeNames: plan.fabricatedNodeNames,
+					...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
 					...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
 					// Report the pins that actually fed this run, not every pin the
 					// workflow carries: the ones this run dropped never applied.

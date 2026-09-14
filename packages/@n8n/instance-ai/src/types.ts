@@ -153,6 +153,10 @@ export interface ExecutionResult {
 	 * Every node that ran, including those whose last run produced zero output
 	 * items (`data` omits those). Lets verification tell "ran and returned
 	 * nothing" apart from "never reached".
+	 *
+	 * On a `runStep` result this counts only what ran in *that* execution:
+	 * fabricated and replayed nodes carry run data without having run, and are
+	 * excluded.
 	 */
 	executedNodeNames?: string[];
 	/**
@@ -184,10 +188,14 @@ export interface StepExecutionResult extends ExecutionResult {
 	inputMode: StepRunInputMode;
 	/**
 	 * Nodes whose output was invented so the run could reach the target. Empty
-	 * unless `inputMode` is `mocked`. They are excluded from
-	 * `executedNodeNames`: they carry run data without ever having run.
+	 * unless `inputMode` is `mocked`.
 	 */
 	fabricatedNodeNames: string[];
+	/**
+	 * Nodes whose output was carried over from `reusedFromExecutionId`. Absent
+	 * unless `inputMode` is `reused-execution`.
+	 */
+	replayedNodeNames?: string[];
 	/** Execution the replayed run data came from. */
 	reusedFromExecutionId?: string;
 }
