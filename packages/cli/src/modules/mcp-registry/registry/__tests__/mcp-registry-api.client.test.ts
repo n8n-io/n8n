@@ -188,6 +188,24 @@ describe('McpRegistryApiClient', () => {
 			expect(result[0].tags).toEqual(expected);
 		});
 
+		it.each([
+			['a headers object', { 'User-Agent': 'n8n' }, { 'User-Agent': 'n8n' }],
+			['null', null, undefined],
+			['a missing value', undefined, undefined],
+		])('should keep a server whose remote headers come back as %s', async (_, headers, expected) => {
+			mockPaginatedRequest.mockResolvedValue([
+				{
+					...notionMockServer,
+					remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp', headers }],
+				},
+			]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].remotes[0].headers).toEqual(expected);
+		});
+
 		it('should keep only OAuth2 credential options', async () => {
 			mockPaginatedRequest.mockResolvedValue([githubUsesCredentialsMockServer]);
 			vi.mocked(credentialTypes.getParentTypes).mockImplementation((credentialType) =>
