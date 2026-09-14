@@ -61,6 +61,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 	it.each([
 		['create', createParams, 'POST', MEETINGS],
 		['get', byId, 'GET', `${MEETINGS}/${MEETING}`],
+		['createOrGet', { externalId: 'order-4711', options: {} }, 'POST', `${MEETINGS}/createOrGet`],
 	])(
 		"%s addresses the organizer's meetings instead of /me",
 		async (operation, params, method, path) => {
