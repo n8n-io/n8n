@@ -31,12 +31,12 @@ describe('aiTransformToCode migration', () => {
 	});
 
 	it('refuses to migrate a node whose prompt was never turned into code', () => {
-		// Prompt entered but "Generate code" never clicked → jsCode is empty.
+		// Prompt entered but code never generated → jsCode is empty.
 		const node = createNode('Transform', AI_TRANSFORM_NODE_TYPE, {
 			instructions: 'Double the value',
 			jsCode: '',
 		});
 
-		expect(() => aiTransformToCode.migrate(node)).toThrow('no generated code yet');
+		expect(() => aiTransformToCode.migrate(node)).toThrow('never generated any code');
 	});
 });
