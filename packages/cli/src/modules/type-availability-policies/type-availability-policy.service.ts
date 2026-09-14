@@ -917,6 +917,9 @@ export class TypeAvailabilityPolicyService {
 	 * Best-effort. A failure is logged rather than thrown, because the write already committed
 	 * and failing the response would report a success as an error — so the entry can survive,
 	 * and the TTL is what bounds it.
+	 *
+	 * Bounded like the reads, because a disconnected ioredis queues the delete instead of
+	 * rejecting it: unbounded, that hangs the response to a write that already committed.
 	 */
 	private async invalidateScopes(keys: readonly PolicyScopeKey[]): Promise<void> {
 		if (keys.length === 0) return;
@@ -924,7 +927,7 @@ export class TypeAvailabilityPolicyService {
 		const cacheKeys = keys.map(({ kind, projectId }) => scopeCacheKey(kind, projectId));
 
 		try {
-			await this.cacheService.deleteMany(cacheKeys);
+			await withCacheTimeout(this.cacheService.deleteMany(cacheKeys));
 		} catch (error) {
 			this.logger.error('Failed to invalidate the node type policy cache', {
 				keys: cacheKeys,

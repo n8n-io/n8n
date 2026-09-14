@@ -1276,6 +1276,26 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result.verdicts[0].action).toBe('deny');
 		});
 
+		it('still answers when the invalidation hangs past its timeout', async () => {
+			const before = makeScope({ defaultAction: 'allow', version: 4 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(before);
+			scopeRepository.updateDefaultAction.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 5 }),
+			);
+			// Never settles, the way ioredis leaves a command queued while it is disconnected.
+			// The write has already committed, so the response must not wait on it.
+			cacheService.deleteMany.mockReturnValue(new Promise(() => {}));
+
+			const result = await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+
+			expect(result.defaultAction).toBe('deny');
+			expect(cacheService.deleteMany).toHaveBeenCalledWith([INSTANCE_KEY]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-scope-updated',
+				expect.anything(),
+			);
+		});
+
 		it('does not invalidate when a policy document edit bumps no scope', async () => {
 			const policy = makePolicy({ version: 1 });
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
