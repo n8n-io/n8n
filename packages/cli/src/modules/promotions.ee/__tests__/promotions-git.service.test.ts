@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -266,6 +267,36 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
+		it("does not delete another request's in-progress staging directory", async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			const firstClone = createDeferredPromise();
+			const sentinelPath = path.join(paths.nextRepositoryFolder, 'clone-in-progress');
+			let cloneCalls = 0;
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				cloneCalls += 1;
+				await mkdir(String(dir), { recursive: true });
+				if (cloneCalls === 1) {
+					await writeFile(sentinelPath, 'first-clone');
+					await firstClone.promise;
+				}
+			});
+
+			const first = call();
+			await vi.waitFor(() => expect(mockGit.clone).toHaveBeenCalledTimes(1));
+
+			const second = call();
+			await vi.waitFor(() => {
+				const checkRefCalls = mockGit.raw.mock.calls.filter(
+					(args) => Array.isArray(args[0]) && args[0][0] === 'check-ref-format',
+				);
+				expect(checkRefCalls).toHaveLength(2);
+			});
+			await expect(readFile(sentinelPath, 'utf8')).resolves.toBe('first-clone');
+
+			firstClone.resolve();
+			await Promise.all([first, second]);
+		});
+
 		it('bootstraps a checkout on the target branch when the remote is empty', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
@@ -476,6 +507,33 @@ describe('PromotionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('listBranchTree', () => {
+		it('runs operations on one checkout one at a time', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.raw.mockResolvedValue('');
+			const operation = {
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			};
+
+			const first = gitService.listBranchTree(operation);
+			const second = gitService.listBranchTree(operation);
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+			fetching.resolve();
+			await Promise.all([first, second]);
+
+			const [firstFetch, secondFetch] = mockGit.fetch.mock.invocationCallOrder;
+			const [firstListing] = mockGit.raw.mock.invocationCallOrder;
+			expect(firstListing).toBeGreaterThan(firstFetch);
+			expect(firstListing).toBeLessThan(secondFetch);
 		});
 	});
 

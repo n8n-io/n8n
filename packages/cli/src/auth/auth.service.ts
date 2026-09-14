@@ -57,6 +57,12 @@ interface CreateAuthMiddlewareOptions {
 	allowUnauthenticated?: boolean;
 }
 
+interface EmailChangeToken {
+	sub: string;
+	newEmail: string;
+	hash: string;
+}
+
 @Service()
 export class AuthService {
 	/**
@@ -418,9 +424,41 @@ export class AuthService {
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
 	}
 
+	generateEmailChangeUrl(user: User, newEmail: string) {
+		const payload: EmailChangeToken = {
+			sub: user.id,
+			newEmail,
+			hash: this.createJWTHash(user),
+		};
+		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
+		url.searchParams.append('token', token);
+		return url.toString();
+	}
+
+	async resolveEmailChangeToken(
+		token: string,
+	): Promise<{ user: User; newEmail: string } | undefined> {
+		let decoded: EmailChangeToken;
+		try {
+			decoded = this.jwtService.verify(token, {
+				audience: 'n8n-email-change',
+			});
+		} catch {
+			return;
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: decoded.sub },
+			relations: ['authIdentities', 'role'],
+		});
+		if (!user) return;
+		if (decoded.hash !== this.createJWTHash(user)) return; // password/email changed since issue
+		return { user, newEmail: decoded.newEmail };
+	}
+
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn });
+		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -436,7 +474,9 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token);
+			decodedToken = this.jwtService.verify(token, {
+				audience: 'n8n-password-reset',
+			});
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

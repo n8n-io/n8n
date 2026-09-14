@@ -221,6 +221,11 @@ export {
 } from './schemas/user.schema';
 
 export {
+	ChangeEmailResponseSchema,
+	type ChangeEmailResponse,
+} from './schemas/change-email-response';
+
+export {
 	encryptionKeySchema,
 	encryptionKeysListSchema,
 	type EncryptionKey,

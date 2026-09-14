@@ -420,7 +420,8 @@ export type RelayEventMap = {
 			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
@@ -465,7 +466,8 @@ export type RelayEventMap = {
 			| 'Workflow shared'
 			| 'Workflow auto-deactivated'
 			| 'Credentials shared'
-			| 'Project shared';
+			| 'Project shared'
+			| 'Email change confirmation';
 		publicApi: boolean;
 	};
 
