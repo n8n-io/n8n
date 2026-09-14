@@ -387,7 +387,7 @@ export class LmChatDatabricks implements INodeType {
 			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
 				this,
-				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus),
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
 			),
 		});
 
