@@ -247,6 +247,9 @@ export async function createStubServices(
 					(node) => options?.triggerNodeName === undefined || node.name === options.triggerNodeName,
 				)
 				.flatMap((node) => {
+					// WorkflowJSON nodes may lack a name (sticky notes); an unnamed trigger cannot be armed.
+					const nodeName = node.name;
+					if (nodeName === undefined) return [];
 					const isForm = node.type === FORM_TRIGGER_NODE_TYPE;
 					const { path, httpMethod, options: nodeOptions } = node.parameters ?? {};
 					// Both nodes register `path` verbatim; Form Trigger 2.2+ keeps it in `options.path`.
@@ -261,7 +264,7 @@ export async function createStubServices(
 					const methods = isForm
 						? ['GET', 'POST']
 						: [typeof httpMethod === 'string' ? httpMethod : 'GET'];
-					return methods.map((method) => ({ nodeName: node.name, method, url }));
+					return methods.map((method) => ({ nodeName, method, url }));
 				});
 			if (triggers.length === 0) {
 				throw new Error(`Workflow ${workflowId} has no Webhook or Form Trigger to listen on.`);
