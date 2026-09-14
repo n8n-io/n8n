@@ -4,6 +4,7 @@ import {
 	CreateCredentialPublicDto,
 	CredentialListPublicDto,
 	CredentialPublicDto,
+	CredentialSchemaPublicDto,
 	CredentialTestPublicDto,
 	DeleteCredentialPublicDto,
 	ListCredentialsQueryDto,
@@ -32,7 +33,7 @@ import {
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
-import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -460,13 +461,13 @@ export class CredentialsPublicController {
 	@Get('/schema/:credentialTypeName')
 	@ApiSummary('Show credential data schema')
 	@ApiTags(['Credential'])
-	@ApiResponse(200)
+	@ApiResponse(200, CredentialSchemaPublicDto)
 	@ApiErrorResponse(404)
 	async getCredentialType(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('credentialTypeName', credentialTypeNameParamSchema) credentialTypeName: string,
-	): Promise<IDataObject> {
+	): Promise<CredentialSchemaPublicDto> {
 		try {
 			this.credentialTypes.getByName(credentialTypeName);
 		} catch {
@@ -477,6 +478,6 @@ export class CredentialsPublicController {
 			.getCredentialsProperties(credentialTypeName)
 			.filter((property) => property.type !== 'hidden');
 
-		return toJsonSchema(properties);
+		return CredentialSchemaPublicDto.parse(toJsonSchema(properties));
 	}
 }

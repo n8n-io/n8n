@@ -136,6 +136,7 @@ export {
 	DeleteCredentialPublicDto,
 	TransferCredentialPublicDto,
 	CredentialTestPublicDto,
+	CredentialSchemaPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
