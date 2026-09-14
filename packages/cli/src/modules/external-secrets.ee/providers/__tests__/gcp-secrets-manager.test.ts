@@ -10,6 +10,22 @@ import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
 vi.mock('@google-cloud/secret-manager');
 
+const { GoogleAuth, Impersonated, getClient } = vi.hoisted(() => {
+	const getClient = vi.fn();
+	const GoogleAuth = vi.fn(function GoogleAuth(this: { getClient: typeof getClient }) {
+		this.getClient = getClient;
+	});
+	const Impersonated = vi.fn(function Impersonated(this: { options?: unknown }, options: unknown) {
+		this.options = options;
+	});
+	return { GoogleAuth, Impersonated, getClient };
+});
+
+vi.mock('google-auth-library', () => ({
+	GoogleAuth,
+	Impersonated,
+}));
+
 type GcpSecretVersionResponse = google.cloud.secretmanager.v1.IAccessSecretVersionResponse;
 
 const VALID_SERVICE_ACCOUNT_KEY = (projectId: string) =>
@@ -20,8 +36,41 @@ const VALID_SERVICE_ACCOUNT_KEY = (projectId: string) =>
 			'-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC\n-----END PRIVATE KEY-----',
 	});
 
+const VALID_SERVICE_ACCOUNT_KEY_WITHOUT_PROJECT_ID = JSON.stringify({
+	client_email: 'test@example.iam.gserviceaccount.com',
+	private_key:
+		'-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC\n-----END PRIVATE KEY-----',
+});
+
+const SOURCE_CLIENT = { source: true };
+const CLOUD_PLATFORM_SCOPES = ['https://www.googleapis.com/auth/cloud-platform'];
+const SERVICE_ACCOUNT_PRIVATE_KEY =
+	'-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC\n-----END PRIVATE KEY-----';
+
+const createContext = (
+	settings: GcpSecretsManagerContext['settings'],
+): GcpSecretsManagerContext => ({
+	connected: false,
+	connectedAt: null,
+	settings,
+});
+
 function createGrpcError(message: string, code: number): Error {
 	return Object.assign(new Error(message), { code });
+}
+
+function mockClientProjectResolution(projectId: string) {
+	const getProjectId = vi.fn().mockResolvedValue(projectId);
+	const listSecrets = vi
+		.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
+		// @ts-expect-error Partial mock
+		.mockResolvedValue([[]]);
+	Object.defineProperty(SecretManagerServiceClient.prototype, 'auth', {
+		configurable: true,
+		value: { getProjectId },
+	});
+
+	return { getProjectId, listSecrets };
 }
 
 describe('GCP Secrets Manager', () => {
@@ -30,6 +79,8 @@ describe('GCP Secrets Manager', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		getClient.mockResolvedValue(SOURCE_CLIENT);
+		Reflect.deleteProperty(SecretManagerServiceClient.prototype, 'auth');
 		logger.scoped.mockReturnValue(logger);
 		gcpSecretsManager = new GcpSecretsManager(logger);
 	});
@@ -61,23 +112,17 @@ describe('GCP Secrets Manager', () => {
 	describe('init validation', () => {
 		it('should throw UserError when service account key is empty', async () => {
 			const settings = { serviceAccountKey: '' };
-			await expect(
-				gcpSecretsManager.init(mock<GcpSecretsManagerContext>({ settings })),
-			).rejects.toThrow(UserError);
+			await expect(gcpSecretsManager.init(createContext(settings))).rejects.toThrow(UserError);
 		});
 
 		it('should throw UserError when service account key is all whitespace', async () => {
 			const settings = { serviceAccountKey: '   ' };
-			await expect(
-				gcpSecretsManager.init(mock<GcpSecretsManagerContext>({ settings })),
-			).rejects.toThrow(UserError);
+			await expect(gcpSecretsManager.init(createContext(settings))).rejects.toThrow(UserError);
 		});
 
 		it('should throw UserError when service account key is not valid JSON', async () => {
 			const settings = { serviceAccountKey: 'plain text' };
-			await expect(
-				gcpSecretsManager.init(mock<GcpSecretsManagerContext>({ settings })),
-			).rejects.toThrow(UserError);
+			await expect(gcpSecretsManager.init(createContext(settings))).rejects.toThrow(UserError);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to initialize GCP Secrets Manager provider',
 				expect.objectContaining({
@@ -91,13 +136,7 @@ describe('GCP Secrets Manager', () => {
 
 		it('should throw UserError when JSON lacks client_email', async () => {
 			const settings = { serviceAccountKey: JSON.stringify({ project_id: 'proj' }) };
-			await expect(
-				gcpSecretsManager.init(
-					mock<GcpSecretsManagerContext>({
-						settings,
-					}),
-				),
-			).rejects.toThrow(UserError);
+			await expect(gcpSecretsManager.init(createContext(settings))).rejects.toThrow(UserError);
 		});
 
 		it('should throw UserError when JSON lacks private_key', async () => {
@@ -107,23 +146,194 @@ describe('GCP Secrets Manager', () => {
 					client_email: 'test@proj.iam.gserviceaccount.com',
 				}),
 			};
-			await expect(
-				gcpSecretsManager.init(
-					mock<GcpSecretsManagerContext>({
-						settings,
-					}),
-				),
-			).rejects.toThrow(UserError);
+			await expect(gcpSecretsManager.init(createContext(settings))).rejects.toThrow(UserError);
 		});
+	});
+
+	it('should use service account credentials for legacy settings', async () => {
+		const PROJECT_ID = 'my-project-id';
+		await gcpSecretsManager.init(
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(GoogleAuth).toHaveBeenCalledWith({
+			credentials: {
+				client_email: `test@${PROJECT_ID}.iam.gserviceaccount.com`,
+				private_key: SERVICE_ACCOUNT_PRIVATE_KEY,
+			},
+		});
+		expect(Impersonated).not.toHaveBeenCalled();
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: SOURCE_CLIENT,
+			projectId: PROJECT_ID,
+		});
+	});
+
+	it('should use application default credentials without static credentials', async () => {
+		const PROJECT_ID = 'my-project-id';
+		await gcpSecretsManager.init(
+			createContext({
+				useApplicationDefaultCredentials: true,
+				projectId: PROJECT_ID,
+			}),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(GoogleAuth).toHaveBeenCalledWith();
+		expect(Impersonated).not.toHaveBeenCalled();
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: SOURCE_CLIENT,
+			projectId: PROJECT_ID,
+		});
+	});
+
+	it('should impersonate a service account when using a service account key', async () => {
+		const PROJECT_ID = 'my-project-id';
+		const TARGET_SERVICE_ACCOUNT = 'n8n-secrets@my-project-id.iam.gserviceaccount.com';
+
+		await gcpSecretsManager.init(
+			createContext({
+				serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID),
+				impersonateServiceAccount: `  ${TARGET_SERVICE_ACCOUNT}  `,
+			}),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(gcpSecretsManager.state).toBe('connected');
+		expect(GoogleAuth).toHaveBeenCalledWith({
+			credentials: {
+				client_email: `test@${PROJECT_ID}.iam.gserviceaccount.com`,
+				private_key: SERVICE_ACCOUNT_PRIVATE_KEY,
+			},
+		});
+		expect(getClient).toHaveBeenCalledOnce();
+		expect(Impersonated).toHaveBeenCalledWith({
+			sourceClient: SOURCE_CLIENT,
+			targetPrincipal: TARGET_SERVICE_ACCOUNT,
+			targetScopes: CLOUD_PLATFORM_SCOPES,
+		});
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: Impersonated.mock.instances[0],
+			projectId: PROJECT_ID,
+		});
+	});
+
+	it('should impersonate a service account when using application default credentials', async () => {
+		const PROJECT_ID = 'my-project-id';
+		const TARGET_SERVICE_ACCOUNT = 'n8n-secrets@my-project-id.iam.gserviceaccount.com';
+
+		await gcpSecretsManager.init(
+			createContext({
+				useApplicationDefaultCredentials: true,
+				projectId: PROJECT_ID,
+				impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
+			}),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(gcpSecretsManager.state).toBe('connected');
+		expect(GoogleAuth).toHaveBeenCalledWith();
+		expect(Impersonated).toHaveBeenCalledWith({
+			sourceClient: SOURCE_CLIENT,
+			targetPrincipal: TARGET_SERVICE_ACCOUNT,
+			targetScopes: CLOUD_PLATFORM_SCOPES,
+		});
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: Impersonated.mock.instances[0],
+			projectId: PROJECT_ID,
+		});
+	});
+
+	it('should skip impersonation when the service account field is blank', async () => {
+		const PROJECT_ID = 'my-project-id';
+		await gcpSecretsManager.init(
+			createContext({
+				serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID),
+				impersonateServiceAccount: '   ',
+			}),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(GoogleAuth).toHaveBeenCalledWith({
+			credentials: {
+				client_email: `test@${PROJECT_ID}.iam.gserviceaccount.com`,
+				private_key: SERVICE_ACCOUNT_PRIVATE_KEY,
+			},
+		});
+		expect(Impersonated).not.toHaveBeenCalled();
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: SOURCE_CLIENT,
+			projectId: PROJECT_ID,
+		});
+	});
+
+	it('should prefer a configured project ID over the service account project ID', async () => {
+		const CONFIGURED_PROJECT_ID = 'configured-project-id';
+		await gcpSecretsManager.init(
+			createContext({
+				serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY('service-account-project-id'),
+				projectId: `  ${CONFIGURED_PROJECT_ID}  `,
+			}),
+		);
+
+		await gcpSecretsManager.connect();
+
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: CONFIGURED_PROJECT_ID }),
+		);
+	});
+
+	it('should resolve the project ID from application default credentials', async () => {
+		const PROJECT_ID = 'detected-project-id';
+		const { getProjectId, listSecrets } = mockClientProjectResolution(PROJECT_ID);
+		await gcpSecretsManager.init(
+			createContext({ useApplicationDefaultCredentials: true }),
+		);
+
+		await gcpSecretsManager.connect();
+		await gcpSecretsManager.test();
+
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: SOURCE_CLIENT,
+		});
+		expect(getProjectId).toHaveBeenCalledOnce();
+		expect(listSecrets).toHaveBeenCalledWith(
+			{ parent: `projects/${PROJECT_ID}`, pageSize: 1 },
+			{ autoPaginate: false },
+		);
+	});
+
+	it('should resolve the project ID when it is absent from service account settings', async () => {
+		const PROJECT_ID = 'detected-project-id';
+		const { getProjectId, listSecrets } = mockClientProjectResolution(PROJECT_ID);
+		await gcpSecretsManager.init(
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY_WITHOUT_PROJECT_ID }),
+		);
+
+		await gcpSecretsManager.connect();
+		await gcpSecretsManager.test();
+
+		expect(SecretManagerServiceClient).toHaveBeenCalledWith({
+			authClient: SOURCE_CLIENT,
+		});
+		expect(getProjectId).toHaveBeenCalledOnce();
+		expect(listSecrets).toHaveBeenCalledWith(
+			{ parent: `projects/${PROJECT_ID}`, pageSize: 1 },
+			{ autoPaginate: false },
+		);
 	});
 
 	it('should log failed client setup while preserving error state', async () => {
 		const PROJECT_ID = 'my-project-id';
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		const setupError = new Error('Invalid configuration');
@@ -160,9 +370,7 @@ describe('GCP Secrets Manager', () => {
 		};
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		const listSpy = vi
@@ -195,6 +403,9 @@ describe('GCP Secrets Manager', () => {
 		 * Assert
 		 */
 		expect(listSpy).toHaveBeenCalled();
+		expect(listSpy).toHaveBeenCalledWith({
+			parent: `projects/${PROJECT_ID}`,
+		});
 
 		expect(getSpy).toHaveBeenCalledWith({
 			name: `projects/${PROJECT_ID}/secrets/secret1/versions/latest`,
@@ -211,21 +422,65 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
 	});
 
+	it('should only cache secrets returned by the configured filter', async () => {
+		const PROJECT_ID = 'my-project-id';
+		const SECRET_FILTER = 'labels.n8n-vault=finance';
+		await gcpSecretsManager.init(
+			createContext({
+				serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID),
+				secretFilter: `  ${SECRET_FILTER}  `,
+			}),
+		);
+
+		const listSpy = vi
+			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
+			// @ts-expect-error Partial mock
+			.mockResolvedValue([[{ name: `projects/${PROJECT_ID}/secrets/finance-secret` }]]);
+		const getSpy = vi
+			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
+			// @ts-expect-error Partial mock
+			.mockResolvedValue([{ payload: { data: Buffer.from('finance-value') } }]);
+
+		await gcpSecretsManager.connect();
+		await gcpSecretsManager.update();
+
+		expect(listSpy).toHaveBeenCalledWith({
+			parent: `projects/${PROJECT_ID}`,
+			filter: SECRET_FILTER,
+		});
+		expect(getSpy).toHaveBeenCalledOnce();
+		expect(getSpy).toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/finance-secret/versions/latest`,
+		});
+		expect(gcpSecretsManager.getSecret('finance-secret')).toBe('finance-value');
+		expect(gcpSecretsManager.getSecret('other-secret')).toBeUndefined();
+	});
+
 	it('should log failed connection tests while preserving the result', async () => {
 		const PROJECT_ID = 'my-project-id';
+		const SECRET_FILTER = 'labels.n8n-vault=finance';
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
+			createContext({
+				serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID),
+				secretFilter: SECRET_FILTER,
 			}),
 		);
 		await gcpSecretsManager.connect();
 
-		vi.spyOn(SecretManagerServiceClient.prototype, 'initialize').mockRejectedValue(
-			new Error('Invalid credentials'),
-		);
+		const listSpy = vi
+			.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
+			.mockRejectedValue(new Error('Invalid credentials'));
 
 		await expect(gcpSecretsManager.test()).resolves.toEqual([false, 'Invalid credentials']);
+		expect(listSpy).toHaveBeenCalledWith(
+			{
+				parent: `projects/${PROJECT_ID}`,
+				filter: SECRET_FILTER,
+				pageSize: 1,
+			},
+			{ autoPaginate: false },
+		);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'GCP Secrets Manager provider test failed',
 			expect.objectContaining({
@@ -251,9 +506,7 @@ describe('GCP Secrets Manager', () => {
 		};
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		vi.spyOn(SecretManagerServiceClient.prototype, 'listSecrets')
@@ -305,9 +558,7 @@ describe('GCP Secrets Manager', () => {
 		};
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		const listSpy = vi
@@ -393,9 +644,7 @@ describe('GCP Secrets Manager', () => {
 		};
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		const listSpy = vi
@@ -481,9 +730,7 @@ describe('GCP Secrets Manager', () => {
 		};
 
 		await gcpSecretsManager.init(
-			mock<GcpSecretsManagerContext>({
-				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
-			}),
+			createContext({ serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) }),
 		);
 
 		const listSpy = vi

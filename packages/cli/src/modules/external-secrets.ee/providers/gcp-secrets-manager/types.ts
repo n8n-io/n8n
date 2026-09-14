@@ -2,9 +2,26 @@ import type { SecretsProviderSettings } from '../../types';
 
 type JsonString = string;
 
-export type GcpSecretsManagerContext = SecretsProviderSettings<{
+type GcpSecretsManagerCommonSettings = {
+	projectId?: string;
+	secretFilter?: string;
+	impersonateServiceAccount?: string;
+};
+
+type GcpServiceAccountKeySettings = {
+	useApplicationDefaultCredentials?: false;
 	serviceAccountKey: JsonString;
-}>;
+};
+
+type GcpApplicationDefaultCredentialsSettings = {
+	useApplicationDefaultCredentials: true;
+	serviceAccountKey?: never;
+};
+
+export type GcpSecretsManagerContext = SecretsProviderSettings<
+	GcpSecretsManagerCommonSettings &
+		(GcpServiceAccountKeySettings | GcpApplicationDefaultCredentialsSettings)
+>;
 
 export type RawGcpSecretAccountKey = {
 	project_id?: string;
@@ -13,7 +30,16 @@ export type RawGcpSecretAccountKey = {
 };
 
 export type GcpSecretAccountKey = {
-	projectId: string;
+	projectId?: string;
 	clientEmail: string;
 	privateKey: string;
 };
+
+export type GcpSecretsManagerSettings =
+	| (GcpSecretAccountKey &
+			GcpSecretsManagerCommonSettings & {
+				useApplicationDefaultCredentials: false;
+			})
+	| (GcpSecretsManagerCommonSettings & {
+			useApplicationDefaultCredentials: true;
+	  });
