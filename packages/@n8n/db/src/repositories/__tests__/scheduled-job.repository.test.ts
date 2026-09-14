@@ -134,74 +134,56 @@ describe('ScheduledJobRepository', () => {
 	describe('deleteIfPayloadUnchanged', () => {
 		const OBSERVED = { n8nVersion: '1.0.0' };
 
-		/** A plain row, since a proxy mock's payload is never deep-equal to anything. */
-		const storedRow = (payload: ScheduledJob['payload']): ScheduledJob =>
-			({ id: 7, payload }) as ScheduledJob;
-
-		const lockingSelect = (row: ScheduledJob | null) => {
+		const conditionalDelete = (affected: number | null) => {
 			const qb = {
+				delete: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
 				where: vi.fn().mockReturnThis(),
-				setLock: vi.fn().mockReturnThis(),
-				getOne: vi.fn(),
+				andWhere: vi.fn().mockReturnThis(),
+				execute: vi.fn().mockResolvedValue({ affected, raw: [] }),
 			};
-			qb.getOne.mockResolvedValue(row);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			return qb;
 		};
 
-		it('throws when not run inside a transaction', async () => {
-			const noTx = mock<EntityManager>({ queryRunner: undefined });
-
-			await expect(repository.deleteIfPayloadUnchanged(noTx, 7, OBSERVED)).rejects.toThrow(
-				UnexpectedError,
-			);
-		});
-
-		it('deletes the row while its payload still equals the observed one', async () => {
-			const qb = lockingSelect(storedRow({ n8nVersion: '1.0.0' }));
-			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+		it('deletes the row only while its payload still equals the observed one', async () => {
+			const qb = conditionalDelete(1);
 
 			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
 
-			expect(qb.where).toHaveBeenCalledWith('job.id = :id', { id: 7 });
-			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, { id: 7 });
+			expect(qb.from).toHaveBeenCalledWith(ScheduledJob);
+			expect(qb.where).toHaveBeenCalledWith('"id" = :id', { id: 7 });
+			expect(qb.andWhere).toHaveBeenCalledWith('"payload" = :payload', {
+				payload: JSON.stringify(OBSERVED),
+			});
 			expect(removed).toBe(1);
 		});
 
-		it('leaves a row whose payload changed since it was observed', async () => {
-			lockingSelect(storedRow({ n8nVersion: '2.0.0' }));
+		it('reports nothing removed when the payload changed or the row is gone', async () => {
+			conditionalDelete(0);
 
 			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
 
-			expect(entityManager.delete).not.toHaveBeenCalled();
 			expect(removed).toBe(0);
 		});
 
-		it('reports nothing removed when the row is already gone', async () => {
-			lockingSelect(null);
+		it('reports nothing removed when the driver does not count affected rows', async () => {
+			conditionalDelete(null);
 
 			const removed = await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
 
-			expect(entityManager.delete).not.toHaveBeenCalled();
 			expect(removed).toBe(0);
 		});
 
-		it('locks the row for the rest of the transaction on Postgres', async () => {
-			const qb = lockingSelect(storedRow({ n8nVersion: '1.0.0' }));
-			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+		it('compares the payload as jsonb on Postgres', async () => {
+			const qb = conditionalDelete(1);
 
 			await postgresRepository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
 
-			expect(qb.setLock).toHaveBeenCalledWith('pessimistic_write');
-		});
-
-		it('does not ask SQLite for a row lock', async () => {
-			const qb = lockingSelect(storedRow({ n8nVersion: '1.0.0' }));
-			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
-
-			await repository.deleteIfPayloadUnchanged(entityManager, 7, OBSERVED);
-
-			expect(qb.setLock).not.toHaveBeenCalled();
+			expect(qb.andWhere).toHaveBeenCalledWith(
+				'CAST("payload" AS jsonb) = CAST(:payload AS jsonb)',
+				{ payload: JSON.stringify(OBSERVED) },
+			);
 		});
 	});
 

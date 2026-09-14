@@ -4,7 +4,6 @@ import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
-import { isDeepStrictEqual } from 'node:util';
 
 import { ScheduledJob } from '../entities/scheduled-job';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
@@ -296,26 +295,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 
 	/**
 	 * Delete one job while its payload still equals what the caller read. Postgres
-	 * locks the row first; SQLite serializes writing transactions, so the plain
-	 * re-read suffices.
+	 * `json` has no equality operator, so both sides are cast to `jsonb`; on SQLite
+	 * the column holds the `JSON.stringify` text TypeORM wrote, which re-serializing
+	 * the payload reproduces.
 	 */
 	async deleteIfPayloadUnchanged(
 		manager: EntityManager,
 		id: number,
 		payload: ScheduledJob['payload'],
 	): Promise<number> {
-		if (manager.queryRunner === undefined) {
-			throw new UnexpectedError('deleteIfPayloadUnchanged must run within a transaction');
-		}
-		const query = manager.createQueryBuilder(ScheduledJob, 'job').where('job.id = :id', { id });
-		if (this.isPostgres) {
-			query.setLock('pessimistic_write');
-		}
-		const row = await query.getOne();
-		if (row === null || !isDeepStrictEqual(row.payload, payload)) {
-			return 0;
-		}
-		const result = await manager.delete(ScheduledJob, { id });
+		const payloadUnchanged = this.isPostgres
+			? 'CAST("payload" AS jsonb) = CAST(:payload AS jsonb)'
+			: '"payload" = :payload';
+		const result = await manager
+			.createQueryBuilder()
+			.delete()
+			.from(ScheduledJob)
+			.where('"id" = :id', { id })
+			.andWhere(payloadUnchanged, { payload: JSON.stringify(payload) })
+			.execute();
 		return result.affected ?? 0;
 	}
 
