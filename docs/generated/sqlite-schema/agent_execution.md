@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "resourceId" varchar(255), "runContext" text, CONSTRAINT "CHK_agent_execution_storedAt" CHECK (((("storedAt" IN ('db', 'fs', 's3', 'az'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((((("hitlStatus" IN ('suspended', 'resumed')))))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('queued', 'running', 'success', 'error', 'cancelled', 'interrupted')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "resourceId" varchar(255), "runContext" text, "enqueueSequence" integer, CONSTRAINT "CHK_agent_execution_storedAt" CHECK (((("storedAt" IN ('db', 'fs', 's3', 'az'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((((("hitlStatus" IN ('suspended', 'resumed')))))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('queued', 'running', 'success', 'error', 'cancelled', 'interrupted')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | cost | REAL |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | duration | INTEGER | 0 | false |  |  |  |
+| enqueueSequence | INTEGER |  | true |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | failureSummary | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
@@ -58,6 +59,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON "agent_execution" ("threadId", "createdAt")  |
 | IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON "agent_execution" ("status") WHERE "status" = 'running' |
 | IDX_agent_execution_threadId | CREATE UNIQUE INDEX "IDX_agent_execution_threadId" ON "agent_execution" ("threadId") WHERE "runContext" IS NOT NULL AND "status" = 'running' |
+| IDX_agent_execution_threadId_enqueueSequence | CREATE UNIQUE INDEX "IDX_agent_execution_threadId_enqueueSequence" ON "agent_execution" ("threadId", "enqueueSequence")  |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -74,6 +76,7 @@ erDiagram
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
+  INTEGER enqueueSequence
   TEXT error
   TEXT failureSummary
   varchar_16_ hitlStatus

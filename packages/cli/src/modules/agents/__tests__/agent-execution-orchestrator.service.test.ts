@@ -1037,6 +1037,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 		const abortSignal = new AbortController().signal;
 		const claim = claimFor('thread-1');
+		const markResultsConsumed = vi.fn(async () => {});
 
 		await service.executeForWake(
 			{
@@ -1046,6 +1047,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 				identity: { type: 'draft', user, principalHash: userPrincipalHash },
 				abortSignal,
+				markResultsConsumed,
 			},
 			claim,
 		);
@@ -1088,6 +1090,8 @@ describe('AgentExecutionOrchestratorService', () => {
 					{ type: 'finish', finishReason: 'error' },
 				]),
 			);
+			const claim = claimFor('thread-1');
+			const markResultsConsumed = vi.fn(async () => {});
 
 			await expect(
 				service.executeForWake(
@@ -1104,8 +1108,9 @@ describe('AgentExecutionOrchestratorService', () => {
 								? { type, user, principalHash: userPrincipalHash }
 								: { type, integrationType: 'slack', principalHash: integrationPrincipalHash },
 						abortSignal: new AbortController().signal,
+						markResultsConsumed,
 					},
-					claimFor('thread-1'),
+					claim,
 				),
 			).rejects.toBeInstanceOf(OperationalError);
 
@@ -1114,18 +1119,29 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect.objectContaining({ userMessage: null }),
 			);
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+			expect(markResultsConsumed).not.toHaveBeenCalled();
+			expect(claim.release).toHaveBeenCalledOnce();
+			expect(claim.fail).not.toHaveBeenCalled();
 		},
 	);
 
 	it('delivers a published wake through the stored connection and reply thread', async () => {
-		const { service, runtimeCacheService, externalHooks, chatIntegrationService, bridge } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			externalHooks,
+			chatIntegrationService,
+			bridge,
+		} = makeService();
 		const chunks: StreamChunk[] = [
 			{ type: 'text-delta', id: 'text-1', delta: 'The job is done.' },
 			{ type: 'finish', finishReason: 'stop' },
 		];
 		const runtime = makeRuntime(chunks);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const claim = claimFor('thread-1');
+		const markResultsConsumed = vi.fn(async () => {});
 
 		await service.executeForWake(
 			{
@@ -1139,8 +1155,9 @@ describe('AgentExecutionOrchestratorService', () => {
 					principalHash: integrationPrincipalHash,
 				},
 				abortSignal: new AbortController().signal,
+				markResultsConsumed,
 			},
-			claimFor('thread-1'),
+			claim,
 		);
 
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
@@ -1153,48 +1170,28 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith('slack:channel-1:1', chunks);
+		expect(bridge.deliverWakeResponse.mock.invocationCallOrder[0]).toBeLessThan(
+			markResultsConsumed.mock.invocationCallOrder[0],
+		);
+		expect(markResultsConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.finalizeExecution.mock.invocationCallOrder[0],
+		);
+		expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			claim.release.mock.invocationCallOrder[0],
+		);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
-	it('rejects a wake when chat delivery fails and releases the runtime', async () => {
-		const { service, runtimeCacheService, bridge } = makeService();
-		const runtime = makeRuntime();
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		const error = new Error('Slack is unavailable');
-		bridge.deliverWakeResponse.mockRejectedValue(error);
-
-		await expect(
-			service.executeForWake(
-				{
-					agentId,
-					projectId,
-					message: '<background-jobs-settled>[]</background-jobs-settled>',
-					memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
-					identity: {
-						type: 'published',
-						integrationType: 'slack',
-						principalHash: integrationPrincipalHash,
-					},
-					abortSignal: new AbortController().signal,
-				},
-				claimFor('thread-1'),
-			),
-		).rejects.toBe(error);
-
-		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
-	});
-
-	it.each(['context', 'connection'] as const)(
-		'does not start a wake when its reply %s is missing',
-		async (missing) => {
-			const {
-				service,
-				runtimeCacheService,
-				integrationMessageContextService,
-				chatIntegrationService,
-				bridge,
-			} = makeService();
-			if (missing === 'context') integrationMessageContextService.getLatest.mockResolvedValue(null);
-			else chatIntegrationService.getBridge.mockReturnValue(undefined);
+	it.each(['delivery', 'consumption'] as const)(
+		'finalizes and releases a wake when %s fails',
+		async (failure) => {
+			const { service, runtimeCacheService, executionService, bridge } = makeService();
+			const runtime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			const error = new Error('Wake completion failed');
+			const markResultsConsumed = vi.fn(async () => {});
+			if (failure === 'delivery') bridge.deliverWakeResponse.mockRejectedValue(error);
+			else markResultsConsumed.mockRejectedValue(error);
 			const claim = claimFor('thread-1');
 
 			await expect(
@@ -1210,6 +1207,94 @@ describe('AgentExecutionOrchestratorService', () => {
 							principalHash: integrationPrincipalHash,
 						},
 						abortSignal: new AbortController().signal,
+						markResultsConsumed,
+					},
+					claim,
+				),
+			).rejects.toBe(error);
+
+			expect(bridge.deliverWakeResponse).toHaveBeenCalledOnce();
+			expect(markResultsConsumed).toHaveBeenCalledTimes(failure === 'consumption' ? 1 : 0);
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({ finishReason: 'error' }),
+				}),
+			);
+			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+			expect(claim.release).toHaveBeenCalledOnce();
+			expect(claim.fail).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+				claim.release.mock.invocationCallOrder[0],
+			);
+		},
+	);
+
+	it('finalizes a wake that loses its claim without delivering its results', async () => {
+		const { service, runtimeCacheService, executionService, bridge } = makeService();
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const claimLost = new AbortController();
+		const markResultsConsumed = vi.fn(async () => {});
+		const claim = { ...claimFor('thread-1'), abortSignal: claimLost.signal };
+		claimLost.abort();
+
+		await expect(
+			service.executeForWake(
+				{
+					agentId,
+					projectId,
+					message: '<background-jobs-settled>[]</background-jobs-settled>',
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					identity: { type: 'draft', user, principalHash: userPrincipalHash },
+					abortSignal: new AbortController().signal,
+					markResultsConsumed,
+				},
+				claim,
+			),
+		).rejects.toThrow();
+
+		expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
+		expect(markResultsConsumed).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ finishReason: 'error' }),
+			}),
+		);
+		expect(claim.release).toHaveBeenCalledOnce();
+		expect(claim.fail).not.toHaveBeenCalled();
+	});
+
+	it.each(['context', 'connection'] as const)(
+		'does not start a wake when its reply %s is missing',
+		async (missing) => {
+			const {
+				service,
+				runtimeCacheService,
+				integrationMessageContextService,
+				chatIntegrationService,
+				bridge,
+			} = makeService();
+			if (missing === 'context') integrationMessageContextService.getLatest.mockResolvedValue(null);
+			else chatIntegrationService.getBridge.mockReturnValue(undefined);
+			const claim = claimFor('thread-1');
+			const markResultsConsumed = vi.fn(async () => {});
+
+			await expect(
+				service.executeForWake(
+					{
+						agentId,
+						projectId,
+						message: '<background-jobs-settled>[]</background-jobs-settled>',
+						memory: { threadId: 'thread-1', resourceId: 'integration:slack:user-1' },
+						identity: {
+							type: 'published',
+							integrationType: 'slack',
+							principalHash: integrationPrincipalHash,
+						},
+						abortSignal: new AbortController().signal,
+						markResultsConsumed,
 					},
 					claim,
 				),
@@ -1219,6 +1304,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(bridge.deliverWakeResponse).not.toHaveBeenCalled();
 			// The claim never reached the orchestrator's turn, so the wake ends the row itself.
 			expect(claim.fail).toHaveBeenCalledWith(expect.any(OperationalError));
+			expect(markResultsConsumed).not.toHaveBeenCalled();
 		},
 	);
 

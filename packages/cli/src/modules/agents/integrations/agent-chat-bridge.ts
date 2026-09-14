@@ -752,13 +752,17 @@ export class AgentChatBridge {
 		);
 	}
 
-	/** Run a queued channel resume headless; the card it came from is not settled. */
+	/** Run a queued channel resume headless in its rebuilt thread. */
 	async runQueuedResume(row: AgentExecution, claim: AgentTurnClaim): Promise<void> {
 		const context = row.runContext;
 		if (context?.kind !== 'resume' || !context.channel) {
 			throw new UnexpectedError('Queued agent turn is not a channel resume');
 		}
-		const { thread } = await this.rebuildThread(context.channel);
+		const { thread, currentMessage } = await this.rebuildThread(context.channel);
+		const action = context.channel.action;
+		if (action && !currentMessage) {
+			throw new UnexpectedError('Queued channel action has no message context');
+		}
 		await this.hitlResumeHandler.runResume(
 			thread,
 			{
@@ -768,6 +772,17 @@ export class AgentChatBridge {
 				toolCallId: context.toolCallId,
 				resumeData: context.resumeData,
 				integrationType: this.integration.type,
+				...(action && currentMessage
+					? {
+							beforeResume: async () =>
+								await this.hitlResumeHandler.runActionBeforeResume(
+									thread,
+									action,
+									currentMessage,
+									context.resumeData,
+								),
+						}
+					: {}),
 			},
 			claim,
 		);

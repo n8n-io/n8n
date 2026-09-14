@@ -74,7 +74,9 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
 	integrationRegistry.get.mockReturnValue({} as never);
-	orchestrator.executeForWake.mockResolvedValue();
+	orchestrator.executeForWake.mockImplementation(
+		async ({ markResultsConsumed }) => await markResultsConsumed(),
+	);
 	// An idle thread: the wake claims its running row at once.
 	turnQueueService.tryRunNow.mockImplementation(async ({ threadId }) => ({
 		executionId: 'exec-1',
@@ -311,7 +313,10 @@ describe('AgentWakeService', () => {
 			const { service, orchestrator, jobRepository } = setup();
 			const firstWake = createDeferredPromise();
 			const laterJob = makeJob({ id: 'job-2', result: 'Later result' });
-			orchestrator.executeForWake.mockReturnValueOnce(firstWake.promise);
+			orchestrator.executeForWake.mockImplementationOnce(async ({ markResultsConsumed }) => {
+				await firstWake.promise;
+				await markResultsConsumed();
+			});
 			const waking = service.attemptWake('thread-1');
 			await vi.waitFor(() => expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1));
 

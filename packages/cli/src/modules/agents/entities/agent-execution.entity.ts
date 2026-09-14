@@ -29,6 +29,13 @@ export interface QueuedChannelTurn {
 	thread: SerializedThread;
 }
 
+/** The action-only data not already included in `QueuedChannelTurn.thread.currentMessage`. */
+export interface QueuedChannelAction {
+	actionId: string;
+	kind?: 'approval';
+	label?: string;
+}
+
 /**
  * What a queued row needs to run later: the turn kind and the inbound context
  * no column holds. Cleared when the run ends.
@@ -48,7 +55,7 @@ export type AgentTurnRunContext =
 			runId: string;
 			toolCallId: string;
 			resumeData: unknown;
-			channel?: QueuedChannelTurn;
+			channel?: QueuedChannelTurn & { action?: QueuedChannelAction };
 	  };
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
@@ -66,6 +73,7 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 @Entity({ name: 'agent_execution' })
 @Index(['threadId', 'createdAt'])
 @Index(['status'], { where: '"status" = \'running\'' })
+@Index(['threadId', 'enqueueSequence'], { unique: true })
 @Index(['threadId'], {
 	unique: true,
 	where: '"runContext" IS NOT NULL AND "status" = \'running\'',
@@ -83,6 +91,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
+
+	/** Per-thread order assigned when this turn enters the queue. */
+	@Column({ type: 'int', nullable: true })
+	enqueueSequence: number | null;
 
 	/** Memory resource id of the sender, so a queued turn later runs as that user. */
 	@Column({ type: 'varchar', length: 255, nullable: true })

@@ -14,6 +14,8 @@ import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/ag
 import {
 	AgentExecutionRepository,
 	AgentThreadClaimConflictError,
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
 } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -345,6 +347,80 @@ describe('AgentExecutionRepository', () => {
 			runContext: { kind: 'message' as const },
 		});
 
+		const queuedResumeValues = (threadId: string, runId: string) => ({
+			...queuedValues(threadId, ''),
+			userMessage: null,
+			runContext: {
+				kind: 'resume' as const,
+				runId,
+				toolCallId: 'tool-1',
+				resumeData: { approved: true },
+			},
+		});
+
+		it('atomically enforces the queued message and total row caps', async () => {
+			const seedMessages = async (threadId: string, count: number) =>
+				await repository.save(
+					Array.from({ length: count }, (_, index) =>
+						repository.create({
+							...queuedValues(threadId, `waiting ${index + 1}`),
+							enqueueSequence: index + 1,
+						}),
+					),
+				);
+
+			const mixedThread = await createThread();
+			await seedMessages(mixedThread.id, MAX_QUEUED_TURNS_PER_THREAD - 1);
+			await repository.insertExecution(queuedResumeValues(mixedThread.id, 'run-1'));
+
+			const mixedResults = await Promise.allSettled([
+				repository.insertExecution(queuedValues(mixedThread.id, 'last slot A')),
+				repository.insertExecution(queuedValues(mixedThread.id, 'last slot B')),
+			]);
+
+			expect(mixedResults.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+			expect(mixedResults.filter((result) => result.status === 'rejected')).toEqual([
+				expect.objectContaining({ reason: expect.any(AgentThreadQueueFullError) }),
+			]);
+			const mixedRows = await repository.findQueuedByThread(mixedThread.id);
+			expect(mixedRows.filter((row) => row.runContext?.kind === 'message')).toHaveLength(
+				MAX_QUEUED_TURNS_PER_THREAD,
+			);
+			expect(mixedRows).toHaveLength(MAX_QUEUED_TURNS_PER_THREAD + 1);
+			expect(mixedRows.at(-1)).toMatchObject({
+				enqueueSequence: MAX_QUEUED_TURNS_PER_THREAD + 1,
+				runContext: { kind: 'message' },
+			});
+
+			const fullMessageThread = await createThread({ sessionNumber: 2 });
+			await seedMessages(fullMessageThread.id, MAX_QUEUED_TURNS_PER_THREAD);
+			const resume = await repository.insertExecution(
+				queuedResumeValues(fullMessageThread.id, 'run-2'),
+			);
+			expect(resume).toMatchObject({
+				enqueueSequence: MAX_QUEUED_TURNS_PER_THREAD + 1,
+				runContext: { kind: 'resume' },
+			});
+
+			const fullResults = await Promise.allSettled([
+				repository.insertExecution(queuedValues(fullMessageThread.id, 'one too many')),
+				repository.insertExecution(queuedResumeValues(fullMessageThread.id, 'run-3')),
+			]);
+			expect(fullResults).toEqual([
+				expect.objectContaining({
+					status: 'rejected',
+					reason: expect.any(AgentThreadQueueFullError),
+				}),
+				expect.objectContaining({
+					status: 'rejected',
+					reason: expect.any(AgentThreadQueueFullError),
+				}),
+			]);
+			expect(await repository.countQueuedByThread(fullMessageThread.id)).toBe(
+				MAX_QUEUED_TURNS_PER_THREAD + 1,
+			);
+		});
+
 		it('promotes a queued row only while no claimed run holds the thread', async () => {
 			const thread = await createThread();
 			const running = await repository.insertExecution({
@@ -352,14 +428,22 @@ describe('AgentExecutionRepository', () => {
 				status: 'running',
 				startedAt: new Date(),
 			});
-			const first = await repository.insertExecution(queuedValues(thread.id, 'first'));
-			const second = await repository.insertExecution(queuedValues(thread.id, 'second'));
+			const first = await repository.insertExecution({
+				...queuedValues(thread.id, 'first'),
+				id: 'queued-z',
+			} as Parameters<typeof repository.insertExecution>[0]);
+			const second = await repository.insertExecution({
+				...queuedValues(thread.id, 'second'),
+				id: 'queued-a',
+			} as Parameters<typeof repository.insertExecution>[0]);
+			const sameMillisecond = new Date('2026-01-01T00:00:00.000Z');
+			await repository.update({ id: first.id }, { createdAt: sameMillisecond });
+			await repository.update({ id: second.id }, { createdAt: sameMillisecond });
 
 			expect(await repository.countQueuedByThread(thread.id)).toBe(2);
-			expect((await repository.findQueuedByThread(thread.id)).map((row) => row.id)).toEqual([
-				first.id,
-				second.id,
-			]);
+			expect(
+				(await repository.findQueuedByThread(thread.id)).map((row) => row.userMessage),
+			).toEqual(['first', 'second']);
 			// Waiting rows do not show up as the session's first message.
 			expect(await repository.findFirstUserMessageByThreadIds([thread.id])).toEqual(
 				new Map([[thread.id, 'running']]),

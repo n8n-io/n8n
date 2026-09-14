@@ -213,6 +213,12 @@ export class AgentWakeService {
 						memory: { threadId, resourceId: first.parentResourceId },
 						identity,
 						abortSignal: signal,
+						markResultsConsumed: async () => {
+							await this.jobRepository.markMailConsumed(
+								threadId,
+								jobs.map((job) => job.id),
+							);
+						},
 					},
 					claim,
 				);
@@ -220,11 +226,6 @@ export class AgentWakeService {
 				this.activeWakes.delete(threadId);
 			}
 
-			if (signal.aborted) return;
-			await this.jobRepository.markMailConsumed(
-				threadId,
-				jobs.map((job) => job.id),
-			);
 			this.failures.delete(threadId);
 
 			// Check for results that arrived during this reply; an empty queue stops further checks.

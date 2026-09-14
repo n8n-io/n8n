@@ -181,6 +181,8 @@ export interface ExecuteForWakeConfig {
 	message: string;
 	memory: AgentMemoryScope;
 	abortSignal: AbortSignal;
+	/** Mark the delivered job results consumed while the wake still owns the thread. */
+	markResultsConsumed: () => Promise<void>;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
 		| {
@@ -222,6 +224,8 @@ export interface StreamChatResponseConfig {
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
+	/** Complete ordered side effects before finalization releases the thread claim. */
+	beforeFinalize?: () => Promise<void>;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -777,9 +781,11 @@ export class AgentExecutionOrchestratorService {
 	 * Throws when the run fails so the caller leaves the results pending.
 	 */
 	async executeForWake(config: ExecuteForWakeConfig, claim: AgentTurnClaim): Promise<void> {
-		const { agentId, projectId, message, memory, identity, abortSignal } = config;
+		const { agentId, projectId, message, memory, identity, abortSignal, markResultsConsumed } =
+			config;
 		const isDraft = identity.type === 'draft';
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
+		const completionSignal = turnAbortSignal(claim, abortSignal);
 
 		let delivery: Awaited<ReturnType<typeof this.getWakeDelivery>> | undefined;
 		try {
@@ -790,6 +796,10 @@ export class AgentExecutionOrchestratorService {
 			await claim.fail(error);
 			throw error;
 		}
+		// The runtime returns model errors as stream chunks. Throw before delivery
+		// so the job results stay pending for a retry.
+		const chunks: StreamChunk[] = [];
+		let runError: unknown;
 		const stream = this.streamChatResponse({
 			claim,
 			getRuntime: async () => {
@@ -815,24 +825,24 @@ export class AgentExecutionOrchestratorService {
 			includeHitlToolDetails: isDraft,
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
+			beforeFinalize: async () => {
+				if (runError !== undefined) {
+					throw new OperationalError('Background job wake failed', {
+						cause: runError,
+					});
+				}
+				completionSignal.throwIfAborted();
+				if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
+				completionSignal.throwIfAborted();
+				await markResultsConsumed();
+			},
 		});
 
-		// The runtime returns model errors as stream chunks. Throw here so the caller
-		// leaves the job results pending for a retry.
-		const chunks: StreamChunk[] = [];
-		let runError: unknown;
 		for await (const chunk of stream) {
 			if (delivery) chunks.push(chunk);
 			if (chunk.type === 'error') runError = chunk.error;
 			if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
 		}
-		if (runError !== undefined) {
-			throw new OperationalError('Background job wake failed', {
-				cause: runError,
-			});
-		}
-		abortSignal.throwIfAborted();
-		if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
 	}
 
 	private async getWakeDelivery(agentId: string, integrationType: string, threadId: string) {
@@ -887,6 +897,7 @@ export class AgentExecutionOrchestratorService {
 			includeHitlToolDetails,
 			sandboxPrincipalHash,
 			hideUserMessageFromTranscript,
+			beforeFinalize,
 		} = config;
 		const { threadId, resourceId } = memory;
 		let runtime: AgentRuntime | undefined;
@@ -954,6 +965,7 @@ export class AgentExecutionOrchestratorService {
 				}
 				yield chunk;
 			}
+			await beforeFinalize?.();
 		} catch (error) {
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });

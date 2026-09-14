@@ -1,15 +1,12 @@
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { createTestTurnQueue } from './test-utils/turn-queue';
-import {
-	AgentThreadQueueFullError,
-	MAX_QUEUED_TURNS_PER_THREAD,
-	type AgentTurnSubmission,
-} from '../agent-turn-queue.service';
+import type { AgentTurnSubmission } from '../agent-turn-queue.service';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -92,6 +89,65 @@ describe('AgentTurnQueueService', () => {
 		]);
 	});
 
+	it('hands off attachment ownership after persistence and before claiming', async () => {
+		const { service, rows, executionService } = makeService();
+		const claimError = new Error('claim failed');
+		const onPersisted = vi.fn();
+		const attachment = {
+			id: 'att-1',
+			fileName: 'notes.txt',
+			mimeType: 'text/plain',
+			sizeBytes: 5,
+		};
+		executionService.claimQueuedExecution.mockRejectedValue(claimError);
+
+		await expect(
+			service.submit({ ...messageTurn('hello'), attachments: [attachment] }, onPersisted),
+		).rejects.toBe(claimError);
+
+		expect(rows).toEqual([
+			expect.objectContaining({
+				id: 'exec-1',
+				status: 'queued',
+				attachments: [attachment],
+			}),
+		]);
+		expect(onPersisted).toHaveBeenCalledWith('exec-1');
+	});
+
+	it('keeps concurrent messages in enqueue order when both observe an idle thread', async () => {
+		const { service, rows, executionService } = makeService();
+		const recordQueuedExecution = executionService.recordQueuedExecution.getMockImplementation();
+		if (!recordQueuedExecution) throw new Error('Expected queued recording implementation');
+		const firstInserted = createDeferredPromise();
+		const releaseFirst = createDeferredPromise();
+		executionService.recordQueuedExecution.mockImplementation(async (params) => {
+			if (params.userMessage === 'second') await firstInserted.promise;
+			const executionId = await recordQueuedExecution(params);
+			if (params.userMessage === 'first') {
+				firstInserted.resolve();
+				await releaseFirst.promise;
+			}
+			return executionId;
+		});
+
+		const firstSubmission = service.submit(messageTurn('first'));
+		const secondSubmission = service.submit(messageTurn('second'));
+		const second = await secondSubmission;
+		releaseFirst.resolve();
+		const first = await firstSubmission;
+
+		expect(first).toEqual({
+			status: 'claimed',
+			claim: expect.objectContaining({ executionId: 'exec-1', threadId }),
+		});
+		expect(second).toEqual({ status: 'queued', executionId: 'exec-2' });
+		expect(rows.map(({ userMessage, status }) => ({ userMessage, status }))).toEqual([
+			{ userMessage: 'first', status: 'running' },
+			{ userMessage: 'second', status: 'queued' },
+		]);
+	});
+
 	it('queues behind the running turn and runs the rows oldest-first once it releases', async () => {
 		const { service, rows, ran, finish, orchestrator, wakeService } = makeService();
 		const first = await service.submit(messageTurn('first'));
@@ -156,16 +212,6 @@ describe('AgentTurnQueueService', () => {
 
 		await settled(() => expect(ran).toEqual(['while waiting']));
 		expect(rows.map((row) => row.status)).toEqual(['success', 'success']);
-	});
-
-	it('rejects a message once the thread has its maximum of queued rows', async () => {
-		const { service, rows, executionRepository } = makeService();
-		executionRepository.countQueuedByThread.mockResolvedValueOnce(MAX_QUEUED_TURNS_PER_THREAD);
-
-		await expect(service.submit(messageTurn('one too many'))).rejects.toThrow(
-			AgentThreadQueueFullError,
-		);
-		expect(rows).toHaveLength(0);
 	});
 
 	it('leaves a row queued and stops the drain when the promotion conflicts with another run', async () => {

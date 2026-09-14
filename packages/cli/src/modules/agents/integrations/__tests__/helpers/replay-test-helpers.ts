@@ -234,10 +234,14 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	// Like the orchestrator: the row ends and the claim releases once the stream is consumed.
 	const asClaimedTurn = (turn: AsyncGenerator<StreamChunk>, claim: AgentTurnClaim) =>
 		(async function* claimed() {
+			let status: 'success' | 'error' = 'success';
 			try {
 				yield* turn;
+			} catch (error) {
+				status = 'error';
+				throw error;
 			} finally {
-				turnQueue.finish(claim);
+				turnQueue.finish(claim, status);
 				await claim.release();
 			}
 		})();

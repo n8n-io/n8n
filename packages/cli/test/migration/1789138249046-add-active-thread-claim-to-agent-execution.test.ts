@@ -120,21 +120,25 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 
 			// A queued row passes the widened status check and carries its sender and run context.
 			await context.runQuery(
-				`INSERT INTO ${table} ("id", "threadId", "status", "resourceId", "runContext", "createdAt", "updatedAt")
-				 VALUES (:id, :threadId, 'queued', :resourceId, :runContext, :now, :now)`,
+				`INSERT INTO ${table} ("id", "threadId", "status", "resourceId", "runContext", "enqueueSequence", "createdAt", "updatedAt")
+				 VALUES (:id, :threadId, 'queued', :resourceId, :runContext, :enqueueSequence, :now, :now)`,
 				{
 					id: ids.queued,
 					threadId: ids.thread,
 					resourceId: 'draft-chat:user-1',
 					runContext: '{"kind":"message"}',
+					enqueueSequence: 1,
 					now,
 				},
 			);
-			const queued = await context.runQuery<Array<{ status: string; resourceId: string }>>(
-				`SELECT "status", "resourceId" FROM ${table} WHERE "id" = :id`,
-				{ id: ids.queued },
-			);
-			expect(queued).toEqual([{ status: 'queued', resourceId: 'draft-chat:user-1' }]);
+			const queued = await context.runQuery<
+				Array<{ status: string; resourceId: string; enqueueSequence: number }>
+			>(`SELECT "status", "resourceId", "enqueueSequence" FROM ${table} WHERE "id" = :id`, {
+				id: ids.queued,
+			});
+			expect(queued).toEqual([
+				{ status: 'queued', resourceId: 'draft-chat:user-1', enqueueSequence: 1 },
+			]);
 		});
 
 		await undoLastSingleMigration();
@@ -142,7 +146,7 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		await withContext(async (context) => {
 			const table = context.escape.tableName('agent_execution');
 			const columns = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			for (const name of ['resourceId', 'runContext']) {
+			for (const name of ['resourceId', 'runContext', 'enqueueSequence']) {
 				expect(columns?.findColumnByName(name)).toBeUndefined();
 			}
 			const rows = await context.runQuery<Array<{ count: number | string }>>(
@@ -168,7 +172,7 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		dataSource = Container.get(DataSource);
 		await withContext(async (context) => {
 			const table = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			for (const name of ['resourceId', 'runContext']) {
+			for (const name of ['resourceId', 'runContext', 'enqueueSequence']) {
 				expect(table?.findColumnByName(name)?.isNullable).toBe(true);
 			}
 		});

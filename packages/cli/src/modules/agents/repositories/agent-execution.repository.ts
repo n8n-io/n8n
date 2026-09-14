@@ -2,10 +2,25 @@ import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+
+/** Queued turns per thread. The running turn does not count. */
+export const MAX_QUEUED_TURNS_PER_THREAD = 50;
+export const AGENT_TURN_QUEUE_FULL_ERROR_CODE = 'agent_turn_queue_full';
+
+export class AgentThreadQueueFullError extends UserError {
+	readonly errorCode = AGENT_TURN_QUEUE_FULL_ERROR_CODE;
+
+	constructor() {
+		super(
+			`This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+		);
+	}
+}
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -21,7 +36,7 @@ export class AgentThreadClaimConflictError extends OperationalError {
 
 export type NewAgentExecution = Omit<
 	AgentExecution,
-	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'generateId' | 'setUpdateDate'
+	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'enqueueSequence' | 'generateId' | 'setUpdateDate'
 >;
 
 type AgentExecutionFinalizationValues = Pick<
@@ -56,11 +71,50 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	/**
 	 * Insert a queued or running row. For a running row with `runContext`, the
 	 * partial unique index turns a second claim on the same thread into
-	 * {@link AgentThreadClaimConflictError}.
+	 * {@link AgentThreadClaimConflictError}. Queued message rows enforce the
+	 * per-thread cap in the same critical section that assigns their sequence.
 	 */
 	async insertExecution(values: NewAgentExecution): Promise<AgentExecution> {
 		try {
-			return await this.save(this.create(values));
+			if (values.status === 'queued') {
+				return await this.manager.transaction(async (entityManager) => {
+					// Serialize allocations on the durable thread row before reading the prior sequence.
+					await entityManager
+						.getRepository(AgentExecutionThread)
+						.createQueryBuilder()
+						.update(AgentExecutionThread)
+						.set({ updatedAt: () => '"updatedAt"' })
+						.where('id = :threadId', { threadId: values.threadId })
+						.execute();
+
+					const repository = entityManager.getRepository(AgentExecution);
+					const queued = await repository.find({
+						select: ['runContext'],
+						where: { threadId: values.threadId, status: 'queued' },
+					});
+					const queuedMessages = queued.filter((row) => row.runContext?.kind === 'message').length;
+					if (
+						queued.length >= MAX_QUEUED_TURNS_PER_THREAD + 1 ||
+						(values.runContext?.kind === 'message' && queuedMessages >= MAX_QUEUED_TURNS_PER_THREAD)
+					) {
+						throw new AgentThreadQueueFullError();
+					}
+					const latest = await repository
+						.createQueryBuilder('execution')
+						.select('MAX(execution.enqueueSequence)', 'max')
+						.where('execution.threadId = :threadId', { threadId: values.threadId })
+						.getRawOne<{ max: number | null }>();
+
+					return await repository.save(
+						repository.create({
+							...values,
+							enqueueSequence: (latest?.max ?? 0) + 1,
+						}),
+					);
+				});
+			}
+
+			return await this.save(this.create({ ...values, enqueueSequence: null }));
 		} catch (error) {
 			if (
 				values.status === 'running' &&
@@ -81,7 +135,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	async findQueuedByThread(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({
 			where: { threadId, status: 'queued' },
-			order: { createdAt: 'ASC', id: 'ASC' },
+			order: { enqueueSequence: 'ASC' },
 		});
 	}
 

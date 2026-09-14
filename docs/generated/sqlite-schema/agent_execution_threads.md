@@ -104,6 +104,7 @@ erDiagram
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
+  INTEGER enqueueSequence
   TEXT error
   TEXT failureSummary
   varchar_16_ hitlStatus

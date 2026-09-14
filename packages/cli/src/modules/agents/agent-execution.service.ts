@@ -212,6 +212,7 @@ export class AgentExecutionService {
 			error,
 			new Date(),
 		);
+		this.executionsNeedingTitleSync.delete(scope.executionId);
 		if (failed) this.executionUpdateBroadcaster.notify(scope);
 	}
 
@@ -236,6 +237,7 @@ export class AgentExecutionService {
 			}),
 		});
 		this.stopHeartbeat(scope.executionId);
+		this.executionsNeedingTitleSync.delete(scope.executionId);
 		if (finalized) this.executionUpdateBroadcaster.notify(scope);
 		return finalized;
 	}

@@ -22,8 +22,11 @@ import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import {
+	AGENT_TURN_QUEUE_FULL_ERROR_CODE,
 	AgentExecutionRepository,
 	AgentThreadClaimConflictError,
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
 } from './repositories/agent-execution.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import {
@@ -31,19 +34,7 @@ import {
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 
-/** Queued turns per thread. The running turn does not count. */
-export const MAX_QUEUED_TURNS_PER_THREAD = 50;
-export const AGENT_TURN_QUEUE_FULL_ERROR_CODE = 'agent_turn_queue_full';
-
-export class AgentThreadQueueFullError extends UserError {
-	readonly errorCode = AGENT_TURN_QUEUE_FULL_ERROR_CODE;
-
-	constructor() {
-		super(
-			`This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
-		);
-	}
-}
+export { AGENT_TURN_QUEUE_FULL_ERROR_CODE, AgentThreadQueueFullError, MAX_QUEUED_TURNS_PER_THREAD };
 
 /**
  * The claimed running row of a turn. Whoever runs the turn records into this
@@ -104,18 +95,26 @@ export class AgentTurnQueueService {
 	 * Store the turn and claim the thread for it when nothing is ahead of it.
 	 * A message keeps arrival order behind queued rows and yields to a pending
 	 * human response; a resume is that response and claims at once. Throws
-	 * {@link AgentThreadQueueFullError} when the thread has its maximum of
-	 * queued rows.
+	 * {@link AgentThreadQueueFullError} when the repository rejects queue
+	 * admission. `onPersisted` runs before the claim attempt.
 	 */
-	async submit(turn: AgentTurnSubmission): Promise<AgentTurnSubmitResult> {
+	async submit(
+		turn: AgentTurnSubmission,
+		onPersisted?: (executionId: string) => void,
+	): Promise<AgentTurnSubmitResult> {
 		const waiting = await this.executionRepository.countQueuedByThread(turn.threadId);
-		if (waiting >= MAX_QUEUED_TURNS_PER_THREAD) throw new AgentThreadQueueFullError();
 		const executionId = await this.executionService.recordQueuedExecution(
 			await this.withAgentName(turn),
 		);
-		const claim = (await this.mustWait(turn, waiting))
-			? null
-			: await this.claimQueuedRow(scopeOf(turn, executionId));
+		onPersisted?.(executionId);
+		if (await this.mustWait(turn, waiting)) return { status: 'queued', executionId };
+		const rows = await this.executionRepository.findQueuedByThread(turn.threadId);
+		const next =
+			turn.runContext.kind === 'resume'
+				? rows.find((row) => row.runContext?.kind === 'resume')
+				: rows[0];
+		const claim =
+			next?.id === executionId ? await this.claimQueuedRow(scopeOf(turn, executionId)) : null;
 		return claim ? { status: 'claimed', claim } : { status: 'queued', executionId };
 	}
 

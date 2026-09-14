@@ -1,6 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ActionEvent, Thread } from 'chat';
+import type { ActionEvent, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import { AgentActionAlreadyHandledError } from '../agent-action-already-handled.error';
@@ -10,7 +10,7 @@ import type {
 	AgentTurnSubmission,
 	AgentTurnSubmitResult,
 } from '../agent-turn-queue.service';
-import type { QueuedChannelTurn } from '../entities/agent-execution.entity';
+import type { QueuedChannelAction, QueuedChannelTurn } from '../entities/agent-execution.entity';
 import type {
 	ActionDecisionMessageFormatter,
 	BridgeResumeExecutionContext,
@@ -87,38 +87,24 @@ export class AgentChatHitlResumeHandler {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
-		const platformThreadId = this.options.resolvePlatformThreadId(thread);
-		const threadId = this.options.toAgentThreadId(platformThreadId);
+		const action: QueuedChannelAction = {
+			actionId: event.actionId,
+			...(callbackData.kind !== undefined ? { kind: callbackData.kind } : {}),
+			...(callbackData.label !== undefined ? { label: callbackData.label } : {}),
+		};
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
 			// Runs once the resume owns the thread turn: a click that waits behind
 			// a running turn, or is rejected, must not settle the card or redirect
 			// the running turn's replies.
-			beforeResume: async () => {
-				if (
-					this.options.callbackStore &&
-					!(await this.options.callbackStore.resolve(event.actionId))
-				) {
-					throw new AgentActionAlreadyHandledError();
-				}
-
-				// Persist the interacting user / messageId into the thread's message
-				// context so tools running on resume can read it via the message
-				// context store — no need to bolt a duplicate copy onto resumeData.
-				await this.options.messageContextBridge.updateLatest(
-					threadId.id,
-					event.user.userId,
+			action,
+			beforeResume: async () =>
+				await this.runActionBeforeResume(
 					thread,
-					{
-						messageId: event.messageId,
-						interactingUserId: event.user.userId,
-						...this.options.getPlatformAgentContext(),
-						// The resume response streams back to this thread like any chat turn,
-						// so the same reply-delivery rules apply.
-						replyExpectation: 'required',
-					},
-				);
-				await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
-			},
+					action,
+					{ id: event.messageId, author: event.user, raw: event.raw },
+					parsed.resumeData,
+					{ adapter: event.adapter, threadId: event.threadId },
+				),
 		});
 	}
 
@@ -190,15 +176,54 @@ export class AgentChatHitlResumeHandler {
 		};
 	}
 
+	/** Run action side effects after the resume owns the thread turn. */
+	async runActionBeforeResume(
+		thread: Thread<unknown, unknown>,
+		action: QueuedChannelAction,
+		message: Pick<Message<unknown>, 'id' | 'author' | 'raw'>,
+		resumeData: unknown,
+		target: Pick<ActionEvent, 'adapter' | 'threadId'> = {
+			adapter: thread.adapter,
+			threadId: thread.id,
+		},
+	): Promise<void> {
+		let callbackData: { kind?: 'approval'; label?: string } = action;
+		if (this.options.callbackStore) {
+			const resolved = await this.options.callbackStore.resolve(action.actionId);
+			if (resolved) callbackData = resolved;
+		}
+
+		const platformThreadId = this.options.resolvePlatformThreadId(thread);
+		const threadId = this.options.toAgentThreadId(platformThreadId);
+		// Persist the interacting user / messageId into the thread's message
+		// context so tools running on resume can read it via the message
+		// context store — no need to bolt a duplicate copy onto resumeData.
+		await this.options.messageContextBridge.updateLatest(
+			threadId.id,
+			message.author.userId,
+			thread,
+			{
+				messageId: message.id,
+				interactingUserId: message.author.userId,
+				...this.options.getPlatformAgentContext(),
+				// The resume response streams back to this thread like any chat turn,
+				// so the same reply-delivery rules apply.
+				replyExpectation: 'required',
+			},
+		);
+		await this.cleanUpBeforeResume(target, message, resumeData, callbackData);
+	}
+
 	/** Clean up the action message according to integration policy before resuming. */
 	private async cleanUpBeforeResume(
-		event: ActionEvent,
+		target: Pick<ActionEvent, 'adapter' | 'threadId'>,
+		message: Pick<Message<unknown>, 'id' | 'author' | 'raw'>,
 		resumeData: unknown,
 		callbackData: { kind?: 'approval'; label?: string },
 	): Promise<void> {
 		if (this.options.deleteActionMessageBeforeResume) {
 			try {
-				await event.adapter.deleteMessage(event.threadId, event.messageId);
+				await target.adapter.deleteMessage(target.threadId, message.id);
 			} catch (deleteError) {
 				this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
 					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
@@ -210,24 +235,24 @@ export class AgentChatHitlResumeHandler {
 		try {
 			const approved =
 				callbackData.kind === 'approval' ? this.getApprovalDecision(resumeData) : undefined;
-			const message = this.options.formatActionDecisionMessage?.({
+			const content = this.options.formatActionDecisionMessage?.({
 				...(approved !== undefined ? { approved } : {}),
 				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
-				raw: event.raw,
-				user: event.user,
+				raw: message.raw,
+				user: message.author,
 			});
-			if (!message) return;
+			if (!content) return;
 
 			if (this.options.settleActionMessage) {
 				await this.options.settleActionMessage({
 					agentId: this.options.agentId,
 					integration: this.options.integration,
-					threadId: event.threadId,
-					messageId: event.messageId,
-					content: message,
+					threadId: target.threadId,
+					messageId: message.id,
+					content,
 				});
 			} else {
-				await event.adapter.editMessage(event.threadId, event.messageId, message);
+				await target.adapter.editMessage(target.threadId, message.id, content);
 			}
 		} catch (editError) {
 			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
@@ -266,11 +291,14 @@ export class AgentChatHitlResumeHandler {
 		{
 			notifyOnDuplicate = true,
 			beforeResume,
+			action,
 		}: {
 			/** Tell the user the action was already handled. Only for their own clicks. */
 			notifyOnDuplicate?: boolean;
 			/** Side effects that belong to the claimed resume; see `ResumeForChatConfig`. */
 			beforeResume?: () => Promise<void>;
+			/** Serializable action data for a queued channel resume. */
+			action?: QueuedChannelAction;
 		} = {},
 	): Promise<void> {
 		const { agentId, projectId, integration } = this.options;
@@ -297,7 +325,10 @@ export class AgentChatHitlResumeHandler {
 					runId,
 					toolCallId,
 					resumeData,
-					channel: this.options.channelTurn(thread),
+					channel: {
+						...this.options.channelTurn(thread),
+						...(action ? { action } : {}),
+					},
 				},
 			});
 			if (submitted.status === 'queued') return;
@@ -324,6 +355,14 @@ export class AgentChatHitlResumeHandler {
 				statusHandle,
 			});
 		} catch (error) {
+			if (config.beforeResume && error instanceof AgentActionAlreadyHandledError) {
+				try {
+					await thread.post(error.message);
+				} finally {
+					await claim.fail(error);
+				}
+				return;
+			}
 			await claim.fail(error);
 			throw error;
 		} finally {

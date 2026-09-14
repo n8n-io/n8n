@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
@@ -9,6 +10,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { AgentActionAlreadyHandledError } from '../../agent-action-already-handled.error';
 import {
 	AgentThreadQueueFullError,
 	MAX_QUEUED_TURNS_PER_THREAD,
@@ -22,6 +24,7 @@ import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
+	type ActionDecisionMessageParams,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
@@ -229,6 +232,26 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	}
 }
 
+class QueuedActionTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-action';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Action';
+	readonly displayIcon = 'circle';
+	readonly needsShortCallbackData = true;
+	readonly deleteActionMessageBeforeResume = false;
+
+	formatActionDecisionMessage({ approved, raw, user }: ActionDecisionMessageParams): string {
+		const { cardText } = raw as { cardText: string };
+		return `${cardText}: ${approved ? 'approved' : 'declined'} by ${user.fullName}`;
+	}
+
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
 class FormattedBufferedTestIntegration extends AgentChatIntegration {
 	readonly type = 'test-formatted-buffered';
 	readonly credentialTypes: string[] = [];
@@ -333,6 +356,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry = new ChatIntegrationRegistry();
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
+		registry.register(new QueuedActionTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
@@ -1637,6 +1661,157 @@ describe('AgentChatBridge — consumeStream', () => {
 			} finally {
 				loadChatSdkSpy.mockRestore();
 			}
+		});
+
+		it('runs a queued action after its callback expires and rejects a duplicate', async () => {
+			const chatSdk = await import('chat');
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+			const order: string[] = [];
+			const cache = new Map<string, unknown>();
+			Container.set(CacheService, {
+				get: vi.fn(async (key: string) => cache.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					cache.set(key, value);
+				}),
+			} as never);
+			const lockService = mock<LockService>();
+			lockService.withLease.mockImplementation(
+				async (_namespace, _key, fn) => await fn(new AbortController().signal),
+			);
+			Container.set(LockService, lockService);
+
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			const editMessage = vi.fn(async () => {
+				order.push('card');
+			});
+			const postMessage = vi.fn(async (threadId: string) => {
+				order.push('duplicate');
+				return { id: 'duplicate-message-1', threadId, raw: {} };
+			});
+			const adapter = { name: 'test-action', editMessage, postMessage };
+			bot.getAdapter.mockReturnValue(adapter);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.setLatest.mockImplementation(async () => {
+				order.push('context');
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			agentExecutor.submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
+			let checkpointResumed = false;
+			agentExecutor.resumeForChat.mockImplementation((config) =>
+				(async function* () {
+					if (checkpointResumed) throw new AgentActionAlreadyHandledError();
+					checkpointResumed = true;
+					await config?.beforeResume?.();
+					order.push('resume');
+					yield finishChunk;
+				})(),
+			);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-action', credentialId: 'cred-1' } as never,
+				messageContextStore,
+			);
+			const shortenCallback = bridge.getShortenCallback({
+				groupId: '["run-1","tool-1"]',
+				kind: 'approval',
+			});
+			if (!shortenCallback) throw new Error('Expected short callback support');
+			const callback = await shortenCallback(
+				'resume:run-1:tool-1:0',
+				'{"approved":true}',
+				'Approve',
+			);
+			const actionMessage = new chatSdk.Message({
+				id: 'card-message-1',
+				threadId: 'thread-1',
+				text: '',
+				formatted: chatSdk.parseMarkdown(''),
+				raw: { cardText: 'Deploy now' },
+				author: {
+					userId: 'u2',
+					userName: 'alice',
+					fullName: 'Alice',
+					isBot: false,
+					isMe: false,
+				},
+				metadata: { dateSent: new Date('2026-09-14T10:00:00Z'), edited: false },
+				attachments: [],
+			});
+			thread.currentMessage = actionMessage;
+
+			const actionEvent = {
+				actionId: callback.id,
+				value: callback.value,
+				messageId: actionMessage.id,
+				thread,
+				threadId: thread.id,
+				user: actionMessage.author,
+				adapter,
+				raw: actionMessage.raw,
+			};
+			await handlers.action!(actionEvent);
+			await handlers.action!(actionEvent);
+
+			expect(order).toEqual([]);
+			const runContext = structuredClone(agentExecutor.submitTurn.mock.calls[0][0].runContext);
+			const duplicateRunContext = structuredClone(
+				agentExecutor.submitTurn.mock.calls[1][0].runContext,
+			);
+			expect(runContext.channel).toEqual(
+				expect.objectContaining({
+					action: { actionId: callback.id, kind: 'approval', label: 'Approve' },
+					thread: expect.objectContaining({ currentMessage: expect.any(Object) }),
+				}),
+			);
+			expect(cache.size).toBeGreaterThan(0);
+			cache.clear();
+			const duplicateClaim = claimFor('agent-1:thread-1');
+			duplicateClaim.release = vi.fn(async () => {
+				order.push('release');
+			});
+			duplicateClaim.fail = vi.fn(async () => {
+				order.push('fail');
+				await duplicateClaim.release();
+			});
+			try {
+				await bridge.runQueuedResume(
+					{ runContext } as unknown as AgentExecution,
+					claimFor('agent-1:thread-1'),
+				);
+				await bridge.runQueuedResume(
+					{ runContext: duplicateRunContext } as unknown as AgentExecution,
+					duplicateClaim,
+				);
+			} finally {
+				loadChatSdkSpy.mockRestore();
+			}
+
+			expect(order).toEqual(['context', 'card', 'resume', 'duplicate', 'fail', 'release']);
+			expect(cache.size).toBe(0);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u2',
+				expect.objectContaining({
+					messageId: 'card-message-1',
+					interactingUserId: 'u2',
+					replyExpectation: 'required',
+				}),
+			);
+			expect(editMessage).toHaveBeenCalledWith(
+				'thread-1',
+				'card-message-1',
+				'Deploy now: approved by Alice',
+			);
+			expect(postMessage).toHaveBeenCalledWith('thread-1', 'This action has already been handled');
+			expect(duplicateClaim.fail).toHaveBeenCalledTimes(1);
+			expect(duplicateClaim.release).toHaveBeenCalledTimes(1);
 		});
 
 		it('/new rotates the session at once while queued rows keep the old thread id', async () => {

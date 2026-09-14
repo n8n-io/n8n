@@ -54,6 +54,7 @@ interface DraftRunInput {
 	source?: string;
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
+	/** Runs after the turn has a durable execution row. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
@@ -220,13 +221,17 @@ export class AgentTestRunService {
 
 	/** Store the message as the session's next turn; see {@link DraftTurnSubmission}. */
 	async submitDraftRun(input: DraftRunInput): Promise<DraftTurnSubmission> {
-		const submitted = await this.agentTurnQueueService.submit(this.messageTurn(input));
+		const { onExecutionRecorded, ...run } = input;
+		const submitted = await this.agentTurnQueueService.submit(
+			this.messageTurn(run),
+			onExecutionRecorded,
+		);
 		return submitted.status === 'queued'
-			? { ...submitted, sessionId: input.sessionId }
+			? { ...submitted, sessionId: run.sessionId }
 			: {
 					status: 'claimed',
-					sessionId: input.sessionId,
-					stream: this.streamDraftRun(input, submitted.claim),
+					sessionId: run.sessionId,
+					stream: this.streamDraftRun(run, submitted.claim),
 				};
 	}
 

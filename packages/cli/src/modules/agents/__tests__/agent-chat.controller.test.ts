@@ -10,18 +10,25 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
-import type { AgentTestRunService } from '../agent-test-run.service';
-import { AgentThreadQueueFullError, type AgentTurnClaim } from '../agent-turn-queue.service';
+import { AgentTestRunService } from '../agent-test-run.service';
+import {
+	AgentThreadQueueFullError,
+	type AgentTurnClaim,
+	type AgentTurnQueueService,
+} from '../agent-turn-queue.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-function makeController() {
+function makeController(testRunService?: AgentTestRunService) {
 	const agentsService =
 		mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
@@ -53,7 +60,7 @@ function makeController() {
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
-		agentTestRunService,
+		testRunService ?? agentTestRunService,
 		mock<AgentTestChatService>(),
 		agentsBuilderService,
 		mock<CredentialsService>(),
@@ -404,9 +411,9 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		return { res, events };
 	}
 
-	it('deletes stored attachments when the run fails before an execution is recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('deletes stored attachments when submission fails before queue persistence', async () => {
+		const { controller, agentTestRunService, agentChatAttachmentService } = makeController();
+		const submissionError = new Error('queue persistence failed');
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -414,11 +421,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			fileSizeBytes: 5,
 		} as never);
 		agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-			throw new Error('model unavailable');
-		});
+		agentTestRunService.submitDraftRun.mockRejectedValue(submissionError);
 		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
@@ -428,34 +431,47 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
 		);
 
-		expect(events()).toContainEqual({ type: 'error', message: 'model unavailable' });
+		expect(events()).toContainEqual({ type: 'error', message: submissionError.message });
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('keeps stored attachments when submission fails after queue persistence', async () => {
+		const claimError = new Error('claim failed');
+		const agentTurnQueueService = mock<AgentTurnQueueService>();
+		agentTurnQueueService.submit.mockImplementation(async (_turn, onPersisted) => {
+			onPersisted?.('exec-1');
+			throw claimError;
+		});
+		const agentValidationService = mock<AgentValidationService>();
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		const testRunService = new AgentTestRunService(
+			mock<AgentExecutionService>(),
+			agentValidationService,
+			mock<AgentExecutionOrchestratorService>(),
+			mock<N8NCheckpointStorage>(),
+			agentTurnQueueService,
+		);
+		const { controller, agentChatAttachmentService } = makeController(testRunService);
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-1');
-			yield* [];
-			throw new Error('flaky post-persist failure');
-		});
-		const { res } = makeCleanupSseResponse();
+		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
+			{
+				message: 'hi',
+				sessionId: 'thread-1',
+				attachments: [textAttachment('notes.txt')],
+			} as never,
 		);
 
+		expect(events()).toContainEqual({ type: 'error', message: claimError.message });
 		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 

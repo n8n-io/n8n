@@ -280,7 +280,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
 	});
 
-	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
+	it('does not assign a queued card resume to the prior user message', async () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(
@@ -309,13 +309,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			)
 			.mockResolvedValueOnce(
 				makeSseResponse([
-					{
-						type: 'tool-result',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						output: { result: 4 },
-					},
-					{ type: 'done' },
+					{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-resume' },
 				]),
 			);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -341,6 +335,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				}),
 			}),
 		);
+		expect(hook.messages.value[0]).not.toHaveProperty('executionId');
 		const assistant = hook.messages.value[1];
 		expect(assistant.interactive?.resolvedValue).toEqual({ approved: true });
 		expect(assistant.status).toBe('success');
@@ -377,7 +372,11 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 					},
 				]),
 			)
-			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-steer' },
+				]),
+			);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const hook = buildHook();
@@ -398,6 +397,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				}),
 			}),
 		);
+		const userMessages = hook.messages.value.filter((message) => message.role === 'user');
+		expect(userMessages[0]).not.toHaveProperty('executionId');
+		expect(userMessages[1]).toMatchObject({
+			content: 'take another approach',
+			executionId: 'exec-queued-steer',
+		});
 	});
 
 	// An abandoned waiting card from an earlier turn must not become the steering

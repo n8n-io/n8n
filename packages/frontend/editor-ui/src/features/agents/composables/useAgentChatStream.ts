@@ -289,6 +289,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		current?: ChatMessage;
 		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
 		minted: Set<ChatMessage>;
+		submittedUserMessage: ChatMessage | undefined;
 		reasoningStartedAt: Map<string, number>;
 		openReasoning: Map<string, ThinkingSegment>;
 	}
@@ -725,8 +726,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'queued': {
 				// The turn runs once the session's running turn ends; the execution
 				// update push then reloads the answer into history.
-				const sent = messages.value.findLast((msg) => msg.role === 'user');
-				if (sent) sent.executionId = event.executionId;
+				if (session.submittedUserMessage) {
+					session.submittedUserMessage.executionId = event.executionId;
+				}
 				session.terminalEventReceived = true;
 				return { done: true };
 			}
@@ -790,11 +792,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
+		submittedUserMessage?: ChatMessage,
 	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' }> {
 		const session: StreamSession = {
 			errorEmitted: false,
 			terminalEventReceived: false,
 			minted: new Set(),
+			submittedUserMessage,
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
 		};
@@ -875,7 +879,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string, files?: File[]): Promise<void> {
+	async function streamChat(
+		message: string,
+		files: File[] | undefined,
+		submittedUserMessage: ChatMessage,
+	): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
@@ -896,7 +904,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}),
 			);
 		}
-		await postAndConsume(url, body);
+		await postAndConsume(url, body, submittedUserMessage);
 	}
 
 	/**
@@ -929,7 +937,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					prevInteractives: found.msg.interactives ? [...found.msg.interactives] : undefined,
 				}
 			: null;
-		let optimisticUserMessageId: string | undefined;
+		let optimisticUserMessage: ChatMessage | undefined;
 
 		if (found) {
 			if (isCancellation) {
@@ -970,23 +978,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			: payload.resumeData;
 
 		if (isCancellation) {
-			optimisticUserMessageId = crypto.randomUUID();
-			fatalError.value = null;
-			messages.value.push({
-				id: optimisticUserMessageId,
+			optimisticUserMessage = reactive<ChatMessage>({
+				id: crypto.randomUUID(),
 				role: 'user',
 				content: text,
 				status: 'success',
 			});
+			fatalError.value = null;
+			messages.value.push(optimisticUserMessage);
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { outcome } = await postAndConsume(url, {
-			runId: payload.runId,
-			toolCallId: payload.toolCallId,
-			resumeData,
-		});
+		const { outcome } = await postAndConsume(
+			url,
+			{
+				runId: payload.runId,
+				toolCallId: payload.toolCallId,
+				resumeData,
+			},
+			optimisticUserMessage,
+		);
 		let reconciled = false;
 		if (outcome === 'failed') {
 			reconciled = await refreshHistory();
@@ -1005,8 +1017,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				setMessageInteractives(snapshot.msg, []);
 			}
 		}
-		if (outcome === 'failed' && !reconciled && optimisticUserMessageId) {
-			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+		if (outcome === 'failed' && !reconciled && optimisticUserMessage) {
+			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessage.id);
 		}
 	}
 
@@ -1032,7 +1044,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
-		messages.value.push({
+		const submittedUserMessage = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
@@ -1046,7 +1058,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				})),
 			}),
 		});
-		await streamChat(trimmed, files);
+		messages.value.push(submittedUserMessage);
+		await streamChat(trimmed, files, submittedUserMessage);
 	}
 
 	function dismissFatalError(): void {

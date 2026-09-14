@@ -1,4 +1,5 @@
 import type { AgentTurnClaim, AgentTurnSubmitResult } from '../../agent-turn-queue.service';
+import { AgentActionAlreadyHandledError } from '../../agent-action-already-handled.error';
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
 const channel = {
@@ -69,7 +70,11 @@ function makeHandler(callback: {
 	});
 	const event = {
 		actionId: 'callback-key',
-		thread: { post: vi.fn() },
+		thread: {
+			id: 'discord:800000000000000001:700000000000000001:600000000000000001',
+			adapter: { deleteMessage },
+			post: vi.fn(),
+		},
 		threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
 		messageId: 'message-1',
 		user: { userId: 'user-1', userName: 'alice', fullName: 'Alice' },
@@ -114,7 +119,7 @@ it('stores a queued resume for the drain of the running turn', async () => {
 			runId: 'run-1',
 			toolCallId: 'tool-1',
 			resumeData: { approved: true },
-			channel,
+			channel: { ...channel, action: { actionId: 'callback-key', kind: 'approval' } },
 		},
 	});
 	expect(resumeForChat).not.toHaveBeenCalled();
@@ -189,17 +194,16 @@ it.each([
 	},
 );
 
-it('answers a click whose callback an earlier click already consumed', async () => {
+it('answers an immediate click rejected by the durable checkpoint', async () => {
 	const { handler, event, resumeForChat, resolve, consume, settleActionMessage } = makeHandler({
 		actionId: 'resume:run-1:tool-1:0',
 		value: JSON.stringify({ approved: true }),
 		kind: 'approval',
 	});
-	resolve.mockResolvedValue(false);
-	resumeForChat.mockImplementation((config) =>
+	resumeForChat.mockImplementation(() =>
 		// eslint-disable-next-line require-yield
 		(async function* () {
-			await config.beforeResume?.();
+			throw new AgentActionAlreadyHandledError();
 		})(),
 	);
 	consume.mockImplementation(async (stream: AsyncGenerator) => {
@@ -210,4 +214,5 @@ it('answers a click whose callback an earlier click already consumed', async () 
 
 	expect(event.thread.post).toHaveBeenCalledWith('This action has already been handled');
 	expect(settleActionMessage).not.toHaveBeenCalled();
+	expect(resolve).not.toHaveBeenCalled();
 });
