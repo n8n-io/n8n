@@ -145,13 +145,12 @@ export class PromotionsGitService {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
-		await rm(nextRepositoryFolder, { recursive: true, force: true });
 
 		try {
-			// Clone from the root so repository-next sits beside the checkout.
-			await this.lockCheckout(
-				repositoryFolder,
-				async () =>
+			await this.lockCheckout(repositoryFolder, async () => {
+				await rm(nextRepositoryFolder, { recursive: true, force: true });
+				try {
+					// Clone from the root so repository-next sits beside the checkout.
 					await this.withGit(
 						{ remoteUrl, credentials, repoDir: paths.rootFolder, sshDir },
 						async (git) => {
@@ -182,10 +181,13 @@ export class PromotionsGitService {
 							await rm(repositoryFolder, { recursive: true, force: true });
 							await rename(nextRepositoryFolder, repositoryFolder);
 						},
-					),
-			);
+					);
+				} catch (error) {
+					await rm(nextRepositoryFolder, { recursive: true, force: true });
+					throw error;
+				}
+			});
 		} catch (error) {
-			await rm(nextRepositoryFolder, { recursive: true, force: true });
 			throw this.mapGitError(error, { configId, branchName });
 		}
 	}

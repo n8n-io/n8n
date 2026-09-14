@@ -267,6 +267,32 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
+		it('does not delete another request\'s in-progress staging directory', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			const firstClone = createDeferredPromise();
+			let cloneCalls = 0;
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				cloneCalls += 1;
+				await mkdir(String(dir), { recursive: true });
+				if (cloneCalls === 1) await firstClone.promise;
+			});
+
+			const first = call();
+			await vi.waitFor(() => expect(mockGit.clone).toHaveBeenCalledTimes(1));
+
+			const second = call();
+			await vi.waitFor(() => {
+				const checkRefCalls = mockGit.raw.mock.calls.filter(
+					(args) => Array.isArray(args[0]) && args[0][0] === 'check-ref-format',
+				);
+				expect(checkRefCalls).toHaveLength(2);
+			});
+			await expect(stat(paths.nextRepositoryFolder)).resolves.toBeDefined();
+
+			firstClone.resolve();
+			await Promise.all([first, second]);
+		});
+
 		it('bootstraps a checkout on the target branch when the remote is empty', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
