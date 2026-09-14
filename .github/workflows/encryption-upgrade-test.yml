@@ -1,8 +1,15 @@
-name: Encryption Upgrade Test
+name: Encryption Test
 
 on:
   workflow_dispatch:
     inputs:
+      test:
+        description: 'Which test to run'
+        type: choice
+        options:
+          - upgrade
+          - rotation
+        default: upgrade
       db:
         description: 'Database backends to run'
         type: choice
@@ -12,22 +19,40 @@ on:
           - postgres
         default: both
       from-image:
-        description: 'Old release image to seed on (empty = pinned script default)'
+        description: 'Old release image to seed on (upgrade only; empty = pinned script default)'
         type: string
         default: ''
   schedule:
     # Twice a day, 09:00 and 21:00 UTC.
     - cron: '0 9,21 * * *'
+  # PR events use the workflow file from the branch, so changes to the tests
+  # verify themselves (both modes) before the merge.
+  pull_request:
+    paths:
+      - 'scripts/encryption-upgrade-test/**'
+      - '.github/workflows/encryption-upgrade-test.yml'
 
 permissions:
   contents: read
 
+# A new push to the same PR cancels the runs of the previous one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  upgrade-cycle:
-    name: Upgrade cycle
+  encryption-cycle:
+    name: ${{ matrix.mode }} cycle
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # PRs run both modes; a dispatch runs the selected one; the cron runs
+        # the full upgrade cycle.
+        mode: ${{ fromJSON(github.event_name == 'pull_request' && '["upgrade","rotation"]' || format('["{0}"]', inputs.test || 'upgrade')) }}
     env:
+      MODE: ${{ matrix.mode }}
       # Not a hidden dir: upload-artifact skips hidden paths by default.
       WORK_ROOT: ${{ github.workspace }}/upgrade-test-work
     steps:
@@ -40,7 +65,7 @@ jobs:
         with:
           build-command: pnpm exec turbo run build --filter=n8n
 
-      - name: Run the upgrade cycle
+      - name: Run the test cycle
         env:
           DB: ${{ inputs.db || 'both' }}
           FROM_IMAGE_INPUT: ${{ inputs.from-image }}
@@ -48,15 +73,15 @@ jobs:
           mkdir -p "$WORK_ROOT"
           if [ -n "$FROM_IMAGE_INPUT" ]; then export FROM_IMAGE="$FROM_IMAGE_INPUT"; fi
           set -o pipefail
-          ./scripts/encryption-upgrade-test/upgrade-cycle.sh 2>&1 | tee "$WORK_ROOT/run.log"
+          ./scripts/encryption-upgrade-test/encryption-cycle.sh 2>&1 | tee "$WORK_ROOT/run.log"
 
       - name: Write run summary
         if: always()
         run: |
           LOG="$WORK_ROOT/run.log"
-          [ -f "$LOG" ] || { echo "## Encryption upgrade test" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          [ -f "$LOG" ] || { echo "## Encryption test ($MODE)" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           {
-            echo "## Encryption upgrade test"
+            echo "## Encryption test ($MODE)"
             echo
             if grep -q "all requested backends green" "$LOG"; then
               echo "**Result: PASS** :white_check_mark:"
@@ -69,7 +94,9 @@ jobs:
             echo '```'
             echo
             echo '```'
-            awk '/=== metrics \[/{f=1} f{print} f && /^total/{f=0; print ""}' "$LOG"
+            # Each metrics block ends at the first blank line (it may carry a
+            # "rotate api:" line after the totals row).
+            awk '/=== metrics \[/{f=1} f && /^$/{f=0; print ""} f{print}' "$LOG"
             echo '```'
             if ! grep -q "all requested backends green" "$LOG"; then
               echo
@@ -86,7 +113,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: encryption-upgrade-test-${{ github.run_id }}
+          name: encryption-test-${{ matrix.mode }}-${{ github.run_id }}
           retention-days: 14
           if-no-files-found: warn
           path: |

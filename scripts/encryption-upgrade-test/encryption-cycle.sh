@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# upgrade-cycle.sh — repeatable upgrade test for the encryption-key rollout.
+# encryption-cycle.sh — repeatable tests for the encryption-key rollout.
 #
-# For each database backend (sqlite and postgres by default), one instance
-# travels through four phases:
+# MODE=upgrade (default): for each database backend (sqlite and postgres by
+# default), one instance travels through four phases:
 #   P1 SEED       old release (docker image FROM_IMAGE) boots, owner + credential A
 #   P2 UPGRADE    this checkout (TO) boots on the same data, rotation flag OFF:
 #                 A decrypts; new credential B is written in the LEGACY format
@@ -12,15 +12,28 @@
 #                 A+B decrypt; C is written "<activeKeyId>:.."; rotate via API;
 #                 D uses the new key id; A,B,C,D all decrypt (mixed data)
 #
-# Params (env): DB (sqlite | postgres | both; default both), FROM_IMAGE
-# (default n8nio/n8n:latest), PG_IMAGE (default postgres:16), N8N_REPO
-# (default: this repo — must be BUILT), N8N_PORT (default 5714), WORK_ROOT
-# (default mktemp).
-# Needs: docker, sqlite3, python3, curl.
+# MODE=rotation: this checkout only, fresh database, rotation flag ON — the
+# standalone test of DB-stored key rotation:
+#   R1 SEED       fresh boot seeds the key store; credential A is keyId-prefixed
+#   R2 ROTATE     two rotations via the API, a write after each one must use
+#                 the newest key id; all key generations stay in the store
+#   R3 RESTART    the instance restarts: keys reload from the database, a new
+#                 write keeps the active key id, every generation decrypts
+#
+# Params (env): MODE (upgrade | rotation; default upgrade), DB (sqlite |
+# postgres | both; default both), FROM_IMAGE (default pinned; upgrade mode
+# only), PG_IMAGE (default postgres:16), N8N_REPO (default: this repo — must
+# be BUILT), N8N_PORT (default 5714), WORK_ROOT (default mktemp).
+# Needs: docker (not for rotation on sqlite), sqlite3, python3, curl.
 # Exit: 0 PASS, 1 FAIL (loud, with log tail), 77 SKIP (docker unavailable).
 set -euo pipefail
 
-SPEC_NAME="upgrade-cycle"
+MODE="${MODE:-upgrade}"
+case "$MODE" in
+  upgrade) SPEC_NAME="upgrade-cycle";;
+  rotation) SPEC_NAME="rotation-cycle";;
+  *) echo "FAIL: unknown MODE '$MODE' (use upgrade | rotation)"; exit 1;;
+esac
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 N8N_REPO="${N8N_REPO:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 N8N_PORT="${N8N_PORT:-5714}"
@@ -74,7 +87,7 @@ summary() {
 import sys
 from collections import defaultdict
 
-phase_s, decrypts = {}, defaultdict(list)
+phase_s, decrypts, rotates = {}, defaultdict(list), []
 with open(sys.argv[1]) as f:
     for line in f:
         kind, label, value = line.strip().split(",", 2)
@@ -82,6 +95,8 @@ with open(sys.argv[1]) as f:
             phase_s[label] = phase_s.get(label, 0) + int(value)
         elif kind == "decrypt_ms":
             decrypts[label].append(float(value))
+        elif kind == "rotate_ms":
+            rotates.append(float(value))
 
 print(f"=== metrics [{sys.argv[2]}] ===")
 print(f"{'phase':<14} {'duration':>9} {'decrypt checks':>15} {'avg ms':>8} {'max ms':>8}")
@@ -94,6 +109,9 @@ total = sum(phase_s.values())
 all_ms = [v for ms in decrypts.values() for v in ms]
 print(f"{'total':<14} {total:>8}s {len(all_ms):>15} "
       f"{sum(all_ms)/len(all_ms):>8.1f} {max(all_ms):>8.1f}")
+if rotates:
+    print(f"rotate api: {len(rotates)} calls, "
+          f"avg {sum(rotates)/len(rotates):.1f} ms, max {max(rotates):.1f} ms")
 PY
 }
 
@@ -117,8 +135,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-command -v docker >/dev/null || { echo "SKIP: $SPEC_NAME - docker not available"; exit 77; }
-docker info >/dev/null 2>&1 || { echo "SKIP: $SPEC_NAME - docker daemon not running"; exit 77; }
+# Rotation mode boots only the local checkout; docker is needed just for the
+# postgres backend.
+if [ "$MODE" != "rotation" ] || [ "$DB" != "sqlite" ]; then
+  command -v docker >/dev/null || { echo "SKIP: $SPEC_NAME - docker not available"; exit 77; }
+  docker info >/dev/null 2>&1 || { echo "SKIP: $SPEC_NAME - docker daemon not running"; exit 77; }
+fi
 [ -x "$N8N_BIN" ] || { echo "FAIL: $SPEC_NAME - n8n binary not found at $N8N_BIN (build the repo first)"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "FAIL: $SPEC_NAME - sqlite3 not available"; exit 1; }
 command -v python3 >/dev/null || { echo "FAIL: $SPEC_NAME - python3 not available"; exit 1; }
@@ -301,9 +323,34 @@ raw_value() { # CRED_ID -> raw credentials_entity.data
   db_query "SELECT data FROM credentials_entity WHERE id='$1';"
 }
 
-# ---------- one full cycle on one backend --------------------------------------
+get_active_key_id() { # -> id of the single active data-encryption key
+  db_query "SELECT id FROM deployment_key WHERE type='data_encryption' AND status='active' AND algorithm='aes-256-gcm';"
+}
 
-run_cycle() {
+assert_prefixed() { # CRED_ID KEY_ID LABEL — the raw column must start "KEY_ID:"
+  local raw
+  raw="$(raw_value "$1")"
+  case "$raw" in
+    "$2":*) ok "$3: value is prefixed with key id $2";;
+    *) echo "expected prefix: $2:"; echo "raw (first 60): $(printf '%s' "$raw" | head -c 60)"
+       fail "$3: value is not prefixed with the expected key id";;
+  esac
+}
+
+rotate_key() { # OLD_KEY_ID -> prints the new key id; records rotate_ms
+  local res code time_s new_id
+  res="$(rest_call POST /rest/encryption/keys '{"type": "data_encryption"}')"
+  code="${res%% *}"; time_s="${res##* }"
+  [ "$code" = "200" ] || { echo "rotate ($code): $(head -c 300 "$OUT_FILE")" >&2; return 1; }
+  metric rotate_ms "$PHASE" "$(python3 -c "print(round(float('$time_s')*1000, 1))")"
+  new_id="$(json_get "d['data']['id']")"
+  { [ -n "$new_id" ] && [ "$new_id" != "$1" ]; } || return 1
+  echo "$new_id"
+}
+
+# ---------- per-backend setup and teardown --------------------------------------
+
+init_backend() {
   BACKEND="$1"
   local work="$WORK_ROOT/$BACKEND"
   DATA_DIR="$work/home/.n8n"
@@ -318,13 +365,35 @@ run_cycle() {
   PHASE="setup"
   PHASE_STARTED=$SECONDS
 
-  local SECRET_A="up-A-$(date +%s)-$RANDOM" SECRET_B="up-B-$(date +%s)-$RANDOM"
-  local SECRET_C="up-C-$(date +%s)-$RANDOM" SECRET_D="up-D-$(date +%s)-$RANDOM"
-
   if [ "$BACKEND" = "postgres" ]; then
     PG_CONTAINER="n8n-${SPEC_NAME}-pg-$$"
     start_postgres
   fi
+}
+
+teardown_backend() {
+  if [ -n "$PG_CONTAINER" ]; then
+    docker rm -f "$PG_CONTAINER" >/dev/null 2>&1 || true
+    PG_CONTAINER=""
+  fi
+}
+
+create_owner() {
+  step "creating the owner account"
+  local res
+  res="$(rest_call POST /rest/owner/setup \
+    "{\"email\": \"$OWNER_EMAIL\", \"firstName\": \"Spec\", \"lastName\": \"Owner\", \"password\": \"$OWNER_PASSWORD\"}")"
+  [ "${res%% *}" = "200" ] || { echo "owner setup ($res): $(head -c 300 "$OUT_FILE")"; fail "owner setup failed"; }
+  ok "owner created"
+}
+
+# ---------- one full cycle on one backend --------------------------------------
+
+run_cycle() {
+  init_backend "$1"
+
+  local SECRET_A="up-A-$(date +%s)-$RANDOM" SECRET_B="up-B-$(date +%s)-$RANDOM"
+  local SECRET_C="up-C-$(date +%s)-$RANDOM" SECRET_D="up-D-$(date +%s)-$RANDOM"
 
   phase "P1 seed"
   step "seeding on the old release ($FROM_IMAGE)"
@@ -333,12 +402,7 @@ run_cycle() {
   local from_version
   from_version="$(docker exec "$CONTAINER" n8n --version 2>/dev/null | tail -1 || echo '?')"
   step "FROM version: $from_version"
-  step "creating the owner account"
-  local res
-  res="$(rest_call POST /rest/owner/setup \
-    "{\"email\": \"$OWNER_EMAIL\", \"firstName\": \"Spec\", \"lastName\": \"Owner\", \"password\": \"$OWNER_PASSWORD\"}")"
-  [ "${res%% *}" = "200" ] || { echo "owner setup ($res): $(head -c 300 "$OUT_FILE")"; fail "owner setup failed"; }
-  ok "owner created"
+  create_owner
   step "creating credential A (the seed data)"
   local cred_a cred_b cred_c cred_d
   cred_a="$(create_credential "upgrade-test cred A (seeded on FROM)" "$SECRET_A")" || fail "create credential A"
@@ -392,35 +456,20 @@ run_cycle() {
   assert_decrypts "$cred_b" "$SECRET_B" "mixed: legacy written on TO"
   step "reading the active data-encryption key id"
   local active_key_id
-  active_key_id="$(db_query "SELECT id FROM deployment_key WHERE type='data_encryption' AND status='active' AND algorithm='aes-256-gcm';")"
+  active_key_id="$(get_active_key_id)"
   [ -n "$active_key_id" ] || fail "no active aes-256-gcm deployment_key row"
   ok "active key id: $active_key_id"
   step "creating credential C (must be keyId-prefixed)"
   cred_c="$(create_credential "upgrade-test cred C (flag on)" "$SECRET_C")" || fail "create credential C"
-  local raw_c
-  raw_c="$(raw_value "$cred_c")"
-  case "$raw_c" in
-    "$active_key_id":*) ok "credential C prefixed with the active key id ($active_key_id)";;
-    *) echo "expected prefix: ${active_key_id}:"; echo "raw (first 60): $(printf '%s' "$raw_c" | head -c 60)"
-       fail "flag ON but new write is not keyId-prefixed";;
-  esac
+  assert_prefixed "$cred_c" "$active_key_id" "flag-on write"
   assert_decrypts "$cred_c" "$SECRET_C" "prefixed write"
   step "rotating the key via POST /rest/encryption/keys"
-  res="$(rest_call POST /rest/encryption/keys '{"type": "data_encryption"}')"
-  [ "${res%% *}" = "200" ] || { echo "rotate ($res): $(head -c 300 "$OUT_FILE")"; fail "key rotation via API failed"; }
   local new_key_id
-  new_key_id="$(json_get "d['data']['id']")"
-  [ -n "$new_key_id" ] && [ "$new_key_id" != "$active_key_id" ] || fail "rotation did not produce a new key id"
+  new_key_id="$(rotate_key "$active_key_id")" || fail "key rotation via API did not produce a new key id"
   ok "rotated: $active_key_id -> $new_key_id"
   step "creating credential D (must use the NEW key id)"
   cred_d="$(create_credential "upgrade-test cred D (after rotate)" "$SECRET_D")" || fail "create credential D"
-  local raw_d
-  raw_d="$(raw_value "$cred_d")"
-  case "$raw_d" in
-    "$new_key_id":*) ok "credential D prefixed with the rotated key id ($new_key_id)";;
-    *) echo "expected prefix: ${new_key_id}:"; echo "raw (first 60): $(printf '%s' "$raw_d" | head -c 60)"
-       fail "write after rotation does not use the new key id";;
-  esac
+  assert_prefixed "$cred_d" "$new_key_id" "write after rotation"
   step "final sweep: all four generations must decrypt"
   local pair
   for pair in "$cred_a:$SECRET_A" "$cred_b:$SECRET_B" "$cred_c:$SECRET_C" "$cred_d:$SECRET_D"; do
@@ -429,25 +478,106 @@ run_cycle() {
   stop_local
   wait_gone
 
-  if [ -n "$PG_CONTAINER" ]; then
-    docker rm -f "$PG_CONTAINER" >/dev/null 2>&1 || true
-    PG_CONTAINER=""
-  fi
-
+  teardown_backend
   summary
   echo
   echo "[$(date +%H:%M:%S)] PASS [$BACKEND]: seed($from_version) -> upgrade(read) -> downgrade-read -> write-on+rotate, all decrypts OK"
 }
 
+# ---------- one rotation cycle on one backend -----------------------------------
+
+run_rotation() {
+  init_backend "$1"
+
+  local SECRET_A="rot-A-$(date +%s)-$RANDOM" SECRET_B="rot-B-$(date +%s)-$RANDOM"
+  local SECRET_C="rot-C-$(date +%s)-$RANDOM" SECRET_D="rot-D-$(date +%s)-$RANDOM"
+
+  phase "R1 seed"
+  step "booting this checkout on a fresh database, rotation flag ON"
+  start_local on
+  wait_ready
+  create_owner
+  step "checking the key store got seeded (exactly 2 deployment_key rows)"
+  local key_rows
+  key_rows="$(db_query "SELECT COUNT(*) FROM deployment_key WHERE type='data_encryption';")"
+  [ "$key_rows" = "2" ] || fail "expected exactly 2 seeded deployment_key rows, got $key_rows"
+  ok "deployment_key has exactly 2 rows"
+  local key1
+  key1="$(get_active_key_id)"
+  [ -n "$key1" ] || fail "no active aes-256-gcm deployment_key row"
+  ok "active key id: $key1"
+  step "creating credential A (must be keyId-prefixed)"
+  local cred_a cred_b cred_c cred_d
+  cred_a="$(create_credential "rotation-test cred A (initial key)" "$SECRET_A")" || fail "create credential A"
+  assert_prefixed "$cred_a" "$key1" "first write"
+  assert_decrypts "$cred_a" "$SECRET_A" "first write"
+
+  phase "R2 rotate"
+  step "first rotation via POST /rest/encryption/keys"
+  local key2
+  key2="$(rotate_key "$key1")" || fail "first rotation did not produce a new key id"
+  ok "rotated: $key1 -> $key2"
+  step "creating credential B (must use the NEW key id)"
+  cred_b="$(create_credential "rotation-test cred B (after 1st rotate)" "$SECRET_B")" || fail "create credential B"
+  assert_prefixed "$cred_b" "$key2" "write after the 1st rotation"
+  assert_decrypts "$cred_b" "$SECRET_B" "write after the 1st rotation"
+  step "second rotation via POST /rest/encryption/keys"
+  local key3
+  key3="$(rotate_key "$key2")" || fail "second rotation did not produce a new key id"
+  ok "rotated: $key2 -> $key3"
+  step "creating credential C (must use the NEWEST key id)"
+  cred_c="$(create_credential "rotation-test cred C (after 2nd rotate)" "$SECRET_C")" || fail "create credential C"
+  assert_prefixed "$cred_c" "$key3" "write after the 2nd rotation"
+  assert_decrypts "$cred_c" "$SECRET_C" "write after the 2nd rotation"
+  step "checking the key store keeps every generation (4 rows, exactly 1 active)"
+  key_rows="$(db_query "SELECT COUNT(*) FROM deployment_key WHERE type='data_encryption';")"
+  [ "$key_rows" = "4" ] || fail "expected 4 deployment_key rows after 2 rotations, got $key_rows"
+  local active_rows
+  active_rows="$(db_query "SELECT COUNT(*) FROM deployment_key WHERE type='data_encryption' AND status='active' AND algorithm='aes-256-gcm';")"
+  [ "$active_rows" = "1" ] || fail "expected exactly 1 active key, got $active_rows"
+  ok "4 key rows kept, exactly 1 active"
+
+  phase "R3 restart"
+  step "restarting the instance (keys must reload from the database)"
+  stop_local
+  wait_gone
+  start_local on
+  wait_ready
+  login
+  step "creating credential D (the restarted instance must keep writing with the active key)"
+  cred_d="$(create_credential "rotation-test cred D (after restart)" "$SECRET_D")" || fail "create credential D"
+  assert_prefixed "$cred_d" "$key3" "write after the restart"
+  step "final sweep: every generation must decrypt after the restart"
+  local pair
+  for pair in "$cred_a:$SECRET_A" "$cred_b:$SECRET_B" "$cred_c:$SECRET_C" "$cred_d:$SECRET_D"; do
+    assert_decrypts "${pair%%:*}" "${pair#*:}" "all generations"
+  done
+  stop_local
+  wait_gone
+
+  teardown_backend
+  summary
+  echo
+  echo "[$(date +%H:%M:%S)] PASS [$BACKEND]: seed(flag on) -> rotate x2 -> restart-read, all decrypts OK"
+}
+
 # ---------- main ---------------------------------------------------------------
 
 echo "[$(date +%H:%M:%S)] $SPEC_NAME | work root: $WORK_ROOT"
-echo "[$(date +%H:%M:%S)] FROM: $FROM_IMAGE | TO: local checkout at $N8N_REPO | DB: $DB"
+if [ "$MODE" = "rotation" ]; then
+  echo "[$(date +%H:%M:%S)] MODE: rotation (no old-release image) | checkout: $N8N_REPO | DB: $DB"
+else
+  echo "[$(date +%H:%M:%S)] FROM: $FROM_IMAGE | TO: local checkout at $N8N_REPO | DB: $DB"
+fi
+
+run_one() {
+  if [ "$MODE" = "rotation" ]; then run_rotation "$1"; else run_cycle "$1"; fi
+}
 
 case "$DB" in
-  sqlite) run_cycle sqlite;;
-  postgres) run_cycle postgres;;
-  both) run_cycle sqlite; run_cycle postgres;;
+  sqlite) run_one sqlite;;
+  postgres) run_one postgres;;
+  both) run_one sqlite; run_one postgres;;
   *) echo "FAIL: unknown DB '$DB' (use sqlite | postgres | both)"; exit 1;;
 esac
 
