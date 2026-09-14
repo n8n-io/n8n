@@ -510,12 +510,19 @@ export class JsTaskRunner extends TaskRunner {
 			// if there is no data available.
 		).getDataProxy({ throwOnMissingExecutionData: false });
 
-		// Removed from the Code node in v3. The helper stays available in
-		// expression fields, so it is overridden here instead of in the proxy.
+		return this.disableEvaluateExpression(dataProxy);
+	}
+
+	// Removed from the Code node in v3. The helper stays available in
+	// expression fields, so it is overridden here instead of in the proxy.
+	// $item() returns a fresh proxy, so the override has to recurse into it.
+	private disableEvaluateExpression(dataProxy: IWorkflowDataProxyData) {
 		dataProxy.$evaluateExpression = () => {
 			throw new UnsupportedFunctionError('$evaluateExpression');
 		};
-
+		const item = dataProxy.$item;
+		dataProxy.$item = (itemIndex: number, runIndex?: number) =>
+			this.disableEvaluateExpression(item(itemIndex, runIndex));
 		return dataProxy;
 	}
 
