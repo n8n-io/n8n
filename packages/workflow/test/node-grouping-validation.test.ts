@@ -13,6 +13,7 @@ import {
 } from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
+	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	type IConnections,
 	type INode,
@@ -640,6 +641,49 @@ describe('validateWorkflowGroups', () => {
 			connectionsBySourceNode: graph.connections,
 			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
 			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('accepts several incoming and outgoing connections through a one-member NoOp group', () => {
+		const nodes = [
+			makeNode({ id: 'source-a', name: 'Source A' }),
+			makeNode({ id: 'source-c', name: 'Source C' }),
+			makeNode({
+				id: 'anchor',
+				name: 'Planning placeholder',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			}),
+			makeNode({ id: 'target-b', name: 'Target B' }),
+			makeNode({ id: 'target-d', name: 'Target D' }),
+		];
+		const connections: IConnections = {
+			'Source A': {
+				main: [[{ node: 'Planning placeholder', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			'Source C': {
+				main: [[{ node: 'Planning placeholder', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			'Planning placeholder': {
+				main: [
+					[
+						{ node: 'Target B', type: NodeConnectionTypes.Main, index: 0 },
+						{ node: 'Target D', type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
+			},
+		};
+
+		const result = validateWorkflowGroups({
+			nodes,
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'planning-group', name: 'Planning group', nodeIds: ['anchor'] }],
+			getNodeType: (node) =>
+				node.type === NO_OP_NODE_TYPE
+					? makeNodeType({ name: NO_OP_NODE_TYPE, defaults: { name: 'No Operation' } })
+					: getNodeType(node),
 		});
 
 		expect(result).toEqual({ valid: true });
