@@ -126,6 +126,8 @@ export { TestCredentialRequestDto } from './credentials/test-credential-request.
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
+	CreateCredentialPublicDto,
+	UpdateCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
