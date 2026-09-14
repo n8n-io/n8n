@@ -292,27 +292,7 @@ export class WorkingCopyUpdater {
 		selection: SelectivePushOptions,
 	): Promise<void> {
 		this.validateSelection(selection);
-		const { state: existing, dependencies } = await this.scanBranch(exportFolder);
-		this.assertDeletionsOnBranch(existing, selection);
-		this.assertNoCrossProjectMoves(existing, selection);
-
-		const placement = containerPlacement(existing, staging);
-		const otherProjectTargets = (existing.projects ?? [])
-			.filter((p) => p.id !== selection.projectId)
-			.map((p) => p.target);
-		const remaining: BranchLayout = {
-			...existing,
-			workflows: (existing.workflows ?? []).filter(
-				(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
-			),
-		};
 		const parent = path.dirname(exportFolder);
-		// Reject a symlink at the export path itself before any writes. Symlinks
-		// inside the export are caught by resolveContained during scan and overlay;
-		// symlinks in ancestors above the export belong to the operator's own
-		// filesystem (e.g. a container mount) and are left alone.
-		await this.resolveContained(parent, path.basename(exportFolder));
-
 		// Keep the temp and backup dirs one level above the git clone (`parent`),
 		// so a crash never leaves them inside the working tree for a commit to pick
 		// up. They stay on the export's filesystem, so the rename swap is atomic.
@@ -323,6 +303,26 @@ export class WorkingCopyUpdater {
 		let createdExport = false;
 
 		try {
+			const { state: existing, dependencies } = await this.scanBranch(exportFolder);
+			this.assertDeletionsOnBranch(existing, selection);
+			this.assertNoCrossProjectMoves(existing, selection);
+
+			const placement = containerPlacement(existing, staging);
+			const otherProjectTargets = (existing.projects ?? [])
+				.filter((p) => p.id !== selection.projectId)
+				.map((p) => p.target);
+			const remaining: BranchLayout = {
+				...existing,
+				workflows: (existing.workflows ?? []).filter(
+					(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
+				),
+			};
+			// Reject a symlink at the export path itself before any writes. Symlinks
+			// inside the export are caught by resolveContained during scan and overlay;
+			// symlinks in ancestors above the export belong to the operator's own
+			// filesystem (e.g. a container mount) and are left alone.
+			await this.resolveContained(parent, path.basename(exportFolder));
+
 			// A first push meets a branch with no export yet; create it so the temp
 			// copy and the later swap have a directory to work with.
 			// mkdir returns the first path it created, or undefined when it existed.
