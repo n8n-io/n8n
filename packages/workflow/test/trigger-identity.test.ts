@@ -168,6 +168,27 @@ describe('classifyTriggerIdentity', () => {
 		});
 	});
 
+	describe('schedule trigger run-as', () => {
+		it('provides the n8n identity when the workflow runs as a user', () => {
+			expect(
+				classifyTriggerIdentity('n8n-nodes-base.scheduleTrigger', {}, { runAsUserId: 'user-1' }),
+			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: false });
+		});
+
+		it('provides no identity without a run-as user', () => {
+			expect(classifyTriggerIdentity('n8n-nodes-base.scheduleTrigger', {}, {})).toEqual({
+				providesN8nIdentity: false,
+				providesExternalIdentity: false,
+			});
+		});
+
+		it('does not apply run-as to other triggers', () => {
+			expect(
+				classifyTriggerIdentity('n8n-nodes-base.webhook', {}, { runAsUserId: 'user-1' }),
+			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+		});
+	});
+
 	describe('other triggers', () => {
 		it('provides the external identity only when a context establishment hook is configured', () => {
 			expect(classifyTriggerIdentity('n8n-nodes-base.webhook', hooksParameters)).toEqual({

@@ -293,6 +293,30 @@ export const N8NOAuthMetadataSchema = z.object({
 export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;
 
 /**
+ * Metadata shape for the `run-as` credential-context source. Sealed by the control
+ * plane at trigger fire for scheduled runs of a workflow with an active run-as binding.
+ * There is no token: `identity` holds the subject id. `executionPath` is bound by
+ * `maybeBindExecutionId` exactly as for `n8n-oauth`.
+ */
+export const RunAsMetadataSchema = z.object({
+	source: z.literal('run-as'),
+	subject: z.string(),
+	workflowId: z.string(),
+	establishedAt: z.number(),
+	executionPath: z.array(z.string()).optional(),
+});
+
+export type IRunAsMetadata = z.output<typeof RunAsMetadataSchema>;
+
+/** Every sealed-subject carrier the engine binds to an execution path. */
+export const SealedIdentityMetadataSchema = z.discriminatedUnion('source', [
+	N8NOAuthMetadataSchema,
+	RunAsMetadataSchema,
+]);
+
+export type ISealedIdentityMetadata = z.output<typeof SealedIdentityMetadataSchema>;
+
+/**
  * Runtime representation of execution context with decrypted credential data.
  *
  * This type is identical to IExecutionContext except the `credentials` field

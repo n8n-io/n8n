@@ -1,4 +1,8 @@
-import { toExecutionContext } from '../src/execution-context';
+import {
+	RunAsMetadataSchema,
+	SealedIdentityMetadataSchema,
+	toExecutionContext,
+} from '../src/execution-context';
 
 describe('toExecutionContext — redaction snapshot', () => {
 	const baseContext = {
@@ -70,5 +74,39 @@ describe('toExecutionContext — redaction snapshot', () => {
 				redaction: { version: 2, production: true },
 			}),
 		).toThrow();
+	});
+});
+
+describe('RunAsMetadataSchema', () => {
+	it('accepts a run-as carrier', () => {
+		const result = RunAsMetadataSchema.safeParse({
+			source: 'run-as',
+			subject: 'user-1',
+			workflowId: 'wf-1',
+			establishedAt: 1,
+			executionPath: [],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a run-as carrier without a subject', () => {
+		expect(
+			RunAsMetadataSchema.safeParse({ source: 'run-as', workflowId: 'wf-1', establishedAt: 1 })
+				.success,
+		).toBe(false);
+	});
+
+	it('the sealed-identity union accepts both sources', () => {
+		expect(
+			SealedIdentityMetadataSchema.safeParse({ source: 'n8n-oauth', resource: 'r' }).success,
+		).toBe(true);
+		expect(
+			SealedIdentityMetadataSchema.safeParse({
+				source: 'run-as',
+				subject: 'u',
+				workflowId: 'w',
+				establishedAt: 1,
+			}).success,
+		).toBe(true);
 	});
 });

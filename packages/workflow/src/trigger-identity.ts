@@ -4,6 +4,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPES,
 	MCP_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from './constants';
 import { toExecutionContextEstablishmentHookParameter } from './execution-context-establishment-hooks';
@@ -60,11 +61,22 @@ function isHostedChatUserAuthTrigger(nodeType: string, parameters: INodeParamete
  * sync with how the engine establishes identity (`execution-context.ts`,
  * manual/parent inheritance) and the resolvers' identifiers (e.g. `N8NIdentifier`):
  * when a new trigger or identity source is added there, reflect it here too.
+ *
+ * `options.runAsUserId` carries the workflow's `runAsUserId` setting. Pass it
+ * through unchanged from the workflow settings so the backend and editor checks
+ * cannot drift.
  */
 export function classifyTriggerIdentity(
 	nodeType: string,
 	parameters: INodeParameters | undefined,
+	options: { runAsUserId?: string } = {},
 ): TriggerIdentityCapabilities {
+	// A Schedule Trigger runs as the workflow's run-as user once published. The
+	// setting is the claim; the binding row is the trust anchor at run time.
+	if (nodeType === SCHEDULE_TRIGGER_NODE_TYPE && options.runAsUserId) {
+		return { providesN8nIdentity: true, providesExternalIdentity: false };
+	}
+
 	// Sub-workflows inherit identity from the parent; Chat Hub and MCP-over-n8nOAuth2
 	// inject it. All provide both identity families.
 	const isSubWorkflowTrigger = nodeType === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE;

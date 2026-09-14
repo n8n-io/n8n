@@ -3958,6 +3958,12 @@ export interface IWorkflowSettings {
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
+	/**
+	 * The n8n user whose identity scheduled executions run with. Set only by the
+	 * editor callout on the Schedule Trigger. The publish flow accepts it only when
+	 * it names the publisher; the `workflow_run_as_binding` row is the trust anchor.
+	 */
+	runAsUserId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	customTelemetryTags?: ICustomTelemetryTag[];
 }
