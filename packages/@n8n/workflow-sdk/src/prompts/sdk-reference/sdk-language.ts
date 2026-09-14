@@ -116,9 +116,8 @@ ${renderRulesLines()}
 
 /**
  * Grouping judgement guidance: *when* to group — the rules that make a group
- * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
- * only when the canvas-groups flag is on; Instance AI always materializes it
- * into the knowledge base.
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list;
+ * Instance AI materializes it into the knowledge base.
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
