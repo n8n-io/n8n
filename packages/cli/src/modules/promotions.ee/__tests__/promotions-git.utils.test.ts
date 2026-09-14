@@ -1,4 +1,5 @@
 import {
+	buildPromotionBranchName,
 	buildHttpsGitConfig,
 	buildSshCommand,
 	checkoutBranchName,
@@ -6,6 +7,14 @@ import {
 } from '../promotions-git.utils';
 
 describe('promotions-git.utils', () => {
+	describe('buildPromotionBranchName', () => {
+		it('uses an ISO timestamp that is valid in a Git ref', () => {
+			const branchName = buildPromotionBranchName(new Date('2026-09-01T10:15:30.123Z'));
+
+			expect(branchName).toBe('n8n-promotion/2026-09-01T10-15-30-123Z');
+		});
+	});
+
 	describe('buildHttpsGitConfig', () => {
 		const originalEnv = process.env;
 

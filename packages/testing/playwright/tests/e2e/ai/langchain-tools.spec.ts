@@ -53,7 +53,7 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 
 test.use({ capability: 'proxy' });
 test.describe(
-	'Langchain Integration @capability:proxy',
+	'Langchain Integration',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

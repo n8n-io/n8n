@@ -34,6 +34,7 @@ export class DeprecationService {
 		{ envVar: 'N8N_AVAILABLE_BINARY_DATA_MODES', message: SAFE_TO_REMOVE },
 		{ envVar: 'N8N_CONFIG_FILES', message: 'Please use .env files or *_FILE env vars instead.' },
 		{ envVar: 'N8N_RUNNERS_ENABLED', message: SAFE_TO_REMOVE },
+		{ envVar: 'N8N_DB_PING_TIMEOUT', message: SAFE_TO_REMOVE },
 		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
@@ -93,6 +94,11 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_WORKFLOW_TAGS_DISABLED',
 			message: `Workflow tags are always enabled. ${SAFE_TO_REMOVE}`,
+			checkValue: (value?: string) => value !== undefined,
+		},
+		{
+			envVar: 'N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION',
+			message: `A throw from workflow.preExecute never creates an execution. ${SAFE_TO_REMOVE}`,
 			checkValue: (value?: string) => value !== undefined,
 		},
 		{

@@ -1117,7 +1117,7 @@ describe('GET /workflows/:id/:versionId', () => {
 	});
 });
 
-describe('GET /workflows/:workflowId/versions/:versionId', () => {
+describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
 

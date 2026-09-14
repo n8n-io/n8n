@@ -1,4 +1,4 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { baseConfig } from '@n8n/eslint-config/base';
 
-export default defineConfig(nodeConfig);
+export default defineConfig(baseConfig);

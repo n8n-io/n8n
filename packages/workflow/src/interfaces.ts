@@ -1227,12 +1227,30 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The authoritative root-workflow nodes to check, taken from the SAME workflow snapshot
+ * that is executing — the published version on a live webhook, the execution snapshot on a
+ * waiting form, the draft on a test webhook. Passing the node objects (rather than a
+ * persisted workflow id alone) fixes two things at once: it restricts the check to the
+ * nodes that can actually run on this trigger (disjoint branches and other triggers' chains
+ * are simply not in the list), AND it pins the check to the running snapshot, so a node
+ * renamed or re-wired in a draft that differs from the running version can't make the
+ * resolver silently skip a credential.
+ *
+ * When omitted, every enabled node of the persisted workflow is checked (the safe default,
+ * used by callers that only have a workflow id — e.g. the form connect panel).
+ */
+export type CredentialCheckOptions = {
+	rootNodes?: INode[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1243,6 +1261,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1881,7 +1900,6 @@ export interface INodeParameters {
 
 export type NodePropertyTypes =
 	| 'boolean'
-	| 'button'
 	| 'collection'
 	| 'color'
 	| 'dateTime'
@@ -1927,12 +1945,6 @@ export interface ILoadOptions {
 	};
 }
 
-export type NodePropertyAction = {
-	type: 'askAiCodeGeneration';
-	handler?: string;
-	target?: string;
-};
-
 export interface CalloutActionBase {
 	type: string;
 	label: string;
@@ -1947,13 +1959,6 @@ export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBa
 export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
-	// Supported by: button
-	buttonConfig?: {
-		action?: string | NodePropertyAction;
-		label?: string; // otherwise "displayName" is used
-		hasInputField?: boolean;
-		inputFieldMaxLength?: number; // Supported if hasInputField is true
-	};
 	containerClass?: string; // Supported by: notice
 	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
@@ -3404,6 +3409,12 @@ export interface RelatedAgentRun {
 	toolCallId: string;
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
+	/**
+	 * The run started in the in-app preview chat. `integrationType` cannot say
+	 * this: MCP and AI Assistant test runs use `n8n_chat` too, and they must
+	 * resume on the runtime they started on.
+	 */
+	previewChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.

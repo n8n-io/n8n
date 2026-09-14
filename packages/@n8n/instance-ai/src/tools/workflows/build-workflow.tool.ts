@@ -80,6 +80,7 @@ import { compileWorkflowSource } from './workflow-source-compiler';
 import {
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
+	topLevelItemsWarning,
 	type ValidationWarning,
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
@@ -1127,6 +1128,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				);
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
+				const overCeiling = topLevelItemsWarning(json);
+				if (overCeiling) {
+					informational.push(overCeiling);
+				}
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {

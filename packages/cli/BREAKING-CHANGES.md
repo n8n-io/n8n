@@ -6,6 +6,14 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
+The `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION` environment variable was removed. A throw from `workflow.preExecute` never creates an execution record. n8n now ignores the variable.
+
+### When is action necessary?
+
+If you set `N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION=true` to keep the old persist-then-fail path. Remove the variable. A throw from `workflow.preExecute` never starts a run and does not count toward Insights or license usage.
+
+### What changed?
+
 n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
 
 ### When is action necessary?
@@ -27,6 +35,14 @@ The Execute Sub-workflow node no longer supports the "Local File" and "URL" sour
 ### When is action necessary?
 
 If your workflows use an Execute Sub-workflow node with the "Local File" or "URL" source. Save the sub-workflow on the instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source. The migration report on v2 lists every affected node.
+
+### What changed?
+
+n8n enforces a Content-Security-Policy on its own HTML pages. The policy was served as `Content-Security-Policy-Report-Only` before, which reported violations but blocked nothing. The enforced policy is `script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'`: only scripts that carry the response nonce run, `<object>` and `<embed>` are blocked, and a `<base>` tag cannot repoint relative URLs. `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` no longer sends a header by default. Webhook and form pages keep their own sandbox policy and are not affected.
+
+### When is action necessary?
+
+If you inject your own scripts into n8n's pages. Test the instance before you update, because a script without the response nonce no longer runs. Set `N8N_CONTENT_SECURITY_POLICY` to `{}` to enforce nothing, or to your own policy. To try a policy before you enforce it, put it in `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` instead.
 
 ### What changed?
 

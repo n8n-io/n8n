@@ -1,5 +1,5 @@
 import type ivm from 'isolated-vm';
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
@@ -12,6 +12,8 @@ import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
 // only loaded when IsolatedVmBridge is actually constructed.
 type IsolatedVm = typeof import('isolated-vm');
 let _ivm: IsolatedVm | null = null;
+/** Runtime bundle source, read once per process by loadRuntimeBundle(). */
+let _runtimeBundle: string | null = null;
 
 function getIvm(): IsolatedVm {
 	if (!_ivm) {
@@ -26,6 +28,58 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
+
+// V8 compile cache for the runtime bundle (BridgeConfig.compileCache): the
+// first bundle compile produces it, later builds consume it and skip
+// re-parsing. V8 validates the data and recompiles when it is stale.
+let _bundleCachedData: ivm.ExternalCopy<ArrayBuffer> | null = null;
+
+// The runtime sets Script.cachedData when produceCachedData is passed, but
+// ivm's typings omit the property (CachedDataResult exists unattached).
+function producedCachedData(script: ivm.Script): ivm.ExternalCopy<ArrayBuffer> | null {
+	const data: unknown = Reflect.get(script, 'cachedData');
+	return data instanceof getIvm().ExternalCopy ? data : null;
+}
+
+/** Globals the runtime bundle must define. Verified after every bundle load. */
+const RUNTIME_GLOBALS = [
+	'DateTime',
+	'extend',
+	'createDeepLazyProxy',
+	'SafeObject',
+	'SafeError',
+	'buildContext',
+];
+
+/** Evaluates inside the isolate to a JSON array of the RUNTIME_GLOBALS that are missing. */
+const MISSING_RUNTIME_GLOBALS_SOURCE = `JSON.stringify(${JSON.stringify(RUNTIME_GLOBALS)}.filter((name) => typeof globalThis[name] === 'undefined'))`;
+
+function assertRuntimeGlobals(missingJson: unknown): void {
+	const missing: unknown = typeof missingJson === 'string' ? JSON.parse(missingJson) : missingJson;
+	if (Array.isArray(missing) && missing.length > 0) {
+		throw new Error(`Runtime bundle verification failed: missing ${missing.join(', ')}`);
+	}
+}
+
+/**
+ * The E() error handler injected into every isolate; see injectErrorHandler()
+ * for the two exception-handling layers it participates in.
+ */
+const ERROR_HANDLER_SOURCE = `
+	if (typeof E === 'undefined') {
+		globalThis.E = function(error, _context) {
+			// Re-throw ExpressionError / ExpressionExtensionError to match
+			// the legacy handler in expression.ts. Errors from host callbacks
+			// arrive as sentinels (not class instances), so check by name.
+			const name = error?.name;
+			if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+				throw error;
+			}
+			// Swallow everything else (TypeErrors, generic Errors, etc.)
+			return undefined;
+		};
+	}
+`;
 
 /** Check if a value is an error sentinel returned by serializeError. */
 function isErrorSentinel(value: unknown): value is ErrorSentinel {
@@ -68,11 +122,13 @@ function serializeError(err: unknown): ErrorSentinel {
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
  */
-async function readRuntimeBundle(): Promise<string> {
+function loadRuntimeBundle(): string {
+	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			_runtimeBundle = readFileSync(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			return _runtimeBundle;
 		} catch {}
 		dir = path.dirname(dir);
 	}
@@ -142,9 +198,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system)
 		await this.loadVendorLibraries();
 
-		// Verify proxy system loaded correctly
-		await this.verifyProxySystem();
-
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
 
@@ -172,65 +225,26 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			// Load runtime bundle (includes vendor libraries + proxy system)
-			const runtimeBundle = await readRuntimeBundle();
+			const runtimeBundle = loadRuntimeBundle();
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
-			await this.context.eval(runtimeBundle);
-
-			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded');
-
-			// Verify vendor libraries loaded correctly
-			const hasDateTime = await this.context.eval('typeof DateTime !== "undefined"');
-			const hasExtend = await this.context.eval('typeof extend !== "undefined"');
-
-			if (!hasDateTime || !hasExtend) {
-				throw new Error(
-					`Library verification failed: DateTime=${hasDateTime}, extend=${hasExtend}`,
+			if (this.config.compileCache) {
+				const script = await this.isolate.compileScript(
+					runtimeBundle,
+					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
 				);
+				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
+				await script.run(this.context);
+			} else {
+				await this.context.eval(runtimeBundle);
 			}
 
-			this.logger.debug('[IsolatedVmBridge] Vendor libraries verified successfully');
+			assertRuntimeGlobals(await this.context.eval(MISSING_RUNTIME_GLOBALS_SOURCE));
+			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded and verified');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to load runtime bundle: ${errorMessage}`);
-		}
-	}
-
-	/**
-	 * Verify the proxy system loaded correctly.
-	 *
-	 * The proxy system is loaded as part of the runtime bundle in loadVendorLibraries().
-	 * This method verifies all required components are available.
-	 *
-	 * @private
-	 * @throws {Error} If context not initialized or proxy system verification fails
-	 */
-	private async verifyProxySystem(): Promise<void> {
-		if (!this.context) {
-			throw new Error('Context not initialized');
-		}
-
-		try {
-			// Verify proxy system components loaded correctly
-			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
-			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
-			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
-			const hasBuildContext = await this.context.eval('typeof buildContext !== "undefined"');
-
-			if (!hasProxyCreator || !hasSafeObject || !hasSafeError || !hasBuildContext) {
-				throw new Error(
-					`Proxy system verification failed: ` +
-						`createDeepLazyProxy=${hasProxyCreator}, ` +
-						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}, ` +
-						`buildContext=${hasBuildContext}`,
-				);
-			}
-
-			this.logger.debug('[IsolatedVmBridge] Proxy system verified successfully');
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
 		}
 	}
 
@@ -262,23 +276,50 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Context not initialized');
 		}
 
-		await this.context.eval(`
-			if (typeof E === 'undefined') {
-				globalThis.E = function(error, _context) {
-					// Re-throw ExpressionError / ExpressionExtensionError to match
-					// the legacy handler in expression.ts. Errors from host callbacks
-					// arrive as sentinels (not class instances), so check by name.
-					const name = error?.name;
-					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
-						throw error;
-					}
-					// Swallow everything else (TypeErrors, generic Errors, etc.)
-					return undefined;
-				};
-			}
-		`);
+		await this.context.eval(ERROR_HANDLER_SOURCE);
 
 		this.logger.debug('[IsolatedVmBridge] Error handler injected successfully');
+	}
+
+	/**
+	 * Synchronous variant of initialize(): the same steps through isolated-vm's
+	 * sync APIs, for on-demand creation inside the synchronous evaluate() path
+	 * (lazy acquisition with an exhausted pool). Blocks the event loop for the
+	 * duration of one isolate setup — pool warmup should stay on the async
+	 * initialize().
+	 */
+	initializeSync(): void {
+		if (this.initialized) return;
+
+		try {
+			this.context = this.isolate.createContextSync();
+			const jail = this.context.global;
+			jail.setSync('global', jail.derefInto());
+
+			if (this.config.compileCache) {
+				const script = this.isolate.compileScriptSync(
+					loadRuntimeBundle(),
+					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
+				);
+				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
+				script.runSync(this.context);
+			} else {
+				this.context.evalSync(loadRuntimeBundle());
+			}
+
+			assertRuntimeGlobals(this.context.evalSync(MISSING_RUNTIME_GLOBALS_SOURCE));
+
+			this.context.evalSync(ERROR_HANDLER_SOURCE);
+		} catch (error) {
+			// A failed cold start must not retain the native isolate. dispose()
+			// has no awaits before the isolate is released, so not awaiting it
+			// here is safe.
+			void this.dispose();
+			throw error;
+		}
+
+		this.initialized = true;
+		this.logger.debug('[IsolatedVmBridge] Initialized synchronously');
 	}
 
 	/**
