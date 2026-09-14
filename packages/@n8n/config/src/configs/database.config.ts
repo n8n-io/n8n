@@ -140,23 +140,6 @@ export class SqliteConfig {
 const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
-const DEFAULT_PING_TIMEOUT_MS = 5_000;
-
-function readLegacyPingTimeoutMs(): number {
-	const raw = process.env.N8N_DB_PING_TIMEOUT;
-	if (!raw) {
-		return DEFAULT_PING_TIMEOUT_MS;
-	}
-	const parsed = Number.parseInt(raw, 10);
-	if (Number.isNaN(parsed) || parsed <= 0) {
-		console.warn(
-			`Invalid N8N_DB_PING_TIMEOUT="${raw}", falling back to ${DEFAULT_PING_TIMEOUT_MS}ms. Prefer the supported DB_PING_TIMEOUT_MS env var.`,
-		);
-		return DEFAULT_PING_TIMEOUT_MS;
-	}
-	return parsed;
-}
-
 @Config
 export class DatabaseConfig {
 	/** Database type: `sqlite` or `postgresdb`. */
@@ -171,14 +154,9 @@ export class DatabaseConfig {
 	@Env('DB_PING_INTERVAL_SECONDS')
 	pingIntervalSeconds: number = 2;
 
-	/**
-	 * Timeout in milliseconds for an individual database health-check ping.
-	 *
-	 * Falls back to the legacy `N8N_DB_PING_TIMEOUT` env var if set. The legacy
-	 * name is deprecated and may be removed in a future release.
-	 */
+	/** Timeout in milliseconds for an individual database health-check ping. */
 	@Env('DB_PING_TIMEOUT_MS')
-	pingTimeoutMs: number = readLegacyPingTimeoutMs();
+	pingTimeoutMs: number = 5_000;
 
 	/**
 	 * How many consecutive health-check ping failures must occur before the

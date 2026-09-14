@@ -60,6 +60,7 @@ describe('DeprecationService', () => {
 		['N8N_RUNNERS_ENABLED', '1', true],
 		['OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', 'true', true],
 		['OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', undefined, false],
+		['N8N_DB_PING_TIMEOUT', '1', true],
 		['WEBHOOK_URL', 'https://example.com/', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
