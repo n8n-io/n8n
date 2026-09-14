@@ -28,6 +28,14 @@ The Execute Sub-workflow node no longer supports the "Local File" and "URL" sour
 
 If your workflows use an Execute Sub-workflow node with the "Local File" or "URL" source. Save the sub-workflow on the instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source. The migration report on v2 lists every affected node.
 
+### What changed?
+
+n8n enforces a Content-Security-Policy on its own HTML pages. The policy was served as `Content-Security-Policy-Report-Only` before, which reported violations but blocked nothing. The enforced policy is `script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'`: only scripts that carry the response nonce run, `<object>` and `<embed>` are blocked, and a `<base>` tag cannot repoint relative URLs. `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` no longer sends a header by default. Webhook and form pages keep their own sandbox policy and are not affected.
+
+### When is action necessary?
+
+If you inject your own scripts into n8n's pages. Test the instance before you update, because a script without the response nonce no longer runs. Set `N8N_CONTENT_SECURITY_POLICY` to `{}` to enforce nothing, or to your own policy. To try a policy before you enforce it, put it in `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` instead.
+
 # 2.0.0
 
 ### What changed?
