@@ -1,8 +1,10 @@
 import {
 	credentialIdParamSchema,
+	credentialTypeNameParamSchema,
 	CreateCredentialPublicDto,
 	CredentialListPublicDto,
 	CredentialPublicDto,
+	CredentialTestPublicDto,
 	DeleteCredentialPublicDto,
 	ListCredentialsQueryDto,
 	UpdateCredentialPublicDto,
@@ -30,13 +32,14 @@ import {
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -44,6 +47,7 @@ import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,
+	toJsonSchema,
 	validateCredentialData,
 } from '@/public-api/v1/handlers/credentials/credentials.utils';
 import {
@@ -427,5 +431,52 @@ export class CredentialsPublicController {
 			credentialId,
 			body.destinationProjectId,
 		);
+	}
+
+	@Post('/:credentialId/test')
+	@ApiKeyScope('credential:read')
+	@ProjectScope('credential:read')
+	@ApiSummary('Test credential by ID')
+	@ApiDescription('Tests a credential by ID using the stored credential data.')
+	@ApiTags(['Credential'])
+	@ApiResponse(200, CredentialTestPublicDto)
+	@ApiErrorResponse(404)
+	async testCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialId', credentialIdParamSchema) credentialId: string,
+	): Promise<CredentialTestPublicDto> {
+		try {
+			return await this.credentialsService.testById(req.user.id, credentialId);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new NotFoundError(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@Get('/schema/:credentialTypeName')
+	@ApiSummary('Show credential data schema')
+	@ApiTags(['Credential'])
+	@ApiResponse(200)
+	@ApiErrorResponse(404)
+	async getCredentialType(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialTypeName', credentialTypeNameParamSchema) credentialTypeName: string,
+	): Promise<IDataObject> {
+		try {
+			this.credentialTypes.getByName(credentialTypeName);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		const properties = this.credentialsHelper
+			.getCredentialsProperties(credentialTypeName)
+			.filter((property) => property.type !== 'hidden');
+
+		return toJsonSchema(properties);
 	}
 }

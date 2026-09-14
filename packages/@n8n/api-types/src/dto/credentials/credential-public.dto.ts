@@ -110,3 +110,8 @@ export class TransferCredentialPublicDto extends Z.class({
 		example: 'VmwOO9HeTEj20kxM',
 	}),
 }) {}
+
+export class CredentialTestPublicDto extends Z.class({
+	status: z.enum(['OK', 'Error']).openapi({ example: 'OK' }),
+	message: z.string().openapi({ example: 'Connection successful!' }),
+}) {}
