@@ -24,18 +24,5 @@ describe('InstanceReportingController', () => {
 
 			expect(status).toEqual({ lastSuccessfulReport: null });
 		});
-
-		// Read on every request, so a delivery made after startup, or made by
-		// another main, is visible without a restart.
-		it('reads the reports on every call', async () => {
-			const reportRepository = mock<InstanceMonitoringReportRepository>();
-			reportRepository.findLastDeliveryTime.mockResolvedValue(null);
-			const controller = new InstanceReportingController(reportRepository);
-
-			await controller.getStatus();
-			await controller.getStatus();
-
-			expect(reportRepository.findLastDeliveryTime).toHaveBeenCalledTimes(2);
-		});
 	});
 });

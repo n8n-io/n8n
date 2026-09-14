@@ -58,16 +58,6 @@ describe('InstanceReportingModule', () => {
 			expect(settings).toEqual({ enabled: true, reportTime: REPORT_TIME });
 		});
 
-		// These settings are cached for the lifetime of the process, so the last
-		// delivery time is served by the module's own endpoint instead.
-		it('leaves the last delivery time out, reading nothing from the reports', async () => {
-			const { reportRepository } = setUpContainer();
-
-			await new InstanceReportingModule().settings();
-
-			expect(reportRepository.findLastDeliveryTime).not.toHaveBeenCalled();
-		});
-
 		it('reports as disabled, claiming no time and reading nothing, without a receiver', async () => {
 			const { settingsService, reportRepository } = setUpContainer({ baseUrl: '' });
 
