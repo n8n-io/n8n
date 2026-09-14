@@ -101,8 +101,6 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /tags:
-    $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows/{id}/{versionId}:
