@@ -23,31 +23,41 @@ describe('isCommunityNodeInstallAvailable', () => {
 	const config = (overrides: Partial<CommunityPackagesConfig> = {}) =>
 		({ enabled: true, verifiedEnabled: true, ...overrides }) as CommunityPackagesConfig;
 
+	const loaderConfig = (communityPackagesManagedByEnv = false) => ({
+		communityPackagesManagedByEnv,
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		hasGlobalScope.mockReturnValue(true);
 	});
 
 	test('available when the module is active, verified packages are on, and the user can install', () => {
-		expect(isCommunityNodeInstallAvailable(registry(true), config(), user)).toBe(true);
+		expect(isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(), user)).toBe(
+			true,
+		);
 	});
 
 	test('checks the community-packages module specifically', () => {
 		const moduleRegistry = registry(true);
 
-		isCommunityNodeInstallAvailable(moduleRegistry, config(), user);
+		isCommunityNodeInstallAvailable(moduleRegistry, config(), loaderConfig(), user);
 
 		expect(moduleRegistry.isActive).toHaveBeenCalledWith('community-packages');
 	});
 
 	test('unavailable when the module is inactive', () => {
-		expect(isCommunityNodeInstallAvailable(registry(false), config(), user)).toBe(false);
+		expect(isCommunityNodeInstallAvailable(registry(false), config(), loaderConfig(), user)).toBe(
+			false,
+		);
 	});
 
 	test('unavailable without the communityPackage:install global scope', () => {
 		hasGlobalScope.mockReturnValue(false);
 
-		expect(isCommunityNodeInstallAvailable(registry(true), config(), user)).toBe(false);
+		expect(isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(), user)).toBe(
+			false,
+		);
 		expect(hasGlobalScope).toHaveBeenCalledWith(user, 'communityPackage:install');
 	});
 
@@ -55,13 +65,31 @@ describe('isCommunityNodeInstallAvailable', () => {
 		// Only vetted packages are installable, so with the catalog off the tool
 		// could only ever refuse.
 		expect(
-			isCommunityNodeInstallAvailable(registry(true), config({ verifiedEnabled: false }), user),
+			isCommunityNodeInstallAvailable(
+				registry(true),
+				config({ verifiedEnabled: false }),
+				loaderConfig(),
+				user,
+			),
+		).toBe(false);
+	});
+
+	test('unavailable when packages are managed from the environment', () => {
+		// install() rejects every call on such an instance, so registering the
+		// tool would advertise a capability that could only refuse.
+		expect(
+			isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(true), user),
 		).toBe(false);
 	});
 
 	test('unavailable when community packages are disabled entirely', () => {
-		expect(isCommunityNodeInstallAvailable(registry(true), config({ enabled: false }), user)).toBe(
-			false,
-		);
+		expect(
+			isCommunityNodeInstallAvailable(
+				registry(true),
+				config({ enabled: false }),
+				loaderConfig(),
+				user,
+			),
+		).toBe(false);
 	});
 });

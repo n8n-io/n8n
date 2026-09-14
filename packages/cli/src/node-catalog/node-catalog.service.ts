@@ -181,6 +181,13 @@ export class NodeCatalogService {
 	/** Match/rank inputs for the second tier, parallel to the descriptions above. */
 	private uninstalledCandidates: RegistryCandidate[] = [];
 
+	/**
+	 * npm package shipping each second-tier node type, as published by the
+	 * registry. Kept rather than derived from the node type, because npm allows
+	 * dots in package names.
+	 */
+	private uninstalledPackagesById = new Map<string, string>();
+
 	private uninstalledPromise: Promise<void> | undefined;
 
 	/** When the current second tier was built, for {@link UNINSTALLED_TIER_TTL_MS}. */
@@ -353,7 +360,17 @@ export class NodeCatalogService {
 
 	private async buildUninstalledTier(): Promise<void> {
 		const entries = await this.loadUninstalledEntries();
-		if (entries.length === 0) return;
+		if (entries === null) return;
+
+		if (entries.length === 0) {
+			// The tier is enabled but the catalog answered with nothing. This is
+			// what a registry outage looks like here, and it is indistinguishable
+			// from "no verified nodes exist" without saying so.
+			this.logger.warn(
+				'Verified community node catalog returned no entries; discovery will offer nothing',
+			);
+			return;
+		}
 
 		const descriptions = entries.map((entry) => entry.description);
 
@@ -367,6 +384,9 @@ export class NodeCatalogService {
 
 		for (const description of descriptions) {
 			this.uninstalledDescriptionsById.set(description.name, description);
+		}
+		for (const { candidate } of entries) {
+			this.uninstalledPackagesById.set(candidate.name, candidate.packageName);
 		}
 		this.uninstalledCandidates = entries.map((entry) => entry.candidate);
 		this.uninstalledBuiltAt = Date.now();
@@ -394,6 +414,7 @@ export class NodeCatalogService {
 	private dropUninstalledTier(): void {
 		this.uninstalledParser = undefined;
 		this.uninstalledDescriptionsById = new Map();
+		this.uninstalledPackagesById = new Map();
 		this.uninstalledCandidates = [];
 		this.uninstalledPromise = undefined;
 		this.uninstalledBuiltAt = 0;
@@ -412,13 +433,18 @@ export class NodeCatalogService {
 	 *
 	 * Restricted to `isOfficialNode`, matching what the node creator panel
 	 * already surfaces on the canvas, so the agent and the editor offer the same
-	 * set. Returns an empty list when the community-packages module is disabled,
-	 * verified packages are turned off, or the registry fetch failed, in every
-	 * case leaving the caller with installed-only results rather than an error.
+	 * set.
+	 *
+	 * `null` means the tier is deliberately off (module disabled or verified
+	 * packages turned off) and nothing is wrong. An empty array means the tier is
+	 * on but the catalog gave us nothing, which is what a registry outage looks
+	 * like from here: CommunityNodeTypesService catches its own fetch errors and
+	 * returns its empty in-memory map, so a failure never surfaces as a throw.
 	 */
-	private async loadUninstalledEntries(): Promise<
-		Array<{ description: INodeTypeDescription; candidate: RegistryCandidate }>
-	> {
+	private async loadUninstalledEntries(): Promise<Array<{
+		description: INodeTypeDescription;
+		candidate: RegistryCandidate;
+	}> | null> {
 		try {
 			const { CommunityPackagesConfig } = await import(
 				'@/modules/community-packages/community-packages.config.js'
@@ -426,7 +452,7 @@ export class NodeCatalogService {
 			const config = Container.get(CommunityPackagesConfig);
 			// Checked before resolving the service so a disabled module never has
 			// its dependency chain constructed just to return an empty catalog.
-			if (!config.enabled || !config.verifiedEnabled) return [];
+			if (!config.enabled || !config.verifiedEnabled) return null;
 
 			const { CommunityNodeTypesService } = await import(
 				'@/modules/community-packages/community-node-types.service.js'
@@ -448,9 +474,16 @@ export class NodeCatalogService {
 						name: entry.name,
 						displayName: entry.displayName,
 						numberOfDownloads: entry.numberOfDownloads,
+						// Carried, not derived: npm allows dots in package names, so
+						// splitting a node type on the first dot mis-parses a package
+						// like `n8n-nodes-chatwoot.io`.
+						packageName: entry.packageName,
 					},
 				}));
 		} catch (error) {
+			// Defensive only: CommunityNodeTypesService catches its own fetch
+			// errors, so a registry outage arrives as an empty catalog rather than
+			// a throw. The empty case is reported by the caller.
 			this.logger.warn('Could not load verified community node catalog', { error });
 			return [];
 		}
@@ -554,7 +587,9 @@ export class NodeCatalogService {
 			// an install and left the type in both tiers.
 			if (this.descriptionsById.has(nodeType)) continue;
 			if (!this.uninstalledDescriptionsById.has(nodeType)) continue;
-			found.push({ nodeType, packageName: nodeType.split('.')[0] });
+			const packageName = this.uninstalledPackagesById.get(nodeType);
+			if (!packageName) continue;
+			found.push({ nodeType, packageName });
 		}
 		return found;
 	}
@@ -575,7 +610,7 @@ export class NodeCatalogService {
 
 		try {
 			const version = versionLabel(description);
-			const packageName = request.nodeId.split('.')[0];
+			const packageName = this.uninstalledPackagesById.get(request.nodeId) ?? request.nodeId;
 			return {
 				content: [
 					`// NOT INSTALLED: this node ships in the community package '${packageName}',`,

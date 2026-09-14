@@ -15,12 +15,21 @@ import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
+import { Container } from '@n8n/di';
+
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
+const makeGlobalConfig = ({
+	builderEnabled = true,
+	tagsDisabled = false,
+	managedByEnv = false,
+} = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
+		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
@@ -43,6 +52,10 @@ describe('McpProtectedResource', () => {
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
 		licenseState.isFoldersLicensed.mockReturnValue(true);
+		Container.set(
+			CommunityPackagesConfig,
+			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
+		);
 	});
 
 	describe('getScopeTools', () => {
@@ -247,6 +260,33 @@ describe('McpProtectedResource', () => {
 			const scopes = await resource.getGrantableScopes(user);
 
 			expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'communityPackage:install'));
+		});
+
+		it('withholds the install scope when verified packages are off, whatever the role', async () => {
+			// The screen pre-checks every offered scope on first consent, so
+			// offering one the tool cannot honour records a dead grant. This tracks
+			// full tool availability, not just the caller's role.
+			hasGlobalScope.mockReturnValue(true);
+			Container.set(
+				CommunityPackagesConfig,
+				mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: false }),
+			);
+
+			expect(await resource.getGrantableScopes(user)).not.toContain('communityPackage:install');
+		});
+
+		it('withholds the install scope when packages are managed from the environment', async () => {
+			hasGlobalScope.mockReturnValue(true);
+			const envManaged = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ managedByEnv: true }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			expect(await envManaged.getGrantableScopes(user)).not.toContain('communityPackage:install');
 		});
 
 		it('still advertises the install scope in discovery, which is unauthenticated', () => {

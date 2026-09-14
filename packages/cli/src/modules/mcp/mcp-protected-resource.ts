@@ -3,14 +3,13 @@ import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -129,18 +128,28 @@ export class McpProtectedResource implements ProtectedResource {
 	}
 
 	/**
-	 * Scopes narrowed to what this user's role can actually exercise.
+	 * Scopes narrowed to what this user can actually exercise on this instance.
 	 *
-	 * `communityPackage:install` is dropped for anyone without the matching
-	 * global scope. Installing a package is an admin-only operation in n8n's
-	 * RBAC, and `install_community_node` is not even registered without it, so
-	 * offering the scope to a member would record a grant that can never do
-	 * anything. Keyed off the global scope rather than a role name so a custom
-	 * role carrying it works too.
+	 * `communityPackage:install` is dropped unless `install_community_node` would
+	 * really register, so the consent screen never records a grant that can do
+	 * nothing. Delegates to the same predicate registration uses rather than
+	 * re-checking one of its conditions: the screen pre-checks every offered
+	 * scope on first consent, so a scope offered here is a scope granted.
 	 */
 	async getGrantableScopes(user: User): Promise<string[]> {
 		const scopes = this.scopes;
-		if (hasGlobalScope(user, 'communityPackage:install')) return scopes;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		const installAvailable = isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig.instanceSettingsLoader,
+			user,
+		);
+		if (installAvailable) return scopes;
+
 		return scopes.filter((scope) => scope !== 'communityPackage:install');
 	}
 

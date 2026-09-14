@@ -682,8 +682,16 @@ export class McpService {
 	private async registerInstallCommunityNodeTool(
 		user: User,
 		registerIfAllowed: RegisterToolFn,
+		allowedToolNames: Set<string> | undefined,
 	): Promise<void> {
 		if (!this.mcpConfig.communityNodeDiscoveryEnabled) return;
+
+		// This tool alone requires a scope-bearing credential. `undefined` means
+		// the caller authenticated with an API key or a legacy token, which grants
+		// every other tool by default; honouring that default here would let a key
+		// minted before this feature existed gain the ability to install code on
+		// the instance, with no consent screen and no action by its holder.
+		if (!allowedToolNames) return;
 
 		const { CommunityPackagesConfig } = await import(
 			'@/modules/community-packages/community-packages.config.js'
@@ -692,6 +700,7 @@ export class McpService {
 			!isCommunityNodeInstallAvailable(
 				this.moduleRegistry,
 				Container.get(CommunityPackagesConfig),
+				this.globalConfig.instanceSettingsLoader,
 				user,
 			)
 		) {
@@ -907,7 +916,7 @@ export class McpService {
 		);
 		registerIfAllowed(restoreVersionTool);
 
-		await this.registerInstallCommunityNodeTool(user, registerIfAllowed);
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, allowedToolNames);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

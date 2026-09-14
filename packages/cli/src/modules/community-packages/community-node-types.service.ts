@@ -228,6 +228,21 @@ export class CommunityNodeTypesService {
 		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
 	}
 
+	/**
+	 * Exact vetted entry for one node type, refreshing a stale catalog first.
+	 *
+	 * `getCommunityNodeType` reads the map as-is and reports nothing on a cold
+	 * one, so callers that must distinguish "not vetted" from "not fetched yet"
+	 * need the refresh. Carries `packageName`, so callers never have to derive it
+	 * from the node type.
+	 */
+	async findVettedNodeType(nodeType: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
+		return await this.getCommunityNodeType(nodeType);
+	}
+
 	async findVetted(packageName: string) {
 		if (this.updateRequired()) {
 			await this.fetchNodeTypes();

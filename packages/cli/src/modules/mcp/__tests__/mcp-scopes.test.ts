@@ -172,7 +172,8 @@ describe('McpService scope enforcement', () => {
 
 		// Agent tools require the agents module (inactive here); their own
 		// drift guard lives in agent-tools.service.test.ts. Community-package
-		// tools need that module plus a global scope; see
+		// tools need that module, the verified catalog, and a scope-bearing
+		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
 			(name) =>
@@ -190,7 +191,11 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
-		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+		// Community-package tools are builder-gated but register in neither
+		// service here, because this harness has the module inactive. Their
+		// builder gating is asserted in install-community-node.registration.test.ts.
+		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		expect(gated).toEqual(expected);
 	});
 
 	it('does not register folder tools when folders are not licensed', async () => {

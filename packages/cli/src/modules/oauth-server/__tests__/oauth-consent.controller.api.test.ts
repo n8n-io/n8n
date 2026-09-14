@@ -36,6 +36,16 @@ beforeAll(async () => {
 	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
 
+/**
+ * Advertised scopes minus the ones this instance cannot actually grant.
+ * `communityPackage:install` is advertised in discovery (which is
+ * unauthenticated and describes what the resource supports) but withheld at
+ * consent here, because the community-packages module is inactive in the test
+ * instance so `install_community_node` would never register.
+ */
+const grantable = (scopes: string[]) =>
+	scopes.filter((scope) => scope !== 'communityPackage:install');
+
 afterEach(async () => {
 	await testDb.truncate(['OAuthClient', 'AuthorizationCode', 'UserConsent']);
 });
@@ -69,7 +79,7 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
-			scopes: supportedScopes,
+			scopes: grantable(supportedScopes),
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),

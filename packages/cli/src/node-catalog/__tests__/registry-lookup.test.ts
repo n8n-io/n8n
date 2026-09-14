@@ -10,7 +10,14 @@ const entry = (
 	name: string,
 	displayName: string,
 	extra: Partial<RegistryCandidate> = {},
-): RegistryCandidate => ({ name, displayName, ...extra });
+): RegistryCandidate => ({
+	name,
+	displayName,
+	// Matching and ranking never read this; the real value comes off the
+	// registry entry. Derived here only to satisfy the type.
+	packageName: name.slice(0, name.lastIndexOf('.')),
+	...extra,
+});
 
 // Real registry entries, so these cases pin behaviour against names that
 // actually exist rather than invented ones.

@@ -23,6 +23,8 @@ export interface RegistryEntryFields {
 /** A registry entry as far as matching and ranking are concerned. */
 export interface RegistryCandidate extends RegistryEntryFields {
 	numberOfDownloads?: number;
+	/** npm package shipping this node, as published by the registry. */
+	packageName: string;
 }
 
 /**

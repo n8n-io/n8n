@@ -19,34 +19,34 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+/**
+ * Describes a successful result only. Failures are returned with
+ * `isError: true`, which the SDK checks before it validates `structuredContent`
+ * against this schema, so the error fields do not belong here and the success
+ * fields can be required.
+ */
 const outputSchema = {
-	installed: z.boolean().optional().describe('Whether the package was installed by this call'),
+	installed: z.boolean().describe('Whether the package was installed by this call'),
 	alreadyInstalled: z
 		.boolean()
 		.optional()
 		.describe(
 			'True when the node was already available, so nothing was installed. Not an error: carry on and use the node.',
 		),
-	packageName: z.string().optional().describe('npm package that was installed'),
-	version: z.string().optional().describe('Exact version installed'),
+	packageName: z.string().describe('npm package that was installed'),
 	nodeTypes: z
 		.array(z.string())
-		.optional()
 		.describe(
 			'Node types the package registered, now usable in workflow code. Call get_node_types on these before writing the workflow — the installed definition is authoritative.',
 		),
+	version: z.string().optional().describe('Exact version installed'),
 	credentialTypes: z
 		.array(z.string())
 		.optional()
 		.describe(
 			'Credential types the installed nodes require. These only exist now that the package is installed, so the user must create one in n8n before the workflow can run. Tell them which.',
 		),
-	error: z.string().optional().describe('Why the install did not happen'),
-	hint: z.string().optional().describe('What to do instead when the install did not happen'),
 } satisfies z.ZodRawShape;
-
-/** Package name from a node type: `@scope/pkg.nodeName` -> `@scope/pkg`. */
-const toPackageName = (nodeType: string): string => nodeType.split('.')[0];
 
 /**
  * Credential types the freshly installed nodes declare.
@@ -116,13 +116,20 @@ export const createInstallCommunityNodeTool = (
 			parameters: { nodeType },
 		};
 
+		/**
+		 * Execution errors belong in the result with `isError: true`, not in a
+		 * success payload. `structuredContent` is deliberately omitted: the SDK
+		 * skips output-schema validation once `isError` is set, and the schema
+		 * describes successes only.
+		 */
 		const fail = (error: string, hint?: string) => {
 			telemetryPayload.results = { success: false, error };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			const structured = { error, ...(hint ? { hint } : {}) };
 			return {
-				content: [{ type: 'text' as const, text: JSON.stringify(structured) }],
-				structuredContent: structured,
+				isError: true,
+				content: [
+					{ type: 'text' as const, text: JSON.stringify({ error, ...(hint ? { hint } : {}) }) },
+				],
 			};
 		};
 
@@ -136,33 +143,24 @@ export const createInstallCommunityNodeTool = (
 				);
 			}
 
-			const packageName = toPackageName(nodeType);
-
-			// Called for its refresh-if-stale side effect as much as its result: it
-			// warms the registry catalog so the exact-entry lookup below can read a
-			// populated map, and it distinguishes "unknown package" from "known
-			// package, unknown node" in the error the agent sees.
-			const vetted = await communityNodeTypesService.findVetted(packageName);
-			if (!vetted) {
-				return fail(
-					`Package '${packageName}' is not a verified community package, so it cannot be installed.`,
-					'Only packages vetted by n8n are installable. Use search_nodes to find a verified alternative, or use an HTTP Request node.',
-				);
-			}
-
 			// Authorization to install is not authorization to install *anything*
 			// vetted. Match the exact node type and require the same
 			// `isOfficialNode` flag that search_nodes filters on, so the tool can
 			// only install what discovery was willing to offer. Matching the
 			// package alone would let a caller name any node in a vetted package,
 			// including one search_nodes deliberately withheld.
-			const catalogEntry = await communityNodeTypesService.getCommunityNodeType(nodeType);
+			const catalogEntry = await communityNodeTypesService.findVettedNodeType(nodeType);
 			if (!catalogEntry) {
 				return fail(
 					`'${nodeType}' is not a node type in the verified community catalog, so it cannot be installed.`,
 					'Pass a node type exactly as search_nodes reported it under "not installed on this instance".',
 				);
 			}
+
+			// Read off the entry rather than derived from the node type: npm allows
+			// dots in package names, so splitting on the first dot mis-parses a
+			// package like `n8n-nodes-chatwoot.io` and refuses a vetted node.
+			const packageName = catalogEntry.packageName;
 
 			if (!catalogEntry.isOfficialNode) {
 				return fail(
@@ -200,16 +198,36 @@ export const createInstallCommunityNodeTool = (
 				};
 			}
 
-			const installedPackage = await communityPackagesLifecycleService.install(
-				// Version must come from findVetted, not from the matched entry:
-				// install() resolves the verification checksum through its own
-				// findVetted call and has no per-version fallback, so a version from
-				// any other entry would be checked against a checksum that does not
-				// describe it.
-				{ name: packageName, version: vetted.npmVersion, verify: true },
-				user,
-				'mcp',
-			);
+			// The version has to come from the same lookup install() uses to resolve
+			// the verification checksum: it calls findVetted(name) and has no
+			// per-version fallback, so a version off any other entry would be
+			// checked against a checksum that does not describe it.
+			const vetted = await communityNodeTypesService.findVetted(packageName);
+			if (!vetted) {
+				return fail(
+					`Package '${packageName}' is not a verified community package, so it cannot be installed.`,
+					'Only packages vetted by n8n are installable. Use search_nodes to find a verified alternative, or use an HTTP Request node.',
+				);
+			}
+
+			let installedPackage: Awaited<ReturnType<CommunityPackagesLifecycleService['install']>>;
+			try {
+				installedPackage = await communityPackagesLifecycleService.install(
+					{ name: packageName, version: vetted.npmVersion, verify: true },
+					user,
+					'mcp',
+				);
+			} catch (error) {
+				// Class name only. The message is built around the `execFile`
+				// rejection from npm, so it can carry a private registry URL or an
+				// absolute path on the host, neither of which belongs in product
+				// analytics or in a third-party MCP client.
+				const errorType = error instanceof Error ? error.constructor.name : typeof error;
+				return fail(
+					`Installing '${packageName}' failed (${errorType}).`,
+					'Report this to the user rather than retrying. If the instance manages community packages through environment variables, or the package is blocked, no retry will succeed.',
+				);
+			}
 
 			const installedNodeTypes = installedPackage.installedNodes.map((node) => node.type);
 			// Credential types ship with the package and only exist once it is
@@ -241,10 +259,13 @@ export const createInstallCommunityNodeTool = (
 				structuredContent: payload,
 			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			// Reached only by the registry lookups above, which are network calls
+			// against the verified catalog. A transient failure here is worth
+			// retrying, so this must not repeat the install advice.
+			const errorType = error instanceof Error ? error.constructor.name : typeof error;
 			return fail(
-				message,
-				'Report this to the user rather than retrying. If the instance manages community packages through environment variables, or the package is blocked, no retry will succeed.',
+				`Could not reach the verified community node catalog (${errorType}).`,
+				'This may be transient. Retry once, and if it fails again tell the user and build with an HTTP Request node instead.',
 			);
 		}
 	},

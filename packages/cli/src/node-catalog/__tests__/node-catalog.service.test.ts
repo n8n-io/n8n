@@ -254,12 +254,16 @@ describe('NodeCatalogService', () => {
 	});
 
 	describe('includeUninstalled', () => {
-		const verifiedEntry = (name: string, displayName = 'Firecrawl') => ({
+		const verifiedEntry = (name: string, displayName = 'Firecrawl', packageName?: string) => ({
 			name,
 			displayName,
 			isInstalled: false,
 			isOfficialNode: true,
 			numberOfDownloads: 2520,
+			// The registry publishes this, so nothing downstream derives it from
+			// the node type. Defaults to the node type minus its last segment,
+			// which is what the common case looks like.
+			packageName: packageName ?? name.slice(0, name.lastIndexOf('.')),
 			nodeDescription: {
 				// The registry publishes uninstalled nodes under a `-preview` package
 				// name; the service must reindex them under their installed name.
@@ -417,11 +421,14 @@ describe('NodeCatalogService', () => {
 			expect(getCommunityNodeTypes).not.toHaveBeenCalled();
 		});
 
-		test('falls back to installed-only results when the catalog fetch fails', async () => {
+		test('falls back to installed-only results when the catalog comes back empty', async () => {
+			// CommunityNodeTypesService catches its own fetch errors and returns its
+			// empty in-memory map, so this is what a registry outage looks like from
+			// here. Mocking a rejection would test a state production cannot reach.
 			Container.set(
 				CommunityNodeTypesService,
 				mock<CommunityNodeTypesService>({
-					getCommunityNodeTypes: vi.fn().mockRejectedValue(new Error('registry down')),
+					getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 				}),
 			);
 			await service.initialize();
@@ -648,11 +655,11 @@ describe('NodeCatalogService', () => {
 				expect(getCommunityNodeTypes).not.toHaveBeenCalled();
 			});
 
-			test('reports nothing when the verified catalog is unavailable', async () => {
+			test('reports nothing when the verified catalog comes back empty', async () => {
 				Container.set(
 					CommunityNodeTypesService,
 					mock<CommunityNodeTypesService>({
-						getCommunityNodeTypes: vi.fn().mockRejectedValue(new Error('registry down')),
+						getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 					}),
 				);
 				await service.initialize();

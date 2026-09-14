@@ -129,6 +129,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	'install_community_node',
 	...FOLDER_FEATURE_TOOLS,
 ]);
 
