@@ -1,12 +1,14 @@
+import { UserRepository, WorkflowRunAsBindingRepository } from '@n8n/db';
+import { CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { ICredentialContext, OAuthResourceGrant } from 'n8n-workflow';
-import { ITokenIdentifier } from './identifier-interface';
-import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
-import { CredentialResolverError } from '@n8n/decorators';
+
+import { AuthService } from '@/auth/auth.service';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
-import { UserRepository, WorkflowRunAsBindingRepository } from '@n8n/db';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { ITokenIdentifier } from './identifier-interface';
 
 /**
  * The `source` values this identifier accepts, declared once so the schemas below and
@@ -109,17 +111,20 @@ export function carriesN8nIdentity(context: ICredentialContext): boolean {
  * Used by the N8N credential resolver to authenticate users via n8n's
  * built-in JWT authentication and store credentials per user.
  *
- * Supports two metadata shapes, discriminated by `source`:
+ * Supports four metadata shapes, discriminated by `source`:
  * - `manual-execution`: editor-triggered run; identity is the n8n auth cookie (JWT).
  *   Validated cryptographically without request-bound checks (browserId / endpoint).
- * - `chat-hub-injected` / `cookie-source`: request-bound run (chat-hub or
- *   web/cookie-based dynamic-credential resolution); identity is the n8n auth
- *   cookie captured from the HTTP request, validated with full request context
- *   (method, endpoint, browserId).
+ * - `n8n-oauth`: OAuth-authenticated call (MCP or API); identity is either a live
+ *   access token verified against the resource, or, for a sealed carrier, the
+ *   resolved user re-checked against its execution and grant.
  * - `run-as`: scheduled execution running as a workflow's run-as user; identity is
  *   the carrier sealed at fire (subject, workflowId, executionPath), checked against
  *   the execution id, the live run-as binding, and the user's current
  *   `workflow:execute` access.
+ * - `chat-hub-injected` / `cookie-source`: request-bound run (chat-hub or
+ *   web/cookie-based dynamic-credential resolution); identity is the n8n auth
+ *   cookie captured from the HTTP request, validated with full request context
+ *   (method, endpoint, browserId).
  */
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {
@@ -216,37 +221,7 @@ export class N8NIdentifier implements ITokenIdentifier {
 		}
 
 		if (metadataResult.data.source === RUN_AS_SOURCE) {
-			const { subject, workflowId, executionPath = [] } = metadataResult.data;
-			const invalid = () =>
-				new CredentialResolverError('Run-as identity is not valid for this execution');
-
-			if (executionId) {
-				if (!executionPath.includes(executionId)) throw invalid();
-			} else if (executionPath.length > 0) {
-				throw invalid();
-			}
-
-			// A probe before any execution exists (publish-time status check) skips the
-			// binding: the control plane built the context for the publisher themself.
-			if (executionId || executionPath.length > 0) {
-				const binding = await this.runAsBindingRepository.findActiveByWorkflowId(workflowId);
-				if (!binding || binding.userId !== subject) throw invalid();
-			}
-
-			const user = await this.userRepository.findOne({
-				where: { id: subject },
-				relations: ['role'],
-			});
-			if (!user || user.disabled) throw invalid();
-
-			const allowed = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-				[workflowId],
-				user,
-				['workflow:execute'],
-			);
-			if (!allowed.has(workflowId)) throw invalid();
-
-			return user.id;
+			return await this.resolveRunAs(metadataResult.data, executionId);
 		}
 
 		// Chat-hub / webhook run: validate the JWT together with the request-bound metadata
@@ -257,6 +232,58 @@ export class N8NIdentifier implements ITokenIdentifier {
 			metadataResult.data.endpoint,
 			metadataResult.data.browserId,
 		);
+		return user.id;
+	}
+
+	/**
+	 * Resolves a run-as carrier: a scheduled execution running as a workflow's run-as
+	 * user. Split out of {@link resolve} to keep that method's cyclomatic complexity
+	 * under the lint limit; the check order is unchanged: execution path, then the
+	 * live binding (skipped only for a publish-time probe), then the user, then
+	 * `workflow:execute`.
+	 */
+	private async resolveRunAs(
+		metadata: z.infer<typeof RunAsMetadataSchema>,
+		executionId: string | undefined,
+	): Promise<string> {
+		const { subject, workflowId } = metadata;
+		const executionPath = metadata.executionPath ?? [];
+		const invalid = () =>
+			new CredentialResolverError('Run-as identity is not valid for this execution');
+
+		if (executionId) {
+			if (!executionPath.includes(executionId)) throw invalid();
+		} else if (executionPath.length > 0) {
+			throw invalid();
+		}
+
+		// A publish-time probe has no `executionPath` at all (the property is absent,
+		// not merely empty): the control plane built the context for the publisher
+		// themself, before any execution or binding exists, so it skips the binding
+		// check below. A fire-minted carrier, in contrast, always sets an explicit
+		// `executionPath` (`[]` on its first, pre-executionId pass through
+		// establishExecutionContext) — once defaulted above it reads identically to
+		// the probe's absent path, so the gate below checks the raw field, not the
+		// defaulted local, to still hit the binding check for that carrier.
+		const isPublishProbe = !executionId && metadata.executionPath === undefined;
+		if (!isPublishProbe) {
+			const binding = await this.runAsBindingRepository.findActiveByWorkflowId(workflowId);
+			if (!binding || binding.userId !== subject) throw invalid();
+		}
+
+		const user = await this.userRepository.findOne({
+			where: { id: subject },
+			relations: ['role'],
+		});
+		if (!user || user.disabled) throw invalid();
+
+		const allowed = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			[workflowId],
+			user,
+			['workflow:execute'],
+		);
+		if (!allowed.has(workflowId)) throw invalid();
+
 		return user.id;
 	}
 }

@@ -567,6 +567,22 @@ describe('N8NIdentifier', () => {
 				},
 			});
 
+			// A true publish-time probe never sets `executionPath` (the property is
+			// absent), unlike a fire-minted carrier which always sets it explicitly
+			// (`[]` on its first, pre-executionId pass). Built separately from
+			// `runAsContext` so it doesn't carry that key at all.
+			const publishProbeContext = (metaOverrides: Record<string, unknown> = {}) => ({
+				identity: 'user-123',
+				version: 1 as const,
+				metadata: {
+					source: 'run-as' as const,
+					subject: 'user-123',
+					workflowId: 'wf-1',
+					establishedAt: 1,
+					...metaOverrides,
+				},
+			});
+
 			it('resolves the subject on the happy path', async () => {
 				const result = await identifier.resolve(runAsContext(), {}, 'exec-1');
 
@@ -596,9 +612,33 @@ describe('N8NIdentifier', () => {
 			});
 
 			it('resolves an unbound seal (publish-time probe) without consulting the binding repository', async () => {
-				const result = await identifier.resolve(runAsContext({ executionPath: [] }), {}, undefined);
+				const result = await identifier.resolve(publishProbeContext(), {}, undefined);
 
 				expect(result).toBe('user-123');
+				expect(mockRunAsBindingRepository.findActiveByWorkflowId).not.toHaveBeenCalled();
+			});
+
+			it('still runs the binding check for a fire-minted carrier with an explicit empty executionPath', async () => {
+				// Unlike a true publish-time probe (no `executionPath` at all), a fire-minted
+				// carrier sets `executionPath: []` explicitly on its first, pre-executionId
+				// pass; once defaulted, that reads the same as "absent", so the branch must
+				// key off the raw field, not the defaulted length, to still hit the binding.
+				mockRunAsBindingRepository.findActiveByWorkflowId.mockResolvedValue(null);
+
+				await expect(
+					identifier.resolve(runAsContext({ executionPath: [] }), {}, undefined),
+				).rejects.toThrow(CredentialResolverError);
+				expect(mockRunAsBindingRepository.findActiveByWorkflowId).toHaveBeenCalledWith('wf-1');
+			});
+
+			it('rejects a publish-time probe when the user is disabled', async () => {
+				mockUserRepository.findOne.mockResolvedValue(
+					mock<User>({ id: 'user-123', disabled: true }),
+				);
+
+				await expect(identifier.resolve(publishProbeContext(), {}, undefined)).rejects.toThrow(
+					CredentialResolverError,
+				);
 				expect(mockRunAsBindingRepository.findActiveByWorkflowId).not.toHaveBeenCalled();
 			});
 
