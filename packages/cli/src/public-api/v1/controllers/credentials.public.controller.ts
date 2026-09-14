@@ -83,7 +83,7 @@ function toCredentialPublicDto(credential: CredentialPublicDtoSource): Credentia
 	};
 }
 
-/** The delete response adds `usageScope` to the standard credential fields. See DeleteCredentialPublicDto. */
+/** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
 function toDeleteCredentialPublicDto(credential: CredentialsEntity): DeleteCredentialPublicDto {
 	return {
 		...toCredentialPublicDto(credential),

@@ -22,11 +22,6 @@ export const credentialPublicSchema = publicApiCredentialResponseSchema.extend({
 
 export class CredentialPublicDto extends Z.class(credentialPublicSchema.shape) {}
 
-/**
- * The delete response carries `usageScope` on top of the standard credential fields, because the
- * legacy handler returned the whole entity minus `data`/`shared`. The route only ever resolves
- * project-scoped credentials, so in practice the value is always `'project'`.
- */
 export const credentialDeletedPublicSchema = credentialPublicSchema.extend({
 	usageScope: z.enum(['project', 'instance']),
 });
