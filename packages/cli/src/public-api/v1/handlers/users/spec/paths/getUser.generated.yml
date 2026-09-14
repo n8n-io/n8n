@@ -11,7 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
-    description: The ID of the user.
+    description: The ID or email of the user.
     name: userId
     in: path
   - schema:
@@ -85,3 +85,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    description: No user with that ID or email.
