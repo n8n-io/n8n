@@ -288,6 +288,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
+			'personal-space-role-updated': (event) => this.personalSpaceRoleUpdated(event),
 			'instance-ai-mcp-registry-connection-created': (event) =>
 				this.instanceAiMcpRegistryConnectionCreated(event),
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
@@ -2428,6 +2429,18 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User deleted custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
+		});
+	}
+
+	private personalSpaceRoleUpdated({
+		userId,
+		scopes,
+		removedScopes,
+	}: RelayEventMap['personal-space-role-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_UPDATED_PERSONAL_SPACE_ROLE, {
+			user_id: userId,
+			scopes,
+			removed_scopes: removedScopes,
 		});
 	}
 

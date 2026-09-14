@@ -2,7 +2,7 @@ operationId: updateRole
 tags:
   - Role
 summary: Update a custom role
-description: Replaces a custom role's display name, description, and scopes. System roles cannot be updated.
+description: "Replaces a custom role's display name, description, and scopes. System roles cannot be updated, except for `project:personalOwner` in canvas-only mode: there you can remove the `credential:create` scope from it, or add that scope back. All its other properties stay fixed."
 x-required-scope: role:manage,role:manageProject
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler

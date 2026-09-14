@@ -2,7 +2,12 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { Project, ProjectRelation, Role, User } from '../entities';
+import { Project, ProjectRelation, Role, Scope, User } from '../entities';
+
+type UpdateRoleOptions = {
+	/** Lets the update pass the guard that keeps system roles fixed. */
+	allowSystemRole?: boolean;
+};
 
 @Service()
 export class RoleRepository extends Repository<Role> {
@@ -229,6 +234,7 @@ export class RoleRepository extends Repository<Role> {
 		entityManager: EntityManager,
 		slug: string,
 		newData: Partial<Pick<Role, 'description' | 'scopes' | 'displayName'>>,
+		options?: UpdateRoleOptions,
 	) {
 		const role = await entityManager.findOne(Role, {
 			where: { slug },
@@ -237,7 +243,7 @@ export class RoleRepository extends Repository<Role> {
 		if (!role) {
 			throw new UserError('Role not found');
 		}
-		if (role.systemRole) {
+		if (role.systemRole && !options?.allowSystemRole) {
 			throw new UserError('Cannot update system roles');
 		}
 
@@ -264,6 +270,21 @@ export class RoleRepository extends Repository<Role> {
 	) {
 		return await this.manager.transaction(async (transactionManager) => {
 			return await this.updateEntityWithManager(transactionManager, slug, newData);
+		});
+	}
+
+	/**
+	 * Replaces the scopes of a system role. Which system role can change, and which
+	 * of its scopes, is a business rule that the caller owns.
+	 */
+	async updateSystemRoleScopes(slug: string, scopes: Scope[]) {
+		return await this.manager.transaction(async (transactionManager) => {
+			return await this.updateEntityWithManager(
+				transactionManager,
+				slug,
+				{ scopes },
+				{ allowSystemRole: true },
+			);
 		});
 	}
 }

@@ -1236,6 +1236,25 @@ describe('TelemetryEventRelay', () => {
 				role_slug: 'project:my-role-abc123',
 			});
 		});
+
+		it('should track on `personal-space-role-updated` event', () => {
+			const event: RelayEventMap['personal-space-role-updated'] = {
+				userId: 'user123',
+				scopes: ['workflow:create', 'credential:read'],
+				removedScopes: ['credential:create'],
+			};
+
+			eventService.emit('personal-space-role-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.ROLES.USER_UPDATED_PERSONAL_SPACE_ROLE,
+				{
+					user_id: 'user123',
+					scopes: ['workflow:create', 'credential:read'],
+					removed_scopes: ['credential:create'],
+				},
+			);
+		});
 	});
 
 	describe('public API events', () => {

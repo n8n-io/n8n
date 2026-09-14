@@ -154,7 +154,7 @@ export class RoleController {
 			roleType: role.roleType,
 			user: req.user,
 		});
-		return await this.roleService.updateCustomRole({
+		return await this.roleService.updateRole({
 			slug,
 			newRole: updateRole,
 			userId: req.user.id,

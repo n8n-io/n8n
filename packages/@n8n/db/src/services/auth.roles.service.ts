@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line import-x/order
 import {
@@ -11,6 +12,7 @@ import {
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
+	PERSONAL_SPACE_REMOVABLE_SCOPES,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -25,6 +27,7 @@ export class AuthRolesService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly dbLockService: DbLockService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private async syncScopes(tx: EntityManager) {
@@ -193,6 +196,36 @@ export class AuthRolesService {
 		return scopes;
 	}
 
+	/**
+	 * In canvas-only mode an admin can remove some scopes from the personal space
+	 * role through the roles API. Keep such a scope out of the expected set, so the
+	 * sync does not add it back on every restart. The role row is the stored state.
+	 * When canvas-only mode is off, the scope returns to the default.
+	 */
+	private keepRemovedPersonalSpaceScopes(
+		roleSlug: string,
+		expectedScopes: string[],
+		existingRole: Role | undefined,
+	): string[] {
+		if (!this.globalConfig.canvasOnly || roleSlug !== PROJECT_OWNER_ROLE_SLUG || !existingRole) {
+			return expectedScopes;
+		}
+
+		const removedScopes: string[] = PERSONAL_SPACE_REMOVABLE_SCOPES.filter(
+			(slug) => !existingRole.scopes.some((scope) => scope.slug === slug),
+		);
+
+		if (removedScopes.length === 0) {
+			return expectedScopes;
+		}
+
+		this.logger.debug(
+			`Canvas-only mode - keeping ${removedScopes.join(', ')} removed from the ${PROJECT_OWNER_ROLE_SLUG} role`,
+		);
+
+		return expectedScopes.filter((slug) => !removedScopes.includes(slug));
+	}
+
 	private async syncRoles(tx: EntityManager) {
 		const roleRepo = tx.getRepository(Role);
 		const scopeRepo = tx.getRepository(Scope);
@@ -223,7 +256,11 @@ export class AuthRolesService {
 				ALL_ROLES[roleNamespace].map(async (role) => {
 					const existingRole = existingRolesMap.get(role.slug);
 
-					const expectedScopes = await this.updateScopesBasedOnSettings(role.slug, role.scopes, tx);
+					const expectedScopes = this.keepRemovedPersonalSpaceScopes(
+						role.slug,
+						await this.updateScopesBasedOnSettings(role.slug, role.scopes, tx),
+						existingRole,
+					);
 
 					if (!existingRole) {
 						const newRole = roleRepo.create({

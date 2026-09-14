@@ -6,6 +6,7 @@ import { INSTANCE_AI_TELEMETRY } from './events/instance-ai';
 import { MCP_TELEMETRY } from './events/mcp';
 import { NODE_TYPE_POLICIES_TELEMETRY } from './events/node-type-policies';
 import { PLATFORM_TELEMETRY } from './events/platform';
+import { ROLES_TELEMETRY } from './events/roles';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
 import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
 
@@ -17,6 +18,7 @@ export const TELEMETRY_EVENT = {
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,
 	MCP: MCP_TELEMETRY,
 	NODE_TYPE_POLICIES: NODE_TYPE_POLICIES_TELEMETRY,
+	ROLES: ROLES_TELEMETRY,
 	WORKFLOW: WORKFLOW_TELEMETRY,
 	WORKFLOW_REVIEWS: WORKFLOW_REVIEWS_TELEMETRY,
 } satisfies TelemetryEventRegistry;

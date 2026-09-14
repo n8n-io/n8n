@@ -140,6 +140,12 @@ export const PERSONAL_SPACE_SHARING_SETTING = {
 	scopes: ['workflow:share', 'credential:share'],
 };
 
+/**
+ * Scopes an admin can remove from the personal space role in canvas-only mode.
+ * All other scopes of that role stay fixed.
+ */
+export const PERSONAL_SPACE_REMOVABLE_SCOPES: readonly string[] = ['credential:create'];
+
 export const EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING = {
 	key: 'externalSecrets.systemRolesEnabled',
 	roleScopeMap: {
