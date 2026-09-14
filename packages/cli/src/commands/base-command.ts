@@ -308,14 +308,17 @@ export abstract class BaseCommand<F = never> {
 					error,
 				);
 			}
-		} else if (this.globalConfig.regexEngine.engine !== 'js') {
-			// This command never initializes the regex engine, so an instance configured for
-			// a non-default one must fail loudly here instead of silently evaluating a
-			// user's regexes on the built-in engine.
-			await this.exitWithCrash(
-				`This command does not support the "${this.globalConfig.regexEngine.engine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
-				new UnexpectedError('Regex engine not initialized for a non-default configuration'),
-			);
+		} else {
+			const configuredEngine: string = this.globalConfig.regexEngine.engine;
+			if (configuredEngine !== 'js') {
+				// This command never initializes the regex engine, so an instance configured
+				// for a non-default one must fail loudly here instead of silently evaluating a
+				// user's regexes on the built-in engine.
+				await this.exitWithCrash(
+					`This command does not support the "${configuredEngine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
+					new UnexpectedError('Regex engine not initialized for a non-default configuration'),
+				);
+			}
 		}
 	}
 
