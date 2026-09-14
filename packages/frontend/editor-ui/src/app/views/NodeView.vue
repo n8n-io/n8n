@@ -1039,8 +1039,10 @@ async function onAddEmptyGroup(position: XYPosition, connectToLastInteractedNode
 			[
 				{
 					type: NO_OP_NODE_TYPE,
+					name: 'No Operation, do nothing',
 					position,
 					parameters: { emptyGroupAnchor: true },
+					placeholder: true,
 					isAutoAdd: !connectToLastInteractedNode,
 					openDetail: false,
 				},
