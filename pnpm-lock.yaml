@@ -987,7 +987,7 @@ patchedDependencies:
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
   axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
   bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
-  element-plus@2.4.3: 9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c
+  element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   lodash@4.18.1: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
   minifaker: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
@@ -5331,7 +5331,7 @@ importers:
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -5421,7 +5421,7 @@ importers:
         version: 2.1.1
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       highlight.js:
         specifier: catalog:frontend
         version: 11.12.0
@@ -6056,7 +6056,7 @@ importers:
         version: link:../../../@n8n/utils
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6450,7 +6450,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       email-providers:
         specifier: ^2.0.1
         version: 2.0.1
@@ -6687,7 +6687,7 @@ importers:
         version: 3.0.3
       element-plus:
         specifier: catalog:frontend
-        version: 2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2))
+        version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
         version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
@@ -37595,7 +37595,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  element-plus@2.4.3(patch_hash=9547bca88969f416e6132b09a48e71a969dce25ee6669c7f1f78d51ce9b80e7c)(vue@3.5.26(typescript@6.0.2)):
+  element-plus@2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.5.26(typescript@6.0.2))
