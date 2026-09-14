@@ -65,7 +65,7 @@ tail), `77` skip (docker needed but unavailable).
 
 ## CI
 
-`.github/workflows/encryption-upgrade-test.yml` ("Encryption Test") runs the
+`.github/workflows/encryption-upgrade-test.yml` ("Test: Encryption Rollout") runs the
 upgrade cycle on a twice-daily cron. A manual `workflow_dispatch` run has a
 `test` select (`upgrade` | `rotation`) plus `db` and `from-image` inputs. A PR
 that touches the tests or the workflow runs **both** modes as parallel jobs,
