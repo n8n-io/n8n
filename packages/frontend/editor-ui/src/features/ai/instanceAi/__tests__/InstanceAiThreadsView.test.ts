@@ -89,6 +89,18 @@ describe('InstanceAiThreadsView', () => {
 		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(2);
 	});
 
+	it('drops a search that is still debouncing when the page is left', async () => {
+		const wrapper = mountView();
+		wrapper.findComponent(N8nInput).vm.$emit('update:modelValue', 'invoice');
+		await nextTick();
+		wrapper.unmount();
+
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(store.resetThreadHistory).toHaveBeenCalledTimes(1);
+		expect(store.threadHistory.search).toBe('');
+		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(1);
+	});
+
 	it('clears the history when the page is left', () => {
 		mountView().unmount();
 		expect(store.resetThreadHistory).toHaveBeenCalledTimes(1);

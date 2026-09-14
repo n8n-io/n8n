@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { refDebounced } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { DEBOUNCE_TIME } from '@/app/constants';
@@ -21,12 +21,12 @@ export function useInstanceAiThreadHistory() {
 		void store.loadThreadHistoryPage();
 	}
 
-	const applySearch = useDebounceFn(() => {
-		store.resetThreadHistory(search.value.trim());
+	// A component-scoped watcher stops on unmount, so a search that is still debouncing
+	// when the user leaves does not reload the shared state.
+	const debouncedSearch = refDebounced(search, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+	watch(debouncedSearch, (value) => {
+		store.resetThreadHistory(value.trim());
 		loadMore();
-	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-	watch(search, () => {
-		void applySearch();
 	});
 
 	// The observer fires once per observe() call. Re-arm it after every page so a sentinel that

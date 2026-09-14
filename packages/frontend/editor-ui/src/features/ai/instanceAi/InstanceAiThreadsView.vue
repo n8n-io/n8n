@@ -115,6 +115,7 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 						v-model="editingTitle"
 						:class="$style.renameInput"
 						type="text"
+						maxlength="255"
 						@keydown.enter="confirmRename(thread)"
 						@keydown.escape="editingThreadId = null"
 						@blur="confirmRename(thread)"
