@@ -1,4 +1,10 @@
-import { ListTagsQueryDto, TagListPublicDto, TagPublicDto, tagIdParamSchema } from '@n8n/api-types';
+import {
+	CreateTagPublicDto,
+	ListTagsQueryDto,
+	TagListPublicDto,
+	TagPublicDto,
+	tagIdParamSchema,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import {
 	ApiDescription,
@@ -7,13 +13,16 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
 	Get,
 	Param,
+	Post,
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	encodeNextCursor,
@@ -57,6 +66,27 @@ export class TagsPublicController {
 				numberOfTotalRecords: count,
 			}),
 		};
+	}
+
+	@Post('/')
+	@ApiKeyScope('tag:create')
+	@ApiSummary('Create a tag')
+	@ApiDescription('Create a tag in your instance.')
+	@ApiTags(tags)
+	@ApiResponse(201, TagPublicDto)
+	@ApiErrorResponse(409)
+	async createTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateTagPublicDto,
+	): Promise<TagPublicDto> {
+		const newTag = this.tagService.toEntity({ name: body.name });
+
+		try {
+			return toTagPublicDto(await this.tagService.save(newTag, 'create'));
+		} catch {
+			throw new ConflictError('Tag already exists');
+		}
 	}
 
 	@Get('/:tagId')

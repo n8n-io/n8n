@@ -3,7 +3,7 @@ import { hoverToReveal } from '../../../utils/retry-utils';
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI sidebar @capability:proxy',
+	'Instance AI sidebar',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

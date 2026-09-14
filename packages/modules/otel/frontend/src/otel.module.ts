@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 
@@ -9,7 +9,7 @@ import { OTEL_SETTINGS_VIEW } from './otel.constants';
 // eslint-disable-next-line @typescript-eslint/no-unsafe-return
 const SettingsOpenTelemetryView = async () => await import('./SettingsOpenTelemetryView.vue');
 
-export const OtelModule: FrontendModuleDescription = {
+export const OtelModule = defineFrontendModule({
 	id: 'otel',
 	name: 'OpenTelemetry',
 	description: 'Configure OpenTelemetry settings',
@@ -47,4 +47,4 @@ export const OtelModule: FrontendModuleDescription = {
 			},
 		},
 	],
-};
+});

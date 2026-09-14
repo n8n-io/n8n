@@ -827,6 +827,41 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
+	it('flushes a pending autosave and prevents browser save with Cmd/Ctrl+S', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Renamed agent' });
+			await nextTick();
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			const event = new KeyboardEvent('keydown', {
+				key: 's',
+				code: 'KeyS',
+				metaKey: true,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ name: 'Renamed agent' }),
+				'hash-1',
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('opens the preview dock with a new session when requested by the route', async () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		routeQuery[NEW_SESSION_PARAM] = 'true';

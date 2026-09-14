@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status' | 'error'
+	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -162,6 +162,7 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			id: `${execution.id}:user`,
 			role: 'user',
 			content: userContent,
+			...(execution.author ? { author: execution.author } : {}),
 			executionId: execution.id,
 		});
 	}
