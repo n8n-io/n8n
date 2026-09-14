@@ -197,7 +197,11 @@ export interface AgentChatOptions {
 
 /** One turn of the agent. The request starts on the first read; a second pass yields nothing. */
 export interface AgentChat extends AsyncIterable<AgentSseEvent> {
-	/** Drains the stream and returns the `text-delta` deltas joined; an `error` event throws `N8nAppError`. */
+	/**
+	 * Drains the stream and returns the `text-delta` deltas joined. Throws `N8nAppError` on an
+	 * `error` event, or with code `agent_suspended` when the agent asked for approval instead of
+	 * answering: only iterating the stream can see and resume the suspension.
+	 */
 	text(): Promise<string>;
 }
 
@@ -396,6 +400,14 @@ function agentChat(start: () => Promise<Response>): AgentChat {
 				// The run's own failures arrive as an event on a 200 stream.
 				if (event.type === 'error') {
 					throw new N8nAppError(200, event.errorCode ?? 'execution_failed', event.message);
+				}
+				if (event.type === 'tool-call-suspended') {
+					throw new N8nAppError(
+						200,
+						'agent_suspended',
+						`The agent is waiting for approval of "${event.payload.toolName}"; iterate the chat stream to show and resume it`,
+						event.payload,
+					);
 				}
 			}
 			return text;

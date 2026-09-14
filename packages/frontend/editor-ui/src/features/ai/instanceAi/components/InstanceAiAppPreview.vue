@@ -7,7 +7,11 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import AppDetailsView from '@/features/apps/AppDetailsView.vue';
 import { useAppLivePreview } from '@/features/apps/composables/useAppLivePreview';
 import type { App } from '@/features/apps/apps.types';
-import { getLatestAppSourceEditId, isAppCreatedIn } from '../canvasPreview.utils';
+import {
+	getLatestAppSourceEditId,
+	isAppCreatedIn,
+	isAppPreviewShownIn,
+} from '../canvasPreview.utils';
 import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY } from '../constants';
@@ -61,17 +65,22 @@ const live = useAppLivePreview(
 
 // The run that creates the app starts from the scaffold, and a theme write
 // stores a source before the home page is touched; the dev server would show
-// the starter template until then. Hold the frame until that run ends. A
-// thread reopened on an existing app has no create in its active run.
+// the starter template until then. Hold the frame until the agent says the
+// template is gone (`apps show-preview`), or until that run ends. A thread
+// reopened on an existing app has no create in its active run.
 const creatingRun = computed(() => {
 	const runId = thread.activeRunId;
 	if (runId === null) return false;
-	return thread.messages.some(
-		(m) =>
-			m.role === 'assistant' &&
-			(m.runId === runId || (m.runIds?.includes(runId) ?? false)) &&
-			m.agentTree !== undefined &&
-			isAppCreatedIn(m.agentTree, props.appId),
+	const trees = thread.messages.flatMap((m) =>
+		m.role === 'assistant' &&
+		(m.runId === runId || (m.runIds?.includes(runId) ?? false)) &&
+		m.agentTree !== undefined
+			? [m.agentTree]
+			: [],
+	);
+	return (
+		trees.some((tree) => isAppCreatedIn(tree, props.appId)) &&
+		!trees.some((tree) => isAppPreviewShownIn(tree, props.appId))
 	);
 });
 const liveUrl = computed(() => (creatingRun.value ? undefined : live.liveUrl.value));

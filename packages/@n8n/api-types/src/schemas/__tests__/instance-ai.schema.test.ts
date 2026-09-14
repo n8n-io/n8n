@@ -363,15 +363,17 @@ describe('confirmationRequestPayloadSchema', () => {
 
 	it('preserves the app binding details of a workflow bind approval', () => {
 		const payload = makeConfirmation({
-			appBinding: {
-				kind: 'workflow',
-				appId: 'app-1',
-				appName: 'Runner',
-				appNamespace: 'runner',
-				workflowId: 'wf-1',
-				workflowName: 'Echo',
-				key: 'submit',
-			},
+			appBindings: [
+				{
+					kind: 'workflow',
+					appId: 'app-1',
+					appName: 'Runner',
+					appNamespace: 'runner',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+				},
+			],
 		});
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
@@ -379,17 +381,19 @@ describe('confirmationRequestPayloadSchema', () => {
 
 	it('preserves the app binding details of a data table bind approval', () => {
 		const payload = makeConfirmation({
-			appBinding: {
-				kind: 'dataTable',
-				appId: 'app-1',
-				appName: 'Board',
-				appNamespace: 'board',
-				dataTableId: 'dt-1',
-				dataTableName: 'Tasks',
-				key: 'tasks',
-				permissions: ['read', 'write'],
-				projectId: 'proj-1',
-			},
+			appBindings: [
+				{
+					kind: 'dataTable',
+					appId: 'app-1',
+					appName: 'Board',
+					appNamespace: 'board',
+					dataTableId: 'dt-1',
+					dataTableName: 'Tasks',
+					key: 'tasks',
+					permissions: ['read', 'write'],
+					projectId: 'proj-1',
+				},
+			],
 		});
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
@@ -397,34 +401,46 @@ describe('confirmationRequestPayloadSchema', () => {
 
 	it('preserves the app binding details of an agent bind approval', () => {
 		const payload = makeConfirmation({
-			appBinding: {
-				kind: 'agent',
-				appId: 'app-1',
-				appName: 'Helpdesk',
-				appNamespace: 'helpdesk',
-				agentId: 'agent-1',
-				agentName: 'Support',
-				key: 'support',
-				permissions: ['chat', 'history'],
-				published: false,
-				projectId: 'proj-1',
-			},
+			appBindings: [
+				{
+					kind: 'agent',
+					appId: 'app-1',
+					appName: 'Helpdesk',
+					appNamespace: 'helpdesk',
+					agentId: 'agent-1',
+					agentName: 'Support',
+					key: 'support',
+					permissions: ['chat', 'history'],
+					published: false,
+					projectId: 'proj-1',
+				},
+			],
 		});
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
 	});
 
+	it('rejects an empty app bindings list', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({ appBindings: [] }),
+		);
+
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects an app binding without a kind', () => {
 		const result = confirmationRequestPayloadSchema.safeParse(
 			makeConfirmation({
-				appBinding: {
-					appId: 'app-1',
-					appName: 'Runner',
-					appNamespace: 'runner',
-					workflowId: 'wf-1',
-					workflowName: 'Echo',
-					key: 'submit',
-				} as unknown as InstanceAiConfirmationRequestPayload['appBinding'],
+				appBindings: [
+					{
+						appId: 'app-1',
+						appName: 'Runner',
+						appNamespace: 'runner',
+						workflowId: 'wf-1',
+						workflowName: 'Echo',
+						key: 'submit',
+					},
+				] as unknown as InstanceAiConfirmationRequestPayload['appBindings'],
 			}),
 		);
 

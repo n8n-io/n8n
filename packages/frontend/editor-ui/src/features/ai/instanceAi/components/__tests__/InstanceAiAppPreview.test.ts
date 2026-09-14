@@ -20,14 +20,30 @@ const appEdit = (toolCallId: string, path: string): InstanceAiAgentNode => ({
 	timeline: [],
 });
 
+const appsCall = (
+	toolCallId: string,
+	args: Record<string, unknown>,
+	result?: unknown,
+): InstanceAiAgentNode => ({
+	agentId: 'agent-1',
+	role: 'orchestrator',
+	status: 'active',
+	textContent: '',
+	reasoning: '',
+	toolCalls: [{ toolCallId, toolName: 'apps', args, isLoading: result === undefined, result }],
+	children: [],
+	timeline: [],
+});
+
 const threadState = reactive({
 	id: 'thread-1',
 	isStreaming: false,
+	activeRunId: null as string | null,
 	producedArtifacts: new Map<
 		string,
 		{ type: string; id: string; name: string; projectId: string; namespace?: string }
 	>([['app-1', { type: 'app', id: 'app-1', name: 'Greeter', projectId: 'proj-1' }]]),
-	messages: [] as Array<{ agentTree?: InstanceAiAgentNode }>,
+	messages: [] as Array<{ agentTree?: InstanceAiAgentNode; role?: string; runId?: string }>,
 });
 const metadataState = ref<Record<string, unknown>>();
 const updateThreadMetadataMock = vi.fn(
@@ -127,6 +143,7 @@ describe('InstanceAiAppPreview', () => {
 		settledCount.value = 0;
 		previewAhead.value = false;
 		threadState.messages = [];
+		threadState.activeRunId = null;
 		threadState.producedArtifacts.get('app-1')!.namespace = undefined;
 		markPreviewPublished.mockClear();
 		updateThreadMetadataMock.mockClear();
@@ -270,6 +287,58 @@ describe('InstanceAiAppPreview', () => {
 		wrapper.getComponent(AppDetailsViewStub).vm.$emit('app-loaded', loadedApp());
 
 		expect(latestSourceEditId.value).toBe('tc-1');
+	});
+
+	describe('during the run that creates the app', () => {
+		const ready = {
+			status: 'ready',
+			url: '/apps-preview/tok/',
+			expiresAt: '2026-09-09T00:00:00Z',
+		} as const;
+		const created = {
+			agentTree: appsCall('tc-create', { action: 'create' }, { app: { id: 'app-1' } }),
+		};
+
+		beforeEach(() => {
+			liveStatus.value = ready;
+			threadState.activeRunId = 'run-1';
+		});
+
+		it('holds the frame as starting until the run ends', async () => {
+			threadState.messages = [{ role: 'assistant', runId: 'run-1', ...created }];
+			const wrapper = mountPreview();
+			const view = wrapper.get('[data-test-id="app-details-view-stub"]');
+
+			expect(view.attributes('data-live-status')).toBe('starting');
+			expect(view.attributes('data-live-url')).toBeUndefined();
+
+			threadState.activeRunId = null;
+			await flushPromises();
+			expect(view.attributes('data-live-url')).toBe('/apps-preview/tok/');
+		});
+
+		it('releases the frame once the agent calls show-preview for this app', async () => {
+			threadState.messages = [{ role: 'assistant', runId: 'run-1', ...created }];
+			const wrapper = mountPreview();
+			const view = wrapper.get('[data-test-id="app-details-view-stub"]');
+
+			threadState.messages.push({
+				role: 'assistant',
+				runId: 'run-1',
+				agentTree: appsCall('tc-show', { action: 'show-preview', appId: 'app-2' }),
+			});
+			await flushPromises();
+			expect(view.attributes('data-live-url')).toBeUndefined();
+
+			threadState.messages.push({
+				role: 'assistant',
+				runId: 'run-1',
+				agentTree: appsCall('tc-show-2', { action: 'show-preview', appId: 'app-1' }),
+			});
+			await flushPromises();
+			expect(view.attributes('data-live-status')).toBe('ready');
+			expect(view.attributes('data-live-url')).toBe('/apps-preview/tok/');
+		});
 	});
 
 	it('shows the building indicator while an apps build call is in flight', () => {

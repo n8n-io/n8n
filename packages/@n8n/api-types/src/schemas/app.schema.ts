@@ -34,7 +34,11 @@ export const appThemeModeSchema = z.enum(['light', 'dark', 'system']);
 // What the Theme tab and the `apps` tool choose from. The server turns these
 // into CSS variables so the contrast, tint and spacing maths lives in one place.
 export const appThemeSettingsSchema = z.object({
-	mode: appThemeModeSchema,
+	mode: appThemeModeSchema
+		.default('system')
+		.describe(
+			'"system" follows the visitor\'s OS setting; pick "dark" only when the look asks for it',
+		),
 	primary: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a 6-digit hex color, e.g. "#ff6900"'),
 	/** Corner radius in px; the template default is 4. */
 	radius: z.number().int().min(0).max(32).optional(),

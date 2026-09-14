@@ -239,7 +239,10 @@ function parseSchemaArray<T>(value: unknown, schema: z.ZodType<T>): T[] | undefi
 	return parsed.length > 0 ? parsed : undefined;
 }
 
-function parseSchemaRecord<T>(value: unknown, schema: z.ZodType<T>): T | undefined {
+function parseSchemaRecord<T>(
+	value: unknown,
+	schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+): T | undefined {
 	if (!isRecord(value)) return undefined;
 	const parsed = schema.safeParse(value);
 	return parsed.success ? parsed.data : undefined;
@@ -343,7 +346,7 @@ function mapSuspendedChunk(
 	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
-	const appBinding = parseSchemaRecord(suspendPayload.appBinding, appBindingMetaSchema);
+	const appBindings = parseSchemaArray(suspendPayload.appBindings, appBindingMetaSchema);
 	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
 	const credentialDestination = parseSchemaRecord(
@@ -394,7 +397,7 @@ function mapSuspendedChunk(
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
-			...(appBinding ? { appBinding } : {}),
+			...(appBindings ? { appBindings } : {}),
 			...(appBlueprint ? { appBlueprint } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
 			...(credentialDestination ? { credentialDestination } : {}),

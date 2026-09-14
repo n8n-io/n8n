@@ -571,14 +571,14 @@ describe('mapAgentChunkToEvent', () => {
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
 				toolName: 'apps',
-				suspendPayload: { requestId: 'request-1', message: 'Connect', appBinding: payload },
+				suspendPayload: { requestId: 'request-1', message: 'Connect', appBindings: payload },
 			});
 
-		expect(suspended(appBinding)).toMatchObject({
+		expect(suspended([appBinding])).toMatchObject({
 			type: 'confirmation-request',
-			payload: { message: 'Connect', appBinding },
+			payload: { message: 'Connect', appBindings: [appBinding] },
 		});
-		expect(suspended({ appId: 'app-1' })).not.toHaveProperty('payload.appBinding');
+		expect(suspended([{ appId: 'app-1' }])).not.toHaveProperty('payload.appBindings');
 	});
 
 	it('maps confirmations with a channelConfig payload', () => {

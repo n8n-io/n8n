@@ -173,11 +173,17 @@ const bindingsSchema = z.object({
 	appId: z.string(),
 });
 
+/** A marker for the editor: the call in the run's agent tree lifts the hold on the frame. */
+const showPreviewSchema = z.object({
+	action: z.literal('show-preview'),
+	appId: z.string(),
+});
+
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
-	appBinding: appBindingMetaSchema.optional(),
+	appBindings: z.array(appBindingMetaSchema).min(1).optional(),
 });
 
 interface ConfirmationToolContext {
@@ -199,13 +205,15 @@ type BindPermission = 'bindAppWorkflow' | 'bindAppDataTable' | 'bindAppAgent';
 const DEFAULT_AGENT_PERMISSIONS: AgentBinding['permissions'] = ['chat', 'history'];
 type UnbindInput = z.infer<typeof unbindSchema>;
 type BindingsInput = z.infer<typeof bindingsSchema>;
+type ShowPreviewInput = z.infer<typeof showPreviewSchema>;
 type AppsInput =
 	| CreateInput
 	| PublishInput
 	| AddComponentInput
 	| BindInput
 	| UnbindInput
-	| BindingsInput;
+	| BindingsInput
+	| ShowPreviewInput;
 
 /** Not a tool action: n8n's publish pipeline calls `handleBuild` directly. */
 interface BuildInput {
@@ -1071,7 +1079,7 @@ async function requireBindApproval(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
 	permission: BindPermission,
-	describe: () => Promise<{ message: string; appBinding?: AppBindingMeta }>,
+	describe: () => Promise<BindDescription>,
 ): Promise<AppActionDenied | null> {
 	const mode = context.permissions?.[permission];
 	if (mode === 'blocked') {
@@ -1093,7 +1101,22 @@ async function requireBindApproval(
 }
 
 type BoundApp = Omit<AppSummary, 'createdAt'>;
-type BindDescription = { message: string; appBinding?: AppBindingMeta };
+// The card shows one row per binding; a binding the preview cannot resolve (the write
+// refuses it with the reason) drops the card and leaves the plain text.
+type BindDescription = { message: string; appBindings?: AppBindingMeta[] };
+
+function describeBindings<T extends DescribedBinding>(
+	bindings: AppBinding[],
+	described: DescribedBinding[],
+	is: (binding: DescribedBinding) => binding is T,
+	toMeta: (binding: T) => AppBindingMeta,
+): Pick<BindDescription, 'appBindings'> {
+	const resolved = bindings.flatMap((binding) => {
+		const match = described.find((candidate) => candidate.key === binding.key);
+		return match && is(match) ? [match] : [];
+	});
+	return resolved.length === bindings.length ? { appBindings: resolved.map(toMeta) } : {};
+}
 
 /** The model passes one flat object per binding; the service wants the discriminated union. */
 function toAppBinding(flat: FlatBinding): AppBinding | AppActionDenied {
@@ -1144,22 +1167,18 @@ async function describeWorkflowBind(
 	);
 	// One line: the card renders the message as plain HTML text, which folds newlines.
 	const message = `${lines.join('; ')} (callable by anyone with the app URL)`;
-	// The structured card shows one binding. A multi-binding call, or a workflow the
-	// preview cannot resolve (the write refuses it with the reason), gets the plain text.
-	const [described] =
-		bindings.length === 1 ? (await appService.previewBindings(app.id, bindings)).bindings : [];
-	if (!described || !isWorkflowBinding(described)) return { message };
+	const described = (await appService.previewBindings(app.id, bindings)).bindings;
 	return {
 		message,
-		appBinding: {
+		...describeBindings(bindings, described, isWorkflowBinding, (binding) => ({
 			kind: 'workflow',
 			appId: app.id,
 			appName: app.name,
 			appNamespace: app.namespace,
-			workflowId: described.workflowId,
-			workflowName: described.name,
-			key: described.key,
-		},
+			workflowId: binding.workflowId,
+			workflowName: binding.name,
+			key: binding.key,
+		})),
 	};
 }
 
@@ -1176,21 +1195,19 @@ async function describeDataTableBind(
 			`Connect data table "${nameOf(key)}" (${dataTableId}) to app "${app.name}" as "${key}" with ${permissions.join(' and ')} access`,
 	);
 	const message = `${lines.join('; ')} (anyone with the app URL gets this access)`;
-	const [only] = described;
-	if (bindings.length !== 1 || !only || !isDataTableBinding(only)) return { message };
 	return {
 		message,
-		appBinding: {
+		...describeBindings(bindings, described, isDataTableBinding, (binding) => ({
 			kind: 'dataTable',
 			appId: app.id,
 			appName: app.name,
 			appNamespace: app.namespace,
-			dataTableId: only.dataTableId,
-			dataTableName: only.name,
-			key: only.key,
-			permissions: only.permissions,
+			dataTableId: binding.dataTableId,
+			dataTableName: binding.name,
+			key: binding.key,
+			permissions: binding.permissions,
 			projectId: app.projectId,
-		},
+		})),
 	};
 }
 
@@ -1213,25 +1230,21 @@ async function describeAgentBind(
 	);
 	// Visitors are anonymous: the app forwards the agent's approval requests to them.
 	const message = `${lines.join('; ')} (anyone with the app URL gets this access and answers the agent's approval requests)`;
-	const [described] =
-		bindings.length === 1
-			? (await requireAppService(context).previewBindings(app.id, bindings)).bindings
-			: [];
-	if (!described || !isAgentBinding(described)) return { message };
+	const described = (await requireAppService(context).previewBindings(app.id, bindings)).bindings;
 	return {
 		message,
-		appBinding: {
+		...describeBindings(bindings, described, isAgentBinding, (binding) => ({
 			kind: 'agent',
 			appId: app.id,
 			appName: app.name,
 			appNamespace: app.namespace,
-			agentId: described.agentId,
-			agentName: described.name,
-			key: described.key,
-			permissions: described.permissions,
-			published: described.published,
+			agentId: binding.agentId,
+			agentName: binding.name,
+			key: binding.key,
+			permissions: binding.permissions,
+			published: binding.published,
 			projectId: app.projectId,
-		},
+		})),
 	};
 }
 
@@ -1369,6 +1382,7 @@ export function createAppsTool(context: InstanceAiContext) {
 			bindSchema,
 			unbindSchema,
 			bindingsSchema,
+			showPreviewSchema,
 		]),
 	);
 
@@ -1380,7 +1394,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`publish` asks the user to confirm, then builds the current source and updates /apps/<namespace>/; returns `url`, `{ denied }`, or `{ error, stage, message, log }`. ' +
 				'`add-component` copies catalog components (references/design-system.md) into src/components/ui/; returns the names added. ' +
 				'`bind` connects workflows (`{ key, kind: "workflow", workflowId }`), data tables (`{ key, kind: "dataTable", dataTableId, permissions }`) or published agents (`{ key, kind: "agent", agentId, permissions }`), one kind per call, after user approval; returns every binding with its types. ' +
-				'`unbind` removes a key; `bindings` lists them. All three rewrite src/n8n-bindings.d.ts.',
+				'`unbind` removes a key; `bindings` lists them. All three rewrite src/n8n-bindings.d.ts. ' +
+				'`show-preview` reveals the live preview during the run that creates the app. Call it once the template is gone and your own app shows, not when it is finished.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -1399,6 +1414,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleUnbind(context, input, ctx.abortSignal);
 				case 'bindings':
 					return await handleBindings(context, input, ctx.abortSignal);
+				case 'show-preview':
+					return { appId: input.appId, shown: true };
 			}
 		})
 		.build();

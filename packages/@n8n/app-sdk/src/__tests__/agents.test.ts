@@ -125,6 +125,24 @@ describe('agents', () => {
 		});
 	});
 
+	it('text() throws agent_suspended with the payload when the turn ends on an approval request', async () => {
+		const payload = { toolCallId: 'call-1', runId: 'run-1', toolName: 'send_email', input: {} };
+		fetchMock.mockResolvedValue(
+			sseResponse([
+				dataLine({ type: 'text-delta', id: 't', delta: 'Sure, sending' }),
+				dataLine({ type: 'tool-call-suspended', payload }),
+			]),
+		);
+
+		const error = await client()
+			.agents.support.chat('hi')
+			.text()
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(N8nAppError);
+		expect(error).toMatchObject({ status: 200, code: 'agent_suspended', issues: payload });
+	});
+
 	it('cancels the response body when the consumer stops before the stream ends', async () => {
 		const cancel = vi.fn();
 		const encoder = new TextEncoder();

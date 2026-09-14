@@ -60,6 +60,7 @@ then import each as `import { X } from '@/components/ui/<name>'`:
 | Switch | `Switch` | `v-model` a boolean ref. |
 | Checkbox | `Checkbox` | `v-model` a boolean ref. |
 | Tooltip | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` | `TooltipProvider` is a plain passthrough (Ark UI needs no shared context) — wrap the tree in one only to match other libraries' convention if you want to. |
+| Markdown | `Markdown`, `renderMarkdown` | `<Markdown :source="text" />` renders Markdown (agent replies, rich text) as styled, sanitized HTML: raw HTML in the source is escaped, links open in a new tab. `inline` drops the wrapping paragraph. `renderMarkdown(source, inline?)` returns the HTML string for the rare case a component needs it. Never `v-html` agent text. |
 | DropdownMenu | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioGroup`, `DropdownMenuRadioItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger` | For a submenu, nest a `DropdownMenuSub` inside the parent's `DropdownMenuContent`, with a `DropdownMenuSubTrigger` and its own `DropdownMenuContent` inside it. |
 
 Every `Item`/`Trigger`/`CheckboxItem`/`RadioItem` that identifies one entry in

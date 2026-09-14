@@ -506,6 +506,17 @@ export function isAppCreatedIn(node: InstanceAiAgentNode, appId: string): boolea
 	return node.children.some((child) => isAppCreatedIn(child, appId));
 }
 
+/** Whether an `apps show-preview` call for `appId` is in this agent tree. The call itself is the signal, so in-flight counts. */
+export function isAppPreviewShownIn(node: InstanceAiAgentNode, appId: string): boolean {
+	for (const tc of node.toolCalls) {
+		const args = tc.args as { action?: string; appId?: string } | undefined;
+		if (tc.toolName === 'apps' && args?.action === 'show-preview' && args.appId === appId) {
+			return true;
+		}
+	}
+	return node.children.some((child) => isAppPreviewShownIn(child, appId));
+}
+
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
 	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
 		return undefined;

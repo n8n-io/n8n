@@ -5,13 +5,16 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 
-const props = defineProps<{ appBinding: AppBindingMeta; options: ApprovalOption[] }>();
+const props = defineProps<{ appBindings: AppBindingMeta[]; options: ApprovalOption[] }>();
 const emit = defineEmits<{ select: [key: string] }>();
 
 const i18n = useI18n();
 
+// One call binds one kind, so the first binding names the prompt for all of them.
+const kind = computed(() => props.appBindings[0]?.kind);
+
 const promptKey = computed(() => {
-	switch (props.appBinding.kind) {
+	switch (kind.value) {
 		case 'dataTable':
 			return 'instanceAi.appBinding.dataTable.prompt';
 		case 'agent':
@@ -21,8 +24,7 @@ const promptKey = computed(() => {
 	}
 });
 
-const accessKey = computed(() => {
-	const binding = props.appBinding;
+function accessKey(binding: AppBindingMeta) {
 	if (binding.kind === 'dataTable') {
 		return binding.permissions.includes('read')
 			? binding.permissions.includes('write')
@@ -38,7 +40,7 @@ const accessKey = computed(() => {
 			: 'instanceAi.appBinding.agent.access.history';
 	}
 	return null;
-});
+}
 </script>
 
 <template>
@@ -47,71 +49,78 @@ const accessKey = computed(() => {
 			<N8nText tag="div" size="medium" bold>
 				{{ i18n.baseText(promptKey) }}
 			</N8nText>
-			<div :class="$style.row">
-				<N8nIcon icon="app-window" size="large" />
-				<N8nText size="small" bold data-test-id="instance-ai-app-binding-app">
-					{{ appBinding.appName }}
-				</N8nText>
-				<N8nIcon icon="arrow-right" size="small" color="text-light" />
-				<template v-if="appBinding.kind === 'dataTable'">
-					<N8nIcon icon="table" size="large" />
-					<N8nLink
-						:to="`/projects/${appBinding.projectId}/datatables/${appBinding.dataTableId}`"
-						new-window
-						theme="text"
-						size="small"
-						bold
-						data-test-id="instance-ai-app-binding-data-table"
-					>
-						{{ appBinding.dataTableName }}
-					</N8nLink>
-				</template>
-				<template v-else-if="appBinding.kind === 'agent'">
-					<N8nIcon icon="robot" size="large" />
-					<N8nLink
-						:to="`/projects/${appBinding.projectId}/agents/${appBinding.agentId}`"
-						new-window
-						theme="text"
-						size="small"
-						bold
-						data-test-id="instance-ai-app-binding-agent"
-					>
-						{{ appBinding.agentName }}
-					</N8nLink>
-					<N8nText
-						v-if="!appBinding.published"
-						size="small"
-						color="warning"
-						data-test-id="instance-ai-app-binding-not-published"
-					>
-						{{ i18n.baseText('apps.connections.agent.notPublished') }}
+			<div
+				v-for="binding in appBindings"
+				:key="binding.key"
+				:class="$style.binding"
+				data-test-id="instance-ai-app-binding"
+			>
+				<div :class="$style.row">
+					<N8nIcon icon="app-window" size="large" />
+					<N8nText size="small" bold data-test-id="instance-ai-app-binding-app">
+						{{ binding.appName }}
 					</N8nText>
-				</template>
-				<template v-else>
-					<N8nIcon icon="workflow" size="large" />
-					<N8nLink
-						:to="`/workflow/${appBinding.workflowId}`"
-						new-window
-						theme="text"
-						size="small"
-						bold
-						data-test-id="instance-ai-app-binding-workflow"
-					>
-						{{ appBinding.workflowName }}
-					</N8nLink>
-				</template>
+					<N8nIcon icon="arrow-right" size="small" color="text-light" />
+					<template v-if="binding.kind === 'dataTable'">
+						<N8nIcon icon="table" size="large" />
+						<N8nLink
+							:to="`/projects/${binding.projectId}/datatables/${binding.dataTableId}`"
+							new-window
+							theme="text"
+							size="small"
+							bold
+							data-test-id="instance-ai-app-binding-data-table"
+						>
+							{{ binding.dataTableName }}
+						</N8nLink>
+					</template>
+					<template v-else-if="binding.kind === 'agent'">
+						<N8nIcon icon="robot" size="large" />
+						<N8nLink
+							:to="`/projects/${binding.projectId}/agents/${binding.agentId}`"
+							new-window
+							theme="text"
+							size="small"
+							bold
+							data-test-id="instance-ai-app-binding-agent"
+						>
+							{{ binding.agentName }}
+						</N8nLink>
+						<N8nText
+							v-if="!binding.published"
+							size="small"
+							color="warning"
+							data-test-id="instance-ai-app-binding-not-published"
+						>
+							{{ i18n.baseText('apps.connections.agent.notPublished') }}
+						</N8nText>
+					</template>
+					<template v-else>
+						<N8nIcon icon="workflow" size="large" />
+						<N8nLink
+							:to="`/workflow/${binding.workflowId}`"
+							new-window
+							theme="text"
+							size="small"
+							bold
+							data-test-id="instance-ai-app-binding-workflow"
+						>
+							{{ binding.workflowName }}
+						</N8nLink>
+					</template>
+				</div>
+				<N8nText
+					v-if="accessKey(binding)"
+					tag="div"
+					size="small"
+					color="text-light"
+					data-test-id="instance-ai-app-binding-access"
+				>
+					{{ i18n.baseText(accessKey(binding)!) }}
+				</N8nText>
 			</div>
 			<N8nText
-				v-if="accessKey"
-				tag="div"
-				size="small"
-				color="text-light"
-				data-test-id="instance-ai-app-binding-access"
-			>
-				{{ i18n.baseText(accessKey) }}
-			</N8nText>
-			<N8nText
-				v-if="appBinding.kind === 'agent'"
+				v-if="kind === 'agent'"
 				tag="div"
 				size="small"
 				color="text-light"
@@ -131,6 +140,12 @@ const accessKey = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.binding {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 }
 
 .row {

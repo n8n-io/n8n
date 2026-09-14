@@ -13,6 +13,7 @@ import {
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
 	isAgentBuildingApp,
+	isAppPreviewShownIn,
 	getLatestAppSourceEditId,
 } from '../canvasPreview.utils';
 
@@ -1430,6 +1431,29 @@ describe('isAgentBuildingApp', () => {
 		const child = makeAgentNode({ agentId: 'agent-2', toolCalls: [buildCall()] });
 		const parent = makeAgentNode({ children: [child] });
 		expect(isAgentBuildingApp(parent, 'app-1')).toBe(true);
+	});
+});
+
+describe('isAppPreviewShownIn', () => {
+	const showCall = (appId: string, isLoading = true) =>
+		makeToolCall({ toolName: 'apps', args: { action: 'show-preview', appId }, isLoading });
+
+	test('is true for an in-flight or completed show-preview call for the app, on any node', () => {
+		expect(isAppPreviewShownIn(makeAgentNode({ toolCalls: [showCall('app-1')] }), 'app-1')).toBe(
+			true,
+		);
+		const child = makeAgentNode({ agentId: 'agent-2', toolCalls: [showCall('app-1', false)] });
+		expect(isAppPreviewShownIn(makeAgentNode({ children: [child] }), 'app-1')).toBe(true);
+	});
+
+	test('is false for another app or another apps action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				showCall('app-2'),
+				makeToolCall({ toolName: 'apps', args: { action: 'bindings', appId: 'app-1' } }),
+			],
+		});
+		expect(isAppPreviewShownIn(node, 'app-1')).toBe(false);
 	});
 });
 

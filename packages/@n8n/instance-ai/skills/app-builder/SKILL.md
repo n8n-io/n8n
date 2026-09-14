@@ -55,8 +55,9 @@ the conversation is already bound to an app.
      that must survive a reload (`data-tables(action="list")`, or one you
      will create); `agent`: a published agent (`agents(action="list")`).
      Empty when the data stays in the browser.
-   - `theme`: `primary` hex, `mode`, and where the look asks for it `radius`
-     (px), `font`, `density` (`compact`|`comfortable`|`spacious`) and `tone`
+   - `theme`: `primary` hex, and where the look asks for it `mode` (default
+     `system`, which follows the visitor's OS), `radius` (px), `font`,
+     `density` (`compact`|`comfortable`|`spacious`) and `tone`
      (`neutral`|`tinted`). Playful → warm primary, large radius, spacious,
      tinted; minimal → gray or one cool primary, small radius, neutral; bold
      → saturated primary, tinted, dark mode.
@@ -70,6 +71,10 @@ the conversation is already bound to an app.
    values; `bind` each connection (creating a missing data table first);
    write the pages and routes; write `BLUEPRINT.md` at the app root (name,
    summary, pages, connections, look) so a later conversation can read it.
+   The preview stays hidden during this run until you call
+   `apps(action="show-preview", appId)`. Call it as soon as your own pages
+   have replaced the template's placeholder content, so the user watches the
+   rest take shape. The bar is "nothing generic left on screen", not "done".
 
 ## The loop
 
@@ -201,10 +206,13 @@ for every bound key. Details of the types, warnings and `denied` reasons:
 `agents(action="list")` shows the ids; the agent must be published or `chat`
 fails with `agent_not_published`. `apps(action="bind", appId, bindings=[{ key:
 "support", kind: "agent", agentId, permissions: ["chat", "history"] }])`, then
-`n8n.agents.support.chat(message)` in the app. Visitors are anonymous, get
-their own session and answer the agent's approval cards themselves:
-`references/app-sdk.md` ("Agents") describes the chat loop, the approval
-cards and `messages()` on load.
+`n8n.agents.support.chat(message)` in the app. A chat UI iterates the stream
+and appends each `text-delta` as it arrives; `.text()` is for a one-shot
+answer only. Agents reply in Markdown: add the `markdown` catalog component
+and render replies with `<Markdown :source>`, never `v-html`. Visitors are
+anonymous, get their own session and answer the agent's approval cards
+themselves: `references/app-sdk.md` ("Agents") describes the chat loop, the
+approval cards and `messages()` on load.
 
 ## Template
 

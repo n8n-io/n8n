@@ -1546,8 +1546,15 @@ describe('apps tool', () => {
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
-		it('suspends with plain text naming every workflow when several are bound at once', async () => {
+		it('suspends with one card row per workflow when several are bound at once', async () => {
 			const context = createMockContext();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [
+					SUBMIT_BINDING,
+					{ ...SUBMIT_BINDING, key: 'notify', workflowId: 'wf-2', name: 'Notify' },
+				],
+				warnings: [],
+			});
 			const suspend = vi.fn().mockResolvedValue('suspended');
 
 			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
@@ -1560,8 +1567,16 @@ describe('apps tool', () => {
 					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify" ' +
 					'(callable by anyone with the app URL)',
 				severity: 'warning',
+				appBindings: [
+					expect.objectContaining({ kind: 'workflow', workflowId: 'wf-1', key: 'submit' }),
+					expect.objectContaining({
+						kind: 'workflow',
+						workflowId: 'wf-2',
+						workflowName: 'Notify',
+						key: 'notify',
+					}),
+				],
 			});
-			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
@@ -1584,15 +1599,17 @@ describe('apps tool', () => {
 				message:
 					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit" (callable by anyone with the app URL)',
 				severity: 'warning',
-				appBinding: {
-					kind: 'workflow',
-					appId: 'app-1',
-					appName: 'Greeter',
-					appNamespace: 'greeter',
-					workflowId: 'wf-1',
-					workflowName: 'Echo',
-					key: 'submit',
-				},
+				appBindings: [
+					{
+						kind: 'workflow',
+						appId: 'app-1',
+						appName: 'Greeter',
+						appNamespace: 'greeter',
+						workflowId: 'wf-1',
+						workflowName: 'Echo',
+						key: 'submit',
+					},
+				],
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
@@ -1611,7 +1628,7 @@ describe('apps tool', () => {
 				{ resumeData: undefined, suspend },
 			);
 
-			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBinding');
+			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBindings');
 		});
 
 		it('falls back to the workflow id when the workflow cannot be read', async () => {
@@ -1682,22 +1699,24 @@ describe('apps tool', () => {
 				message:
 					'Connect data table "Tasks" (dt-1) to app "Greeter" as "tasks" with read and write access (anyone with the app URL gets this access)',
 				severity: 'warning',
-				appBinding: {
-					kind: 'dataTable',
-					appId: 'app-1',
-					appName: 'Greeter',
-					appNamespace: 'greeter',
-					dataTableId: 'dt-1',
-					dataTableName: 'Tasks',
-					key: 'tasks',
-					permissions: ['read', 'write'],
-					projectId: 'proj-1',
-				},
+				appBindings: [
+					{
+						kind: 'dataTable',
+						appId: 'app-1',
+						appName: 'Greeter',
+						appNamespace: 'greeter',
+						dataTableId: 'dt-1',
+						dataTableName: 'Tasks',
+						key: 'tasks',
+						permissions: ['read', 'write'],
+						projectId: 'proj-1',
+					},
+				],
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
-		it('suspends with plain text naming every table when several are bound at once', async () => {
+		it('falls back to plain text when one of several tables is missing', async () => {
 			const context = createMockContext();
 			appServiceMock(context, 'previewBindings').mockResolvedValue({
 				bindings: [TASKS_BINDING, MISSING_BINDING],
@@ -1799,23 +1818,25 @@ describe('apps tool', () => {
 					'Connect agent "Support" (agent-1) to app "Greeter" as "support" with chat and history access ' +
 					"(anyone with the app URL gets this access and answers the agent's approval requests)",
 				severity: 'warning',
-				appBinding: {
-					kind: 'agent',
-					appId: 'app-1',
-					appName: 'Greeter',
-					appNamespace: 'greeter',
-					agentId: 'agent-1',
-					agentName: 'Support',
-					key: 'support',
-					permissions: ['chat', 'history'],
-					published: false,
-					projectId: 'proj-1',
-				},
+				appBindings: [
+					{
+						kind: 'agent',
+						appId: 'app-1',
+						appName: 'Greeter',
+						appNamespace: 'greeter',
+						agentId: 'agent-1',
+						agentName: 'Support',
+						key: 'support',
+						permissions: ['chat', 'history'],
+						published: false,
+						projectId: 'proj-1',
+					},
+				],
 			});
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
 		});
 
-		it('suspends with plain text naming every agent when several are bound at once', async () => {
+		it('falls back to plain text when the preview resolves none of several agents', async () => {
 			const context = withDelegate();
 			resolveAgentName.mockResolvedValueOnce('Support').mockResolvedValueOnce(undefined);
 			const suspend = vi.fn().mockResolvedValue('suspended');
@@ -1832,7 +1853,6 @@ describe('apps tool', () => {
 				{ resumeData: undefined, suspend },
 			);
 
-			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
 			expect(suspend).toHaveBeenCalledWith({
 				requestId: expect.any(String),
 				message:
@@ -1850,7 +1870,7 @@ describe('apps tool', () => {
 			await runAction(context, bindInput, { resumeData: undefined, suspend });
 
 			expect(suspend.mock.calls[0][0].message).toContain('Connect agent "agent-1" (agent-1)');
-			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBinding');
+			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBindings');
 		});
 
 		it('is denied when the user rejects the card', async () => {
@@ -1947,6 +1967,17 @@ describe('apps tool', () => {
 				renderBindingsTypes([SUBMIT_BINDING, TASKS_BINDING]),
 				expect.objectContaining({ recursive: true }),
 			);
+		});
+	});
+
+	describe('show-preview', () => {
+		it('returns a marker without touching the app', async () => {
+			const context = createMockContext();
+
+			const result = await runAction(context, { action: 'show-preview' });
+
+			expect(result).toEqual({ appId: 'app-1', shown: true });
+			expect(appServiceMock(context, 'get')).not.toHaveBeenCalled();
 		});
 	});
 

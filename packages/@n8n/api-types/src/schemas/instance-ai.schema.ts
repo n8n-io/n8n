@@ -853,7 +853,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	webSearch: webSearchMetaSchema
 		.optional()
 		.describe('When present, renders web-search approval UI instead of generic confirm'),
-	appBinding: appBindingMetaSchema
+	appBindings: z
+		.array(appBindingMetaSchema)
+		.min(1)
 		.optional()
 		.describe('When present, renders the app binding approval UI instead of generic confirm'),
 	appBlueprint: appBlueprintSchema
@@ -922,7 +924,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
-	if (payload.appBinding) return true;
+	if (hasItems(payload.appBindings)) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 

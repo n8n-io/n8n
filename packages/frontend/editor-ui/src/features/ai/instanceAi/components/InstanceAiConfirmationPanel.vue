@@ -654,8 +654,8 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 						<!-- App binding -->
 						<AppBindingApproval
-							v-else-if="chunk.item.toolCall.confirmation.appBinding"
-							:app-binding="chunk.item.toolCall.confirmation.appBinding!"
+							v-else-if="chunk.item.toolCall.confirmation.appBindings"
+							:app-bindings="chunk.item.toolCall.confirmation.appBindings!"
 							:options="buildApprovalOptions(chunk.item)"
 							@select="(key) => handleApprovalSelect(chunk.item, key)"
 						/>

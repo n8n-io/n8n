@@ -185,18 +185,21 @@ A filter is `{ type?: 'and' | 'or', filters: [{ columnName, condition?, value }]
 import { n8n } from '@n8n/app-sdk';
 import type { ToolSuspendedPayload } from '@n8n/app-sdk';
 
-// One turn. The request starts on the first read; `text()` drains the stream
-// and joins the `text-delta` events.
-const reply = await n8n.agents.support.chat('How do I reset my password?').text();
-
-// Streaming. Render the text as it arrives and keep the suspension, if any.
-// `reply`, `error` and `pending` are the app's own reactive state.
+// A chat UI: one turn, streamed. The request starts on the first read. Append
+// each delta as it arrives and keep the suspension, if any. `reply`, `error`
+// and `pending` are the app's own reactive state; render `reply` with
+// `<Markdown :source="reply" />` from the catalog, since agents answer in Markdown.
 let pending: ToolSuspendedPayload | undefined;
 for await (const event of n8n.agents.support.chat(message)) {
   if (event.type === 'text-delta') reply.value += event.delta;
   if (event.type === 'tool-call-suspended') pending = event.payload;
   if (event.type === 'error') error.value = event.message;
 }
+
+// A one-shot answer with no UI to stream into (a summary, a label): `text()`
+// drains the stream and joins the `text-delta` events. It throws when the
+// agent asks for approval instead of answering, so a chat UI streams instead.
+const summary = await n8n.agents.support.chat('Summarize this ticket: …').text();
 
 // The agent asked for approval: render a card with Approve / Deny and send the
 // visitor's answer. `approved` is the button they clicked.
@@ -218,10 +221,11 @@ const { messages, openSuspensions } = await n8n.agents.support.messages();
 
 - `chat(message, opts?)` → `AgentChat`: an `AsyncIterable<AgentSseEvent>`
   with `text(): Promise<string>`. One `AgentChat` is one request: iterate it
-  or call `text()`, not both. `text()` throws `N8nAppError` (`status: 200`,
-  `code` from the event or `execution_failed`) when the stream carries an
-  `error` event, so a failed turn never reads as an empty reply. `opts`:
-  `sessionId` (default `sessionId()`), `signal`.
+  or call `text()`, not both. `text()` throws `N8nAppError` (`status: 200`)
+  with the event's code or `execution_failed` when the stream carries an
+  `error` event, and with `agent_suspended` when the turn ends on
+  `tool-call-suspended`, so a failed or paused turn never reads as an empty
+  reply. `opts`: `sessionId` (default `sessionId()`), `signal`.
 - The events are the same as the agent editor's stream: `text-start` /
   `text-delta` / `text-end` (the reply, `delta` per event), `reasoning-*`,
   `tool-input-*`, `tool-call` / `tool-execution-*` / `tool-result` (tool

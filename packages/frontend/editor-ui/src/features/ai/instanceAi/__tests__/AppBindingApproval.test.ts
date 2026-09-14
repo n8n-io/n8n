@@ -47,14 +47,14 @@ const OPTIONS: ApprovalOption[] = [
 ];
 
 const renderComponent = createComponentRenderer(AppBindingApproval, {
-	props: { appBinding: APP_BINDING, options: OPTIONS },
+	props: { appBindings: [APP_BINDING], options: OPTIONS },
 });
 
 describe('AppBindingApproval', () => {
 	it('shows the app, then the workflow linked in a new tab, and nothing else', () => {
 		const { getByTestId, getByText, queryByText } = renderComponent();
 
-		expect(getByText('Allow AI Assistant to connect a workflow to the app?')).toBeInTheDocument();
+		expect(getByText('Allow n8n Assistant to connect a workflow to the app?')).toBeInTheDocument();
 		const app = getByTestId('instance-ai-app-binding-app');
 		const link = getByTestId('instance-ai-app-binding-workflow');
 		expect(app).toHaveTextContent('Runner');
@@ -76,10 +76,12 @@ describe('AppBindingApproval', () => {
 
 	it('shows the app, the data table linked in a new tab, and the read-write access line', () => {
 		const { getByTestId, getByText, queryByTestId, queryByText } = renderComponent({
-			props: { appBinding: DATA_TABLE_BINDING },
+			props: { appBindings: [DATA_TABLE_BINDING] },
 		});
 
-		expect(getByText('Allow AI Assistant to connect a data table to the app?')).toBeInTheDocument();
+		expect(
+			getByText('Allow n8n Assistant to connect a data table to the app?'),
+		).toBeInTheDocument();
 		expect(getByTestId('instance-ai-app-binding-app')).toHaveTextContent('Board');
 		const link = getByTestId('instance-ai-app-binding-data-table');
 		expect(link).toHaveTextContent('Tasks');
@@ -92,9 +94,39 @@ describe('AppBindingApproval', () => {
 		expect(queryByText(/tasks/)).toBeNull();
 	});
 
+	it('shows one row with its own access line per data table when several are bound', () => {
+		const { getAllByTestId, getAllByText } = renderComponent({
+			props: {
+				appBindings: [
+					{
+						...DATA_TABLE_BINDING,
+						key: 'sessions',
+						dataTableName: 'Sessions',
+						permissions: ['read'],
+					},
+					{ ...DATA_TABLE_BINDING, key: 'agenda', dataTableId: 'dt-2', dataTableName: 'Agenda' },
+				],
+			},
+		});
+
+		expect(getAllByText('Allow n8n Assistant to connect a data table to the app?')).toHaveLength(1);
+		expect(
+			getAllByTestId('instance-ai-app-binding-app').map((el) => el.textContent?.trim()),
+		).toEqual(['Board', 'Board']);
+		const links = getAllByTestId('instance-ai-app-binding-data-table');
+		expect(links.map((el) => el.textContent?.trim())).toEqual(['Sessions', 'Agenda']);
+		expect(links[1]).toHaveAttribute('href', '/projects/proj-1/datatables/dt-2');
+		expect(
+			getAllByTestId('instance-ai-app-binding-access').map((el) => el.textContent?.trim()),
+		).toEqual([
+			'Anyone who can open the app can read this table.',
+			'Anyone who can open the app can read and change rows in this table.',
+		]);
+	});
+
 	it('shows the read-only access line for a read-only data table binding', () => {
 		const { getByTestId } = renderComponent({
-			props: { appBinding: { ...DATA_TABLE_BINDING, permissions: ['read'] } },
+			props: { appBindings: [{ ...DATA_TABLE_BINDING, permissions: ['read'] }] },
 		});
 
 		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(
@@ -104,7 +136,7 @@ describe('AppBindingApproval', () => {
 
 	it('shows the write-only access line for a data table binding without read', () => {
 		const { getByTestId } = renderComponent({
-			props: { appBinding: { ...DATA_TABLE_BINDING, permissions: ['write'] } },
+			props: { appBindings: [{ ...DATA_TABLE_BINDING, permissions: ['write'] }] },
 		});
 
 		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(
@@ -114,7 +146,7 @@ describe('AppBindingApproval', () => {
 
 	it('emits the selected option key for a data table binding', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			props: { appBinding: DATA_TABLE_BINDING },
+			props: { appBindings: [DATA_TABLE_BINDING] },
 		});
 
 		await userEvent.click(getByTestId('opt-always-allow'));
@@ -124,10 +156,10 @@ describe('AppBindingApproval', () => {
 
 	it('shows the app, the agent linked in a new tab, the chat-and-history access line and the approvals line', () => {
 		const { getByTestId, getByText, queryByTestId, queryByText } = renderComponent({
-			props: { appBinding: AGENT_BINDING },
+			props: { appBindings: [AGENT_BINDING] },
 		});
 
-		expect(getByText('Allow AI Assistant to connect an agent to the app?')).toBeInTheDocument();
+		expect(getByText('Allow n8n Assistant to connect an agent to the app?')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-app-binding-app')).toHaveTextContent('Helpdesk');
 		const link = getByTestId('instance-ai-app-binding-agent');
 		expect(link).toHaveTextContent('Support');
@@ -151,7 +183,7 @@ describe('AppBindingApproval', () => {
 		[['history'], 'Visitors can read back their conversation with this agent.'],
 	] as const)('shows the access line for agent permissions %j', (permissions, text) => {
 		const { getByTestId } = renderComponent({
-			props: { appBinding: { ...AGENT_BINDING, permissions: [...permissions] } },
+			props: { appBindings: [{ ...AGENT_BINDING, permissions: [...permissions] }] },
 		});
 
 		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(text);
@@ -159,7 +191,7 @@ describe('AppBindingApproval', () => {
 
 	it('warns when the agent is not published', () => {
 		const { getByTestId } = renderComponent({
-			props: { appBinding: { ...AGENT_BINDING, published: false } },
+			props: { appBindings: [{ ...AGENT_BINDING, published: false }] },
 		});
 
 		expect(getByTestId('instance-ai-app-binding-not-published')).toHaveTextContent(
