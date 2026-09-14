@@ -591,16 +591,12 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Native node first, always: shape, rename, compute, default or format fields
-  with **Edit Fields (Set)** and expressions; use **Filter**, **IF** / **Switch**,
-  **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out**, **Limit** and
-  **Merge** for the rest. Expressions run full JavaScript, so `.map()`,
-  `.filter()`, `.join()`, ternaries and `||` defaults work inside a Set value.
-  A Code node is only for multi-pass algorithms, `$getWorkflowStaticData` state
-  across runs, parsing model output with fence stripping, try/catch around
-  upstream node access, or a step that would need three or more native nodes.
-  Mapping table: "Native node mappings" in
-  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
+- Native node first: shape, compute, default or format fields with
+  **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
+  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out** and
+  **Merge** cover the rest. A Code node is only for multi-pass algorithms,
+  `$getWorkflowStaticData` state, fence-stripping model output, try/catch around
+  upstream node access, or a step needing three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
   (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
@@ -612,7 +608,7 @@ every reported error and warning before calling `build-workflow`.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms with `expr()` in a
-  native node. Full allowed/forbidden list:
+  native node. Full allowed/forbidden list and "Native node mappings" table:
   `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
