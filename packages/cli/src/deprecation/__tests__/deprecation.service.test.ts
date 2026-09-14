@@ -84,6 +84,11 @@ describe('DeprecationService', () => {
 		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
 		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
+		['N8N_ENABLED_MODULES', 'chat-hub', true],
+		['N8N_ENABLED_MODULES', 'insights, chat-hub', true],
+		['N8N_ENABLED_MODULES', 'insights', false],
+		['N8N_ENABLED_MODULES', 'chat-hub-extra', false],
+		['N8N_ENABLED_MODULES', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});
