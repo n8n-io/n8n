@@ -252,7 +252,7 @@ export function useWorkflowExtraction() {
 						parameters: {
 							assignments: {
 								assignments: [
-									...selectionChildrenVariables.entries().map((x) => ({
+									...[...selectionChildrenVariables.entries()].map((x) => ({
 										id: uuidv4(),
 										name: x[0],
 										value: `={{ ${x[1]} }}`,
