@@ -215,9 +215,12 @@ export class AgentChatStreamConsumer {
 						this.noteToolResult(chunk, responseState);
 						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
 						break;
+					case 'finish':
+						await responseLifecycle.finish();
+						break;
 					default:
-						// Ignore non-user-visible chunks (reasoning, finish,
-						// tool-input-*, start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, tool-input-*,
+						// start-step, finish-step, etc.)
 						break;
 				}
 			}
@@ -397,6 +400,9 @@ export class AgentChatStreamConsumer {
 							// silence can be honored for already-buffered text too.
 							buffer = '';
 						}
+						break;
+					case 'finish':
+						await flushBuffer();
 						break;
 					default:
 						break;

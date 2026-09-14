@@ -37,7 +37,8 @@ import {
 export interface RecordMessageParams {
 	threadId: string;
 	agentId: string;
-	agentName: string;
+	/** Names a thread created for this run; finalization ignores it. */
+	agentName?: string;
 	projectId: string;
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
@@ -63,12 +64,28 @@ export interface RecordMessageParams {
 	};
 }
 
-export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'>;
+export type StartExecutionParams = Omit<
+	RecordMessageParams,
+	'record' | 'hitlStatus' | 'agentName'
+> & {
+	agentName: string;
+};
+
+/** What a turn row stores before it runs, next to its start params. */
+export type TurnRowValues = Pick<AgentExecution, 'resourceId' | 'runContext'>;
 
 export interface ClaimedExecutionRecording {
 	executionId: string;
 	/** Aborts when this run no longer holds its thread claim. */
 	claimLost: AbortSignal;
+}
+
+/** Identifies a row for updates that also notify the thread's open chats. */
+export interface ExecutionScope {
+	executionId: string;
+	threadId: string;
+	agentId: string;
+	projectId: string;
 }
 
 interface TimelineSnapshotParams {
@@ -130,7 +147,13 @@ export class AgentExecutionService {
 
 	/** Record a running run that does not take part in the per-thread turn queue. */
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
-		const executionId = await this.insertRunningExecution(params, startedAt, null);
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			activeThreadId: null,
+			startedAt,
+			resourceId: null,
+			runContext: null,
+		});
 		this.startHeartbeat(executionId);
 		return executionId;
 	}
@@ -142,29 +165,100 @@ export class AgentExecutionService {
 	 * claim, so the caller stops the runtime instead of overlapping a new turn.
 	 */
 	async startClaimedExecutionRecording(
-		params: StartExecutionParams,
+		params: StartExecutionParams & TurnRowValues,
 		startedAt: Date,
 	): Promise<ClaimedExecutionRecording> {
-		const executionId = await this.insertRunningExecution(params, startedAt, params.threadId);
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			activeThreadId: params.threadId,
+			startedAt,
+			resourceId: params.resourceId,
+			runContext: params.runContext,
+		});
+		return this.holdClaim(executionId, params.threadId);
+	}
+
+	/** Record a turn that waits for the thread's running turn to end. */
+	async recordQueuedExecution(params: StartExecutionParams & TurnRowValues): Promise<string> {
+		return await this.insertExecution(params, {
+			status: 'queued',
+			activeThreadId: null,
+			startedAt: null,
+			resourceId: params.resourceId,
+			runContext: params.runContext,
+		});
+	}
+
+	/**
+	 * Promote a queued row to the thread's claimed running row. Null when the
+	 * row already left `queued`; throws {@link AgentThreadClaimConflictError}
+	 * while another claimed run holds the thread.
+	 */
+	async claimQueuedExecution(
+		executionId: string,
+		threadId: string,
+		startedAt: Date,
+	): Promise<ClaimedExecutionRecording | null> {
+		const promoted = await this.agentExecutionRepository.promoteQueuedToRunning(
+			executionId,
+			threadId,
+			startedAt,
+		);
+		return promoted ? this.holdClaim(executionId, threadId) : null;
+	}
+
+	/** End a queued row that cannot run, so the queue moves on and the sender sees why. */
+	async failQueuedExecution(scope: ExecutionScope, error: string): Promise<void> {
+		const failed = await this.agentExecutionRepository.failQueued(
+			scope.executionId,
+			error,
+			new Date(),
+		);
+		if (failed) this.executionUpdateBroadcaster.notify(scope);
+	}
+
+	/**
+	 * End a claimed running row whose turn never started, which also releases
+	 * its thread claim. `false` once the run has recorded its own outcome.
+	 */
+	async failClaimedExecution(scope: ExecutionScope, error: string): Promise<boolean> {
+		const stoppedAt = new Date();
+		const finalized = await this.agentExecutionRepository.updateIfRunning(scope.executionId, {
+			status: 'error',
+			stoppedAt,
+			duration: 0,
+			timeline: null,
+			storedAt: 'db',
+			error,
+			failureSummary: computeExecutionFailureSummary({
+				timeline: [],
+				status: 'error',
+				error,
+				stoppedAt: stoppedAt.getTime(),
+			}),
+		});
+		this.stopHeartbeat(scope.executionId);
+		if (finalized) this.executionUpdateBroadcaster.notify(scope);
+		return finalized;
+	}
+
+	private holdClaim(executionId: string, threadId: string): ClaimedExecutionRecording {
 		const claim = new AbortController();
 		this.startHeartbeat(executionId, {
-			threadId: params.threadId,
+			threadId,
 			onLost: (reason) => claim.abort(new OperationalError(reason)),
 		});
 		return { executionId, claimLost: claim.signal };
 	}
 
-	private async insertRunningExecution(
+	private async insertExecution(
 		params: StartExecutionParams,
-		startedAt: Date,
-		activeThreadId: string | null,
+		row: Pick<AgentExecution, 'status' | 'activeThreadId' | 'startedAt'> & TurnRowValues,
 	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.insertRunning({
+		const inserted = await this.agentExecutionRepository.insertExecution({
 			threadId: params.threadId,
-			activeThreadId,
-			status: 'running',
-			startedAt,
+			...row,
 			stoppedAt: null,
 			duration: 0,
 			userMessage,
@@ -696,7 +790,7 @@ export class AgentExecutionService {
 }
 
 function toSessionStatus(
-	latestStatus: AgentExecutionStatus | undefined,
+	latestStatus: Exclude<AgentExecutionStatus, 'queued'> | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;
@@ -713,7 +807,7 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
-function executionStatus(record: MessageRecord): AgentExecution['status'] {
+function executionStatus(record: MessageRecord): 'success' | 'error' | 'cancelled' {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';

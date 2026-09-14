@@ -722,6 +722,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}
 				session.terminalEventReceived = true;
 				return { done: true };
+			case 'queued': {
+				// The turn runs once the session's running turn ends; the execution
+				// update push then reloads the answer into history.
+				const sent = messages.value.findLast((msg) => msg.role === 'user');
+				if (sent) sent.executionId = event.executionId;
+				session.terminalEventReceived = true;
+				return { done: true };
+			}
 			default:
 				break;
 		}

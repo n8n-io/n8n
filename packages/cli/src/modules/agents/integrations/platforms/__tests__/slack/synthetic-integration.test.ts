@@ -57,6 +57,7 @@ describe('Slack channel integration scenarios', () => {
 					message: "DM message. What's your name?",
 					integrationType: 'slack',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				messageId: '1719000100.000100',

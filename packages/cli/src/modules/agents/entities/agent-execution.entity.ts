@@ -6,12 +6,50 @@ import {
 	WithTimestampsAndStringId,
 } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import type { SerializedThread } from 'chat';
 
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
+import type { IntegrationMessageSubject } from '../integrations/integration-tool-types';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'queued'
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted';
+
+/** The Chat SDK thread at arrival and the n8n connection it came in on. */
+export interface QueuedChannelTurn {
+	integrationType: string;
+	credentialId?: string;
+	/** `thread.toJSON()`; includes the inbound message when the turn came from one. */
+	thread: SerializedThread;
+}
+
+/**
+ * What a queued row needs to run later: the turn kind and the inbound context
+ * no column holds. Cleared when the run ends.
+ */
+export type AgentTurnRunContext =
+	| {
+			kind: 'message';
+			channel?: QueuedChannelTurn & {
+				isNewMention: boolean;
+				subject?: IntegrationMessageSubject;
+				/** Rotated conversation id at arrival; the row thread can be a bound task session. */
+				conversationThreadId: string;
+			};
+	  }
+	| {
+			kind: 'resume';
+			runId: string;
+			toolCallId: string;
+			resumeData: unknown;
+			channel?: QueuedChannelTurn;
+	  };
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -53,6 +91,14 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	activeThreadId: string | null;
+
+	/** Memory resource id of the sender, so a queued turn later runs as that user. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	resourceId: string | null;
+
+	/** Set while the row waits in the turn queue; null once the run ends. */
+	@JsonColumn({ nullable: true })
+	runContext: AgentTurnRunContext | null;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;

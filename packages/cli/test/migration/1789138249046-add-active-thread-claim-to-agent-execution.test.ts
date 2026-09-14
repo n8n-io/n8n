@@ -38,13 +38,14 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('keeps legacy overlapping running rows unclaimed and lets one claimed running row per thread in', async () => {
+	it('keeps legacy overlapping running rows unclaimed, lets one claimed running row per thread in and stores queued rows', async () => {
 		const ids = {
 			project: randomUUID(),
 			agent: randomUUID(),
 			thread: randomUUID(),
 			legacyOne: randomUUID(),
 			legacyTwo: randomUUID(),
+			queued: randomUUID(),
 		};
 		const now = new Date('2026-09-11T10:00:00.000Z');
 
@@ -111,24 +112,60 @@ describe('AddActiveThreadClaimToAgentExecution migration', () => {
 			// One claim fits next to the unclaimed legacy rows; a second one does not.
 			await insertClaimed();
 			await expect(insertClaimed()).rejects.toThrow();
+
+			// A queued row passes the widened status check and carries its sender and run context.
+			await context.runQuery(
+				`INSERT INTO ${table} ("id", "threadId", "status", "resourceId", "runContext", "createdAt", "updatedAt")
+				 VALUES (:id, :threadId, 'queued', :resourceId, :runContext, :now, :now)`,
+				{
+					id: ids.queued,
+					threadId: ids.thread,
+					resourceId: 'draft-chat:user-1',
+					runContext: '{"kind":"message"}',
+					now,
+				},
+			);
+			const queued = await context.runQuery<Array<{ status: string; resourceId: string }>>(
+				`SELECT "status", "resourceId" FROM ${table} WHERE "id" = :id`,
+				{ id: ids.queued },
+			);
+			expect(queued).toEqual([{ status: 'queued', resourceId: 'draft-chat:user-1' }]);
 		});
 
 		await undoLastSingleMigration();
 		dataSource = Container.get(DataSource);
 		await withContext(async (context) => {
+			const table = context.escape.tableName('agent_execution');
 			const columns = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			expect(columns?.findColumnByName('activeThreadId')).toBeUndefined();
+			for (const name of ['activeThreadId', 'resourceId', 'runContext']) {
+				expect(columns?.findColumnByName(name)).toBeUndefined();
+			}
 			const rows = await context.runQuery<Array<{ count: number | string }>>(
-				`SELECT COUNT(*) AS "count" FROM ${context.escape.tableName('agent_execution')}`,
+				`SELECT COUNT(*) AS "count" FROM ${table}`,
 			);
-			expect(Number(rows[0].count)).toBe(3);
+			expect(Number(rows[0].count)).toBe(4);
+			// The queued row never ran, so it ends as cancelled and the old check rejects new queued rows.
+			const cancelled = await context.runQuery<Array<{ status: string }>>(
+				`SELECT "status" FROM ${table} WHERE "id" = :id`,
+				{ id: ids.queued },
+			);
+			expect(cancelled).toEqual([{ status: 'cancelled' }]);
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("id", "threadId", "status", "createdAt", "updatedAt")
+					 VALUES (:id, :threadId, 'queued', :now, :now)`,
+					{ id: randomUUID(), threadId: ids.thread, now },
+				),
+			).rejects.toThrow();
 		});
 
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 		await withContext(async (context) => {
 			const table = await context.queryRunner.getTable(`${context.tablePrefix}agent_execution`);
-			expect(table?.findColumnByName('activeThreadId')?.isNullable).toBe(true);
+			for (const name of ['activeThreadId', 'resourceId', 'runContext']) {
+				expect(table?.findColumnByName(name)?.isNullable).toBe(true);
+			}
 		});
 	});
 });

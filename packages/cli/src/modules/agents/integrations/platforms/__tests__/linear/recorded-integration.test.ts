@@ -96,6 +96,7 @@ describe('Linear recorded integration replay', () => {
 					author: { id: 'USER_ALICE', name: 'alice' },
 					integrationType: 'linear',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				platform: 'linear',

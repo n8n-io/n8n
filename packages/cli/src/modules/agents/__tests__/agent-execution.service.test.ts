@@ -100,9 +100,9 @@ describe('AgentExecutionService', () => {
 	});
 
 	async function recordExecution(params: RecordMessageParams): Promise<string> {
-		const { record, ...startParams } = params;
+		const { record, agentName = 'Agent', ...startParams } = params;
 		const executionId = await service.startExecutionRecording(
-			startParams,
+			{ ...startParams, agentName },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
@@ -116,7 +116,7 @@ describe('AgentExecutionService', () => {
 					thread: makeThread(),
 					created: true,
 				});
-				agentExecutionRepository.insertRunning.mockResolvedValue({
+				agentExecutionRepository.insertExecution.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
 				agentExecutionRepository.touchRunning.mockResolvedValue(true);
@@ -140,7 +140,7 @@ describe('AgentExecutionService', () => {
 					threadId: 'thread-1',
 					executionId,
 				});
-				expect(agentExecutionRepository.insertRunning).toHaveBeenCalledWith(
+				expect(agentExecutionRepository.insertExecution).toHaveBeenCalledWith(
 					expect.objectContaining({ status: 'running', activeThreadId: null }),
 				);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId, undefined);
@@ -171,6 +171,8 @@ describe('AgentExecutionService', () => {
 					agentName: 'Agent',
 					projectId: 'project-1',
 					userMessage: 'Run',
+					resourceId: null,
+					runContext: null,
 				},
 				new Date(),
 			);
@@ -181,7 +183,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 		});
@@ -197,7 +199,7 @@ describe('AgentExecutionService', () => {
 			const { executionId, claimLost } = await startClaimed();
 			await vi.advanceTimersByTimeAsync(60_000);
 
-			expect(agentExecutionRepository.insertRunning).toHaveBeenCalledWith(
+			expect(agentExecutionRepository.insertExecution).toHaveBeenCalledWith(
 				expect.objectContaining({ status: 'running', activeThreadId: 'thread-1' }),
 			);
 			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(2);
@@ -381,7 +383,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: true,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -458,7 +460,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: true,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 			agentExecutionLogStore.write.mockRejectedValue(new Error('disk full'));
@@ -497,7 +499,7 @@ describe('AgentExecutionService', () => {
 				error: null,
 			};
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -534,7 +536,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread({ title: 'Task run' }),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -566,7 +568,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread({ title: null }),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 			memoryBackend.getThread.mockResolvedValue({
@@ -596,7 +598,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread({ title: 'Existing title' }),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -618,7 +620,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -684,7 +686,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 			telemetry.trackAgentTurnFinished.mockImplementation(() => {
@@ -731,7 +733,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 
@@ -773,7 +775,7 @@ describe('AgentExecutionService', () => {
 				thread: makeThread(),
 				created: false,
 			});
-			agentExecutionRepository.insertRunning.mockResolvedValue({
+			agentExecutionRepository.insertExecution.mockResolvedValue({
 				id: 'execution-1',
 			} as AgentExecution);
 

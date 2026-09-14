@@ -1,4 +1,17 @@
+import type { AgentTurnClaim, AgentTurnSubmitResult } from '../../agent-turn-queue.service';
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
+
+const channel = {
+	integrationType: 'discord',
+	credentialId: 'cred-1',
+	thread: {
+		_type: 'chat:Thread' as const,
+		adapterName: 'discord',
+		channelId: 'discord:800000000000000001:700000000000000001',
+		id: 'discord:800000000000000001:700000000000000001:600000000000000001',
+		isDM: false,
+	},
+};
 
 function makeHandler(callback: {
 	actionId: string;
@@ -10,15 +23,31 @@ function makeHandler(callback: {
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const updateLatest = vi.fn().mockResolvedValue(undefined);
 	const consume = vi.fn().mockResolvedValue(undefined);
-	const resumeForChat = vi.fn((_config: { beforeResume?: () => Promise<void> }) =>
-		(async function* () {})(),
+	const resumeForChat = vi.fn(
+		(_config: { beforeResume?: () => Promise<void> }, _claim: AgentTurnClaim) =>
+			(async function* () {})(),
 	);
+	const claim: AgentTurnClaim = {
+		executionId: 'exec-1',
+		threadId: 'agent-thread-1',
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
+	const submitTurn = vi
+		.fn<() => Promise<AgentTurnSubmitResult>>()
+		.mockResolvedValue({ status: 'claimed', claim });
 	const resolve = vi.fn().mockResolvedValue(callback);
 	const handler = new AgentChatHitlResumeHandler({
 		agentId: 'agent-1',
 		projectId: 'project-1',
 		integration: { type: 'discord', credentialId: 'cred-1' },
-		agentService: { resumeForChat },
+		agentService: {
+			resumeForChat,
+			submitTurn,
+			resolveResumeThread: vi.fn().mockResolvedValue('agent-thread-1'),
+		},
+		channelTurn: () => channel,
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
 			peek: vi.fn().mockResolvedValue(callback),
@@ -54,10 +83,57 @@ function makeHandler(callback: {
 		deleteMessage,
 		updateLatest,
 		resumeForChat,
+		submitTurn,
+		claim,
 		resolve,
 		consume,
 	};
 }
+
+const approvalCallback = {
+	actionId: 'resume:run-1:tool-1:0',
+	value: JSON.stringify({ approved: true }),
+	kind: 'approval' as const,
+};
+
+it('stores the resume as a turn on the checkpoint thread and runs it once claimed', async () => {
+	const { handler, event, submitTurn, resumeForChat, claim, consume } =
+		makeHandler(approvalCallback);
+
+	await handler.handleAction(event as never);
+
+	expect(submitTurn).toHaveBeenCalledWith({
+		threadId: 'agent-thread-1',
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		userMessage: null,
+		source: 'discord',
+		resourceId: null,
+		runContext: {
+			kind: 'resume',
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			resumeData: { approved: true },
+			channel,
+		},
+	});
+	expect(resumeForChat).toHaveBeenCalledWith(
+		expect.objectContaining({ runId: 'run-1', toolCallId: 'tool-1' }),
+		claim,
+	);
+	expect(consume).toHaveBeenCalledTimes(1);
+});
+
+it('leaves a queued resume to the drain of the running turn', async () => {
+	const { handler, event, submitTurn, resumeForChat, consume } = makeHandler(approvalCallback);
+	submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
+
+	await handler.handleAction(event as never);
+
+	expect(resumeForChat).not.toHaveBeenCalled();
+	expect(consume).not.toHaveBeenCalled();
+	expect(event.thread.post).not.toHaveBeenCalled();
+});
 
 it.each([
 	{

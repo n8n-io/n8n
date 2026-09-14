@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
@@ -14,7 +15,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
-import { AgentThreadQueueFullError } from '../agent-thread-turn-coordinator';
+import { AgentTurnQueueService } from '../agent-turn-queue.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -53,6 +54,7 @@ export class AgentWakeService {
 		private readonly userRepository: UserRepository,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
+		private readonly turnQueueService: AgentTurnQueueService,
 		private readonly lockService: LockService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -185,17 +187,35 @@ export class AgentWakeService {
 		}
 
 		try {
-			this.activeWakes.add(threadId);
-			try {
-				const outcome = await this.orchestrator.executeForWake({
+			// A wake yields to user turns: nothing is written while the thread runs
+			// or has rows waiting, and the next finished turn requests it again.
+			const claim = await this.turnQueueService.tryRunNow(
+				{
+					threadId,
 					agentId: agent.id,
 					projectId: agent.projectId,
-					message: formatWakeMessage(jobs),
-					memory: { threadId, resourceId: first.parentResourceId },
-					identity,
-					abortSignal: signal,
-				});
-				if (outcome === 'skipped') return;
+					userMessage: null,
+					source: identity.type === 'draft' ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType,
+					resourceId: first.parentResourceId,
+					runContext: { kind: 'message' },
+				},
+				{ wake: true },
+			);
+			if (!claim) return;
+
+			this.activeWakes.add(threadId);
+			try {
+				await this.orchestrator.executeForWake(
+					{
+						agentId: agent.id,
+						projectId: agent.projectId,
+						message: formatWakeMessage(jobs),
+						memory: { threadId, resourceId: first.parentResourceId },
+						identity,
+						abortSignal: signal,
+					},
+					claim,
+				);
 			} finally {
 				this.activeWakes.delete(threadId);
 			}
@@ -211,9 +231,6 @@ export class AgentWakeService {
 			this.scheduleLocal(threadId);
 		} catch (error) {
 			if (signal.aborted) return;
-			// A full thread queue is not a failed wake: the results stay pending and
-			// the next finished turn on the thread requests the wake again.
-			if (error instanceof AgentThreadQueueFullError) return;
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation, 'Wake run failed');

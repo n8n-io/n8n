@@ -88,6 +88,7 @@ describe('Slack recorded integration replay', () => {
 					author: { id: 'U_USER', name: 'U_USER' },
 					integrationType: 'slack',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				platform: 'slack',
@@ -142,6 +143,7 @@ describe('Slack recorded integration replay', () => {
 					message: "DM message. What's your name?",
 					integrationType: 'slack',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				platform: 'slack',
@@ -209,23 +211,30 @@ describe('Slack recorded integration replay', () => {
 				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1),
 			);
 
-			// Each reply is a separate webhook; wait until it has joined the queue before the next
-			// arrives. A turn is queued as soon as the bridge hands it to the coordinator.
-			const admissions = vi.spyOn(ctx.turnCoordinator.coordinator, 'run');
-			const secondUser = ctx.sendWebhook(
+			// Each reply is a separate webhook that returns once its row is stored.
+			await ctx.sendWebhook(
 				threadReply('Ev_REPLY_USER_TWO', 'U_USER_TWO', 'me too', '1782378391.000001'),
 			);
-			await vi.waitFor(() => expect(admissions).toHaveBeenCalledTimes(1));
-			const firstUserAgain = ctx.sendWebhook(
+			await ctx.sendWebhook(
 				threadReply('Ev_REPLY_USER_ONE', 'U_USER', 'and me again', '1782378392.000002'),
 			);
-			await vi.waitFor(() => expect(admissions).toHaveBeenCalledTimes(2));
-			// Both replies wait for the running turn instead of being dropped or run alongside it.
+			// Both replies wait as queued rows instead of being dropped or run alongside the turn.
+			expect(
+				ctx.turnQueue.rows.filter((row) => row.status === 'queued').map((row) => row.userMessage),
+			).toEqual(['me too', 'and me again']);
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 			expect(ctx.apiCalls.filter((call) => call.method === 'chat.postMessage')).toHaveLength(0);
 
+			// The finished turn drains the rows headless, oldest first, into the same Slack thread.
 			releaseFirstTurn();
-			await Promise.all([mention, secondUser, firstUserAgain]);
+			await mention;
+			await vi.waitFor(() =>
+				expect(ctx.turnQueue.rows.map((row) => row.status)).toEqual([
+					'success',
+					'success',
+					'success',
+				]),
+			);
 
 			expect(
 				ctx.agentExecutor.executeForChatPublished.mock.calls.map(
@@ -239,11 +248,18 @@ describe('Slack recorded integration replay', () => {
 				['U_USER_TWO', 'me too'],
 				['U_USER', 'and me again'],
 			]);
+			const chatCalls = ctx.apiCalls.filter((call) => call.method.startsWith('chat.'));
 			expect(
-				ctx.apiCalls
-					.filter((call) => call.method === 'chat.postMessage')
+				chatCalls
+					.filter(
+						(call) =>
+							call.method === 'chat.postMessage' &&
+							call.body.thread_ts === fixtures.mention.event.ts,
+					)
 					.map((call) => call.body.markdown_text),
 			).toEqual(['Still thinking', 'Answered', 'Answered']);
+			expect(chatCalls.some((call) => call.body.text === '...')).toBe(false);
+			expect(chatCalls.some((call) => call.method === 'chat.update')).toBe(false);
 		} finally {
 			await ctx.shutdown();
 		}

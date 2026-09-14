@@ -110,6 +110,8 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ resourceId
+  json runContext
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

@@ -10,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -41,7 +40,6 @@ function setup() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const userRepository = mock<UserRepository>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const broadcaster = mock<AgentExecutionUpdateBroadcaster>();
 	const messageContextService = mock<IntegrationMessageContextService>();
 	messageContextService.getLatest.mockResolvedValue(null);
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -59,7 +57,6 @@ function setup() {
 		agentTestRunService,
 		chatIntegrationService,
 		messageContextService,
-		broadcaster,
 		checkpointStorage,
 		instanceSettings,
 		publisher,
@@ -72,7 +69,6 @@ function setup() {
 		chatIntegrationService,
 		userRepository,
 		agentTestRunService,
-		broadcaster,
 		checkpointStorage,
 		publisher,
 		instanceSettings,
@@ -251,24 +247,30 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 });
 
 describe('AgentWorkflowToolResumeService → preview chat', () => {
-	const completed = {
-		status: 'completed' as const,
-		response: '',
-		sessionId: 's',
-		executionId: 'exec-42',
-	};
+	/** A claimed resume whose stream records how far it was driven. */
+	function claimed() {
+		let consumed = 0;
+		const stream = (async function* () {
+			yield { type: 'text-delta', id: 'a', delta: 'done' } as never;
+			consumed += 1;
+			yield { type: 'finish', finishReason: 'stop' } as never;
+			consumed += 1;
+		})();
+		return { status: 'claimed' as const, sessionId: 's', stream, chunksConsumed: () => consumed };
+	}
 
 	// The preview's SSE stream closed when the run suspended, so the resume runs
-	// with nothing attached — recording the turn is what puts it in the transcript.
-	it('drives the resume headlessly against the draft version', async () => {
+	// with nothing attached — driving it to its end is what records the turn.
+	it('drives a claimed resume headlessly against the draft version', async () => {
 		const { service, userRepository, agentTestRunService, chatIntegrationService } = setup();
 		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
-		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
+		const submission = claimed();
+		agentTestRunService.submitDraftResume.mockResolvedValue(submission);
 
 		await service.resume(previewRun, 'success');
 
 		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
-		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
+		expect(agentTestRunService.submitDraftResume).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId: 'agent-1',
 				projectId: 'project-1',
@@ -278,6 +280,23 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 				resumeData: { type: 'workflow_finished', value: 'success' },
 			}),
 		);
+		expect(submission.chunksConsumed()).toBe(2);
+	});
+
+	// A queued resume belongs to the turn queue, which runs it once the session's
+	// running turn ends; nothing here may run it a second time.
+	it('leaves a queued resume to the turn queue', async () => {
+		const { service, logger, userRepository, agentTestRunService } = setup();
+		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		agentTestRunService.submitDraftResume.mockResolvedValue({
+			status: 'queued',
+			sessionId: 's',
+			executionId: 'exec-42',
+		});
+
+		await expect(service.resume(previewRun, 'success')).resolves.toBeUndefined();
+
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	// MCP and AI Assistant test runs are `n8n_chat` too. They must resume on the
@@ -288,44 +307,22 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
 		const { service, userRepository, agentTestRunService } = setup();
 		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
-		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
+		agentTestRunService.submitDraftResume.mockResolvedValue(claimed());
 
 		await service.resume(run, 'success');
 
-		expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith(
+		expect(agentTestRunService.submitDraftResume).toHaveBeenCalledWith(
 			expect.objectContaining({ previewChat: expected }),
 		);
 	});
 
-	it.each([
-		['a completed turn', completed],
-		[
-			'a turn that suspended again',
-			{ ...completed, status: 'suspended' as const, suspensions: [] },
-		],
-	])('pushes the recorded execution after %s', async (_label, result) => {
-		const { service, userRepository, agentTestRunService, broadcaster } = setup();
+	it('warns when the session could not be resumed', async () => {
+		const { service, logger, userRepository, agentTestRunService } = setup();
 		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
-		agentTestRunService.resumeDraftRun.mockResolvedValue(result);
+		agentTestRunService.submitDraftResume.mockResolvedValue({ status: 'session_not_found' });
 
 		await service.resume(previewRun, 'success');
 
-		expect(broadcaster.notify).toHaveBeenCalledWith({
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'agent-1:slack:C123',
-			executionId: 'exec-42',
-		});
-	});
-
-	it('does not push when the session could not be resumed', async () => {
-		const { service, logger, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
-		agentTestRunService.resumeDraftRun.mockResolvedValue({ status: 'session_not_found' });
-
-		await service.resume(previewRun, 'success');
-
-		expect(broadcaster.notify).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Preview chat run could not be resumed',
 			expect.objectContaining({ status: 'session_not_found' }),
@@ -343,7 +340,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 
 		await service.resume({ ...previewRun, userId }, 'success');
 
-		expect(agentTestRunService.resumeDraftRun).not.toHaveBeenCalled();
+		expect(agentTestRunService.submitDraftResume).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Cannot resume preview chat run without its user',
 			expect.objectContaining({ runId: 'run-1' }),

@@ -111,6 +111,8 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
+  varchar_255_ resourceId
+  TEXT runContext
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

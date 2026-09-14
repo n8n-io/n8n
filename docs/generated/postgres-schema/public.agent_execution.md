@@ -17,6 +17,8 @@
 | id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
+| resourceId | varchar(255) |  | true |  |  | Memory resource id of the sender, so a queued turn later runs as that user |
+| runContext | json |  | true |  |  | Turn kind and inbound context a queued turn needs to run without its request; null once the run ends |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -33,7 +35,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
-| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
+| CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -75,6 +77,8 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ resourceId
+  json runContext
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

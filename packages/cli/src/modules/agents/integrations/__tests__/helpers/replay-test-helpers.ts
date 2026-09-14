@@ -5,11 +5,11 @@ import type { Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { createTestTurnCoordinator } from '../../../__tests__/test-utils/turn-coordinator';
-import { AgentThreadTurnCoordinator } from '../../../agent-thread-turn-coordinator';
+import { createTestTurnQueue } from '../../../__tests__/test-utils/turn-queue';
+import type { AgentTurnClaim } from '../../../agent-turn-queue.service';
 import { AgentChatBridge } from '../../agent-chat-bridge';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
-import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
+import type { ChatInstance } from '../../chat-integration.service';
 import type { ComponentMapper } from '../../component-mapper';
 import { ChatIntegrationActionExecutor } from '../../integration-action-executor';
 import { ChannelRateLimitGuard } from '../../channel-rate-limit.guard';
@@ -198,8 +198,8 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
-	/** Real coordinator over mocked lock and repository. */
-	turnCoordinator: ReturnType<typeof createTestTurnCoordinator>;
+	/** The real turn queue over an in-memory execution table; queued rows drain through the bridge. */
+	turnQueue: ReturnType<typeof createTestTurnQueue>;
 	nextStream: (chunks: StreamChunk[]) => void;
 	shutdown: () => Promise<void>;
 }
@@ -214,29 +214,46 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
 	Container.set(ChatIntegrationRegistry, registry);
-	const turnCoordinator = createTestTurnCoordinator();
-	Container.set(AgentThreadTurnCoordinator, turnCoordinator.coordinator);
+	const turnQueue = createTestTurnQueue();
 
 	let stream = params.stream ?? [
 		{ type: 'text-delta', id: 'text-1', delta: 'Got it' },
 		{ type: 'finish', finishReason: 'stop' },
 	];
 	const agentExecutor = {
-		executeForChatPublished: vi.fn(() => toStream(stream)),
+		executeForChatPublished: vi.fn((_config: unknown, _claim: AgentTurnClaim) => toStream(stream)),
 		// Models the orchestrator: `beforeResume` runs once the resume owns the thread turn.
-		resumeForChat: vi.fn((config?: { beforeResume?: () => Promise<void> }) =>
-			(async function* resume() {
-				await config?.beforeResume?.();
-				yield* toStream(stream);
-			})(),
+		resumeForChat: vi.fn(
+			(config?: { beforeResume?: () => Promise<void> }, _claim?: AgentTurnClaim) =>
+				(async function* resume() {
+					await config?.beforeResume?.();
+					yield* toStream(stream);
+				})(),
 		),
 	};
+	// Like the orchestrator: the row ends and the claim releases once the stream is consumed.
+	const asClaimedTurn = (turn: AsyncGenerator<StreamChunk>, claim: AgentTurnClaim) =>
+		(async function* claimed() {
+			try {
+				yield* turn;
+			} finally {
+				turnQueue.finish(claim);
+				await claim.release();
+			}
+		})();
 	const messageContextStore = new MemoryMessageContextStore();
 
-	new AgentChatBridge(
+	const bridge = new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
-		agentExecutor,
+		{
+			submitTurn: async (turn) => await turnQueue.service.submit(turn),
+			resolveResumeThread: async () => 'agent-1:resume',
+			executeForChatPublished: (config, claim) =>
+				asClaimedTurn(agentExecutor.executeForChatPublished(config, claim), claim),
+			resumeForChat: (config, claim) =>
+				asClaimedTurn(agentExecutor.resumeForChat(config, claim), claim),
+		},
 		params.componentMapper ?? mock<ComponentMapper>(),
 		mock<Logger>(),
 		'project-1',
@@ -244,8 +261,9 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		messageContextStore as unknown as IntegrationMessageContextService,
 	);
 
-	const chatIntegrationService = mock<ChatIntegrationService>();
+	const { chatIntegrationService } = turnQueue;
 	chatIntegrationService.getChatInstance.mockReturnValue(params.chat);
+	chatIntegrationService.getBridge.mockReturnValue(bridge);
 	const actionExecutor = new ChatIntegrationActionExecutor(
 		chatIntegrationService,
 		registry,
@@ -260,7 +278,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
-		turnCoordinator,
+		turnQueue,
 		nextStream: (chunks: StreamChunk[]) => {
 			stream = chunks;
 		},

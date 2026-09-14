@@ -2169,6 +2169,27 @@ describe('useAgentChatStream — done executionId', () => {
 		expect(assistant?.content).toBe('Hello');
 		expect(assistant?.executionId).toBe('exec-live-1');
 	});
+
+	it('ends a queued turn cleanly and stamps its executionId on the sent message', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('while the other tab streams');
+		await nextTick();
+
+		// The answer arrives later through the execution update push: no bubble, no interrupted error.
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({
+				role: 'user',
+				content: 'while the other tab streams',
+				executionId: 'exec-queued-1',
+			}),
+		]);
+		expect(hook.isStreaming.value).toBe(false);
+	});
 });
 
 describe('useAgentChatStream — subagent-chunk', () => {

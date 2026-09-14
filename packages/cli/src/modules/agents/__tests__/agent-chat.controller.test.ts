@@ -15,8 +15,9 @@ import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import {
 	AgentThreadQueueFullError,
-	MAX_AGENT_THREAD_WAITERS,
-} from '../agent-thread-turn-coordinator';
+	MAX_QUEUED_TURNS_PER_THREAD,
+	type AgentTurnClaim,
+} from '../agent-turn-queue.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import {
@@ -35,15 +36,24 @@ function makeController() {
 		status: 'ready',
 		sessionId: 'thread-1',
 	});
-	agentTestRunService.streamDraftRun.mockImplementation((config) =>
-		agentExecutionOrchestratorService.executeForChat({
-			...config,
-			memory: {
-				threadId: config.sessionId,
-				resourceId: `draft-chat:${config.user.id}`,
+	// The idle-session path: the turn is claimed and streams through the orchestrator.
+	const claim = mock<AgentTurnClaim>({ executionId: 'exec-1', threadId: 'thread-1' });
+	agentTestRunService.submitDraftRun.mockImplementation(async (config) => ({
+		status: 'claimed',
+		sessionId: config.sessionId,
+		stream: agentExecutionOrchestratorService.executeForChat(
+			{
+				...config,
+				memory: { threadId: config.sessionId, resourceId: `draft-chat:${config.user.id}` },
 			},
-		}),
-	);
+			claim,
+		),
+	}));
+	agentTestRunService.submitDraftResume.mockImplementation(async (config) => ({
+		status: 'claimed',
+		sessionId: 'thread-1',
+		stream: agentExecutionOrchestratorService.resumeForChat(config, claim),
+	}));
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
@@ -191,7 +201,32 @@ describe('AgentChatController SSE done payload', () => {
 		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
+		expect(agentTestRunService.submitDraftRun).not.toHaveBeenCalled();
+	});
+
+	it('ends the stream with a queued event when the session runs another turn', async () => {
+		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
+		agentTestRunService.submitDraftRun.mockResolvedValue({
+			status: 'queued',
+			sessionId: 'thread-1',
+			executionId: 'exec-queued',
+		});
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toEqual([{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued' }]);
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(res.end).toHaveBeenCalled();
 	});
 
 	it('includes executionId on done when recorded', async () => {
@@ -330,12 +365,8 @@ describe('AgentChatController HITL cancellation', () => {
 
 describe('AgentChatController full thread queue', () => {
 	it('sends one coded error event and no done event when the thread queue is full', async () => {
-		const { controller, agentExecutionOrchestratorService } = makeController();
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-			throw new AgentThreadQueueFullError();
-		});
+		const { controller, agentTestRunService } = makeController();
+		agentTestRunService.submitDraftRun.mockRejectedValue(new AgentThreadQueueFullError());
 		const writes: string[] = [];
 		const res = makeSseResponse(writes);
 
@@ -352,7 +383,7 @@ describe('AgentChatController full thread queue', () => {
 		expect(events).toEqual([
 			{
 				type: 'error',
-				message: `This thread already has ${MAX_AGENT_THREAD_WAITERS} messages waiting. Try again after the agent processes a message.`,
+				message: `This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
 				errorCode: 'agent_turn_queue_full',
 			},
 		]);

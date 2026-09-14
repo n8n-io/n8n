@@ -19,7 +19,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 23 |  | table |
+| [agent_execution](agent_execution.md) | 25 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
@@ -512,6 +512,8 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
+  varchar_255_ resourceId
+  TEXT runContext
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

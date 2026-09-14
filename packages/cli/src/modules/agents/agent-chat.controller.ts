@@ -6,7 +6,6 @@ import {
 	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -27,10 +26,10 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { messagesToDto } from './agent-message-mapper';
-import { AgentThreadQueueFullError } from './agent-thread-turn-coordinator';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentThreadQueueFullError } from './agent-turn-queue.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -162,22 +161,25 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
-					agentId,
-					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftRun({
+				agentId,
+				projectId,
+				message,
+				attachments: storedAttachments,
+				user: req.user,
+				sessionId: threadId,
+				previewChat: true,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal: abortController.signal,
+			});
+			if (submitted.status === 'queued') {
+				// The queued row references the attachments; the drain runs it later.
+				send({ type: 'queued', sessionId: threadId, executionId: submitted.executionId });
+				return;
+			}
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
@@ -216,24 +218,29 @@ export class AgentChatController {
 		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftResume({
+				agentId,
+				projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				user: req.user,
+				previewChat: true,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal: abortController.signal,
+			});
+			if (submitted.status === 'session_not_found') {
+				send({ type: 'error', message: 'Session not found' });
+				return;
+			}
+			if (submitted.status === 'queued') {
+				const { sessionId, executionId: queuedId } = submitted;
+				send({ type: 'queued', sessionId, executionId: queuedId });
+				return;
+			}
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}

@@ -11,6 +11,10 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
+import type {
+	AgentTurnClaim,
+	AgentTurnQueueService,
+} from '@/modules/agents/agent-turn-queue.service';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
@@ -175,6 +179,18 @@ describe('AgentBackgroundJobRepository', () => {
 
 			const executionRepository = mock<AgentExecutionRepository>();
 			const orchestrator = mock<AgentExecutionOrchestratorService>();
+			// The wake claims its thread through the turn queue; an idle thread hands it a claim.
+			const turnQueueService = mock<AgentTurnQueueService>();
+			turnQueueService.tryRunNow.mockImplementation(async ({ threadId }) => {
+				const claim: AgentTurnClaim = {
+					executionId: uuid(),
+					threadId,
+					abortSignal: new AbortController().signal,
+					release: async () => {},
+					fail: async () => {},
+				};
+				return claim;
+			});
 			let firstWakeStarted!: () => void;
 			const firstWake = new Promise<void>((resolve) => (firstWakeStarted = resolve));
 			orchestrator.executeForWake.mockImplementationOnce(async () => {
@@ -202,6 +218,7 @@ describe('AgentBackgroundJobRepository', () => {
 				userRepository,
 				mock<ChatIntegrationRegistry>(),
 				orchestrator,
+				turnQueueService,
 				lockService,
 				publisher,
 				mock<InstanceSettings>({ isWorker: false }),
@@ -227,7 +244,6 @@ describe('AgentBackgroundJobRepository', () => {
 			const secondWake = new Promise<void>((resolve) => (secondWakeStarted = resolve));
 			orchestrator.executeForWake.mockImplementationOnce(async () => {
 				secondWakeStarted();
-				return 'ran';
 			});
 			await wakeService.requestWake('thread-1');
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);

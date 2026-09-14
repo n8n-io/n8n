@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import { UnexpectedError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -23,14 +23,17 @@ import {
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { AgentExecutionService } from '../agent-execution.service';
 import {
-	AgentThreadQueueFullError,
-	AgentThreadTurnCoordinator,
-	type AgentThreadTurnPermit,
-} from '../agent-thread-turn-coordinator';
-import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
+import {
+	AgentThreadQueueFullError,
+	AgentTurnQueueService,
+	type AgentTurnClaim,
+	type AgentTurnSubmission,
+	type AgentTurnSubmitResult,
+} from '../agent-turn-queue.service';
+import type { AgentExecution, QueuedChannelTurn } from '../entities/agent-execution.entity';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import { resolveInboundMimeType } from '../utils/inbound-attachments';
 import type {
@@ -39,7 +42,10 @@ import type {
 	PlatformAgentContext,
 } from './agent-chat-integration';
 import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
-import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
+import {
+	AgentChatHitlResumeHandler,
+	type ChannelResumeConfig,
+} from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
@@ -50,7 +56,7 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
-import type { ReplyExpectation } from './integration-tools';
+import type { IntegrationMessageSubject, ReplyExpectation } from './integration-tools';
 import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
@@ -96,28 +102,28 @@ function stillWaitingNotice(suspendPayload: unknown): string {
 }
 
 interface AgentExecutor {
-	executeForChatPublished(config: {
-		agentId: string;
-		projectId: string;
-		message: string;
-		modelMessage?: string;
-		author?: AgentMessageAuthor;
-		attachments?: StoredAttachmentRef[];
-		memory: { threadId: InternalThread; resourceId: string };
-		integrationType?: string;
-		sandboxPrincipalHash: AgentSandboxPrincipalHash;
-		permit: AgentThreadTurnPermit;
-	}): AsyncGenerator<StreamChunk>;
+	/** Store the turn; it runs at once when the thread is free, else once the running turn ends. */
+	submitTurn(turn: AgentTurnSubmission): Promise<AgentTurnSubmitResult>;
 
-	resumeForChat(config: {
-		agentId: string;
-		projectId: string;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		integrationType?: string;
-		beforeResume?: () => Promise<void>;
-	}): AsyncGenerator<StreamChunk>;
+	executeForChatPublished(
+		config: {
+			agentId: string;
+			projectId: string;
+			message: string;
+			modelMessage?: string;
+			author?: AgentMessageAuthor;
+			attachments?: StoredAttachmentRef[];
+			memory: { threadId: InternalThread; resourceId: string };
+			integrationType?: string;
+			sandboxPrincipalHash: AgentSandboxPrincipalHash;
+		},
+		claim: AgentTurnClaim,
+	): AsyncGenerator<StreamChunk>;
+
+	/** Validate a resume and return the thread its suspended run belongs to. */
+	resolveResumeThread(config: ChannelResumeConfig): Promise<string>;
+
+	resumeForChat(config: ChannelResumeConfig, claim: AgentTurnClaim): AsyncGenerator<StreamChunk>;
 
 	/**
 	 * The thread's still-open suspension, if the run is parked on one right now.
@@ -133,6 +139,20 @@ interface AgentExecutor {
 /** Enough of a parked run to tell the user what the agent is still waiting on. */
 interface OpenSuspension {
 	suspendPayload?: unknown;
+}
+
+/** A channel message as its turn runs it, built at arrival or rebuilt from its queued row. */
+interface ChannelTurn {
+	isNewMention: boolean;
+	/** Inbound text with the attachment notes appended. */
+	text: string;
+	attachments: StoredAttachmentRef[];
+	/** Agent-prefixed conversation id the message context is written to. */
+	conversationThreadId: string;
+	/** Session the run executes in: the conversation, or the task it is bound to. */
+	memoryThreadId: string;
+	memoryResourceId: string;
+	subject?: IntegrationMessageSubject;
 }
 
 /**
@@ -155,7 +175,7 @@ interface OpenSuspension {
  *     sees well-formed Markdown (streaming edits ship half-formed markup).
  *
  * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
- * `error`) flush any pending text before being handled, preserving ordering.
+ * `error`, `finish`) flush any pending text before being handled, preserving ordering.
  */
 export class AgentChatBridge {
 	/** Store for shortening callback data on platforms with size limits (Telegram) */
@@ -214,6 +234,7 @@ export class AgentChatBridge {
 			projectId: n8nProjectId,
 			integration,
 			agentService,
+			channelTurn: (thread) => this.channelTurn(thread),
 			logger,
 			callbackStore: this.callbackStore,
 			deleteActionMessageBeforeResume:
@@ -256,38 +277,42 @@ export class AgentChatBridge {
 		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
-			async *executeForChatPublished({
-				memory,
-				agentId: aid,
-				message,
-				modelMessage,
-				author,
-				attachments,
-				integrationType,
-				sandboxPrincipalHash,
-				permit,
-			}) {
-				yield* agentService.executeForChatPublished({
+			async submitTurn(turn) {
+				return await Container.get(AgentTurnQueueService).submit(turn);
+			},
+			async *executeForChatPublished(
+				{
+					memory,
 					agentId: aid,
-					projectId: n8nProjectId,
 					message,
 					modelMessage,
 					author,
 					attachments,
-					memory: {
-						threadId: memory.threadId.id,
-						resourceId: memory.resourceId,
-						...(memory.resourceId !== undefined && {
-							resourceId: memory.resourceId,
-						}),
-					},
 					integrationType,
 					sandboxPrincipalHash,
-					permit,
-				});
+				},
+				claim,
+			) {
+				yield* agentService.executeForChatPublished(
+					{
+						agentId: aid,
+						projectId: n8nProjectId,
+						message,
+						modelMessage,
+						author,
+						attachments,
+						memory: { threadId: memory.threadId.id, resourceId: memory.resourceId },
+						integrationType,
+						sandboxPrincipalHash,
+					},
+					claim,
+				);
 			},
-			async *resumeForChat(config) {
-				yield* agentService.resumeForChat(config);
+			async resolveResumeThread(config) {
+				return await agentService.resolveResumeThread(config);
+			},
+			async *resumeForChat(config, claim) {
+				yield* agentService.resumeForChat(config, claim);
 			},
 			async findOpenSuspension({ agentId: aid, threadId }) {
 				// Checkpoints carry no thread index, so the authoritative lookup parses
@@ -496,10 +521,11 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Rotates to a brand-new session for `thread` and confirms it there.
-	 * Unbinding a task-run session (see {@link resolveSession} in
-	 * `executeAndStream`) and rotating the generation happen inside the same
-	 * critical section, in that order, as one unit:
+	 * Rotates to a brand-new session for `thread` and confirms it there, at
+	 * once: earlier messages already carry the old session id in their rows,
+	 * later arrivals resolve the new one. Unbinding a task-run session (see
+	 * {@link resolveSession} in `executeAndStream`) and rotating the generation
+	 * happen inside the same critical section, in that order, as one unit:
 	 * - Same critical section: splitting them would let a concurrent message
 	 *   land in between and read the just-rotated generation while the old
 	 *   binding is still in place (or the reverse), running against the
@@ -516,23 +542,11 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async (signal) => {
-			// The reset takes its place in the thread's turn queue like a message,
-			// so every earlier message still runs in the old session and every
-			// later one (held at the session lock meanwhile) starts in the new one.
-			const activeId =
-				(await this.messageContextBridge.resolveSession(baseId))?.threadId ??
-				(await this.computeGeneration(baseId, false, null));
-			await this.turnCoordinator.run(activeId, signal, async () => {
-				await this.messageContextBridge.unbindSession(baseId);
-				await this.computeGeneration(baseId, true, null);
-			});
+		await this.withSessionLock(baseId, async () => {
+			await this.messageContextBridge.unbindSession(baseId);
+			await this.computeGeneration(baseId, true, null);
 		});
 		await thread.post('🔄 Started a new session.');
-	}
-
-	private get turnCoordinator(): AgentThreadTurnCoordinator {
-		return Container.get(AgentThreadTurnCoordinator);
 	}
 
 	/**
@@ -636,10 +650,9 @@ export class AgentChatBridge {
 		options: { isNewMention: boolean },
 	): Promise<void> {
 		const { isNewMention } = options;
-		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
-			platformAgentContext,
+			this.getPlatformAgentContext(),
 		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
@@ -659,94 +672,182 @@ export class AgentChatBridge {
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
-		// One turn per execution session at a time. Everything that stores state
-		// for this turn waits until it is the thread's turn, so a queued message
-		// never redirects the running turn or races its suspension.
-		await this.turnCoordinator.run(
-			memoryThreadId.id,
-			undefined,
-			async (permit) =>
-				await this.runAdmittedTurn(thread, message, {
-					isNewMention,
-					platformAgentContext,
-					text,
-					inboundAttachments,
-					threadId,
-					memoryThreadId,
-					memoryResourceId,
-					permit,
-				}),
-		);
-	}
-
-	private async runAdmittedTurn(
-		thread: Thread,
-		message: Message,
-		turn: {
-			isNewMention: boolean;
-			platformAgentContext: PlatformAgentContext;
-			text: string;
-			inboundAttachments: Attachment[];
-			threadId: InternalThread;
-			memoryThreadId: InternalThread;
-			memoryResourceId: string;
-			permit: AgentThreadTurnPermit;
-		},
-	): Promise<void> {
-		const {
-			isNewMention,
-			platformAgentContext,
-			text,
-			inboundAttachments,
-			threadId,
-			memoryThreadId,
-			memoryResourceId,
-			permit,
-		} = turn;
 		// The run parks against the session it executes in, which for a bound reply
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
 		// that is not going to run.
 		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return;
+
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
 			memoryThreadId.id,
 			memoryResourceId,
 		);
+		const turn: ChannelTurn = {
+			isNewMention,
+			text: [text, ...attachmentNotes].filter(Boolean).join('\n'),
+			attachments,
+			conversationThreadId: threadId.id,
+			memoryThreadId: memoryThreadId.id,
+			memoryResourceId,
+			subject: await this.messageContextBridge.resolveSubject(message),
+		};
+		let submitted: AgentTurnSubmitResult;
+		try {
+			// The row is the queue item: a message behind a running turn waits there
+			// and runs headless from `runQueuedMessage` once that turn ends.
+			submitted = await this.agentService.submitTurn({
+				threadId: memoryThreadId.id,
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				userMessage: turn.text,
+				author: toMessageAuthor(message.author),
+				attachments: attachments.length > 0 ? attachments : undefined,
+				source: this.integration.type,
+				resourceId: memoryResourceId,
+				runContext: {
+					kind: 'message',
+					channel: {
+						...this.channelTurn(thread),
+						isNewMention,
+						subject: turn.subject,
+						conversationThreadId: threadId.id,
+					},
+				},
+			});
+		} catch (error) {
+			// Nothing references the attachments of a rejected message.
+			if (attachments.length > 0) {
+				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
+			}
+			throw error;
+		}
+		if (submitted.status === 'queued') return;
+		await this.runTurn(thread, message, turn, submitted.claim);
+	}
+
+	/** Run a queued channel message headless, replying into its rebuilt thread. */
+	async runQueuedMessage(row: AgentExecution, claim: AgentTurnClaim): Promise<void> {
+		const channel = row.runContext?.kind === 'message' ? row.runContext.channel : undefined;
+		if (!channel || row.resourceId === null) {
+			throw new UnexpectedError('Queued agent turn is not a channel message');
+		}
+		const { thread, currentMessage } = await this.rebuildThread(channel);
+		if (!currentMessage) {
+			throw new UnexpectedError('Queued channel message has no inbound message');
+		}
+		await this.runTurn(
+			thread,
+			currentMessage,
+			{
+				isNewMention: channel.isNewMention,
+				text: row.userMessage ?? '',
+				attachments: row.attachments ?? [],
+				conversationThreadId: channel.conversationThreadId,
+				memoryThreadId: row.threadId,
+				memoryResourceId: row.resourceId,
+				subject: channel.subject,
+			},
+			claim,
+		);
+	}
+
+	/** Run a queued channel resume headless; the card it came from is not settled. */
+	async runQueuedResume(row: AgentExecution, claim: AgentTurnClaim): Promise<void> {
+		const context = row.runContext;
+		if (context?.kind !== 'resume' || !context.channel) {
+			throw new UnexpectedError('Queued agent turn is not a channel resume');
+		}
+		const { thread } = await this.rebuildThread(context.channel);
+		await this.hitlResumeHandler.runResume(
+			thread,
+			{
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				runId: context.runId,
+				toolCallId: context.toolCallId,
+				resumeData: context.resumeData,
+				integrationType: this.integration.type,
+			},
+			claim,
+		);
+	}
+
+	private channelTurn(thread: Thread<unknown, unknown>): QueuedChannelTurn {
+		return {
+			integrationType: this.integration.type,
+			credentialId: this.integration.credentialId,
+			thread: thread.toJSON(),
+		};
+	}
+
+	private async rebuildThread(
+		channel: QueuedChannelTurn,
+	): Promise<{ thread: Thread; currentMessage?: Message }> {
+		const { Message, ThreadImpl } = await loadChatSdk();
+		const adapter = this.chat.getAdapter(channel.integrationType);
+		if (!adapter) {
+			throw new UnexpectedError(`Chat adapter "${channel.integrationType}" is not available`);
+		}
+		const currentMessage = channel.thread.currentMessage
+			? Message.fromJSON(channel.thread.currentMessage)
+			: undefined;
+		return {
+			thread: new ThreadImpl({
+				adapter,
+				stateAdapter: this.chat.getState(),
+				logger: this.chat.getLogger(),
+				id: channel.thread.id,
+				channelId: channel.thread.channelId,
+				isDM: channel.thread.isDM,
+				channelVisibility: channel.thread.channelVisibility,
+				...(currentMessage ? { currentMessage, initialMessage: currentMessage } : {}),
+			}),
+			currentMessage,
+		};
+	}
+
+	/**
+	 * Run the claimed turn and stream the reply into `thread`. Shared by the live
+	 * path and the headless drain, which rebuilds `thread` and `message` from the
+	 * row. A failure before the run started ends the row through the claim.
+	 */
+	private async runTurn(
+		thread: Thread,
+		message: Message,
+		turn: ChannelTurn,
+		claim: AgentTurnClaim,
+	): Promise<void> {
+		const platformAgentContext = this.getPlatformAgentContext();
 		const statusRetry = new AbortController();
 		const replyExpectation =
 			this.integrationImpl?.getReplyExpectation?.({
 				message,
-				isNewMention,
+				isNewMention: turn.isNewMention,
 				platformAgentContext,
 			}) ?? 'required';
 		let statusHandle: ReturnType<typeof onceStatusHandle> | undefined;
-		let consumeStarted = false;
 		try {
-			// Platform status hooks, the lazy `message.subject` fetch, and any
-			// thread-history fetch are all remote round-trips on independent
-			// resources — run them concurrently.
-			const [bridgeExecutionContext, subject] = await Promise.all([
-				this.resolveBridgeExecutionContext(
-					thread,
-					message,
-					platformAgentContext,
-					statusRetry,
-					isNewMention,
-					replyExpectation,
-				),
-				this.messageContextBridge.resolveSubject(message),
-			]);
+			const bridgeExecutionContext = await this.resolveBridgeExecutionContext(
+				thread,
+				message,
+				platformAgentContext,
+				statusRetry,
+				turn.isNewMention,
+				replyExpectation,
+			);
 			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 			const latestContextOptions = {
 				messageId: message.id,
 				interactingUserId: message.author.userId,
 				...bridgeExecutionContext.platformAgentContext,
-				subject,
+				subject: turn.subject,
 				replyExpectation,
 			};
+			// Message context is written by the claimed turn only, so a queued
+			// message never redirects the running turn's replies.
 			await this.messageContextBridge.updateLatest(
-				threadId.id,
+				turn.conversationThreadId,
 				message.author.userId,
 				thread,
 				latestContextOptions,
@@ -754,58 +855,52 @@ export class AgentChatBridge {
 			// Tools look up context on persistence.threadId (the execution
 			// session). When a bound reply continues a task, that is the origin
 			// thread, not the Slack thread — store this turn there too.
-			if (memoryThreadId.id !== threadId.id) {
+			if (turn.memoryThreadId !== turn.conversationThreadId) {
 				await this.messageContextBridge.updateLatest(
-					memoryThreadId.id,
-					memoryResourceId,
+					turn.memoryThreadId,
+					turn.memoryResourceId,
 					thread,
 					latestContextOptions,
 				);
 			}
-			// threadId.id is agent-prefixed for shared conversation history;
+			// threadId is agent-prefixed for shared conversation history;
 			// resourceId keeps the author identity so episodic recall follows them.
 			// Always run the published snapshot — integrations are production traffic.
 			// The model gets the author label and thread history; the transcript
 			// records the plain text and carries the author as structured data.
 			const author = toMessageAuthor(message.author);
-			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
-			const labelledText = `[${author.name} (${author.id})]: ${textWithNotes}`;
+			const labelledText = `[${author.name} (${author.id})]: ${turn.text}`;
 			const modelMessage = bridgeExecutionContext.historyContext
 				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
 				: labelledText;
-			const stream = this.agentService.executeForChatPublished({
-				agentId: this.agentId,
-				projectId: this.n8nProjectId,
-				message: textWithNotes,
-				modelMessage,
-				author,
-				attachments: attachments.length > 0 ? attachments : undefined,
-				memory: {
-					threadId: memoryThreadId,
-					resourceId: memoryResourceId,
+			const stream = this.agentService.executeForChatPublished(
+				{
+					agentId: this.agentId,
+					projectId: this.n8nProjectId,
+					message: turn.text,
+					modelMessage,
+					author,
+					attachments: turn.attachments.length > 0 ? turn.attachments : undefined,
+					memory: {
+						threadId: toInternalThreadId(turn.memoryThreadId),
+						resourceId: turn.memoryResourceId,
+					},
+					integrationType: this.integration.type,
+					sandboxPrincipalHash: hashAgentSandboxPrincipal({
+						type: 'integration-thread',
+						connectionId: this.integration.credentialId,
+						platform: this.integration.type,
+						platformThreadId: this.resolvePlatformThreadId(thread),
+					}),
 				},
-				integrationType: this.integration.type,
-				sandboxPrincipalHash: hashAgentSandboxPrincipal({
-					type: 'integration-thread',
-					connectionId: this.integration.credentialId,
-					platform: this.integration.type,
-					platformThreadId: this.resolvePlatformThreadId(thread),
-				}),
-				permit,
-			});
-
-			consumeStarted = true;
+				claim,
+			);
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
 				statusHandle,
 			});
 		} catch (error) {
-			// The execution generator is lazy: a throw before consumption started means
-			// nothing ran and nothing references this turn's attachments — remove them
-			// (best-effort). Once consumption starts, the turn may be persisted.
-			if (!consumeStarted && attachments.length > 0) {
-				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
-			}
+			await claim.fail(error);
 			throw error;
 		} finally {
 			statusRetry.abort();

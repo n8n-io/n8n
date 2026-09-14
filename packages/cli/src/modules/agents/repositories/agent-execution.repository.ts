@@ -12,14 +12,14 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
 >;
 
-/** Another running turn already claims this thread. The caller waits and retries. */
+/** Another running turn already claims this thread. The turn stays queued until that run ends. */
 export class AgentThreadClaimConflictError extends OperationalError {
 	constructor() {
 		super('Another agent turn already holds this thread', { level: 'info' });
 	}
 }
 
-type NewRunningAgentExecution = Omit<
+export type NewAgentExecution = Omit<
 	AgentExecution,
 	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'generateId' | 'setUpdateDate'
 >;
@@ -53,15 +53,12 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
-	}
-
 	/**
-	 * Insert a running row. With `activeThreadId` set, the partial unique index
-	 * turns a second claim on the same thread into {@link AgentThreadClaimConflictError}.
+	 * Insert a queued or running row. With `activeThreadId` set, the partial
+	 * unique index turns a second claim on the same thread into
+	 * {@link AgentThreadClaimConflictError}.
 	 */
-	async insertRunning(values: NewRunningAgentExecution): Promise<AgentExecution> {
+	async insertExecution(values: NewAgentExecution): Promise<AgentExecution> {
 		try {
 			return await this.save(this.create(values));
 		} catch (error) {
@@ -70,6 +67,54 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			}
 			throw error;
 		}
+	}
+
+	async countQueuedByThread(threadId: string): Promise<number> {
+		return await this.countBy({ threadId, status: 'queued' });
+	}
+
+	/** The thread's waiting turns, oldest first. */
+	async findQueuedByThread(threadId: string): Promise<AgentExecution[]> {
+		return await this.find({
+			where: { threadId, status: 'queued' },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findThreadIdsWithQueued(): Promise<string[]> {
+		const rows = await this.find({ select: ['threadId'], where: { status: 'queued' } });
+		return [...new Set(rows.map((row) => row.threadId))];
+	}
+
+	/**
+	 * Turn a queued row into the thread's claimed running row. `false` when the
+	 * row is no longer queued. A unique-index conflict means another claimed
+	 * running row holds the thread: {@link AgentThreadClaimConflictError}.
+	 */
+	async promoteQueuedToRunning(
+		executionId: string,
+		threadId: string,
+		startedAt: Date,
+	): Promise<boolean> {
+		try {
+			const result = await this.update(
+				{ id: executionId, threadId, status: 'queued' },
+				{ status: 'running', activeThreadId: threadId, startedAt, updatedAt: startedAt },
+			);
+			return result.affected === 1;
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new AgentThreadClaimConflictError();
+			throw error;
+		}
+	}
+
+	/** End a queued row that cannot run. `false` once the row left `queued`. */
+	async failQueued(executionId: string, error: string, stoppedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'queued' },
+			{ status: 'error', error, runContext: null, stoppedAt, updatedAt: stoppedAt },
+		);
+		return result.affected === 1;
 	}
 
 	/**
@@ -115,6 +160,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			{
 				...values,
 				activeThreadId: null,
+				runContext: null,
 			} as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
@@ -125,8 +171,9 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	 * sessions list to render a preview before the LLM-generated title is
 	 * available.
 	 *
-	 * Excludes resumed runs (null `userMessage`). Returns one row per thread
-	 * containing the userMessage from that thread's earliest matching run.
+	 * Excludes resumed runs (null `userMessage`) and turns still waiting in the
+	 * queue. Returns one row per thread containing the userMessage from that
+	 * thread's earliest matching run.
 	 */
 	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
@@ -141,10 +188,11 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."userMessage" IS NOT NULL')
 			.andWhere('e."userMessage" != \'\'')
+			.andWhere('e."status" != \'queued\'')
 			.andWhere(
 				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
 					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" IS NOT NULL ' +
-					'AND e2."userMessage" != \'\')',
+					'AND e2."userMessage" != \'\' AND e2."status" != \'queued\')',
 			)
 			.getRawMany<{ threadId: string; userMessage: string }>();
 
@@ -179,9 +227,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return new Map(rows.map((r) => [r.threadId, r.source]));
 	}
 
+	/** Status of each thread's latest turn that started; queued turns do not count yet. */
 	async findLatestStatusesByThreadIds(
 		threadIds: string[],
-	): Promise<Map<string, AgentExecutionStatus>> {
+	): Promise<Map<string, Exclude<AgentExecutionStatus, 'queued'>>> {
 		if (threadIds.length === 0) return new Map();
 
 		const tableName = this.metadata.tablePath;
@@ -190,10 +239,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere(
 				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" ' +
+					'WHERE e2."threadId" = e."threadId" AND e2."status" != \'queued\' ' +
 					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
 			)
-			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+			.getRawMany<{ threadId: string; status: Exclude<AgentExecutionStatus, 'queued'> }>();
 
 		return new Map(rows.map((row) => [row.threadId, row.status]));
 	}

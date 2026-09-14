@@ -4,6 +4,13 @@ import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import { AgentActionAlreadyHandledError } from '../agent-action-already-handled.error';
+import type { ResumeForChatConfig } from '../agent-execution-orchestrator.service';
+import type {
+	AgentTurnClaim,
+	AgentTurnSubmission,
+	AgentTurnSubmitResult,
+} from '../agent-turn-queue.service';
+import type { QueuedChannelTurn } from '../entities/agent-execution.entity';
 import type {
 	ActionDecisionMessageFormatter,
 	BridgeResumeExecutionContext,
@@ -16,16 +23,22 @@ import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
 import type { InternalThread } from './types';
 
+/** What a channel resume tells the orchestrator; the runtime comes from the published agent. */
+export type ChannelResumeConfig = Pick<
+	ResumeForChatConfig,
+	| 'agentId'
+	| 'projectId'
+	| 'runId'
+	| 'toolCallId'
+	| 'resumeData'
+	| 'integrationType'
+	| 'beforeResume'
+>;
+
 interface ResumeExecutor {
-	resumeForChat(config: {
-		agentId: string;
-		projectId: string;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		integrationType?: string;
-		beforeResume?: () => Promise<void>;
-	}): AsyncGenerator<StreamChunk>;
+	submitTurn(turn: AgentTurnSubmission): Promise<AgentTurnSubmitResult>;
+	resolveResumeThread(config: ChannelResumeConfig): Promise<string>;
+	resumeForChat(config: ChannelResumeConfig, claim: AgentTurnClaim): AsyncGenerator<StreamChunk>;
 }
 
 interface AgentChatHitlResumeHandlerOptions {
@@ -33,6 +46,8 @@ interface AgentChatHitlResumeHandlerOptions {
 	projectId: string;
 	integration: AgentIntegrationConfig;
 	agentService: ResumeExecutor;
+	/** How a queued resume finds its way back to `thread` without the click. */
+	channelTurn: (thread: Thread<unknown, unknown>) => QueuedChannelTurn;
 	logger: Logger;
 	callbackStore?: CallbackStore;
 	deleteActionMessageBeforeResume: boolean;
@@ -236,8 +251,9 @@ export class AgentChatHitlResumeHandler {
 	/**
 	 * Resume the agent and stream the response back into the thread. A resume
 	 * whose action was already handled — a second click on the same card, or a
-	 * run that is no longer suspended — is rejected once it owns the thread
-	 * turn, and only the user's own click is told so.
+	 * run that is no longer suspended — is rejected, and only the user's own
+	 * click is told so. On a busy thread the resume waits as a queued row and
+	 * runs headless through {@link runResume} once the running turn ends.
 	 *
 	 * Public because a resume is not always user-driven — `AgentChatBridge` also
 	 * calls this when a sub-workflow finishing wakes a suspended run.
@@ -253,36 +269,68 @@ export class AgentChatHitlResumeHandler {
 		}: {
 			/** Tell the user the action was already handled. Only for their own clicks. */
 			notifyOnDuplicate?: boolean;
-			/** Side effects that belong to the admitted resume; see `ResumeForChatConfig`. */
+			/** Side effects that belong to the claimed resume; see `ResumeForChatConfig`. */
 			beforeResume?: () => Promise<void>;
 		} = {},
 	): Promise<void> {
+		const { agentId, projectId, integration } = this.options;
+		const config: ChannelResumeConfig = {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType: integration.type,
+			beforeResume,
+		};
 		try {
-			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
-			try {
-				const stream = this.options.agentService.resumeForChat({
-					agentId: this.options.agentId,
-					projectId: this.options.projectId,
+			const threadId = await this.options.agentService.resolveResumeThread(config);
+			const submitted = await this.options.agentService.submitTurn({
+				threadId,
+				agentId,
+				projectId,
+				userMessage: null,
+				source: integration.type,
+				resourceId: null,
+				runContext: {
+					kind: 'resume',
 					runId,
 					toolCallId,
 					resumeData,
-					integrationType: this.options.integration.type,
-					beforeResume,
-				});
-				await this.options.streamConsumer.consume(stream, thread, {
-					...resumeExecutionContext,
-					statusHandle,
-				});
-			} finally {
-				// The stream consumer clears the status right before the first response;
-				// this clear covers failures before/outside consumption. The
-				// once-wrapped handle makes it a no-op await when that already ran.
-				await statusHandle?.clearBeforeResponse();
-			}
+					channel: this.options.channelTurn(thread),
+				},
+			});
+			if (submitted.status === 'queued') return;
+			await this.runResume(thread, config, submitted.claim);
 		} catch (error) {
 			if (!(error instanceof AgentActionAlreadyHandledError)) throw error;
 			if (notifyOnDuplicate) await thread.post(error.message);
+		}
+	}
+
+	/** Stream the claimed resume into `thread`. A failure before the run started ends the row. */
+	async runResume(
+		thread: Thread<unknown, unknown>,
+		config: ChannelResumeConfig,
+		claim: AgentTurnClaim,
+	): Promise<void> {
+		let statusHandle: ReturnType<typeof onceStatusHandle> | undefined;
+		try {
+			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
+			statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
+			const stream = this.options.agentService.resumeForChat(config, claim);
+			await this.options.streamConsumer.consume(stream, thread, {
+				...resumeExecutionContext,
+				statusHandle,
+			});
+		} catch (error) {
+			await claim.fail(error);
+			throw error;
+		} finally {
+			// The stream consumer clears the status right before the first response;
+			// this clear covers failures before/outside consumption. The
+			// once-wrapped handle makes it a no-op await when that already ran.
+			await statusHandle?.clearBeforeResponse();
 		}
 	}
 }

@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
+import type { AgentTurnQueueService } from '../agent-turn-queue.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentWakeService } from '../background/agent-wake.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
@@ -12,6 +13,7 @@ import type { AgentExecutionRepository } from '../repositories/agent-execution.r
 function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
+	const turnQueueService = mock<AgentTurnQueueService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const agentWakeService = mock<AgentWakeService>();
 	const agentsConfig = mock<AgentsConfig>({
@@ -21,16 +23,24 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		mockLogger(),
 		repository,
 		executionService,
+		turnQueueService,
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
 	);
-	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
+	return {
+		sweeper,
+		repository,
+		executionService,
+		turnQueueService,
+		backgroundJobService,
+		agentWakeService,
+	};
 }
 
 describe('AgentInterruptedExecutionSweeper', () => {
 	it('terminalizes an abandoned running execution', async () => {
-		const { sweeper, repository, executionService } = setup();
+		const { sweeper, repository, executionService, turnQueueService } = setup();
 		const execution = {
 			id: 'execution-1',
 			threadId: 'thread-1',
@@ -44,6 +54,10 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		await sweeper.sweep();
 
 		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
+		// The freed thread's queued rows run once the interrupted row is finalized.
+		expect(turnQueueService.drainAll.mock.invocationCallOrder[0]).toBeGreaterThan(
+			executionService.finalizeInterruptedExecution.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('leaves a recently active execution running in another process', async () => {
