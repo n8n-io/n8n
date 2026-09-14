@@ -24,7 +24,7 @@ export class RegexEngineService {
 	) {}
 
 	async init(): Promise<void> {
-		const { engine } = this.globalConfig.regexEngine;
+		const engine: string = this.globalConfig.regexEngine.engine;
 
 		// The default engine is already installed at module load: nothing to build or
 		// swap in, so skip constructing and tearing down a second, identical one.
