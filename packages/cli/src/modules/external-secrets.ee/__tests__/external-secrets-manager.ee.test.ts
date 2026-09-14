@@ -1488,6 +1488,30 @@ describe('ExternalSecretsManager', () => {
 					}
 				});
 
+				it('should cost one connect timeout for the whole batch, not one per provider', async () => {
+					class BlackholeConnectProvider extends DummyProvider {
+						protected override async doConnect(): Promise<void> {
+							await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: BlackholeConnectProvider,
+						connections: connectionsFor('vault-a', 'vault-b', 'vault-c'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+
+					try {
+						await initPromise;
+
+						expect(providerRegistry.get('vault-c')?.state).toBe('error');
+					} finally {
+						manager.shutdown();
+					}
+				});
+
 				it('should connect the providers behind one whose connect never answers', async () => {
 					let instances = 0;
 

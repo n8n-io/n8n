@@ -102,9 +102,14 @@ describe('ProviderLifecycle', () => {
 		});
 
 		it('should not hang when connect exceeds the connect timeout', async () => {
-			const provider = new DummyProvider();
+			class BlackholeConnectProvider extends DummyProvider {
+				protected override async doConnect(): Promise<void> {
+					await new Promise<void>(() => {});
+				}
+			}
+
+			const provider = new BlackholeConnectProvider();
 			await provider.init(providerSettings);
-			vi.spyOn(provider, 'connect').mockImplementation(async () => await new Promise(() => {}));
 
 			vi.useFakeTimers();
 			try {
@@ -115,6 +120,40 @@ describe('ProviderLifecycle', () => {
 				expect(result.success).toBe(false);
 				expect(result.error?.message).toContain('Timed out connecting');
 				expect(provider.state).toBe('error');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should ignore a timed-out connect that fails after a later attempt succeeded', async () => {
+			let failFirstAttempt!: () => void;
+			let attempts = 0;
+
+			class LateFailingFirstConnectProvider extends DummyProvider {
+				protected override async doConnect(): Promise<void> {
+					if (attempts++ > 0) return;
+					await new Promise<void>((_, reject) => {
+						failFirstAttempt = () => reject(new Error('late failure'));
+					});
+				}
+			}
+
+			const provider = new LateFailingFirstConnectProvider();
+			await provider.init(providerSettings);
+
+			vi.useFakeTimers();
+			try {
+				const timedOut = lifecycle.connect(provider);
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+				expect((await timedOut).success).toBe(false);
+
+				expect((await lifecycle.connect(provider)).success).toBe(true);
+				expect(provider.state).toBe('connected');
+
+				failFirstAttempt();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(provider.state).toBe('connected');
 			} finally {
 				vi.useRealTimers();
 			}
@@ -143,7 +182,7 @@ describe('ProviderLifecycle', () => {
 			const result = await lifecycle.connect(provider);
 
 			expect(result.success).toBe(false);
-			expect(result.error).toEqual(new Error('Provider entered error state during connection'));
+			expect(result.error).toEqual(new Error('Connection failed'));
 		});
 	});
 

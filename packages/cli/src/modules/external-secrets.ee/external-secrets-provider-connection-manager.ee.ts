@@ -74,14 +74,13 @@ export class ExternalSecretsProviderConnectionManager {
 	}
 
 	async upsertProviderConnections(inputs: ProviderConnectionInput[]): Promise<void> {
-		const completions: Array<Promise<void>> = [];
+		// Concurrent, so one unreachable provider costs the connect timeout once for the whole
+		// batch instead of once per provider. Provider keys are unique, so no two entries race.
+		const prepared = await Promise.all(
+			inputs.map(async (input) => await this.prepareProviderConnection(input)),
+		);
 
-		for (const input of inputs) {
-			const { completion } = await this.prepareProviderConnection(input);
-			completions.push(completion);
-		}
-
-		await Promise.all(completions);
+		await Promise.all(prepared.map(async ({ completion }) => await completion));
 	}
 
 	shutdown(): void {
