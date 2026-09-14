@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, ref } from 'vue';
+import { usePreferredReducedMotion, useTimeoutFn } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
 import N8nSelect from '../../v2/components/Select/Select.vue';
 import N8nButton from '../N8nButton';
@@ -74,6 +75,8 @@ type Example = {
 	field?: string;
 	custom?: boolean;
 	useOwnKey?: boolean;
+	/** Show the full completion flow instead of a static state example. */
+	interactive?: boolean;
 };
 
 function example(state: Example): Story {
@@ -108,6 +111,20 @@ function example(state: Example): Story {
 					() =>
 						(state.method === 'details' || connected.value) && (!state.field || confirmed.value),
 				);
+				const reducedMotion = usePreferredReducedMotion();
+				const { start: returnToChecklist, stop: cancelReturn } = useTimeoutFn(
+					() => {
+						active.value = undefined;
+					},
+					computed(() => (reducedMotion.value === 'reduce' ? 0 : 650)),
+					{ immediate: false },
+				);
+				watch([active, fieldValue], cancelReturn);
+				function confirmField() {
+					confirmed.value = true;
+					savedField.value = fieldValue.value;
+					if (state.interactive) returnToChecklist();
+				}
 				const items = computed(() => [
 					{
 						id: 'service',
@@ -157,6 +174,14 @@ function example(state: Example): Story {
 				});
 				return {
 					state,
+					confirmField,
+					status: computed(() =>
+						state.interactive
+							? completed.value && savedField.value === fieldValue.value
+								? 'complete'
+								: 'incomplete'
+							: undefined,
+					),
 					active,
 					connected,
 					confirmed,
@@ -198,7 +223,7 @@ function example(state: Example): Story {
 			},
 			template: `
 				<div style="width: min(28rem, 90vw); min-height: 75vh; display: flex; flex-direction: column; justify-content: end; gap: var(--spacing--xs)">
-					<N8nSetupPanel :items="items" v-model:active-item-id="active">
+					<N8nSetupPanel :items="items" :status="status" v-model:active-item-id="active">
 						<template #icon><N8nIcon icon="plug" size="small" /></template>
 						<template #action>
 							<N8nSetupConnection :connected="false" action-label="Connect" action-variant="subtle"
@@ -238,7 +263,7 @@ function example(state: Example): Story {
 											<span>{{ state.field }}</span>
 											<N8nSelect v-model="fieldValue" :items="fieldOptions" :aria-label="state.field" />
 										</div>
-										<N8nButton size="medium" :disabled="savedField === fieldValue" @click="confirmed = true; savedField = fieldValue">{{ confirmed ? 'Update' : 'Confirm' }}</N8nButton>
+										<N8nButton size="medium" :disabled="savedField === fieldValue" @click="confirmField">{{ confirmed ? 'Update' : 'Confirm' }}</N8nButton>
 									</div>
 								</template>
 							</div>
@@ -284,6 +309,12 @@ export const ServiceComplete = example({
 export const ApiKey = example({ service: 'Clearbit', method: 'key' });
 export const ApiKeyConnected = example({ service: 'Clearbit', method: 'key', connected: true });
 export const GatewayCredits = example({ service: 'OpenAI', method: 'gateway' });
+export const StateTransitions = example({
+	service: 'Example service',
+	method: 'gateway',
+	field: 'Notification channel',
+	interactive: true,
+});
 export const GatewayOwnKey = example({ service: 'OpenAI', method: 'gateway', useOwnKey: true });
 export const GatewayCreditsConnected = example({
 	service: 'OpenAI',

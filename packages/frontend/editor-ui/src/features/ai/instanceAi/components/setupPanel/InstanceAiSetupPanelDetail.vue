@@ -58,10 +58,8 @@ const hasChanges = computed(
 			displayParameters.value,
 		),
 );
-watch(
-	() => !isEqual(props.node.parameters, displayParameters.value),
-	(value) => emit('update:hasChanges', value),
-);
+// Submitted queue entries are confirmed; only newer edits remain a draft.
+watch(hasChanges, (value) => emit('update:hasChanges', value));
 const parameterRoots = computed(
 	() =>
 		new Set([

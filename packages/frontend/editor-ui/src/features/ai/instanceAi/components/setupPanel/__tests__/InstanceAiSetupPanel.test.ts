@@ -1,6 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h, reactive, ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -11,6 +11,8 @@ import type { INodeUi } from '@/Interface';
 import type { SetupPanelRow } from '../../../composables/useSetupPanelState';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 import ResourceLocatorDropdown from '@/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue';
+import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
+import { AI_GATEWAY_MANAGED_TAG } from '../../../constants';
 
 // The shared popover mock renders inline and cannot verify the portal boundary.
 vi.unmock('reka-ui');
@@ -176,7 +178,151 @@ const renderComponent = createComponentRenderer(InstanceAiSetupPanel, {
 	},
 });
 
+const defaultMatchMedia = window.matchMedia;
+function enableMotionTimers() {
+	const media = window.matchMedia('');
+	window.matchMedia = vi.fn((query) => ({ ...media, media: query, matches: false }));
+	vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+}
+
+function renderCompletion(credentialId = 'cred-1') {
+	stateMock.rows = [
+		{ item: credentialItem, isDone: false },
+		{ item: parametersItem, isDone: false },
+	];
+	stateMock.nodesByName = { 'Send Slack': slackNode };
+	credentialsMock.getCredentialById.mockReturnValue({ id: credentialId, name: 'Account' });
+	actionsMock.bindCredential.mockImplementationOnce(async () => {
+		stateMock.rows[0].isDone = true;
+		return 'applied';
+	});
+	return renderComponent({
+		global: {
+			stubs: {
+				InstanceAiSetupPanelDetail: true,
+				CredentialIcon: true,
+				NodeIcon: true,
+				InstanceAiSetupCredential: defineComponent({
+					emits: ['bindCredential', 'update:hasChanges'],
+					setup(_, { emit }) {
+						return () =>
+							h('div', [
+								h(
+									'button',
+									{ onClick: () => emit('bindCredential', credentialItem, credentialId) },
+									'Save connection',
+								),
+								h('input', {
+									'aria-label': 'Newer credential edit',
+									onInput: () => emit('update:hasChanges', true),
+								}),
+							]);
+					},
+				}),
+			},
+		},
+	});
+}
+
 describe('InstanceAiSetupPanel', () => {
+	afterEach(() => {
+		window.matchMedia = defaultMatchMedia;
+		vi.useRealTimers();
+	});
+
+	it.each(['cred-1', AI_GATEWAY_MANAGED_TAG])(
+		'briefly shows successful setup and keeps a completed item open when revisited: %s',
+		async (credentialId) => {
+			enableMotionTimers();
+			const view = renderCompletion(credentialId);
+			await fireEvent.click(view.getByRole('button', { name: /Notion/ }));
+			await fireEvent.click(view.getByRole('button', { name: 'Save connection' }));
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY - 1);
+			expect(view.getByRole('dialog')).toBeVisible();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(view.queryByRole('dialog')).toBeNull();
+			await fireEvent.click(view.getByRole('button', { name: 'Notion Complete' }));
+			await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY * 2);
+			expect(view.getByRole('dialog')).toBeVisible();
+		},
+	);
+
+	it('cancels the automatic return when a newer draft appears', async () => {
+		enableMotionTimers();
+		const view = renderCompletion();
+		await fireEvent.click(view.getByRole('button', { name: /Notion/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save connection' }));
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY / 2);
+		await fireEvent.update(view.getByRole('textbox', { name: 'Newer credential edit' }), 'newer');
+		await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY * 2);
+		expect(view.getByRole('dialog')).toBeVisible();
+	});
+
+	it('does not close a reopened item when an older save finishes', async () => {
+		enableMotionTimers();
+		const view = renderCompletion();
+		const saved = Promise.withResolvers<string>();
+		actionsMock.bindCredential.mockReset().mockImplementationOnce(async () => {
+			stateMock.rows[0].isDone = true;
+			stateMock.isApplying = true;
+			return await saved.promise;
+		});
+		await fireEvent.click(view.getByRole('button', { name: /Notion/ }));
+		await fireEvent.click(view.getByRole('button', { name: 'Save connection' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Back to setup checklist' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Notion Complete' }));
+		stateMock.isApplying = false;
+		saved.resolve('applied');
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY * 2);
+		expect(view.getByRole('dialog')).toBeVisible();
+	});
+
+	it('ignores a credential callback while its detail animates out', async () => {
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const connected = Promise.withResolvers<void>();
+		const view = renderComponent({
+			global: {
+				stubs: {
+					transition: false,
+					InstanceAiSetupPanelDetail: true,
+					CredentialIcon: true,
+					NodeIcon: true,
+					InstanceAiSetupCredential: defineComponent({
+						emits: ['bindCredential'],
+						setup(_, { emit }) {
+							return () =>
+								h(
+									'button',
+									{
+										onClick: () => {
+											void connected.promise.then(() =>
+												emit('bindCredential', credentialItem, 'cred-1'),
+											);
+										},
+									},
+									'Connect account',
+								);
+						},
+					}),
+				},
+			},
+		});
+		await fireEvent.click(view.getByRole('button', { name: /Notion/ }));
+		const overlay = view.getByTestId('setup-panel-overlay');
+		overlay.style.animationDuration = '1s';
+		overlay.style.animationDelay = '0s';
+		await fireEvent.click(view.getByRole('button', { name: 'Connect account' }));
+		await fireEvent.click(view.getByRole('button', { name: 'Back to setup checklist' }));
+		expect(overlay).toBeInTheDocument();
+		connected.resolve();
+		await flushPromises();
+		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
+		view.unmount();
+	});
+
 	it.each(['select', 'dismiss'] as const)(
 		'opens resource menus outside the setup panel: %s',
 		async (action) => {

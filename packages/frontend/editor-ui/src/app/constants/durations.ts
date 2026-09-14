@@ -47,6 +47,9 @@ export const LOADING_ANIMATION_MIN_DURATION = 1000;
 /** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
 export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
 
+/** Keeps a completed setup item visible briefly before returning to the checklist. */
+export const SETUP_PANEL_SUCCESS_DELAY = 650;
+
 /** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
 export const HOVER_DELAY = {
 	/** Delay before a hovered affordance reveals its content. */

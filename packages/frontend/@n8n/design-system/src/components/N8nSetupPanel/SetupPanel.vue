@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { VisuallyHidden } from 'reka-ui';
-import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { CollapsibleRoot, VisuallyHidden } from 'reka-ui';
+import { computed, nextTick, onScopeDispose, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { SetupPanelProps } from './SetupPanel.types';
@@ -10,6 +12,7 @@ import type { SetupPanelProps } from './SetupPanel.types';
 const props = defineProps<SetupPanelProps>();
 const emit = defineEmits<{
 	'update:activeItemId': [id: string | undefined];
+	detailClosed: [];
 	execute: [];
 }>();
 const { t } = useI18n();
@@ -18,17 +21,58 @@ const activeItem = computed(() =>
 );
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
+const overlayContent = useTemplateRef<HTMLElement>('overlayContent');
+const overlayHeight = ref<number>();
+const animateHeight = ref(false);
+let resizeFrame: number | undefined;
+
+function measureOverlay() {
+	if (activeItem.value && overlayContent.value)
+		overlayHeight.value = overlayContent.value.offsetHeight;
+}
+useResizeObserver(overlayContent, measureOverlay);
+watch(
+	() => activeItem.value?.id,
+	async (id) => {
+		if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+		if (!id) return;
+		// A different item starts at its own height; only changes within it resize smoothly.
+		animateHeight.value = false;
+		overlayHeight.value = undefined;
+		await nextTick();
+		if (activeItem.value?.id !== id || !overlayContent.value) return;
+		measureOverlay();
+		resizeFrame = requestAnimationFrame(() => {
+			animateHeight.value = true;
+		});
+	},
+	{ immediate: true, flush: 'post' },
+);
+onScopeDispose(() => {
+	if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+});
+
+function deactivateOverlay(element: Element) {
+	element.setAttribute('inert', '');
+	element.setAttribute('aria-hidden', 'true');
+}
+function activateOverlay(element: Element) {
+	element.removeAttribute('inert');
+	element.removeAttribute('aria-hidden');
+}
 const titleId = useId();
 const expanded = ref(false);
 const showTerminal = computed(() => props.status && props.status !== 'incomplete');
-const showChecklist = computed(() => !showTerminal.value || expanded.value);
+const showChecklist = computed(
+	() => Boolean(activeItem.value) || !showTerminal.value || expanded.value,
+);
 const checklistId = useId();
 watch(
 	() => props.status,
 	(status) => {
 		if (status !== 'complete' && status !== 'executing') return;
-		expanded.value = false;
-		if (props.activeItemId) emit('update:activeItemId', undefined);
+		if (!activeItem.value || status === 'executing') expanded.value = false;
+		if (status === 'executing' && props.activeItemId) emit('update:activeItemId', undefined);
 	},
 );
 watch(
@@ -60,106 +104,126 @@ watch(
 		:class="$style.panel"
 		:aria-label="t('setupPanel.label')"
 	>
-		<div
-			v-if="showTerminal"
-			:class="$style.terminal"
-			:inert="Boolean(activeItem && showChecklist)"
-			:aria-hidden="activeItem && showChecklist ? true : undefined"
-			data-test-id="setup-panel-terminal"
-		>
-			<span v-if="status !== 'complete'" :class="$style.status" role="status">
-				<N8nIcon icon="loader-circle" size="small" :class="$style.spinner" />
-				{{ t(status === 'executing' ? 'setupPanel.executing' : 'setupPanel.validating') }}
-			</span>
-			<template v-else>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:class="$style.review"
-					data-test-id="setup-panel-review"
-					:aria-expanded="expanded"
-					:aria-controls="checklistId"
-					@click="
-						expanded = !expanded;
-						emit('update:activeItemId', undefined);
-					"
-				>
-					{{ t('setupPanel.setupComplete') }}
-					<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
-				</N8nButton>
-				<N8nButton size="small" :disabled="executeDisabled" @click="emit('execute')">
-					{{ t('setupPanel.execute') }}
-				</N8nButton>
-			</template>
-		</div>
-		<div
-			v-if="activeItem && showChecklist"
-			ref="overlay"
-			:class="$style.overlay"
-			role="dialog"
-			:aria-labelledby="titleId"
-			data-test-id="setup-panel-overlay"
-			@keydown.esc.stop="emit('update:activeItemId', undefined)"
-		>
-			<header :class="$style.header">
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:aria-label="t('setupPanel.back')"
-					data-test-id="setup-panel-back"
-					@click="emit('update:activeItemId', undefined)"
-				>
-					<N8nIcon icon="chevron-left" size="small" />
-					<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
-				</N8nButton>
-			</header>
-			<div :class="$style.detail">
-				<slot name="detail" :item="activeItem" />
-			</div>
-		</div>
-		<ul
-			v-show="showChecklist"
-			:id="checklistId"
-			:class="[$style.rows, { [$style.hidden]: activeItem }]"
-			:inert="Boolean(activeItem)"
-			:aria-hidden="activeItem ? true : undefined"
-		>
-			<li v-for="item in items" :key="item.id">
-				<component
-					:is="item.hasAction ? 'div' : 'button'"
-					:role="item.hasAction ? 'group' : undefined"
-					:aria-label="item.hasAction ? item.title : undefined"
-					:type="item.hasAction ? undefined : 'button'"
-					:class="[
-						$style.row,
-						{ [$style.actionRow]: item.hasAction, [$style.completedRow]: item.completed },
-					]"
-					:disabled="item.hasAction ? undefined : item.disabled"
-					data-test-id="setup-panel-row"
-					:data-setup-item-id="item.id"
-					@click="!item.hasAction && emit('update:activeItemId', item.id)"
-				>
-					<span :class="[$style.icon, { [$style.complete]: item.completed }]">
-						<N8nIcon v-if="item.completed" icon="circle-check" size="small" />
-						<slot v-else name="icon" :item="item" />
-					</span>
-					<span :class="$style.title">{{ item.title }}</span>
-					<slot v-if="item.hasAction" name="action" :item="item" />
-					<span v-else-if="!item.completed && item.subtitle" :class="$style.subtitle">
-						{{ item.subtitle }}
-					</span>
-					<VisuallyHidden v-if="item.completed" :aria-hidden="false">{{
-						t('setupPanel.complete')
-					}}</VisuallyHidden>
-					<N8nIcon
-						v-if="!item.hasAction"
-						icon="chevron-right"
+		<div :class="[$style.base, { [$style.hidden]: activeItem }]">
+			<div
+				v-if="showTerminal"
+				:class="$style.terminal"
+				:inert="Boolean(activeItem && showChecklist)"
+				:aria-hidden="activeItem && showChecklist ? true : undefined"
+				data-test-id="setup-panel-terminal"
+			>
+				<span v-if="status !== 'complete'" :class="$style.status" role="status">
+					<N8nIcon icon="loader-circle" size="small" :class="$style.spinner" />
+					{{ t(status === 'executing' ? 'setupPanel.executing' : 'setupPanel.validating') }}
+				</span>
+				<template v-else>
+					<N8nButton
+						variant="ghost"
 						size="small"
-						:class="$style.chevron"
-					/>
-				</component>
-			</li>
-		</ul>
+						:class="$style.review"
+						data-test-id="setup-panel-review"
+						:aria-expanded="expanded"
+						:aria-controls="checklistId"
+						@click="
+							expanded = !expanded;
+							emit('update:activeItemId', undefined);
+						"
+					>
+						{{ t('setupPanel.setupComplete') }}
+						<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
+					</N8nButton>
+					<N8nButton size="small" :disabled="executeDisabled" @click="emit('execute')">
+						{{ t('setupPanel.execute') }}
+					</N8nButton>
+				</template>
+			</div>
+			<CollapsibleRoot :open="showChecklist" :unmount-on-hide="false">
+				<N8nAnimatedCollapsibleContent>
+					<div :class="{ [$style.listSpacing]: showTerminal }">
+						<ul
+							:id="checklistId"
+							:class="$style.rows"
+							:inert="Boolean(activeItem) || !showChecklist"
+							:aria-hidden="activeItem || !showChecklist ? true : undefined"
+						>
+							<li v-for="item in items" :key="item.id">
+								<component
+									:is="item.hasAction ? 'div' : 'button'"
+									:role="item.hasAction ? 'group' : undefined"
+									:aria-label="item.hasAction ? item.title : undefined"
+									:type="item.hasAction ? undefined : 'button'"
+									:class="[
+										$style.row,
+										{ [$style.actionRow]: item.hasAction, [$style.completedRow]: item.completed },
+									]"
+									:disabled="item.hasAction ? undefined : item.disabled"
+									data-test-id="setup-panel-row"
+									:data-setup-item-id="item.id"
+									@click="!item.hasAction && emit('update:activeItemId', item.id)"
+								>
+									<span :class="[$style.icon, { [$style.complete]: item.completed }]">
+										<N8nIcon v-if="item.completed" icon="circle-check" size="small" />
+										<slot v-else name="icon" :item="item" />
+									</span>
+									<span :class="$style.title">{{ item.title }}</span>
+									<slot v-if="item.hasAction" name="action" :item="item" />
+									<span v-else-if="!item.completed && item.subtitle" :class="$style.subtitle">
+										{{ item.subtitle }}
+									</span>
+									<VisuallyHidden v-if="item.completed" :aria-hidden="false">{{
+										t('setupPanel.complete')
+									}}</VisuallyHidden>
+									<N8nIcon
+										v-if="!item.hasAction"
+										icon="chevron-right"
+										size="small"
+										:class="$style.chevron"
+									/>
+								</component>
+							</li>
+						</ul>
+					</div>
+				</N8nAnimatedCollapsibleContent>
+			</CollapsibleRoot>
+		</div>
+		<Transition
+			:enter-active-class="$style.overlayEnter"
+			:leave-active-class="$style.overlayLeave"
+			@before-enter="activateOverlay"
+			@before-leave="deactivateOverlay"
+			@leave-cancelled="activateOverlay"
+			@after-leave="emit('detailClosed')"
+		>
+			<div
+				v-if="activeItem && showChecklist"
+				:key="activeItem.id"
+				ref="overlay"
+				:class="[$style.overlay, { [$style.resize]: animateHeight }]"
+				:style="overlayHeight === undefined ? undefined : { height: `${overlayHeight}px` }"
+				role="dialog"
+				:aria-labelledby="titleId"
+				data-test-id="setup-panel-overlay"
+				@keydown.esc.stop="emit('update:activeItemId', undefined)"
+			>
+				<div ref="overlayContent" :class="$style.overlayContent">
+					<header :class="$style.header">
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:aria-label="t('setupPanel.back')"
+							data-test-id="setup-panel-back"
+							@click="emit('update:activeItemId', undefined)"
+						>
+							<N8nIcon icon="chevron-left" size="small" />
+							<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
+						</N8nButton>
+					</header>
+					<div :class="$style.detail">
+						<slot name="detail" :item="activeItem" />
+					</div>
+				</div>
+			</div>
+		</Transition>
 	</section>
 </template>
 
@@ -171,9 +235,27 @@ watch(
 	min-width: 0;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+	@include motion.fade-in-up;
+}
+
+.base {
+	transform-origin: bottom center;
+	transition:
+		transform var(--duration--snappy) var(--easing--ease-out),
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		visibility 0s;
+	@include motion.reduced-motion;
+}
+
+.hidden {
+	visibility: hidden;
+	opacity: 0;
+	transform: scale(0.92);
+	transition-delay: 0s, 0s, var(--duration--snappy);
+}
+
+.listSpacing {
+	padding-top: var(--spacing--2xs);
 }
 
 .rows,
@@ -219,11 +301,30 @@ watch(
 	position: absolute;
 	inset: auto 0 0;
 	z-index: 1;
+	box-sizing: content-box;
+	max-height: 60vh;
+	overflow: hidden;
+	transform-origin: bottom center;
+}
+
+.overlayContent {
 	display: flex;
 	flex-direction: column;
 	max-height: 60vh;
-	transform-origin: bottom center;
+}
+
+.resize {
+	@include motion.height-transition;
+}
+
+.overlayEnter,
+.overlayLeave {
 	@include motion.popover-in;
+	animation-fill-mode: both;
+}
+
+.overlayLeave {
+	animation-direction: reverse;
 }
 
 .header,
@@ -245,17 +346,6 @@ watch(
 	padding: var(--spacing--2xs);
 	max-height: 50vh;
 	overflow-y: auto;
-	transform-origin: bottom center;
-	transition:
-		transform var(--duration--snappy) var(--easing--ease-out),
-		opacity var(--duration--snappy) var(--easing--ease-out);
-	@include motion.reduced-motion;
-}
-
-.hidden {
-	visibility: hidden;
-	opacity: 0;
-	transform: scale(0.92);
 }
 
 .row {

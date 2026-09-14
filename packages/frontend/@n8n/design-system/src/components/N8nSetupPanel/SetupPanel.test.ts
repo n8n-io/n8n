@@ -1,10 +1,35 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
-import { ref } from 'vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { nextTick, ref } from 'vue';
 
 import SetupPanel from './SetupPanel.vue';
 
 describe('SetupPanel', () => {
+	it('retains outgoing content while making the closing detail inaccessible', async () => {
+		const activeItemId = ref<string | undefined>('slack');
+		const { getByRole, getByTestId, queryByRole, unmount } = render(
+			{
+				components: { SetupPanel },
+				setup: () => ({ activeItemId, items: [{ id: 'slack', title: 'Slack', completed: false }] }),
+				template: `<SetupPanel :items="items" v-model:active-item-id="activeItemId">
+				<template #detail><span v-if="activeItemId">Connection form</span></template>
+			</SetupPanel>`,
+			},
+			{ global: { stubs: { transition: false } } },
+		);
+		const overlay = getByTestId('setup-panel-overlay');
+		overlay.style.animationDuration = '1s';
+		overlay.style.animationDelay = '0s';
+		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+		await nextTick();
+		expect(overlay).toBeInTheDocument();
+		expect(overlay).toHaveTextContent('Connection form');
+		expect(overlay).toHaveAttribute('inert');
+		expect(overlay).toHaveAttribute('aria-hidden', 'true');
+		expect(queryByRole('dialog')).toBeNull();
+		unmount();
+	});
+
 	it('shows a compact completion bar and lets users review completed items', async () => {
 		const { getByRole, queryByRole, emitted } = render(SetupPanel, {
 			props: { items: [{ id: 'slack', title: 'Slack', completed: true }], status: 'complete' },

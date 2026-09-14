@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onScopeDispose, provide, ref, shallowReactive, watch } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, usePreferredReducedMotion, useTimeoutFn } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -20,6 +20,7 @@ import {
 	ResourceLocatorDropdownTeleportedKey,
 } from '@/app/constants';
 import { getWorkflow } from '@/app/api/workflows';
+import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { deriveHomeProject } from '@/app/stores/workflowDocument.store';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -188,7 +189,8 @@ watch(
 	() => {
 		selectedItemId.value = undefined;
 		oauth.cancelAuthorize();
-		dirtyParameters.clear();
+		clearDetailState();
+		lastDetailId = undefined;
 	},
 );
 
@@ -362,6 +364,75 @@ const isChatBusy = computed(
 );
 const allRowsDone = computed(() => rows.value.length > 0 && rows.value.every((row) => row.isDone));
 const hasChanges = computed(() => credentialHasChanges.value || dirtyParameters.size > 0);
+const activeGroupComplete = computed(() => {
+	const group = selectedGroup.value;
+	return Boolean(
+		group &&
+			(!group.credential || group.credential.isDone) &&
+			group.parameters.every((row) => row.isDone),
+	);
+});
+const canAutoClose = ref(false);
+const reducedMotion = usePreferredReducedMotion();
+let selectionVersion = 0;
+let lastDetailId: string | undefined;
+const readyToReturn = computed(
+	() =>
+		canAutoClose.value &&
+		activeGroupComplete.value &&
+		!hasChanges.value &&
+		!isApplying.value &&
+		!actions.isApplying.value &&
+		!credentialBusy.value &&
+		!isRefreshingWorkflow.value &&
+		!connectingItemId.value,
+);
+const { start: scheduleReturn, stop: cancelReturn } = useTimeoutFn(
+	() => {
+		if (readyToReturn.value) selectedItemId.value = undefined;
+	},
+	computed(() => (reducedMotion.value === 'reduce' ? 0 : SETUP_PANEL_SUCCESS_DELAY)),
+	{ immediate: false },
+);
+
+function clearDetailState() {
+	credentialBusy.value = false;
+	credentialHasChanges.value = false;
+	dirtyParameters.clear();
+}
+
+function onDetailClosed() {
+	if (selectedItemId.value) return;
+	clearDetailState();
+	lastDetailId = undefined;
+}
+
+watch(
+	selectedItemId,
+	(id) => {
+		selectionVersion++;
+		cancelReturn();
+		canAutoClose.value = Boolean(id && !activeGroupComplete.value);
+		if (id && id !== lastDetailId) {
+			clearDetailState();
+			lastDetailId = id;
+		}
+	},
+	{ flush: 'sync' },
+);
+watch(readyToReturn, (ready) => {
+	cancelReturn();
+	if (ready) scheduleReturn();
+});
+
+function finishSubmission(result: SetupPanelApplyResult, version: number | undefined) {
+	if (
+		version === selectionVersion &&
+		(result === 'applied' || result === 'noop' || result === 'queued')
+	)
+		canAutoClose.value = true;
+}
+
 const terminalStatus = computed(() => {
 	if (!allRowsDone.value || hasChanges.value) return 'incomplete';
 	if (requestingExecution.value) return 'executing';
@@ -481,6 +552,8 @@ async function notifyApplyResult(result: SetupPanelApplyResult) {
 }
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
+	const version =
+		selectedGroup.value?.credential?.item.id === item.id ? selectionVersion : undefined;
 	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
 		const result = await actions.bindCredential(item, {
 			id: null,
@@ -489,6 +562,7 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 		});
 		await notifyApplyResult(result);
 		panelTelemetry.trackConnectionCompleted(item, null, result);
+		finishSubmission(result, version);
 		return;
 	}
 	const credential = credentialsStore.getCredentialById(credentialId);
@@ -497,17 +571,7 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
 	await notifyApplyResult(result);
 	panelTelemetry.trackConnectionCompleted(item, credential.id, result);
-	if (
-		active &&
-		oauth.isOAuthCredentialType(item.credentialType) &&
-		(result === 'applied' || result === 'noop' || result === 'queued') &&
-		selectedGroup.value?.credential?.item.id === item.id &&
-		selectedGroup.value.parameters.every((row) => row.isDone) &&
-		!credentialHasChanges.value &&
-		dirtyParameters.size === 0
-	) {
-		selectedItemId.value = undefined;
-	}
+	finishSubmission(result, version);
 }
 
 async function onApplyParameters(
@@ -515,9 +579,14 @@ async function onApplyParameters(
 	values: INodeParameters,
 	baseline?: INodeParameters,
 ) {
+	const version = selectedGroup.value?.parameters.some((row) => row.item.nodeName === nodeName)
+		? selectionVersion
+		: undefined;
 	isApplying.value = true;
 	try {
-		await notifyApplyResult(await actions.applyParameterValues(nodeName, values, baseline));
+		const result = await actions.applyParameterValues(nodeName, values, baseline);
+		await notifyApplyResult(result);
+		finishSubmission(result, version);
 	} finally {
 		isApplying.value = false;
 	}
@@ -527,12 +596,14 @@ async function onApplyParameters(
 <template>
 	<N8nSetupPanel
 		v-if="!setupDismissed"
+		:key="workflowId"
 		v-model:active-item-id="selectedItemId"
 		:items="panelItems"
 		:status="terminalStatus"
 		:execute-disabled="isChatBusy || requestingExecution"
 		data-test-id="instance-ai-setup-panel"
 		@execute="onExecute"
+		@detail-closed="onDetailClosed"
 	>
 		<template #action="{ item }">
 			<N8nSetupConnection
@@ -559,7 +630,7 @@ async function onApplyParameters(
 			/>
 			<N8nIcon v-else icon="sliders-horizontal" size="small" />
 		</template>
-		<template #detail>
+		<template #detail="{ item }">
 			<div v-if="selectedGroup" :class="$style.detail">
 				<InstanceAiSetupCredential
 					v-if="selectedGroup.credential && credentialProjectId"
@@ -570,10 +641,19 @@ async function onApplyParameters(
 					:nodes="selectedNodes"
 					:workflow-id="workflowId"
 					:project-id="credentialProjectId"
-					@bind-credential="onBindCredential"
-					@update:busy="credentialBusy = $event"
-					@update:has-changes="credentialHasChanges = $event"
+					@bind-credential="
+						(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
+					"
+					@update:busy="
+						(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+						(credentialBusy = $event)
+					"
+					@update:has-changes="
+						(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+						(credentialHasChanges = $event)
+					"
 					@connect-started="
+						selectedItemId === item.id &&
 						panelTelemetry.trackConnectionStarted(selectedGroup.credential.item, $event)
 					"
 				/>
@@ -590,11 +670,15 @@ async function onApplyParameters(
 							:is-applying="isApplying"
 							:is-complete="editor.isComplete"
 							:pending-changes="editor.pendingChanges"
-							@apply-parameters="onApplyParameters"
+							@apply-parameters="
+								(name, values, baseline) =>
+									selectedItemId === item.id && onApplyParameters(name, values, baseline)
+							"
 							@update:has-changes="
-								$event
+								(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+								($event
 									? dirtyParameters.add(editor.item.id)
-									: dirtyParameters.delete(editor.item.id)
+									: dirtyParameters.delete(editor.item.id))
 							"
 						/>
 					</div>

@@ -31,6 +31,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -326,6 +327,44 @@ describe('InstanceAiSetupPanel interactions', () => {
 		return rendered;
 	}
 
+	it('holds confirmed fields briefly, then preserves the completed review when an edit is saved', async () => {
+		const defaultMatchMedia = window.matchMedia;
+		const media = window.matchMedia('');
+		window.matchMedia = vi.fn((query) => ({ ...media, media: query, matches: false }));
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		try {
+			saved.nodes[0].parameters.options = { value: 'configured', other: 'Keep this option' };
+			const view = await openParameters();
+			await fireEvent.update(view.getByLabelText('Channel'), 'first-value');
+			await fireEvent.click(view.getByRole('button', { name: 'Confirm' }));
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY - 1);
+			expect(view.getByLabelText('Channel')).toHaveValue('first-value');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(view.queryByRole('dialog')).toBeNull();
+			await fireEvent.click(view.getByRole('button', { name: 'Setup complete' }));
+			await vi.advanceTimersByTimeAsync(32);
+			await fireEvent.click(view.getByRole('button', { name: 'Slack Complete' }));
+			await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY * 2);
+			expect(view.getByLabelText('Channel')).toHaveValue('first-value');
+			await fireEvent.update(view.getByLabelText('Channel'), 'updated-value');
+			await fireEvent.click(view.getByRole('button', { name: 'Update' }));
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(SETUP_PANEL_SUCCESS_DELAY);
+			expect(view.queryByRole('dialog')).toBeNull();
+			expect(view.getByRole('button', { name: 'Slack Complete' })).toBeVisible();
+			expect(view.getByRole('button', { name: 'Setup complete' })).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
+			expect(saved.nodes[0].parameters.channel).toBe('updated-value');
+			view.unmount();
+		} finally {
+			window.matchMedia = defaultMatchMedia;
+			vi.useRealTimers();
+		}
+	});
+
 	it('binds a credential announced without bindings after the build ends', async () => {
 		startBuild();
 		const { getByRole, findByRole, getByTestId, queryByRole } = renderPanel();
@@ -490,6 +529,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 		});
 		await flushPromises();
 		await fireEvent.click(getByRole('button', { name: 'Setup complete' }));
+		await waitFor(() => expect(getByRole('button', { name: 'Slack Complete' })).toBeVisible());
 		await fireEvent.click(getByRole('button', { name: 'Slack Complete' }));
 		expect(getByLabelText('Channel')).toHaveValue('external-value');
 		expect(getByRole('button', { name: 'Update' })).toBeDisabled();
@@ -731,7 +771,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 				expect(getByLabelText('Channel')).toHaveValue('user-value');
 				await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
 				await fireEvent.click(getByRole('button', { name: 'Setup complete' }));
-				expect(getByRole('button', { name: 'Slack Complete' })).toBeInTheDocument();
+				await waitFor(() => expect(getByRole('button', { name: 'Slack Complete' })).toBeVisible());
 				expect(saved.nodes[0].parameters.channel).toBe('Saved elsewhere');
 				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 			}
