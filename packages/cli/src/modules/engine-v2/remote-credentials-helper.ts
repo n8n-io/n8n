@@ -67,7 +67,9 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
-			throw new UnimplementedError('Gateway credits are not supported on Engine 2.0 yet');
+			throw new UnimplementedError(
+				`Gateway credits are not supported on Engine 2.0 yet (credential type "${type}")`,
+			);
 		}
 
 		if (!nodeCredentials.id) {
@@ -87,7 +89,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		// refreshed one, and that write throws below. Fail here with the same
 		// error, so the step reports the unsupported refresh and not a missing node.
 		if (!consumerNode && raw === true) {
-			throw this.oauthRefreshUnsupported();
+			throw this.oauthRefreshUnsupported(type);
 		}
 
 		if (!consumerNode) {
@@ -127,7 +129,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		if (this.hasExpirableProperty(typeName)) {
 			throw new UnimplementedError(
-				'Engine 2.0 does not support credentials with an expirable property yet',
+				`Engine 2.0 does not support credentials with an expirable property yet (credential type "${typeName}")`,
 			);
 		}
 
@@ -150,15 +152,17 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 
 	async updateCredentialsOauthTokenData(
 		_nodeCredentials: INodeCredentialsDetails,
-		_type: string,
+		type: string,
 		_data: ICredentialDataDecryptedObject,
 		_additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
-		throw this.oauthRefreshUnsupported();
+		throw this.oauthRefreshUnsupported(type);
 	}
 
-	private oauthRefreshUnsupported(): UnimplementedError {
-		return new UnimplementedError('Engine 2.0 does not support OAuth token refresh yet');
+	private oauthRefreshUnsupported(type: string): UnimplementedError {
+		return new UnimplementedError(
+			`Engine 2.0 does not support OAuth token refresh yet (credential type "${type}")`,
+		);
 	}
 
 	async getCredentials(
