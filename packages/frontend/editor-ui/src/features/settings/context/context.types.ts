@@ -1,4 +1,5 @@
 import type {
+	AiPreferenceCountDto,
 	AiPreferenceDto,
 	AiPreferenceListDto,
 	AiPreferenceProjectDto,
@@ -26,6 +27,8 @@ export interface PreferenceListQuery {
 }
 
 export type PreferenceListResponse = AiPreferenceListDto;
+
+export type PreferenceCountResponse = AiPreferenceCountDto;
 
 /**
  * The client states the scope it wants rather than the columns. A user preference

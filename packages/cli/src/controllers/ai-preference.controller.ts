@@ -35,6 +35,12 @@ export class AiPreferenceController {
 		return await this.aiPreferenceService.list(req.user, query);
 	}
 
+	/** The landing page shows the number alone, so it does not pay for a page of rows. */
+	@Get('/count')
+	async countPreferences(req: AuthenticatedRequest) {
+		return await this.aiPreferenceService.count(req.user);
+	}
+
 	@Post('/')
 	async createPreference(
 		req: AuthenticatedRequest,

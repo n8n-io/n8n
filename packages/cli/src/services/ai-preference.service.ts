@@ -1,11 +1,18 @@
 import type {
+	AiPreferenceCountDto,
 	AiPreferenceDto,
 	AiPreferenceListDto,
 	AiPreferenceProjectDto,
 	AiPreferenceRequestDto,
 } from '@n8n/api-types';
-import type { AiPreference, Project, ReadableProjects, User } from '@n8n/db';
-import { AiPreferenceRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import { aiPreferenceTargetOf } from '@n8n/api-types';
+import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
+import {
+	AiPreferenceRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -14,7 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 /** `type` lets the prompt name a personal project without quoting its owner's name. */
 export type AiPreferenceProjectRef = { id: string; name: string; type?: Project['type'] };
@@ -22,8 +29,59 @@ export type AiPreferenceProjectRef = { id: string; name: string; type?: Project[
 /** The three write operations a preference has. Reading needs no scope of its own. */
 type WriteOperation = 'create' | 'update' | 'delete';
 
+type ProjectOperation = 'list' | 'read' | WriteOperation;
+
 /** The projects one operation is allowed in. `'all'` covers every project. */
 type AllowedProjects = Set<string> | 'all';
+
+/**
+ * Which projects one caller may run each operation in, for the length of one
+ * request. The relations are read once and only when an operation is not granted
+ * globally; the role lists come from the role cache. A request that touches the
+ * same project five times therefore costs one query, not five.
+ */
+class ProjectAccess {
+	private relations: Promise<ProjectRelation[]> | undefined;
+
+	private readonly allowedByOperation = new Map<ProjectOperation, Promise<AllowedProjects>>();
+
+	constructor(
+		private readonly user: User,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
+	) {}
+
+	async allowed(operation: ProjectOperation): Promise<AllowedProjects> {
+		let allowed = this.allowedByOperation.get(operation);
+		if (!allowed) {
+			allowed = this.resolve(operation);
+			this.allowedByOperation.set(operation, allowed);
+		}
+		return await allowed;
+	}
+
+	async has(projectId: string, operation: ProjectOperation): Promise<boolean> {
+		const allowed = await this.allowed(operation);
+		return allowed === 'all' || allowed.has(projectId);
+	}
+
+	private async resolve(operation: ProjectOperation): Promise<AllowedProjects> {
+		const scope: Scope = `projectAiPreference:${operation}`;
+		if (hasGlobalScope(this.user, scope)) return 'all';
+
+		this.relations ??= this.projectRelationRepository.findAllByUser(this.user.id);
+		const [relations, roles] = await Promise.all([
+			this.relations,
+			this.roleService.rolesWithScope('project', [scope]),
+		]);
+		const granting = new Set(roles);
+		return new Set(
+			relations
+				.filter((relation) => granting.has(relation.role.slug))
+				.map((relation) => relation.projectId),
+		);
+	}
+}
 
 /**
  * Where a request wants the preference to live, once the caller is allowed there.
@@ -57,7 +115,8 @@ export class AiPreferenceService {
 	constructor(
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
 	) {}
 
@@ -111,26 +170,30 @@ export class AiPreferenceService {
 	 * the preferences reach a prompt in.
 	 */
 	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
-		const [projectIds, updatable, deletable] = await Promise.all([
-			this.readableProjects(user),
-			this.allowedProjects(user, 'update'),
-			this.allowedProjects(user, 'delete'),
-		]);
+		const access = this.projectAccess(user);
 		const [rows, count] = await this.aiPreferenceRepository.findPageApplicable({
-			userId: user.id,
-			allUsers: hasGlobalScope(user, 'aiPreference:list'),
-			projectIds,
+			...(await this.visibleTo(user, access)),
 			...page,
 		});
 
 		return {
 			count,
-			data: rows.map((row) => this.toDto(row, this.rowScopes(row, user, updatable, deletable))),
+			data: await Promise.all(
+				rows.map(async (row) => this.toDto(row, await this.scopesFor(user, row, access))),
+			),
 		};
 	}
 
+	async count(user: User): Promise<AiPreferenceCountDto> {
+		const count = await this.aiPreferenceRepository.countVisible(
+			await this.visibleTo(user, this.projectAccess(user)),
+		);
+		return { count };
+	}
+
 	async create(user: User, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
-		const target = await this.resolveTarget(user, request, 'create');
+		const access = this.projectAccess(user);
+		const target = await this.resolveTarget(user, request, 'create', access);
 
 		const row = await this.aiPreferenceRepository.save(
 			this.aiPreferenceRepository.create({
@@ -144,7 +207,7 @@ export class AiPreferenceService {
 		row.project = target.project;
 		row.user = target.user;
 
-		return this.toDto(row, await this.scopesFor(user, row));
+		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
 	/**
@@ -153,10 +216,11 @@ export class AiPreferenceService {
 	 * old one and the create right on the new one. An edit in place needs only update.
 	 */
 	async update(user: User, id: string, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
-		const row = await this.requireVisible(user, id);
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
 		const moved = this.isMove(user, row, request);
-		await this.assertCanWrite(user, row, moved ? 'delete' : 'update');
-		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update');
+		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
+		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
 
 		row.content = request.content;
 		row.userId = target.userId;
@@ -165,51 +229,88 @@ export class AiPreferenceService {
 		row.project = target.project;
 
 		const saved = await this.aiPreferenceRepository.save(row);
-		return this.toDto(saved, await this.scopesFor(user, saved));
+		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
 	async delete(user: User, id: string): Promise<void> {
-		const row = await this.requireVisible(user, id);
-		await this.assertCanWrite(user, row, 'delete');
+		const access = this.projectAccess(user);
+		const row = await this.requireVisible(user, id, access);
+		await this.assertCanWrite(user, row, 'delete', access);
 
 		await this.aiPreferenceRepository.delete({ id: row.id });
+	}
+
+	private projectAccess(user: User): ProjectAccess {
+		return new ProjectAccess(user, this.projectRelationRepository, this.roleService);
+	}
+
+	/** The filter for the rows the user may see in settings. */
+	private async visibleTo(user: User, access: ProjectAccess) {
+		const readable = await access.allowed('list');
+		return {
+			userId: user.id,
+			allUsers: hasGlobalScope(user, 'aiPreference:list'),
+			projectIds: readable === 'all' ? readable : [...readable],
+		};
 	}
 
 	/**
 	 * A row the user may not see must not be told apart from one that is gone, so
 	 * both answer the same way.
 	 */
-	private async requireVisible(user: User, id: string): Promise<AiPreference> {
+	private async requireVisible(
+		user: User,
+		id: string,
+		access: ProjectAccess,
+	): Promise<AiPreference> {
 		const row = await this.aiPreferenceRepository.findByIdWithRelations(id);
-		if (!row || !(await this.canSee(user, row))) {
+		if (!row || !(await this.canSee(user, row, access))) {
 			throw new NotFoundError(`Preference with id ${id} not found`);
 		}
 		return row;
 	}
 
-	private async canSee(user: User, row: AiPreference): Promise<boolean> {
-		if (row.projectId) return await this.hasProjectScope(user, row.projectId, 'read');
-		if (row.userId) return row.userId === user.id || hasGlobalScope(user, 'aiPreference:read');
-		// Instance preferences apply to everyone, so everyone sees them.
-		return true;
+	private async canSee(user: User, row: AiPreference, access: ProjectAccess): Promise<boolean> {
+		const target = aiPreferenceTargetOf(row);
+		switch (target.scope) {
+			case 'project':
+				return await access.has(target.projectId, 'read');
+			case 'user':
+				return target.userId === user.id || hasGlobalScope(user, 'aiPreference:read');
+			case 'instance':
+				// Instance preferences apply to everyone, so everyone sees them.
+				return true;
+		}
 	}
 
-	/** Whether the user may run one write operation on one row. */
+	/**
+	 * Whether the user may run one write operation on one row. The global scope also
+	 * covers other users' rows, so an admin can manage them.
+	 */
 	private async canWrite(
 		user: User,
 		row: Pick<AiPreference, 'userId' | 'projectId'>,
 		operation: WriteOperation,
+		access: ProjectAccess,
 	): Promise<boolean> {
-		if (row.projectId) return await this.hasProjectScope(user, row.projectId, operation);
-		// The global scope also covers other users' rows, so an admin can manage them.
-		if (row.userId) {
-			return row.userId === user.id || hasGlobalScope(user, `aiPreference:${operation}`);
+		const target = aiPreferenceTargetOf(row);
+		switch (target.scope) {
+			case 'project':
+				return await access.has(target.projectId, operation);
+			case 'user':
+				return target.userId === user.id || hasGlobalScope(user, `aiPreference:${operation}`);
+			case 'instance':
+				return hasGlobalScope(user, `aiPreference:${operation}`);
 		}
-		return hasGlobalScope(user, `aiPreference:${operation}`);
 	}
 
-	private async assertCanWrite(user: User, row: AiPreference, operation: WriteOperation) {
-		if (!(await this.canWrite(user, row, operation))) {
+	private async assertCanWrite(
+		user: User,
+		row: AiPreference,
+		operation: WriteOperation,
+		access: ProjectAccess,
+	) {
+		if (!(await this.canWrite(user, row, operation, access))) {
 			throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
 		}
 	}
@@ -233,6 +334,7 @@ export class AiPreferenceService {
 		user: User,
 		request: AiPreferenceRequestDto,
 		operation: WriteOperation,
+		access: ProjectAccess,
 	): Promise<PreferenceTarget> {
 		switch (request.scope) {
 			case 'user': {
@@ -265,9 +367,9 @@ export class AiPreferenceService {
 				// A personal project passes too: its owner holds every preference scope on
 				// it, and an admin holds them globally. Such a row applies only when that
 				// project is in scope, unlike a user row, which applies everywhere.
-				const project = await this.projectService.getProjectWithScope(user, request.projectId, [
-					`projectAiPreference:${operation}`,
-				]);
+				const project = (await access.has(request.projectId, operation))
+					? await this.projectRepository.findOneBy({ id: request.projectId })
+					: null;
 				if (!project) {
 					throw new ForbiddenError('You are not allowed to set preferences for this project');
 				}
@@ -294,74 +396,18 @@ export class AiPreferenceService {
 	}
 
 	/**
-	 * The row-level scopes for one row, each checked directly. The list path uses the
-	 * batched form instead, so a page costs a fixed number of queries rather than two
-	 * for every row.
+	 * What the user may do to one row, in the `aiPreference` namespace whatever
+	 * granted it, so the client runs one check over every row it is shown.
 	 */
-	private async scopesFor(user: User, row: AiPreference): Promise<Scope[]> {
+	private async scopesFor(user: User, row: AiPreference, access: ProjectAccess): Promise<Scope[]> {
 		const [updatable, deletable] = await Promise.all([
-			this.canWrite(user, row, 'update'),
-			this.canWrite(user, row, 'delete'),
+			this.canWrite(user, row, 'update', access),
+			this.canWrite(user, row, 'delete', access),
 		]);
 
 		const scopes: Scope[] = ['aiPreference:read'];
 		if (updatable) scopes.push('aiPreference:update');
 		if (deletable) scopes.push('aiPreference:delete');
-		return scopes;
-	}
-
-	/** The projects whose preferences the user may list, without enumerating them all. */
-	private async readableProjects(user: User): Promise<ReadableProjects> {
-		if (hasGlobalScope(user, 'projectAiPreference:list')) return 'all';
-		return await this.projectIdsWithScope(user, 'list');
-	}
-
-	private async allowedProjects(user: User, operation: WriteOperation): Promise<AllowedProjects> {
-		if (hasGlobalScope(user, `projectAiPreference:${operation}`)) return 'all';
-		return new Set(await this.projectIdsWithScope(user, operation));
-	}
-
-	/**
-	 * The role lookup covers team projects only, so the caller's personal project is
-	 * added by hand. Its owner role holds every preference scope.
-	 */
-	private async projectIdsWithScope(
-		user: User,
-		operation: 'list' | WriteOperation,
-	): Promise<string[]> {
-		const [teamIds, personal] = await Promise.all([
-			this.projectService.getProjectIdsWithScope(user, [`projectAiPreference:${operation}`]),
-			this.projectRepository.getPersonalProjectForUser(user.id),
-		]);
-		return personal ? [...teamIds, personal.id] : teamIds;
-	}
-
-	private async hasProjectScope(user: User, projectId: string, operation: 'read' | WriteOperation) {
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			`projectAiPreference:${operation}`,
-		]);
-		return project !== null;
-	}
-
-	/**
-	 * What the user may do to one row, in the `aiPreference` namespace whatever
-	 * granted it, so the client runs one check over every row it is shown.
-	 */
-	private rowScopes(
-		row: AiPreference,
-		user: User,
-		updatable: AllowedProjects,
-		deletable: AllowedProjects,
-	): Scope[] {
-		const may = (allowed: AllowedProjects, global: Scope) => {
-			if (row.projectId) return allowed === 'all' || allowed.has(row.projectId);
-			if (row.userId) return row.userId === user.id || hasGlobalScope(user, global);
-			return hasGlobalScope(user, global);
-		};
-
-		const scopes: Scope[] = ['aiPreference:read'];
-		if (may(updatable, 'aiPreference:update')) scopes.push('aiPreference:update');
-		if (may(deletable, 'aiPreference:delete')) scopes.push('aiPreference:delete');
 		return scopes;
 	}
 
@@ -416,9 +462,18 @@ export function groupAiPreferences(
 	for (const row of rows) {
 		const content = row.content.trim();
 		if (!content) continue;
-		if (row.projectId) byProject.get(row.projectId)?.items.push(content);
-		else if (row.userId) user.push(content);
-		else instance.push(content);
+		const target = aiPreferenceTargetOf(row);
+		switch (target.scope) {
+			case 'project':
+				byProject.get(target.projectId)?.items.push(content);
+				break;
+			case 'user':
+				user.push(content);
+				break;
+			case 'instance':
+				instance.push(content);
+				break;
+		}
 	}
 
 	return {

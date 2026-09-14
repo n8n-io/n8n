@@ -4,6 +4,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import {
 	createPreference,
 	deletePreference,
+	getPreferenceCount,
 	getPreferences,
 	updatePreference,
 } from './context.api';
@@ -33,6 +34,14 @@ describe('context.api', () => {
 		await getPreferences(context);
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/ai-preferences', {});
+	});
+
+	it('reads the count from its own route, without a page of rows', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ count: 7 });
+
+		await expect(getPreferenceCount(context)).resolves.toBe(7);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/ai-preferences/count');
 	});
 
 	it('sends the scope with the content on create', async () => {

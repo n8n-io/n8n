@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -214,16 +215,15 @@ export function useSettingsItems() {
 		// the MCP module, so it lands after every core item and Context cannot simply be
 		// pushed with the rest. Falls back to the end when the module is inactive.
 		//
-		// The feature flag needs no separate check here: `canUserAccessRouteByName` runs
-		// the route's whole middleware list, and the Context routes gate on the flag
-		// through their `custom` middleware.
+		// The Context routes come from their module descriptor and gate on the flag in
+		// `beforeEnter`, which the middleware check does not run, so the flag is read here.
 		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
 		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
 			id: 'settings-context',
 			icon: 'brain',
 			label: i18n.baseText('settings.context.title'),
 			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+			available: isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
 		});
 

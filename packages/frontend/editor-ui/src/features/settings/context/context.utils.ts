@@ -1,5 +1,8 @@
+import { aiPreferenceScopeOf } from '@n8n/api-types';
+import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -12,16 +15,29 @@ import type {
 } from './context.types';
 
 /**
- * Reads the scope out of the entity's tri-state, the same way the backend does when
- * it groups rows for a prompt: a project id wins, then a user id, and a row with
- * neither applies to the whole instance.
+ * Gate for the Context settings surface.
+ *
+ * The flag is the only signal, because there is no backend module to deliver an
+ * operator override in the settings payload yet. Add that second signal alongside the
+ * real endpoints, so instances with telemetry switched off can still opt in.
+ *
+ * The flag is multivariate, so only the `variant` arm enables the surface.
+ *
+ * Override locally with:
+ *   window.featureFlags.override('111_context_preferences', 'variant')
  */
+export function isContextPreferencesEnabled(): boolean {
+	return usePostHog().isVariantEnabled(
+		CONTEXT_PREFERENCES_FLAG,
+		CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	);
+}
+
+/** The same decode the backend runs when it groups rows for a prompt. */
 export function preferenceScope(
 	row: Pick<Preference, 'userId' | 'projectId'>,
 ): PreferenceScopeType {
-	if (row.projectId) return 'project';
-	if (row.userId) return 'user';
-	return 'instance';
+	return aiPreferenceScopeOf(row);
 }
 
 /**

@@ -5,12 +5,14 @@ import { useContextStore } from './context.store';
 import type { Preference } from './context.types';
 
 const list = vi.fn();
+const countOnly = vi.fn();
 const create = vi.fn();
 const update = vi.fn();
 const remove = vi.fn();
 
 vi.mock('./context.api', () => ({
 	getPreferences: async (...args: unknown[]) => await list(...args),
+	getPreferenceCount: async (...args: unknown[]) => await countOnly(...args),
 	createPreference: async (...args: unknown[]) => await create(...args),
 	updatePreference: async (...args: unknown[]) => await update(...args),
 	deletePreference: async (...args: unknown[]) => await remove(...args),
@@ -44,6 +46,7 @@ describe('context.store', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.clearAllMocks();
 		list.mockResolvedValue({ count: 1, data: [row()] });
+		countOnly.mockResolvedValue(1);
 		create.mockResolvedValue(row());
 		update.mockResolvedValue(row());
 		remove.mockResolvedValue(undefined);
@@ -59,11 +62,12 @@ describe('context.store', () => {
 	});
 
 	it('reads the total without holding a page', async () => {
-		list.mockResolvedValue({ count: 7, data: [row()] });
+		countOnly.mockResolvedValue(7);
 		const store = useContextStore();
 
 		await expect(store.fetchPreferenceCount()).resolves.toBe(7);
-		expect(list).toHaveBeenCalledWith(expect.anything(), { skip: 0, take: 1 });
+		expect(countOnly).toHaveBeenCalledTimes(1);
+		expect(list).not.toHaveBeenCalled();
 	});
 
 	// Reads land in completion order, so the newest must win regardless.
@@ -108,14 +112,15 @@ describe('context.store', () => {
 	// `loading` belongs to the list read alone; a count read must not adopt it.
 	it('clears loading when a count read starts mid-flight', async () => {
 		const listRead = deferred<{ count: number; data: Preference[] }>();
-		const countRead = deferred<{ count: number; data: Preference[] }>();
-		list.mockReturnValueOnce(listRead.promise).mockReturnValueOnce(countRead.promise);
+		const countRead = deferred<number>();
+		list.mockReturnValueOnce(listRead.promise);
+		countOnly.mockReturnValueOnce(countRead.promise);
 		const store = useContextStore();
 
 		const rows = store.fetchPreferences({ skip: 0, take: 50 });
 		const total = store.fetchPreferenceCount();
 
-		countRead.settle({ count: 4, data: [row()] });
+		countRead.settle(4);
 		await total;
 		listRead.settle({ count: 4, data: [row({ id: 'page' })] });
 		await rows;
@@ -127,14 +132,15 @@ describe('context.store', () => {
 
 	it('lets the newer count read win over an older list read', async () => {
 		const listRead = deferred<{ count: number; data: Preference[] }>();
-		const countRead = deferred<{ count: number; data: Preference[] }>();
-		list.mockReturnValueOnce(listRead.promise).mockReturnValueOnce(countRead.promise);
+		const countRead = deferred<number>();
+		list.mockReturnValueOnce(listRead.promise);
+		countOnly.mockReturnValueOnce(countRead.promise);
 		const store = useContextStore();
 
 		const rows = store.fetchPreferences({ skip: 0, take: 50 });
 		const total = store.fetchPreferenceCount();
 
-		countRead.settle({ count: 9, data: [row()] });
+		countRead.settle(9);
 		await total;
 		listRead.settle({ count: 1, data: [row({ id: 'page' })] });
 		await rows;
@@ -181,24 +187,32 @@ describe('context.store', () => {
 		expect(store.changeVersion).toBe(before);
 	});
 
-	it('still signals a change when a bulk delete fails part way', async () => {
-		remove.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('gone'));
+	it('deletes the rest and reports the failures when a bulk delete fails part way', async () => {
+		remove
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('gone'))
+			.mockResolvedValueOnce(undefined);
 		const store = useContextStore();
 		const before = store.changeVersion;
 
-		// Two rows were asked for, one went. The survivor is still on screen.
-		await expect(store.deletePreferences(['a', 'b'])).rejects.toThrow('gone');
+		const result = await store.deletePreferences(['a', 'b', 'c']);
 
+		// One failed row must not leave the rows after it behind.
+		expect(remove).toHaveBeenCalledTimes(3);
+		expect(result.deleted).toEqual(['a', 'c']);
+		expect(result.failed).toEqual([{ id: 'b', error: new Error('gone') }]);
 		expect(store.changeVersion).toBe(before + 1);
 	});
 
-	it('does not signal a change when the first delete of a bulk run fails', async () => {
-		remove.mockRejectedValueOnce(new Error('gone'));
+	it('does not signal a change when every delete of a bulk run fails', async () => {
+		remove.mockRejectedValue(new Error('gone'));
 		const store = useContextStore();
 		const before = store.changeVersion;
 
-		await expect(store.deletePreferences(['a', 'b'])).rejects.toThrow('gone');
+		const result = await store.deletePreferences(['a', 'b']);
 
+		expect(result.deleted).toEqual([]);
+		expect(result.failed).toHaveLength(2);
 		expect(store.changeVersion).toBe(before);
 	});
 

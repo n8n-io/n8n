@@ -424,6 +424,22 @@ describe('GET /ai-preferences', () => {
 	});
 });
 
+describe('GET /ai-preferences/count', () => {
+	test('returns the size of the list the caller would see, without rows', async () => {
+		await seed({ content: 'Instance' });
+		await seed({ content: 'Mine', userId: member.id });
+		await seed({ content: 'Someone else', userId: outsider.id });
+		await seed({ content: 'Marketing', projectId: project.id });
+
+		const asMember = await memberAgent.get('/ai-preferences/count');
+		const asOwner = await ownerAgent.get('/ai-preferences/count');
+
+		expect(asMember.statusCode).toBe(200);
+		expect(asMember.body.data).toEqual({ count: 3 });
+		expect(asOwner.body.data).toEqual({ count: 4 });
+	});
+});
+
 describe('PATCH /ai-preferences/:id', () => {
 	test('replaces the content of a personal preference', async () => {
 		const row = await seed({ content: 'Old', userId: member.id });

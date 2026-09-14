@@ -140,23 +140,29 @@ async function onDeleteSelected() {
 	const ids = [...selection.value];
 	if (ids.length === 0 || !(await confirmDelete(ids.length))) return;
 
-	try {
-		await contextStore.deletePreferences(ids);
+	const { deleted, failed } = await contextStore.deletePreferences(ids);
+	// The rows that went are gone from the table too, so they must leave the
+	// selection, or the toolbar would count them and a retry would hit a 404.
+	const gone = new Set(deleted);
+	selection.value = selection.value.filter((id) => !gone.has(id));
+
+	if (deleted.length > 0) {
 		trackDelete(
 			'bulk',
-			ids.map((id) => {
+			deleted.map((id) => {
 				const row = contextStore.preferences.find((candidate) => candidate.id === id);
 				return row ? preferenceScope(row) : undefined;
 			}),
 		);
-		selection.value = [];
-		showMessage({
-			title: i18n.baseText('settings.context.preferences.delete.success'),
-			type: 'success',
-		});
-	} catch (error) {
-		showError(error, i18n.baseText('settings.context.preferences.error.delete'));
 	}
+	if (failed.length > 0) {
+		showError(failed[0].error, i18n.baseText('settings.context.preferences.error.delete'));
+		return;
+	}
+	showMessage({
+		title: i18n.baseText('settings.context.preferences.delete.success'),
+		type: 'success',
+	});
 }
 
 async function goBack() {

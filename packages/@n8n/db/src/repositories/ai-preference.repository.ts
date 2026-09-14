@@ -18,12 +18,16 @@ export type ApplicableAiPreferencesQuery = {
 	projectIds: ReadableProjects;
 };
 
-export type AiPreferencePageQuery = ApplicableAiPreferencesQuery & {
+/** The settings view of the collection: what the caller may see, not what applies to them. */
+export type VisibleAiPreferencesQuery = ApplicableAiPreferencesQuery & {
 	/**
 	 * Include the rows of every user, not only the caller's. For admins in settings;
 	 * a prompt never sets it, because another user's rows do not apply to the caller.
 	 */
 	allUsers: boolean;
+};
+
+export type AiPreferencePageQuery = VisibleAiPreferencesQuery & {
 	skip: number;
 	take: number;
 };
@@ -55,6 +59,11 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			skip: query.skip,
 			take: query.take,
 		});
+	}
+
+	/** The size of the same set, for a page that shows the number and no rows. */
+	async countVisible(query: VisibleAiPreferencesQuery): Promise<number> {
+		return await this.count({ where: visibleTo(query, query.allUsers) });
 	}
 
 	/**

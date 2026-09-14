@@ -129,10 +129,14 @@ export {
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
+	aiPreferenceScopeOf,
+	aiPreferenceTargetOf,
 } from './schemas/ai-preference.schema';
 export type {
+	AiPreferenceCountDto,
 	AiPreferenceDto,
 	AiPreferenceListDto,
+	AiPreferenceTarget,
 	AiPreferenceProjectDto,
 	AiPreferenceUserDto,
 	AiPreferenceScope,

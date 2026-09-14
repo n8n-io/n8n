@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as api from './context.api';
 import type { Preference, PreferenceListQuery, PreferencePayload } from './context.types';
+
+export type BulkDeleteResult = {
+	deleted: string[];
+	failed: Array<{ id: string; error: unknown }>;
+};
 
 export const useContextStore = defineStore('context', () => {
 	const rootStore = useRootStore();
@@ -36,8 +41,6 @@ export const useContextStore = defineStore('context', () => {
 	/** Guards the total, which both readers write. */
 	let latestCountRead = 0;
 
-	const isEmpty = computed(() => count.value === 0);
-
 	async function fetchPreferences(query: PreferenceListQuery = {}) {
 		const listRead = ++latestListRead;
 		const countRead = ++latestCountRead;
@@ -53,15 +56,12 @@ export const useContextStore = defineStore('context', () => {
 		}
 	}
 
-	/**
-	 * Reads the collection size without holding a page of rows. The landing page shows
-	 * only the count, so it asks for a single row.
-	 */
+	/** Reads the collection size alone. The landing page shows only the count. */
 	async function fetchPreferenceCount() {
 		const countRead = ++latestCountRead;
-		const response = await api.getPreferences(rootStore.restApiContext, { skip: 0, take: 1 });
-		if (countRead === latestCountRead) count.value = response.count;
-		return response.count;
+		const total = await api.getPreferenceCount(rootStore.restApiContext);
+		if (countRead === latestCountRead) count.value = total;
+		return total;
 	}
 
 	async function createPreference(payload: PreferencePayload) {
@@ -81,18 +81,23 @@ export const useContextStore = defineStore('context', () => {
 		changeVersion.value += 1;
 	}
 
-	async function deletePreferences(ids: string[]) {
-		let deleted = 0;
-		try {
-			for (const id of ids) {
-				await api.deletePreference(rootStore.restApiContext, id);
-				deleted += 1;
-			}
-		} finally {
-			// A run that fails part way still changed the collection, and the rows it
-			// removed are still on screen. Signal once either way, never per row.
-			if (deleted > 0) changeVersion.value += 1;
-		}
+	/**
+	 * Deletes every row it can and reports the rest, so one failed row does not
+	 * leave the others behind, and the caller knows which ids are gone.
+	 */
+	async function deletePreferences(ids: string[]): Promise<BulkDeleteResult> {
+		const results = await Promise.allSettled(
+			ids.map(async (id) => await api.deletePreference(rootStore.restApiContext, id)),
+		);
+		const result: BulkDeleteResult = { deleted: [], failed: [] };
+		results.forEach((outcome, index) => {
+			const id = ids[index];
+			if (outcome.status === 'fulfilled') result.deleted.push(id);
+			else result.failed.push({ id, error: outcome.reason });
+		});
+		// Signal once for the run, never per row, and only when the collection changed.
+		if (result.deleted.length > 0) changeVersion.value += 1;
+		return result;
 	}
 
 	return {
@@ -100,7 +105,6 @@ export const useContextStore = defineStore('context', () => {
 		count,
 		loading,
 		changeVersion,
-		isEmpty,
 		fetchPreferences,
 		fetchPreferenceCount,
 		createPreference,

@@ -28,6 +28,33 @@ export const aiPreferenceScopeSchema = z.enum(['user', 'project', 'instance']);
 
 export type AiPreferenceScope = z.infer<typeof aiPreferenceScopeSchema>;
 
+/** A row's scope with the id that carries it, so a reader can narrow on `scope`. */
+export type AiPreferenceTarget =
+	| { scope: 'project'; projectId: string }
+	| { scope: 'user'; userId: string }
+	| { scope: 'instance' };
+
+/**
+ * Reads the scope out of a row's tri-state. A project id wins, then a user id, and
+ * a row with neither applies to the whole instance. The server and the client both
+ * decide through this one function, so a badge never disagrees with a prompt.
+ */
+export function aiPreferenceTargetOf(row: {
+	userId: string | null;
+	projectId: string | null;
+}): AiPreferenceTarget {
+	if (row.projectId) return { scope: 'project', projectId: row.projectId };
+	if (row.userId) return { scope: 'user', userId: row.userId };
+	return { scope: 'instance' };
+}
+
+export function aiPreferenceScopeOf(row: {
+	userId: string | null;
+	projectId: string | null;
+}): AiPreferenceScope {
+	return aiPreferenceTargetOf(row).scope;
+}
+
 /** Blank content never reaches a prompt, so it is refused rather than stored. */
 export const aiPreferenceContentSchema = z
 	.string()
@@ -74,4 +101,9 @@ export type AiPreferenceDto = {
 export type AiPreferenceListDto = {
 	count: number;
 	data: AiPreferenceDto[];
+};
+
+/** The size of the list, for pages that show the number and no rows. */
+export type AiPreferenceCountDto = {
+	count: number;
 };

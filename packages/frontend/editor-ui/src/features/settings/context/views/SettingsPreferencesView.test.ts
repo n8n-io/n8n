@@ -142,6 +142,33 @@ describe('SettingsPreferencesView', () => {
 		});
 	});
 
+	it('drops only the deleted rows from the selection when a bulk delete fails part way', async () => {
+		const rows = [preference({ id: 'a' }), preference({ id: 'b' }), preference({ id: 'c' })];
+		contextStore.preferences = rows;
+		contextStore.count = 3;
+		contextStore.deletePreferences.mockResolvedValue({
+			deleted: ['a', 'c'],
+			failed: [{ id: 'b', error: new Error('gone') }],
+		});
+
+		const { getByTestId, getAllByRole } = renderView();
+		await new Promise(process.nextTick);
+
+		// The first checkbox selects every row.
+		await userEvent.click(getAllByRole('checkbox')[0]);
+		await userEvent.click(getByTestId('preferences-delete-selected-button'));
+		await new Promise(process.nextTick);
+
+		expect(contextStore.deletePreferences).toHaveBeenCalledWith(['a', 'b', 'c']);
+		// Only the survivor stays selected, so the toolbar counts one and a retry hits it alone.
+		expect(getByTestId('settings-preferences-view')).toHaveTextContent('1 selected');
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			count: 2,
+			source: 'bulk',
+			scope_types: ['user'],
+		});
+	});
+
 	it('deletes nothing when the confirmation is dismissed', async () => {
 		confirmMock.mockResolvedValue('cancel');
 		contextStore.preferences = [preference()];

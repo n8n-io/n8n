@@ -2,6 +2,8 @@ import type {
 	AiPreference,
 	AiPreferenceRepository,
 	Project,
+	ProjectRelation,
+	ProjectRelationRepository,
 	ProjectRepository,
 	User,
 	UserRepository,
@@ -9,7 +11,7 @@ import type {
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
 import {
 	AiPreferenceService,
 	groupAiPreferences,
@@ -27,12 +29,14 @@ const projects = [
 describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
-	const projectService = mock<ProjectService>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const roleService = mock<RoleService>();
 	const userRepository = mock<UserRepository>();
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
-		projectService,
+		projectRelationRepository,
+		roleService,
 		userRepository,
 	);
 
@@ -162,11 +166,18 @@ describe('AiPreferenceService', () => {
 		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 		const teamProject = mock<Project>({ id: 'p-1', name: 'Marketing', type: 'team' });
 
-		/** Answers the project lookup for the named operations only. */
+		/**
+		 * Gives the member one role in the project, and lets that role grant the named
+		 * operations only.
+		 */
 		function allowProjectOperations(...allowed: string[]) {
-			projectService.getProjectWithScope.mockImplementation(async (_user, _projectId, scopes) =>
-				scopes?.some((scope) => allowed.includes(scope)) ? teamProject : null,
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				mock<ProjectRelation>({ projectId: 'p-1', role: { slug: 'project:custom' } }),
+			]);
+			roleService.rolesWithScope.mockImplementation(async (_namespace, scopes) =>
+				[scopes].flat().some((scope) => allowed.includes(scope)) ? ['project:custom'] : [],
 			);
+			projectRepository.findOneBy.mockResolvedValue(teamProject);
 		}
 
 		it('reports only what a create-only project role holds, not the whole set', async () => {
@@ -185,6 +196,23 @@ describe('AiPreferenceService', () => {
 			});
 
 			expect(created.scopes).toEqual(['aiPreference:read']);
+		});
+
+		it("reads the caller's project relations once per request", async () => {
+			allowProjectOperations(
+				'projectAiPreference:create',
+				'projectAiPreference:update',
+				'projectAiPreference:delete',
+			);
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			await service.create(member, { content: 'Rule.', scope: 'project', projectId: 'p-1' });
+
+			// Three operations were checked: create, then update and delete for the scopes.
+			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledTimes(1);
 		});
 
 		it('reports update and delete when the project role grants them', async () => {

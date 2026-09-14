@@ -3,6 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 
 import type {
 	Preference,
+	PreferenceCountResponse,
 	PreferenceListQuery,
 	PreferenceListResponse,
 	PreferencePayload,
@@ -15,6 +16,15 @@ export async function getPreferences(
 	query: PreferenceListQuery = {},
 ): Promise<PreferenceListResponse> {
 	return await makeRestApiRequest<PreferenceListResponse>(context, 'GET', ENDPOINT, query);
+}
+
+export async function getPreferenceCount(context: IRestApiContext): Promise<number> {
+	const response = await makeRestApiRequest<PreferenceCountResponse>(
+		context,
+		'GET',
+		`${ENDPOINT}/count`,
+	);
+	return response.count;
 }
 
 export async function createPreference(
