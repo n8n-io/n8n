@@ -415,9 +415,6 @@ describe('getComputerUsePrompt', () => {
 		});
 	});
 
-	// INS-1293: every section below names a "+ menu" entry, and the client renders
-	// each entry only for a user its rollout covers. `connectable` is that gate, so
-	// the prompt must never name an entry missing from it.
 	describe('when no channel is connectable', () => {
 		it.each(['disconnected', 'disabled'] as const)(
 			'returns an empty string for status %s',
@@ -480,9 +477,6 @@ describe('getComputerUsePrompt', () => {
 		});
 	});
 
-	// The connected branch leaks the same way: a user who connected the local gateway
-	// while browser-use is off was told to click a "Connect browser" entry the client
-	// does not render for them.
 	describe('when connected without browser tools', () => {
 		const connectedWithoutBrowser = {
 			browserAvailable: false,
@@ -504,9 +498,6 @@ describe('getComputerUsePrompt', () => {
 				connectable: ['localComputer'],
 			});
 
-			// Scope: the harm is naming a + menu entry the client does not render. The
-			// connected intro still describes the browser capability generally, which is
-			// prose about the feature rather than a control to go and click.
 			expect(result).not.toContain('"Connect browser"');
 		});
 	});

@@ -2626,9 +2626,6 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// Which Computer Use entries the client renders for this user. The prompt names
-		// these entries, so the backend has to agree with the client or the agent sends
-		// the user after a control they cannot see (INS-1293).
 		const connectableComputerUseChannels = resolveConnectableComputerUseChannels({
 			localGatewayDisabledGlobally,
 			browserUseEnabledGlobally,
@@ -2659,8 +2656,6 @@ export class InstanceAiService {
 				capabilities: [...capabilities],
 			};
 		} else if (connectableComputerUseChannels.length === 0) {
-			// Nothing the client would render for this user, so the prompt must not
-			// mention Computer Use at all (INS-1293).
 			context.localGatewayStatus = { status: 'disabledGlobally' };
 		} else {
 			context.localGatewayStatus = {
@@ -3704,7 +3699,7 @@ export class InstanceAiService {
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
 	 * and shutdown can drain it before the DB closes.
 	 */
-
+	// eslint-disable-next-line complexity
 	/** Thread provenance for the trace. Best-effort by construction: a failed
 	 *  metadata read must not take the run with it — the trace just loses a
 	 *  label it would have been nice to have. */

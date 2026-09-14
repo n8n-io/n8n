@@ -3,20 +3,17 @@ import { type LocalGatewayChannel, type LocalGatewayStatus } from '@/types';
 const BROWSER_USE_EXTENSION_URL =
 	'https://chromewebstore.google.com/detail/n8n-browser-use/cegmdpndekdfpnafgacidejijecomlhh';
 
-/** "a", "a and b", "a, b, and c" — Oxford comma, matching the prose style below. */
 function joinPhrases(parts: string[], conjunction: string): string {
 	if (parts.length <= 1) return parts[0] ?? '';
 	if (parts.length === 2) return `${parts[0]} ${conjunction} ${parts[1]}`;
 	return `${parts.slice(0, -1).join(', ')}, ${conjunction} ${parts[parts.length - 1]}`;
 }
 
-/** Semicolon-separated, "; or " before the last — the not-connected signal list. */
 function joinSignals(parts: string[]): string {
 	if (parts.length <= 1) return parts[0] ?? '';
 	return `${parts.slice(0, -1).join('; ')}; or ${parts[parts.length - 1]}`;
 }
 
-/** Capability blurbs in prose order, each tagged with the channel that provides it. */
 const CAPABILITY_BLURBS: Array<{ channel: LocalGatewayChannel; text: string }> = [
 	{ channel: 'localComputer', text: '*filesystem* (read/write local files)' },
 	{ channel: 'localComputer', text: '*shell* (run local commands)' },
@@ -30,8 +27,6 @@ const CAPABILITY_BLURBS: Array<{ channel: LocalGatewayChannel; text: string }> =
 	},
 ];
 
-/** "Suggest Computer Use when…" signals. `channels` lists every channel the signal
- *  needs, so a signal spanning both is dropped unless both are connectable. */
 const SUGGESTION_SIGNALS: Array<{ channels: LocalGatewayChannel[]; text: string }> = [
 	{
 		channels: ['browser'],
@@ -66,7 +61,6 @@ function getConnectInstructions(connectable: readonly LocalGatewayChannel[]): st
 	return `${lead} They should select ${localClause}, then follow the instructions in the setup dialog.`;
 }
 
-/** Not connected: cover only what CU is and how to connect, not the operational rules. */
 function getNotConnectedPrompt(connectable: readonly LocalGatewayChannel[]): string {
 	const capabilities = joinPhrases(
 		CAPABILITY_BLURBS.filter((c) => connectable.includes(c.channel)).map((c) => c.text),
@@ -94,21 +88,12 @@ export function getComputerUsePrompt({
 }: {
 	browserAvailable: boolean | undefined;
 	localGateway: LocalGatewayStatus | undefined;
-	/**
-	 * The Computer Use entries the client renders in the + menu for THIS user. The
-	 * client gates each entry on its own rollout, so naming one that is missing here
-	 * sends the user hunting for a control they cannot see (INS-1293).
-	 *
-	 * Defaults to none: a caller that forgets it advertises nothing, which is the
-	 * safe direction to fail.
-	 */
 	connectable?: readonly LocalGatewayChannel[];
 }) {
 	if (localGateway && localGateway.status !== 'disabledGlobally') {
 		const promptParts: string[] = [];
 
 		if (localGateway.status === 'disconnected' || localGateway.status === 'disabled') {
-			// Nothing the user can reach ⇒ say nothing about Computer Use at all.
 			return connectable.length === 0 ? '' : getNotConnectedPrompt(connectable);
 		}
 		promptParts.push(`
@@ -190,8 +175,6 @@ If a browser_* tool call fails because the browser is unreachable (e.g. connecti
 
 Browser tools are not connected. If the user asks for browser automation, tell them to select the + button beside the chat input, select "Connect browser", and follow the setup instructions. The setup requires the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					} else {
-						// Browser-use is off for this user, so the + menu has no "Connect browser"
-						// entry to send them to.
 						promptParts.push(`
 ### Browser Automation (Unavailable)
 

@@ -55,7 +55,6 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 
 		it('omits the Computer Use section when the client renders no + menu entry for this user', () => {
-			// INS-1293: disconnected-but-ungated must be as silent as disabledGlobally.
 			const prompt = getSystemPrompt({
 				localGateway: { status: 'disconnected' },
 				connectableComputerUseChannels: [],

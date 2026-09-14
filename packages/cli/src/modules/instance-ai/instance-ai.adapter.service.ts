@@ -17,6 +17,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_BROWSER_USE_FLAG,
+	INSTANCE_AI_BROWSER_USE_ENABLED_VARIANT,
 	INSTANCE_AI_COMPUTER_USE_FLAG,
 	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 } from '@n8n/api-types';
@@ -590,9 +591,7 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** "Connect local computer" is rendered for this user, so the prompt may name it. */
 		computerUseExperimentEnabled: boolean;
-		/** "Connect browser" is rendered for this user, so the prompt may name it. */
 		browserUseExperimentEnabled: boolean;
 		/** Saved AI preferences on the opening turn. */
 		aiPreferencesEnabled: boolean;
@@ -622,7 +621,7 @@ export class InstanceAiAdapterService {
 			computerUseExperimentEnabled:
 				flags[INSTANCE_AI_COMPUTER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 			browserUseExperimentEnabled:
-				flags[INSTANCE_AI_BROWSER_USE_FLAG] === INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+				flags[INSTANCE_AI_BROWSER_USE_FLAG] === INSTANCE_AI_BROWSER_USE_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}

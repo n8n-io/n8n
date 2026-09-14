@@ -17,7 +17,6 @@ interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
-	/** Computer Use + menu entries the client renders for this user (see getComputerUsePrompt). */
 	connectableComputerUseChannels?: readonly LocalGatewayChannel[];
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
