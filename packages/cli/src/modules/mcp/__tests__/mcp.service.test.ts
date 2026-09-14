@@ -3,7 +3,6 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -66,7 +65,6 @@ const mockAiGatewayService = () =>
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
-	canvasGroupsEnabled: false,
 	aiPreferencesEnabled: false,
 	...overrides,
 });
@@ -349,7 +347,6 @@ describe('McpService', () => {
 		const buildResolutionService = (opts: {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
-			mcpCanvasGroupsEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -365,7 +362,6 @@ describe('McpService', () => {
 						webhook: '/webhook',
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
-						mcpCanvasGroupsEnabled: opts.mcpCanvasGroupsEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -404,13 +400,11 @@ describe('McpService', () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
-				[MCP_CANVAS_GROUPS_FLAG]: true,
 			});
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'variant' },
-				canvasGroupsEnabled: true,
 				aiPreferencesEnabled: false,
 			});
 
@@ -463,62 +457,6 @@ describe('McpService', () => {
 			});
 		});
 
-		describe('canvas groups', () => {
-			it('enables canvas groups for users with the boolean flag set', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: true });
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: true,
-				});
-			});
-
-			it('keeps canvas groups disabled when the flag is missing', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: false,
-				});
-			});
-
-			it('treats non-boolean flag values as disabled', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: 'variant' });
-				const service = buildResolutionService({ postHogClient });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: false,
-				});
-			});
-
-			it('enables canvas groups when the operator force-enables them', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({});
-				const service = buildResolutionService({ postHogClient, mcpCanvasGroupsEnabled: true });
-
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					canvasGroupsEnabled: true,
-				});
-			});
-		});
-
-		it('still queries PostHog when only some features are env-overridden', async () => {
-			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_CANVAS_GROUPS_FLAG]: true });
-			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
-
-			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				mcpApps: { enabled: true, variant: 'env_override' },
-				canvasGroupsEnabled: true,
-				aiPreferencesEnabled: false,
-			});
-
-			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
-		});
-
 		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
@@ -527,12 +465,10 @@ describe('McpService', () => {
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
-				mcpCanvasGroupsEnabled: true,
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
-				canvasGroupsEnabled: true,
 				aiPreferencesEnabled: true,
 			});
 

@@ -46,7 +46,6 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
-	canvasGroupsEnabled: false,
 	aiPreferencesEnabled: false,
 	...overrides,
 });
