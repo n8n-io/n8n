@@ -92,6 +92,7 @@ export {
 	type PublishedWorkflowDataForExecution,
 } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export { WorkflowRunAsBindingRepository } from './workflow-run-as-binding.repository';
 export {
 	WorkflowReviewRequestRepository,
 	type WorkflowReviewRequestForWorkflowRow,

@@ -98,6 +98,7 @@ import {
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestStateList,
 } from './workflow-review-request.ee';
+import { WorkflowRunAsBinding } from './workflow-run-as-binding';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -175,6 +176,7 @@ export {
 	type WorkflowPublicationTriggerKind,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowRunAsBinding,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestStateList,
@@ -242,6 +244,7 @@ export const entities = {
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
+	WorkflowRunAsBinding,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
