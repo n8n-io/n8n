@@ -7,6 +7,19 @@ Read the full guide at `packages/@n8n/module-cli/frontend-module-guide.md`. It g
 descriptor contract, the registration points and the known problems. This README gives a
 summary only.
 
+## Status
+
+Store skeleton only. The descriptor registers the module with the shell and declares no
+surface, so nothing changes for a user yet.
+
+- GOV-49 adds the `available-types` client, the fetch path and the refetch on project change.
+- GOV-56 adds `routes` and `settingsPages` for Settings → Security & policies.
+
+The module id must stay the same as the backend module id
+(`packages/cli/src/modules/type-availability-policies`). The module is license-gated on
+`feat:nodeTypePolicies` and it is not a default module. To see it in a dev instance, start
+with `N8N_ENABLED_MODULES=type-availability-policies`.
+
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-type-availability-policies
 pnpm turbo lint --filter=@n8n/frontend-module-type-availability-policies
