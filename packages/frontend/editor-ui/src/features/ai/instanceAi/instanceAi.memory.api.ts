@@ -5,7 +5,6 @@ import type {
 	InstanceAiThreadListResponse,
 	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadHistoryResponse,
-	InstanceAiThreadsQuery,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
@@ -15,9 +14,8 @@ import type { AgentResource } from '@/features/agents/types';
 
 export async function fetchThreads(
 	context: IRestApiContext,
-	query?: Partial<InstanceAiThreadsQuery>,
 ): Promise<InstanceAiThreadListResponse> {
-	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads', query);
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads');
 }
 
 export async function fetchThreadHistory(

@@ -1,501 +1,288 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useIntersectionObserver } from '@vueuse/core';
-import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-	N8nButton,
 	N8nActionDropdown,
-	N8nDialog,
-	N8nDialogFooter,
-	N8nIconButton,
+	N8nButton,
 	N8nHeading,
 	N8nIcon,
+	N8nIconButton,
 	N8nInput,
-	N8nScrollArea,
 	N8nText,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useToast } from '@n8n/composables/useToast';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
+import { clearPendingThreadHandoff } from './composables/useInstanceAiHandoff';
+import { useInstanceAiThreadHistory } from './composables/useInstanceAiThreadHistory';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from './constants';
 import { useInstanceAiStore } from './instanceAi.store';
-import { clearPendingThreadHandoff } from './composables/useInstanceAiHandoff';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
+const toast = useToast();
 
-const searchQuery = ref('');
-const threadIds = ref<string[]>([]);
-const loading = ref(false);
-const loadError = ref(false);
-const hasMore = ref(true);
-const loadMoreRef = ref<HTMLElement>();
-const scrollArea = ref<InstanceType<typeof N8nScrollArea>>();
-let nextCursor: string | undefined;
-let requestVersion = 0;
-const searchPending = ref(false);
+useDocumentTitle().set(i18n.baseText('instanceAi.sidebar.chatHistory'));
 
-async function loadMore() {
-	if (loading.value || !hasMore.value || searchPending.value) return;
-	const version = requestVersion;
-	loading.value = true;
-	loadError.value = false;
-	try {
-		const result = await store.loadThreadPage(
-			{
-				cursor: nextCursor,
-				limit: 30,
-				search: searchQuery.value.trim(),
-			},
-			() => version === requestVersion,
-		);
-		if (version !== requestVersion) return;
-		threadIds.value = [
-			...new Set([...threadIds.value, ...result.threads.map((thread) => thread.id)]),
-		];
-		nextCursor = result.nextCursor ?? undefined;
-		hasMore.value = result.hasMore;
-	} catch {
-		if (version === requestVersion) loadError.value = true;
-	} finally {
-		if (version === requestVersion) loading.value = false;
-	}
-}
+const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadHistory();
+const editingThreadId = ref<string | null>(null);
+const editingTitle = ref('');
 
-function resetHistory() {
-	requestVersion++;
-	nextCursor = undefined;
-	threadIds.value = [];
-	loading.value = false;
-	loadError.value = false;
-	hasMore.value = true;
-	void nextTick(() => scrollArea.value?.scrollToTop());
-}
-
-watch(
-	searchQuery,
-	(_query, _previous, onCleanup) => {
-		resetHistory();
-		searchPending.value = true;
-		const timeout = setTimeout(() => {
-			searchPending.value = false;
-			void loadMore();
-		}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-		onCleanup(() => clearTimeout(timeout));
-	},
-	{ flush: 'sync' },
-);
-
-useIntersectionObserver(loadMoreRef, ([entry]) => {
-	if (entry?.isIntersecting && !loadError.value) void loadMore();
-});
-
-function onScroll(event: Event) {
-	const viewport = event.target;
-	if (
-		viewport instanceof HTMLElement &&
-		!loadError.value &&
-		viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < viewport.clientHeight / 2
-	) {
-		void loadMore();
-	}
-}
-
-onMounted(() => {
-	void loadMore();
-});
-onBeforeUnmount(() => {
-	requestVersion++;
-});
-const renameOpen = ref(false);
-const renamingThreadId = ref<string>();
-const renameTitle = ref('');
-const saving = ref(false);
-const renameError = ref(false);
-function selectRenameTitle(event: FocusEvent) {
-	if (event.target instanceof HTMLInputElement) event.target.select();
-}
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{ id: 'rename', label: i18n.baseText('instanceAi.sidebar.renameThread'), icon: 'pencil' },
 	{ id: 'delete', label: i18n.baseText('instanceAi.sidebar.deleteThread'), icon: 'trash-2' },
 ];
 
-async function handleThreadAction(action: string, threadId: string) {
-	if (action === 'delete') {
-		if (await store.deleteThread(threadId)) {
-			clearPendingThreadHandoff(threadId);
-			resetHistory();
-			void loadMore();
-		}
-	} else if (action === 'rename') {
-		const thread = store.threads.find((item) => item.id === threadId);
-		if (!thread) return;
-		renamingThreadId.value = threadId;
-		renameTitle.value = thread.title;
-		renameError.value = false;
-		renameOpen.value = true;
+function startRename(thread: InstanceAiThreadSummary) {
+	editingThreadId.value = thread.id;
+	editingTitle.value = thread.title;
+}
+
+function focusRenameInput(el: unknown) {
+	if (el instanceof HTMLInputElement) {
+		el.focus();
+		el.select();
 	}
 }
 
-async function saveRename() {
-	const title = renameTitle.value.trim();
-	if (!title || !renamingThreadId.value || saving.value) return;
-	const thread = store.threads.find((item) => item.id === renamingThreadId.value);
-	if (!thread) return;
-	saving.value = true;
-	renameError.value = false;
+async function confirmRename(thread: InstanceAiThreadSummary) {
+	// Enter removes the input, which can also fire blur. Rename once.
+	if (editingThreadId.value !== thread.id) return;
+	editingThreadId.value = null;
+	const title = editingTitle.value.trim();
+	if (!title || title === thread.title) return;
 	try {
 		await store.renameThread(thread.id, title);
-		renameOpen.value = false;
-		if (searchQuery.value.trim()) {
-			resetHistory();
-			void loadMore();
-		}
-	} catch {
-		renameError.value = true;
-	} finally {
-		saving.value = false;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}
 }
 
-useDocumentTitle().set(i18n.baseText('instanceAi.sidebar.chatHistory'));
-
-const filteredThreads = computed(() => {
-	const loadedIds = new Set(threadIds.value);
-	return store.threads.filter((thread) => loadedIds.has(thread.id));
-});
-
-function openThread(threadId: string) {
-	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+async function handleThreadAction(action: string, thread: InstanceAiThreadSummary) {
+	if (action === 'rename') startRename(thread);
+	if (action === 'delete' && (await store.deleteThread(thread.id))) {
+		clearPendingThreadHandoff(thread.id);
+	}
 }
 </script>
 
 <template>
 	<PageViewLayout full-width data-test-id="instance-ai-threads-view">
-		<div :class="$style.content">
-			<header :class="$style.pageHeader">
-				<div :class="$style.titleGroup">
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						icon-only
-						:aria-label="i18n.baseText('instanceAi.threads.backToAssistant')"
-						@click="router.push({ name: INSTANCE_AI_VIEW })"
-					>
-						<template #icon>
-							<N8nIcon icon="arrow-left" size="medium" :stroke-width="2.5" />
-						</template>
-					</N8nButton>
-					<N8nHeading tag="h1" size="xlarge" bold>
-						{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-					</N8nHeading>
-				</div>
-				<div :class="$style.pageActions">
-					<form :class="$style.search" role="search" @submit.prevent>
-						<N8nInput
-							v-model="searchQuery"
-							type="text"
-							size="small"
-							clearable
-							:maxlength="500"
-							autocomplete="off"
-							:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
-							data-test-id="instance-ai-threads-search"
-						>
-							<template #prefix>
-								<N8nIcon icon="search" size="small" />
-							</template>
-						</N8nInput>
-					</form>
-					<N8nButton
-						variant="solid"
-						size="small"
-						icon="plus"
-						@click="router.push({ name: INSTANCE_AI_VIEW })"
-					>
-						{{ i18n.baseText('instanceAi.thread.new') }}
-					</N8nButton>
-				</div>
-			</header>
+		<div :class="$style.page">
+			<div :class="$style.header">
+				<N8nIconButton
+					icon="arrow-left"
+					variant="ghost"
+					:aria-label="i18n.baseText('instanceAi.threads.backToAssistant')"
+					@click="router.push({ name: INSTANCE_AI_VIEW })"
+				/>
+				<N8nHeading :class="$style.heading" tag="h1" size="xlarge" bold>
+					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+				</N8nHeading>
+				<N8nInput
+					v-model="search"
+					:class="$style.search"
+					size="small"
+					clearable
+					:maxlength="500"
+					:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
+					data-test-id="instance-ai-threads-search"
+				>
+					<template #prefix>
+						<N8nIcon icon="search" size="small" />
+					</template>
+				</N8nInput>
+				<N8nButton size="small" icon="plus" @click="router.push({ name: INSTANCE_AI_VIEW })">
+					{{ i18n.baseText('instanceAi.thread.new') }}
+				</N8nButton>
+			</div>
 
-			<N8nScrollArea ref="scrollArea" :class="$style.threadList" @scroll-capture="onScroll">
-				<div v-if="filteredThreads.length > 0" :class="$style.rows">
-					<div
-						v-for="thread in filteredThreads"
-						:key="thread.id"
-						:class="$style.threadRow"
-						data-test-id="instance-ai-history-thread"
-					>
-						<button type="button" :class="$style.threadButton" @click="openThread(thread.id)">
-							<N8nIcon icon="message-circle" size="medium" />
-							<N8nText tag="span" size="medium" :class="$style.threadTitle">
-								{{ thread.title }}
-							</N8nText>
-						</button>
-						<div :class="$style.rowTrailing">
-							<N8nText :class="$style.threadDate" size="medium" color="text-light">
-								{{ formatTimeAgo(thread.updatedAt ?? thread.createdAt) }}
-							</N8nText>
-							<N8nActionDropdown
-								:items="threadActions"
-								:class="$style.rowActions"
-								placement="bottom-end"
-								@select="handleThreadAction($event, thread.id)"
-							>
-								<template #activator>
-									<N8nIconButton
-										variant="ghost"
-										icon="ellipsis-vertical"
-										:aria-label="i18n.baseText('instanceAi.threads.actions')"
-									/>
-								</template>
-							</N8nActionDropdown>
-						</div>
-					</div>
+			<div ref="listRef" :class="$style.list">
+				<div
+					v-for="thread in history.threads"
+					:key="thread.id"
+					:class="$style.row"
+					data-test-id="instance-ai-history-thread"
+				>
+					<input
+						v-if="editingThreadId === thread.id"
+						:ref="focusRenameInput"
+						v-model="editingTitle"
+						:class="$style.renameInput"
+						type="text"
+						@keydown.enter="confirmRename(thread)"
+						@keydown.escape="editingThreadId = null"
+						@blur="confirmRename(thread)"
+					/>
+					<template v-else>
+						<RouterLink
+							:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
+							:class="$style.link"
+							:title="thread.title"
+							@dblclick.prevent="startRename(thread)"
+						>
+							<N8nIcon :class="$style.icon" icon="message-circle" size="medium" />
+							<N8nText :class="$style.title" size="medium">{{ thread.title }}</N8nText>
+						</RouterLink>
+						<N8nText size="small" color="text-light">{{ formatTimeAgo(thread.updatedAt) }}</N8nText>
+						<N8nActionDropdown
+							:items="threadActions"
+							:class="$style.actions"
+							placement="bottom-end"
+							@select="handleThreadAction($event, thread)"
+						>
+							<template #activator>
+								<N8nIconButton
+									variant="ghost"
+									icon="ellipsis-vertical"
+									:aria-label="i18n.baseText('instanceAi.threads.actions')"
+								/>
+							</template>
+						</N8nActionDropdown>
+					</template>
 				</div>
-				<div v-else-if="!loading && !loadError && !hasMore" :class="$style.empty">
-					<N8nIcon icon="messages-square" size="xlarge" />
-					<N8nText>
+
+				<div v-if="history.loading" :class="$style.status" role="status">
+					<N8nText color="text-light">{{ i18n.baseText('instanceAi.threads.loading') }}</N8nText>
+				</div>
+				<div v-else-if="history.error" :class="$style.status" role="alert">
+					<N8nText>{{ i18n.baseText('instanceAi.threads.loadError') }}</N8nText>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="instance-ai-threads-retry"
+						@click="loadMore"
+					>
+						{{ i18n.baseText('generic.retry') }}
+					</N8nButton>
+				</div>
+				<div v-else-if="history.hasMore" ref="sentinelRef" :class="$style.sentinel" />
+				<div v-else-if="history.threads.length === 0" :class="$style.status">
+					<N8nText color="text-light">
 						{{
 							i18n.baseText(
-								searchQuery ? 'instanceAi.threads.noSearchResults' : 'instanceAi.sidebar.noThreads',
+								history.search
+									? 'instanceAi.threads.noSearchResults'
+									: 'instanceAi.sidebar.noThreads',
 							)
 						}}
 					</N8nText>
 				</div>
-				<div v-if="loading || searchPending" :class="$style.loadMore" role="status">
-					<N8nText color="text-light">{{ i18n.baseText('instanceAi.threads.loading') }}</N8nText>
-				</div>
-				<div v-else-if="loadError" :class="$style.loadMore" role="alert">
-					<N8nText>{{ i18n.baseText('instanceAi.threads.loadError') }}</N8nText>
-					<N8nButton variant="outline" @click="loadMore">{{
-						i18n.baseText('generic.retry')
-					}}</N8nButton>
-				</div>
-				<div v-else-if="hasMore" ref="loadMoreRef" :class="$style.loadMore">
-					<N8nButton variant="ghost" @click="loadMore">{{
-						i18n.baseText('instanceAi.threads.loadMore')
-					}}</N8nButton>
-				</div>
-			</N8nScrollArea>
+			</div>
 		</div>
-		<N8nDialog
-			:open="renameOpen"
-			size="small"
-			:show-close-button="false"
-			:header="i18n.baseText('instanceAi.threads.renameChat')"
-			@update:open="!saving && (renameOpen = $event)"
-		>
-			<form :class="$style.renameForm" @submit.prevent="saveRename">
-				<N8nInput
-					v-model="renameTitle"
-					:maxlength="255"
-					autofocus
-					:disabled="saving"
-					:aria-label="i18n.baseText('instanceAi.threads.renameChat')"
-					@focus="selectRenameTitle"
-				/>
-				<N8nText v-if="renameError" role="alert" color="danger">{{
-					i18n.baseText('instanceAi.threads.renameError')
-				}}</N8nText>
-				<N8nDialogFooter>
-					<N8nButton variant="outline" :disabled="saving" @click="renameOpen = false">{{
-						i18n.baseText('generic.cancel')
-					}}</N8nButton>
-					<N8nButton type="submit" :loading="saving" :disabled="saving || !renameTitle.trim()">{{
-						i18n.baseText('generic.save')
-					}}</N8nButton>
-				</N8nDialogFooter>
-			</form>
-		</N8nDialog>
 	</PageViewLayout>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/focus';
-
-.content {
+.page {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	width: 100%;
-	max-width: calc(var(--content-container--width) - var(--spacing--4xl));
-	margin-inline: auto;
 	min-height: 0;
+	width: 100%;
+	max-width: var(--content-container--width);
+	margin: 0 auto;
 }
 
-.pageHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--lg);
-}
-
-.titleGroup {
+.header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	padding-bottom: var(--spacing--sm);
 }
 
-.pageActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.heading {
+	flex: 1;
+	min-width: 0;
 }
 
 .search {
-	width: var(--spacing--5xl);
+	width: 240px;
 }
 
-.threadList {
+.list {
 	flex: 1;
 	min-height: 0;
-	margin-top: var(--spacing--sm);
+	overflow-y: auto;
 }
 
-.rows {
-	border-top: var(--border);
-}
-
-.threadRow {
+.row {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	min-height: var(--height--2xl);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-bottom: var(--border);
-}
 
-@media (hover: hover) {
-	.rows:has(.threadRow:first-child:hover) {
-		border-top-color: transparent;
-	}
+	&:hover,
+	&:focus-within,
+	&:has([aria-expanded='true']) {
+		background-color: var(--color--background--light-1);
 
-	.threadRow:has(+ .threadRow:hover) {
-		border-bottom-color: transparent;
-	}
-
-	.threadRow:hover {
-		border-bottom-color: transparent;
-		border-radius: var(--radius--xs);
-		background: var(--background--hover);
+		.actions {
+			opacity: 1;
+		}
 	}
 }
 
-.threadButton {
+.link {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex: 1;
-	align-self: stretch;
 	min-width: 0;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: var(--text-color);
-	cursor: pointer;
-	text-align: left;
-
-	&:focus-visible {
-		@include focus.focus-ring;
-	}
+	color: var(--color--text) !important;
+	text-decoration: none !important;
 }
 
-.threadTitle {
-	flex: 1;
-	min-width: 0;
-	overflow-wrap: anywhere;
-}
-
-.threadDate {
+.icon {
 	flex-shrink: 0;
-	margin-left: auto;
+	color: var(--color--text--tint-1);
 }
 
-.rowTrailing {
-	display: grid;
-	align-items: center;
-	justify-items: end;
-	min-width: var(--height--md);
-
-	> * {
-		grid-area: 1 / 1;
-	}
+.title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.rowActions {
+.actions {
+	flex-shrink: 0;
 	opacity: 0;
-	pointer-events: none;
-}
 
-.threadRow:focus-within,
-.threadRow:has([aria-expanded='true']) {
-	.rowActions {
+	// Touch devices have no hover: keep the menu button visible.
+	@media (hover: none) {
 		opacity: 1;
-		pointer-events: auto;
-	}
-	.threadDate {
-		visibility: hidden;
 	}
 }
 
-@media (hover: hover) {
-	.threadRow:hover {
-		.rowActions {
-			opacity: 1;
-			pointer-events: auto;
-		}
-		.threadDate {
-			visibility: hidden;
-		}
-	}
+.renameInput {
+	flex: 1;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	color: var(--color--text);
+	background: var(--color--background--light-2);
+	border: var(--border);
+	border-color: var(--color--primary);
+	border-radius: var(--radius);
+	outline: none;
 }
 
-@media (hover: none) {
-	.rowActions {
-		opacity: 1;
-		pointer-events: auto;
-	}
-	.threadDate {
-		visibility: hidden;
-	}
-}
-
-.renameForm {
-	margin-top: var(--spacing--md);
-}
-
-.empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xl);
-	color: var(--text-color--subtle);
-}
-
-.loadMore {
+.status {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--md);
+	padding: var(--spacing--lg);
 }
 
-@media (max-width: 48rem) {
-	.pageHeader {
-		align-items: flex-start;
-		flex-direction: column;
-	}
-
-	.pageActions,
-	.search {
-		width: 100%;
-	}
+.sentinel {
+	height: 1px;
 }
 </style>

@@ -3,9 +3,10 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import type { InstanceAiThreadHistoryQuery, InstanceAiThreadInfo } from '@n8n/api-types';
 import {
 	UNLIMITED_CREDITS,
+	type InstanceAiThreadHistoryResponse,
+	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
 	type InstanceAiAttachment,
 	type InstanceAiNodesAttachment,
@@ -18,6 +19,7 @@ import {
 } from './instanceAi.api';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
+	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
 	fetchThread,
 	deleteThread as deleteThreadApi,
@@ -32,17 +34,27 @@ export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.thread
 
 type InstanceAiCreditsPushData = Extract<PushMessage, { type: 'updateInstanceAiCredits' }>['data'];
 
+const THREAD_HISTORY_PAGE_SIZE = 30;
+
+const emptyThreadHistory = (search = '') => ({
+	search,
+	threads: [] as InstanceAiThreadSummary[],
+	hasMore: true,
+	loading: false,
+	error: false,
+});
+
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
-	// Thread IDs are not reused. Keep late responses from restoring deleted chats.
-	const deletedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
+	// The chat history page: cursor-paginated and searchable, kept apart from the sidebar list.
+	const threadHistory = ref(emptyThreadHistory());
 	const debugMode = ref(false);
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
 	// and updated in real-time via the 'updateInstanceAiCredits' push event.
@@ -56,12 +68,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
 	const runtimeHooks = {
 		onTitleUpdated: (threadId, title) => {
-			const thread = threads.value.find((t) => t.id === threadId);
-			if (thread) thread.title = title;
+			for (const thread of localThreadEntries(threadId)) thread.title = title;
 		},
 		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
-			void loadThreads({ limit: 5, refresh: true });
+			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
@@ -167,81 +178,88 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread list & lifecycle ---
 
-	async function loadThreadPage(query: InstanceAiThreadHistoryQuery, isCurrent = () => true) {
-		const result = await fetchThreadHistory(rootStore.restApiContext, query);
-		// The history view can invalidate a request while its search is changing.
-		if (!isCurrent()) return result;
-		mergeThreads(result.threads);
-		return result;
+	function toThreadSummary(thread: InstanceAiThreadInfo): InstanceAiThreadSummary {
+		return {
+			id: thread.id,
+			title: thread.title || NEW_CONVERSATION_TITLE,
+			createdAt: thread.createdAt,
+			updatedAt: thread.updatedAt,
+			metadata: thread.metadata ?? undefined,
+		};
 	}
 
-	function mergeThreads(incoming: InstanceAiThreadInfo[]) {
-		const merged = new Map(threads.value.map((thread) => [thread.id, thread]));
-		for (const thread of incoming) {
-			if (deletedThreadIds.has(thread.id)) continue;
-			persistedThreadIds.add(thread.id);
-			const existing = merged.get(thread.id);
-			if (
-				existing &&
-				Date.parse(existing.updatedAt ?? existing.createdAt) > Date.parse(thread.updatedAt)
-			)
-				continue;
-			merged.set(thread.id, {
-				...thread,
-				title: thread.title || NEW_CONVERSATION_TITLE,
-			});
-		}
-		threads.value = [...merged.values()].sort(
-			(a, b) =>
-				Date.parse(b.updatedAt ?? b.createdAt) - Date.parse(a.updatedAt ?? a.createdAt) ||
-				b.id.localeCompare(a.id),
-		);
+	/** Every local copy of a thread; the sidebar list and the history page can both hold one. */
+	function localThreadEntries(threadId: string): InstanceAiThreadSummary[] {
+		return [...threads.value, ...threadHistory.value.threads].filter((t) => t.id === threadId);
 	}
 
-	async function loadThread(threadId: string): Promise<void> {
-		const result = await fetchThread(rootStore.restApiContext, threadId);
-		mergeThreads([result.thread]);
-	}
-
-	let pendingThreadsLoad: Promise<boolean> | undefined;
-	let pendingThreadsLimit = 0;
-	let loadedThreadsLimit = 0;
-	let threadsRefreshVersion = 0;
-
-	async function loadThreads({
-		limit = 100,
-		once = false,
-		refresh = false,
-	}: { limit?: number; once?: boolean; refresh?: boolean } = {}): Promise<boolean> {
-		// Activity refreshes must follow any older request, not reuse its snapshot.
-		if (refresh) threadsRefreshVersion++;
-		if (once && !refresh && loadedThreadsLimit >= limit) return true;
-		if (pendingThreadsLoad) {
-			if (!refresh && pendingThreadsLimit >= limit) return await pendingThreadsLoad;
-			const nextLimit = refresh ? Math.max(limit, pendingThreadsLimit) : limit;
-			await pendingThreadsLoad;
-			return await loadThreads({ limit: nextLimit, once: once && !refresh });
-		}
-		pendingThreadsLimit = limit;
-		pendingThreadsLoad = fetchRecentThreads(limit, threadsRefreshVersion);
+	async function loadThreads(): Promise<boolean> {
 		try {
-			return await pendingThreadsLoad;
-		} finally {
-			pendingThreadsLoad = undefined;
-		}
-	}
-
-	async function fetchRecentThreads(limit: number, refreshVersion: number): Promise<boolean> {
-		try {
-			const result = await fetchThreadHistory(rootStore.restApiContext, { limit });
-			if (refreshVersion !== threadsRefreshVersion) return false;
-			mergeThreads(result.threads);
-			loadedThreadsLimit = Math.max(loadedThreadsLimit, limit);
+			const result = await fetchThreadsApi(rootStore.restApiContext);
+			for (const thread of result.threads) {
+				persistedThreadIds.add(thread.id);
+			}
+			// Merge server threads into local list, preserving any local-only threads
+			// (e.g. a freshly created thread that hasn't been persisted yet)
+			const serverIds = new Set(result.threads.map((t) => t.id));
+			const localOnly = threads.value.filter((t) => !serverIds.has(t.id));
+			threads.value = [...localOnly, ...result.threads.map(toThreadSummary)];
 			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
 			return false;
 		}
+	}
+
+	/** Fetch a thread the sidebar list does not hold, e.g. an older one opened by URL. */
+	async function loadThread(threadId: string): Promise<void> {
+		const { thread } = await fetchThread(rootStore.restApiContext, threadId);
+		persistedThreadIds.add(thread.id);
+		if (!threads.value.some((t) => t.id === thread.id)) {
+			threads.value.push(toThreadSummary(thread));
+		}
+	}
+
+	let threadHistoryCursor: string | undefined;
+	// Bumped by every reset so a response still in flight for the old state is dropped.
+	let threadHistoryRequest = 0;
+
+	function resetThreadHistory(search = ''): void {
+		threadHistoryRequest++;
+		threadHistoryCursor = undefined;
+		threadHistory.value = emptyThreadHistory(search);
+	}
+
+	async function loadThreadHistoryPage(): Promise<void> {
+		const history = threadHistory.value;
+		if (history.loading || !history.hasMore) return;
+		const request = threadHistoryRequest;
+		history.loading = true;
+		history.error = false;
+		let result: InstanceAiThreadHistoryResponse | undefined;
+		try {
+			result = await fetchThreadHistory(rootStore.restApiContext, {
+				limit: THREAD_HISTORY_PAGE_SIZE,
+				search: history.search || undefined,
+				cursor: threadHistoryCursor,
+			});
+		} catch {
+			// Reported through `error` below
+		}
+		if (request !== threadHistoryRequest) return;
+		history.loading = false;
+		if (!result) {
+			history.error = true;
+			return;
+		}
+		for (const thread of result.threads) {
+			persistedThreadIds.add(thread.id);
+		}
+		// A thread that gets activity while paging moves onto a later page; keep each row once.
+		const known = new Set(history.threads.map((t) => t.id));
+		history.threads.push(...result.threads.filter((t) => !known.has(t.id)).map(toThreadSummary));
+		threadHistoryCursor = result.nextCursor ?? undefined;
+		history.hasMore = result.hasMore;
 	}
 
 	async function syncThread(
@@ -252,7 +270,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (persistedThreadIds.has(threadId)) return;
 
 		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
-		if (deletedThreadIds.has(result.thread.id)) return;
 		persistedThreadIds.add(result.thread.id);
 
 		const templateId = launch.sourceContext?.templateId;
@@ -275,13 +292,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			return;
 		}
 
-		threads.value.unshift({
-			id: result.thread.id,
-			title: result.thread.title || NEW_CONVERSATION_TITLE,
-			createdAt: result.thread.createdAt,
-			updatedAt: result.thread.updatedAt,
-			metadata: result.thread.metadata ?? undefined,
-		});
+		threads.value.unshift(toThreadSummary(result.thread));
 	}
 
 	/**
@@ -310,30 +321,28 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 
 		// Remove thread from list
-		deletedThreadIds.add(threadId);
 		threads.value = threads.value.filter((t) => t.id !== threadId);
+		threadHistory.value.threads = threadHistory.value.threads.filter((t) => t.id !== threadId);
 		disposeRuntime(threadId);
 
 		return true;
 	}
 
 	async function renameThread(threadId: string, title: string): Promise<void> {
-		const thread = threads.value.find((t) => t.id === threadId);
-		const previousTitle = thread?.title;
-		if (thread) {
-			thread.title = title;
-		}
+		const entries = localThreadEntries(threadId);
+		const previousTitle = entries[0]?.title;
+		for (const entry of entries) entry.title = title;
 
 		// Only call API for threads that have been persisted to the backend
-		if (persistedThreadIds.has(threadId)) {
-			try {
-				const result = await renameThreadApi(rootStore.restApiContext, threadId, title);
-				mergeThreads([result.thread]);
-			} catch (error) {
-				const current = threads.value.find((item) => item.id === threadId);
-				if (current?.title === title && previousTitle !== undefined) current.title = previousTitle;
-				throw error;
+		if (!persistedThreadIds.has(threadId)) return;
+		try {
+			await renameThreadApi(rootStore.restApiContext, threadId, title);
+		} catch (error) {
+			// Roll back the optimistic title so the list does not keep a name the server rejected
+			if (previousTitle !== undefined) {
+				for (const entry of entries) entry.title = previousTitle;
 			}
+			throw error;
 		}
 	}
 
@@ -429,8 +438,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		updateThreadMetadata,
 		setThreadMetadata,
 		loadThreads,
-		loadThreadPage,
 		loadThread,
+		threadHistory,
+		resetThreadHistory,
+		loadThreadHistoryPage,
 		fetchCredits,
 		handleCreditsPush,
 		getOrCreateRuntime,

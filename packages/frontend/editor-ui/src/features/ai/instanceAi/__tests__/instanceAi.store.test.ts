@@ -8,7 +8,11 @@ import {
 	renameThread as renameThreadApi,
 } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadHistoryResponse,
+	type InstanceAiThreadSummary,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -52,6 +56,7 @@ vi.mock('../instanceAi.api', () => ({
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
+	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
 	fetchThread: vi.fn(),
 	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
@@ -97,42 +102,71 @@ describe('useInstanceAiStore - runtime registry', () => {
 		vi.clearAllMocks();
 	});
 
-	it('merges history pages without replacing recent chats or duplicating threads', async () => {
+	function historyThread(id: string) {
+		return { id, title: id, resourceId: 'user', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+	}
+
+	it('pages the chat history once per row and drops a response that predates a reset', async () => {
 		const store = useInstanceAiStore();
-		store.threads = [
-			{ id: 'recent', title: 'Recent', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
-		];
+		vi.mocked(fetchThreadHistory)
+			.mockResolvedValueOnce({
+				threads: [historyThread('a'), historyThread('b')],
+				nextCursor: 'cursor-1',
+				hasMore: true,
+			})
+			.mockResolvedValueOnce({
+				threads: [historyThread('b'), historyThread('c')],
+				nextCursor: null,
+				hasMore: false,
+			});
+		await store.loadThreadHistoryPage();
+		await store.loadThreadHistoryPage();
+		expect(fetchThreadHistory).toHaveBeenLastCalledWith(expect.anything(), {
+			limit: 30,
+			search: undefined,
+			cursor: 'cursor-1',
+		});
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a', 'b', 'c']);
+		expect(store.threadHistory.hasMore).toBe(false);
+
+		const late = Promise.withResolvers<InstanceAiThreadHistoryResponse>();
+		vi.mocked(fetchThreadHistory).mockReturnValueOnce(late.promise);
+		store.resetThreadHistory('old');
+		const pending = store.loadThreadHistoryPage();
+		store.resetThreadHistory('new');
+		late.resolve({ threads: [historyThread('late')], nextCursor: null, hasMore: false });
+		await pending;
+		expect(store.threadHistory).toMatchObject({ search: 'new', threads: [], loading: false });
+	});
+
+	it('renames and deletes threads on the history page and rolls back a failed rename', async () => {
+		const store = useInstanceAiStore();
 		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
-			threads: [
-				{
-					id: 'older',
-					title: 'Older',
-					resourceId: 'user',
-					createdAt: '2026-01-01',
-					updatedAt: '2026-01-01',
-				},
-			],
+			threads: [historyThread('a'), historyThread('b')],
 			nextCursor: null,
 			hasMore: false,
 		});
-		await store.loadThreadPage({ cursor: 'older-cursor', limit: 30, search: 'Older' });
-		expect(store.threads.map((thread) => thread.id)).toEqual(['recent', 'older']);
-		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
-			threads: [
-				{
-					id: 'recent',
-					title: 'Renamed',
-					resourceId: 'user',
-					createdAt: '2026-02-01',
-					updatedAt: '2026-02-01',
-				},
-			],
-			nextCursor: null,
-			hasMore: true,
-		});
-		await store.loadThreads();
-		expect(store.threads.map((thread) => thread.id)).toEqual(['recent', 'older']);
-		expect(store.threads[0].title).toBe('Renamed');
+		await store.loadThreadHistoryPage();
+
+		await store.renameThread('a', 'Renamed');
+		expect(renameThreadApi).toHaveBeenCalledWith(expect.anything(), 'a', 'Renamed');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		vi.mocked(renameThreadApi).mockRejectedValueOnce(new Error('offline'));
+		await expect(store.renameThread('a', 'Rejected')).rejects.toThrow('offline');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		await store.deleteThread('b');
+		expect(mockDeleteThread).toHaveBeenCalledWith(expect.anything(), 'b');
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('loadThread adds a thread the sidebar list does not hold, once', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValue({ thread: historyThread('old') });
+		await store.loadThread('old');
+		await store.loadThread('old');
+		expect(store.threads.map((thread) => thread.id)).toEqual(['old']);
 	});
 
 	it('returns the same runtime for the same thread id', () => {
@@ -145,61 +179,6 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(second).toBe(first);
 		expect(other).not.toBe(first);
 	});
-
-	it.each(['history', 'recent', 'thread', 'rename'] as const)(
-		'does not restore a deleted thread from a late %s response',
-		async (request) => {
-			const store = useInstanceAiStore();
-			const thread = {
-				id: 'thread-1',
-				title: 'Saved chat',
-				resourceId: 'user-1',
-				createdAt: '2026-01-01',
-				updatedAt: '2026-01-01',
-			};
-			vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
-				threads: [thread],
-				nextCursor: null,
-				hasMore: false,
-			});
-			await store.loadThreads();
-			const pending = Promise.withResolvers<void>();
-			vi.mocked(fetchThreadHistory).mockImplementationOnce(async () => {
-				await pending.promise;
-				return { threads: [thread], nextCursor: null, hasMore: false };
-			});
-			vi.mocked(fetchThread).mockImplementationOnce(async () => {
-				await pending.promise;
-				return { thread };
-			});
-			vi.mocked(renameThreadApi).mockImplementationOnce(async () => {
-				await pending.promise;
-				return { thread: { ...thread, title: 'Renamed' } };
-			});
-			const response =
-				request === 'history'
-					? store.loadThreadPage({ limit: 30 })
-					: request === 'recent'
-						? store.loadThreads()
-						: request === 'thread'
-							? store.loadThread(thread.id)
-							: store.renameThread(thread.id, 'Renamed');
-			await store.deleteThread(thread.id);
-			pending.resolve();
-			await response;
-			expect(store.threads).toEqual([]);
-			mockDeleteThread.mockClear();
-			await store.deleteThread(thread.id);
-			expect(mockDeleteThread).not.toHaveBeenCalled();
-			vi.mocked(fetchThreadHistory).mockReset().mockResolvedValue({
-				threads: [],
-				nextCursor: null,
-				hasMore: false,
-			});
-			vi.mocked(fetchThread).mockReset();
-			vi.mocked(renameThreadApi).mockReset().mockResolvedValue({ thread });
-		},
-	);
 
 	it('disposes and removes a single runtime', () => {
 		const store = useInstanceAiStore();

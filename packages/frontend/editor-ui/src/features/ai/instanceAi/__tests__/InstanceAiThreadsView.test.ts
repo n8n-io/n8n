@@ -1,124 +1,98 @@
-import { shallowMount, flushPromises } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { shallowMount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { InstanceAiThreadHistoryResponse, InstanceAiThreadSummary } from '@n8n/api-types';
+import { nextTick, reactive } from 'vue';
 import InstanceAiThreadsView from '../InstanceAiThreadsView.vue';
 
-const mocks = vi.hoisted(() => ({ load: vi.fn(), scrollToTop: vi.fn() }));
-const store = reactive({ threads: [] as InstanceAiThreadSummary[], loadThreadPage: mocks.load });
+type Row = { id: string; title: string; createdAt: string; updatedAt: string };
+
+function emptyHistory(search = '') {
+	return { search, threads: [] as Row[], hasMore: true, loading: false, error: false };
+}
+
+const store = reactive({
+	threadHistory: emptyHistory(),
+	loadThreadHistoryPage: vi.fn(),
+	resetThreadHistory: vi.fn((search = '') => {
+		store.threadHistory = emptyHistory(search);
+	}),
+	renameThread: vi.fn(),
+	deleteThread: vi.fn(),
+});
+
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
-vi.mock('@vueuse/core', async (original) => ({
-	...(await original<typeof import('@vueuse/core')>()),
-	useIntersectionObserver: vi.fn(),
+vi.mock('@/app/composables/useIntersectionObserver', () => ({
+	useIntersectionObserver: () => ({ observe: vi.fn() }),
 }));
 
-function page(ids: string[], index = 0, hasMore = false): InstanceAiThreadHistoryResponse {
-	return {
-		threads: ids.map((id) => ({
-			id,
-			title: id,
-			resourceId: 'user',
-			createdAt: '2026-01-01',
-			updatedAt: '2026-01-01',
-		})),
-		nextCursor: hasMore ? `cursor-${index + 1}` : null,
-		hasMore,
-	};
-}
-function render() {
+function mountView() {
 	return shallowMount(InstanceAiThreadsView, {
 		global: {
 			renderStubDefaultSlot: true,
-			stubs: {
-				N8nScrollArea: {
-					template: '<div><slot /></div>',
-					methods: { scrollToTop: mocks.scrollToTop },
-				},
-			},
+			stubs: { RouterLink: { template: '<a><slot /></a>' } },
 		},
 	});
 }
-beforeEach(() => {
-	vi.useFakeTimers();
-	mocks.load.mockReset();
-	store.threads = ['a', 'b', 'match'].map((id) => ({
-		id,
-		title: id,
-		createdAt: '2026-01-01',
-		updatedAt: '2026-01-01',
-	}));
-});
-afterEach(() => {
-	vi.useRealTimers();
-});
 
-describe('chat history pagination', () => {
-	it('loads 30 at a time, appends without duplicates, and stops at the end', async () => {
-		mocks.load
-			.mockResolvedValueOnce(page(['a'], 0, true))
-			.mockResolvedValueOnce(page(['a', 'b'], 1));
-		const wrapper = render();
-		await flushPromises();
-		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ cursor: undefined, limit: 30, search: '' },
-			expect.any(Function),
-		);
-		const button = wrapper
-			.findAllComponents({ name: 'N8nButton' })
-			.find((button) => button.text() === 'Load more');
-		expect(button).toBeDefined();
-		button!.vm.$emit('click');
-		await flushPromises();
-		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ cursor: 'cursor-1', limit: 30, search: '' },
-			expect.any(Function),
-		);
-		expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(2);
-		expect(wrapper.text()).not.toContain('Load more');
-		wrapper.unmount();
+describe('InstanceAiThreadsView', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		store.resetThreadHistory();
+		vi.clearAllMocks();
 	});
-	it('retries the failed page without advancing', async () => {
-		mocks.load.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(page(['a']));
-		const wrapper = render();
-		await flushPromises();
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('loads the first page on mount and renders the rows', async () => {
+		const wrapper = mountView();
+		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(1);
+
+		store.threadHistory.threads = [
+			{ id: 'a', title: 'Alpha', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			{ id: 'b', title: 'Beta', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+		];
+		store.threadHistory.hasMore = false;
+		await nextTick();
+
+		const rows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+		expect(rows.map((row) => row.text())).toEqual([
+			expect.stringContaining('Alpha'),
+			expect.stringContaining('Beta'),
+		]);
+	});
+
+	it('offers a retry after a failed page', async () => {
+		const wrapper = mountView();
+		store.threadHistory.error = true;
+		await nextTick();
+
 		expect(wrapper.text()).toContain("Couldn't load chats");
-		wrapper
-			.findAllComponents({ name: 'N8nButton' })
-			.find((button) => button.text() === 'Retry')!
-			.vm.$emit('click');
-		await flushPromises();
-		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ cursor: undefined, limit: 30, search: '' },
-			expect.any(Function),
-		);
-		expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
-		wrapper.unmount();
+		wrapper.findComponent('[data-test-id="instance-ai-threads-retry"]').vm.$emit('click');
+		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(2);
 	});
-	it('debounces server search and ignores an older response', async () => {
-		let resolveOld!: (value: InstanceAiThreadHistoryResponse) => void;
-		mocks.load
-			.mockReturnValueOnce(
-				new Promise<InstanceAiThreadHistoryResponse>((resolve) => {
-					resolveOld = resolve;
-				}),
-			)
-			.mockResolvedValueOnce(page(['match']));
-		const wrapper = render();
-		wrapper.findComponent({ name: 'N8nInput' }).vm.$emit('update:modelValue', 'match');
+
+	it('restarts the list with the debounced search text', async () => {
+		const wrapper = mountView();
+		wrapper
+			.findComponent('[data-test-id="instance-ai-threads-search"]')
+			.vm.$emit('update:modelValue', ' invoice ');
+		await nextTick();
+		expect(store.resetThreadHistory).not.toHaveBeenCalled();
+
 		await vi.advanceTimersByTimeAsync(1000);
-		await flushPromises();
-		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ cursor: undefined, limit: 30, search: 'match' },
-			expect.any(Function),
-		);
-		resolveOld(page(['a'], 0, true));
-		await flushPromises();
-		expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
-		expect(wrapper.find('[data-test-id="instance-ai-history-thread"]').text()).toContain('match');
-		wrapper.unmount();
+		expect(store.resetThreadHistory).toHaveBeenCalledWith('invoice');
+		expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(2);
+	});
+
+	it('clears the history when the page is left', () => {
+		mountView().unmount();
+		expect(store.resetThreadHistory).toHaveBeenCalledTimes(1);
+		expect(store.threadHistory.search).toBe('');
 	});
 });

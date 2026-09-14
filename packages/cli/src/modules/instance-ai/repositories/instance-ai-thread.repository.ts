@@ -1,5 +1,5 @@
 import type { Thread } from '@n8n/agents';
-import { BaseRepository, TransactionRunner } from '@n8n/db';
+import { BaseRepository, TransactionRunner, escapeLike, LIKE_ESCAPE_CLAUSE } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, LessThan, Raw } from '@n8n/typeorm';
 
@@ -46,13 +46,27 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 		});
 	}
 
+	/**
+	 * One page of a user's threads, newest activity first, plus one lookahead row so the
+	 * caller can tell whether another page exists. `before` is the last row of the previous
+	 * page: keyset pagination on (updatedAt, id) stays stable while threads get reordered.
+	 */
 	async listHistoryPage(
 		resourceId: string,
 		limit: number,
 		search?: string,
 		before?: { updatedAt: Date; id: string },
 	) {
-		const base = { resourceId, ...(search ? { title: this.titleContains(search) } : {}) };
+		const base = {
+			resourceId,
+			...(search
+				? {
+						title: Raw((alias) => `LOWER(${alias}) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+							search: `%${escapeLike(search.toLowerCase())}%`,
+						}),
+					}
+				: {}),
+		};
 		return await this.find({
 			where: before
 				? [
@@ -62,25 +76,6 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 				: base,
 			order: { updatedAt: 'DESC', id: 'DESC' },
 			take: limit + 1,
-		});
-	}
-
-	private titleContains(search: string) {
-		const escapedSearch = search.replace(/[\\%_]/g, (char) => `\\${char}`);
-		return Raw((alias) => `LOWER(${alias}) LIKE LOWER(:threadSearch) ESCAPE '\\'`, {
-			threadSearch: `%${escapedSearch}%`,
-		});
-	}
-
-	async searchHistory(resourceId: string, search: string, page: number, perPage: number) {
-		return await this.findAndCount({
-			where: {
-				resourceId,
-				title: this.titleContains(search),
-			},
-			order: { updatedAt: 'DESC', id: 'DESC' },
-			take: perPage,
-			skip: page * perPage,
 		});
 	}
 }

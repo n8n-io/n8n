@@ -438,7 +438,6 @@ export {
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
-	InstanceAiThreadsQuery,
 	InstanceAiThreadHistoryQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
