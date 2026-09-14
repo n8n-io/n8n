@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_fd53f87975be69::t_6a9079ef203d1b 103,246-256,504-511
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fd53f87975be69::t_6a9079ef203d1b 123,209,216-217,418-457
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_fd53f87975be69::t_5e6fd147d64a39 315
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fd53f87975be69::t_5e6fd147d64a39 275-276,324-325
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_fd53f87975be69::t_5e6fd147d64a39 15,28,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24bee34ced79805d55cc18bb77362312d05def80",
+  "prompts": {},
+  "sessions": {
+    "s_fd53f87975be69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0865b-9b93-72e3-987a-3508c786fce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
