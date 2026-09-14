@@ -67,6 +67,30 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		},
 	);
 
+	describe('chatMessage — delete actions', () => {
+		const selector = actionProps.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('chatMessage'),
+		);
+		const operationValues = (selector?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
+		const fieldsFor = (operation: string) =>
+			actionProps.filter(
+				(p) =>
+					p.type !== 'notice' &&
+					p.displayOptions?.show?.resource?.includes('chatMessage') &&
+					p.displayOptions?.show?.operation?.includes(operation),
+			);
+
+		it.each(['softDeleteMessage'])(
+			'%s is offered and shows only the chat and message pickers',
+			(operation) => {
+				expect(operationValues).toContain(operation);
+				expect(fieldsFor(operation).map((p) => p.name)).toEqual(['chatId', 'messageId']);
+			},
+		);
+	});
+
 	describe('onlineMeeting — un-gated under SP one operation at a time', () => {
 		const spOperations = ['create', 'get'];
 		const allOperations = ['create', 'createOrGet', 'deleteMeeting', 'get', 'update'];
