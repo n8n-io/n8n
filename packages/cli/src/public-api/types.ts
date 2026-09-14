@@ -1,9 +1,7 @@
 import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
-	PublicApiCreateDataTableDto,
 	PublicTestRunStatus,
-	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
@@ -170,27 +168,6 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace DataTableRequest {
-	type List = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-		}
-	>;
-
-	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
-
-	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
-
-	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
 	type GetRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},
