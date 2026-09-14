@@ -3025,6 +3025,17 @@ describe('WorkflowService', () => {
 			return workflow;
 		}
 
+		/**
+		 * Sets up a re-apply of the version that is already live, which is what a
+		 * settings-only save does.
+		 */
+		function arrangeReapply(settings: IWorkflowSettings, nodes: INode[]) {
+			const workflow = arrangePublish(settings, nodes);
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			return workflow;
+		}
+
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
@@ -3232,14 +3243,92 @@ describe('WorkflowService', () => {
 			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
 		});
 
-		test('does nothing when the version has no enabled Schedule Trigger', async () => {
+		test('revokes the binding when the version has no enabled Schedule Trigger', async () => {
 			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode({ disabled: true })]);
 
 			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
 
 			expect(userRepositoryMock.findOneBy).not.toHaveBeenCalled();
 			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).toHaveBeenCalledWith(WORKFLOW_ID, trx);
+		});
+
+		test('leaves the binding alone when a non-publisher re-applies a version with no trigger', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode({ disabled: true })]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
 			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('lets another publisher re-apply the live version when the setting matches the binding', async () => {
+			arrangeReapply({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+			runAsBindingServiceMock.getActive.mockResolvedValue({ userId: 'other' });
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).resolves.toBeDefined();
+
+			expect(runAsBindingServiceMock.getActive).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(userRepositoryMock.findOneBy).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('rejects a re-apply whose setting names a user the binding does not hold', async () => {
+			arrangeReapply({ runAsUserId: 'third' }, [scheduleTriggerNode()]);
+			runAsBindingServiceMock.getActive.mockResolvedValue({ userId: 'other' });
+			userRepositoryMock.findOneBy.mockResolvedValue(
+				mock<User>({ id: 'third', firstName: 'Grace', lastName: 'Hopper' }),
+			);
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).rejects.toThrow(
+				'Cannot publish workflow: the schedule is set to run as Grace Hopper. Switch the trigger to run as you to publish.',
+			);
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('rejects a new version by another publisher even when the binding matches the setting', async () => {
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+			runAsBindingServiceMock.getActive.mockResolvedValue({ userId: 'other' });
+			userRepositoryMock.findOneBy.mockResolvedValue(
+				mock<User>({ id: 'other', firstName: 'Grace', lastName: 'Hopper' }),
+			);
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).rejects.toThrow('Cannot publish workflow: the schedule is set to run as Grace Hopper.');
+			expect(runAsBindingServiceMock.getActive).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+		});
+
+		test('leaves the binding alone for an API key without the publish scope', async () => {
+			arrangeReapply({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				apiKeyScopes: ['workflow:update'],
+			});
+
+			expect(dynamicCredentialsProxyMock.getWorkflowCredentialStatus).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('claims the binding for an API key that carries the publish scope', async () => {
+			arrangeReapply({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+				apiKeyScopes: ['workflow:update', 'workflow:activate'],
+			});
+
+			expect(runAsBindingServiceMock.claim).toHaveBeenCalledWith(WORKFLOW_ID, me, trx);
 		});
 
 		test('revokes the binding on unpublish', async () => {

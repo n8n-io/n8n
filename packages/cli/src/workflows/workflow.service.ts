@@ -745,14 +745,18 @@ export class WorkflowService {
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
+				apiKeyScopes,
 			});
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
 			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
 		} else if (settingsChanged && workflow.activeVersionId) {
+			// Re-applies the live version, so it publishes nothing new. It can still move the run-as
+			// binding, so the key's publish scope travels with it.
 			await this.activateWorkflow(user, workflowId, {
 				versionId: workflow.activeVersionId,
 				source,
+				apiKeyScopes,
 			});
 		}
 		return updatedWorkflow;
@@ -926,6 +930,8 @@ export class WorkflowService {
 			description?: string;
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
+			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+			apiKeyScopes?: readonly string[];
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -1006,6 +1012,10 @@ export class WorkflowService {
 			workflowId,
 			versionToActivate.nodes,
 			workflow.settings,
+			{
+				isNewVersion: versionIdToActivate !== previousActiveVersionId,
+				apiKeyScopes: options?.apiKeyScopes,
+			},
 		);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1846,7 +1856,7 @@ export class WorkflowService {
 
 	/**
 	 * Decides what the publish does with the run-as binding. Returns 'none' when the
-	 * flag is off or the version has no enabled Schedule Trigger.
+	 * flag is off or when the caller may not publish.
 	 *
 	 * The setting is only a claim: it must name the publisher, and the publisher must
 	 * have connected every end-user credential the workflow uses. The binding row that
@@ -1857,13 +1867,21 @@ export class WorkflowService {
 		workflowId: string,
 		nodes: INode[],
 		settings: IWorkflowSettings | undefined,
+		options: {
+			/** False when this re-applies the version that is already live, such as a settings-only save. */
+			isNewVersion: boolean;
+			/** Scopes of the API key behind this call; undefined when the caller is not key-authenticated. */
+			apiKeyScopes: readonly string[] | undefined;
+		},
 	): Promise<RunAsAction> {
 		if (!this.workflowRunAsBindingService.isEnabled()) return 'none';
 
-		const scheduleTrigger = nodes.find(
-			(node) => node.type === SCHEDULE_TRIGGER_NODE_TYPE && !node.disabled,
-		);
-		if (!scheduleTrigger) return 'none';
+		// A key can be scoped more narrowly than its owner. Moving the binding is a publish, so a
+		// key without the publish scope must not do it, even on the settings-only save path that
+		// `assertMayPublishOnSave` does not guard.
+		if (options.apiKeyScopes && !options.apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
+			return 'none';
+		}
 
 		// A settings-only save re-applies the live version, so an editor who may write but not
 		// publish reaches this method. Only a publisher may move the binding. Scoped to the
@@ -1871,12 +1889,28 @@ export class WorkflowService {
 		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
 		if (!canPublish) return 'none';
 
+		const scheduleTrigger = nodes.find(
+			(node) => node.type === SCHEDULE_TRIGGER_NODE_TYPE && !node.disabled,
+		);
+		// The version that goes live has nothing to run on a schedule, so no holder may keep it.
+		// This covers a publish that removes or disables the trigger.
+		if (!scheduleTrigger) return 'revoke';
+
 		const runAsUserId = settings?.runAsUserId;
 		// The switch is off, so a previous holder must lose the workflow. `revokeActive` is one
 		// guarded UPDATE, so this is a no-op statement when the workflow has no binding.
 		if (!runAsUserId) return 'revoke';
 
 		if (runAsUserId !== user.id) {
+			// Re-applying the live version publishes nothing new: it only re-registers the triggers
+			// so a settings change takes effect. A publisher who edits the timezone of a schedule
+			// that somebody else holds must not be refused, so the publish passes unchanged as long
+			// as the setting still agrees with the binding it would otherwise move.
+			if (!options.isNewVersion) {
+				const activeBinding = await this.workflowRunAsBindingService.getActive(workflowId);
+				if (activeBinding?.userId === runAsUserId) return 'none';
+			}
+
 			const holder = await this.userRepository.findOneBy({ id: runAsUserId });
 			const name = holder
 				? [holder.firstName, holder.lastName].filter(Boolean).join(' ') || holder.email
