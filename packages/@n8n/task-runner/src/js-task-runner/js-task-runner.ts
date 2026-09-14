@@ -510,7 +510,6 @@ export class JsTaskRunner extends TaskRunner {
 			// if there is no data available.
 		).getDataProxy({
 			throwOnMissingExecutionData: false,
-			// Removed from the Code node in v3. Stays available in expression fields.
 			throwOnEvaluateExpression: true,
 		});
 	}
