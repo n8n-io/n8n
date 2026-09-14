@@ -86,6 +86,7 @@ beforeEach(() => {
 			taskRunners: {},
 			nodes: {},
 			expressionEngine: { engine: 'legacy' },
+			regexEngine: { engine: 'js' },
 			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
 			// a setTimeout delay from it, and a mock proxy yields NaN at pool teardown
 			generic: { gracefulShutdownTimeout: 30 },
@@ -160,6 +161,7 @@ test('should not init the expression engine for commands that do not need it', a
 			taskRunners: {},
 			nodes: {},
 			expressionEngine: { engine: 'vm' },
+			regexEngine: { engine: 'js' },
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);

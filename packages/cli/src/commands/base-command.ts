@@ -80,7 +80,12 @@ export abstract class BaseCommand<F = never> {
 
 	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
-	protected readonly regexEngineService = Container.get(RegexEngineService);
+	private _regexEngineService?: RegexEngineService;
+
+	/** Resolved lazily: only commands with `needsRegexEngine` ever use it. */
+	protected get regexEngineService(): RegexEngineService {
+		return (this._regexEngineService ??= Container.get(RegexEngineService));
+	}
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -97,8 +102,14 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
 
-	/** Whether to init the regex engine. Only commands that evaluate a user's regexes need it. */
-	protected needsRegexEngine = false;
+	/**
+	 * Whether to init the regex engine. Defaults to `needsExpressionEngine`: a command
+	 * that evaluates workflow expressions also evaluates a user's regexes. Override only
+	 * where the two genuinely diverge.
+	 */
+	get needsRegexEngine(): boolean {
+		return this.needsExpressionEngine;
+	}
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -297,6 +308,14 @@ export abstract class BaseCommand<F = never> {
 					error,
 				);
 			}
+		} else if (this.globalConfig.regexEngine.engine !== 'js') {
+			// This command never initializes the regex engine, so an instance configured for
+			// a non-default one must fail loudly here instead of silently evaluating a
+			// user's regexes on the built-in engine.
+			await this.exitWithCrash(
+				`This command does not support the "${this.globalConfig.regexEngine.engine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
+				new UnexpectedError('Regex engine not initialized for a non-default configuration'),
+			);
 		}
 	}
 

@@ -104,8 +104,6 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	// (De)activating imported workflows evaluates webhook parameters, which may be expressions or regexes
 	override needsExpressionEngine = true;
 
-	override needsRegexEngine = true;
-
 	async run(): Promise<void> {
 		const { flags } = this;
 

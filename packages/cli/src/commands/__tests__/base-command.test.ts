@@ -73,7 +73,9 @@ describe('needsRegexEngine', () => {
 	const regexEngineService = mockInstance(RegexEngineService);
 
 	class RegexEngineCommand extends BaseCommand {
-		needsRegexEngine = true;
+		override get needsRegexEngine() {
+			return true;
+		}
 
 		async run() {}
 	}
@@ -89,6 +91,7 @@ describe('needsRegexEngine', () => {
 				taskRunners: {},
 				nodes: {},
 				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'js' },
 				generic: { gracefulShutdownTimeout: 30 },
 			}),
 		);
@@ -139,5 +142,27 @@ describe('needsRegexEngine', () => {
 
 		expect(regexEngineService.shutdown).toHaveBeenCalled();
 		expect(exitSpy).toHaveBeenCalled();
+	});
+
+	it('crashes a command without regex-engine support when a non-default engine is configured', async () => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'pcre2' as never },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		const exitSpy = vi
+			// @ts-expect-error Protected method
+			.spyOn(BaseCommand.prototype, 'exitWithCrash')
+			.mockResolvedValue(undefined);
+
+		await new PlainCommand().init();
+
+		expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('pcre2'), expect.any(Error));
+		expect(regexEngineService.init).not.toHaveBeenCalled();
 	});
 });
