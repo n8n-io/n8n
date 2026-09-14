@@ -38,7 +38,6 @@ vi.mock('@/app/composables/useEditorContext', async () => {
 		useEditorContext: () => ({
 			aiAssistant: computed(() => true),
 			aiBuilder: computed(() => true),
-			askAi: computed(() => true),
 			instanceAi: computed(() => false),
 			readOnly: computed(() => false),
 		}),
