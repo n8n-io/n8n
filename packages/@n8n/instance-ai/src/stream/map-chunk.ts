@@ -9,6 +9,7 @@ import {
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
+	testListenerCardSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -355,6 +356,7 @@ function mapSuspendedChunk(
 		suspendPayload.mcpConnectRequest,
 		mcpConnectRequestSchema,
 	);
+	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
 	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
@@ -399,6 +401,7 @@ function mapSuspendedChunk(
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
+			...(testListener ? { testListener } : {}),
 		},
 	};
 }

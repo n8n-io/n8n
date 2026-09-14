@@ -356,6 +356,7 @@ export {
 	channelConfigSchema,
 	mcpConnectServerSchema,
 	mcpConnectRequestSchema,
+	testListenerCardSchema,
 	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
