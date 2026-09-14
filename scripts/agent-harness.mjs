@@ -8,12 +8,13 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readlinkSync,
+	realpathSync,
 	renameSync,
 	rmSync,
 	symlinkSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, posix, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPOSITORY = 'n8n-io/cat-bot';
@@ -109,21 +110,52 @@ function validateBundle(bundlePath, version) {
 	if (manifest.name !== BUNDLE_ROOT || manifest.version !== version) {
 		throw new Error('The agent harness manifest does not match the lock.');
 	}
-	if (!existsSync(pluginPath))
+	if (!existsSync(pluginPath) || !lstatSync(pluginPath).isFile())
 		throw new Error(`The agent harness bundle has no ${PLUGIN_FILE} plugin.`);
+	const bundleRoot = realpathSync(bundlePath);
+	if (!realpathSync(pluginPath).startsWith(`${bundleRoot}${sep}`)) {
+		throw new Error(`The agent harness ${PLUGIN_FILE} plugin is outside the bundle.`);
+	}
 	return pluginPath;
 }
 
 function verifyCachedInstall(versionDir, lock, hashFile) {
 	const archivePath = join(versionDir, lock.assetName);
 	const bundlePath = join(versionDir, BUNDLE_ROOT);
-	if (!existsSync(archivePath) || hashFile(archivePath) !== lock.sha256) return null;
 	try {
+		if (!existsSync(archivePath) || hashFile(archivePath) !== lock.sha256) return null;
 		validateBundle(bundlePath, lock.version);
 		return bundlePath;
 	} catch {
 		return null;
 	}
+}
+
+export function validateArchiveListing(names, verbose) {
+	const entries = names.split(/\r?\n/).filter(Boolean);
+	if (entries.length === 0) throw new Error('The agent harness archive is empty.');
+	for (const entry of entries) {
+		const normalized = posix.normalize(entry);
+		if (
+			entry.startsWith('/') ||
+			normalized === '..' ||
+			normalized.startsWith('../') ||
+			(normalized !== BUNDLE_ROOT && !normalized.startsWith(`${BUNDLE_ROOT}/`))
+		) {
+			throw new Error(`The agent harness archive contains an unsafe path: ${entry}.`);
+		}
+	}
+	for (const entry of verbose.split(/\r?\n/).filter(Boolean)) {
+		if (entry[0] !== '-' && entry[0] !== 'd') {
+			throw new Error('The agent harness archive contains a link or special file.');
+		}
+	}
+}
+
+function inspectArchive(archive) {
+	const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' });
+	const verbose = execFileSync('tar', ['-tvzf', archive], { encoding: 'utf8' });
+	validateArchiveListing(names, verbose);
 }
 
 function inspectLink(path) {
@@ -179,6 +211,7 @@ export function installAgentHarness({
 	cacheRoot = join(homedir(), '.cache', 'n8n-agent-harness'),
 	pluginLink = join(homedir(), '.config', 'opencode', 'plugins', PLUGIN_FILE),
 	download = downloadReleaseAsset,
+	inspect = inspectArchive,
 	extract = (archive, destination) =>
 		execFileSync('tar', ['-xzf', archive, '-C', destination], { stdio: 'pipe' }),
 	hashFile = sha256File,
@@ -214,6 +247,7 @@ export function installAgentHarness({
 					`Agent harness checksum mismatch. Expected ${lock.sha256}, got ${actualHash}.`,
 				);
 			}
+			inspect(archivePath);
 			extract(archivePath, stagingDir);
 			bundlePath = join(stagingDir, BUNDLE_ROOT);
 			validateBundle(bundlePath, lock.version);

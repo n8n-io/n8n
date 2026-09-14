@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+	linkSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
@@ -11,13 +12,14 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, test } from 'node:test';
 
 import {
 	downloadReleaseAsset,
 	installAgentHarness,
 	sha256File,
+	validateArchiveListing,
 	validateLock,
 } from './agent-harness.mjs';
 
@@ -44,6 +46,24 @@ function makeAsset(root, version = '1.2.3') {
 		JSON.stringify({ name: 'n8n-opencode-harness', version }),
 	);
 	writeFileSync(join(bundle, 'plugins', 'n8n-harness.js'), 'export default async () => ({});\n');
+	const asset = join(root, `n8n-opencode-harness-${version}.tgz`);
+	execFileSync('tar', ['-czf', asset, '-C', source, 'n8n-opencode-harness']);
+	return asset;
+}
+
+function makeLinkedAsset(root, type, version = '1.2.3') {
+	const source = join(root, 'source');
+	const bundle = join(source, 'n8n-opencode-harness');
+	mkdirSync(join(bundle, 'plugins'), { recursive: true });
+	writeFileSync(
+		join(bundle, 'harness.json'),
+		JSON.stringify({ name: 'n8n-opencode-harness', version }),
+	);
+	const target = join(bundle, 'plugin-target.js');
+	writeFileSync(target, 'export default async () => ({});\n');
+	const plugin = join(bundle, 'plugins', 'n8n-harness.js');
+	if (type === 'symbolic') symlinkSync('../plugin-target.js', plugin);
+	else linkSync(target, plugin);
 	const asset = join(root, `n8n-opencode-harness-${version}.tgz`);
 	execFileSync('tar', ['-czf', asset, '-C', source, 'n8n-opencode-harness']);
 	return asset;
@@ -126,6 +146,74 @@ test('reuses a valid cache without another download', () => {
 	const second = installAgentHarness({ ...paths, lockPath, download });
 	assert.equal(downloads, 1);
 	assert.equal(second.cacheHit, true);
+});
+
+test('redownloads when the cached archive cannot be read', () => {
+	const root = fixtureDirectory();
+	const asset = makeAsset(root);
+	const { lockPath } = writeLock(root, asset);
+	const paths = installerPaths(root);
+	const cachedArchive = join(paths.cacheRoot, '1.2.3', 'n8n-opencode-harness-1.2.3.tgz');
+	mkdirSync(dirname(cachedArchive), { recursive: true });
+	writeFileSync(cachedArchive, 'unreadable cache fixture');
+	let downloads = 0;
+
+	const result = installAgentHarness({
+		...paths,
+		lockPath,
+		hashFile(path) {
+			if (path === cachedArchive) throw new Error('cache read failed');
+			return sha256File(path);
+		},
+		download: (_lock, destination) => {
+			downloads++;
+			execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]);
+		},
+	});
+
+	assert.equal(downloads, 1);
+	assert.equal(result.cacheHit, false);
+});
+
+test('rejects archive links and paths outside the bundle', () => {
+	assert.throws(
+		() =>
+			validateArchiveListing(
+				'n8n-opencode-harness/\nn8n-opencode-harness/plugins/n8n-harness.js\n',
+				'drwxr-xr-x root/root 0 date n8n-opencode-harness/\nlrwxr-xr-x root/root 0 date n8n-opencode-harness/plugins/n8n-harness.js -> /tmp/plugin.js\n',
+			),
+		/link or special file/,
+	);
+	assert.throws(
+		() =>
+			validateArchiveListing(
+				'n8n-opencode-harness/../outside.js\n',
+				'-rw-r--r-- root/root 0 date outside.js\n',
+			),
+		/unsafe path/,
+	);
+});
+
+test('rejects symbolic and hard links in release archives', () => {
+	const root = fixtureDirectory();
+	for (const type of ['symbolic', 'hard']) {
+		const linkRoot = join(root, type);
+		mkdirSync(linkRoot);
+		const asset = makeLinkedAsset(linkRoot, type);
+		const { lockPath } = writeLock(linkRoot, asset);
+		const paths = installerPaths(linkRoot);
+
+		assert.throws(
+			() =>
+				installAgentHarness({
+					...paths,
+					lockPath,
+					download: (_lock, destination) =>
+						execFileSync('cp', [asset, join(destination, 'n8n-opencode-harness-1.2.3.tgz')]),
+				}),
+			/link or special file/,
+		);
+	}
 });
 
 test('installs through a temporary directory and activates both symlinks', () => {
