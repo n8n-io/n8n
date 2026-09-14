@@ -4677,79 +4677,6 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow!.active).toBe(false);
 		expect(updatedWorkflow!.activeVersionId).toBeNull();
 	});
-});
-
-describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
-	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
-	// server-side checksum even though no editable content changed. An editor that captured its
-	// checksum before the activation push therefore autosaves with a stale checksum and gets a
-	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
-	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
-	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
-
-	test('changes the workflow checksum when a version is activated', async () => {
-		const workflow = await createWorkflowWithHistory({}, owner);
-
-		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
-		expect(beforeActivation.body.data.activeVersionId).toBeNull();
-		const checksumBeforeActivation = beforeActivation.body.data.checksum;
-
-		const activated = await authOwnerAgent
-			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: workflow.versionId })
-			.expect(200);
-
-		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
-		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
-		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
-	});
-
-	test('rejects an autosave whose checksum was captured before activation', async () => {
-		const workflow = await createWorkflowWithHistory({}, owner);
-
-		// The editor loads the workflow and holds its checksum while the user keeps editing.
-		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
-		const checksumHeldByEditor = loaded.body.data.checksum;
-
-		// A server-side activation lands while the canvas is still dirty.
-		await authOwnerAgent
-			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: workflow.versionId })
-			.expect(200);
-
-		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
-		// stands in for the node drag in the original report — the conflict is checksum-driven,
-		// not content-driven).
-		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
-			name: 'Edited while activation landed',
-			expectedChecksum: checksumHeldByEditor,
-		});
-
-		expect(autosave.statusCode).toBe(409);
-		expect(autosave.body.code).toBe(409);
-	});
-
-	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
-		const workflow = await createWorkflowWithHistory({}, owner);
-
-		const activated = await authOwnerAgent
-			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: workflow.versionId })
-			.expect(200);
-
-		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
-		// post-activation value before the autosave fires.
-		const refreshedChecksum = activated.body.data.checksum;
-
-		const autosave = await authOwnerAgent
-			.patch(`/workflows/${workflow.id}`)
-			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
-			.expect(200);
-
-		// The in-progress edit is persisted and the activation state is preserved.
-		expect(autosave.body.data.name).toBe('Edited while activation landed');
-		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
-	});
 
 	describe('run-as binding', () => {
 		const SCHEDULE_NODE_ID = 'schedule-node-id';
@@ -4860,6 +4787,43 @@ describe('workflow conflict detection when a version is activated mid-edit (INS-
 			expect(await bindingRepository.findActiveByWorkflowId(workflow.id)).toBeNull();
 		});
 
+		test('should keep the binding when an editor changes the setting on a settings-only save', async () => {
+			// A settings-only PATCH re-applies the live version, which reaches the publish gate
+			// with editor rights only. It must not move the binding.
+			const customRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update'],
+				{
+					roleType: 'project',
+					displayName: 'Custom Workflow Editor',
+					description: 'Can update workflows but not publish them',
+				},
+			);
+			const teamProject = await createTeamProject('Run-as editor project', owner);
+			await linkUserToProject(member, teamProject, customRole.slug);
+
+			const workflow = await createWorkflowWithHistory(
+				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
+				teamProject,
+			);
+
+			await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: workflow.versionId })
+				.expect(200);
+
+			const response = await authMemberAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ settings: { runAsUserId: member.id } });
+
+			expect(response.statusCode).toBe(200);
+			expect((await workflowRepository.findOneBy({ id: workflow.id }))?.settings?.runAsUserId).toBe(
+				member.id,
+			);
+
+			const binding = await bindingRepository.findActiveByWorkflowId(workflow.id);
+			expect(binding?.userId).toBe(owner.id);
+		});
+
 		test('should revoke the binding on unpublish', async () => {
 			const workflow = await createWorkflowWithHistory(
 				{ nodes: scheduleNodes(), settings: { runAsUserId: owner.id } },
@@ -4875,6 +4839,79 @@ describe('workflow conflict detection when a version is activated mid-edit (INS-
 
 			expect(await bindingRepository.findActiveByWorkflowId(workflow.id)).toBeNull();
 		});
+	});
+});
+
+describe('workflow conflict detection when a version is activated mid-edit (INS-859)', () => {
+	// `activeVersionId` is one of WORKFLOW_CHECKSUM_FIELDS, so activating a workflow shifts its
+	// server-side checksum even though no editable content changed. An editor that captured its
+	// checksum before the activation push therefore autosaves with a stale checksum and gets a
+	// (correct) 409 — the false "changed by someone else" conflict from INS-859. These tests pin
+	// that backend contract: a 409 on the pre-activation checksum, a clean save on the refreshed
+	// one. The frontend fix (refresh the checksum on the `workflowActivated` push) relies on it.
+
+	test('changes the workflow checksum when a version is activated', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const beforeActivation = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		expect(beforeActivation.body.data.activeVersionId).toBeNull();
+		const checksumBeforeActivation = beforeActivation.body.data.checksum;
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// Only activeVersionId changed, yet the checksum moves — the root cause of the conflict.
+		expect(activated.body.data.activeVersionId).toBe(workflow.versionId);
+		expect(activated.body.data.checksum).not.toBe(checksumBeforeActivation);
+	});
+
+	test('rejects an autosave whose checksum was captured before activation', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// The editor loads the workflow and holds its checksum while the user keeps editing.
+		const loaded = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const checksumHeldByEditor = loaded.body.data.checksum;
+
+		// A server-side activation lands while the canvas is still dirty.
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The debounced autosave ships with the now-stale pre-activation checksum (the edit here
+		// stands in for the node drag in the original report — the conflict is checksum-driven,
+		// not content-driven).
+		const autosave = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			name: 'Edited while activation landed',
+			expectedChecksum: checksumHeldByEditor,
+		});
+
+		expect(autosave.statusCode).toBe(409);
+		expect(autosave.body.code).toBe(409);
+	});
+
+	test('accepts the autosave once the checksum is refreshed after activation, preserving the edit', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const activated = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(200);
+
+		// The fix: on the `workflowActivated` push the editor refreshes its checksum to the
+		// post-activation value before the autosave fires.
+		const refreshedChecksum = activated.body.data.checksum;
+
+		const autosave = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ name: 'Edited while activation landed', expectedChecksum: refreshedChecksum })
+			.expect(200);
+
+		// The in-progress edit is persisted and the activation state is preserved.
+		expect(autosave.body.data.name).toBe('Edited while activation landed');
+		expect(autosave.body.data.activeVersionId).toBe(workflow.versionId);
 	});
 });
 

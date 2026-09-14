@@ -3035,6 +3035,8 @@ describe('WorkflowService', () => {
 			});
 			runAsBindingServiceMock = mock<WorkflowRunAsBindingService>();
 			runAsBindingServiceMock.isEnabled.mockReturnValue(true);
+			// The gate requires `workflow:publish`; the tests that drop it say so.
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 			userRepositoryMock = mock<UserRepository>();
 			dynamicCredentialsProxyMock = mock<DynamicCredentialsProxy>();
 			dynamicCredentialsProxyMock.getWorkflowCredentialStatus.mockResolvedValue([]);
@@ -3264,6 +3266,95 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(me, WORKFLOW_ID);
 
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('leaves the binding alone when the publisher may not publish', async () => {
+			// A settings-only save re-applies the live version, so an editor reaches the gate.
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			arrangePublish({ runAsUserId: me.id }, [scheduleTriggerNode()]);
+
+			await workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID });
+
+			expect(vi.mocked(userHasScopes)).toHaveBeenCalledWith(me, ['workflow:publish'], false, {
+				workflowId: WORKFLOW_ID,
+			});
+			expect(dynamicCredentialsProxyMock.getWorkflowCredentialStatus).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('does not reject an editor whose settings-only save names another holder', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			arrangePublish({ runAsUserId: 'other' }, [scheduleTriggerNode()]);
+
+			await expect(
+				workflowService.activateWorkflow(me, WORKFLOW_ID, { versionId: TARGET_VERSION_ID }),
+			).resolves.toBeDefined();
+
+			expect(userRepositoryMock.findOneBy).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('revokes the binding when an active workflow is archived on the legacy path', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = false;
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.archive(me, WORKFLOW_ID);
+
+			expect(runAsBindingServiceMock.revoke).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+
+		test('does not touch the binding when archiving with the flag off', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = false;
+			runAsBindingServiceMock.isEnabled.mockReturnValue(false);
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.archive(me, WORKFLOW_ID);
+
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('never touches the binding when the system heals a publication', async () => {
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			(trx.update as unknown as Mock).mockResolvedValue({ affected: 1 });
+
+			await workflowService.publishAsSystem(
+				WORKFLOW_ID,
+				{ nodes: [scheduleTriggerNode()], connections: {} as IConnections },
+				TARGET_VERSION_ID,
+			);
+
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
+			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
+		});
+
+		test('writes no binding when a guarded publish loses the race', async () => {
+			const workflow = makeWorkflowEntity({ runAsUserId: me.id });
+			workflow.active = true;
+			workflow.activeVersionId = TARGET_VERSION_ID;
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			// The guarded row update matches nothing, so the publish is superseded.
+			(trx.update as unknown as Mock).mockResolvedValue({ affected: 0 });
+
+			const result = await workflowService.publishAsSystem(
+				WORKFLOW_ID,
+				{ nodes: [scheduleTriggerNode()], connections: {} as IConnections },
+				TARGET_VERSION_ID,
+			);
+
+			expect(result).toEqual({ published: false, reason: 'superseded' });
+			expect(runAsBindingServiceMock.claim).not.toHaveBeenCalled();
 			expect(runAsBindingServiceMock.revoke).not.toHaveBeenCalled();
 		});
 

@@ -426,7 +426,7 @@ export class WorkflowValidationService {
 	 * only with n8n user auth (OAuth2). Mirrors `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you';
+		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, MCP, form, or webhook triggers with n8n user authentication, and schedule triggers set to run as you';
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */

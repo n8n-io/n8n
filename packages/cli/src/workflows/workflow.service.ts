@@ -1613,6 +1613,11 @@ export class WorkflowService {
 					event: 'deactivated',
 					userId: user.id,
 				});
+
+				// An archived workflow is unpublished, so it runs as nobody.
+				if (this.workflowRunAsBindingService.isEnabled()) {
+					await this.workflowRunAsBindingService.revoke(workflowId);
+				}
 			}
 		}
 
@@ -1860,8 +1865,15 @@ export class WorkflowService {
 		);
 		if (!scheduleTrigger) return 'none';
 
+		// A settings-only save re-applies the live version, so an editor who may write but not
+		// publish reaches this method. Only a publisher may move the binding. Scoped to the
+		// workflow, as `assertMayPublishOnSave` does, so a role granted by sharing counts.
+		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { workflowId });
+		if (!canPublish) return 'none';
+
 		const runAsUserId = settings?.runAsUserId;
-		// The switch is off, so a previous holder must lose the workflow.
+		// The switch is off, so a previous holder must lose the workflow. `revokeActive` is one
+		// guarded UPDATE, so this is a no-op statement when the workflow has no binding.
 		if (!runAsUserId) return 'revoke';
 
 		if (runAsUserId !== user.id) {
@@ -1875,6 +1887,9 @@ export class WorkflowService {
 			);
 		}
 
+		// The context carries `source: 'run-as'`, which `N8NIdentifier` only accepts once the
+		// run-as branch lands. Until then a registered dynamic-credentials module reports every
+		// resolvable credential as `missing`, so this check must ship with that branch.
 		const statuses = await this.dynamicCredentialsProxy.getWorkflowCredentialStatus(
 			workflowId,
 			{
