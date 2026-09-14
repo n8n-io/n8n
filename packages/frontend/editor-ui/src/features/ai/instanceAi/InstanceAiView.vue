@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useEventListener, useSessionStorage } from '@vueuse/core';
@@ -15,7 +15,7 @@ import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
-import { SidebarStateKey } from './instanceAiLayout';
+import { provideSidebarState } from './instanceAiLayout';
 import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
 
 const store = useInstanceAiStore();
@@ -74,10 +74,7 @@ documentTitle.set(i18n.baseText('instanceAi.view.title'));
 // from the AI chat namespace (see onBeforeRouteLeave below).
 const sidebarCollapsed = useSessionStorage('instanceAi.sidebarCollapsed', true);
 const sidebarWidth = ref(260);
-
-function toggleSidebarCollapse() {
-	sidebarCollapsed.value = !sidebarCollapsed.value;
-}
+const { toggle: toggleSidebarCollapse } = provideSidebarState(sidebarCollapsed, sidebarWidth);
 
 function handleSidebarResize({ width }: { width: number }) {
 	// Drag below min-width threshold → auto-collapse
@@ -109,12 +106,6 @@ function handleThreadDeleted(wasActive: boolean) {
 		void router.push({ name: INSTANCE_AI_VIEW });
 	}
 }
-
-provide(SidebarStateKey, {
-	collapsed: sidebarCollapsed,
-	width: sidebarWidth,
-	toggle: toggleSidebarCollapse,
-});
 
 // Reset to collapsed when leaving the AI chat namespace, so the next entry
 // starts collapsed by default. Refreshes (which don't trigger the guard) keep
