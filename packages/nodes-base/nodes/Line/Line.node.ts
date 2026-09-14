@@ -18,6 +18,9 @@ export class Line implements INodeType {
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
+		// LINE Notify, the service this node calls, is shut down. Keep the node out
+		// of the nodes panel, but let existing workflows keep it.
+		hidden: true,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Line API',
 		defaults: {
