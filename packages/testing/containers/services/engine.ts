@@ -1,0 +1,47 @@
+/**
+ * How the stack runs engine 2.0.
+ *
+ * `in-process` enables the `engine-v2` backend module, so the data plane runs
+ * inside the main container. A separate data plane container is not supported
+ * yet: the standalone engine image has no v1 step executor.
+ */
+export type EngineMode = 'in-process';
+
+export const ENGINE_MODULE = 'engine-v2';
+
+/** The data plane keeps its own database on the stack Postgres. */
+export const ENGINE_DATABASE = 'n8n_engine';
+
+interface EngineEnvOptions {
+	engine: EngineMode | undefined;
+	isQueueMode: boolean;
+}
+
+/**
+ * Adds the env that turns on engine 2.0 to an n8n environment in place.
+ *
+ * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
+ * so the caller never handles credentials. No-op when `engine` is unset.
+ */
+export function applyEngineEnv(
+	env: Record<string, string>,
+	{ engine, isQueueMode }: EngineEnvOptions,
+): void {
+	if (!engine) return;
+
+	if (isQueueMode) {
+		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
+	}
+
+	if (env.DB_TYPE !== 'postgresdb') {
+		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
+	}
+
+	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);
+	if (!modules.includes(ENGINE_MODULE)) modules.push(ENGINE_MODULE);
+	env.N8N_ENABLED_MODULES = modules.join(',');
+
+	const user = encodeURIComponent(env.DB_POSTGRESDB_USER);
+	const password = encodeURIComponent(env.DB_POSTGRESDB_PASSWORD);
+	env.N8N_ENGINE_DATABASE_URL = `postgres://${user}:${password}@${env.DB_POSTGRESDB_HOST}:${env.DB_POSTGRESDB_PORT}/${ENGINE_DATABASE}`;
+}
