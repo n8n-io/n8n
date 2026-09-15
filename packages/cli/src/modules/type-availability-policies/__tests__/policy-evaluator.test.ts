@@ -1,5 +1,10 @@
-import { evaluateComposedType, evaluateType, type ScopePolicy } from '../policy-evaluator';
-import type { PolicyAttachment } from '../policy-rule.types';
+import {
+	evaluateComposedType,
+	evaluateType,
+	partitionTypesByAction,
+	type ScopePolicy,
+} from '../policy-evaluator';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 
 const attachment = (overrides: Partial<PolicyAttachment>): PolicyAttachment => ({
 	policyId: 'policy-1',
@@ -322,6 +327,69 @@ describe('evaluateComposedType', () => {
 			scope: 'project',
 			matchedRuleId: 'project-allow',
 			optInAvailable: false,
+		});
+	});
+});
+
+describe('partitionTypesByAction', () => {
+	const rule = (id: string, action: PolicyRule['action'], selector: PolicyRule['selector']) => ({
+		id,
+		action,
+		selector,
+	});
+
+	const TYPES = [
+		'n8n-nodes-base.code',
+		'n8n-nodes-base.executeCommand',
+		'@acme/n8n-nodes-acme.thing',
+	];
+
+	it('falls every type back to the default action when no rule matches', () => {
+		expect(partitionTypesByAction([], 'deny', TYPES)).toEqual({
+			allow: [],
+			deny: TYPES,
+			delegate: [],
+		});
+	});
+
+	it('expands a package selector across every type in that package', () => {
+		const rules = [rule('r1', 'deny', { kind: 'package', value: 'n8n-nodes-base' })];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.code', 'n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('keeps first-match order, so an earlier name rule survives a later package rule', () => {
+		const rules = [
+			rule('r1', 'allow', { kind: 'name', value: 'n8n-nodes-base.code' }),
+			rule('r2', 'deny', { kind: 'package', value: 'n8n-nodes-base' }),
+		];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['n8n-nodes-base.code', '@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('separates delegated types from allowed and denied ones', () => {
+		const rules = [rule('r1', 'delegate', { kind: 'name', value: 'n8n-nodes-base.code' })];
+
+		expect(partitionTypesByAction(rules, 'allow', TYPES)).toEqual({
+			allow: ['n8n-nodes-base.executeCommand', '@acme/n8n-nodes-acme.thing'],
+			deny: [],
+			delegate: ['n8n-nodes-base.code'],
+		});
+	});
+
+	it('returns empty buckets when the instance knows no types', () => {
+		expect(partitionTypesByAction([], 'deny', [])).toEqual({
+			allow: [],
+			deny: [],
+			delegate: [],
 		});
 	});
 });
