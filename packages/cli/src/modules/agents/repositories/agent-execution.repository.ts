@@ -329,7 +329,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.andWhere(
 				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
 					'WHERE e2."threadId" = e."threadId" AND e2."status" != \'queued\' ' +
-					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
+					'ORDER BY COALESCE(e2."startedAt", e2."createdAt") DESC, e2.id DESC LIMIT 1)',
 			)
 			.getRawMany<{ threadId: string; status: Exclude<AgentExecutionStatus, 'queued'> }>();
 

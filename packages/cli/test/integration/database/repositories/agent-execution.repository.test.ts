@@ -344,6 +344,14 @@ describe('AgentExecutionRepository', () => {
 				status: 'running',
 				failureSummary: null,
 				createdAt: new Date('2026-01-02T00:00:00Z'),
+				startedAt: new Date('2026-01-04T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: running.id,
+				status: 'success',
+				failureSummary: null,
+				createdAt: new Date('2026-01-03T00:00:00Z'),
+				startedAt: new Date('2026-01-03T00:00:00Z'),
 			});
 			await createExecution({
 				threadId: succeeded.id,

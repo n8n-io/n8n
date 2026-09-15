@@ -166,7 +166,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				.where('latestExecution.threadId = thread.id')
 				// A queued turn has not started; the thread's status is its last run.
 				.andWhere("latestExecution.status != 'queued'")
-				.orderBy('latestExecution.createdAt', 'DESC')
+				.orderBy('COALESCE(latestExecution.startedAt, latestExecution.createdAt)', 'DESC')
 				.addOrderBy('latestExecution.id', 'DESC')
 				.limit(1)
 				.getQuery()
