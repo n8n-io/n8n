@@ -28,9 +28,11 @@ import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanva
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CanvasConnectionMode,
 	createCanvasGroupNodeId,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
+import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -87,7 +89,14 @@ const executionStatus = computed(() => props.data.executionStatus);
 const allNodesDisabled = computed(() => props.data.allNodesDisabled ?? false);
 const isEmptyGroup = computed(() => props.data.isEmptyGroup === true);
 const isConnectable = computed(() => isEmptyGroup.value && isCollapsed.value && !props.readOnly);
-const isValidConnection = () => true;
+const { isValidConnection } = useNodeConnections({
+	inputs: [],
+	outputs: [],
+	connections: {
+		[CanvasConnectionMode.Input]: {},
+		[CanvasConnectionMode.Output]: {},
+	},
+});
 
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
