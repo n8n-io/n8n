@@ -537,6 +537,14 @@ describe('AgentExecutionRepository', () => {
 		expect(
 			(await repository.findQueuedByThread(otherThread.id)).map((row) => row.enqueueSequence),
 		).toEqual([1]);
+		const waitingMessage = await repository.insertExecution({
+			...resumeValues('waiting-message'),
+			userMessage: 'waits behind the resume',
+			runContext: { kind: 'message' },
+		});
+		expect((await repository.findThreadIdsWithQueued()).sort()).toEqual(
+			[thread.id, otherThread.id].sort(),
+		);
 		await expect(
 			repository.promoteQueuedToRunning(first.id, thread.id, new Date()),
 		).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
@@ -574,6 +582,7 @@ describe('AgentExecutionRepository', () => {
 		expect(await repository.failQueued(other.id, 'resume unavailable', new Date(), null)).toBe(
 			true,
 		);
+		expect(await repository.failQueued(waitingMessage.id, 'drained', new Date(), null)).toBe(true);
 		expect(await repository.findThreadIdsWithQueued()).toEqual([]);
 	});
 });

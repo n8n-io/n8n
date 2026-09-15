@@ -163,9 +163,14 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		});
 	}
 
+	/** Each thread with waiting turns, once; the result scales with threads, not rows. */
 	async findThreadIdsWithQueued(): Promise<string[]> {
-		const rows = await this.find({ select: ['threadId'], where: { status: 'queued' } });
-		return [...new Set(rows.map((row) => row.threadId))];
+		const rows = await this.createQueryBuilder('e')
+			.select('e."threadId"', 'threadId')
+			.distinct(true)
+			.where('e."status" = :status', { status: 'queued' })
+			.getRawMany<{ threadId: string }>();
+		return rows.map((row) => row.threadId);
 	}
 
 	/**

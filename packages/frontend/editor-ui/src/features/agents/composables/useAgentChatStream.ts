@@ -226,6 +226,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					pendingQueuedResumes.delete(executionId);
 					pendingResumeSettled = true;
 				} else if (isStreaming.value) {
+					// A row that still waits only pushes with a status; a statusless update
+					// (heartbeat, timeline, finalization) means the execution left `queued`.
 					executionTransitionsSeenDuringStream.set(executionId, executionStatus);
 				}
 			}
