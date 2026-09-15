@@ -330,9 +330,7 @@ async function onUpgradeClick() {
 							{{ i18n.baseText('experiments.trialIntroModal.step2.annual') }}
 						</N8nText>
 						<N8nBadge
-							theme="primary"
-							:bold="true"
-							:show-border="false"
+							variant="primary"
 							:class="$style.savingsBadge"
 							data-test-id="trial-intro-save-badge"
 						>

@@ -8,7 +8,7 @@ import {
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -468,7 +468,7 @@ function openAiUsageSettings() {
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewTag size="medium" />
+				<N8nPreviewBadge size="medium" />
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -664,7 +664,7 @@ function openAiUsageSettings() {
 								<N8nText bold size="medium" color="text-dark">
 									{{ i18n.baseText('settings.n8nAgent.search.label') }}
 								</N8nText>
-								<N8nBadge theme="success" size="xsmall">
+								<N8nBadge variant="success" size="xsmall">
 									{{ i18n.baseText('settings.n8nAgent.search.recommended') }}
 								</N8nBadge>
 							</span>
