@@ -5,10 +5,12 @@ import {
 	isConnectionRefusedError,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
@@ -176,6 +178,8 @@ export class InfisicalProvider extends SecretsProvider {
 			baseURL: this.settings.siteURL,
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open.
+			timeout: Container.get(ExternalSecretsConfig).connectTimeout * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Infisical provider initialized');

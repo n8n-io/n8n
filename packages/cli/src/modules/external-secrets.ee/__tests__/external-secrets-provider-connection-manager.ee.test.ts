@@ -120,7 +120,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		vi.useRealTimers();
 	});
 
-	it('should refresh a new provider before completing its initial upsert', async () => {
+	it('should hydrate a new provider before completing its initial upsert', async () => {
 		const provider = new DummyProvider();
 		mockProviderLifecycle.initialize.mockResolvedValue({ success: true, provider });
 
@@ -128,7 +128,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 		expect(mockProviderRegistry.set).toHaveBeenCalledWith('my-vault', provider);
 		expect(mockProviderLifecycle.connect).toHaveBeenCalledWith(provider);
-		expect(mockSecretsCache.refreshProvider).toHaveBeenCalledWith('my-vault', provider);
+		expect(mockSecretsCache.updateProvider).toHaveBeenCalledWith('my-vault', provider);
 	});
 
 	it('should prepare batch upserts in order and await their completions concurrently', async () => {
@@ -140,7 +140,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 
 		const firstRefresh = createDeferred<undefined>();
 		const secondRefresh = createDeferred<undefined>();
-		mockSecretsCache.refreshProvider
+		mockSecretsCache.updateProvider
 			.mockReturnValueOnce(firstRefresh.promise)
 			.mockReturnValueOnce(secondRefresh.promise);
 
@@ -158,7 +158,7 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		]);
 
 		await vi.waitFor(() => {
-			expect(mockSecretsCache.refreshProvider).toHaveBeenCalledTimes(2);
+			expect(mockSecretsCache.updateProvider).toHaveBeenCalledTimes(2);
 		});
 		expect(
 			mockProviderLifecycle.initialize.mock.calls.map(([providerType]) => providerType),
