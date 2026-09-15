@@ -127,13 +127,7 @@ export function createTestTurnQueue(user: User = { id: 'user-1', disabled: false
 			: null;
 	});
 	const agentRepository = mock<AgentRepository>();
-	agentRepository.findSummariesByIds.mockImplementation(async ([id]) => [
-		{
-			id,
-			name: 'Agent',
-			projectId: rows.find((row) => row.agentId === id)?.projectId ?? 'project-1',
-		},
-	]);
+	agentRepository.findNameByIdAndProjectId.mockResolvedValue('Agent');
 	const userRepository = mock<UserRepository>();
 	userRepository.findByIdWithRole.mockImplementation(async (id) =>
 		id === user.id ? user : ({ id, disabled: true } as User),
