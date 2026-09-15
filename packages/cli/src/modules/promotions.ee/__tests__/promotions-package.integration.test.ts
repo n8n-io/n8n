@@ -9,7 +9,17 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
-import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	VariablesRepository,
+	TagRepository,
+	WorkflowHistoryRepository,
+	WorkflowTagMappingRepository,
+	FolderRepository,
+	ProjectRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -20,9 +30,12 @@ import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialTypes } from '@/credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
 	PACKAGE_ENTITY_LAYOUT,
@@ -30,7 +43,7 @@ import {
 	workflowMetadataFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import { saveCredential } from '@test-integration/db/credentials';
+import { createCredentials, saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
@@ -43,13 +56,15 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
-import { createVariable } from '@test-integration/db/variables';
+import { createProjectVariable, createVariable } from '@test-integration/db/variables';
+import { initNodeTypes } from '@test-integration/utils';
 import { LicenseMocker } from '@test-integration/license';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
+import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import { PromotionConfigResolver } from '../promotion-config.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -81,6 +96,8 @@ let workingDirectory: PromotionWorkingDirectoryService;
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages', 'promotions', 'data-table']);
 	await testDb.init();
+	await initNodeTypes();
+	mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 
 	providerRepository = Container.get(PromotionProviderRepository);
 	connectionRepository = Container.get(PromotionConnectionRepository);
@@ -149,6 +166,7 @@ beforeEach(async () => {
 		projectRepository,
 		projectService,
 		packagesService,
+		Container.get(PromotionBindingPreflightService),
 		logger,
 	);
 });
@@ -227,6 +245,72 @@ async function createInstanceConnection(
 		},
 	});
 	return connection;
+}
+
+async function snapshotApplyState() {
+	return await Promise.all([
+		Container.get(DataTableRepository).find({ order: { id: 'ASC' } }),
+		Container.get(DataTableColumnRepository).find({ order: { id: 'ASC' } }),
+		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
+		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
+		Container.get(WorkflowHistoryRepository).find({ order: { versionId: 'ASC' } }),
+		Container.get(FolderRepository).find({ order: { id: 'ASC' } }),
+		Container.get(TagRepository).find({ order: { id: 'ASC' } }),
+		Container.get(WorkflowTagMappingRepository).find({
+			order: { workflowId: 'ASC', tagId: 'ASC' },
+		}),
+		Container.get(CredentialsRepository).find({ order: { id: 'ASC' } }),
+		Container.get(SharedCredentialsRepository).find({
+			order: { credentialsId: 'ASC', projectId: 'ASC' },
+		}),
+		Container.get(VariablesRepository).find({ order: { id: 'ASC' } }),
+	]);
+}
+
+async function prepareBindingApply() {
+	const remote = await createRemote();
+	const connection = await createInstanceConnection(remote.bareDir);
+	await service.clone(connection.id, 'promote');
+	await service.clone(connection.id, 'apply');
+	const project = await createTeamProject('Orders', owner);
+	const credential = await saveCredential(
+		{ name: 'Header credential', type: 'httpHeaderAuth', data: {} },
+		{ project, role: 'credential:owner' },
+	);
+	const variable = await createVariable('API_URL', 'source value');
+	const workflow = await createWorkflow(
+		{
+			name: 'Process order',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { url: '={{ $vars.API_URL }}' },
+					credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+				},
+			],
+			connections: {},
+		},
+		project,
+	);
+	await service.promote(connection.id, owner, {
+		canExportVariableValues: true,
+		commitMessage: 'Export orders',
+	});
+	await Container.get(CredentialsRepository).delete(credential.id);
+	await Container.get(VariablesRepository).delete(variable.id);
+	await Container.get(VariablesService).updateCache();
+	await Container.get(WorkflowRepository).update(workflow.id, { name: 'Target workflow' });
+	const removedProject = await createTeamProject('Target only', owner);
+	await createWorkflow(
+		{ name: 'Target only workflow', nodes: [], connections: {} },
+		removedProject,
+	);
+	await createFolder(removedProject, { name: 'Target only folder' });
+	return { remote, connection, project, credential, variable, workflow, removedProject };
 }
 
 async function writeRemoteFile(remote: TestRemote, relativePath: string, content: string) {
@@ -515,6 +599,7 @@ describe('Promote and Apply', () => {
 		const removedProject = await createTeamProject('Removed from Git', owner);
 
 		const result = await service.apply(connection.id, owner);
+		assert(result.status === 'applied');
 
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
 		expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({
@@ -531,6 +616,99 @@ describe('Promote and Apply', () => {
 		expect(result.counts.workflows.deleted).toBe(1);
 		expect(result.counts.folders.removed).toBe(1);
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+	});
+
+	it.each([
+		{ targetValue: '', shadow: false },
+		{ targetValue: 'configured target value', shadow: true },
+	])(
+		'blocks without writes and continues with target value %j',
+		async ({ targetValue, shadow }) => {
+			const { connection, credential, variable, project, workflow, removedProject } =
+				await prepareBindingApply();
+			const before = await snapshotApplyState();
+			const blocked = await service.apply(connection.id, owner);
+			assert(blocked.status === 'blocked');
+			expect(blocked.preflight.missingBindings).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ kind: 'credential', sourceId: credential.id }),
+					expect.objectContaining({
+						kind: 'variable',
+						name: variable.key,
+						sourceValue: variable.value,
+					}),
+				]),
+			);
+			expect(await snapshotApplyState()).toEqual(before);
+			expect(blocked).not.toHaveProperty('counts');
+			const request = { expectedSource: { configId: blocked.configId, ...blocked.git } };
+
+			const stillBlocked = await service.continueApply(connection.id, owner, request);
+			expect(stillBlocked).toEqual(blocked);
+			expect(await snapshotApplyState()).toEqual(before);
+
+			await createCredentials(
+				{ id: credential.id, name: credential.name, type: credential.type, data: credential.data },
+				project,
+			);
+			const targetVariable = await createVariable(variable.key, targetValue);
+			const override = shadow
+				? await createProjectVariable(variable.key, 'project override', project)
+				: undefined;
+			const result = await service.continueApply(connection.id, owner, request);
+			assert(result.status === 'applied', JSON.stringify(result));
+			expect(result.warnings).toEqual(
+				shadow ? [expect.objectContaining({ code: 'variable-shadowed', name: variable.key })] : [],
+			);
+			expect(result.counts.credentials).toEqual({ matched: 1, stubbed: 0 });
+			expect(result.counts.variables).toMatchObject({ created: 0, updated: 0, stubbed: 0 });
+			expect(
+				await Container.get(VariablesRepository).findOneByOrFail({ id: targetVariable.id }),
+			).toMatchObject({ value: targetValue });
+			if (override)
+				expect(
+					await Container.get(VariablesRepository).findOneByOrFail({ id: override.id }),
+				).toMatchObject({ value: 'project override' });
+			expect(
+				await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id }),
+			).toMatchObject({ name: workflow.name });
+			expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
+		},
+	);
+
+	it('stops Continue when the remote commit changes and permits a new review', async () => {
+		const { connection, remote } = await prepareBindingApply();
+		const blocked = await service.apply(connection.id, owner);
+		assert(blocked.status === 'blocked');
+		const before = await snapshotApplyState();
+		await remote.git.pull('origin', 'main');
+		await writeRemoteFile(remote, 'README.md', 'Updated description');
+		await commitAndPushRemote(remote, 'Update description');
+		const result = await service.continueApply(connection.id, owner, {
+			expectedSource: { configId: blocked.configId, ...blocked.git },
+		});
+		expect(result).toEqual({
+			status: 'source-changed',
+			connectionId: connection.id,
+			configId: blocked.configId,
+			git: { branchName: 'main', commitSha: (await remote.git.revparse(['HEAD'])).trim() },
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+		const reviewed = await service.apply(connection.id, owner);
+		expect(reviewed.status).toBe('blocked');
+		expect(reviewed.git).toEqual(result.git);
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('keeps the missing-manifest import error after a clear preflight', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'apply');
+		await writeRemoteFile(remote, 'n8n-export/.gitkeep', '');
+		await commitAndPushRemote(remote, 'Add package directory');
+		const before = await snapshotApplyState();
+		await expect(service.apply(connection.id, owner)).rejects.toThrow(/manifest/i);
+		expect(await snapshotApplyState()).toEqual(before);
 	});
 
 	it('promotes an archived workflow and archives it on apply instead of removing it', async () => {
@@ -557,6 +735,7 @@ describe('Promote and Apply', () => {
 		await workflowRepository.update(workflow.id, { isArchived: false });
 
 		const firstApply = await service.apply(connection.id, owner);
+		assert(firstApply.status === 'applied');
 
 		expect(await workflowRepository.findOneBy({ id: workflow.id })).toMatchObject({
 			isArchived: true,
@@ -565,6 +744,7 @@ describe('Promote and Apply', () => {
 
 		// Archived on both sides now; a second apply must still succeed.
 		const secondApply = await service.apply(connection.id, owner);
+		assert(secondApply.status === 'applied');
 
 		expect(secondApply.counts.workflows).toMatchObject({ updated: 1, deleted: 0 });
 		expect(await workflowRepository.findOneBy({ id: workflow.id })).toMatchObject({

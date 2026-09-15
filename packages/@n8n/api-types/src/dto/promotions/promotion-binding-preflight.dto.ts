@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
@@ -33,9 +35,15 @@ const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExp
 			z.record(promotionCredentialExpressionValueSchema),
 		]),
 	);
-export const promotionCredentialExpressionDataSchema = z.record(
-	promotionCredentialExpressionValueSchema,
-);
+// The OpenAPI generator cannot inspect recursive Zod schemas.
+export const promotionCredentialExpressionDataSchema = z
+	.record(promotionCredentialExpressionValueSchema)
+	.openapi({
+		type: 'object',
+		additionalProperties: true,
+		description:
+			'Credential expressions. Values can be strings, arrays, or nested objects. Every leaf is an expression string.',
+	});
 
 const credentialSchema = z.object({
 	kind: z.literal('credential'),
