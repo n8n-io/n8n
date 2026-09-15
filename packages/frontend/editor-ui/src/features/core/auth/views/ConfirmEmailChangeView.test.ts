@@ -6,10 +6,9 @@ import { VIEWS } from '@/app/constants';
 import ConfirmEmailChangeView from './ConfirmEmailChangeView.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-const { push, replace, resolve, routerState } = vi.hoisted(() => ({
+const { push, replace, routerState } = vi.hoisted(() => ({
 	push: vi.fn(),
 	replace: vi.fn(),
-	resolve: vi.fn(() => ({ href: '/signin' })),
 	routerState: { token: 'test-token' as string | undefined },
 }));
 
@@ -17,7 +16,6 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push,
 		replace,
-		resolve,
 		currentRoute: { value: { query: { token: routerState.token } } },
 	}),
 	RouterLink: { template: '<a><slot /></a>' },
@@ -47,9 +45,7 @@ describe('ConfirmEmailChangeView', () => {
 
 		const { findByTestId } = renderComponent({ pinia });
 
-		const card = await findByTestId('confirm-email-change');
-		expect(card).toBeInTheDocument();
-		expect(card).toHaveTextContent('new@email.com');
+		expect(await findByTestId('confirm-email-change')).toHaveTextContent('new@email.com');
 		expect(usersStore.resolveEmailChangeToken).toHaveBeenCalledWith({ token: 'test-token' });
 	});
 
@@ -67,36 +63,9 @@ describe('ConfirmEmailChangeView', () => {
 
 		await waitFor(() => {
 			expect(usersStore.confirmEmailChange).toHaveBeenCalledWith({ token: 'test-token' });
-			// Clear the session before navigating, so the /signin guest guard passes.
 			expect(usersStore.logout).toHaveBeenCalled();
 			expect(push).toHaveBeenCalledWith({ name: VIEWS.SIGNIN });
 		});
-	});
-
-	it('should force a full-page sign-in redirect when logout fails after confirm', async () => {
-		const location = window.location;
-		Object.defineProperty(window, 'location', { value: { href: '' }, writable: true });
-
-		try {
-			const pinia = createTestingPinia();
-			const usersStore = mockedStore(useUsersStore);
-			usersStore.resolveEmailChangeToken.mockResolvedValue({ email: 'new@email.com' });
-			usersStore.confirmEmailChange.mockResolvedValue(undefined);
-			usersStore.logout.mockRejectedValue(new Error('logout failed'));
-
-			const { findByTestId } = renderComponent({ pinia });
-
-			const button = await findByTestId('confirm-email-change-button');
-			await fireEvent.click(button);
-
-			await waitFor(() => {
-				expect(usersStore.logout).toHaveBeenCalled();
-				expect(window.location.href).toBe('/signin');
-				expect(push).not.toHaveBeenCalled();
-			});
-		} finally {
-			Object.defineProperty(window, 'location', { value: location, writable: true });
-		}
 	});
 
 	it('should redirect to sign-in when the token is invalid', async () => {

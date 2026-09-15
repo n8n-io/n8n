@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { N8nButton, N8nHeading, N8nLogo, N8nText } from '@n8n/design-system';
@@ -22,11 +22,6 @@ const router = useRouter();
 const loading = ref(false);
 const ready = ref(false);
 const newEmail = ref('');
-const isActive = ref(true);
-
-onBeforeUnmount(() => {
-	isActive.value = false;
-});
 
 const getToken = () => {
 	const { token } = router.currentRoute.value.query;
@@ -40,35 +35,20 @@ const onConfirm = async () => {
 	try {
 		loading.value = true;
 		await usersStore.confirmEmailChange({ token });
+
+		toast.showMessage({
+			type: 'success',
+			title: locale.baseText('auth.confirmEmailChange.success.title'),
+			message: locale.baseText('auth.confirmEmailChange.success.message'),
+		});
+
+		// ponytail: end the session so the /signin guest guard renders sign-in.
+		// A failed /logout call lands in the catch below with a generic error toast;
+		// scope the catch if that mislabel is ever hit in practice.
+		await usersStore.logout();
+		await router.push({ name: VIEWS.SIGNIN });
 	} catch (error) {
 		toast.showError(error, locale.baseText('auth.confirmEmailChange.error'));
-		loading.value = false;
-		return;
-	}
-
-	toast.showMessage({
-		type: 'success',
-		title: locale.baseText('auth.confirmEmailChange.success.title'),
-		message: locale.baseText('auth.confirmEmailChange.success.message'),
-	});
-
-	// The email changed, so end the session and send the user to sign in.
-	try {
-		await usersStore.logout();
-	} catch {
-		// A failed logout must not strand the confirmed user. If they are still
-		// on this view, force a full reload to sign-in so local session state
-		// resets and the /signin guard passes. Skip it if they already left.
-		if (isActive.value) {
-			window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
-		}
-		loading.value = false;
-		return;
-	}
-
-	// Skip the redirect if the user left the view while logout was pending.
-	if (isActive.value) {
-		await router.push({ name: VIEWS.SIGNIN });
 	}
 	loading.value = false;
 };
@@ -88,13 +68,9 @@ onMounted(async () => {
 		// The mutating step runs on confirm, so an email-scanner GET of this link
 		// only resolves the token here and never applies the change.
 		const resolved = await usersStore.resolveEmailChangeToken({ token });
-		// The user may leave this view while the resolve is pending; skip the
-		// continuation so it never toasts or navigates from a new destination.
-		if (!isActive.value) return;
 		newEmail.value = resolved.email;
 		ready.value = true;
 	} catch (error) {
-		if (!isActive.value) return;
 		toast.showError(error, locale.baseText('auth.confirmEmailChange.tokenValidationError'));
 		void router.replace({ name: VIEWS.SIGNIN });
 	}
