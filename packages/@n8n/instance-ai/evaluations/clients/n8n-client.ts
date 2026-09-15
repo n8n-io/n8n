@@ -264,18 +264,15 @@ export class N8nApiError extends Error {
 	}
 }
 
-/** n8n reports a workflow that no longer exists as 403 to a user who holds
- *  `workflow:delete` globally, and as 404 to everyone else. The scope
- *  middleware passes for the global user, so the controller answers the
- *  missing row with `ForbiddenError`. To a delete, both mean gone. */
-function isGoneStatus(status: number): boolean {
-	return status === 403 || status === 404;
-}
-
 export class N8nClient {
 	private sessionCookie?: string;
 	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
 	private personalProjectId?: Promise<string>;
+	/** Whether the logged-in user holds `workflow:delete` globally. Read off the
+	 *  login payload, and the reason a 403 can be read as "already gone". See
+	 *  `isWorkflowGone`. False until `login` says otherwise, so a client that
+	 *  never logged in takes the strict path. */
+	private hasGlobalWorkflowDelete = false;
 
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
@@ -292,10 +289,16 @@ export class N8nClient {
 		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
 		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
-		await this.fetch('/rest/login', {
+		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		});
+		})) as { data?: { globalScopes?: string[]; isOwner?: boolean } };
+
+		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
+		// is the fallback for a payload that carries no scope list: an owner always
+		// holds the scope, so the two agree wherever both are present.
+		this.hasGlobalWorkflowDelete =
+			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -759,7 +762,7 @@ export class N8nClient {
 	 * A workflow that is already gone is a success, not a failure. A cleanup
 	 * retry re-runs on the same build, and an eviction deletes what it listed a
 	 * moment earlier, so both meet ids another pass already took. See
-	 * `isGoneStatus` for why that reads as 403 here and not as 404.
+	 * `isWorkflowGone` for which status says so.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
@@ -767,14 +770,32 @@ export class N8nClient {
 			await this.archiveWorkflow(id);
 		} catch (error: unknown) {
 			if (!(error instanceof N8nApiError)) throw error;
-			if (isGoneStatus(error.status)) return;
+			if (this.isWorkflowGone(error.status)) return;
 			if (error.status !== 400) throw error;
 		}
 		try {
 			await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 		} catch (error: unknown) {
-			if (!(error instanceof N8nApiError && isGoneStatus(error.status))) throw error;
+			if (!(error instanceof N8nApiError && this.isWorkflowGone(error.status))) throw error;
 		}
+	}
+
+	/**
+	 * Whether a failed archive or delete means the workflow is already gone.
+	 *
+	 * n8n reports a missing workflow differently per user. A user holding
+	 * `workflow:delete` globally passes the scope middleware on the global check
+	 * alone, so the lookup runs unfiltered and the controller answers the missing
+	 * row with `ForbiddenError`, which is a 403. Everyone else reaches the
+	 * middleware's own `SharedWorkflow` lookup, which throws `NotFoundError`, a 404.
+	 *
+	 * So 403 only means gone for the global user. For anyone else it is a real
+	 * permission failure on a workflow that exists, and swallowing it would
+	 * report a cleanup as clean while leaving the workflow behind.
+	 */
+	private isWorkflowGone(status: number): boolean {
+		if (status === 404) return true;
+		return status === 403 && this.hasGlobalWorkflowDelete;
 	}
 
 	/**

@@ -982,7 +982,7 @@ user names (CONTEXT-86: `workflows(action="list")` takes `folderPath` or `folder
   what it still holds. It archives that workflow and moves it to the project root, so the
   order matters. Cleanup deletes the root folders only, and the `onDelete: 'CASCADE'`
   foreign key removes the subfolders with them. Children go before parents on the rollback
-  path, where `restoreFolders` undoes a restore that failed part way.
+  path, where `deleteFolders` undoes a restore that failed part way.
 - **Not pushable yet.** The LangTracer case-write API validates `seed` with
   `additionalProperties: false` and has no `folders` key, and its `workflows[]` items
   declare no `parentFolderId`. `unsupportedPushReason` refuses such a case, so keep it on
