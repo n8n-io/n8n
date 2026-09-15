@@ -42,6 +42,8 @@ const config: KnipConfig = {
 		catalogReferences: 'off',
 		cycles: 'off',
 	},
+	// Scaffold templates carry their own package.json; `packages/**` would otherwise pick them up as workspaces.
+	ignoreWorkspaces: ['packages/@n8n/instance-ai/skills/app-builder/templates/vue'],
 	workspaces: {
 		'.': {
 			entry: ['scripts/**/*.{mjs,js,ts}', '.github/scripts/**/*.mjs'],
