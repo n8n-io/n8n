@@ -47,7 +47,7 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	private sweepInFlight = false;
+	private resumingParkedParents = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -290,12 +290,12 @@ export class WaitTracker {
 	async resumeParentsOfFinishedSubExecutions() {
 		// A sweep that runs longer than the tick would otherwise be joined by the next one,
 		// walking the same parents again.
-		if (this.sweepInFlight) {
+		if (this.resumingParkedParents) {
 			this.logger.debug('Still sweeping parents parked on a sub-execution, skipping this tick');
 			return;
 		}
 
-		this.sweepInFlight = true;
+		this.resumingParkedParents = true;
 		try {
 			let parentIds: string[];
 			try {
@@ -318,7 +318,7 @@ export class WaitTracker {
 				}
 			}
 		} finally {
-			this.sweepInFlight = false;
+			this.resumingParkedParents = false;
 		}
 	}
 
