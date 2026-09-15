@@ -64,7 +64,8 @@ Keep additional workflows as later roadmap items.
 3. Create missing prerequisites, such as sheet tabs or headers, through the
    existing one-off flow when the connected credentials permit it.
 4. After setup, offer only a live run for manual or schedule triggers. The execution
-   approval card supplies consent. For event triggers, explain how to start
+   approval card supplies consent. For Webhook and Form Triggers, use
+   `executions(action="listen")`. For other event triggers, explain how to start
    listening for a test event and perform the event, then ask the user to report
    back. Inspect the resulting execution with `executions`.
 5. Extend only after a successful, non-simulated execution of the current
