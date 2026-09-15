@@ -1,16 +1,17 @@
 import type { AgentsConfig } from '@n8n/config';
-import { trace } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
+
+import type { OtelService } from '@/modules/otel/otel.service';
 
 import { AgentRunTracingService, modelIdFromSnapshot } from '../agent-run-tracing.service';
 
-vi.mock('@opentelemetry/api', () => ({
-	trace: { getTracer: vi.fn(() => ({ startSpan: vi.fn(), startActiveSpan: vi.fn() })) },
-}));
+const otelService = mock<OtelService>();
 
 describe('AgentRunTracingService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		otelService.getTracer.mockReturnValue(mock<Tracer>());
 	});
 
 	const baseMetadata = {
@@ -21,38 +22,39 @@ describe('AgentRunTracingService', () => {
 	};
 
 	it('exposes whether tracing is enabled via the `enabled` getter', () => {
-		expect(new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: true })).enabled).toBe(
-			true,
-		);
-		expect(new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: false })).enabled).toBe(
-			false,
-		);
+		expect(
+			new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: true }), otelService).enabled,
+		).toBe(true);
+		expect(
+			new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: false }), otelService)
+				.enabled,
+		).toBe(false);
 	});
 
 	it('returns undefined when agent tracing is disabled, without touching the tracer', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: false });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const built = await service.build(baseMetadata);
 
 		expect(built).toBeUndefined();
-		expect(trace.getTracer).not.toHaveBeenCalled();
+		expect(otelService.getTracer).not.toHaveBeenCalled();
 	});
 
 	it('builds telemetry from a fresh tracer fetch when tracing is enabled', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		await service.build(baseMetadata);
 		await service.build(baseMetadata);
 
-		expect(trace.getTracer).toHaveBeenCalledTimes(2);
-		expect(trace.getTracer).toHaveBeenCalledWith('@n8n/agents');
+		expect(otelService.getTracer).toHaveBeenCalledTimes(2);
+		expect(otelService.getTracer).toHaveBeenCalledWith('@n8n/agents');
 	});
 
 	it('never marks the built telemetry as LangSmith, so root spans stay generic', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const built = await service.build(baseMetadata);
 
@@ -62,7 +64,7 @@ describe('AgentRunTracingService', () => {
 
 	it('includes execution_id/workflow_id/node_id only when source is "workflow"', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const workflowBuilt = await service.build({
 			...baseMetadata,
@@ -95,7 +97,7 @@ describe('AgentRunTracingService', () => {
 
 	it('omits execution_id/workflow_id/node_id individually when not provided, even for a workflow source', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const noneProvided = await service.build({
 			...baseMetadata,
@@ -150,7 +152,7 @@ describe('AgentRunTracingService', () => {
 
 	it('rejects workflow-only fields at compile time for a non-workflow source', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		// @ts-expect-error executionId only exists on the 'workflow' branch of
 		// the AgentRunTracingMetadata union — a non-workflow source can't carry
@@ -160,7 +162,7 @@ describe('AgentRunTracingService', () => {
 
 	it('marks workflow-sourced runs as rootAnchored: false only when a parent context was found, and leaves other sources anchored', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const workflowBuilt = await service.build({
 			...baseMetadata,
@@ -184,7 +186,7 @@ describe('AgentRunTracingService', () => {
 
 	it('includes user_id and model_id only when provided', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const service = new AgentRunTracingService(agentsConfig);
+		const service = new AgentRunTracingService(agentsConfig, otelService);
 
 		const built = await service.build({
 			...baseMetadata,
