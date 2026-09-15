@@ -210,7 +210,8 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.text()).toContain('agents.builder.advanced.title');
 		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-advanced-content"]').isVisible()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-behavior-panel"]').isVisible()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').isVisible()).toBe(true);
 	});
 
 	it('loads the model catalog for the current project', () => {

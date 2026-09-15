@@ -307,7 +307,7 @@ function onCreateFallbackCredential() {
 					<template #trigger>
 						<N8nButton variant="outline" :disabled="props.disabled" :class="$style.shortInput">
 							<span :class="$style.dropdownTriggerLabel">{{ selectedWebSearchLabel }}</span>
-							<N8nIcon icon="chevron-down" size="small" />
+							<N8nIcon icon="chevron-down" size="small" color="text-light" />
 						</N8nButton>
 					</template>
 				</N8nDropdownMenu>

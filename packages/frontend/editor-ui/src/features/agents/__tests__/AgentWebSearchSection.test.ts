@@ -51,6 +51,19 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
 }));
 
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+	return {
+		...actual,
+		N8nDropdownMenu: {
+			name: 'N8nDropdownMenu',
+			props: ['items', 'disabled', 'placement'],
+			emits: ['select'],
+			template: '<div v-bind="$attrs"><slot name="trigger" /></div>',
+		},
+	};
+});
+
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
@@ -60,8 +73,7 @@ const globalStubs = {
 		template:
 			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
-	// Keep <select> as the single root so `findComponent('[data-testid=…]')` matches the stub;
-	// the footer slot is where CredentialsDropdown renders "Create new credential".
+	/** Keep the select as one root and render its credential creation footer. */
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
