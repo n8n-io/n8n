@@ -16,8 +16,9 @@ export const DCR_MANAGED_CREDENTIAL_FIELDS = [
 
 export type DcrManagedCredentialField = (typeof DCR_MANAGED_CREDENTIAL_FIELDS)[number];
 
-/** OAuth endpoint/flow fields the instance owns for a managed credential. */
-export const MANAGED_OAUTH_PINNED_FIELDS = [
+/** OAuth endpoint/flow fields the credential type owns when hidden; a stored value never overrides them. */
+export const OAUTH_PINNED_FIELDS = [
+	'useDynamicClientRegistration',
 	'authUrl',
 	'accessTokenUrl',
 	'grantType',
