@@ -284,7 +284,6 @@ describe('Slack V2 > GenericFunctions', () => {
 					method: 'GET',
 					uri: expect.any(String),
 				}),
-				expect.any(Object),
 			);
 		});
 
@@ -321,7 +320,6 @@ describe('Slack V2 > GenericFunctions', () => {
 					method: 'GET',
 					uri: expect.any(String),
 				}),
-				expect.any(Object),
 			);
 		});
 
@@ -351,7 +349,6 @@ describe('Slack V2 > GenericFunctions', () => {
 					method: 'GET',
 					uri: expect.any(String),
 				}),
-				expect.any(Object),
 			);
 		});
 
@@ -898,7 +895,6 @@ describe('Slack V2 > GenericFunctions', () => {
 						count: 100,
 					}),
 				}),
-				expect.any(Object),
 			);
 		});
 

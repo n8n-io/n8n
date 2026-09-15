@@ -45,6 +45,7 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 	function makeInner(credentials: ICredentialDataDecryptedObject): ICredentialsHelper {
 		return {
 			getParentTypes: vi.fn().mockReturnValue([]),
+			getOAuth2Options: vi.fn(),
 			authenticate: vi.fn(),
 			preAuthentication: vi.fn(),
 			runPreAuthentication: vi.fn(),

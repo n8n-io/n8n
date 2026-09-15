@@ -394,6 +394,10 @@ export async function requestOAuth2(
 	isN8nRequest = false,
 ) {
 	removeEmptyBody(requestOptions);
+	oAuth2Options = {
+		...additionalData.credentialsHelper.getOAuth2Options(credentialsType),
+		...oAuth2Options,
+	};
 
 	const credentials = (await this.getCredentials(
 		credentialsType,
@@ -664,6 +668,10 @@ export async function refreshOAuth2Token(
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
 ) {
+	oAuth2Options = {
+		...additionalData.credentialsHelper.getOAuth2Options(credentialsType),
+		...oAuth2Options,
+	};
 	const credentials = (await this.getCredentials(
 		credentialsType,
 	)) as unknown as OAuth2CredentialData;

@@ -5,7 +5,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	IOAuth2Options,
 	IHttpRequestMethods,
 	IRequestOptions,
 	IWebhookFunctions,
@@ -166,17 +165,10 @@ export async function slackApiRequest(
 		delete options.qs;
 	}
 
-	const oAuth2Options: IOAuth2Options = {
-		tokenType: 'Bearer',
-		property: 'authed_user.access_token',
-	};
-
 	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
 	let response;
 	try {
-		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-			oauth2: oAuth2Options,
-		});
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (error instanceof NodeOperationError) throw error;
 		throw new NodeOperationError(this.getNode(), error as Error);

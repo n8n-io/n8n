@@ -57,6 +57,7 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 	function makeInnerHelper(credentials: ICredentialDataDecryptedObject): ICredentialsHelper {
 		return {
 			getParentTypes: vi.fn().mockReturnValue([]),
+			getOAuth2Options: vi.fn(),
 			authenticate: vi.fn(),
 			preAuthentication: vi.fn(),
 			runPreAuthentication: vi.fn(),

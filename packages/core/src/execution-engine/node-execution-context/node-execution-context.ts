@@ -299,6 +299,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	getOAuth2Options(type: string) {
+		return this.additionalData.credentialsHelper.getOAuth2Options(type);
+	}
+
 	/**
 	 * Throws if the credential type has opted into node-level restriction and this
 	 * node is not listed in its supportedNodes. Extracted to keep `_getCredentials`

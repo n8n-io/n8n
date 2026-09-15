@@ -62,6 +62,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return [];
 	}
 
+	getOAuth2Options(type: string) {
+		if (!this.credentialTypes.recognizes(type)) return undefined;
+
+		for (const credentialType of [type, ...this.credentialTypes.getParentTypes(type)]) {
+			const oauth2 = this.credentialTypes.getByName(credentialType).oauth2;
+			if (oauth2 !== undefined) return oauth2;
+		}
+
+		return undefined;
+	}
+
 	async getDecrypted(
 		_additionalData: IWorkflowExecuteAdditionalData,
 		_nodeCredentials: INodeCredentialsDetails,
