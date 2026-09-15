@@ -7,6 +7,7 @@ import type { UrlService } from '@/services/url.service';
 import type { Agent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
+import type { TeamsDiscoveryService } from '../teams-discovery.service';
 import { TeamsManifestService } from '../teams-manifest.service';
 import { TeamsSetupService } from '../teams-setup.service';
 
@@ -23,6 +24,7 @@ describe('TeamsSetupService', () => {
 	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
 	let urlService: ReturnType<typeof mock<UrlService>>;
 	let armTemplateService: TeamsArmTemplateService;
+	let discoveryService: ReturnType<typeof mock<TeamsDiscoveryService>>;
 	let service: TeamsSetupService;
 
 	const agentWith = (integrations: Agent['integrations']) =>
@@ -58,11 +60,14 @@ describe('TeamsSetupService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
 
 		armTemplateService = new TeamsArmTemplateService(instanceSettings, urlService);
+		discoveryService = mock<TeamsDiscoveryService>();
+		discoveryService.getState.mockResolvedValue({ status: 'expired' });
 		service = new TeamsSetupService(
 			agentRepository,
 			credentialsService,
 			new TeamsManifestService(),
 			armTemplateService,
+			discoveryService,
 			urlService,
 		);
 	});
@@ -109,10 +114,23 @@ describe('TeamsSetupService', () => {
 	});
 
 	describe('buildPackage', () => {
-		it('refuses to build a package before a credential is connected', async () => {
+		it('refuses to build a package before the bot is known at all', async () => {
 			await expect(
 				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
-			).rejects.toThrow(/Connect a Microsoft Entra credential/);
+			).rejects.toThrow(/Connect the bot/);
+		});
+
+		it('builds a package from the discovered bot, before any credential is connected', async () => {
+			discoveryService.getState.mockResolvedValue({
+				status: 'found',
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				existingCredentialId: null,
+			});
+
+			await expect(
+				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+			).resolves.toBeInstanceOf(Buffer);
 		});
 
 		it('builds a package once a credential is connected', async () => {

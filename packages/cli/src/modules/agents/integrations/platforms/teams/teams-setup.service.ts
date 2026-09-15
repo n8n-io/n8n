@@ -7,6 +7,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 
 import { TeamsArmTemplateService } from './teams-arm-template.service';
+import { TeamsDiscoveryService } from './teams-discovery.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -31,6 +32,7 @@ export class TeamsSetupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly manifestService: TeamsManifestService,
 		private readonly armTemplateService: TeamsArmTemplateService,
+		private readonly discoveryService: TeamsDiscoveryService,
 		private readonly urlService: UrlService,
 	) {}
 
@@ -45,27 +47,37 @@ export class TeamsSetupService {
 
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
-			botId: identity?.clientId ?? null,
+			botId: identity?.clientId ?? (await this.discoveredClientId(scope)),
 			deployToAzureUrl: this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId),
 		};
 	}
 
+	/**
+	 * The manifest needs the bot's client ID, not a working credential, so this
+	 * also accepts the one discovery found. Otherwise the package could only be
+	 * downloaded after connecting — and connecting closes the setup, putting the
+	 * download behind a round trip through the edit view.
+	 */
 	async buildPackage(scope: AgentScope): Promise<Buffer> {
 		const agent = await this.getAgent(scope);
-		const identity = await this.findBotIdentity(agent);
-		if (!identity) {
-			throw new BadRequestError(
-				'Connect a Microsoft Entra credential before downloading the app package.',
-			);
+		const botId =
+			(await this.findBotIdentity(agent))?.clientId ?? (await this.discoveredClientId(scope));
+		if (!botId) {
+			throw new BadRequestError('Connect the bot before downloading the app package.');
 		}
 
 		return await this.manifestService.buildPackage({
 			agentName: agent.name,
 			agentId: agent.id,
-			botId: identity.clientId,
+			botId,
 			agentUpdatedAt: agent.updatedAt,
 			availability: this.availabilityOf(agent),
 		});
+	}
+
+	private async discoveredClientId(scope: AgentScope): Promise<string | null> {
+		const state = await this.discoveryService.getState(scope);
+		return state.status === 'found' ? state.clientId : null;
 	}
 
 	/**
