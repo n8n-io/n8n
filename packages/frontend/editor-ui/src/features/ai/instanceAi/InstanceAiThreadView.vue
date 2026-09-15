@@ -969,7 +969,7 @@ const workflowPreviewRef =
 function handleSubmit(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
-	restoreDraft: (() => boolean) | undefined,
+	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
@@ -1035,9 +1035,9 @@ function handleSubmit(
 		})
 		.then((sent) => {
 			if (!sent) {
-				if (restoreDraft?.()) return;
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
+				// Restores the pre-fill along with the text, so a retry stays attributed.
+				// It declines when the user has already typed something newer.
+				restoreDraft();
 				return;
 			}
 			// Track message-with-nodes only after a successful send, so failed

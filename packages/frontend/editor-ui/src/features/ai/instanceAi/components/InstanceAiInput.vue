@@ -108,10 +108,14 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+	// `restoreDraft` puts the cleared draft back when the send fails. It returns
+	// false when the user has already typed something newer, so the caller can
+	// tell whether the draft was recovered. It also restores the pre-fill the
+	// draft came from, so a retry stays attributed to the surface that wrote it.
 	submit: [
 		message: string,
 		attachments: InstanceAiAttachment[] | undefined,
-		restoreDraft: (() => boolean) | undefined,
+		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 	];
 	stop: [];
@@ -336,7 +340,7 @@ watch(
 function emitSubmittedMessage(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
-	restoreDraft: (() => boolean) | undefined,
+	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 ) {
 	previewPrompt.value = null;
@@ -370,18 +374,33 @@ function canSubmitMessage(message: string, attachmentCount = 0) {
 	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
 }
 
+/**
+ * Puts a submitted draft back after a refused send. Returns false when the user
+ * has already typed something newer, so the caller knows the draft is gone.
+ *
+ * The pre-fill snapshot is restored with the text -- always after it, since an
+ * empty assignment clears the pre-fill -- so retrying stays attributed to the
+ * surface that wrote the draft rather than reporting as user-typed.
+ */
 function restoreSubmittedDraft(
 	message: string,
 	files: File[],
 	resources: InstanceAiResourceAttachment[],
 	prefill: ActivePrefill | null,
 ) {
-	if (isDirty()) return false;
+	const restorePrefill = () => {
+		activePrefill.value = prefill ? { ...prefill } : null;
+	};
+	if (isDirty()) {
+		// Dirty only because something was attached after the send: the text slot is
+		// still free, so give the draft back and leave the new attachments alone.
+		if (inputText.value.trim()) return false;
+		inputText.value = message;
+		restorePrefill();
+		return true;
+	}
 	inputText.value = message;
-	// After the text, which clears the pre-fill when it lands empty. Restoring the
-	// snapshot keeps a retry of a refused send attributed to the surface that
-	// wrote it instead of reporting it as user-typed.
-	activePrefill.value = prefill ? { ...prefill } : null;
+	restorePrefill();
 	attachedFiles.value = [...files];
 	attachedResources.value = [...resources];
 	return true;
@@ -408,8 +427,6 @@ function submitComposerMessage(
 	emitSubmittedMessage(
 		message,
 		attachments,
-		// Always offered, even with nothing attached, so a refused send can put the
-		// pre-fill provenance back along with the text.
 		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
 		resolveAuthorship(message, prefill),
 	);

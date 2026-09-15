@@ -16,6 +16,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
@@ -52,6 +53,15 @@ import {
 	type PersonalizedPromptMetadataLoadState,
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
+import {
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+	isPersonalizedPromptSuggestionResolution,
+	isTaxonomyPromptSuggestionResolution,
+	resolveTaxonomyPromptSuggestions,
+	resolveTaxonomySegment,
+	useInstanceAiInspirationFromTaxonomyExperiment,
+	type TaxonomyPromptSuggestionResolution,
+} from '@/experiments/instanceAiInspirationFromTaxonomy';
 import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
@@ -99,6 +109,8 @@ const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
+const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
+	'Instance AI inspiration from taxonomy exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -170,6 +182,10 @@ const {
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
+const {
+	currentVariant: inspirationFromTaxonomyVariant,
+	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
+} = useInstanceAiInspirationFromTaxonomyExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
@@ -184,17 +200,51 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!isSplitLayoutActive.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
+const personalizedPromptSuggestionResolution = ref<
+	PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null
+>(null);
+const shouldShowTaxonomySuggestions = computed(() =>
+	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+const isTaxonomySegmentResolved = computed(
+	() =>
+		appSettingsStore.isCloudDeployment &&
+		cloudPlanStore.state.initialized &&
+		resolveTaxonomySegment(cloudPlanStore.currentUserCloudInfo?.information ?? null).source ===
+			'taxonomy',
+);
+const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || showTemplateExamples.value) {
+		return false;
+	}
+
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return false;
+	}
+
+	if (
+		inspirationFromTaxonomyVariant.value ===
+		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
+	) {
+		return isTaxonomySegmentResolved.value;
+	}
+
+	return shouldShowTaxonomySuggestions.value;
+});
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
 	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
 });
-const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
-	null,
-);
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
+let hasTrackedInspirationFromTaxonomyExposure = false;
+const isAnyPersonalizedSuggestionsTreatmentActive = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value ||
+		isPersonalizedPromptSuggestionsTreatmentVariant.value,
+);
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -210,6 +260,23 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
+	if (isInspirationFromTaxonomyTreatmentVariant.value) {
+		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
+			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
+			metadataLoadState,
+		});
+
+		if (taxonomyResolution.source === 'taxonomy') {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+
+		if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+	}
+
 	const format = personalizedPromptSuggestionsFormat.value;
 	if (!format) {
 		personalizedPromptSuggestionResolution.value = null;
@@ -231,11 +298,11 @@ function resolvePersonalizedPromptMetadata() {
 	clearPersonalizedPromptMetadataTimeout();
 	personalizedPromptSuggestionResolution.value = null;
 
-	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (!isAnyPersonalizedSuggestionsTreatmentActive.value) {
 		return;
 	}
 
-	if (personalizedPromptProfileOverride.value) {
+	if (!isInspirationFromTaxonomyTreatmentVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
 	}
@@ -258,6 +325,7 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
+		isInspirationFromTaxonomyTreatmentVariant,
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -292,10 +360,31 @@ watch(
 );
 
 watch(
+	shouldTrackInspirationFromTaxonomyExposure,
+	(shouldTrackExposure) => {
+		const variant = inspirationFromTaxonomyVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedInspirationFromTaxonomyExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT, variant),
+		);
+		hasTrackedInspirationFromTaxonomyExposure = true;
+	},
+	{ immediate: true },
+);
+
+watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
 		if (
-			!isPersonalizedPromptSuggestionsTreatmentVariant.value ||
+			!isAnyPersonalizedSuggestionsTreatmentActive.value ||
 			personalizedPromptSuggestionResolution.value !== null ||
 			!initialized
 		) {
@@ -307,6 +396,15 @@ watch(
 	},
 );
 
+const isTaxonomySuggestionsPending = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value &&
+		personalizedPromptSuggestionResolution.value === null,
+);
+const shouldShowPersonalizedPromptSuggestions = computed(() =>
+	isPersonalizedPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
@@ -316,9 +414,35 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	if (showTemplateExamples.value) {
 		return {};
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
-		const resolution = personalizedPromptSuggestionResolution.value;
 
+	if (isTaxonomySuggestionsPending.value) {
+		return {
+			suggestions: [],
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	const resolution = personalizedPromptSuggestionResolution.value;
+	if (isTaxonomyPromptSuggestionResolution(resolution)) {
+		return {
+			suggestions: resolution.suggestions,
+			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+			suggestionsComponentProps: {
+				fallbackSuggestions: [],
+				format: 'list',
+				showSeeMore: resolution.showSeeMore,
+			},
+			suggestionCatalogVersion: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+			suggestionTelemetryPayload: getExperimentTelemetryPayload(
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+				inspirationFromTaxonomyVariant.value,
+				resolution.telemetryPayload,
+			),
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		if (!resolution) {
 			return {
 				suggestions: [],
@@ -326,22 +450,24 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			};
 		}
 
-		return {
-			suggestions: resolution.suggestions,
-			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
-			suggestionsComponentProps: {
-				fallbackSuggestions: resolution.fallbackSuggestions,
-				format: personalizedPromptSuggestionsFormat.value,
-				showSeeMore: resolution.showSeeMore,
-			},
-			suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
-			suggestionTelemetryPayload: getExperimentTelemetryPayload(
-				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-				personalizedPromptSuggestionsVariant.value,
-				resolution.telemetryPayload,
-			),
-			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
+		if (isPersonalizedPromptSuggestionResolution(resolution)) {
+			return {
+				suggestions: resolution.suggestions,
+				suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+				suggestionsComponentProps: {
+					fallbackSuggestions: resolution.fallbackSuggestions,
+					format: personalizedPromptSuggestionsFormat.value,
+					showSeeMore: resolution.showSeeMore,
+				},
+				suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+				suggestionTelemetryPayload: getExperimentTelemetryPayload(
+					INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+					personalizedPromptSuggestionsVariant.value,
+					resolution.telemetryPayload,
+				),
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+			};
+		}
 	}
 
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -370,7 +496,13 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	if (showTemplateExamples.value) {
 		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (
+		shouldShowTaxonomySuggestions.value ||
+		isTaxonomySuggestionsPending.value ||
+		shouldShowPersonalizedPromptSuggestions.value ||
+		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
+			personalizedPromptSuggestionResolution.value === null)
+	) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -469,12 +601,11 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+function restoreDraftAfterFailedSubmit(restoreDraft: () => boolean) {
 	void nextTick(() => {
-		// Restore text without replacing new text or attachments.
-		if (!restoreDraft?.()) {
-			chatInputRef.value?.setTextIfEmpty(message);
-		}
+		// Puts the text, the attachments and the pre-fill provenance back, and
+		// declines if the user has already typed something newer.
+		restoreDraft();
 		chatInputRef.value?.focus();
 	});
 }
@@ -482,7 +613,7 @@ function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boo
 async function handleSubmit(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
-	restoreDraft: (() => boolean) | undefined,
+	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
@@ -490,6 +621,7 @@ async function handleSubmit(
 	}
 
 	if (!selectedProject.value) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -514,7 +646,7 @@ async function handleSubmit(
 		});
 	} catch {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
@@ -532,7 +664,7 @@ async function handleSubmit(
 	});
 	if (!sent) {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
 		// so without this every refusal would strand a blank thread in the sidebar and leave
 		// an EventSource open behind it (deleting disposes the runtime, which closes it).

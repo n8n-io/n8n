@@ -262,22 +262,22 @@ const InstanceAiInputStub = defineComponent({
 								: inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
 							const authorship = resolveAuthorship(message);
-							if (submittedHasAttachments) {
-								emit(
-									'submit',
-									message,
-									undefined,
-									() => {
-										if (isDirty()) return false;
-										setText(message);
-										hasAttachments.value = submittedHasAttachments;
-										return true;
-									},
-									authorship,
-								);
-							} else {
-								emit('submit', message, undefined, undefined, authorship);
-							}
+							const submittedPrefill = activePrefill.value;
+							// Mirrors the real composer: always provided, and it restores the
+							// pre-fill with the text so a retry stays attributed.
+							emit(
+								'submit',
+								message,
+								undefined,
+								() => {
+									if (isDirty()) return false;
+									setText(message);
+									activePrefill.value = submittedPrefill;
+									hasAttachments.value = submittedHasAttachments;
+									return true;
+								},
+								authorship,
+							);
 							inputDraft.value = '';
 							hasAttachments.value = false;
 							activePrefill.value = null;
