@@ -174,16 +174,16 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const alpha = { id: projectA.id, name: 'Alpha' };
 		const consumerAlpha = {
 			project: alpha,
-			destination: 'team',
+			destinationProjectStatus: 'team',
 			workflows: [{ id: 'w1', name: 'Workflow w1' }],
 		};
-		const credentials = result.unresolvedBindings.filter((b) => b.kind === 'credential');
-		const variables = result.unresolvedBindings.filter((b) => b.kind === 'variable');
+		const credentials = result.bindingsNeedingReview.filter((b) => b.kind === 'credential');
+		const variables = result.bindingsNeedingReview.filter((b) => b.kind === 'variable');
 		expect(credentials).toEqual([
 			expect.objectContaining({
 				sourceId: 'cred-in-b',
-				destination: 'exists',
-				consumers: [{ ...consumerAlpha, access: 'unavailable' }],
+				destinationMatch: 'matched',
+				consumers: [{ ...consumerAlpha, accessStatus: 'unavailable' }],
 				issues: ['unavailable'],
 			}),
 			{
@@ -192,20 +192,20 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				name: 'New GitHub',
 				expectedTypes: ['githubApi'],
 				expressionData: { accessToken: '={{ $secrets.vault.gh }}' },
-				sourcePlacement: {
-					state: 'known',
+				sourceFile: {
+					location: 'project',
 					project: alpha,
-					destination: 'team',
+					destinationProjectStatus: 'team',
 					filePath: 'projects/alpha/credentials/new/credential.json',
 				},
-				destination: 'absent',
-				consumers: [{ ...consumerAlpha, access: 'unchecked' }],
-				issues: ['absent'],
+				destinationMatch: 'missing',
+				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
+				issues: ['missing-credential'],
 			},
 			expect.objectContaining({
 				sourceId: 'cred-slack',
-				destination: 'type-mismatch',
-				consumers: [{ ...consumerAlpha, access: 'unchecked' }],
+				destinationMatch: 'type-mismatch',
+				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
 				issues: ['type-mismatch'],
 			}),
 		]);
@@ -216,26 +216,26 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				{
 					kind: 'variable',
 					name: 'REGION',
-					sourcePlacement: { state: 'none' },
+					sourceFile: { location: 'missing' },
 					consumer: consumerAlpha,
-					destination: 'absent',
-					issues: ['absent', 'unknown-owner'],
+					destinationMatch: 'missing',
+					issues: ['missing-variable', 'unknown-owner'],
 				},
 				expect.objectContaining({
 					name: 'REGION',
 					consumer: expect.objectContaining({
 						project: projectFile(personalProject),
-						destination: 'personal',
+						destinationProjectStatus: 'personal',
 					}),
-					issues: ['absent', 'consuming-project-not-team', 'unknown-owner'],
+					issues: ['missing-variable', 'consuming-project-not-team', 'unknown-owner'],
 				}),
 				expect.objectContaining({
 					name: 'REGION',
 					consumer: expect.objectContaining({
 						project: { id: 'proj-gone', name: 'Gone' },
-						destination: 'absent',
+						destinationProjectStatus: 'missing',
 					}),
-					issues: ['absent', 'consuming-project-absent', 'unknown-owner'],
+					issues: ['missing-variable', 'consuming-project-missing', 'unknown-owner'],
 				}),
 			]),
 		);
@@ -259,7 +259,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 
 		const first = await service.checkDirectory({ sourceDir, user: owner });
-		expect(first.unresolvedBindings.map((binding) => binding.kind)).toEqual([
+		expect(first.bindingsNeedingReview.map((binding) => binding.kind)).toEqual([
 			'credential',
 			'variable',
 		]);
@@ -271,11 +271,11 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createVariable('REGION', 'global');
 
 		const second = await service.checkDirectory({ sourceDir, user: owner });
-		expect(second.unresolvedBindings).toEqual([
+		expect(second.bindingsNeedingReview).toEqual([
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'REGION',
-				destination: 'global',
+				destinationMatch: 'global-fallback',
 				issues: ['global-only', 'unknown-owner'],
 			}),
 		]);
@@ -283,7 +283,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createProjectVariable('REGION', 'eu', projectA);
 
 		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual({
-			unresolvedBindings: [],
+			bindingsNeedingReview: [],
 		});
 	});
 
