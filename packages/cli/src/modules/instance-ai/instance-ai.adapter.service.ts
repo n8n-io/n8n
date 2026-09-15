@@ -2080,7 +2080,7 @@ export class InstanceAiAdapterService {
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
-					connections = (version.connections ?? {}) as IConnections;
+					connections = version.connections ?? {};
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
