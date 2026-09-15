@@ -247,8 +247,9 @@ Choose the right template for your use case:
 
 **Node not appearing in n8n:**
 ```bash
-# Reset the dev instance's data volume and restart
-docker volume rm n8n-node-cli-data
+# Reset the dev instance's data volume and restart. Use the engine that
+# created the volume — a Podman volume is not visible to Docker.
+docker volume rm n8n-node-cli-data   # or: podman volume rm n8n-node-cli-data
 npm run dev
 ```
 
@@ -268,8 +269,8 @@ npm run build
 
 **Development server issues:**
 ```bash
-# `n8n-node dev` needs Docker or Podman. Check the engine is running:
-docker info
+# `n8n-node dev` needs Docker or Podman. Check your engine is running:
+docker info    # or: podman info
 
 # Override engine detection if you use Podman, Colima, etc.
 CONTAINER_ENGINE=podman npm run dev
