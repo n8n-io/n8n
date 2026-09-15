@@ -147,8 +147,16 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
-const recentInstanceAiThreads = computed(() => instanceAiStore.threads.slice(0, 5));
 const isInstanceAiThreadView = computed(() => route.name === INSTANCE_AI_THREAD_VIEW);
+const recentInstanceAiThreads = computed(() => {
+	const recent = instanceAiStore.threads.slice(0, 5);
+	// Keep the open chat in the list when it is older than the five most recent
+	// ones, e.g. opened from the history page or by URL.
+	const openThreadId = isInstanceAiThreadView.value ? route.params.threadId : undefined;
+	if (typeof openThreadId !== 'string' || recent.some((t) => t.id === openThreadId)) return recent;
+	const openThread = instanceAiStore.threads.find((t) => t.id === openThreadId);
+	return openThread ? [...recent.slice(0, 4), openThread] : recent;
+});
 const sidebarActiveTabId = computed(() =>
 	isInstanceAiThreadView.value ? undefined : activeTabId.value,
 );
