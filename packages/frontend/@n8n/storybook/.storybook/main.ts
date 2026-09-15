@@ -44,6 +44,35 @@ const config: StorybookConfig = {
 	},
 	features: {
 		sidebarOnboardingChecklist: false,
+		// story.to.design matches nested Vue components via DevTools metadata
+		// that production Storybook builds strip.
+		developmentModeForBuild: true,
+	},
+	async viteFinal(config) {
+		// story.to.design matches nested Vue components via __file / DevTools
+		// metadata. `storybook build` is Vite production unless we force
+		// development compilation (the Storybook flag alone does not).
+		config.mode = 'development';
+		config.plugins = [
+			...(config.plugins ?? []),
+			{
+				name: 'storybook-s2d-vue-devtools',
+				config() {
+					return {
+						define: {
+							__VUE_PROD_DEVTOOLS__: true,
+						},
+					};
+				},
+			},
+		];
+		config.server = {
+			...config.server,
+			// Vite blocks unknown Host headers; tunnel URLs need this or the
+			// preview iframe 403s (ngrok / Cloudflare quick tunnels).
+			allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.app', '.ngrok.io'],
+		};
+		return config;
 	},
 };
 export default config;

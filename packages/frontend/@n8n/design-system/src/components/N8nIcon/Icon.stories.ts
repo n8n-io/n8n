@@ -58,7 +58,9 @@ const galleryLayout = {
 } as const;
 
 const meta = {
-	title: 'Core/Icon',
+	// Must match Vue `name: 'N8nIcon'` so story.to.design can nest this
+	// inside Callout and other composites (story title "Icon" would not).
+	title: 'Core/N8nIcon',
 	component: N8nIcon,
 	argTypes: {
 		icon: {
