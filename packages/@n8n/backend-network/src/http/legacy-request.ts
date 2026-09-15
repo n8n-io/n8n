@@ -120,7 +120,14 @@ export async function executeLegacyRequest(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToString(responseData);
+					// Error bodies with responseType:'stream' may already be destroyed
+					// (truncated Content-Length after a proxy CONNECT failure). Prefer
+					// surfacing the HTTP status over failing the drain itself.
+					try {
+						responseData = await binaryToString(responseData);
+					} catch {
+						responseData = '';
+					}
 				}
 
 				if (requestObject.simple === false) {

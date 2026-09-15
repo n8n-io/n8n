@@ -106,4 +106,57 @@ describe('streamToBuffer inactivity timeout', () => {
 			Container.set(HttpRequestConfig, new HttpRequestConfig());
 		}
 	});
+
+	it(
+		'returns buffered bytes immediately when the stream is already destroyed',
+		{ timeout: 1000 },
+		async () => {
+			// Axios + https-proxy-agent on a failed CONNECT (e.g. Squid 403 with an
+			// unsatisfied Content-Length) hands back an IncomingMessage that is
+			// already destroyed/closed, with the partial body still in its buffer.
+			// Attaching 'end'/'close' listeners then never settles — see #35519.
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('Access Denied'));
+			stream.destroy();
+
+			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from('Access Denied'));
+		},
+	);
+
+	it('returns immediately when the stream has already ended', { timeout: 1000 }, async () => {
+		const stream = Readable.from(Buffer.from('done'));
+		await binaryToBuffer(stream);
+
+		await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from(''));
+	});
+
+	it(
+		'returns empty buffer immediately when the stream has readableEnded set',
+		{ timeout: 1000 },
+		async () => {
+			// After fully consuming a stream, readableEnded becomes true and future
+			// streamToBuffer calls must return immediately rather than waiting for events.
+			const stream = Readable.from(Buffer.from('consumed'));
+			const first = await streamToBuffer(stream, 60_000);
+			expect(first.toString()).toBe('consumed');
+
+			// Now the stream has readableEnded === true. This should return immediately.
+			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from(''));
+		},
+	);
+
+	it(
+		'flushes mixed chunk types (Buffer, string, Uint8Array) from an already-destroyed stream',
+		{ timeout: 1000 },
+		async () => {
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('buf'));
+			stream.push('str');
+			stream.push(new Uint8Array([0x61, 0x72, 0x72])); // 'arr' in bytes
+			stream.destroy();
+
+			const result = await streamToBuffer(stream, 60_000);
+			expect(result.toString()).toBe('bufstrarr');
+		},
+	);
 });
