@@ -27,22 +27,31 @@ export type PromotionCredentialExpressionValue =
 	| PromotionCredentialExpressionValue[]
 	| { [key: string]: PromotionCredentialExpressionValue };
 
-const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> =
-	z.lazy(() =>
-		z.union([
-			z.string(),
-			z.array(promotionCredentialExpressionValueSchema),
-			z.record(promotionCredentialExpressionValueSchema),
-		]),
-	);
-// The OpenAPI generator cannot inspect recursive Zod schemas.
+const expressionValueComponentName = 'PromotionCredentialExpressionValue';
+const expressionValueRef = { $ref: `#/components/schemas/${expressionValueComponentName}` };
+
+// Describe recursive branches explicitly because the OpenAPI generator cannot inspect z.lazy.
+const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> = z
+	.union([
+		z.string(),
+		z.array(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
+			type: 'array',
+			items: expressionValueRef,
+		}),
+		z.record(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
+			type: 'object',
+			additionalProperties: expressionValueRef,
+		}),
+	])
+	.openapi(expressionValueComponentName, {
+		description:
+			'Values can be strings, arrays, or nested objects. Every leaf is an expression string.',
+	});
+
 export const promotionCredentialExpressionDataSchema = z
 	.record(promotionCredentialExpressionValueSchema)
 	.openapi({
-		type: 'object',
-		additionalProperties: true,
-		description:
-			'Credential expressions. Values can be strings, arrays, or nested objects. Every leaf is an expression string.',
+		description: 'Credential expressions.',
 	});
 
 const credentialSchema = z.object({

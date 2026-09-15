@@ -355,8 +355,9 @@ oneOf:
                         - name
                     expressionData:
                       type: object
-                      description: Credential expressions. Values can be strings, arrays, or nested objects. Every leaf is an expression string.
-                      additionalProperties: true
+                      additionalProperties:
+                        $ref: promotionCredentialExpressionValue.generated.yml
+                      description: Credential expressions.
                   required:
                     - kind
                     - sourceId
