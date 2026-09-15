@@ -63,11 +63,17 @@ export function runTestScoped(options: TestScopedOptions): number {
 }
 
 // A signal-killed vitest has no status and prints no summary, so name the signal.
+// A spawn failure has no status either; with inherited stdio, only `error` reports it.
 export function resolveExitCode(result: {
 	status: number | null;
 	signal: NodeJS.Signals | null;
+	error?: Error;
 }): number {
 	if (result.status !== null) return result.status;
+	if (result.error) {
+		console.error(`[janitor:test-scoped] vitest failed to start: ${result.error.message}`);
+		return 1;
+	}
 	console.error(
 		`[janitor:test-scoped] vitest exited without a status (signal: ${result.signal ?? 'unknown'}). ` +
 			'The process was killed before it could report results; check the runner for memory pressure.',

@@ -47,6 +47,14 @@ describe('resolveExitCode', () => {
 		expect(error).not.toHaveBeenCalled();
 	});
 
+	it('reports the spawn error when vitest does not start', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const enoent = new Error('spawnSync vitest ENOENT');
+		expect(resolveExitCode({ status: null, signal: null, error: enoent })).toBe(1);
+		expect(error).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
+		expect(error).not.toHaveBeenCalledWith(expect.stringContaining('signal'));
+	});
+
 	it('names the signal and fails when vitest exits without a status', () => {
 		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 		expect(resolveExitCode({ status: null, signal: 'SIGKILL' })).toBe(1);
