@@ -321,6 +321,7 @@ export class JobProcessor {
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
 				userId: manualData?.userId,
+				agentRequest: manualData?.agentRequest,
 			};
 
 			try {
