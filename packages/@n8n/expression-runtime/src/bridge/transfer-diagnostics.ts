@@ -46,8 +46,6 @@ function findRejection(
 	if (ancestors.has(value)) {
 		return rules.cycles ? { path, descriptor: 'a circular reference' } : undefined;
 	}
-	if (value instanceof Date || value instanceof RegExp) return undefined;
-
 	ancestors.add(value);
 	try {
 		if (Array.isArray(value)) {
