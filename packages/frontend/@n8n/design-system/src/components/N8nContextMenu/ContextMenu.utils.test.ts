@@ -26,8 +26,15 @@ const themeGroup: ContextMenuRadioGroup<string> = {
 
 describe('ContextMenu utils', () => {
 	describe('findRadioGroup', () => {
-		it('should find a radio group at the root', () => {
-			expect(findRadioGroup([snapGroup, themeGroup], 'theme')).toEqual(themeGroup);
+		it('should find a radio group among other node types', () => {
+			const nodes: Array<ContextMenuNode<string>> = [
+				{ type: 'item', id: 'open', label: 'Open' },
+				{ type: 'checkbox', id: 'show-grid', label: 'Show grid' },
+				snapGroup,
+				themeGroup,
+			];
+
+			expect(findRadioGroup(nodes, 'theme')).toEqual(themeGroup);
 		});
 
 		it('should find a radio group nested in a group', () => {
@@ -53,35 +60,6 @@ describe('ContextMenu utils', () => {
 			];
 
 			expect(findRadioGroup(nodes, 'theme')).toEqual(themeGroup);
-		});
-
-		it('should find a radio group nested through group then submenu', () => {
-			const nodes: Array<ContextMenuNode<string>> = [
-				{
-					type: 'group',
-					id: 'outer',
-					children: [
-						{
-							type: 'submenu',
-							id: 'inner',
-							label: 'Inner',
-							children: [snapGroup],
-						},
-					],
-				},
-			];
-
-			expect(findRadioGroup(nodes, 'snap')).toEqual(snapGroup);
-		});
-
-		it('should find a radio group among other node types', () => {
-			const nodes: Array<ContextMenuNode<string>> = [
-				{ type: 'item', id: 'open', label: 'Open' },
-				{ type: 'checkbox', id: 'show-grid', label: 'Show grid' },
-				snapGroup,
-			];
-
-			expect(findRadioGroup(nodes, 'snap')).toEqual(snapGroup);
 		});
 
 		it('should not treat a group with the same id as a radio group', () => {

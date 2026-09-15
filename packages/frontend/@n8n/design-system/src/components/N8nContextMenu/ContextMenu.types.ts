@@ -77,14 +77,23 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 	items: Array<ContextMenuNode<T>>;
 	/**
 	 * Controlled open state. Bind with `v-model:open`.
+	 * When set to true, the menu opens at `position` if set. Otherwise it opens at
+	 * the trigger, or `[0, 0]`. Right-click still uses the pointer.
 	 * @defaultValue uncontrolled
 	 */
 	open?: boolean;
 	/**
 	 * Open state on first render when `open` is not set.
+	 * Uses `position` if set. Otherwise it opens at the trigger, or `[0, 0]`.
 	 * @defaultValue false
 	 */
 	defaultOpen?: boolean;
+	/**
+	 * Override for programmatic open (`defaultOpen`, controlled `open`, or `open()`).
+	 * Offset from the trigger when a trigger exists. Viewport coordinates when the
+	 * trigger is omitted. Right-click ignores this. Fallback is `[0, 0]`.
+	 */
+	position?: [number, number];
 	/**
 	 * Controlled selected ids for checkbox and radio items. Bind with `v-model:selectedValues`.
 	 * @defaultValue uncontrolled
@@ -110,7 +119,11 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 	 * @defaultValue 3
 	 */
 	loadingItemCount?: number;
-	/** Extra CSS class for the menu content element. */
+	/**
+	 * Extra CSS class for every panel (root and submenus). Use it for max-height
+	 * and to set `--context-menu--width` when the panel must use a fixed width
+	 * instead of hugging its content.
+	 */
 	contentClass?: ClassValue;
 	/**
 	 * When true, blocks interaction with the rest of the page while open.
@@ -156,12 +169,14 @@ export type ContextMenuItemSlots<T extends ContextMenuId = ContextMenuId> = Pick
 >;
 
 export type ContextMenuExposed = {
-	open: (position?: [number, number]) => void;
+	/** Opens the menu. Uses `position` if set. Otherwise opens at the trigger, or `[0, 0]`. */
+	open: () => void;
 	close: () => void;
 };
 
 export type ContextMenuState = {
 	selectedValues: Pick<ComputedRef<readonly string[]>, 'value'>;
+	contentClass: Pick<ComputedRef<ClassValue | undefined>, 'value'>;
 	onSelect(id: string, keepOpen?: boolean): void;
 	onToggleCheckbox(id: string): void;
 	onSelectRadio(groupId: string, radioId: string): void;
