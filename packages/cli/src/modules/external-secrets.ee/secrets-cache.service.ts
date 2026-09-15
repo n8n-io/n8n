@@ -45,18 +45,23 @@ export class ExternalSecretsSecretsCache {
 		}
 
 		try {
-			const timeoutMs = this.config.refreshTimeout * Time.seconds.toMilliseconds;
-			await withTimeout(
-				provider.update(),
-				timeoutMs,
-				`Timed out refreshing secrets after ${timeoutMs}ms`,
-			);
-			this.logger.debug(`Refreshed secrets from provider ${name}`);
+			await this.updateProvider(name, provider);
 		} catch (error) {
 			this.logger.error(`Error refreshing secrets from provider ${name}`, {
 				error: ensureError(error),
 			});
 		}
+	}
+
+	/** Pulls a provider's secrets, bounded by the refresh timeout. Throws on failure. */
+	async updateProvider(name: string, provider: SecretsProvider): Promise<void> {
+		const timeoutMs = this.config.refreshTimeout * Time.seconds.toMilliseconds;
+		await withTimeout(
+			provider.update(),
+			timeoutMs,
+			`Timed out refreshing secrets after ${timeoutMs}ms`,
+		);
+		this.logger.debug(`Refreshed secrets from provider ${name}`);
 	}
 
 	/**
