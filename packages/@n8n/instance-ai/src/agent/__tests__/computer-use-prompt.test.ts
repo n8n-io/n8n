@@ -271,6 +271,31 @@ describe('getComputerUsePrompt', () => {
 		});
 	});
 
+	describe('the reported capability list', () => {
+		it('names each tool category once when both channels serve browser', () => {
+			// The daemon can serve browser tools alongside the extension session.
+			const result = getComputerUsePrompt({
+				state: state(connected('filesystem', 'browser'), connected('browser')),
+			});
+
+			const line = result
+				.split('\n')
+				.find((l) => l.includes('the user has enabled following capabilities'));
+			expect(line).toBe(
+				'Computer Use is connected, the user has enabled following capabilities: filesystem,browser',
+			);
+		});
+	});
+
+	describe('when a connected channel serves no tool categories', () => {
+		it('still offers the other channel that is available but not connected', () => {
+			const result = getComputerUsePrompt({ state: state(connected(), DISCONNECTED) });
+
+			expect(result).toContain('did not enable any capabilities');
+			expect(result).toContain('"Connect browser"');
+		});
+	});
+
 	describe('proactive suggestion guidance', () => {
 		it('is included for a connected channel', () => {
 			expect(getComputerUsePrompt({ state: browserLive })).toContain(

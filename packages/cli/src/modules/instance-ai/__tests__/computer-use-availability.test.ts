@@ -81,19 +81,56 @@ describe('resolveComputerUseState', () => {
 			expect(state.localComputer).toEqual({ status: 'disconnected' });
 		});
 
-		it('does not advertise a channel the client left out, even with a live session', () => {
+		it('does not offer an entry the client left out', () => {
 			const state = resolveComputerUseState({
 				...adminAllowsBoth,
 				clientChannels: ['localComputer'],
-				localComputerToolCategories: ['filesystem'],
-				browserConnected: true,
+				...nothingConnected,
 			});
 
 			expect(state.browser).toEqual({ status: 'unavailable' });
+			expect(state.localComputer).toEqual({ status: 'disconnected' });
+		});
+	});
+
+	describe('a live channel stays connected whatever the client reported', () => {
+		// Tool registration follows the MCP servers, not this state, so a channel
+		// the client cannot render still has callable tools. Reporting it
+		// unavailable would drop the operational rules for tools the agent holds.
+		it('keeps a live browser session connected when the client cannot render its entry', () => {
+			const state = resolveComputerUseState({
+				...adminAllowsBoth,
+				clientChannels: [],
+				localComputerToolCategories: undefined,
+				browserConnected: true,
+			});
+
+			expect(state.browser).toEqual({ status: 'connected', toolCategories: ['browser'] });
+		});
+
+		it('keeps a live daemon connected when the client reported nothing', () => {
+			const state = resolveComputerUseState({
+				...adminAllowsBoth,
+				clientChannels: undefined,
+				localComputerToolCategories: ['filesystem', 'shell'],
+				browserConnected: false,
+			});
+
 			expect(state.localComputer).toEqual({
 				status: 'connected',
-				toolCategories: ['filesystem'],
+				toolCategories: ['filesystem', 'shell'],
 			});
+		});
+
+		it('still withholds the entry for the unreported channel that is not live', () => {
+			const state = resolveComputerUseState({
+				...adminAllowsBoth,
+				clientChannels: [],
+				localComputerToolCategories: undefined,
+				browserConnected: true,
+			});
+
+			expect(state.localComputer).toEqual({ status: 'unavailable' });
 		});
 	});
 

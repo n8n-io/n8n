@@ -111,13 +111,18 @@ function availableChannels(state: ComputerUseState): ComputerUseChannel[] {
 	return CHANNEL_ORDER.filter((channel) => state[channel].status !== 'unavailable');
 }
 
-/** Tool categories every connected channel serves. The daemon can serve browser
- *  tools too, so a category is not tied to one channel. */
+/** Tool categories every connected channel serves, deduped: the daemon can serve
+ *  browser tools alongside the extension session, so a category is not tied to
+ *  one channel. */
 function liveToolCategories(state: ComputerUseState): string[] {
-	return CHANNEL_ORDER.flatMap((channel) => {
-		const channelState = state[channel];
-		return channelState.status === 'connected' ? channelState.toolCategories : [];
-	});
+	return [
+		...new Set(
+			CHANNEL_ORDER.flatMap((channel) => {
+				const channelState = state[channel];
+				return channelState.status === 'connected' ? channelState.toolCategories : [];
+			}),
+		),
+	];
 }
 
 function getCapabilityList(available: ComputerUseChannel[], form: 'compact' | 'bullet'): string[] {
@@ -189,12 +194,11 @@ export function getComputerUsePrompt({ state }: { state: ComputerUseState | unde
 
 	if (liveCategories.length === 0) {
 		promptParts.push('Computer Use is connected, but the user did not enable any capabilities');
-		return promptParts.join('\n');
+	} else {
+		promptParts.push(
+			`Computer Use is connected, the user has enabled following capabilities: ${liveCategories.join(',')}`,
+		);
 	}
-
-	promptParts.push(
-		`Computer Use is connected, the user has enabled following capabilities: ${liveCategories.join(',')}`,
-	);
 
 	if (liveCategories.includes('filesystem')) {
 		promptParts.push(`
