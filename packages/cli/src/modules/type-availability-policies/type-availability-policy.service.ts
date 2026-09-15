@@ -665,12 +665,16 @@ export class TypeAvailabilityPolicyService {
 			// Lock the document before checking who else uses it: an attach elsewhere key-shares
 			// the document row, so it waits for this transaction (or this one waits for it) and
 			// the check below cannot be overtaken between reading the attachments and the edit.
-			// Scope first, then document — the order every write path keeps. Kind-scoped like
-			// every other document read here, so a null means the attachment points at another
-			// kind's document — a state only the attachment API can produce.
+			// Scope first, then document — the order every write path keeps.
 			const existingDocument = existingDocumentId
 				? await this.policyRepository.findByIdAndKind(existingDocumentId, kind, ctx, true)
 				: null;
+
+			// Second line of defense: `assertAttachableToScope` already refuses to attach across
+			// kinds, so a miss here means the rest of the write would edit a foreign document.
+			if (existingDocumentId && !existingDocument) {
+				throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+			}
 
 			if (scope && existingDocumentId) {
 				const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
@@ -707,25 +711,23 @@ export class TypeAvailabilityPolicyService {
 			let documentCreated: boolean;
 			let policyId: string;
 
-			if (existingDocumentId) {
-				documentBefore = existingDocument
-					? { rules: existingDocument.rules, version: existingDocument.version }
-					: null;
+			if (existingDocument) {
+				documentBefore = { rules: existingDocument.rules, version: existingDocument.version };
 
 				const updated = await this.policyRepository.updateRules(
-					existingDocumentId,
+					existingDocument.id,
 					input.rules,
 					updatedBy,
 					ctx,
 				);
-				// The attachment's FK guarantees the policy row exists.
+				// Defensive: the row was read under a lock above, so it cannot be gone here.
 				if (!updated) {
-					throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+					throw new NotFoundError(`Policy document not found: ${existingDocument.id}`);
 				}
 
 				documentAfter = { rules: updated.rules, version: updated.version };
 				documentCreated = false;
-				policyId = existingDocumentId;
+				policyId = existingDocument.id;
 			} else {
 				const created = await this.policyRepository.createPolicy(
 					{ kind, rules: input.rules, updatedBy },

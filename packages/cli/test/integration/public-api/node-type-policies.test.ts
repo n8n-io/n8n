@@ -27,6 +27,11 @@ const projectRoute = (projectId: string) => `/node-type-policies/projects/${proj
 const ALLOW_ALL = { rules: [], defaultAction: 'allow', version: 0 };
 const DENY_RULE = { id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } };
 const DELEGATE_RULE = { id: 'r2', action: 'delegate', selector: { kind: 'name', value: 'a.b' } };
+const OTHER_KIND_RULE = {
+	id: 'other-r1',
+	action: 'deny' as const,
+	selector: { kind: 'name' as const, value: 'other.thing' },
+};
 
 const EFFECTIVE_KEYS = ['scopeId', 'rules', 'defaultAction', 'version'];
 const DOCUMENT_KEYS = ['id', 'kind', 'rules', 'version', 'updatedBy', 'createdAt', 'updatedAt'];
@@ -471,9 +476,10 @@ describe('node type policies public API policy documents', () => {
 		expect(deleteMissing.statusCode).toBe(404);
 	});
 
-	test('a document of another kind is not reachable by id', async () => {
-		const other = await Container.get(TypeAvailabilityPolicyRepository).createPolicy(
-			{ kind: 'other-kind', rules: [], updatedBy: owner.id },
+	test('a document of another kind is not reachable by id, and survives untouched', async () => {
+		const policyRepo = Container.get(TypeAvailabilityPolicyRepository);
+		const other = await policyRepo.createPolicy(
+			{ kind: 'other-kind', rules: [OTHER_KIND_RULE], updatedBy: owner.id },
 			{},
 		);
 		const agent = testServer.publicApiAgentFor(owner);
@@ -483,7 +489,7 @@ describe('node type policies public API policy documents', () => {
 
 		const updated = await agent
 			.put(`/node-type-policies/policies/${other.id}`)
-			.send({ rules: [DENY_RULE], version: 1 });
+			.send({ rules: [DENY_RULE], version: other.version });
 		expect(updated.statusCode).toBe(404);
 
 		const deleted = await agent.delete(`/node-type-policies/policies/${other.id}`);
@@ -491,6 +497,12 @@ describe('node type policies public API policy documents', () => {
 
 		const list = await agent.get('/node-type-policies/policies');
 		expect(list.body.data).toEqual([]);
+
+		expect(await policyRepo.findByIdAndKind(other.id, 'other-kind', {})).toMatchObject({
+			kind: 'other-kind',
+			rules: [OTHER_KIND_RULE],
+			version: other.version,
+		});
 	});
 
 	test('PUT on an attached document bumps the instance scope version', async () => {
