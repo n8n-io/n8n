@@ -4,8 +4,9 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
+import type { ImageResponse } from '../../../helpers/interfaces';
 import { apiRequest } from '../../../transport';
 import { imageGenerateOptions, imageGenerateOptionsRLC, modelRLC } from '../descriptions';
 
@@ -113,7 +114,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...options,
 	};
 
-	const { data } = await apiRequest.call(this, 'POST', '/images/generations', { body });
+	const response = (await apiRequest.call(this, 'POST', '/images/generations', {
+		body,
+	})) as ImageResponse;
+	const { data, usage } = response;
+
+	if (usage) {
+		accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
+	}
+
 	if (response_format === 'url') {
 		return ((data as IDataObject[]) || []).map((entry) => ({
 			json: entry,
@@ -122,7 +131,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} else {
 		const returnData: INodeExecutionData[] = [];
 
-		for (const entry of data) {
+		for (const entry of data ?? []) {
 			const binaryData = await this.helpers.prepareBinaryData(
 				Buffer.from(entry.b64_json as string, 'base64'),
 				'data',

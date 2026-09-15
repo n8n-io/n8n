@@ -10,6 +10,15 @@ import { execute } from '../../../../v2/actions/image/analyze.operation';
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');
 
+const { accumulateTokenUsageMock } = vi.hoisted(() => ({
+	accumulateTokenUsageMock: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async (importOriginal) => ({
+	...(await importOriginal<typeof import('n8n-workflow')>()),
+	accumulateTokenUsage: accumulateTokenUsageMock,
+}));
+
 describe('Image Analyze Operation', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
@@ -917,6 +926,54 @@ describe('Image Analyze Operation', () => {
 					],
 				}),
 			});
+		});
+	});
+
+	describe('token usage reporting', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: "What's in this image?",
+					inputType: 'url',
+					imageUrls: 'https://example.com/image1.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+		});
+
+		const baseResponse = {
+			id: 'response-123',
+			status: 'completed',
+			output: [
+				{
+					type: 'message',
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'A mountain lake.' }],
+				},
+			],
+		};
+
+		it('should report token usage when the API returns a usage object', async () => {
+			apiRequestSpy.mockResolvedValue({
+				...baseResponse,
+				usage: { input_tokens: 1120, output_tokens: 96, total_tokens: 1216 },
+			} as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).toHaveBeenCalledTimes(1);
+			expect(accumulateTokenUsageMock).toHaveBeenCalledWith(mockExecuteFunctions, 1120, 96);
+		});
+
+		it('should not report token usage when the API omits it', async () => {
+			apiRequestSpy.mockResolvedValue(baseResponse as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
 		});
 	});
 });
