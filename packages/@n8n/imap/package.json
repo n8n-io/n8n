@@ -33,8 +33,7 @@
     "@types/libmime": "^5.3.0",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
