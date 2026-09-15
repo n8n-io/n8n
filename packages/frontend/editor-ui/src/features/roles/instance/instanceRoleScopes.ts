@@ -20,6 +20,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'role',
 	'apiKey',
 	'tag',
+	'variable',
 	'project',
 	'insights',
 ];
@@ -31,6 +32,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	role: 'instanceRoles.resource.role',
 	apiKey: 'instanceRoles.resource.apiKey',
 	tag: 'instanceRoles.resource.tag',
+	variable: 'instanceRoles.resource.variable',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
 };
@@ -94,6 +96,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 	tag: {
 		View: 'instanceRoles.description.tag.view',
 		Manage: 'instanceRoles.description.tag.manage',
+	},
+	variable: {
+		View: 'instanceRoles.description.variable.view',
+		Manage: 'instanceRoles.description.variable.manage',
 	},
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },

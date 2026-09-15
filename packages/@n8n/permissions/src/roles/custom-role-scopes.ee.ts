@@ -100,8 +100,6 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'eventBusDestination:delete',
 			'eventBusDestination:list',
 			'eventBusDestination:test',
-			'variable:list',
-			'variable:read',
 			'dataTable:list',
 			'aiPreference:create', // Context (instance-wide AI preferences)
 			'aiPreference:read',
@@ -168,6 +166,21 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// keeps read/list so it stays a strict superset of View, matching `user`.
 		View: ['tag:read', 'tag:list'],
 		Manage: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
+	},
+	variable: {
+		// Global (instance-level) variables only; project variables are granted per
+		// project via `projectVariable:*` on a project role. View mirrors
+		// GLOBAL_MEMBER_SCOPES exactly, so a custom role built to match Member never
+		// exceeds it. The list response carries each variable's value, so View reads
+		// values and is not only discovery — hence it is opt-in, not mandatory.
+		View: ['variable:list', 'variable:read'],
+		Manage: [
+			'variable:list',
+			'variable:read',
+			'variable:create',
+			'variable:update',
+			'variable:delete',
+		],
 	},
 	project: {
 		Create: ['project:create'],

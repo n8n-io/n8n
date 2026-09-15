@@ -10,6 +10,7 @@ import {
 	getVariableByKey,
 } from '@test-integration/db/variables';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createOwner, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -116,6 +117,78 @@ describe('GET /variables/:id', () => {
 		const response2 = await authMemberAgent.get(`/variables/${var2.id}`);
 		expect(response2.statusCode).toBe(200);
 		expect(response2.body.data.key).toBe('test2');
+	});
+});
+
+// ----------------------------------------
+// Custom instance roles - global variables
+// ----------------------------------------
+describe('GET /variables - custom instance roles', () => {
+	// A custom instance role only sees global variables when it holds `variable:list`.
+	// `variable:list` is now its own permission option, so a role can read global
+	// variables without also holding every instance settings scope.
+	let authNoVariableScopesAgent: SuperAgentTest;
+	let authVariableViewAgent: SuperAgentTest;
+	let globalVariable: Variables;
+	let projectVariable: Variables;
+
+	beforeAll(async () => {
+		const roleWithoutVariableScopes = await createCustomRoleWithScopeSlugs(['user:list'], {
+			roleType: 'global',
+		});
+		const roleWithVariableView = await createCustomRoleWithScopeSlugs(
+			['user:list', 'variable:list', 'variable:read'],
+			{ roleType: 'global' },
+		);
+
+		const userWithoutVariableScopes = await createUser({ role: roleWithoutVariableScopes });
+		const userWithVariableView = await createUser({ role: roleWithVariableView });
+		await Promise.all([
+			linkUserToProject(userWithoutVariableScopes, project, 'project:admin'),
+			linkUserToProject(userWithVariableView, project, 'project:admin'),
+		]);
+
+		authNoVariableScopesAgent = testServer.authAgentFor(userWithoutVariableScopes);
+		authVariableViewAgent = testServer.authAgentFor(userWithVariableView);
+	});
+
+	beforeEach(async () => {
+		[globalVariable, projectVariable] = await Promise.all([
+			createVariable('globalVar', 'globalValue'),
+			createProjectVariable('projectVar', 'projectValue', project),
+		]);
+	});
+
+	test('should filter out global variables for a role without variable:list', async () => {
+		const response = await authNoVariableScopesAgent.get('/variables');
+
+		// Filtered out silently, not a 403 - the list still returns the project variables.
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((variable: Variables) => variable.key)).toEqual([
+			projectVariable.key,
+		]);
+	});
+
+	test('should return global variables for a role with variable:list', async () => {
+		const response = await authVariableViewAgent.get('/variables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((variable: Variables) => variable.key).sort()).toEqual(
+			[globalVariable.key, projectVariable.key].sort(),
+		);
+	});
+
+	test('should return a single global variable for a role with variable:read', async () => {
+		const response = await authVariableViewAgent.get(`/variables/${globalVariable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.key).toBe(globalVariable.key);
+	});
+
+	test('should deny a single global variable to a role without variable:read', async () => {
+		const response = await authNoVariableScopesAgent.get(`/variables/${globalVariable.id}`);
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

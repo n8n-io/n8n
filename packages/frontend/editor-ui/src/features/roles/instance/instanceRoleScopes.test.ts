@@ -82,6 +82,7 @@ describe('instanceRoleScopes config', () => {
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['View', 'Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.variable)).toEqual(['View', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual([
@@ -153,6 +154,14 @@ describe('isOptionImplied', () => {
 
 	it('returns false when the superseding option is present but "Manage own" is checked via own scopes only', () => {
 		expect(isOptionImplied(manageOwn, apiKeyGroup.options, ownScopes)).toBe(false);
+	});
+
+	it('renders variable "View" as implied under a fully-checked variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const view = variableGroup.options.find((o) => o.key === 'View')!;
+		const manage = variableGroup.options.find((o) => o.key === 'Manage')!;
+		expect(isOptionImplied(view, variableGroup.options, [...manage.scopes])).toBe(true);
+		expect(isOptionImplied(view, variableGroup.options, [...view.scopes])).toBe(false);
 	});
 });
 
@@ -304,6 +313,17 @@ describe('toggleOptionInGroup', () => {
 			insightsGroup.options,
 		);
 		expect(result).toEqual(['user:read']);
+	});
+
+	it('downgrades to "View" when unchecking variable "Manage"', () => {
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const manageVariables = variableGroup.options.find((o) => o.key === 'Manage')!;
+		const result = toggleOptionInGroup(
+			['user:list', ...manageVariables.scopes],
+			manageVariables,
+			variableGroup.options,
+		);
+		expect(result).toEqual(['user:list', 'variable:list', 'variable:read']);
 	});
 
 	it('downgrades to "View" when unchecking tag "Manage", keeping the mandatory scopes', () => {
