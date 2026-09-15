@@ -1,15 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nCallout from './Callout.vue';
-import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
-import N8nText from '../N8nText';
-import N8nTooltip from '../N8nTooltip';
 
 const meta = {
 	title: 'Core/Callout',
 	component: N8nCallout,
-	subcomponents: { N8nIcon, N8nText, N8nTooltip },
 	argTypes: {
 		theme: {
 			control: 'select',

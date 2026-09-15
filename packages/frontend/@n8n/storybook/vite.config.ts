@@ -7,11 +7,6 @@ import { lucideIconsPlugin } from '../design-system/src/icons/lucide/vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-	// Keep Vue component names/__file inspectable in static Storybook builds
-	// so story.to.design can match nested components.
-	define: {
-		__VUE_PROD_DEVTOOLS__: true,
-	},
 	plugins: [
 		vue(),
 		lucideIconsPlugin(),
