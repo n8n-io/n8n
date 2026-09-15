@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_b04c58447561ba::t_f2364d0a1172cd 359-369
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_7b637a3c728162 2637-2638,2654,2658,2694-2698
+  s_b04c58447561ba::t_bebe53943d8feb 2635-2636,2639-2653,2655-2657,2659-2693,2699-2713
+  s_b04c58447561ba::t_cbae3cb755f344 14,68-69
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_b04c58447561ba::t_1a050b1086c8f9 110
+  s_b04c58447561ba::t_7482af1dd2d60c 225,228,754,757
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bbcd70bad8ea6900e5575a761f5873ed2bd01dec",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
