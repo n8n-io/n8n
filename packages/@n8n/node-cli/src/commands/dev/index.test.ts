@@ -80,6 +80,9 @@ describe('dev command', () => {
 			`${process.cwd()}:/home/node/.n8n/custom/node_modules/n8n-nodes-test`,
 		);
 		expect(server?.args).toContain('N8N_DEV_RELOAD=true');
+		expect(server?.args).toContain(
+			'n8n-node-cli-data-docker.n8n.io-n8nio-n8n-latest:/home/node/.n8n',
+		);
 	});
 
 	tmpdirTest('--n8n-image replaces the default image', async ({ tmpdir }) => {
@@ -90,6 +93,33 @@ describe('dev command', () => {
 		const args = lastRunCommandsCall()?.commands[1]?.args;
 		expect(args).toContain('n8nio/n8n:local');
 		expect(args).not.toContain('docker.n8n.io/n8nio/n8n:latest');
+	});
+
+	tmpdirTest('gives each image its own data volume', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(
+			['--n8n-image', 'docker.n8n.io/n8nio/n8n:2.20.7'],
+			createMockConfig(tmpdir),
+		).run();
+
+		const args = lastRunCommandsCall()?.commands[1]?.args;
+		expect(args).toContain('n8n-node-cli-data-docker.n8n.io-n8nio-n8n-2.20.7:/home/node/.n8n');
+		expect(args).not.toContain('n8n-node-cli-data-docker.n8n.io-n8nio-n8n-latest:/home/node/.n8n');
+	});
+
+	tmpdirTest('keeps the data volume name valid for any image reference', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(
+			['--n8n-image', 'registry.example.com:5000/team/n8n@sha256:abc123'],
+			createMockConfig(tmpdir),
+		).run();
+
+		const volume = lastRunCommandsCall()
+			?.commands[1]?.args?.find((arg) => arg.startsWith('n8n-node-cli-data-'))
+			?.split(':/home/node')[0];
+		expect(volume).toMatch(/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/);
 	});
 
 	tmpdirTest('with --external-n8n only runs the watcher and symlinks', async ({ tmpdir }) => {
