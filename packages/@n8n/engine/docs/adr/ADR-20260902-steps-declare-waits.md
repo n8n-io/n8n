@@ -61,7 +61,9 @@ deadline, or accept a resume request, or do both.
    `waiting` when one or more of its steps wait, and no step runs or can run. In
    all other cases the execution reports `running`. The engine calculates the
    status again at each step transition. A new `step:waiting` lifecycle event
-   shows the paused step in the UI.
+   shows the paused step in the UI. **The engine does not do this yet.** The
+   status projection, the `step:waiting` event and the control-plane mapping are
+   one later slice. The decision holds; only the code is absent.
 
 ## Alternatives Considered
 
