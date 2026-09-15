@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, computeNextRunAt } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -8,6 +9,14 @@ import { UnexpectedError } from 'n8n-workflow';
  * 32-bit millisecond value), so a longer wait is split into hops.
  */
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
+/**
+ * Most occurrences a walked schedule reports as coalesced. A wider gap counts
+ * as this many, because walking a cron expression reparses it at every step:
+ * 1000 steps cost about 90 ms of blocked event loop, 43,200 (a month of
+ * minutes) cost about 3 s.
+ */
+const MAX_WALKED_OCCURRENCES = 1_000;
 
 /**
  * One task's in-memory cadence: a chained timeout firing `onFire` at every
@@ -82,12 +91,27 @@ export class SystemTaskTimer {
 		return 0;
 	}
 
-	/** The occurrences from `first` up to and including `untilMs`, which a fire at `untilMs` stands in for. */
+	/**
+	 * The occurrences from `first` up to and including `untilMs`, which a fire at
+	 * `untilMs` stands in for. An interval cadence is counted arithmetically; any
+	 * other schedule is walked, and caps at {@link MAX_WALKED_OCCURRENCES}.
+	 */
 	private countOccurrencesUpTo(first: Date, untilMs: number): number {
+		const firstMs = first.getTime();
+
+		if (untilMs < firstMs) {
+			return 0;
+		}
+
+		if (this.schedule.kind === 'interval') {
+			const intervalMs = this.schedule.intervalSeconds * Time.seconds.toMilliseconds;
+			return Math.floor((untilMs - firstMs) / intervalMs) + 1;
+		}
+
 		let count = 0;
 		for (
 			let next: Date | null = first;
-			next !== null && next.getTime() <= untilMs;
+			next !== null && next.getTime() <= untilMs && count < MAX_WALKED_OCCURRENCES;
 			next = computeNextRunAt(this.schedule, next)
 		) {
 			count++;

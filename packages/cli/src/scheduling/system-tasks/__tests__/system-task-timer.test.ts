@@ -147,6 +147,50 @@ describe('SystemTaskTimer', () => {
 		expect(onFire).toHaveBeenCalledTimes(2);
 	});
 
+	it('counts a wide gap of interval occurrences in full', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 1 }, 'UTC'),
+			onFire,
+			onPlanError,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+
+		// A decade of one-second occurrences: 315 million, far too many to walk.
+		const days = 10 * 365;
+		clock = START.getTime() + days * Time.days.toMilliseconds;
+		vi.advanceTimersByTime(1 * Time.seconds.toMilliseconds);
+
+		const occurrences = days * Time.days.toSeconds;
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(
+			(occurrences - 1) * Time.seconds.toMilliseconds,
+			occurrences - 1,
+		);
+	});
+
+	it('caps the occurrences it counts for a walked schedule', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'cron', cronExpression: '* * * * *', timezone: 'UTC' }, 'UTC'),
+			onFire,
+			onPlanError,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+
+		// 30 days of minutes is 43,200 occurrences, above the cap.
+		clock = START.getTime() + 30 * Time.days.toMilliseconds;
+		vi.advanceTimersByTime(1 * Time.minutes.toMilliseconds);
+
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(
+			30 * Time.days.toMilliseconds - Time.minutes.toMilliseconds,
+			1_000,
+		);
+	});
+
 	it('hops to the horizon instead of firing at once when the next fire is far off', () => {
 		const timer = createTimer({ kind: 'interval', intervalSeconds: 40 * Time.days.toSeconds });
 
