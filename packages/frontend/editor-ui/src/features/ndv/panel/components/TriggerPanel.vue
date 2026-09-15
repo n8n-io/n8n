@@ -35,6 +35,7 @@ import {
 	N8nPulse,
 	N8nSpinner,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
@@ -392,6 +393,7 @@ const onNodeExecute = () => {
 				key="listening"
 				:class="$style.action"
 				data-test-id="trigger-listening"
+				data-ndv-empty-state
 			>
 				<N8nPulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
@@ -409,15 +411,18 @@ const onNodeExecute = () => {
 							}}
 						</N8nText>
 					</div>
-					<CopyInput
-						:value="webhookTestUrl"
-						:toast-title="i18n.baseText('ndv.trigger.copiedTestUrl')"
-						class="mb-2xl"
-						size="medium"
-						:collapse="true"
-						:copy-button-text="i18n.baseText('generic.clickToCopy')"
-						@copy="onTestLinkCopied"
-					></CopyInput>
+					<N8nTooltip :content="webhookTestUrl" placement="top" as-child>
+						<CopyInput
+							:value="webhookTestUrl"
+							:toast-title="i18n.baseText('ndv.trigger.copiedTestUrl')"
+							:class="['mb-2xl', $style.webhookUrl]"
+							size="medium"
+							:collapse="true"
+							truncate="start"
+							:copy-button-text="i18n.baseText('generic.clickToCopy')"
+							@copy="onTestLinkCopied"
+						></CopyInput>
+					</N8nTooltip>
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
@@ -450,7 +455,7 @@ const onNodeExecute = () => {
 					/>
 				</div>
 			</div>
-			<div v-else key="default">
+			<div v-else key="default" data-ndv-pane-min>
 				<div v-if="isActivelyPolling" class="mb-xl">
 					<N8nSpinner type="ring" />
 				</div>
@@ -532,6 +537,13 @@ const onNodeExecute = () => {
 	align-items: center;
 	text-align: center;
 	margin-bottom: var(--spacing--2xl);
+	width: 100%;
+	min-width: 0;
+}
+
+.webhookUrl {
+	width: 100%;
+	min-width: 0;
 }
 
 .shake {
