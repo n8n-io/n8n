@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { CredentialsRepository, ProjectRepository, VariablesRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
@@ -220,13 +220,15 @@ function collectCredentialReferences(inventory: PackageDirectoryInventory): Cred
 	const files = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
 	for (const workflow of inventory.workflows) {
 		visitWorkflowCredentials(workflow.content.nodes, (type, details) => {
+			if (!details.id && details.__aiGatewayManaged === true) return false;
+
 			const sourceId = details.id || null;
-			const key = sourceId ?? `\0${type}`;
+			const key = JSON.stringify(sourceId ?? [type, details.name]);
 			const file = sourceId === null ? undefined : files.get(sourceId);
 			const group = groups.get(key) ?? {
 				sourceId,
 				name: file?.credential.name ?? details.name,
-				expectedTypes: [],
+				expectedTypes: file ? [file.credential.type] : [],
 				file,
 				workflows: [],
 			};
@@ -238,17 +240,12 @@ function collectCredentialReferences(inventory: PackageDirectoryInventory): Cred
 	}
 	for (const group of groups.values()) {
 		group.expectedTypes = unique(group.expectedTypes).sort(compare);
-		const { file, expectedTypes, sourceId } = group;
-		if (file && expectedTypes.length === 1 && file.credential.type !== expectedTypes[0]) {
-			throw new UserError(
-				`Package credential file at ${file.path} has type "${file.credential.type}", but workflows use credential "${sourceId}" as "${expectedTypes[0]}".`,
-			);
-		}
 	}
 	return [...groups.values()].sort(
 		(a, b) =>
 			compare(a.sourceId ?? '', b.sourceId ?? '') ||
-			compare(a.expectedTypes[0], b.expectedTypes[0]),
+			compare(a.expectedTypes[0], b.expectedTypes[0]) ||
+			compare(a.name, b.name),
 	);
 }
 

@@ -236,6 +236,9 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				]),
 			}),
 		]);
+		expect(
+			result.conflicts.find((conflict) => conflict.code === 'missing-definition')?.consumers,
+		).toHaveLength(2);
 		expect(result.warnings).toEqual([]);
 		expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
 		expect(await snapshot()).toEqual(before);
@@ -262,6 +265,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 
 		const first = await service.checkDirectory({ sourceDir, user: owner });
+		expect(first).toMatchObject({ accessRequirements: [], conflicts: [], warnings: [] });
 		expect(first.missingBindings.map((binding) => binding.kind)).toEqual([
 			'credential',
 			'variable',
@@ -274,6 +278,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createVariable('REGION', 'global');
 
 		const second = await service.checkDirectory({ sourceDir, user: owner });
+		expect(second).toMatchObject({ accessRequirements: [], conflicts: [], warnings: [] });
 		expect(second.missingBindings).toEqual([
 			expect.objectContaining({
 				kind: 'variable',
@@ -431,6 +436,8 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			'variables/region/variable.json': { name: 'REGION', type: 'string', value: '' },
 		});
 		const first = await service.checkDirectory({ sourceDir, user: owner });
+		expect(first).toMatchObject({ accessRequirements: [], conflicts: [] });
+		expect(first.missingBindings[0].consumers).toHaveLength(2);
 		expect(first.missingBindings).toEqual([
 			{
 				kind: 'variable',

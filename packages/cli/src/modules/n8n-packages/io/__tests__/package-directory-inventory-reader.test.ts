@@ -140,13 +140,17 @@ describe('PackageDirectoryInventoryReader', () => {
 	});
 
 	it('rejects the same variable name twice in one scope but allows it in different scopes', async () => {
+		// The package schema permits '/' in IDs and names, so joined keys can collide.
 		const shared = {
 			'projects/a/project.json': project('p1'),
 			'projects/a/variables/x/variable.json': variable('REGION'),
+			'projects/a/variables/y/variable.json': variable('a/REGION'),
+			'projects/b/project.json': project('p1/a'),
+			'projects/b/variables/x/variable.json': variable('REGION'),
 			'variables/x/variable.json': variable('REGION'),
 		};
 
-		await expect(reader.read(sourceOf(shared))).resolves.toBeDefined();
+		await expect(reader.read(sourceOf(shared))).resolves.toHaveProperty('variables.length', 4);
 		await expect(
 			reader.read(sourceOf({ ...shared, 'variables/y/variable.json': variable('REGION') })),
 		).rejects.toThrow('Package contains a duplicate variable name in one scope: /REGION');

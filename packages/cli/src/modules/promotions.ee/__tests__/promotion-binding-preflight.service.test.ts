@@ -38,7 +38,12 @@ const PROJECT_A = { id: 'proj-a', name: 'Alpha' };
 const PROJECT_B = { id: 'proj-b', name: 'Beta' };
 const PROJECT_C = { id: 'proj-c', name: 'Gamma' };
 
-function credentialNode(name: string, type: string, id: string | null): INode {
+function credentialNode(
+	name: string,
+	type: string,
+	id: string | null,
+	credentialName = `${type} credential`,
+): INode {
 	return {
 		id: `node-${name}`,
 		name,
@@ -46,7 +51,7 @@ function credentialNode(name: string, type: string, id: string | null): INode {
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
-		credentials: { [type]: { id, name: `${type} credential` } },
+		credentials: { [type]: { id, name: credentialName } },
 	};
 }
 
@@ -123,7 +128,7 @@ const workflowRef = (id: string) => ({ id, name: `Workflow ${id}` });
 const emptyResult = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
 const check = async () => {
 	const result = await service.checkDirectory({ sourceDir: '/checkout', user });
-	expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
+	expect(promotionBindingPreflightResultSchema.parse(result)).toStrictEqual(result);
 	return result;
 };
 const consumer = (project: typeof PROJECT_A, ...ids: string[]) => ({
@@ -292,15 +297,44 @@ describe('PromotionBindingPreflightService', () => {
 		});
 	});
 
-	it('keeps a reference without an id and an id used with two types', async () => {
+	it.each([
+		{ id: null, managed: true, conflictCode: undefined },
+		{ id: '', managed: true, conflictCode: undefined },
+		{ id: null, managed: false, conflictCode: 'missing-id' },
+		{ id: 'cred-1', managed: true, conflictCode: 'unknown-owner' },
+	])(
+		'checks Gateway credits references with id=$id and managed=$managed',
+		async ({ id, managed, conflictCode }) => {
+			const node = credentialNode('Model', 'googlePalmApi', id);
+			node.credentials = { googlePalmApi: { id, name: '', __aiGatewayManaged: managed } };
+			useInventory({ workflows: [inventoryWorkflow('wf-1', PROJECT_A.id, [node])] });
+
+			expect(await check()).toEqual({
+				...emptyResult,
+				conflicts: conflictCode
+					? [expect.objectContaining({ code: conflictCode, sourceId: id })]
+					: [],
+			});
+			expect(credentialsRepository.findPromotionBindingAccess).toHaveBeenCalledExactlyOnceWith(
+				id ? [id] : [],
+				id || !managed ? [PROJECT_A.id] : [],
+			);
+		},
+	);
+
+	it('groups ID-less references by type and name, and references with IDs by ID', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
-					credentialNode('No id', 'githubApi', null),
+					credentialNode('Test', 'githubApi', null, 'Test GitHub'),
 					credentialNode('As GitHub', 'githubApi', 'cred-1'),
 				]),
 				inventoryWorkflow('wf-2', PROJECT_A.id, [
+					credentialNode('Production', 'githubApi', null, 'Production GitHub'),
 					credentialNode('As GitLab', 'gitlabApi', 'cred-1'),
+				]),
+				inventoryWorkflow('wf-3', PROJECT_A.id, [
+					credentialNode('Production', 'githubApi', null, 'Production GitHub'),
 				]),
 			],
 		});
@@ -310,9 +344,21 @@ describe('PromotionBindingPreflightService', () => {
 				expect.objectContaining({
 					code: 'missing-id',
 					sourceId: null,
-					name: 'githubApi credential',
+					name: 'Production GitHub',
+					expectedTypes: ['githubApi'],
+					consumers: [consumer(PROJECT_A, 'wf-2', 'wf-3')],
+					referenceFiles: [
+						'projects/proj-a/workflows/wf-2/workflow.json',
+						'projects/proj-a/workflows/wf-3/workflow.json',
+					],
+				}),
+				expect.objectContaining({
+					code: 'missing-id',
+					sourceId: null,
+					name: 'Test GitHub',
 					expectedTypes: ['githubApi'],
 					consumers: [consumer(PROJECT_A, 'wf-1')],
+					referenceFiles: ['projects/proj-a/workflows/wf-1/workflow.json'],
 				}),
 				expect.objectContaining({
 					code: 'conflicting-types',
@@ -324,16 +370,39 @@ describe('PromotionBindingPreflightService', () => {
 		});
 	});
 
-	it('fails when a bundled credential file has another type than the workflows expect', async () => {
+	it('reports a bundled type conflict and retains other binding results', async () => {
 		useInventory({
 			workflows: [
-				inventoryWorkflow('wf-1', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
+				inventoryWorkflow('wf-1', PROJECT_A.id, [
+					credentialNode('GitHub', 'githubApi', 'cred-1'),
+					variableNode('Set', '={{ $vars.REGION }}'),
+				]),
 			],
 			credentials: [inventoryCredential('cred-1', PROJECT_A.id, 'gitlabApi')],
+			variables: [inventoryVariable('REGION', PROJECT_A.id)],
 		});
-		await expect(check()).rejects.toThrow(
-			'has type "gitlabApi", but workflows use credential "cred-1" as "githubApi"',
-		);
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({
+					kind: 'variable',
+					name: 'REGION',
+					scope: { kind: 'project', project: PROJECT_A },
+				}),
+			],
+			conflicts: [
+				{
+					kind: 'credential',
+					code: 'conflicting-types',
+					sourceId: 'cred-1',
+					name: 'Credential cred-1',
+					expectedTypes: ['githubApi', 'gitlabApi'],
+					filePath: 'projects/proj-a/credentials/cred-1/credential.json',
+					referenceFiles: ['projects/proj-a/workflows/wf-1/workflow.json'],
+					consumers: [consumer(PROJECT_A, 'wf-1')],
+				},
+			],
+		});
 	});
 
 	it('marks the owner unknown for a missing credential without a file or with a file outside every project', async () => {
@@ -525,10 +594,13 @@ describe('PromotionBindingPreflightService', () => {
 			credentials: [inventoryCredential('cred-inner', PROJECT_A.id)],
 			variables: [inventoryVariable('ERROR_WF', null)],
 		});
-		expect((await check()).missingBindings).toEqual([
-			expect.objectContaining({ kind: 'credential', sourceId: 'cred-inner' }),
-			expect.objectContaining({ kind: 'variable', name: 'ERROR_WF' }),
-		]);
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({ kind: 'credential', sourceId: 'cred-inner' }),
+				expect.objectContaining({ kind: 'variable', name: 'ERROR_WF' }),
+			],
+		});
 	});
 
 	it.each([
@@ -666,7 +738,7 @@ describe('PromotionBindingPreflightService', () => {
 					inventoryVariable('REGION', null),
 				],
 			});
-			expect(await check()).toEqual({
+			expect(await check()).toStrictEqual({
 				...emptyResult,
 				missingBindings: [
 					{

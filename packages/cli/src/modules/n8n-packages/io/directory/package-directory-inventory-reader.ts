@@ -197,7 +197,12 @@ export class PackageDirectoryInventoryReader {
 			if (!isCollectionLocation(file.segments, 'variables')) throw unsupportedLocation(file);
 			const projectId = projectIdOf(file);
 			const variable = await this.readEntity(source, file, serializedVariableSchema);
-			assertUnseen(seenNames, `${projectId ?? ''}/${variable.name}`, 'variable name in one scope');
+			assertUnseen(
+				seenNames,
+				JSON.stringify([projectId, variable.name]),
+				'variable name in one scope',
+				`${projectId ?? ''}/${variable.name}`,
+			);
 			variables.push({ path: file.path, projectId, variable });
 		}
 
@@ -268,7 +273,7 @@ function unsupportedLocation(file: EntityFile): UserError {
 	);
 }
 
-function assertUnseen(seen: Set<string>, key: string, label: string): void {
-	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${key}`);
+function assertUnseen(seen: Set<string>, key: string, label: string, displayKey = key): void {
+	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${displayKey}`);
 	seen.add(key);
 }
