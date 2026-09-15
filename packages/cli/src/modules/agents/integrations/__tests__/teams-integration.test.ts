@@ -141,17 +141,29 @@ describe('TeamsIntegration', () => {
 			expect(createTeamsAdapter).not.toHaveBeenCalled();
 		});
 
-		it.each(['tenant/id', 'tenant id', 'tenant@id', 'tenant?id', 'tenant#id'])(
-			'rejects the malformed tenant ID %p',
-			async (tenantId) => {
-				await expect(
-					integration.createAdapter(connectionContext(servicePrincipalCredential({ tenantId }))),
-				).rejects.toThrow(/invalid Directory \(tenant\) ID/);
-				expect(createTeamsAdapter).not.toHaveBeenCalled();
-			},
-		);
+		it.each([
+			'tenant/id',
+			'tenant id',
+			'tenant@id',
+			'tenant?id',
+			'tenant#id',
+			// Dot segments pass an alphabet check, then normalize the tenant away.
+			'.',
+			'..',
+			'-',
+			'a-',
+			'-a',
+			'a..b',
+			// A verified domain always has at least two labels.
+			'contoso',
+		])('rejects the malformed tenant ID %p', async (tenantId) => {
+			await expect(
+				integration.createAdapter(connectionContext(servicePrincipalCredential({ tenantId }))),
+			).rejects.toThrow(/invalid Directory \(tenant\) ID/);
+			expect(createTeamsAdapter).not.toHaveBeenCalled();
+		});
 
-		it.each([TENANT_ID, 'contoso.onmicrosoft.com'])(
+		it.each([TENANT_ID, 'contoso.onmicrosoft.com', 'a.b', 'my-tenant.example.com'])(
 			'accepts the tenant ID %p',
 			async (tenantId) => {
 				await expect(
