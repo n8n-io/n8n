@@ -4,7 +4,11 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentMessageAuthor, AgentPersistedMessageDto } from '@n8n/api-types';
+import type {
+	AgentBackgroundJobSignal,
+	AgentMessageAuthor,
+	AgentPersistedMessageDto,
+} from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
@@ -175,6 +179,7 @@ export interface ExecuteForTaskNowConfig {
 }
 
 export interface ExecuteForWakeConfig {
+	backgroundJobSignal: AgentBackgroundJobSignal;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -225,6 +230,7 @@ export interface StreamChatResponseConfig {
 	hideUserMessageFromTranscript?: boolean;
 	/** Complete ordered side effects before finalization releases the thread claim. */
 	beforeFinalize?: () => Promise<void>;
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -790,8 +796,16 @@ export class AgentExecutionOrchestratorService {
 	 * Throws when the run fails so the caller leaves the results pending.
 	 */
 	async executeForWake(config: ExecuteForWakeConfig, claim: AgentTurnClaim): Promise<void> {
-		const { agentId, projectId, message, memory, identity, abortSignal, markResultsConsumed } =
-			config;
+		const {
+			agentId,
+			projectId,
+			message,
+			memory,
+			identity,
+			abortSignal,
+			markResultsConsumed,
+			backgroundJobSignal,
+		} = config;
 		const isDraft = identity.type === 'draft';
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		const completionSignal = turnAbortSignal(claim, abortSignal);
@@ -834,6 +848,7 @@ export class AgentExecutionOrchestratorService {
 			includeHitlToolDetails: isDraft,
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
+			backgroundJobSignal,
 			beforeFinalize: async () => {
 				if (runError !== undefined) {
 					throw new OperationalError('Background job wake failed', {
@@ -907,6 +922,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			hideUserMessageFromTranscript,
 			beforeFinalize,
+			backgroundJobSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 		const turnSignal = turnAbortSignal(claim, abortSignal);
@@ -921,11 +937,12 @@ export class AgentExecutionOrchestratorService {
 			runtime = await getRuntime();
 			turnSignal.throwIfAborted();
 			const { agent: agentInstance, toolRegistry } = runtime;
-			recorder = this.createRecorder(toolRegistry, () => claim.executionId, {
-				projectId,
-				agentId,
-				threadId,
-			});
+			recorder = this.createRecorder(
+				toolRegistry,
+				() => claim.executionId,
+				{ projectId, agentId, threadId },
+				backgroundJobSignal,
+			);
 
 			const tracing = await this.agentRunTracingService.build({
 				agentId,
@@ -1073,17 +1090,22 @@ export class AgentExecutionOrchestratorService {
 		toolRegistry: ToolRegistry,
 		getExecutionId: () => string | undefined,
 		context: Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	): ExecutionRecorder {
-		return new ExecutionRecorder(toolRegistry, (timeline) => {
-			const executionId = getExecutionId();
-			if (executionId) {
-				this.agentExecutionService.recordTimelineSnapshot({
-					...context,
-					executionId,
-					timeline,
-				});
-			}
-		});
+		return new ExecutionRecorder(
+			toolRegistry,
+			(timeline) => {
+				const executionId = getExecutionId();
+				if (executionId) {
+					this.agentExecutionService.recordTimelineSnapshot({
+						...context,
+						executionId,
+						timeline,
+					});
+				}
+			},
+			backgroundJobSignal,
+		);
 	}
 
 	private async persistRecordedExecution(args: {

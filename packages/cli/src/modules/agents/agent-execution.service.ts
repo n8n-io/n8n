@@ -73,6 +73,8 @@ export type StartExecutionParams = Omit<
 	'record' | 'hitlStatus' | 'agentName'
 > & {
 	agentName: string;
+	/** Timeline stored with the row before clients learn that the run started. */
+	initialTimeline?: TimelineEvent[];
 };
 
 /** Claim context stored before the runtime starts. */
@@ -237,7 +239,8 @@ export class AgentExecutionService {
 				completionTokens: null,
 				totalTokens: null,
 				cost: null,
-				timeline: null,
+				// Save the background job signal before notifying clients that the execution started.
+				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 				storedAt: 'db',
 				error: null,
 				failureSummary: null,
