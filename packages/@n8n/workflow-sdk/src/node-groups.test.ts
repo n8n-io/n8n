@@ -1,9 +1,15 @@
-import { GROUP_DESCRIPTION_MAX_LENGTH, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+	MANUAL_TRIGGER_NODE_TYPE,
+	computeGroupFrameRects,
+} from 'n8n-workflow';
 
 import { generateWorkflowCode } from './codegen';
 import { parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 import type { GroupOptions, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
+import { DEFAULT_NODE_SIZE, NODE_X_SPACING } from './workflow-builder/constants';
 import { node, trigger } from './workflow-builder/node-builders/node-builder';
 import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
@@ -31,6 +37,31 @@ function buildGroupedWorkflow(options?: GroupOptions) {
 		.to(fetchNode)
 		.to(transform)
 		.group('Ingestion', [fetchNode, transform], options);
+}
+
+function collapsedGroupRectFromJson(json: WorkflowJSON, memberNames: string[]) {
+	const boxes = memberNames.map((name) => {
+		const member = json.nodes.find((candidate) => candidate.name === name);
+		if (!member) throw new Error(`Missing node ${name}`);
+
+		return {
+			x: member.position[0],
+			y: member.position[1],
+			width: DEFAULT_NODE_SIZE[0],
+			height: DEFAULT_NODE_SIZE[1],
+		};
+	});
+	const minX = Math.min(...boxes.map((box) => box.x));
+	const minY = Math.min(...boxes.map((box) => box.y));
+	const maxX = Math.max(...boxes.map((box) => box.x + box.width));
+	const maxY = Math.max(...boxes.map((box) => box.y + box.height));
+
+	return computeGroupFrameRects({
+		x: minX,
+		y: minY,
+		width: maxX - minX,
+		height: maxY - minY,
+	}).collapsed;
 }
 
 describe('SDK node groups', () => {
@@ -71,6 +102,34 @@ describe('SDK node groups', () => {
 			});
 			const json = workflow(WF_ID, 'wf').add(start).toJSON();
 			expect(json.nodeGroups).toBeUndefined();
+		});
+
+		it('uses collapsed group chips for tidy-up positions', () => {
+			const start = trigger({
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const intakeA = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'A' } });
+			const intakeB = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+			const deliverA = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'C' } });
+			const deliverB = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'D' } });
+
+			const json = workflow(WF_ID, 'wf')
+				.add(start)
+				.to(intakeA)
+				.to(intakeB)
+				.to(deliverA)
+				.to(deliverB)
+				.group('Intake', [intakeA, intakeB])
+				.group('Deliver', [deliverA, deliverB])
+				.toJSON({ tidyUp: true });
+
+			const intakeChip = collapsedGroupRectFromJson(json, ['A', 'B']);
+			const deliverChip = collapsedGroupRectFromJson(json, ['C', 'D']);
+
+			expect(deliverChip.y).toBe(intakeChip.y);
+			expect(deliverChip.x - intakeChip.x).toBe(GROUP_HEADER_WIDTH_COLLAPSED + NODE_X_SPACING);
 		});
 	});
 
@@ -235,6 +294,40 @@ describe('SDK node groups', () => {
 			// The source id is carried through, not re-derived — round-trip is lossless.
 			expect(json.nodeGroups).toEqual([
 				{ id: 'random-uuid', name: 'G', nodeIds: ['id-a', 'id-b'] },
+			]);
+		});
+
+		it('leaves explicit node positions untouched on a tidy-up round-trip with groups', () => {
+			const source: WorkflowJSON = {
+				id: WF_ID,
+				name: 'wf',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [80, 160],
+						parameters: {},
+					},
+					{
+						id: 'id-b',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [240, 160],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'random-uuid', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+			};
+
+			const json = workflow.fromJSON(source).toJSON({ tidyUp: true });
+
+			expect(json.nodes.map(({ name, position }) => [name, position])).toEqual([
+				['A', [80, 160]],
+				['B', [240, 160]],
 			]);
 		});
 
