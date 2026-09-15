@@ -18,6 +18,7 @@ import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
@@ -266,7 +267,11 @@ export function mapGroupsToVueFlowNodes({
 			connectable: isEmptyGroup && collapsed && !readOnly,
 			// Below member nodes and (when expanded) below stickies — see the
 			// stacking contract in canvasNodeGroups.constants.ts.
-			zIndex: collapsed ? GROUP_NODE_Z_INDEX_COLLAPSED : GROUP_NODE_Z_INDEX_EXPANDED,
+			zIndex: collapsed
+				? isEmptyGroup
+					? GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED
+					: GROUP_NODE_Z_INDEX_COLLAPSED
+				: GROUP_NODE_Z_INDEX_EXPANDED,
 			data,
 		});
 	}
