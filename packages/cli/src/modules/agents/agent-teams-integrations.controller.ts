@@ -1,8 +1,13 @@
-import type { TeamsAgentSetupState, TeamsDiscoveryState } from '@n8n/api-types';
+import type {
+	TeamsAgentSetupState,
+	TeamsCredentialCheck,
+	TeamsDiscoveryState,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
 import { TeamsDiscoveryService } from './integrations/platforms/teams/teams-discovery.service';
 import { TeamsSetupService } from './integrations/platforms/teams/teams-setup.service';
 
@@ -11,7 +16,23 @@ export class AgentTeamsIntegrationsController {
 	constructor(
 		private readonly setupService: TeamsSetupService,
 		private readonly discoveryService: TeamsDiscoveryService,
+		private readonly credentialCheckService: TeamsCredentialCheckService,
 	) {}
+
+	/**
+	 * Proves the credential can reach Microsoft before the channel is connected.
+	 * Connecting a credential that cannot mint a token leaves a channel that
+	 * looks connected and fails on the first message.
+	 */
+	@Post('/:agentId/integrations/teams/check/:credentialId')
+	@ProjectScope('agent:update')
+	async checkCredential(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<TeamsCredentialCheck> {
+		return await this.credentialCheckService.check(req.params.projectId, credentialId);
+	}
 
 	@Get('/:agentId/integrations/teams/setup')
 	@ProjectScope('agent:read')

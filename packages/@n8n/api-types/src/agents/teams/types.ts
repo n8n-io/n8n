@@ -60,6 +60,12 @@ export interface TeamsAgentSetupState {
 	botId: string | null;
 	/** Null until a credential is connected, because the template needs the client ID. */
 	deployToAzureUrl: string | null;
+	/**
+	 * The name the deployment gives the bot. Shown so the user can pick it out of
+	 * their Bot Services list — we cannot deep-link to the resource itself,
+	 * because its subscription and resource group are chosen at deploy time.
+	 */
+	suggestedBotName: string;
 }
 
 /**
@@ -82,3 +88,12 @@ export type TeamsDiscoveryState =
 			 */
 			existingCredentialId: string | null;
 	  };
+
+/**
+ * Result of checking that a credential can actually reach Microsoft, before the
+ * channel is connected. A wrong client secret otherwise surfaces only when the
+ * first message fails.
+ */
+export type TeamsCredentialCheck =
+	| { status: 'ok'; clientId: string }
+	| { status: 'failed'; reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' };

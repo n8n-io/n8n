@@ -50,10 +50,36 @@ export class TeamsArmTemplateService {
 			$schema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
 			contentVersion: '1.0.0.0',
 			parameters: {
-				botName: { type: 'string', defaultValue: this.buildBotName(options.agentId) },
-				msaAppId: { type: 'string', defaultValue: options.msaAppId },
-				msaAppTenantId: { type: 'string', defaultValue: options.msaAppTenantId },
-				messagingEndpoint: { type: 'string', defaultValue: options.messagingEndpoint },
+				botName: {
+					type: 'string',
+					defaultValue: this.buildBotName(options.agentName, options.agentId),
+					metadata: { description: 'Name of the Azure Bot resource. Must be globally unique.' },
+				},
+				// No `defaultValue` when unknown, deliberately: an empty default looks
+				// filled in, and the deployment then fails validation at the end with
+				// "Microsoft App ID is required". Omitting it makes the portal mark the
+				// field required and refuse to deploy until it is filled.
+				msaAppId: {
+					type: 'string',
+					...(options.msaAppId ? { defaultValue: options.msaAppId } : {}),
+					metadata: {
+						description:
+							'Application (client) ID of your Microsoft Entra app registration. Copy it from the app registration overview page.',
+					},
+				},
+				msaAppTenantId: {
+					type: 'string',
+					...(options.msaAppTenantId ? { defaultValue: options.msaAppTenantId } : {}),
+					metadata: {
+						description:
+							'Directory (tenant) ID of your Microsoft Entra app registration, on the same overview page.',
+					},
+				},
+				messagingEndpoint: {
+					type: 'string',
+					defaultValue: options.messagingEndpoint,
+					metadata: { description: 'Where Teams delivers messages. Filled in by n8n.' },
+				},
 				// Bot registrations are not regional.
 				location: { type: 'string', defaultValue: 'global' },
 				sku: { type: 'string', defaultValue: 'F0', allowedValues: ['F0', 'S1'] },
@@ -131,15 +157,26 @@ export class TeamsArmTemplateService {
 	}
 
 	/**
-	 * An Azure Bot resource name is globally unique, so the obvious name would
-	 * collide for the second person who tries it. The agent id makes it ours.
+	 * Named after the agent so it is recognisable in a subscription full of
+	 * resources, with a short digest appended because an Azure Bot resource name
+	 * is globally unique and the bare name would collide for the second person
+	 * who tried it.
 	 */
-	private buildBotName(agentId: string): string {
-		const suffix = createHmac('sha256', 'teams-bot-name')
-			.update(agentId)
-			.digest('hex')
-			.slice(0, 12);
-		return `n8n-agent-${suffix}`;
+	suggestedBotName(agentName: string, agentId: string): string {
+		return this.buildBotName(agentName, agentId);
+	}
+
+	private buildBotName(agentName: string, agentId: string): string {
+		const suffix = createHmac('sha256', 'teams-bot-name').update(agentId).digest('hex').slice(0, 8);
+		const slug = agentName
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '')
+			// Azure allows 64 characters; leave room for the digest and separator.
+			.slice(0, 40)
+			.replace(/-+$/, '');
+		// An Azure Bot name must start with a letter.
+		return /^[a-z]/.test(slug) ? `${slug}-${suffix}` : `n8n-agent-${suffix}`;
 	}
 
 	private sanitiseDisplayName(raw: string): string {

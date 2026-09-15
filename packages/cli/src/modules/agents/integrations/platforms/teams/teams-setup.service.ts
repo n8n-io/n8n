@@ -49,6 +49,7 @@ export class TeamsSetupService {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
 			botId: identity?.clientId ?? (await this.discoveredClientId(scope)),
 			deployToAzureUrl: this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId),
+			suggestedBotName: this.armTemplateService.suggestedBotName(agent.name, agent.id),
 		};
 	}
 

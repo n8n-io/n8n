@@ -1,4 +1,8 @@
-import type { TeamsAgentSetupState, TeamsDiscoveryState } from '@n8n/api-types';
+import type {
+	TeamsAgentSetupState,
+	TeamsCredentialCheck,
+	TeamsDiscoveryState,
+} from '@n8n/api-types';
 import { getBrowserId } from '@n8n/constants';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -34,6 +38,18 @@ export const stopTeamsDiscovery = async (
 	agentId: string,
 ): Promise<TeamsDiscoveryState> =>
 	await makeRestApiRequest(context, 'DELETE', `${integrationPath(projectId, agentId)}/discovery`);
+
+export const checkTeamsCredential = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<TeamsCredentialCheck> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/check/${credentialId}`,
+	);
 
 /**
  * Fetched rather than linked to. The session cookie is bound to a `browser-id`

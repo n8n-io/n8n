@@ -5,6 +5,7 @@ import { configure, fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import {
+	checkTeamsCredential,
 	fetchTeamsAppPackage,
 	getTeamsDiscovery,
 	getTeamsSetupState,
@@ -14,10 +15,15 @@ import {
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		// Keeps interpolated values assertable, since the key stands in for the copy.
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			options?.interpolate ? `${key} ${Object.values(options.interpolate).join(' ')}` : key,
+	}),
 }));
 
 vi.mock('./api', () => ({
+	checkTeamsCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
 	getTeamsDiscovery: vi.fn(),
 	startTeamsDiscovery: vi.fn(),
@@ -61,10 +67,12 @@ describe('AgentChannelTeamsSetup', () => {
 			messagingEndpointUrl: ENDPOINT,
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
+			suggestedBotName: 'support-bot-abc12345',
 		});
 		vi.mocked(startTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
 		vi.mocked(getTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
+		vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok', clientId: CLIENT_ID });
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -92,10 +100,10 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-create-bot-prerequisites')).toBeVisible());
 		});
 
-		it('keeps the plain portal link for someone who already has a bot', async () => {
+		it('offers the Entra registration the deployment depends on', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
-			await waitFor(() => expect(getByTestId('teams-azure-portal-link')).toBeVisible());
+			await waitFor(() => expect(getByTestId('teams-entra-register-link')).toBeVisible());
 		});
 	});
 
@@ -185,6 +193,13 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(container.textContent).toContain('connectBot.foundExisting'));
 		});
 
+		it('points at the bot by name, since the resource blade cannot be deep-linked', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-open-bot-link')).toBeVisible());
+			expect(getByTestId('teams-open-bot-hint').textContent).toContain('support-bot-abc12345');
+		});
+
 		it('offers a way out while listening', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
@@ -270,6 +285,7 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
+				suggestedBotName: 'support-bot-abc12345',
 			});
 
 			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
@@ -288,6 +304,7 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
+				suggestedBotName: 'support-bot-abc12345',
 			});
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
 
@@ -296,6 +313,37 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-download-package'));
 
 			await waitFor(() => expect(getByTestId('teams-download-error')).toBeVisible());
+		});
+
+		it('keeps connecting locked until the credential reaches Microsoft', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			expect(getByTestId('teams-connect')).toBeDisabled();
+		});
+
+		it('unlocks connecting once the credential checks out', async () => {
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+			expect(getByTestId('teams-connect')).not.toBeDisabled();
+		});
+
+		it('offers a retry when the check failed', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'unreachable',
+			});
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-credential-recheck')).toBeVisible());
+
+			vi.mocked(checkTeamsCredential).mockClear();
+			await fireEvent.click(getByTestId('teams-credential-recheck'));
+
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
 		});
 
 		it('keeps connecting for last, because the modal closes on it', async () => {
