@@ -158,7 +158,7 @@ export class RolesPublicController {
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Update a custom role')
 	@ApiDescription(
-		"Replaces a custom role's display name, description, and scopes. System roles cannot be updated, except for `project:personalOwner` in canvas-only mode: there you can remove the `credential:create` scope from it, or add that scope back. All its other properties stay fixed.",
+		"Replaces a custom role's display name, description, and scopes. System roles cannot be updated.",
 	)
 	@ApiTags(['Role'])
 	@ApiResponse(200, RolePublicDto)
