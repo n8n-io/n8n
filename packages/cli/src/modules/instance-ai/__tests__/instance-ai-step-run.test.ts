@@ -8,17 +8,18 @@ import {
 	buildToolAgentRequest,
 	collectAncestorNames,
 	declaredToolArguments,
+	isToolkitNode,
 	pinDataForStepRun,
 	planStepRun,
 	resolveStepRunRoots,
 	toExecutionItems,
 } from '../instance-ai-step-run';
 
-function node(name: string, options: { disabled?: boolean } = {}): INode {
+function node(name: string, options: { disabled?: boolean; type?: string } = {}): INode {
 	return {
 		id: name,
 		name,
-		type: 'n8n-nodes-base.noOp',
+		type: options.type ?? 'n8n-nodes-base.noOp',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
@@ -508,6 +509,23 @@ describe('tool arguments', () => {
 
 		it('returns nothing for a tool whose parameters are all static', () => {
 			expect(declaredToolArguments(node('Calculator'))).toEqual([]);
+		});
+	});
+
+	describe('isToolkitNode', () => {
+		it('is true for the MCP tool nodes, which hold several tools', () => {
+			expect(
+				isToolkitNode(node('MCP Client', { type: '@n8n/n8n-nodes-langchain.mcpClientTool' })),
+			).toBe(true);
+			expect(
+				isToolkitNode(node('Registry', { type: '@n8n/n8n-nodes-langchain.mcpRegistryClientTool' })),
+			).toBe(true);
+		});
+
+		it('is false for a node that supplies one tool', () => {
+			expect(
+				isToolkitNode(node('Calculator', { type: '@n8n/n8n-nodes-langchain.toolCalculator' })),
+			).toBe(false);
 		});
 	});
 

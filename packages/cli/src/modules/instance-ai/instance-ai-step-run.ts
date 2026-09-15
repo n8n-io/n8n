@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	mapConnectionsByDestination,
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	nodeNameToToolName,
 	traverseNodeParameters,
@@ -406,6 +408,22 @@ export function pinDataForStepRun(
 
 	if (kept.length === Object.keys(workflowPinData).length) return workflowPinData;
 	return Object.fromEntries(kept);
+}
+
+/**
+ * Node types that supply a toolkit — several tools behind one node — rather than
+ * one tool. The Tool Executor runs the member whose name matches `toolName` and
+ * skips every other, so a toolkit needs one named: without it nothing matches
+ * and the run returns no result and no error.
+ */
+const TOOLKIT_NODE_TYPES = new Set<string>([
+	MCP_CLIENT_TOOL_NODE_TYPE,
+	MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE,
+]);
+
+/** Whether this node holds several tools instead of one. */
+export function isToolkitNode(node: INode): boolean {
+	return TOOLKIT_NODE_TYPES.has(node.type);
 }
 
 /** Arguments a tool node expects an agent to fill, from its `$fromAI` calls. */
