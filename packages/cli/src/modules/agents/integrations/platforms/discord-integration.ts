@@ -466,11 +466,6 @@ export class DiscordIntegration extends AgentChatIntegration {
 		}
 	}
 
-	/**
-	 * Adapter-compatible logger that forwards only the message string into n8n.
-	 * Pinned adapter 4.28.1 attaches message text, IDs, signatures, and public
-	 * keys as metadata arguments — never forward those.
-	 */
 	// ---------------------------------------------------------------------------
 	// Credential extraction
 	// ---------------------------------------------------------------------------

@@ -184,6 +184,10 @@ Publish the agent, then message the bot in Teams.
   there, but none of it is tested.
 - Streaming (NODE-5967). Replies arrive as one buffered message.
 - A setup stepper (NODE-5966), which is what makes step 3 self-service.
-- Multi-tenant bots, certificate authentication, and sovereign clouds. Each is
-  rejected at connect with a message naming the problem, rather than failing
-  later against the wrong endpoint.
+- Certificate authentication and sovereign clouds. Both are rejected at connect
+  with a message naming the problem, rather than failing later against the wrong
+  endpoint.
+- Multi-tenant bots. This one is **not** detected: the credential always carries
+  a tenant ID, so the channel always drives the bot single-tenant. Register the
+  Azure bot as single-tenant, or the first message fails with an opaque
+  token-mint error.
