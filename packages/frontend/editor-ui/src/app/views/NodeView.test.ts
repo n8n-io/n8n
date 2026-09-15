@@ -340,6 +340,7 @@ describe('NodeView', () => {
 		const existing = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Existing' });
 		const pasted = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Pasted' });
 		const pastedJson = JSON.stringify({ nodes: [pasted], connections: {} });
+		const pastedNodeArrayJson = JSON.stringify([pasted]);
 
 		let deferred: (() => void | Promise<void>) | undefined;
 		// jsdom has no clipboard API. With `navigator.clipboard` present but no write
@@ -422,6 +423,25 @@ describe('NodeView', () => {
 				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
 			);
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+		});
+
+		it('pastes a top-level array of nodes', async () => {
+			renderNodeView();
+
+			pasteText(pastedNodeArrayJson);
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
 
 			await deferred?.();
 

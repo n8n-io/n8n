@@ -655,7 +655,10 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
 	} else {
 		// Pasted data is possible workflow data
-		workflowData = jsonParse<WorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
+		const parsedData = jsonParse<
+			WorkflowDataUpdate | NonNullable<WorkflowDataUpdate['nodes']> | null
+		>(plainTextData, { fallbackValue: null });
+		workflowData = Array.isArray(parsedData) ? { nodes: parsedData, connections: {} } : parsedData;
 	}
 
 	if (!workflowData) {
