@@ -31,6 +31,9 @@ const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 
 const renderComponent = createComponentRenderer(AgentChannelTeamsSetup);
 
+// N8nSwitch2 is a Reka UI switch: a button with aria-checked, not an input.
+const checkedSwitch = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true';
+
 const props = (overrides: Record<string, unknown> = {}) => ({
 	mode: 'setup' as const,
 	modelValue: '',
@@ -143,9 +146,6 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('step 3, availability', () => {
-		// N8nCheckbox is a Reka UI checkbox: a button with aria-checked, not an input.
-		const checked = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true';
-
 		it('shows direct chat as fixed, with no control to change it', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
@@ -157,8 +157,8 @@ describe('AgentChannelTeamsSetup', () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
-			expect(checked(getByTestId('teams-scope-channels'))).toBe(false);
-			expect(checked(getByTestId('teams-scope-groups'))).toBe(false);
+			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
+			expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(false);
 		});
 
 		it('summarises each panel, so a collapsed one still says what it is set to', async () => {
@@ -199,11 +199,11 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-scope-channels'));
 			await waitFor(() => expect(getByTestId('teams-read-channels')).not.toBeDisabled());
 			await fireEvent.click(getByTestId('teams-read-channels'));
-			await waitFor(() => expect(checked(getByTestId('teams-read-channels'))).toBe(true));
+			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true));
 
 			await fireEvent.click(getByTestId('teams-scope-channels'));
 
-			await waitFor(() => expect(checked(getByTestId('teams-read-channels'))).toBe(false));
+			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(false));
 		});
 
 		it('restores saved settings', async () => {
@@ -211,8 +211,8 @@ describe('AgentChannelTeamsSetup', () => {
 				props: props({ savedSettings: { teamChannels: true, readAllChannelMessages: true } }),
 			});
 
-			await waitFor(() => expect(checked(getByTestId('teams-scope-channels'))).toBe(true));
-			expect(checked(getByTestId('teams-read-channels'))).toBe(true);
+			await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true));
+			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
 	});
 
@@ -303,18 +303,85 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 	});
 
-	describe('edit mode', () => {
-		it('shows the endpoint URL and nothing from the setup steps', async () => {
-			const { container, queryByTestId } = renderComponent({
-				props: props({ mode: 'edit', connected: true }),
+	describe('settings', () => {
+		const settingsProps = (overrides: Record<string, unknown> = {}) =>
+			props({ mode: 'edit', connected: true, modelValue: 'cred-1', ...overrides });
+
+		it('says that changes here mean downloading the package again', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-update-notice')).toBeVisible());
+		});
+
+		it('lets the app name and description be changed after setup', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-display-name')).toBeVisible());
+			expect(getByTestId('teams-description')).toBeVisible();
+		});
+
+		it('starts the availability panels collapsed, summarised', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
+			// Rendered but folded away, so settings opens on the summary rather than
+			// on five controls.
+			expect(getByTestId('teams-scope-channels')).not.toBeVisible();
+			expect(getByTestId('teams-reading-summary')).toBeVisible();
+		});
+
+		it('restores saved settings, including the app identity', async () => {
+			const { getByTestId } = renderComponent({
+				props: settingsProps({
+					savedSettings: {
+						displayName: 'Support',
+						description: 'Answers questions',
+						teamChannels: true,
+					},
+				}),
 			});
 
-			await waitFor(() => {
-				expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(ENDPOINT);
+			await waitFor(() =>
+				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue('Support'),
+			);
+			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
+				'Answers questions',
+			);
+			// Mounted while collapsed, so its state is readable without expanding.
+			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
+		});
+
+		it('offers the package again, so a change can be applied', async () => {
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: CLIENT_ID,
+				deployToAzureUrl: DEPLOY_URL,
+				suggestedBotName: 'support-bot-abc12345',
 			});
-			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
-			expect(queryByTestId('teams-discovery-listening')).toBeNull();
-			expect(queryByTestId('teams-scope-channels')).toBeNull();
+
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+		});
+
+		it('keeps the endpoint URL tucked away here too', async () => {
+			const { getByTestId, container } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-show-endpoint')).toBeVisible());
+			expect(container.querySelector('#teams-messaging-endpoint-url')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-show-endpoint'));
+
+			await waitFor(() =>
+				expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(ENDPOINT),
+			);
+		});
+
+		it('shows nothing from the setup steps', async () => {
+			const { queryByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(queryByTestId('teams-deploy-to-azure')).toBeNull());
+			expect(queryByTestId('teams-entra-register-link')).toBeNull();
 		});
 	});
 

@@ -83,7 +83,8 @@ export class TeamsSetupService {
 			agentId: agent.id,
 			botId,
 			agentUpdatedAt: agent.updatedAt,
-			availability: this.availabilityOf(agent),
+			availability: this.teamsSettingsOf(agent),
+			identity: this.teamsSettingsOf(agent),
 		});
 	}
 
@@ -121,12 +122,11 @@ export class TeamsSetupService {
 	}
 
 	/**
-	 * The availability toggles live on the connected integration, because they
-	 * are what the user chose for this agent's Teams app.
+	 * The app's settings live on the connected integration, because they are what
+	 * the user chose for this agent's Teams app rather than for the agent itself.
 	 */
-	private availabilityOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
-		const integration = agent.integrations?.find((item) => item.type === 'teams');
-		return integration?.settings;
+	private teamsSettingsOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
+		return agent.integrations?.find((item) => item.type === 'teams')?.settings;
 	}
 
 	private async getAgent(scope: AgentScope): Promise<Agent> {

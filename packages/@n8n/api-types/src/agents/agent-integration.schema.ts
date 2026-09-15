@@ -92,9 +92,19 @@ export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsS
  * Both reads default off. Without them Teams delivers only @mentions in a
  * shared conversation; with them every message arrives.
  */
+/** Teams rejects a longer short name or short description outright. */
+export const TEAMS_DISPLAY_NAME_MAX = 30;
+export const TEAMS_DESCRIPTION_MAX = 80;
+
 export const AgentTeamsSettingsSchema = z
 	.object({
 		sessionIdleTimeoutMinutes,
+		/**
+		 * How the app appears in Teams. Both fall back to the agent's own name
+		 * when unset, so a first setup needs neither.
+		 */
+		displayName: z.string().trim().min(1).max(TEAMS_DISPLAY_NAME_MAX).optional(),
+		description: z.string().trim().min(1).max(TEAMS_DESCRIPTION_MAX).optional(),
 		teamChannels: z.boolean().optional(),
 		groupChats: z.boolean().optional(),
 		readAllChannelMessages: z.boolean().optional(),

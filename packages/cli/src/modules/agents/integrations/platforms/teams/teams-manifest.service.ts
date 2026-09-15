@@ -41,6 +41,8 @@ export interface BuildTeamsManifestOptions {
 		AgentTeamsIntegrationSettings,
 		'teamChannels' | 'groupChats' | 'readAllChannelMessages' | 'readAllGroupMessages'
 	>;
+	/** How the app appears in Teams. Both fall back to the agent's name. */
+	identity?: Pick<AgentTeamsIntegrationSettings, 'displayName' | 'description'>;
 }
 
 /**
@@ -64,7 +66,9 @@ const READ_PERMISSIONS = [
 @Service()
 export class TeamsManifestService {
 	buildManifest(options: BuildTeamsManifestOptions): TeamsAgentAppManifest {
-		const appName = this.sanitiseName(options.agentName);
+		const appName = this.sanitiseName(options.identity?.displayName ?? options.agentName);
+		const shortDescription =
+			options.identity?.description ?? `Chat with ${appName}, an agent powered by n8n.`;
 		return {
 			$schema: MANIFEST_SCHEMA,
 			manifestVersion: MANIFEST_VERSION,
@@ -82,14 +86,8 @@ export class TeamsManifestService {
 				full: this.truncate(appName, LIMITS.fullName),
 			},
 			description: {
-				short: this.truncate(
-					`Chat with ${appName}, an agent powered by n8n.`,
-					LIMITS.shortDescription,
-				),
-				full: this.truncate(
-					`${appName} is an AI agent built in n8n. Send it a direct message in Microsoft Teams and it replies in the same conversation.`,
-					LIMITS.fullDescription,
-				),
+				short: this.truncate(shortDescription, LIMITS.shortDescription),
+				full: this.truncate(shortDescription, LIMITS.fullDescription),
 			},
 			icons: {
 				color: 'color.png',

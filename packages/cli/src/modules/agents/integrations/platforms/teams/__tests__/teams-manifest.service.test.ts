@@ -236,6 +236,37 @@ describe('TeamsManifestService', () => {
 			expect(read(manifest).length).toBeLessThanOrEqual(limit);
 		});
 
+		describe('app identity', () => {
+			it('uses the agent name when nothing overrides it', () => {
+				expect(service.buildManifest(options()).name.short).toBe('Support Bot');
+			});
+
+			it('prefers the name chosen for Teams', () => {
+				const manifest = service.buildManifest(
+					options({ identity: { displayName: 'Support desk' } }),
+				);
+
+				expect(manifest.name.short).toBe('Support desk');
+				expect(manifest.description.short).toContain('Support desk');
+			});
+
+			it('prefers the description chosen for Teams', () => {
+				const manifest = service.buildManifest(
+					options({ identity: { description: 'Answers questions about orders' } }),
+				);
+
+				expect(manifest.description.short).toBe('Answers questions about orders');
+			});
+
+			it('still truncates an override to the Teams limits', () => {
+				const manifest = service.buildManifest(
+					options({ identity: { displayName: 'A'.repeat(200) } }),
+				);
+
+				expect(manifest.name.short.length).toBeLessThanOrEqual(30);
+			});
+		});
+
 		it('falls back to a default name when the agent name has no usable characters', () => {
 			expect(service.buildManifest(options({ agentName: '🎉🎉🎉' })).name.short).toBe('n8n Agent');
 		});
