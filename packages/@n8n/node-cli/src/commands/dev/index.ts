@@ -10,6 +10,7 @@ import {
 	createSpinner,
 	readPackageName,
 	runCommands,
+	type ReloadStatus,
 	triggerReload,
 	waitForN8n,
 	watchStaticFiles,
@@ -40,7 +41,7 @@ export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
-		'<%= config.bin %> <%= command.id %> --n8n-image docker.n8n.io/n8nio/n8n:2.20.7',
+		'<%= config.bin %> <%= command.id %> --n8n-image docker.n8n.io/n8nio/n8n:VERSION',
 		'<%= config.bin %> <%= command.id %> --n8n-image n8nio/n8n:local',
 		'<%= config.bin %> <%= command.id %> --external-n8n',
 	];
@@ -54,7 +55,7 @@ export default class Dev extends Command {
 			default: 'docker.n8n.io/n8nio/n8n:latest',
 			env: 'N8N_NODE_DEV_IMAGE',
 			description:
-				'Image reference to run. Pin a version by tagging it (e.g. docker.n8n.io/n8nio/n8n:2.20.7), or point at a locally built image (e.g. n8nio/n8n:local).',
+				'Image reference to run. Pin a version by tagging it (e.g. docker.n8n.io/n8nio/n8n:VERSION), or point at a locally built image (e.g. n8nio/n8n:local). Hot reload needs an image whose n8n serves POST /rest/dev/reload.',
 		}),
 		'n8n-url': Flags.string({
 			default: 'http://localhost:5678',
@@ -166,13 +167,20 @@ export default class Dev extends Command {
 			);
 		}
 
+		// Rendered in the help line: a failed reload must be visible next to the
+		// clean compile that triggered it.
+		let lastReload: ReloadStatus | undefined;
+		const reload = async () => {
+			lastReload = { at: new Date(), result: await triggerReload(baseUrl) };
+		};
+
 		commandsList.unshift({
 			cmd: packageManager,
 			args: ['exec', '--', 'tsc', '--watch', '--pretty'],
 			name: 'TypeScript Build (watching)',
 			onOutput: (line: string) => {
 				// tsc --watch prints this after every clean emit
-				if (line.includes('Found 0 errors')) void triggerReload(baseUrl);
+				if (line.includes('Found 0 errors')) void reload();
 			},
 		});
 
@@ -182,11 +190,11 @@ export default class Dev extends Command {
 			// The first clean compile can land before n8n serves /rest/dev/reload, so that
 			// reload is lost. This one fires exactly once, after n8n answers. A reload only
 			// re-reads what is already on disk, so doing it unconditionally is safe.
-			if (ready) await triggerReload(baseUrl);
+			if (ready) await reload();
 		});
 
 		watchStaticFiles(() => {
-			void copyStaticFiles().then(async () => await triggerReload(baseUrl));
+			void copyStaticFiles().then(reload);
 		});
 
 		const headerText = [await getCommandHeader('n8n-node dev'), ...notes].join('\n');
@@ -194,7 +202,7 @@ export default class Dev extends Command {
 		runCommands({
 			commands: commandsList,
 			keyHandlers: [createOpenN8nHandler(baseUrl)],
-			helpText: () => buildHelpText(true, n8nReady),
+			helpText: () => buildHelpText(true, n8nReady, lastReload),
 			headerText,
 		});
 	}
