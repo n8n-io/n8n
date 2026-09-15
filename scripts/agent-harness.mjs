@@ -23,6 +23,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export function validateLock(lock) {
 	if (
 		lock?.repository !== REPOSITORY ||
+		!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(lock.version) ||
 		lock.releaseTag !== `harness-v${lock.version}` ||
 		lock.assetName !== `n8n-opencode-harness-${lock.version}.tgz` ||
 		!/^[0-9a-f]{64}$/.test(lock.sha256)
@@ -98,6 +99,7 @@ export function installAgentHarness({
 	const pluginPath = join(bundlePath, 'plugins', PLUGIN_FILE);
 	mkdirSync(cacheRoot, { recursive: true });
 
+	// The version cache is write-once and trusted after its checksum succeeds.
 	const cacheHit = existsSync(pluginPath);
 	if (!cacheHit) {
 		const stagingRoot = mkdtempSync(join(cacheRoot, '.install-'));
@@ -109,6 +111,7 @@ export function installAgentHarness({
 			if (sha256File(archivePath) !== lock.sha256) {
 				throw new Error('Agent harness checksum mismatch.');
 			}
+			// Cat-bot validates archive contents before publishing these pinned bytes.
 			extract(archivePath, stagedVersion);
 			if (!existsSync(join(stagedVersion, BUNDLE_ROOT, 'plugins', PLUGIN_FILE))) {
 				throw new Error(`The agent harness bundle has no ${PLUGIN_FILE} plugin.`);

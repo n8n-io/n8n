@@ -81,7 +81,15 @@ test('validates the pinned release values', () => {
 		sha256: 'a'.repeat(64),
 	};
 	assert.equal(validateLock(lock), lock);
-	assert.throws(() => validateLock({ ...lock, releaseTag: 'latest' }), /lock is invalid/);
+	for (const invalid of [
+		{ repository: 'other/repo' },
+		{ releaseTag: 'latest' },
+		{ version: '../outside' },
+		{ assetName: 'other.tgz' },
+		{ sha256: 'invalid' },
+	]) {
+		assert.throws(() => validateLock({ ...lock, ...invalid }), /lock is invalid/);
+	}
 });
 
 test('installs the verified release and activates its plugin', () => {
