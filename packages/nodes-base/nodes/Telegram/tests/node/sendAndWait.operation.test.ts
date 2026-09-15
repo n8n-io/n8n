@@ -84,6 +84,60 @@ describe('Test Telegram, message => sendAndWait', () => {
 		});
 	});
 
+	it('should omit parse_mode and attribution footer when appendAttribution is false', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('Workflow: My_Workflow');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ appendAttribution: false }); // options
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options.limitWaitTime.values
+
+		const result = await telegram.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([items]);
+		expect(genericFunctions.apiRequest).toHaveBeenCalledTimes(1);
+		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
+
+		expect(genericFunctions.apiRequest).toHaveBeenCalledWith('POST', 'sendMessage', {
+			chat_id: 'chatID',
+			disable_web_page_preview: true,
+			reply_markup: {
+				inline_keyboard: [
+					[
+						{
+							text: 'Approve',
+							url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+						},
+					],
+				],
+			},
+			text: 'Workflow: My_Workflow',
+		});
+
+		const [, , body] = (genericFunctions.apiRequest as Mock).mock.calls[0] as [
+			string,
+			string,
+			Record<string, unknown>,
+		];
+		expect(body).not.toHaveProperty('parse_mode');
+		expect(body.text).not.toContain('This message was sent automatically with');
+	});
+
 	it('should route API errors to error output when continueOnFail is true', async () => {
 		const items = [{ json: { data: 'test' } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
@@ -186,5 +240,35 @@ describe('createSendAndWaitMessageBody - chat approval callback references', () 
 
 		expect(decisionForLabel('Approve')).toBe('a');
 		expect(decisionForLabel('Decline')).toBe('d');
+	});
+
+	it('omits parse_mode and attribution footer when appendAttribution is false', () => {
+		const context = mock<IExecuteFunctions>();
+		context.getInstanceId.mockReturnValue('instanceId');
+		context.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		context.getNodeParameter.mockImplementation((name: string) => {
+			switch (name) {
+				case 'chatId':
+					return 'chatID';
+				case 'message':
+					return 'Workflow: My_Workflow';
+				case 'subject':
+					return 'my subject';
+				case 'options':
+					return { appendAttribution: false };
+				case 'responseType':
+					return 'approval';
+				default:
+					return {};
+			}
+		});
+
+		const body = genericFunctions.createSendAndWaitMessageBody(context);
+
+		expect(body.text).toBe('Workflow: My_Workflow');
+		expect(body).not.toHaveProperty('parse_mode');
+		expect(body.text).not.toContain('This message was sent automatically with');
 	});
 });
