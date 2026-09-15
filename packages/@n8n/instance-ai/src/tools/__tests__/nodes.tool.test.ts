@@ -739,6 +739,107 @@ describe('nodes tool', () => {
 			expect(executeNodeService.execute).not.toHaveBeenCalled();
 		});
 
+		/** Mirrors Google Sheets: `create` is an operation of both resources, with its own label. */
+		const splitNodeDescription = {
+			name: 'n8n-nodes-base.googleSheets',
+			displayName: 'Google Sheets',
+			properties: [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'options',
+					default: 'sheet',
+					options: [
+						{ name: 'Document', value: 'spreadsheet' },
+						{ name: 'Sheet Within Document', value: 'sheet' },
+					],
+				},
+				{
+					name: 'operation',
+					displayName: 'Operation',
+					type: 'options',
+					default: 'read',
+					displayOptions: { show: { resource: ['sheet'] } },
+					options: [
+						{ name: 'Create Sheet', value: 'create' },
+						{ name: 'Get Row(s)', value: 'read' },
+					],
+				},
+				{
+					name: 'operation',
+					displayName: 'Operation',
+					type: 'options',
+					default: 'create',
+					displayOptions: { show: { resource: ['spreadsheet'] } },
+					options: [{ name: 'Create Document', value: 'create' }],
+				},
+			],
+		};
+
+		async function suspendMessageFor(
+			parameters: Record<string, unknown>,
+			description: unknown = splitNodeDescription,
+		) {
+			const suspendFn = vi.fn();
+			const context = createMockContext({ executeNodeService: { execute: vi.fn() } });
+			(context.nodeService.getDescription as Mock).mockResolvedValue(description);
+
+			await executeTool(
+				createNodesTool(context, 'full'),
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: { parameters },
+				} as never,
+				{ suspend: suspendFn } as never,
+			);
+
+			return suspendFn.mock.calls[0][0].message;
+		}
+
+		it('should use the display names of node, resource and operation in the confirmation message', async () => {
+			expect(await suspendMessageFor({ resource: 'sheet', operation: 'create' })).toBe(
+				'Execute node Google Sheets > Sheet Within Document > Create Sheet',
+			);
+		});
+
+		it('should label a shared operation value by the resource it belongs to', async () => {
+			expect(await suspendMessageFor({ resource: 'spreadsheet', operation: 'create' })).toBe(
+				'Execute node Google Sheets > Document > Create Document',
+			);
+		});
+
+		it('should fall back to the node defaults for omitted discriminators', async () => {
+			expect(await suspendMessageFor({ operation: 'create' })).toBe(
+				'Execute node Google Sheets > Sheet Within Document > Create Sheet',
+			);
+			expect(await suspendMessageFor({})).toBe(
+				'Execute node Google Sheets > Sheet Within Document > Get Row(s)',
+			);
+		});
+
+		it('should fall back to raw values when the node description does not resolve', async () => {
+			const suspendFn = vi.fn();
+			const context = createMockContext({ executeNodeService: { execute: vi.fn() } });
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not found'));
+
+			await executeTool(
+				createNodesTool(context, 'full'),
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.slack',
+					version: 2.3,
+					config: { parameters: { resource: 'message', operation: 'post' } },
+				} as never,
+				{ suspend: suspendFn } as never,
+			);
+
+			expect(suspendFn.mock.calls[0][0].message).toBe(
+				'Execute node n8n-nodes-base.slack > message > post',
+			);
+		});
+
 		it('should deny without suspending when the admin policy blocks workflow runs', async () => {
 			const executeNodeService = { execute: vi.fn() };
 			const suspendFn = vi.fn();

@@ -3364,6 +3364,7 @@ export class InstanceAiAdapterService {
 								name: String(o.name),
 								value: o.value,
 							})),
+						...(p.displayOptions ? { displayOptions: p.displayOptions } : {}),
 					})),
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,

@@ -30,6 +30,7 @@ import type {
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
+	IDisplayOptions,
 	INodeInputConfiguration,
 	INodeTypes,
 	ITaskData,
@@ -324,6 +325,7 @@ export interface NodeDescription extends NodeSummary {
 		description?: string;
 		default?: unknown;
 		options?: Array<{ name: string; value: string | number | boolean }>;
+		displayOptions?: IDisplayOptions;
 	}>;
 	credentials?: Array<{
 		name: string;

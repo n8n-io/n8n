@@ -21,7 +21,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, NodeDescription } from '../types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
@@ -463,6 +463,59 @@ async function handleExploreResources(
 	}
 }
 
+/** True when the property is not gated on `resource`, or is gated on the resolved one. */
+function isShownForResource(
+	property: NodeDescription['properties'][number],
+	resource: string | undefined,
+): boolean {
+	const shownFor = property.displayOptions?.show?.resource;
+	if (!Array.isArray(shownFor)) return true;
+	return resource !== undefined && shownFor.includes(resource);
+}
+
+/**
+ * Human-readable subject for the execute-node approval prompt, e.g.
+ * `Google Sheets > Sheet Within Document > Append Row`. Falls back to the node type ID and
+ * the raw parameter values when the node description or its option lists don't resolve.
+ */
+async function buildExecuteNodeLabel(
+	context: InstanceAiContext,
+	input: ExecuteInput,
+): Promise<string> {
+	let description: NodeDescription | undefined;
+	try {
+		description = await context.nodeService.getDescription(input.type, input.version);
+	} catch {
+		// Keep the raw node type in the prompt.
+	}
+	const properties = description?.properties ?? [];
+
+	/**
+	 * A split node declares one `operation` property for each resource, so the same operation
+	 * value can carry a different label under another resource — only the properties shown for
+	 * the resolved resource may name it. An omitted discriminator falls back to the node default
+	 * at runtime, so the prompt resolves it the same way and names the call the user really gets.
+	 */
+	const resolveDiscriminator = (name: string, resource?: string) => {
+		const declaredBy = properties.filter(
+			(property) => property.name === name && isShownForResource(property, resource),
+		);
+		const value = input.config.parameters[name] ?? declaredBy[0]?.default;
+		if (typeof value !== 'string' || value.length === 0) return undefined;
+		const option = declaredBy
+			.flatMap((property) => property.options ?? [])
+			.find((candidate) => candidate.value === value);
+		return { value, label: option?.name ?? value };
+	};
+
+	const resource = resolveDiscriminator('resource');
+	const operation = resolveDiscriminator('operation', resource?.value);
+
+	return [description?.displayName ?? input.type, resource?.label, operation?.label]
+		.filter(Boolean)
+		.join(' > ');
+}
+
 async function handleExecute(
 	context: InstanceAiContext,
 	rawInput: ExecuteInput,
@@ -525,7 +578,7 @@ async function handleExecute(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute node ${input.type}`,
+			message: `Execute node ${await buildExecuteNodeLabel(context, input)}`,
 			severity: 'warning' as const,
 		});
 	}
