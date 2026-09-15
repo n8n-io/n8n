@@ -78,6 +78,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
+	PENDING_AGENT_ID_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
@@ -95,10 +96,7 @@ import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import {
-	INSTANCE_AI_PENDING_AGENT_ID_STATE,
-	INSTANCE_AI_VIEW,
-} from '@/features/ai/instanceAi/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
@@ -199,12 +197,11 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
-const pendingAgentIdFromHistory = (history.state as Record<string, unknown>)[
-	INSTANCE_AI_PENDING_AGENT_ID_STATE
-];
-const routePendingAgentId = ref(
-	typeof pendingAgentIdFromHistory === 'string' ? pendingAgentIdFromHistory : null,
-);
+function readPendingAgentIdFromHistory(): string | null {
+	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
+	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+}
+const routePendingAgentId = ref(readPendingAgentIdFromHistory());
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
@@ -240,6 +237,11 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
 watch(agentId, () => {
+	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
+	// component instance, so `history.state` — just updated by that navigation —
+	// must be re-read here, before `isRouteAgentPending` (read below, and by the
+	// `initialize()` watcher) reflects the new agent instead of the mounted one.
+	routePendingAgentId.value = readPendingAgentIdFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
 });
 const isAiPanelOpen = computed({
@@ -939,8 +941,8 @@ const persistedAgentsByTarget = new Map<string, AgentResource>();
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
 	const historyState = history.state as Record<string, unknown>;
-	if (historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE] !== targetAgentId) return;
-	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
+	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
+	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
 	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
