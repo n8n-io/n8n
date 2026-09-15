@@ -609,6 +609,8 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `nodeName` | string | yes | — | Node to run |
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
+| `toolName` | string | no | the node's tool | Which tool of a toolkit node (MCP Client Tool, a HITL tool) to run |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
@@ -636,6 +638,39 @@ at the first node with no run data. `mockedNodeNames` lists them. A
 placeholder on an upstream IF or Switch picks a branch that real data may pick
 differently, which is why a mocked step is never evidence that the workflow
 works.
+
+**Sub-node targets**: a tool has no main input, and the engine never runs one on
+its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
+Executor that inherits that node's main parents, then runs the tool from there.
+So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
+input, and `reuseExecutionId` replays the Agent's ancestors. The result names
+the node it ran through in `ranThroughNodeNames`. A chain run on a tool runs
+every node above the Agent, so supply `reuseExecutionId` or `mockInput` when one
+of those nodes writes.
+
+`toolArguments` supplies what the agent would normally decide — the values
+behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
+a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
+as a tool). It is **required** when the node declares `$fromAI` arguments: the
+action refuses the run rather than execute the tool on empty arguments and
+report a failure that says nothing about the user's problem. A toolkit node (MCP
+Client Tool, a HITL tool) holds several tools, so name one with `toolName` — the
+Tool Executor skips every member whose name does not match, and the run returns
+nothing.
+
+Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
+runs those only as part of the node that owns them, so the action points the
+caller at that node instead of starting a run that cannot work.
+
+**Refusals**: the action fails, and starts nothing, rather than run something
+whose result would mislead:
+
+- a `reuseExecutionId` whose execution holds no data for any node above the
+  target — falling back to a chain run would execute those nodes for real, which
+  is what asking for replayed input rules out;
+- a tool that declares `$fromAI` arguments with no `toolArguments`;
+- a sub-node that is not a tool;
+- `toolArguments` or `toolName` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
 mocked mode replaced, come off this run's copy — a pinned node never

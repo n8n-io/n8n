@@ -208,6 +208,12 @@ export interface StepExecutionResult extends ExecutionResult {
 	replayedNodeNames?: string[];
 	/** Execution the replayed run data came from. */
 	reusedFromExecutionId?: string;
+	/**
+	 * Nodes the step ran through, when the target is a sub-node (a tool, a model,
+	 * a memory). The engine runs a sub-node from the node that owns it, so the
+	 * input came from that node's input, and `mockInput` fed that node.
+	 */
+	ranThroughNodeNames?: string[];
 }
 
 export interface NodeOutputBranch {
@@ -625,6 +631,9 @@ export interface InstanceAiExecutionService {
 	 * - neither option — run every ancestor that has no data yet, then the target.
 	 * - `mockInput` — supply the input and skip the ancestors entirely.
 	 *
+	 * A sub-node has no input of its own, so these options apply to the node that
+	 * runs it. A tool's own arguments come from `toolArguments` instead.
+	 *
 	 * The first two say something about the workflow, because the input is data
 	 * the workflow really produced. `mockInput` says something about the node
 	 * alone, which is what you want when isolating it — but a caller must not
@@ -644,6 +653,14 @@ export interface InstanceAiExecutionService {
 			 * Applied to each of the target's direct inputs.
 			 */
 			mockInput?: Array<Record<string, unknown>>;
+			/**
+			 * Arguments for a tool target — the values an agent would fill from its
+			 * `$fromAI` calls. A string for a tool that takes one free-text input.
+			 * Without it the tool runs with empty arguments.
+			 */
+			toolArguments?: Record<string, unknown> | string;
+			/** Which tool of a toolkit node (MCP Client Tool, a HITL tool) to run. */
+			toolName?: string;
 			/** Run a past version's graph instead of the current draft. */
 			versionId?: string;
 			timeout?: number;
