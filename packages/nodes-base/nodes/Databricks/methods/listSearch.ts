@@ -432,17 +432,19 @@ const JOBS_SEARCH_MAX_PAGES = 10;
 type JobSummary = { job_id: number; settings?: { name?: string } };
 type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
-async function fetchJobsPage(
+async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: 'databricksApi' | 'databricksOAuth2Api',
 	host: string,
+	path: string,
+	limit: number,
 	pageToken?: string,
-): Promise<JobsListPage> {
-	const qs: IDataObject = { limit: JOBS_PAGE_SIZE };
+): Promise<T> {
+	const qs: IDataObject = { limit };
 	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<JobsListPage>(context, credentialType, {
+	return await listRequest<T>(context, credentialType, {
 		method: 'GET',
-		url: `${host}/api/2.2/jobs/list`,
+		url: `${host}${path}`,
 		qs,
 		headers: { Accept: 'application/json' },
 		json: true,
@@ -462,8 +464,18 @@ export async function getJobs(
 		url: `${host}/jobs/${job.job_id}`,
 	});
 
+	const fetchPage = async (pageToken?: string) =>
+		await fetchListPage<JobsListPage>(
+			this,
+			credentialType,
+			host,
+			'/api/2.2/jobs/list',
+			JOBS_PAGE_SIZE,
+			pageToken,
+		);
+
 	if (!filter) {
-		const page = await fetchJobsPage(this, credentialType, host, paginationToken);
+		const page = await fetchPage(paginationToken);
 		return { results: (page.jobs ?? []).map(toListItem), paginationToken: page.next_page_token };
 	}
 
@@ -472,7 +484,7 @@ export async function getJobs(
 	const results: INodeListSearchResult['results'] = [];
 	let pageToken = paginationToken;
 	for (let page = 0; page < JOBS_SEARCH_MAX_PAGES && (page === 0 || pageToken); page++) {
-		const response = await fetchJobsPage(this, credentialType, host, pageToken);
+		const response = await fetchPage(pageToken);
 		results.push(
 			...(response.jobs ?? [])
 				.filter((job) => (job.settings?.name ?? '').toLowerCase().includes(filterLower))
@@ -488,23 +500,6 @@ const RUNS_PAGE_SIZE = 25;
 const RUNS_SEARCH_MAX_PAGES = 10;
 
 type RunsListPage = { runs?: DatabricksJobRun[]; next_page_token?: string };
-
-async function fetchRunsPage(
-	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
-	host: string,
-	pageToken?: string,
-): Promise<RunsListPage> {
-	const qs: IDataObject = { limit: RUNS_PAGE_SIZE };
-	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<RunsListPage>(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.2/jobs/runs/list`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
-}
 
 function describeRun(run: DatabricksJobRun): string {
 	const state = run.status?.state ?? run.state?.life_cycle_state;
@@ -530,8 +525,18 @@ export async function getRuns(
 		url: run.run_page_url,
 	});
 
+	const fetchPage = async (pageToken?: string) =>
+		await fetchListPage<RunsListPage>(
+			this,
+			credentialType,
+			host,
+			'/api/2.2/jobs/runs/list',
+			RUNS_PAGE_SIZE,
+			pageToken,
+		);
+
 	if (!filter) {
-		const page = await fetchRunsPage(this, credentialType, host, paginationToken);
+		const page = await fetchPage(paginationToken);
 		return { results: (page.runs ?? []).map(toListItem), paginationToken: page.next_page_token };
 	}
 
@@ -539,7 +544,7 @@ export async function getRuns(
 	const results: INodeListSearchResult['results'] = [];
 	let pageToken = paginationToken;
 	for (let page = 0; page < RUNS_SEARCH_MAX_PAGES && (page === 0 || pageToken); page++) {
-		const response = await fetchRunsPage(this, credentialType, host, pageToken);
+		const response = await fetchPage(pageToken);
 		results.push(
 			...(response.runs ?? [])
 				.map(toListItem)

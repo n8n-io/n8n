@@ -52,6 +52,7 @@ describe('Job -> Get Run Output', () => {
 		};
 		const context = mockDeep<IExecuteFunctions>();
 		context.getNode.mockReturnValue(node);
+		context.getInputData.mockReturnValue([]);
 		context.getExecutionCancelSignal.mockReturnValue(undefined);
 		context.getNodeParameter.mockImplementation((name, index) =>
 			index === itemIndex ? parameters[name] : undefined,

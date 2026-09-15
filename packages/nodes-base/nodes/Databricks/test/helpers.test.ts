@@ -275,6 +275,7 @@ describe('readIdParameter', () => {
 	const setupContext = (value: string) => {
 		const context = mockDeep<IExecuteFunctions>();
 		context.getNode.mockReturnValue(node);
+		context.getInputData.mockReturnValue([]);
 		context.getNodeParameter.mockReturnValue(value);
 		return context;
 	};
