@@ -16,6 +16,7 @@ import { InstanceAiThread } from './instance-ai-thread.entity';
  */
 @Entity({ name: 'instance_ai_events' })
 @Index(['threadId', 'runId'])
+@Index(['threadId', 'createdAt'])
 export class InstanceAiEventLogEntry extends WithTimestamps {
 	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
