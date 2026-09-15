@@ -18,7 +18,7 @@ vi.mock('fs/promises', async () => ({
 import { rm } from 'fs/promises';
 import type * as _fsPromises from 'fs/promises';
 import { Container } from '@n8n/di';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
@@ -55,6 +55,7 @@ import {
 	validateFormPageAuth,
 	generateFormUserAuthToken,
 	verifyFormUserAuthToken,
+	respondIfUnsupportedFormContentType,
 } from '../utils/utils';
 import { isIpAllowed } from '../../Webhook/utils';
 import type { Mock } from 'vitest';
@@ -430,6 +431,50 @@ describe('sanitizeCustomCss', () => {
 	});
 });
 
+describe('respondIfUnsupportedFormContentType', () => {
+	it('does not respond to GET requests', () => {
+		const status = vi.fn();
+		const end = vi.fn();
+		const responded = respondIfUnsupportedFormContentType(
+			{ method: 'GET' } as Request,
+			{ status, end } as unknown as Response,
+		);
+
+		expect(responded).toBe(false);
+		expect(status).not.toHaveBeenCalled();
+		expect(end).not.toHaveBeenCalled();
+	});
+
+	it('does not respond to a multipart POST', () => {
+		const status = vi.fn();
+		const end = vi.fn();
+		const responded = respondIfUnsupportedFormContentType(
+			{ method: 'POST', contentType: 'multipart/form-data' } as Request,
+			{ status, end } as unknown as Response,
+		);
+
+		expect(responded).toBe(false);
+		expect(status).not.toHaveBeenCalled();
+		expect(end).not.toHaveBeenCalled();
+	});
+
+	it.each(['application/json', 'application/x-www-form-urlencoded', 'text/plain', undefined])(
+		'answers 415 for a POST with content type %s',
+		(contentType) => {
+			const status = vi.fn();
+			const end = vi.fn();
+			const responded = respondIfUnsupportedFormContentType(
+				{ method: 'POST', contentType } as Request,
+				{ status, end } as unknown as Response,
+			);
+
+			expect(responded).toBe(true);
+			expect(status).toHaveBeenCalledWith(415);
+			expect(end).toHaveBeenCalledWith('Expected multipart/form-data');
+		},
+	);
+});
+
 describe('FormTrigger, formWebhook', () => {
 	const executeFunctions = mock<IWebhookFunctions>();
 	executeFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
@@ -773,7 +818,37 @@ describe('FormTrigger, formWebhook', () => {
 				],
 			],
 		});
+		expect(mockStatus).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		['application/json'],
+		['application/x-www-form-urlencoded'],
+		[undefined],
+	])(
+		'returns 415 for a POST with content type %s and does not start a workflow',
+		async (contentType) => {
+			const mockStatus = vi.fn();
+			const mockEnd = vi.fn();
+
+			executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue([]);
+			executeFunctions.getResponseObject.mockReturnValue({
+				status: mockStatus,
+				end: mockEnd,
+			} as any);
+			executeFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType,
+			} as any);
+
+			const result = await formWebhook(executeFunctions);
+
+			expect(mockStatus).toHaveBeenCalledWith(415);
+			expect(mockEnd).toHaveBeenCalledWith('Expected multipart/form-data');
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(result).not.toHaveProperty('workflowData');
+		},
+	);
 
 	it('should set Content-Security-Policy header with sandbox CSP on GET request', async () => {
 		const mockRender = vi.fn();
@@ -2300,6 +2375,17 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getNode.mockReturnValue(formNode);
 		mockContext.getWorkflowStaticData.mockReturnValue({});
 		mockContext.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+	});
+
+	it('still throws when called with a non-multipart content type', async () => {
+		mockContext.getRequestObject.mockReturnValueOnce({
+			method: 'POST',
+			contentType: 'application/json',
+		} as unknown as Request);
+
+		await expect(prepareFormReturnItem(mockContext, [], 'test')).rejects.toThrow(
+			'Expected multipart/form-data',
+		);
 	});
 
 	it('should handle empty form submission', async () => {

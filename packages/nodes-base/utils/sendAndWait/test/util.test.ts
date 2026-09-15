@@ -613,6 +613,38 @@ describe('Send and Wait utils tests', () => {
 			]);
 		});
 
+		it.each(['application/json', 'application/x-www-form-urlencoded', undefined])(
+			'returns 415 for a customForm POST with content type %s',
+			async (contentType) => {
+				const mockStatus = vi.fn();
+				const mockEnd = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					contentType,
+				} as any);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					status: mockStatus,
+					end: mockEnd,
+				} as any);
+				mockWebhookFunctions.getNode.mockReturnValue({} as any);
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						responseType: 'customForm',
+						defineForm: 'fields',
+						'formFields.values': [{ fieldLabel: 'test 1', fieldType: 'text' }],
+					};
+					return params[parameterName];
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockStatus).toHaveBeenCalledWith(415);
+				expect(mockEnd).toHaveBeenCalledWith('Expected multipart/form-data');
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(result).not.toHaveProperty('workflowData');
+			},
+		);
+
 		it('overrides a form field named respondedAt with the server timestamp', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'POST',

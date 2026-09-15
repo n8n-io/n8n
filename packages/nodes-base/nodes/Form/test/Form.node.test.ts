@@ -270,6 +270,83 @@ describe('Form Node', () => {
 			]);
 		});
 
+		it.each(['application/json', 'application/x-www-form-urlencoded', undefined])(
+			'returns 415 for a form-page POST with content type %s',
+			async (contentType) => {
+				const mockStatus = vi.fn();
+				const mockEnd = vi.fn();
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					status: mockStatus,
+					end: mockEnd,
+				} as unknown as Response);
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					contentType,
+				} as Request);
+				mockWebhookFunctions.getParentNodes.mockReturnValue([
+					{
+						type: 'n8n-nodes-base.formTrigger',
+						name: 'Form Trigger',
+						typeVersion: 2.1,
+						disabled: false,
+					},
+				]);
+				mockWebhookFunctions.evaluateExpression.mockReturnValue('test');
+				mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'page';
+					if (paramName === 'useJson') return false;
+					if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(mockStatus).toHaveBeenCalledWith(415);
+				expect(mockEnd).toHaveBeenCalledWith('Expected multipart/form-data');
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(result).not.toHaveProperty('workflowData');
+			},
+		);
+
+		it('does not reject a completion POST with a non-multipart content type', async () => {
+			const mockStatus = vi.fn();
+			const mockEnd = vi.fn();
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				status: mockStatus,
+				end: mockEnd,
+			} as unknown as Response);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'application/json',
+			} as Request);
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.1,
+					disabled: false,
+				},
+			]);
+			mockWebhookFunctions.evaluateExpression.mockReturnValue([{ json: { test: 'data' } }]);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'completion';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(mockStatus).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [[{ json: { test: 'data' } }]],
+			});
+		});
+
 		it('should handle completion operation and render completion page', async () => {
 			const formExpected = [
 				{

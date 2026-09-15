@@ -33,6 +33,7 @@ import {
 	parseFormFields,
 	prepareFormReturnItem,
 	respondIfCredentialsNotReady,
+	respondIfUnsupportedFormContentType,
 	validateFormPageAuth,
 } from './utils/utils';
 
@@ -427,6 +428,10 @@ export class Form extends Node {
 
 		if (method === 'GET') {
 			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
+		}
+
+		if (respondIfUnsupportedFormContentType(context.getRequestObject(), res)) {
+			return { noWebhookResponse: true };
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(

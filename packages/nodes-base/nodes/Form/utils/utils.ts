@@ -479,6 +479,24 @@ export function addFormResponseDataToReturnItem(
 	}
 }
 
+const FORM_MULTIPART_CONTENT_TYPE = 'multipart/form-data';
+const UNSUPPORTED_FORM_CONTENT_TYPE_MESSAGE = 'Expected multipart/form-data';
+
+/**
+ * Reject a form POST whose Content-Type is not multipart/form-data.
+ * Public form URLs receive JSON, urlencoded, and empty POSTs. Those are
+ * client errors, so answer 415 instead of throwing an AssertionError.
+ */
+export function respondIfUnsupportedFormContentType(req: Request, res: Response): boolean {
+	if (req.method !== 'POST' || req.contentType === FORM_MULTIPART_CONTENT_TYPE) {
+		return false;
+	}
+
+	res.status(415);
+	res.end(UNSUPPORTED_FORM_CONTENT_TYPE_MESSAGE);
+	return true;
+}
+
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
 	formFields: FormFieldsParameter,
@@ -487,7 +505,7 @@ export async function prepareFormReturnItem(
 	authedUser?: IUser,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
-	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
+	a.ok(req.contentType === FORM_MULTIPART_CONTENT_TYPE, UNSUPPORTED_FORM_CONTENT_TYPE_MESSAGE);
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 	const { binaryMode } = context.getWorkflowSettings();
@@ -1582,6 +1600,10 @@ export async function formWebhook(
 		return {
 			noWebhookResponse: true,
 		};
+	}
+
+	if (respondIfUnsupportedFormContentType(req, res)) {
+		return { noWebhookResponse: true };
 	}
 
 	// Submit-time readiness gate, and the only real enforcement: the hosting shell's

@@ -17,6 +17,7 @@ import {
 	prepareFormData,
 	prepareFormFields,
 	prepareFormReturnItem,
+	respondIfUnsupportedFormContentType,
 } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 import { limitWaitTimeOption } from './descriptions';
@@ -468,6 +469,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			};
 		}
 		if (method === 'POST') {
+			if (respondIfUnsupportedFormContentType(req, res)) {
+				return { noWebhookResponse: true };
+			}
 			const returnItem = await prepareFormReturnItem(this, fields, 'production', true);
 			const json = returnItem.json;
 
