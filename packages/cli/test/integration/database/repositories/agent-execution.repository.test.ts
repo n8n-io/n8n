@@ -11,7 +11,12 @@ import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execu
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	AgentThreadClaimConflictError,
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
+} from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentExecutionRepository', () => {
@@ -213,6 +218,265 @@ describe('AgentExecutionRepository', () => {
 			const result = await repository.findFirstSourceByThreadIds([thread.id]);
 
 			expect(result.has(thread.id)).toBe(false);
+		});
+	});
+
+	describe('thread claims', () => {
+		const runningValues = (threadId: string, claimed: boolean) => ({
+			threadId,
+			status: 'running' as const,
+			startedAt: new Date(),
+			stoppedAt: null,
+			duration: 0,
+			userMessage: 'run',
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: null,
+			attachments: null,
+			resourceId: null,
+			runContext: claimed ? ({ kind: 'message' } as const) : null,
+		});
+
+		it('allows one claimed running row per thread and releases the claim when the row ends', async () => {
+			const thread = await createThread();
+			const other = await createThread({ sessionNumber: 2 });
+
+			const first = await repository.insertExecution(runningValues(thread.id, true));
+			await expect(
+				repository.insertExecution(runningValues(thread.id, true)),
+			).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
+			// Rows from mains without the claim, and other threads, are not blocked.
+			await repository.insertExecution(runningValues(thread.id, false));
+			await repository.insertExecution(runningValues(other.id, true));
+
+			expect(await repository.touchRunning(first.id, thread.id)).toBe(true);
+			expect(await repository.touchRunning(first.id, other.id)).toBe(false);
+
+			expect(
+				await repository.updateIfRunning(first.id, {
+					status: 'success',
+					stoppedAt: new Date(),
+					duration: 1,
+					timeline: null,
+					storedAt: 'db',
+					error: null,
+					failureSummary: null,
+				}),
+			).toBe(true);
+			expect(await repository.touchRunning(first.id, thread.id)).toBe(false);
+			const ended = await repository.findOneByOrFail({ id: first.id });
+			expect(ended.runContext).toBeNull();
+
+			const next = await repository.insertExecution(runningValues(thread.id, true));
+			expect(next.runContext).toEqual({ kind: 'message' });
+		});
+
+		it('releases only a stale claim during abandoned finalization', async () => {
+			const thread = await createThread();
+			const execution = await repository.insertExecution(runningValues(thread.id, true));
+			const staleBefore = new Date('2026-01-02T00:00:00Z');
+			const finalizationValues = {
+				status: 'interrupted' as const,
+				stoppedAt: new Date('2026-01-02T00:01:00Z'),
+				duration: 1,
+				timeline: null,
+				storedAt: 'db' as const,
+				error: 'interrupted',
+				failureSummary: null,
+			};
+
+			await repository.update(
+				{ id: execution.id },
+				{ updatedAt: new Date('2026-01-02T00:00:01Z') },
+			);
+			expect(await repository.updateIfRunning(execution.id, finalizationValues, staleBefore)).toBe(
+				false,
+			);
+			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+				status: 'running',
+				runContext: { kind: 'message' },
+				stoppedAt: null,
+			});
+
+			await repository.update(
+				{ id: execution.id },
+				{ updatedAt: new Date('2026-01-01T23:59:59Z') },
+			);
+			expect(await repository.updateIfRunning(execution.id, finalizationValues, staleBefore)).toBe(
+				true,
+			);
+			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+				status: 'interrupted',
+				runContext: null,
+				stoppedAt: finalizationValues.stoppedAt,
+			});
+		});
+	});
+
+	describe('queued turns', () => {
+		const queuedValues = (threadId: string, userMessage: string) => ({
+			threadId,
+			status: 'queued' as const,
+			startedAt: null,
+			stoppedAt: null,
+			duration: 0,
+			userMessage,
+			author: null,
+			model: null,
+			promptTokens: null,
+			completionTokens: null,
+			totalTokens: null,
+			cost: null,
+			timeline: null,
+			storedAt: 'db' as const,
+			error: null,
+			failureSummary: null,
+			hitlStatus: null,
+			source: null,
+			attachments: null,
+			resourceId: 'draft-chat:user-1',
+			runContext: { kind: 'message' as const },
+		});
+
+		const queuedResumeValues = (threadId: string, runId: string) => ({
+			...queuedValues(threadId, ''),
+			userMessage: null,
+			runContext: {
+				kind: 'resume' as const,
+				runId,
+				toolCallId: 'tool-1',
+				resumeData: { approved: true },
+			},
+		});
+
+		it('atomically enforces the queued message and total row caps', async () => {
+			const seedMessages = async (threadId: string, count: number) =>
+				await repository.save(
+					Array.from({ length: count }, (_, index) =>
+						repository.create({
+							...queuedValues(threadId, `waiting ${index + 1}`),
+							enqueueSequence: index + 1,
+						}),
+					),
+				);
+
+			const mixedThread = await createThread();
+			await seedMessages(mixedThread.id, MAX_QUEUED_TURNS_PER_THREAD - 1);
+			await repository.insertExecution(queuedResumeValues(mixedThread.id, 'run-1'));
+
+			const mixedResults = await Promise.allSettled([
+				repository.insertExecution(queuedValues(mixedThread.id, 'last slot A')),
+				repository.insertExecution(queuedValues(mixedThread.id, 'last slot B')),
+			]);
+
+			expect(mixedResults.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+			expect(mixedResults.filter((result) => result.status === 'rejected')).toEqual([
+				expect.objectContaining({ reason: expect.any(AgentThreadQueueFullError) }),
+			]);
+			const mixedRows = await repository.findQueuedByThread(mixedThread.id);
+			expect(mixedRows.filter((row) => row.runContext?.kind === 'message')).toHaveLength(
+				MAX_QUEUED_TURNS_PER_THREAD,
+			);
+			expect(mixedRows).toHaveLength(MAX_QUEUED_TURNS_PER_THREAD + 1);
+			expect(mixedRows.at(-1)).toMatchObject({
+				enqueueSequence: MAX_QUEUED_TURNS_PER_THREAD + 1,
+				runContext: { kind: 'message' },
+			});
+
+			const fullMessageThread = await createThread({ sessionNumber: 2 });
+			await seedMessages(fullMessageThread.id, MAX_QUEUED_TURNS_PER_THREAD);
+			const resume = await repository.insertExecution(
+				queuedResumeValues(fullMessageThread.id, 'run-2'),
+			);
+			expect(resume).toMatchObject({
+				enqueueSequence: MAX_QUEUED_TURNS_PER_THREAD + 1,
+				runContext: { kind: 'resume' },
+			});
+
+			const fullResults = await Promise.allSettled([
+				repository.insertExecution(queuedValues(fullMessageThread.id, 'one too many')),
+				repository.insertExecution(queuedResumeValues(fullMessageThread.id, 'run-3')),
+			]);
+			expect(fullResults).toEqual([
+				expect.objectContaining({
+					status: 'rejected',
+					reason: expect.any(AgentThreadQueueFullError),
+				}),
+				expect.objectContaining({
+					status: 'rejected',
+					reason: expect.any(AgentThreadQueueFullError),
+				}),
+			]);
+			expect(await repository.countQueuedByThread(fullMessageThread.id)).toBe(
+				MAX_QUEUED_TURNS_PER_THREAD + 1,
+			);
+		});
+
+		it('promotes a queued row only while no claimed run holds the thread', async () => {
+			const thread = await createThread();
+			const running = await repository.insertExecution({
+				...queuedValues(thread.id, 'running'),
+				status: 'running',
+				startedAt: new Date(),
+			});
+			const first = await repository.insertExecution({
+				...queuedValues(thread.id, 'first'),
+				id: 'queued-z',
+			} as Parameters<typeof repository.insertExecution>[0]);
+			const second = await repository.insertExecution({
+				...queuedValues(thread.id, 'second'),
+				id: 'queued-a',
+			} as Parameters<typeof repository.insertExecution>[0]);
+			const sameMillisecond = new Date('2026-01-01T00:00:00.000Z');
+			await repository.update({ id: first.id }, { createdAt: sameMillisecond });
+			await repository.update({ id: second.id }, { createdAt: sameMillisecond });
+
+			expect(await repository.countQueuedByThread(thread.id)).toBe(2);
+			expect(
+				(await repository.findQueuedByThread(thread.id)).map((row) => row.userMessage),
+			).toEqual(['first', 'second']);
+			// Waiting rows do not show up as the session's first message.
+			expect(await repository.findFirstUserMessageByThreadIds([thread.id])).toEqual(
+				new Map([[thread.id, 'running']]),
+			);
+			await expect(
+				repository.promoteQueuedToRunning(first.id, thread.id, new Date()),
+			).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
+
+			await repository.updateIfRunning(running.id, {
+				status: 'success',
+				stoppedAt: new Date(),
+				duration: 1,
+				timeline: null,
+				storedAt: 'db',
+				error: null,
+				failureSummary: null,
+			});
+			expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(true);
+			expect(await repository.findOneByOrFail({ id: first.id })).toMatchObject({
+				status: 'running',
+				runContext: { kind: 'message' },
+			});
+			// The promoted row left `queued`: a second promotion and a fail are no-ops.
+			expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(false);
+			expect(await repository.failQueued(first.id, 'late', new Date())).toBe(false);
+
+			expect(await repository.failQueued(second.id, 'sender disabled', new Date())).toBe(true);
+			expect(await repository.findOneByOrFail({ id: second.id })).toMatchObject({
+				status: 'error',
+				error: 'sender disabled',
+				runContext: null,
+			});
+			expect(await repository.findThreadIdsWithQueued()).toEqual([]);
 		});
 	});
 

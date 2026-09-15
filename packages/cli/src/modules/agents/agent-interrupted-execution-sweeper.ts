@@ -3,18 +3,20 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentTurnQueueService } from './agent-turn-queue.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+	static readonly LIVENESS_GRACE_MS = AgentExecutionService.livenessGraceMs;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionService: AgentExecutionService,
+		private readonly turnQueueService: AgentTurnQueueService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
@@ -52,6 +54,14 @@ export class AgentInterruptedExecutionSweeper {
 					error,
 				});
 			}
+		}
+
+		// A main that died mid-turn left its thread's queued rows waiting; with the
+		// interrupted row finalized above, the thread is free to run them here.
+		try {
+			await this.turnQueueService.drainAll();
+		} catch (error) {
+			this.logger.error('Failed to run queued agent turns', { error });
 		}
 
 		// Background job rows ride along on the same cadence: after abandoned

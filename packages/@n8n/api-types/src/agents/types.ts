@@ -345,7 +345,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	executionStatus?: 'queued' | 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 	/**
 	 * The recorded run error for a turn that ended in `error` or `interrupted`,
 	 * so history renders the same error bubble the live stream showed.

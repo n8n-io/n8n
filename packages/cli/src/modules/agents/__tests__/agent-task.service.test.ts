@@ -12,6 +12,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentTurnQueueService } from '../agent-turn-queue.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
@@ -128,6 +129,7 @@ describe('AgentTaskService', () => {
 	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
+	let agentTurnQueueService: ReturnType<typeof mock<AgentTurnQueueService>>;
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
@@ -149,6 +151,7 @@ describe('AgentTaskService', () => {
 			taskRunLockRepository,
 			agentRepository,
 			agentExecutionOrchestratorService,
+			agentTurnQueueService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
 			publisher,
@@ -185,6 +188,15 @@ describe('AgentTaskService', () => {
 			),
 		};
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
+		agentTurnQueueService = mock<AgentTurnQueueService>();
+		// Every task run gets a fresh thread, so the claim always succeeds.
+		agentTurnQueueService.tryRunNow.mockImplementation(async ({ threadId }) => ({
+			executionId: 'exec-1',
+			threadId,
+			abortSignal: new AbortController().signal,
+			release: vi.fn(async () => {}),
+			fail: vi.fn(async () => {}),
+		}));
 		agentTaskScheduler = mock<ScheduledTaskManager>();
 		agentTaskScheduler.register.mockReturnValue(true);
 		agentTaskScheduler.getTargetIds.mockReturnValue([]);
@@ -917,6 +929,7 @@ describe('AgentTaskService', () => {
 					message: expect.stringContaining('Summarize messages'),
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
+				expect.anything(),
 			);
 			expect(taskRepository.update).not.toHaveBeenCalled();
 		});
@@ -932,6 +945,7 @@ describe('AgentTaskService', () => {
 
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).toHaveBeenCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Published objective') }),
+				expect.anything(),
 			);
 			// The scheduled path never reads the live draft body.
 			expect(taskRepository.findOne).not.toHaveBeenCalled();
@@ -1121,6 +1135,7 @@ describe('AgentTaskService', () => {
 			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
 			await service.runNow(AGENT_ID, 'task-1', requestingUser);
+			await flushAsyncWork();
 
 			expect(agentExecutionOrchestratorService.executeForTaskNow).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1131,6 +1146,7 @@ describe('AgentTaskService', () => {
 					message: expect.stringContaining('Summarize messages'),
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
+				expect.anything(),
 			);
 		});
 

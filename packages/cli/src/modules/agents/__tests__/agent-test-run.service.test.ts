@@ -6,18 +6,29 @@ import {
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import { createTestTurnQueue } from './test-utils/turn-queue';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
+import {
+	consumeStream,
+	type AgentTurnClaim,
+	type AgentTurnQueueService,
+} from '../agent-turn-queue.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
+
 const agentId = 'agent-1';
 const projectId = 'project-1';
-const user = mock<User>({ id: 'user-1' });
+const user = mock<User>({ id: 'user-1', disabled: false });
 const credentialProvider = mock<CredentialProvider>();
 const approvalResumeSchema = (() => {
 	const schema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
@@ -59,6 +70,18 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const agentTurnQueueService = mock<AgentTurnQueueService>();
+	// An idle session: every turn claims at once.
+	agentTurnQueueService.tryRunNow.mockImplementation(async ({ threadId }) => ({
+		executionId: 'exec-1',
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	}));
+	agentExecutionOrchestratorService.resolveResumeThread.mockImplementation(
+		async ({ expectedMemory }) => expectedMemory?.threadId ?? 'session-1',
+	);
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
@@ -68,19 +91,106 @@ function makeService() {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 			n8nCheckpointStorage,
+			agentTurnQueueService,
 		),
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		n8nCheckpointStorage,
+		agentTurnQueueService,
 	};
 }
 
 describe('AgentTestRunService', () => {
+	afterEach(() => Container.reset());
+
+	it.each([
+		['message', true],
+		['message', false],
+		['message', undefined],
+		['resume', true],
+		['resume', false],
+		['resume', undefined],
+	] as const)(
+		'preserves draft %s options when queued (previewChat: %s)',
+		async (kind, previewChat) => {
+			const queue = createTestTurnQueue(user);
+			const service = new AgentTestRunService(
+				queue.executionService,
+				mock<AgentValidationService>(),
+				queue.orchestrator,
+				queue.checkpointStorage,
+				queue.service,
+			);
+			queue.orchestrator.resolveResumeThread.mockResolvedValue('session-1');
+			async function* finishTurn(
+				_config: unknown,
+				claim: AgentTurnClaim,
+			): AsyncGenerator<StreamChunk> {
+				yield { type: 'finish', finishReason: 'stop' };
+				queue.finish(claim);
+				await claim.release();
+			}
+			queue.orchestrator.executeForChat.mockImplementation(finishTurn);
+			queue.orchestrator.resumeForChat.mockImplementation(finishTurn);
+			const input = {
+				agentId,
+				projectId,
+				user,
+				sessionId: 'session-1',
+				source: 'instance-ai',
+				abortSignal: new AbortController().signal,
+				...(previewChat !== undefined ? { previewChat } : {}),
+			};
+			const attachments = [
+				{ id: 'att-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 },
+			];
+			const resume = { runId: 'run-1', toolCallId: 'tool-1', resumeData: { approved: true } };
+			const submit = async () =>
+				kind === 'message'
+					? await service.submitDraftRun({ ...input, message: 'hello', attachments })
+					: await service.submitDraftResume({ ...input, ...resume });
+
+			const first = await submit();
+			if (first.status !== 'claimed') throw new Error('Expected an immediate turn');
+			expect(first.executionId).toBe('exec-1');
+			expect(await submit()).toMatchObject({ status: 'queued', executionId: 'exec-2' });
+			await consumeStream(first.stream);
+			await vi.waitFor(() =>
+				expect(queue.rows.map(({ status }) => status)).toEqual(['success', 'success']),
+			);
+
+			const calls =
+				kind === 'message'
+					? queue.orchestrator.executeForChat.mock.calls
+					: queue.orchestrator.resumeForChat.mock.calls;
+			const memory = { threadId: 'session-1', resourceId: 'draft-chat:user-1' };
+			const expected = {
+				agentId,
+				projectId,
+				user,
+				source: 'instance-ai',
+				previewChat,
+				...(kind === 'message'
+					? { message: 'hello', attachments, memory }
+					: {
+							...resume,
+							expectedMemory: memory,
+							usePublishedVersion: false,
+							integrationType: 'n8n_chat',
+						}),
+			};
+			expect(calls).toHaveLength(2);
+			expect(calls[0][0]).toMatchObject({ ...expected, abortSignal: input.abortSignal });
+			expect(calls[1][0]).toMatchObject(expected);
+			expect(calls[1][0]).not.toHaveProperty('abortSignal');
+			expect(calls.map(([, claim]) => claim.executionId)).toEqual(['exec-1', 'exec-2']);
+		},
+	);
+
 	it('runs a draft test and returns its response and execution identifiers', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('execution-1');
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
 			yield { type: 'text-delta', id: 'text-1', delta: 'Hello ' };
 			yield { type: 'text-delta', id: 'text-1', delta: 'there' };
 		});
@@ -98,7 +208,7 @@ describe('AgentTestRunService', () => {
 			status: 'completed',
 			response: 'Hello there',
 			sessionId: expect.any(String),
-			executionId: 'execution-1',
+			executionId: 'exec-1',
 		});
 		if (result.status !== 'completed') throw new Error('Expected a completed test run');
 		expect(agentExecutionOrchestratorService.executeForChat).toHaveBeenCalledWith(
@@ -112,6 +222,7 @@ describe('AgentTestRunService', () => {
 					resourceId: 'draft-chat:user-1',
 				},
 			}),
+			expect.anything(),
 		);
 	});
 
@@ -152,6 +263,7 @@ describe('AgentTestRunService', () => {
 			status: 'suspended',
 			response: 'I can do that. ',
 			sessionId: 'session-1',
+			executionId: 'exec-1',
 			suspensions: [
 				{
 					runId: 'run-1',
@@ -173,8 +285,7 @@ describe('AgentTestRunService', () => {
 	it('resumes the same draft session and returns the next suspended segment', async () => {
 		const { service, agentExecutionOrchestratorService, n8nCheckpointStorage } = makeService();
 		n8nCheckpointStorage.load.mockResolvedValue(suspendedApprovalCheckpoint());
-		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('execution-2');
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
 			yield { type: 'text-delta', id: 'text-1', delta: ' Next step.' };
 			yield {
 				type: 'tool-call-suspended',
@@ -207,7 +318,7 @@ describe('AgentTestRunService', () => {
 			status: 'suspended',
 			response: 'First step. Next step.',
 			sessionId: 'session-1',
-			executionId: 'execution-2',
+			executionId: 'exec-1',
 			suspensions: [
 				{
 					runId: 'run-2',
@@ -233,6 +344,7 @@ describe('AgentTestRunService', () => {
 					resourceId: 'draft-chat:user-1',
 				},
 			}),
+			expect.anything(),
 		);
 	});
 

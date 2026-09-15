@@ -222,6 +222,7 @@ export async function createTelegramReplayContext(
 		userName: 'n8n-agent-agent-1',
 		adapters: { telegram: adapter } as unknown as Record<string, never>,
 		state: createMemoryState(),
+		concurrency: 'concurrent',
 	});
 
 	const integration = options.integration ?? {

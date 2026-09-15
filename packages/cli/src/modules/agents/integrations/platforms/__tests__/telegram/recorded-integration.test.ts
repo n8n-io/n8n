@@ -156,6 +156,7 @@ describe('Telegram recorded integration replay', () => {
 					author: { id: '123456789', name: 'sofiadev' },
 					integrationType: 'telegram',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				platform: 'telegram',
@@ -252,6 +253,7 @@ describe('Telegram recorded integration replay', () => {
 						resumeData: { approved },
 						integrationType: 'telegram',
 					}),
+					expect.anything(),
 				);
 				expect(ctx.latestContext()).toMatchObject({
 					platform: 'telegram',
@@ -316,6 +318,7 @@ describe('Telegram recorded integration replay', () => {
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({ resumeData: { approved: true } }),
+				expect.anything(),
 			);
 		} finally {
 			await ctx.shutdown();

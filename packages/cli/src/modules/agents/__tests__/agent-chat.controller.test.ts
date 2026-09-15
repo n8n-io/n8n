@@ -15,15 +15,22 @@ import type { AgentBackgroundJobService } from '../background/agent-background-j
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
-import type { AgentTestRunService } from '../agent-test-run.service';
+import { AgentTestRunService } from '../agent-test-run.service';
+import {
+	AgentThreadQueueFullError,
+	type AgentTurnClaim,
+	type AgentTurnQueueService,
+} from '../agent-turn-queue.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-function makeController() {
+function makeController(testRunService?: AgentTestRunService) {
 	const agentsService =
 		mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
@@ -36,19 +43,33 @@ function makeController() {
 		status: 'ready',
 		sessionId: 'thread-1',
 	});
-	agentTestRunService.streamDraftRun.mockImplementation((config) =>
-		agentExecutionOrchestratorService.executeForChat({
-			...config,
-			memory: {
-				threadId: config.sessionId,
-				resourceId: `draft-chat:${config.user.id}`,
-			},
-		}),
-	);
+	// The idle-session path: the turn is claimed and streams through the orchestrator.
+	const claim = mock<AgentTurnClaim>({ executionId: 'exec-1', threadId: 'thread-1' });
+	agentTestRunService.submitDraftRun.mockImplementation(async ({ onPersisted, ...config }) => {
+		onPersisted?.(claim.executionId);
+		return {
+			status: 'claimed',
+			sessionId: config.sessionId,
+			executionId: claim.executionId,
+			stream: agentExecutionOrchestratorService.executeForChat(
+				{
+					...config,
+					memory: { threadId: config.sessionId, resourceId: `draft-chat:${config.user.id}` },
+				},
+				claim,
+			),
+		};
+	});
+	agentTestRunService.submitDraftResume.mockImplementation(async (config) => ({
+		status: 'claimed',
+		sessionId: 'thread-1',
+		executionId: claim.executionId,
+		stream: agentExecutionOrchestratorService.resumeForChat(config, claim),
+	}));
 
 	const controller = new AgentChatController(
 		agentExecutionOrchestratorService,
-		agentTestRunService,
+		testRunService ?? agentTestRunService,
 		mock<AgentTestChatService>(),
 		agentsBuilderService,
 		mock<CredentialsService>(),
@@ -341,13 +362,37 @@ describe('AgentChatController SSE done payload', () => {
 		resolvePreparation({ status: 'ready', sessionId: 'thread-1' });
 		await request;
 
-		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
+		expect(agentTestRunService.submitDraftRun).not.toHaveBeenCalled();
 	});
 
-	it('includes executionId on done when recorded', async () => {
+	it('ends the stream with a queued event when the session runs another turn', async () => {
+		const { controller, agentTestRunService, agentExecutionOrchestratorService } = makeController();
+		agentTestRunService.submitDraftRun.mockResolvedValue({
+			status: 'queued',
+			sessionId: 'thread-1',
+			executionId: 'exec-queued',
+		});
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toEqual([{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued' }]);
+		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(res.end).toHaveBeenCalled();
+	});
+
+	it('includes the claimed executionId on done', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-99');
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
 			yield* [];
 		});
 
@@ -368,14 +413,13 @@ describe('AgentChatController SSE done payload', () => {
 		expect(events).toContainEqual({
 			type: 'done',
 			sessionId: 'thread-1',
-			executionId: 'exec-99',
+			executionId: 'exec-1',
 		});
 	});
 
-	it('includes executionId on resume done when recorded', async () => {
+	it('includes the claimed executionId on resume done', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
-		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-resume-1');
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
 			yield* [];
 		});
 
@@ -395,7 +439,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(events).toContainEqual({
 			type: 'done',
-			executionId: 'exec-resume-1',
+			executionId: 'exec-1',
 		});
 	});
 
@@ -478,6 +522,34 @@ describe('AgentChatController HITL cancellation', () => {
 	});
 });
 
+describe('AgentChatController full thread queue', () => {
+	it('sends one coded error event and no done event when the thread queue is full', async () => {
+		const { controller, agentTestRunService } = makeController();
+		const error = new AgentThreadQueueFullError();
+		agentTestRunService.submitDraftRun.mockRejectedValue(error);
+		const writes: string[] = [];
+		const res = makeSseResponse(writes);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ message: 'hi', sessionId: 'thread-1' } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message: error.message,
+				errorCode: 'agent_turn_queue_full',
+			},
+		]);
+	});
+});
+
 describe('AgentChatController attachment cleanup on failed turns', () => {
 	const textAttachment = (fileName: string) => ({
 		fileName,
@@ -495,9 +567,9 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		return { res, events };
 	}
 
-	it('deletes stored attachments when the run fails before an execution is recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('deletes stored attachments when submission fails before queue persistence', async () => {
+		const { controller, agentTestRunService, agentChatAttachmentService } = makeController();
+		const submissionError = new Error('queue persistence failed');
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -505,11 +577,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			fileSizeBytes: 5,
 		} as never);
 		agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
-			yield* [];
-			throw new Error('model unavailable');
-		});
+		agentTestRunService.submitDraftRun.mockRejectedValue(submissionError);
 		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
@@ -519,34 +587,47 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
 		);
 
-		expect(events()).toContainEqual({ type: 'error', message: 'model unavailable' });
+		expect(events()).toContainEqual({ type: 'error', message: submissionError.message });
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
-			makeController();
+	it('keeps stored attachments when submission fails after queue persistence', async () => {
+		const claimError = new Error('claim failed');
+		const agentTurnQueueService = mock<AgentTurnQueueService>();
+		agentTurnQueueService.submit.mockImplementation(async (_turn, onPersisted) => {
+			onPersisted?.('exec-1');
+			throw claimError;
+		});
+		const agentValidationService = mock<AgentValidationService>();
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		const testRunService = new AgentTestRunService(
+			mock<AgentExecutionService>(),
+			agentValidationService,
+			mock<AgentExecutionOrchestratorService>(),
+			mock<N8NCheckpointStorage>(),
+			agentTurnQueueService,
+		);
+		const { controller, agentChatAttachmentService } = makeController(testRunService);
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-1');
-			yield* [];
-			throw new Error('flaky post-persist failure');
-		});
-		const { res } = makeCleanupSseResponse();
+		const { res, events } = makeCleanupSseResponse();
 
 		await controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ message: 'hi', attachments: [textAttachment('notes.txt')] } as never,
+			{
+				message: 'hi',
+				sessionId: 'thread-1',
+				attachments: [textAttachment('notes.txt')],
+			} as never,
 		);
 
+		expect(events()).toContainEqual({ type: 'error', message: claimError.message });
 		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 

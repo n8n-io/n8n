@@ -8,7 +8,7 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -19,7 +19,11 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
+import {
+	AgentExecution,
+	type AgentExecutionStatus,
+	type AgentTurnRunContext,
+} from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -37,7 +41,6 @@ import {
 export interface RecordMessageParams {
 	threadId: string;
 	agentId: string;
-	agentName: string;
 	projectId: string;
 	userMessage: string | null;
 	/** Chat platform user who wrote the turn; shown as the sender in the sessions view. */
@@ -63,8 +66,28 @@ export interface RecordMessageParams {
 	};
 }
 
-export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'> & {
+	agentName: string;
 	initialTimeline?: TimelineEvent[];
+};
+
+/** Queue-managed fields stored before the runtime starts. */
+export type TurnRowValues = Pick<AgentExecution, 'resourceId'> & {
+	runContext: AgentTurnRunContext;
+};
+
+export interface ClaimedExecutionRecording {
+	executionId: string;
+	/** Aborts when this run no longer holds its thread claim. */
+	claimLost: AbortSignal;
+}
+
+/** Identifies a row for updates that also notify the thread's open chats. */
+export interface ExecutionScope {
+	executionId: string;
+	threadId: string;
+	agentId: string;
+	projectId: string;
 }
 
 interface TimelineSnapshotParams {
@@ -97,6 +120,9 @@ export class AgentExecutionService {
 
 	private static readonly heartbeatIntervalMs = 30_000;
 
+	/** A running row without a heartbeat for this long counts as abandoned. */
+	static readonly livenessGraceMs = 2 * 60 * 1000;
+
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
 
 	private readonly pendingTimelineSnapshots = new Map<
@@ -121,13 +147,120 @@ export class AgentExecutionService {
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 	) {}
 
+	/** Record a running run that does not take part in the per-thread turn queue. */
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			startedAt,
+			resourceId: null,
+			runContext: null,
+		});
+		this.startHeartbeat(executionId);
+		return executionId;
+	}
+
+	/**
+	 * Record a running top-level turn that claims its thread. Throws
+	 * {@link AgentThreadClaimConflictError} while another claimed run holds the
+	 * thread. `claimLost` aborts when a heartbeat can no longer confirm the
+	 * claim, so the caller stops the runtime instead of overlapping a new turn.
+	 */
+	async startClaimedExecutionRecording(
+		params: StartExecutionParams & TurnRowValues,
+		startedAt: Date,
+	): Promise<ClaimedExecutionRecording> {
+		const executionId = await this.insertExecution(params, {
+			status: 'running',
+			startedAt,
+			resourceId: params.resourceId,
+			runContext: params.runContext,
+		});
+		return this.holdClaim(executionId, params.threadId);
+	}
+
+	/** Record a turn that waits for the thread's running turn to end. */
+	async recordQueuedExecution(params: StartExecutionParams & TurnRowValues): Promise<string> {
+		return await this.insertExecution(params, {
+			status: 'queued',
+			startedAt: null,
+			resourceId: params.resourceId,
+			runContext: params.runContext,
+		});
+	}
+
+	/**
+	 * Promote a queued row to the thread's claimed running row. Null when the
+	 * row already left `queued`; throws {@link AgentThreadClaimConflictError}
+	 * while another claimed run holds the thread.
+	 */
+	async claimQueuedExecution(
+		executionId: string,
+		threadId: string,
+		startedAt: Date,
+	): Promise<ClaimedExecutionRecording | null> {
+		const promoted = await this.agentExecutionRepository.promoteQueuedToRunning(
+			executionId,
+			threadId,
+			startedAt,
+		);
+		return promoted ? this.holdClaim(executionId, threadId) : null;
+	}
+
+	/** End a queued row that cannot run, so the queue moves on and the sender sees why. */
+	async failQueuedExecution(scope: ExecutionScope, error: string): Promise<void> {
+		const failed = await this.agentExecutionRepository.failQueued(
+			scope.executionId,
+			error,
+			new Date(),
+		);
+		this.executionsNeedingTitleSync.delete(scope.executionId);
+		if (failed) this.executionUpdateBroadcaster.notify(scope);
+	}
+
+	/**
+	 * End a claimed running row whose turn never started, which also releases
+	 * its thread claim. `false` once the run has recorded its own outcome.
+	 */
+	async failClaimedExecution(scope: ExecutionScope, error: string): Promise<boolean> {
+		const stoppedAt = new Date();
+		const finalized = await this.agentExecutionRepository.updateIfRunning(scope.executionId, {
+			status: 'error',
+			stoppedAt,
+			duration: 0,
+			timeline: null,
+			storedAt: 'db',
+			error,
+			failureSummary: computeExecutionFailureSummary({
+				timeline: [],
+				status: 'error',
+				error,
+				stoppedAt: stoppedAt.getTime(),
+			}),
+		});
+		this.stopHeartbeat(scope.executionId);
+		this.executionsNeedingTitleSync.delete(scope.executionId);
+		if (finalized) this.executionUpdateBroadcaster.notify(scope);
+		return finalized;
+	}
+
+	private holdClaim(executionId: string, threadId: string): ClaimedExecutionRecording {
+		const claim = new AbortController();
+		this.startHeartbeat(executionId, {
+			threadId,
+			onLost: (reason) => claim.abort(new OperationalError(reason)),
+		});
+		return { executionId, claimLost: claim.signal };
+	}
+
+	private async insertExecution(
+		params: StartExecutionParams,
+		row: Pick<AgentExecution, 'status' | 'startedAt' | 'resourceId' | 'runContext'>,
+	): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
+		const inserted = await this.agentExecutionRepository.insertExecution(
+			{
 				threadId: params.threadId,
-				status: 'running',
-				startedAt,
+				...row,
 				stoppedAt: null,
 				duration: 0,
 				userMessage,
@@ -145,10 +278,10 @@ export class AgentExecutionService {
 				hitlStatus: null,
 				source: params.source ?? null,
 				attachments: params.attachments?.length ? params.attachments : null,
-			}),
+			},
+			{},
 		);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		this.startHeartbeat(inserted.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -231,20 +364,24 @@ export class AgentExecutionService {
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
+		const finalized = await this.agentExecutionRepository.updateIfRunning(
+			execution.id,
+			{
 				status: 'interrupted',
+				stoppedAt,
+				duration,
+				timeline: timeline.length > 0 ? timeline : null,
+				storedAt: 'db',
 				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
-		});
+				failureSummary: computeExecutionFailureSummary({
+					timeline,
+					status: 'interrupted',
+					error,
+					stoppedAt: stoppedAt.getTime(),
+				}),
+			},
+			new Date(Date.now() - AgentExecutionService.livenessGraceMs),
+		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
 	}
@@ -270,14 +407,37 @@ export class AgentExecutionService {
 		}
 	}
 
-	private startHeartbeat(executionId: string): void {
+	/**
+	 * With `claim`, each heartbeat also confirms the thread claim. The claim is
+	 * lost when the row no longer matches, or when the database has not
+	 * confirmed it for longer than the sweeper's liveness grace: after that
+	 * window the sweeper may have released the row to another turn.
+	 */
+	private startHeartbeat(
+		executionId: string,
+		claim?: { threadId: string; onLost: (reason: string) => void },
+	): void {
+		let lastConfirmedAt = Date.now();
+		const loseClaim = (reason: string) => {
+			this.stopHeartbeat(executionId);
+			claim?.onLost(reason);
+		};
 		const timer = setInterval(() => {
-			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
-				this.logger.warn('Failed to heartbeat a running agent execution', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
+			void this.agentExecutionRepository
+				.touchRunning(executionId, claim?.threadId)
+				.then((touched) => {
+					if (touched) lastConfirmedAt = Date.now();
+					else if (claim) loseClaim('Agent execution lost its thread claim');
+				})
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to heartbeat a running agent execution', {
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					if (claim && Date.now() - lastConfirmedAt >= AgentExecutionService.livenessGraceMs) {
+						loseClaim('Agent execution could not confirm its thread claim');
+					}
 				});
-			});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
@@ -635,7 +795,7 @@ export class AgentExecutionService {
 }
 
 function toSessionStatus(
-	latestStatus: AgentExecutionStatus | undefined,
+	latestStatus: Exclude<AgentExecutionStatus, 'queued'> | undefined,
 	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;
@@ -652,7 +812,7 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
-function executionStatus(record: MessageRecord): AgentExecution['status'] {
+function executionStatus(record: MessageRecord): 'success' | 'error' | 'cancelled' {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';

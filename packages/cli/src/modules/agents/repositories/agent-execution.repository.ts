@@ -1,13 +1,47 @@
+import {
+	BaseRepository,
+	isUniqueConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { OperationalError, UserError } from 'n8n-workflow';
 
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+
+/** Queued turns per thread. The running turn does not count. */
+export const MAX_QUEUED_TURNS_PER_THREAD = 50;
+export const AGENT_TURN_QUEUE_FULL_ERROR_CODE = 'agent_turn_queue_full';
+
+export class AgentThreadQueueFullError extends UserError {
+	readonly errorCode = AGENT_TURN_QUEUE_FULL_ERROR_CODE;
+
+	constructor() {
+		super(
+			`This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+		);
+	}
+}
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+/** Another running turn already claims this thread. The turn stays queued until that run ends. */
+export class AgentThreadClaimConflictError extends OperationalError {
+	constructor() {
+		super('Another agent turn already holds this thread', { level: 'info' });
+	}
+}
+
+export type NewAgentExecution = Omit<
+	AgentExecution,
+	'id' | 'createdAt' | 'updatedAt' | 'thread' | 'enqueueSequence' | 'generateId' | 'setUpdateDate'
 >;
 
 type AgentExecutionFinalizationValues = Pick<
@@ -22,9 +56,9 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
@@ -39,12 +73,130 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		});
 	}
 
-	async existsRunningByThread(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'running' });
+	/**
+	 * Insert a queued or running row. For a running row with `runContext`, the
+	 * partial unique index turns a second claim on the same thread into
+	 * {@link AgentThreadClaimConflictError}. Queued message rows enforce the
+	 * per-thread cap in the same critical section that assigns their sequence.
+	 */
+	async insertExecution(
+		values: NewAgentExecution,
+		ctx: OperationContext = {},
+	): Promise<AgentExecution> {
+		try {
+			if (values.status === 'queued') {
+				return await this.runInTransaction(ctx, async (entityManager) => {
+					// Serialize allocations on the durable thread row before reading the prior sequence.
+					await entityManager
+						.getRepository(AgentExecutionThread)
+						.createQueryBuilder()
+						.update(AgentExecutionThread)
+						.set({ updatedAt: () => '"updatedAt"' })
+						.where('id = :threadId', { threadId: values.threadId })
+						.execute();
+
+					const repository = entityManager.getRepository(AgentExecution);
+					const queued = await repository.find({
+						select: ['runContext'],
+						where: { threadId: values.threadId, status: 'queued' },
+					});
+					const queuedMessages = queued.filter((row) => row.runContext?.kind === 'message').length;
+					if (
+						queued.length >= MAX_QUEUED_TURNS_PER_THREAD + 1 ||
+						(values.runContext?.kind === 'message' && queuedMessages >= MAX_QUEUED_TURNS_PER_THREAD)
+					) {
+						throw new AgentThreadQueueFullError();
+					}
+					const latest = await repository
+						.createQueryBuilder('execution')
+						.select('MAX(execution.enqueueSequence)', 'max')
+						.where('execution.threadId = :threadId', { threadId: values.threadId })
+						.getRawOne<{ max: number | null }>();
+
+					return await repository.save(
+						repository.create({
+							...values,
+							enqueueSequence: (latest?.max ?? 0) + 1,
+						}),
+					);
+				});
+			}
+
+			return await this.save(this.create({ ...values, enqueueSequence: null }));
+		} catch (error) {
+			if (
+				values.status === 'running' &&
+				values.runContext !== null &&
+				isUniqueConstraintError(error)
+			) {
+				throw new AgentThreadClaimConflictError();
+			}
+			throw error;
+		}
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	async countQueuedByThread(threadId: string): Promise<number> {
+		return await this.countBy({ threadId, status: 'queued' });
+	}
+
+	/** The thread's waiting turns, oldest first. */
+	async findQueuedByThread(threadId: string): Promise<AgentExecution[]> {
+		return await this.find({
+			where: { threadId, status: 'queued' },
+			order: { enqueueSequence: 'ASC' },
+		});
+	}
+
+	async findThreadIdsWithQueued(): Promise<string[]> {
+		const rows = await this.find({ select: ['threadId'], where: { status: 'queued' } });
+		return [...new Set(rows.map((row) => row.threadId))];
+	}
+
+	/**
+	 * Turn a queued row into the thread's claimed running row. `false` when the
+	 * row is no longer queued. A unique-index conflict means another claimed
+	 * running row holds the thread: {@link AgentThreadClaimConflictError}.
+	 */
+	async promoteQueuedToRunning(
+		executionId: string,
+		threadId: string,
+		startedAt: Date,
+	): Promise<boolean> {
+		try {
+			const result = await this.update(
+				{ id: executionId, threadId, status: 'queued' },
+				{ status: 'running', startedAt, updatedAt: startedAt },
+			);
+			return result.affected === 1;
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new AgentThreadClaimConflictError();
+			throw error;
+		}
+	}
+
+	/** End a queued row that cannot run. `false` once the row left `queued`. */
+	async failQueued(executionId: string, error: string, stoppedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'queued' },
+			{ status: 'error', error, runContext: null, stoppedAt, updatedAt: stoppedAt },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * Refresh the liveness timestamp. With `claimedThreadId`, the update matches
+	 * only while the row still has queue context for that thread.
+	 */
+	async touchRunning(executionId: string, claimedThreadId?: string): Promise<boolean> {
+		const result = await this.update(
+			{
+				id: executionId,
+				status: 'running',
+				...(claimedThreadId ? { threadId: claimedThreadId, runContext: Not(IsNull()) } : {}),
+			},
+			{ updatedAt: new Date() },
+		);
+		return result.affected === 1;
 	}
 
 	async updateTimelineIfRunning(
@@ -58,13 +210,26 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
+	/**
+	 * Move a running row to a terminal status. This also releases its thread
+	 * claim. With `staleBefore`, only a row without a heartbeat since then
+	 * matches, so a run that is alive again keeps its claim.
+	 */
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		staleBefore?: Date,
 	): Promise<boolean> {
 		const result = await this.update(
-			{ id: executionId, status: 'running' },
-			values as QueryDeepPartialEntity<AgentExecution>,
+			{
+				id: executionId,
+				status: 'running',
+				...(staleBefore ? { updatedAt: LessThan(staleBefore) } : {}),
+			},
+			{
+				...values,
+				runContext: null,
+			} as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;
 	}
@@ -74,8 +239,9 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	 * sessions list to render a preview before the LLM-generated title is
 	 * available.
 	 *
-	 * Excludes resumed runs (null `userMessage`). Returns one row per thread
-	 * containing the userMessage from that thread's earliest matching run.
+	 * Excludes resumed runs (null `userMessage`) and turns still waiting in the
+	 * queue. Returns one row per thread containing the userMessage from that
+	 * thread's earliest matching run.
 	 */
 	async findFirstUserMessageByThreadIds(threadIds: string[]): Promise<Map<string, string>> {
 		if (threadIds.length === 0) return new Map();
@@ -90,10 +256,11 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."userMessage" IS NOT NULL')
 			.andWhere('e."userMessage" != \'\'')
+			.andWhere('e."status" != \'queued\'')
 			.andWhere(
 				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
 					'WHERE e2."threadId" = e."threadId" AND e2."userMessage" IS NOT NULL ' +
-					'AND e2."userMessage" != \'\')',
+					'AND e2."userMessage" != \'\' AND e2."status" != \'queued\')',
 			)
 			.getRawMany<{ threadId: string; userMessage: string }>();
 
@@ -128,9 +295,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return new Map(rows.map((r) => [r.threadId, r.source]));
 	}
 
+	/** Status of each thread's latest turn that started; queued turns do not count yet. */
 	async findLatestStatusesByThreadIds(
 		threadIds: string[],
-	): Promise<Map<string, AgentExecutionStatus>> {
+	): Promise<Map<string, Exclude<AgentExecutionStatus, 'queued'>>> {
 		if (threadIds.length === 0) return new Map();
 
 		const tableName = this.metadata.tablePath;
@@ -139,10 +307,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere(
 				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" ' +
+					'WHERE e2."threadId" = e."threadId" AND e2."status" != \'queued\' ' +
 					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
 			)
-			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+			.getRawMany<{ threadId: string; status: Exclude<AgentExecutionStatus, 'queued'> }>();
 
 		return new Map(rows.map((row) => [row.threadId, row.status]));
 	}

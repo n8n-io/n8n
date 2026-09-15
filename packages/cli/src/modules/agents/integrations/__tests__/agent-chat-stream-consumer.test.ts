@@ -27,6 +27,30 @@ function makeConsumer(
 
 const thread = mock<Thread<unknown, unknown>>();
 
+describe('AgentChatStreamConsumer — buffered delivery', () => {
+	it('posts buffered text before the finished stream cleans up', async () => {
+		const order: string[] = [];
+		const bufferedThread = mock<Thread<unknown, unknown>>();
+		bufferedThread.post.mockImplementation(async () => {
+			order.push('post');
+			return undefined as never;
+		});
+		const stream = (async function* () {
+			try {
+				yield { type: 'text-delta', id: 'text-1', delta: 'Done' } as const;
+				yield { type: 'finish', finishReason: 'stop' } as const;
+			} finally {
+				order.push('cleanup');
+			}
+		})();
+
+		await makeConsumer(vi.fn()).consume(stream, bufferedThread);
+
+		expect(bufferedThread.post).toHaveBeenCalledWith({ markdown: 'Done' });
+		expect(order).toEqual(['post', 'cleanup']);
+	});
+});
+
 describe('AgentChatStreamConsumer — rate-limit fallback', () => {
 	it('posts a fallback error after a RATE_LIMIT_EXCEEDED tool result', async () => {
 		const postErrorToThread = vi.fn().mockResolvedValue(undefined);

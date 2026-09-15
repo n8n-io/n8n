@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
@@ -9,11 +10,21 @@ import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { AgentActionAlreadyHandledError } from '../../agent-action-already-handled.error';
+import {
+	AgentThreadQueueFullError,
+	MAX_QUEUED_TURNS_PER_THREAD,
+	type AgentTurnClaim,
+	type AgentTurnSubmission,
+	type AgentTurnSubmitResult,
+} from '../../agent-turn-queue.service';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
+	type ActionDecisionMessageParams,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
@@ -31,9 +42,11 @@ interface FakeThread {
 	id: string;
 	channelId?: string;
 	adapter?: { botUserId?: string };
+	currentMessage?: { toJSON(): unknown };
 	subscribe: Mock;
 	post: Mock;
 	startTyping: Mock;
+	toJSON: Mock;
 	messages?: AsyncIterable<unknown>;
 }
 
@@ -47,12 +60,26 @@ function makeBot() {
 		action?: (event: unknown) => Promise<void>;
 		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
+	// `thread.toJSON()` includes the current serialized message.
+	const serializable = (message: unknown) =>
+		typeof message === 'object' && message !== null && !('toJSON' in message)
+			? Object.assign(message, { toJSON: () => ({ ...message }) })
+			: message;
+	const withCurrentMessage = (thread: unknown, message: unknown) => {
+		const currentMessage = serializable(message);
+		if (typeof thread === 'object' && thread !== null && 'toJSON' in thread) {
+			Object.assign(thread, { currentMessage });
+		}
+		return currentMessage;
+	};
 	const bot = {
 		onNewMention: (h: typeof handlers.mention) => {
-			handlers.mention = h;
+			handlers.mention =
+				h && (async (thread, message) => await h(thread, withCurrentMessage(thread, message)));
 		},
 		onSubscribedMessage: (h: typeof handlers.subscribed) => {
-			handlers.subscribed = h;
+			handlers.subscribed =
+				h && (async (thread, message) => await h(thread, withCurrentMessage(thread, message)));
 		},
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
@@ -61,6 +88,8 @@ function makeBot() {
 			handlers.slashCommand = h;
 		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
+		getState: vi.fn().mockReturnValue({}),
+		getLogger: vi.fn().mockReturnValue(undefined),
 		thread: vi.fn(),
 	};
 	return { bot, handlers };
@@ -71,15 +100,24 @@ function makeThread(
 	adapter?: FakeThread['adapter'],
 	messages?: FakeThread['messages'],
 ): FakeThread {
-	return {
+	const thread: FakeThread = {
 		id,
 		channelId: 'channel-1',
 		adapter,
 		subscribe: vi.fn().mockResolvedValue(undefined),
 		post: vi.fn().mockResolvedValue(undefined),
 		startTyping: vi.fn().mockResolvedValue(undefined),
+		toJSON: vi.fn(() => ({
+			_type: 'chat:Thread',
+			adapterName: 'test',
+			channelId: 'channel-1',
+			currentMessage: thread.currentMessage?.toJSON(),
+			id,
+			isDM: false,
+		})),
 		...(messages ? { messages } : {}),
 	};
+	return thread;
 }
 
 function asyncIterableOf<T>(values: T[]): AsyncIterable<T> {
@@ -108,6 +146,43 @@ async function* toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
 	for (const c of chunks) yield c;
 }
 
+/** Models the orchestrator's resume contract: `beforeResume` runs once the resume owns the thread turn. */
+function resumeStream(chunks: StreamChunk[]) {
+	return vi.fn((config?: { beforeResume?: () => Promise<void> }) =>
+		(async function* (): AsyncGenerator<StreamChunk> {
+			await config?.beforeResume?.();
+			yield* chunks;
+		})(),
+	);
+}
+
+function claimFor(threadId: string): AgentTurnClaim {
+	return {
+		executionId: `exec-${threadId}`,
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	};
+}
+
+/** The queue side of the executor on an idle thread: every turn is claimed at once. */
+function queueExecutor() {
+	return {
+		submitTurn: vi.fn(
+			async (
+				turn: AgentTurnSubmission,
+				onPersisted?: (executionId: string) => void,
+			): Promise<AgentTurnSubmitResult> => {
+				const claim = claimFor(turn.threadId);
+				onPersisted?.(claim.executionId);
+				return { status: 'claimed', claim };
+			},
+		),
+		resolveResumeThread: vi.fn(async () => 'agent-1:thread-1'),
+	};
+}
+
 function makeAgentExecutor(chunks: StreamChunk[]) {
 	const captured: { message: string; modelMessage: string }[] = [];
 	const executeForChatPublished = vi.fn((config: { message: string; modelMessage: string }) => {
@@ -115,8 +190,9 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 		return toStream(chunks);
 	});
 	return {
+		...queueExecutor(),
 		executeForChatPublished,
-		resumeForChat: vi.fn(() => toStream(chunks)),
+		resumeForChat: resumeStream(chunks),
 		captured,
 	};
 }
@@ -155,6 +231,26 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
+class QueuedActionTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-action';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Action';
+	readonly displayIcon = 'circle';
+	readonly needsShortCallbackData = true;
+	readonly deleteActionMessageBeforeResume = false;
+
+	formatActionDecisionMessage({ approved, raw, user }: ActionDecisionMessageParams): string {
+		const { cardText } = raw as { cardText: string };
+		return `${cardText}: ${approved ? 'approved' : 'declined'} by ${user.fullName}`;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -264,6 +360,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry = new ChatIntegrationRegistry();
 		registry.register(new BufferingTestIntegration());
 		registry.register(new StreamingTestIntegration());
+		registry.register(new QueuedActionTestIntegration());
 		registry.register(new FormattedBufferedTestIntegration());
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
@@ -626,6 +723,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('names the misconfiguration when the run fails with a UserError', async () => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {
+				...queueExecutor(),
 				// The real method is an async generator: the build error surfaces on
 				// the first `next()`, inside the stream consumer.
 				// eslint-disable-next-line require-yield
@@ -720,6 +818,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					message:
 						'In [this](https://notion.so/x) PRD, see https://a.example.com or mail user@example.com',
 				}),
+				expect.anything(),
 			);
 		} finally {
 			loadChatSdkSpy.mockRestore();
@@ -749,6 +848,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			});
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({ message: raw }),
+				expect.anything(),
 			);
 		} finally {
 			loadChatSdkSpy.mockRestore();
@@ -791,6 +891,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:test-streaming:u1',
 					}),
 				}),
+				expect.anything(),
 			);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				2,
@@ -806,6 +907,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:test-streaming:u2',
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -848,6 +950,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:test-formatted-buffered:u1',
 					}),
 				}),
+				expect.anything(),
 			);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				2,
@@ -863,6 +966,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:test-formatted-buffered:u1',
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 	});
@@ -921,6 +1025,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -952,6 +1057,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -983,6 +1089,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1#4' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1118,6 +1225,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 					}),
 				}),
+				expect.anything(),
 			);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenNthCalledWith(
 				2,
@@ -1127,6 +1235,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1266,6 +1375,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1317,6 +1427,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:test-streaming:u1',
 					},
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1363,6 +1474,8 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 			await vi.waitFor(() => expect(unbindStarted).toBe(true));
+			// The reset itself looks the binding up once to find the session it queues on.
+			const lookupsByReset = messageContextStore.resolveSession.mock.calls.length;
 
 			// Started while the reset is still gated inside its lock, with the
 			// binding still (correctly) in place. If the reset's two steps
@@ -1381,7 +1494,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			// message, and it would already have called resolveSession — while
 			// the binding is still in place — by this point.
 			for (let i = 0; i < 20; i++) await Promise.resolve();
-			expect(messageContextStore.resolveSession).not.toHaveBeenCalled();
+			expect(messageContextStore.resolveSession).toHaveBeenCalledTimes(lookupsByReset);
 
 			releaseUnbind();
 			await Promise.all([resetPromise, messagePromise]);
@@ -1396,7 +1509,340 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: expect.not.stringContaining('task:'),
 					}),
 				}),
+				expect.anything(),
 			);
+		});
+	});
+
+	describe('per-thread turn queue', () => {
+		const integration = {
+			type: 'test-streaming',
+			credentialId: 'cred-1',
+			settings: { sessionIdleTimeoutMinutes: null },
+		} as unknown as AgentIntegrationConfig;
+		const author = { userId: 'u1', userName: 'user1' };
+		const channel = {
+			integrationType: 'test-streaming',
+			credentialId: 'cred-1',
+			thread: {
+				_type: 'chat:Thread' as const,
+				adapterName: 'test-streaming',
+				channelId: 'channel-1',
+				id: 'thread-1',
+				isDM: false,
+			},
+			isNewMention: true,
+			conversationThreadId: 'agent-1:thread-1',
+		};
+
+		function makeQueuedBridge(messageContextStore?: IntegrationMessageContextService) {
+			const store = new Map<string, unknown>();
+			Container.set(CacheService, {
+				get: vi.fn(async (key: string) => store.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					store.set(key, value);
+				}),
+			} as never);
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const { submitTurn } = queueExecutor();
+			const executeForChatPublished = vi.fn(() =>
+				toStream([{ type: 'text-delta', id: 't', delta: 'reply' }, finishChunk]),
+			);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				{ submitTurn, executeForChatPublished, resumeForChat: vi.fn() } as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+				messageContextStore,
+			);
+			const send = async (text: string) => await handlers.mention!(thread, { text, author });
+			const submittedThreadIds = () => submitTurn.mock.calls.map(([turn]) => turn.threadId);
+			return { bridge, bot, thread, send, submitTurn, executeForChatPublished, submittedThreadIds };
+		}
+
+		it('stores a message behind the running turn with what its headless run needs and runs nothing', async () => {
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const bridge = makeQueuedBridge(messageContextStore);
+			bridge.submitTurn.mockResolvedValueOnce({ status: 'queued', executionId: 'exec-2' });
+
+			await bridge.send('second');
+
+			expect(bridge.submitTurn).toHaveBeenCalledWith(
+				{
+					threadId: 'agent-1:thread-1',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					userMessage: 'second',
+					author: { id: 'u1', name: 'user1' },
+					source: 'test-streaming',
+					resourceId: 'integration:test-streaming:u1',
+					runContext: {
+						kind: 'message',
+						channel: {
+							integrationType: 'test-streaming',
+							credentialId: 'cred-1',
+							thread: expect.objectContaining({
+								id: 'thread-1',
+								currentMessage: expect.objectContaining({ text: 'second', author }),
+							}),
+							isNewMention: true,
+							conversationThreadId: 'agent-1:thread-1',
+						},
+					},
+				},
+				expect.any(Function),
+			);
+			// The waiting message neither runs nor redirects the running turn's replies.
+			expect(bridge.executeForChatPublished).not.toHaveBeenCalled();
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
+			expect(bridge.thread.post).not.toHaveBeenCalled();
+		});
+
+		it('runs a queued message headless in the rebuilt thread and posts the reply there', async () => {
+			const chatSdk = await import('chat');
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+			try {
+				const bridge = makeQueuedBridge();
+				let streamedText = '';
+				const nativeStream = vi.fn(async (threadId: string, stream: unknown) => {
+					streamedText = await drainIterable(stream);
+					return { id: 'reply-1', threadId, raw: {} };
+				});
+				bridge.bot.getAdapter.mockReturnValue({
+					name: 'test-streaming',
+					stream: nativeStream,
+				});
+				const claim = claimFor('agent-1:thread-1');
+				const message = new chatSdk.Message({
+					id: 'message-2',
+					threadId: 'thread-1',
+					text: 'second',
+					formatted: chatSdk.parseMarkdown('second'),
+					raw: { ts: '2' },
+					author: { ...author, fullName: 'User One', isBot: false, isMe: false },
+					metadata: { dateSent: new Date('2026-09-14T10:00:00Z'), edited: false },
+					attachments: [],
+				});
+				const row = {
+					id: 'exec-2',
+					threadId: 'agent-1:thread-1',
+					resourceId: 'integration:test-streaming:u1',
+					userMessage: 'second',
+					attachments: null,
+					runContext: {
+						kind: 'message',
+						channel: {
+							...channel,
+							thread: { ...channel.thread, currentMessage: message.toJSON() },
+						},
+					},
+				} as unknown as AgentExecution;
+
+				await bridge.bridge.runQueuedMessage(row, claim);
+
+				expect(bridge.executeForChatPublished).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: 'second',
+						modelMessage: expect.stringContaining('[user1 (u1)]: second'),
+						memory: {
+							threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+							resourceId: 'integration:test-streaming:u1',
+						},
+					}),
+					claim,
+				);
+				expect(nativeStream).toHaveBeenCalledWith(
+					'thread-1',
+					expect.anything(),
+					expect.objectContaining({ recipientUserId: 'u1' }),
+				);
+				expect(streamedText).toBe('reply');
+				expect(bridge.submitTurn).not.toHaveBeenCalled();
+			} finally {
+				loadChatSdkSpy.mockRestore();
+			}
+		});
+
+		it('runs a queued action after its callback expires and rejects a duplicate', async () => {
+			const chatSdk = await import('chat');
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+			const order: string[] = [];
+			const cache = new Map<string, unknown>();
+			Container.set(CacheService, {
+				get: vi.fn(async (key: string) => cache.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					cache.set(key, value);
+				}),
+			} as never);
+			const lockService = mock<LockService>();
+			lockService.withLease.mockImplementation(
+				async (_namespace, _key, fn) => await fn(new AbortController().signal),
+			);
+			Container.set(LockService, lockService);
+
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			const editMessage = vi.fn(async () => {
+				order.push('card');
+			});
+			const postMessage = vi.fn(async (threadId: string) => {
+				order.push('duplicate');
+				return { id: 'duplicate-message-1', threadId, raw: {} };
+			});
+			const adapter = { name: 'test-action', editMessage, postMessage };
+			bot.getAdapter.mockReturnValue(adapter);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.setLatest.mockImplementation(async () => {
+				order.push('context');
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			agentExecutor.submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
+			let checkpointResumed = false;
+			agentExecutor.resumeForChat.mockImplementation((config) =>
+				(async function* () {
+					if (checkpointResumed) throw new AgentActionAlreadyHandledError();
+					checkpointResumed = true;
+					await config?.beforeResume?.();
+					order.push('resume');
+					yield finishChunk;
+				})(),
+			);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-action', credentialId: 'cred-1' } as never,
+				messageContextStore,
+			);
+			const shortenCallback = bridge.getShortenCallback({
+				groupId: '["run-1","tool-1"]',
+				kind: 'approval',
+			});
+			if (!shortenCallback) throw new Error('Expected short callback support');
+			const callback = await shortenCallback(
+				'resume:run-1:tool-1:0',
+				'{"approved":true}',
+				'Approve',
+			);
+			const actionMessage = new chatSdk.Message({
+				id: 'card-message-1',
+				threadId: 'thread-1',
+				text: '',
+				formatted: chatSdk.parseMarkdown(''),
+				raw: { cardText: 'Deploy now' },
+				author: {
+					userId: 'u2',
+					userName: 'alice',
+					fullName: 'Alice',
+					isBot: false,
+					isMe: false,
+				},
+				metadata: { dateSent: new Date('2026-09-14T10:00:00Z'), edited: false },
+				attachments: [],
+			});
+			thread.currentMessage = actionMessage;
+
+			const actionEvent = {
+				actionId: callback.id,
+				value: callback.value,
+				messageId: actionMessage.id,
+				thread,
+				threadId: thread.id,
+				user: actionMessage.author,
+				adapter,
+				raw: actionMessage.raw,
+			};
+			await handlers.action!(actionEvent);
+			await handlers.action!(actionEvent);
+
+			expect(order).toEqual([]);
+			const runContext = structuredClone(agentExecutor.submitTurn.mock.calls[0][0].runContext);
+			const duplicateRunContext = structuredClone(
+				agentExecutor.submitTurn.mock.calls[1][0].runContext,
+			);
+			expect(runContext.channel).toEqual(
+				expect.objectContaining({
+					action: { actionId: callback.id, kind: 'approval', label: 'Approve' },
+					thread: expect.objectContaining({ currentMessage: expect.any(Object) }),
+				}),
+			);
+			expect(cache.size).toBeGreaterThan(0);
+			cache.clear();
+			const duplicateClaim = claimFor('agent-1:thread-1');
+			duplicateClaim.release = vi.fn(async () => {
+				order.push('release');
+			});
+			duplicateClaim.fail = vi.fn(async () => {
+				order.push('fail');
+				await duplicateClaim.release();
+			});
+			try {
+				await bridge.runQueuedResume(
+					{ runContext } as unknown as AgentExecution,
+					claimFor('agent-1:thread-1'),
+				);
+				await bridge.runQueuedResume(
+					{ runContext: duplicateRunContext } as unknown as AgentExecution,
+					duplicateClaim,
+				);
+			} finally {
+				loadChatSdkSpy.mockRestore();
+			}
+
+			expect(order).toEqual(['context', 'card', 'resume', 'duplicate', 'fail', 'release']);
+			expect(cache.size).toBe(0);
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u2',
+				expect.objectContaining({
+					messageId: 'card-message-1',
+					interactingUserId: 'u2',
+					replyExpectation: 'required',
+				}),
+			);
+			expect(editMessage).toHaveBeenCalledWith(
+				'thread-1',
+				'card-message-1',
+				'Deploy now: approved by Alice',
+			);
+			expect(postMessage).toHaveBeenCalledWith('thread-1', 'This action has already been handled');
+			expect(duplicateClaim.fail).toHaveBeenCalledTimes(1);
+			expect(duplicateClaim.release).toHaveBeenCalledTimes(1);
+		});
+
+		it('/new rotates the session at once while queued rows keep the old thread id', async () => {
+			const bridge = makeQueuedBridge();
+			bridge.submitTurn.mockResolvedValueOnce({ status: 'queued', executionId: 'exec-1' });
+
+			await bridge.send('first');
+			await bridge.send('/new');
+			expect(bridge.thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+			await bridge.send('second');
+
+			expect(bridge.submittedThreadIds()).toEqual(['agent-1:thread-1', 'agent-1:thread-1#1']);
+		});
+
+		it('posts the queue-full notice when the queue rejects the message', async () => {
+			const bridge = makeQueuedBridge();
+			bridge.submitTurn.mockRejectedValueOnce(new AgentThreadQueueFullError());
+
+			await bridge.send('one too many');
+
+			expect(bridge.thread.post).toHaveBeenCalledWith(
+				`⚠️ This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+			);
+			expect(bridge.executeForChatPublished).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1641,6 +2087,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1699,19 +2146,54 @@ describe('AgentChatBridge — consumeStream', () => {
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
 				}),
+				expect.anything(),
 			);
 		});
 
-		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {
+		it.each([false, true])(
+			'cleans rejected attachments only before persistence (persisted: %s)',
+			async (persisted) => {
+				const agentExecutor = makeAgentExecutor([finishChunk]);
+				agentExecutor.submitTurn.mockImplementationOnce(async (_turn, onPersisted) => {
+					if (persisted) onPersisted?.('exec-1');
+					throw persisted ? new Error('Claim lookup failed') : new AgentThreadQueueFullError();
+				});
+				const attachmentService = makeAttachmentService();
+				const handlers = makeBridge(agentExecutor, attachmentService);
+				const thread = makeThread();
+
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
+
+				if (persisted) {
+					expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
+				} else {
+					expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+					expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('messages waiting'));
+				}
+				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			},
+		);
+
+		it('ends the claimed row and keeps its attachments when execution setup fails before the stream', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
 			const handlers = makeBridge(agentExecutor, attachmentService);
 			const thread = makeThread();
 			const integrationImpl = registry.get('test-streaming')!;
 			// The test integration doesn't implement this optional hook; inject one.
-			integrationImpl.createBridgeExecutionContext = vi
-				.fn()
-				.mockRejectedValue(new Error('platform down'));
+			const failure = new Error('platform down');
+			integrationImpl.createBridgeExecutionContext = vi.fn().mockRejectedValue(failure);
 
 			try {
 				await handlers.mention!(thread, {
@@ -1727,7 +2209,11 @@ describe('AgentChatBridge — consumeStream', () => {
 					],
 				});
 
-				expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+				// The stored row owns the attachments; the failure ends that row.
+				const claim = await agentExecutor.submitTurn.mock.results[0].value;
+				if (claim.status !== 'claimed') throw new Error('Expected a claimed turn');
+				expect(claim.claim.fail).toHaveBeenCalledWith(failure);
+				expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
 				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 				// The mention handler swallows the re-thrown error and reports it to
 				// the platform thread — the awaited call above resolving (rather than
@@ -1793,6 +2279,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					message: '/new',
 					attachments: [expect.objectContaining({ id: 'att-1', fileName: 'photo.png' })],
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -1818,6 +2305,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				expect.objectContaining({
 					attachments: [expect.objectContaining({ id: 'att-1' })],
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -2007,6 +2495,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
@@ -2042,6 +2531,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus, botUserId: 'U_BOT' });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
@@ -2080,6 +2570,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			// A silent turn: the agent finishes without any text or post, so
 			// Slack's post-triggered auto-clear never happens.
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 			};
@@ -2115,6 +2606,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -2166,6 +2658,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -2216,6 +2709,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -2267,6 +2761,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(async function* () {
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 					yield { type: 'finish' as const, finishReason: 'stop' as const };
@@ -2319,6 +2814,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				// Respond (which clears the status) while the initial "Thinking..."
 				// set is still waiting out its retry delay, then keep the stream open
 				// past that delay so the retry would otherwise fire after the clear.
@@ -2381,6 +2877,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() =>
 					toStream([
 						{ type: 'text-delta', id: 't1', delta: 'Hello' },
@@ -2436,17 +2933,16 @@ describe('AgentChatBridge — consumeStream', () => {
 			const thread = makeThread();
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() =>
-					toStream([
-						{ type: 'reasoning-start', id: 'reasoning-1' },
-						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
-						{ type: 'reasoning-end', id: 'reasoning-1' },
-						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
-						{ type: 'text-delta', id: 't1', delta: 'response' },
-						{ type: 'finish', finishReason: 'stop' },
-					]),
-				),
+				resumeForChat: resumeStream([
+					{ type: 'reasoning-start', id: 'reasoning-1' },
+					{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+					{ type: 'reasoning-end', id: 'reasoning-1' },
+					{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+					{ type: 'text-delta', id: 't1', delta: 'response' },
+					{ type: 'finish', finishReason: 'stop' },
+				]),
 			};
 
 			new AgentChatBridge(
@@ -2514,6 +3010,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					modelMessage: '[user1 (u1)]: hello',
 					author: { id: 'u1', name: 'user1' },
 				}),
+				expect.anything(),
 			);
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:thread-1',
@@ -2762,6 +3259,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'task:task-1',
 					}),
 				}),
+				expect.anything(),
 			);
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:slack:D123:1001',
@@ -2880,6 +3378,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						resourceId: 'integration:slack:u1',
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -2919,6 +3418,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:slack:D123:' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -2960,6 +3460,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:slack:C123:456.789' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -2999,6 +3500,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 
@@ -3041,6 +3543,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						threadId: expect.objectContaining({ id: 'agent-1:slack:G123:456.789' }),
 					}),
 				}),
+				expect.anything(),
 			);
 		});
 	});
@@ -3050,6 +3553,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
 				resumeForChat: vi.fn(() => toStream([])),
 				findOpenSuspension: vi
@@ -3164,6 +3668,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			registry.register(new StatusHandleTestIntegration());
 
 			const agentExecutor = {
+				...queueExecutor(),
 				executeForChatPublished: vi.fn(() => {
 					throw new Error('setup failed');
 				}),

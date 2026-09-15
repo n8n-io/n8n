@@ -158,15 +158,19 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	}
 
 	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
-		return query
-			.subQuery()
-			.select('latestExecution.status')
-			.from(AgentExecution, 'latestExecution')
-			.where('latestExecution.threadId = thread.id')
-			.orderBy('latestExecution.createdAt', 'DESC')
-			.addOrderBy('latestExecution.id', 'DESC')
-			.limit(1)
-			.getQuery();
+		return (
+			query
+				.subQuery()
+				.select('latestExecution.status')
+				.from(AgentExecution, 'latestExecution')
+				.where('latestExecution.threadId = thread.id')
+				// A queued turn has not started; the thread's status is its last run.
+				.andWhere("latestExecution.status != 'queued'")
+				.orderBy('latestExecution.createdAt', 'DESC')
+				.addOrderBy('latestExecution.id', 'DESC')
+				.limit(1)
+				.getQuery()
+		);
 	}
 
 	private failureExistsSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {

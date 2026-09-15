@@ -11,16 +11,26 @@ import {
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
-import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import {
+	AgentExecutionOrchestratorService,
+	type ResumeForChatConfig,
+} from './agent-execution-orchestrator.service';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import {
+	AgentTurnQueueService,
+	buildDraftMessageConfig,
+	buildDraftResumeConfig,
+	type AgentTurnClaim,
+	type AgentTurnSubmission,
+} from './agent-turn-queue.service';
 import { AgentValidationService } from './agent-validation.service';
+import type { AgentTurnRunContext } from './entities/agent-execution.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
@@ -36,7 +46,7 @@ export type PrepareDraftRunResult =
 	| { status: 'session_not_found' }
 	| { status: 'agent_misconfigured'; missing: string[] };
 
-interface StreamDraftRunInput {
+interface DraftRunInput {
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -46,7 +56,8 @@ interface StreamDraftRunInput {
 	source?: string;
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
-	onExecutionRecorded?: (executionId: string) => void;
+	/** Runs after the turn has a durable execution row. */
+	onPersisted?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -57,10 +68,11 @@ interface ExecuteDraftRunInput extends PrepareDraftRunInput {
 	abortSignal?: AbortSignal;
 }
 
-interface ResumeDraftRunInput {
+interface DraftResumeInput {
 	agentId: string;
 	projectId: string;
-	sessionId: string;
+	/** The session the checkpoint must belong to. The preview chat resumes by run id alone. */
+	sessionId?: string;
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
@@ -68,8 +80,35 @@ interface ResumeDraftRunInput {
 	source?: string;
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
-	response: string;
 	abortSignal?: AbortSignal;
+}
+
+interface ResumeDraftRunInput extends DraftResumeInput {
+	sessionId: string;
+	response: string;
+}
+
+/**
+ * A turn the queue accepted: `claimed` runs now and streams its answer;
+ * `queued` waits behind the session's running turn and runs headless once it
+ * ends, so the answer arrives through the execution update push and history.
+ */
+export type DraftTurnSubmission =
+	| {
+			status: 'claimed';
+			sessionId: string;
+			executionId: string;
+			stream: AsyncGenerator<StreamChunk>;
+	  }
+	| { status: 'queued'; sessionId: string; executionId: string };
+
+/** The session runs another turn and this caller cannot wait for it. */
+export class AgentThreadBusyError extends UserError {
+	constructor() {
+		super(
+			'The agent is still working on an earlier message in this session. Try again once it has answered.',
+		);
+	}
 }
 
 export const agentTestRunContinuationSchema = z
@@ -160,6 +199,7 @@ export class AgentTestRunService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly agentTurnQueueService: AgentTurnQueueService,
 	) {}
 
 	async prepareDraftRun({
@@ -185,80 +225,150 @@ export class AgentTestRunService {
 		return { status: 'ready', sessionId: sessionId ?? randomUUID() };
 	}
 
-	streamDraftRun({
-		agentId,
-		projectId,
-		message,
-		user,
-		sessionId,
-		attachments,
-		source,
-		previewChat,
-		onExecutionRecorded,
-		abortSignal,
-	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
-		return this.agentExecutionOrchestratorService.executeForChat({
-			agentId,
-			projectId,
-			message,
-			user,
-			memory: {
-				threadId: sessionId,
-				resourceId: draftChatMemoryResourceId(user.id),
-			},
-			attachments,
-			source,
-			previewChat,
-			onExecutionRecorded,
-			abortSignal,
-		});
+	/** Store the message as the session's next turn; see {@link DraftTurnSubmission}. */
+	async submitDraftRun(input: DraftRunInput): Promise<DraftTurnSubmission> {
+		const { onPersisted, ...run } = input;
+		const submitted = await this.agentTurnQueueService.submit(this.messageTurn(run), onPersisted);
+		return submitted.status === 'queued'
+			? { ...submitted, sessionId: run.sessionId }
+			: {
+					status: 'claimed',
+					sessionId: run.sessionId,
+					executionId: submitted.claim.executionId,
+					stream: this.streamDraftRun(run, submitted.claim),
+				};
 	}
 
+	/**
+	 * Store a human-in-the-loop response as the session's next turn. A resume
+	 * runs at once on an idle session even when messages wait for it.
+	 */
+	async submitDraftResume(
+		input: DraftResumeInput,
+	): Promise<DraftTurnSubmission | { status: 'session_not_found' }> {
+		const prepared = await this.prepareDraftResume(input);
+		if (prepared.status !== 'ready') return prepared;
+		const submitted = await this.agentTurnQueueService.submit(prepared.turn);
+		return submitted.status === 'queued'
+			? { ...submitted, sessionId: prepared.sessionId }
+			: {
+					status: 'claimed',
+					sessionId: prepared.sessionId,
+					executionId: submitted.claim.executionId,
+					stream: this.agentExecutionOrchestratorService.resumeForChat(
+						prepared.config,
+						submitted.claim,
+					),
+				};
+	}
+
+	/**
+	 * Run the message now and return its outcome. Throws
+	 * {@link AgentThreadBusyError} while the session runs another turn: the
+	 * caller needs the answer in this call, so nothing is queued.
+	 */
 	async executeDraftRun(input: ExecuteDraftRunInput): Promise<AgentTestRunResult> {
 		const prepared = await this.prepareDraftRun(input);
 		if (prepared.status !== 'ready') return prepared;
 
-		let executionId: string | undefined;
-		const stream = this.streamDraftRun({
+		const run: DraftRunInput = {
 			...input,
 			sessionId: prepared.sessionId,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-		});
+		};
+		const claim = await this.agentTurnQueueService.tryRunNow(this.messageTurn(run));
+		if (!claim) throw new AgentThreadBusyError();
 
-		return await this.collectDraftRun(stream, prepared.sessionId, '', () => executionId);
+		return await this.collectDraftRun(
+			this.streamDraftRun(run, claim),
+			prepared.sessionId,
+			'',
+			claim.executionId,
+		);
 	}
 
+	/** Resume now and return the outcome; throws {@link AgentThreadBusyError} like {@link executeDraftRun}. */
 	async resumeDraftRun(input: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		const existing = await this.agentExecutionService.findThreadById(input.sessionId);
-		if (existing && !threadBelongsTo(existing, input.projectId, input.agentId)) {
-			return { status: 'session_not_found' };
-		}
+		const prepared = await this.prepareDraftResume(input);
+		if (prepared.status !== 'ready') return prepared;
+		const claim = await this.agentTurnQueueService.tryRunNow(prepared.turn);
+		if (!claim) throw new AgentThreadBusyError();
 
-		let executionId: string | undefined;
-		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+		return await this.collectDraftRun(
+			this.agentExecutionOrchestratorService.resumeForChat(prepared.config, claim),
+			input.sessionId,
+			input.response,
+			claim.executionId,
+		);
+	}
+
+	private streamDraftRun(input: DraftRunInput, claim: AgentTurnClaim): AsyncGenerator<StreamChunk> {
+		return this.agentExecutionOrchestratorService.executeForChat(
+			{
+				...buildDraftMessageConfig(this.messageTurn(input), input.user),
+				abortSignal: input.abortSignal,
+			},
+			claim,
+		);
+	}
+
+	private messageTurn(input: DraftRunInput): AgentTurnSubmission {
+		return {
+			threadId: input.sessionId,
 			agentId: input.agentId,
 			projectId: input.projectId,
-			runId: input.runId,
-			toolCallId: input.toolCallId,
-			resumeData: input.resumeData,
-			user: input.user,
-			usePublishedVersion: false,
-			integrationType: N8N_CHAT_INTEGRATION_TYPE,
-			expectedMemory: {
-				threadId: input.sessionId,
-				resourceId: draftChatMemoryResourceId(input.user.id),
-			},
+			userMessage: input.message,
+			attachments: input.attachments,
 			source: input.source,
-			previewChat: input.previewChat,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
-		});
+			resourceId: draftChatMemoryResourceId(input.user.id),
+			runContext: { kind: 'message', previewChat: input.previewChat },
+		};
+	}
 
-		return await this.collectDraftRun(stream, input.sessionId, input.response, () => executionId);
+	/** Check the checkpoint before anything is stored, and resolve the session it belongs to. */
+	private async prepareDraftResume(
+		input: DraftResumeInput,
+	): Promise<
+		| { status: 'session_not_found' }
+		| { status: 'ready'; sessionId: string; config: ResumeForChatConfig; turn: AgentTurnSubmission }
+	> {
+		const { agentId, projectId, sessionId, runId, toolCallId, resumeData, user, source } = input;
+		if (sessionId) {
+			const existing = await this.agentExecutionService.findThreadById(sessionId);
+			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+				return { status: 'session_not_found' };
+			}
+		}
+
+		const resourceId = draftChatMemoryResourceId(user.id);
+		const runContext = {
+			kind: 'resume',
+			runId,
+			toolCallId,
+			resumeData,
+			previewChat: input.previewChat,
+		} satisfies AgentTurnRunContext;
+		const config: ResumeForChatConfig = {
+			...buildDraftResumeConfig(
+				{ agentId, projectId, threadId: sessionId, source, runContext },
+				user,
+			),
+			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+		};
+		const threadId = await this.agentExecutionOrchestratorService.resolveResumeThread(config);
+		return {
+			status: 'ready',
+			sessionId: threadId,
+			config,
+			turn: {
+				threadId,
+				agentId,
+				projectId,
+				userMessage: null,
+				source,
+				resourceId,
+				runContext,
+			},
+		};
 	}
 
 	async resumeDraftApproval(input: {
@@ -346,7 +456,7 @@ export class AgentTestRunService {
 		stream: AsyncIterable<StreamChunk>,
 		sessionId: string,
 		initialResponse: string,
-		getExecutionId: () => string | undefined,
+		executionId: string,
 	): Promise<CollectedDraftRunResult> {
 		let response = initialResponse;
 		const suspensions: AgentTestRunSuspension[] = [];
@@ -369,11 +479,10 @@ export class AgentTestRunService {
 			}
 		}
 
-		const executionId = getExecutionId();
 		const metadata = {
 			response,
 			sessionId,
-			...(executionId ? { executionId } : {}),
+			executionId,
 		};
 		return suspensions.length > 0
 			? { status: 'suspended', ...metadata, suspensions }

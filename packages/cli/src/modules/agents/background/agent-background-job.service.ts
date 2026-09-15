@@ -218,7 +218,8 @@ export class AgentBackgroundJobService {
 		return await this.consumeMail(parentThreadId, jobIds);
 	}
 
-	private async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
+	/** Wake completion consumes delivered results while the wake is still active. */
+	async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
 		const count = await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
 		// Clear pending cards when a foreground turn consumes results without a signal.
 		if (count > 0 && jobIds[0]) await this.notifyJobUpdateById(jobIds[0]);

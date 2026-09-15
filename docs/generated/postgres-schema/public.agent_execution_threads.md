@@ -103,12 +103,15 @@ erDiagram
   double_precision cost
   timestamp_3__with_time_zone createdAt
   integer duration
+  integer enqueueSequence
   text error
   json failureSummary
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ resourceId
+  json runContext
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

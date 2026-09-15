@@ -46,6 +46,7 @@ describe('Telegram Bot API integration scenarios', () => {
 					message: '@n8n_agent_bot hello group',
 					integrationType: 'telegram',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.latestContext()).toMatchObject({
 				messageId: '-1001234567890:21',
@@ -159,6 +160,7 @@ describe('Telegram Bot API integration scenarios', () => {
 					resumeData: { value: 'true' },
 					integrationType: 'telegram',
 				}),
+				expect.anything(),
 			);
 			expect(ctx.lastApiCall('answerCallbackQuery')?.body).toMatchObject({
 				callback_query_id: 'callback-1',

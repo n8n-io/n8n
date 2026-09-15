@@ -67,6 +67,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 					author: scenario.expected.author,
 					integrationType: scenario.expected.integrationType,
 				}),
+				expect.anything(),
 			);
 			expect(ctx.lastPost()?.body).toMatchObject(scenario.expected.firstPost);
 
@@ -74,6 +75,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
 				expect.objectContaining({ message: scenario.expected.followUpMessage }),
+				expect.anything(),
 			);
 		});
 

@@ -4,9 +4,9 @@ import {
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
+	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -32,12 +32,21 @@ import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentThreadQueueFullError } from './agent-turn-queue.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
+
+/** A full thread queue carries its code so the client can tell it from a failed turn. */
+function toSseError(error: unknown, fallback: string): AgentSseEvent {
+	const message = error instanceof Error ? error.message : fallback;
+	return error instanceof AgentThreadQueueFullError
+		? { type: 'error', message, errorCode: error.errorCode }
+		: { type: 'error', message };
+}
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -125,7 +134,7 @@ export class AgentChatController {
 		const abortController = new AbortController();
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
-		let executionId: string | undefined;
+		let persisted = false;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
@@ -158,37 +167,37 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
-					agentId,
-					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftRun({
+				agentId,
+				projectId,
+				message,
+				attachments: storedAttachments,
+				user: req.user,
+				sessionId: threadId,
+				previewChat: true,
+				onPersisted: () => {
+					persisted = true;
+				},
+				abortSignal: abortController.signal,
+			});
+			if (submitted.status === 'queued') {
+				// The queued row references the attachments; the drain runs it later.
+				send({ type: 'queued', sessionId: threadId, executionId: submitted.executionId });
+				return;
+			}
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
+				send({ type: 'done', sessionId: threadId, executionId: submitted.executionId });
 			}
 		} catch (error) {
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
+			// Only remove attachments before the stored turn takes ownership, also on abort.
+			if (!persisted && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
 			}
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Chat failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);
@@ -212,32 +221,32 @@ export class AgentChatController {
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
 		try {
-			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
+			const submitted = await this.agentTestRunService.submitDraftResume({
+				agentId,
+				projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				user: req.user,
+				previewChat: true,
+				abortSignal: abortController.signal,
+			});
+			if (submitted.status === 'session_not_found') {
+				send({ type: 'error', message: 'Session not found' });
+				return;
+			}
+			if (submitted.status === 'queued') {
+				const { sessionId, executionId: queuedId } = submitted;
+				send({ type: 'queued', sessionId, executionId: queuedId });
+				return;
+			}
+			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
+				send({ type: 'done', executionId: submitted.executionId });
 			}
 		} catch (error) {
 			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
+				send(toSseError(error, 'Resume failed'));
 			}
 		} finally {
 			res.off('close', abortOnClose);
