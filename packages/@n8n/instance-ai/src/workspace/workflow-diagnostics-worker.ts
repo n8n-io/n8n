@@ -57,19 +57,28 @@ async function main(): Promise<void> {
 			...(await program.getSyntacticDiagnostics()),
 			...(await program.getBindDiagnostics()),
 			...(await program.getSemanticDiagnostics()),
+			...(await program.getProgramDiagnostics()),
+			...(await program.getGlobalDiagnostics()),
 		];
 		const errors: string[] = [];
 		for (const diagnostic of diagnostics) {
 			if (diagnostic.category !== DiagnosticCategory.Error) continue;
-			if (!diagnostic.fileName || diagnostic.pos < 0) continue;
+			const message = `error TS${diagnostic.code}: ${formatMessage(diagnostic)}`;
+			if (!diagnostic.fileName) {
+				errors.push(message);
+				continue;
+			}
 			const file = path.relative(cwd, diagnostic.fileName);
 			if (file.startsWith('..' + path.sep) || file.split(path.sep).includes('node_modules'))
 				continue;
 			const source = await program.getSourceFile(diagnostic.fileName);
 			if (!source || source.isDeclarationFile) continue;
-			const position = source.getLineAndCharacterOfPosition(diagnostic.pos);
-			const location = `${file}(${position.line + 1},${position.character + 1})`;
-			errors.push(`${location}: error TS${diagnostic.code}: ${formatMessage(diagnostic)}`);
+			let location = file;
+			if (diagnostic.pos >= 0) {
+				const position = source.getLineAndCharacterOfPosition(diagnostic.pos);
+				location = `${file}(${position.line + 1},${position.character + 1})`;
+			}
+			errors.push(`${location}: ${message}`);
 		}
 		console.log(JSON.stringify([...new Set(errors)]));
 	} finally {

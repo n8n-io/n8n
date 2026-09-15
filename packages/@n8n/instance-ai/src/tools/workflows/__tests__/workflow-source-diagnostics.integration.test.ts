@@ -89,6 +89,19 @@ export default wf;`);
 		expect(diagnostics).toHaveLength(4);
 	});
 
+	it('returns program errors once alongside source errors', async () => {
+		await rm(join(root, 'node_modules/@types/node'));
+
+		const diagnostics = await diagnose("export const count: number = 'three';");
+		expect(diagnostics).toEqual(
+			expect.arrayContaining([
+				expect.stringMatching(/^error TS2688: Cannot find type definition file for 'node'\./),
+				expect.stringContaining('src/main.ts(1,14): error TS2322:'),
+			]),
+		);
+		expect(diagnostics).toHaveLength(2);
+	});
+
 	it('accepts supported SDK methods', async () => {
 		const diagnostics = await diagnose(`import { workflow, node } from '@n8n/workflow-sdk';
 const first = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
