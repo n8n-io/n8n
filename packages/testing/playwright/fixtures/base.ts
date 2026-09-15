@@ -225,13 +225,16 @@ export const test = base.extend<
 	],
 
 	dbSetup: [
-		async ({ n8nContainer }, use) => {
+		async ({ n8nContainer, n8nStackConfig }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
 				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
 				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
 				await apiContext.dispose();
+
+				// The reset endpoint only reaches the control plane database.
+				if (n8nStackConfig.engine) await n8nContainer.services.postgres.truncateEngineDatabase();
 			}
 			await use(undefined);
 		},

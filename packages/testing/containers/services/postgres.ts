@@ -158,12 +158,38 @@ export class PostgresHelper {
 
 	/** Run an arbitrary SQL statement and return the raw psql output. */
 	async exec(sql: string): Promise<string> {
+		return await this.execIn(this.meta.database, sql);
+	}
+
+	/**
+	 * Empties the engine 2.0 data plane database. The E2E reset endpoint cannot:
+	 * it runs on the control plane connection, and Postgres does not read across
+	 * databases. Every table but the migration bookkeeping, so a new engine table
+	 * needs no change here.
+	 */
+	async truncateEngineDatabase(): Promise<void> {
+		await this.execIn(
+			ENGINE_DATABASE,
+			`DO $$
+			DECLARE target text;
+			BEGIN
+				FOR target IN
+					SELECT tablename FROM pg_tables
+					WHERE schemaname = 'public' AND tablename <> 'migrations'
+				LOOP
+					EXECUTE format('TRUNCATE TABLE %I RESTART IDENTITY CASCADE', target);
+				END LOOP;
+			END $$;`,
+		);
+	}
+
+	private async execIn(database: string, sql: string): Promise<string> {
 		const result = await this.container.exec([
 			'psql',
 			'-U',
 			this.meta.username,
 			'-d',
-			this.meta.database,
+			database,
 			'-A', // unaligned output
 			'-t', // tuples only (no headers)
 			'-F',
