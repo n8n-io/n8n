@@ -89,9 +89,20 @@ headless (`claude -p`) sessions, same client, same server:
   cancel, retried with `confirmed: true`. Because the client had declared the
   capability, the handler elicited again instead of honoring the argument.
   The model then correctly told the user nothing was saved.
-- **The same client exercises both paths.** Which era a session uses varied
-  between runs; nothing in the client config pins it. The fallback is not an
-  edge case for old clients — it is a code path the flagship client hits.
+- **The same client exercises both paths, but the trigger is not pinned
+  down.** Across the spike, Claude Code handshook with `initialize` (2025,
+  legacy leg, un-elicitable) on two early sessions and with `server/discover`
+  (2026-07-28, modern, elicitation) on the rest: 7 legacy probe lines against
+  27 modern in the server log. So the fallback is a real path the flagship
+  client hits, not a hypothetical for old clients. But a retest of five
+  consecutive fresh sessions, including a full MCP remove/re-add, all
+  negotiated the modern era, so the legacy leg could not be reproduced on
+  demand. What flips a session to the 2025 `initialize` handshake is not
+  established here; it may depend on Claude Code's own discovery/caching
+  state. Conclusion for the design: the fallback is necessary because the
+  legacy path demonstrably occurs, but its real-world frequency is unknown
+  and should be read from the `confirmationPath` telemetry in production
+  rather than assumed.
 
 - **Interactive session, measured:** the session handshook on the 2025 era
   (legacy leg), so elicitation was unavailable. The tool served the fallback;
@@ -238,9 +249,12 @@ queues, inbox surfaces) is not justified by volume.
   mcp-remote, which historically dropped capabilities) and Gemini CLI were
   out of scope by decision; the fallback path covers them regardless, but
   their elicitation UX is unverified.
-- The era flip between Claude Code sessions is observed, not explained; if
-  first-contact-always-legacy is systematic, every fresh client connection
-  exercises the fallback at least once.
+- The era flip between Claude Code sessions is observed, not explained. Both
+  handshakes occurred (7 legacy vs 27 modern probe lines), but five
+  consecutive retests including a remove/re-add all went modern, so the
+  legacy leg could not be reproduced on demand and its trigger is unknown.
+  Production `confirmationPath` telemetry is the only reliable read of how
+  often the fallback carries a real write.
 - The elicitation form schema is restricted to flat primitives; the
   confirmation UX is whatever the client renders for a boolean field, and we
   do not control the wording beyond `message`.
