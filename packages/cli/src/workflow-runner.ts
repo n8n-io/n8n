@@ -263,6 +263,10 @@ export class WorkflowRunner {
 					return;
 				}
 
+				// The user cancelled during the grace window; the execution is already
+				// finalized as canceled elsewhere, so don't overwrite it with a failure.
+				if (status === 'canceled') return;
+
 				// A terminal status will not change, and a missing row cannot become one, so
 				// stop rechecking and fail the run now.
 				if (status === undefined || isTerminalExecutionStatus(status)) break;
