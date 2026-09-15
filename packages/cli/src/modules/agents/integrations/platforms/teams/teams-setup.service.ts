@@ -1,4 +1,4 @@
-import type { TeamsAgentSetupState } from '@n8n/api-types';
+import type { AgentTeamsIntegrationSettings, TeamsAgentSetupState } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -66,6 +66,7 @@ export class TeamsSetupService {
 			agentId: agent.id,
 			botId: identity.clientId,
 			agentUpdatedAt: agent.updatedAt,
+			availability: this.availabilityOf(agent),
 		});
 	}
 
@@ -91,6 +92,15 @@ export class TeamsSetupService {
 			msaAppTenantId: identity.tenantId,
 			messagingEndpoint: this.messagingEndpointUrl(scope),
 		});
+	}
+
+	/**
+	 * The availability toggles live on the connected integration, because they
+	 * are what the user chose for this agent's Teams app.
+	 */
+	private availabilityOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
+		const integration = agent.integrations?.find((item) => item.type === 'teams');
+		return integration?.settings;
 	}
 
 	private async getAgent(scope: AgentScope): Promise<Agent> {

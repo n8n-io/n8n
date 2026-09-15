@@ -37,6 +37,19 @@ export interface TeamsAgentAppManifest {
 	}>;
 	permissions: string[];
 	validDomains: string[];
+	/** Required alongside resource-specific permissions; omitted without them. */
+	webApplicationInfo?: {
+		id: string;
+	};
+	/** Present only when a read-all permission is turned on. */
+	authorization?: {
+		permissions: {
+			resourceSpecific: Array<{
+				name: string;
+				type: 'Application';
+			}>;
+		};
+	};
 }
 
 /** Everything the setup stepper needs to render, in one round trip. */
