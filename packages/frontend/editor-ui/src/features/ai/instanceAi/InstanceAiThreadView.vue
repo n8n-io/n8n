@@ -52,6 +52,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
+import { ResponseError } from '@n8n/rest-api-client';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -99,6 +100,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -120,6 +122,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -315,6 +318,42 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+// --- Setup panel (checklist docked above the composer) ---
+// Anchors to the active canvas tab's workflow; on a hydrated thread with no
+// tab state yet, the latest workflow artifact wins (insertion order).
+const setupPanelWorkflowId = computed(() => {
+	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
+	const active = preview.activeWorkflowId.value;
+	if (preview.activeTabId.value) return active ?? undefined;
+	let latest: string | undefined;
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'workflow') latest = entry.id;
+	}
+	return latest;
+});
+const setupPanelProjectId = computed(() =>
+	setupPanelWorkflowId.value
+		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
+		: undefined,
+);
+
+const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
+const agentReturnWorkflowId = agentReturnContext?.workflowId;
+const agentReturnNodeId = ref(agentReturnContext?.nodeId);
+if (agentReturnWorkflowId) {
+	preview.openWorkflowPreview(agentReturnWorkflowId);
+}
+
+function consumeAgentReturnNodeId() {
+	agentReturnNodeId.value = undefined;
+}
+
+function openAgentChatPreview(agentId: string, projectId: string): boolean {
+	preview.openAgentPreview(agentId, projectId);
+	isAgentPreviewDockOpen.value = true;
+	return true;
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -331,6 +370,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -481,11 +521,15 @@ const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL
 	writeDefaults: false,
 });
 
-watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
-	if (activeTabId !== previousActiveTabId) {
-		isAgentPreviewDockOpen.value = false;
-	}
-});
+watch(
+	preview.activeTabId,
+	(activeTabId, previousActiveTabId) => {
+		if (activeTabId !== previousActiveTabId) {
+			isAgentPreviewDockOpen.value = false;
+		}
+	},
+	{ flush: 'sync' },
+);
 
 // Below two panel minimums the limits meet at half, so both panels share the space evenly.
 const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
@@ -852,7 +896,7 @@ function reconnectThreadAfterHydration(): void {
 	});
 }
 
-// Validate the route's :threadId against the loaded thread list, then connect
+// Resolve the route's thread independently of the paginated history, then connect
 // this route-scoped runtime. Route changes remount this component, so no
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
@@ -861,16 +905,24 @@ async function syncRouteToStore() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
-	if (!store.threads.length) {
-		await store.loadThreads();
-	}
-	// User may have navigated elsewhere while we awaited
-	if (requestedThreadId !== props.threadId) return;
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
-		clearPendingThreadHandoff(requestedThreadId);
-		void router.replace({ name: INSTANCE_AI_VIEW });
-		return;
+		try {
+			await store.loadThread(requestedThreadId);
+		} catch (error) {
+			if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
+			if (
+				error instanceof ResponseError &&
+				(error.httpStatusCode === 403 || error.httpStatusCode === 404)
+			) {
+				clearPendingThreadHandoff(requestedThreadId);
+				void router.replace({ name: INSTANCE_AI_VIEW });
+			} else {
+				toast.showError(error, i18n.baseText('generic.error'));
+			}
+			return;
+		}
 	}
+	if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
 	}
@@ -1045,6 +1097,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 		});
 		return;
 	}
+
+	// The request now belongs to the assistant composer beside it, so leaving the
+	// preview chat open reads as two places to ask the same thing.
+	isAgentPreviewDockOpen.value = false;
 
 	const context = buildInstanceAiAgentPreviewHandoffContext(params);
 	stashPendingHandoffContext(props.threadId, context);
@@ -1351,6 +1407,11 @@ async function dismissComposerContextChip() {
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>
+										<InstanceAiSetupPanel
+											v-if="setupPanelWorkflowId"
+											:workflow-id="setupPanelWorkflowId"
+											:project-id="setupPanelProjectId"
+										/>
 										<div :class="$style.inputSwap">
 											<Transition name="input-swap">
 												<InstanceAiConfirmationPanel
@@ -1446,9 +1507,10 @@ async function dismissComposerContextChip() {
 					@resizeend="isResizingPreview = false"
 				>
 					<TabsRoot
-						v-model="preview.activeTabId.value"
+						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
+						@update:model-value="preview.selectTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.allArtifactTabs.value"
@@ -1468,8 +1530,14 @@ async function dismissComposerContextChip() {
 									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
+								:initial-node-id="
+									preview.activeWorkflowId.value === agentReturnWorkflowId
+										? agentReturnNodeId
+										: undefined
+								"
 								:refresh-key="preview.workflowRefreshKey.value"
 								:execution-result="preview.activeWorkflowExecutionResult.value"
+								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -1489,6 +1557,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
+								:preview-open="isAgentPreviewDockOpen"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"

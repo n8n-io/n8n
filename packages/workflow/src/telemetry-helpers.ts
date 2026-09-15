@@ -682,7 +682,7 @@ export function generateNodesGraph(
 				const prompts: IDataObject = {};
 
 				if (node.parameters?.text) {
-					prompts.text = node.parameters.text as string;
+					prompts.text = node.parameters.text;
 				}
 				const nodeOptions = node.parameters?.options as IDataObject;
 
@@ -700,7 +700,7 @@ export function generateNodesGraph(
 
 					for (const key of optionalMessagesKeys) {
 						if (nodeOptions[key]) {
-							prompts[key] = nodeOptions[key] as string;
+							prompts[key] = nodeOptions[key];
 						}
 					}
 				}
@@ -719,7 +719,7 @@ export function generateNodesGraph(
 
 			if (LANGCHAIN_CUSTOM_TOOLS.includes(node.type)) {
 				nodeItem.prompts = {
-					description: (node.parameters?.description as string) ?? '',
+					description: node.parameters?.description ?? '',
 				};
 			}
 

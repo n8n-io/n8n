@@ -123,6 +123,25 @@ describe('SettingsUsageAndPlan', () => {
 		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
 	});
 
+	it('should render the community registered badge as a direct child of the centering container', async () => {
+		usageStore.isLoading = false;
+		usageStore.planName = 'Registered Community';
+		const { container } = renderComponent();
+
+		const badge = container.querySelector('.n8n-badge');
+		// The element that centers the badge against the heading text
+		// (`display: flex; align-items: center`).
+		const centeringContainer = container.querySelector('.titleTooltip');
+
+		expect(badge).not.toBeNull();
+		expect(centeringContainer).not.toBeNull();
+
+		// Only a direct child is a flex item. A tooltip trigger wrapper in between
+		// would take the centering instead, and the inline-flex badge would sit on
+		// the wrapper's line box baseline rather than on the optical center.
+		expect(badge?.parentElement).toBe(centeringContainer);
+	});
+
 	it('should prompt for a restart after license activation', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Business';

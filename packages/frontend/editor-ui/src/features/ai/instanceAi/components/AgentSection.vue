@@ -23,6 +23,12 @@ const isExpanded = ref(settingsStore.isCloudDeployment);
 
 const isError = computed(() => props.agentNode.status === 'error');
 
+const agentPreviewTarget = computed(() => {
+	const target = props.agentNode.targetResource;
+	if (target?.type !== 'agent' || !target.id || !target.projectId) return undefined;
+	return { agentId: target.id, projectId: target.projectId };
+});
+
 const sectionTitle = computed(() => getAgentSectionTitle(props.agentNode) ?? 'Working...');
 
 /**
@@ -64,10 +70,18 @@ watch(
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<div v-if="!isOpen && isActive && peekEntries.length" :class="$style.content">
-			<SubagentStepTimeline :agent-node="props.agentNode" :visible-entries="peekEntries" peek />
+			<SubagentStepTimeline
+				:agent-node="props.agentNode"
+				:agent-preview-target="agentPreviewTarget"
+				:visible-entries="peekEntries"
+				peek
+			/>
 		</div>
 		<AnimatedCollapsibleContent :class="$style.content">
-			<SubagentStepTimeline :agent-node="props.agentNode" />
+			<SubagentStepTimeline
+				:agent-node="props.agentNode"
+				:agent-preview-target="agentPreviewTarget"
+			/>
 		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Error display -->

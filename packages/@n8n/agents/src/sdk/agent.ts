@@ -10,9 +10,14 @@ import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './me
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import {
+	AgentRuntime,
+	type AgentRuntimeConfig,
+	type VolatileInstructionsProvider,
+} from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
 import type { FetchFn } from '../runtime/model/model-factory';
@@ -88,6 +93,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	FLAG_MEMORY_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
 	WRITE_TODOS_TOOL_NAME,
 ]);
@@ -226,6 +232,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
 
+	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -282,6 +290,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	instructions(text: string, options?: { providerOptions?: ProviderOptions }): this {
 		this.instructionsText = text;
 		this.instructionProviderOpts = options?.providerOptions;
+		return this;
+	}
+
+	/** Set the provider that supplies host instructions before each model call. */
+	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
+		this.volatileInstructionsProviderValue = provider;
 		return this;
 	}
 
@@ -1116,6 +1130,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
+			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
@@ -1141,6 +1156,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
+			...(this.volatileInstructionsProviderValue
+				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
 		};
 	}
 

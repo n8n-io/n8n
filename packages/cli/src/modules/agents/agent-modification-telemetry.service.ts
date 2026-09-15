@@ -23,6 +23,8 @@ export type AgentActor = 'user' | 'builder' | 'mcp';
 export type AgentMutationTelemetryContext = {
 	user: User;
 	modifiedBy: AgentActor;
+	/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
+	pushRef?: string;
 };
 
 export type AgentConfigPart =

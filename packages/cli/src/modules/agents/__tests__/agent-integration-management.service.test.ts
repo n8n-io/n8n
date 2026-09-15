@@ -441,6 +441,7 @@ describe('AgentIntegrationManagementService', () => {
 			const { service, persistenceService, chatService, implementation } = makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			const cleanupError = new Error('Slack cleanup failed');
+			const onPersisted = vi.fn();
 			const removal = mock<Required<Pick<AgentChatIntegration, 'onRemove'>>>();
 			removal.onRemove.mockRejectedValue(cleanupError);
 			implementation.onRemove = removal.onRemove;
@@ -457,11 +458,14 @@ describe('AgentIntegrationManagementService', () => {
 					type: integration.type,
 					credentialId: integration.credentialId,
 					deleteExternalResource: true,
+					onPersisted,
 				}),
 			).rejects.toBe(cleanupError);
 
+			expect(onPersisted).toHaveBeenCalledOnce();
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(order(removal.onRemove));
+			expect(order(onPersisted)).toBeLessThan(order(removal.onRemove));
 			expect(order(removal.onRemove)).toBeLessThan(order(chatService.disconnectChannel));
 		});
 
@@ -497,6 +501,7 @@ describe('AgentIntegrationManagementService', () => {
 			const { service, persistenceService, chatService, implementation, agentRepository } =
 				makeService();
 			const removalError = new Error('write failed');
+			const onPersisted = vi.fn();
 			persistenceService.applyIntegrationDelta.mockRejectedValue(removalError);
 			stubRow(agentRepository, [integration]);
 
@@ -507,9 +512,11 @@ describe('AgentIntegrationManagementService', () => {
 					type: integration.type,
 					credentialId: integration.credentialId,
 					deleteExternalResource: true,
+					onPersisted,
 				}),
 			).rejects.toBe(removalError);
 
+			expect(onPersisted).not.toHaveBeenCalled();
 			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.disconnect).not.toHaveBeenCalled();

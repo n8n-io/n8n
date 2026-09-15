@@ -14,6 +14,7 @@ import {
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
+	rewriteForbiddenUnderSp,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../transport';
 
@@ -50,8 +51,8 @@ export async function getChats(
 	// makes `getNodeParameter` throw there instead of listing chats.
 	const operation = this.getNodeParameter('operation', 0) as string;
 	const resource = this.getNodeParameter('resource', 0) as string;
-	// Adding a member is impossible on a 1:1 chat; listing its members is legal.
-	const excludeOneOnOne = resource === 'chatMember' && ['add'].includes(operation);
+	// Only Add and Remove are impossible on a 1:1 chat; listing its members is legal.
+	const excludeOneOnOne = resource === 'chatMember' && ['add', 'remove'].includes(operation);
 
 	// `/v1.0/chats` occasionally 5xxs transiently; retry up to `maxAttempts` times,
 	// sleeping 1s between attempts (not after the last one), and surface the final
@@ -101,7 +102,7 @@ export async function getChats(
 	if (excludeOneOnOne && value.length > 0 && returnData.length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No group chats available to select', {
 			description:
-				'Only group chats can have members added, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
+				'Only group chats can have members added or removed, because a 1:1 chat has a fixed roster. This list covers up to 50 chats, so if your group chat is not among them, switch the Chat field to "By ID".',
 		});
 	}
 
@@ -125,6 +126,39 @@ export async function getChats(
 	return { results };
 }
 
+export async function getChatMembers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const chatId = this.getCurrentNodeParameter('chatId', { extractValue: true }) as string;
+	// The picker can be opened before a chat is selected; show an empty list instead
+	// of failing on an empty id.
+	if (!chatId) return { results: [] };
+
+	// `GET /chats/{id}/members` supports no OData query parameters, so there is no
+	// server-side search to pass the filter to - it pages via @odata.nextLink only.
+	const value = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/members']),
+	)) as IDataObject[];
+
+	const returnData: INodeListSearchItems[] = value.map((member) => {
+		// A deleted user can stay on the roster with a null displayName; a null name
+		// would throw in the sort and break the picker for the whole chat.
+		const label = (member.displayName ?? member.userId ?? member.id) as string;
+		return {
+			name: member.email ? `${label} (${member.email})` : label,
+			// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
+			value: member.id as string,
+		};
+	});
+
+	const results = filterSortSearchListItems(returnData, filter);
+	return { results };
+}
+
 export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -133,19 +167,8 @@ export async function getUsers(
 	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
 	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
 	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
-	let response: IDataObject;
-	if (paginationToken) {
-		response = (await microsoftApiRequest.call(
-			this,
-			'GET',
-			'',
-			{},
-			{},
-			paginationToken,
-			headers,
-		)) as IDataObject;
-	} else {
-		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
+	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
+	if (!paginationToken) {
 		// Two different problems. `"` and `\` only need escaping inside the quoted term, so
 		// escape them (backslash first, then quote) and keep the term intact. `&` and `#`
 		// cannot be escaped or encoded away: Graph re-splits the query string AFTER
@@ -163,15 +186,25 @@ export async function getUsers(
 		if (escaped) {
 			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
 		}
+	}
+	let response: IDataObject;
+	try {
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			'/v1.0/users',
+			paginationToken ? '' : '/v1.0/users',
 			{},
 			qs,
-			undefined,
+			paginationToken,
 			headers,
 		)) as IDataObject;
+	} catch (error) {
+		throw rewriteForbiddenUnderSp.call(
+			this,
+			error,
+			"The user list needs the User.Read.All application permission. Grant it with admin consent, or switch the field to By ID and enter the user's object ID.",
+			'A user principal name also needs User.Read.All, because the node looks it up.',
+		);
 	}
 
 	// An unexpected shape is not an empty directory: returning the token as well would offer

@@ -1,8 +1,7 @@
 import { Time } from '@n8n/constants';
-import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
+import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -50,20 +49,17 @@ export class DynamicCredentialsController {
 		private readonly urlService: UrlService,
 	) {}
 
-	private async findCredentialToUse(
-		credentialId: string,
-		user?: User,
-		scope?: Scope,
-	): Promise<CredentialsEntity> {
-		// External (static-token) callers have no n8n user; their identity is
-		// validated by the resolver, so we resolve the credential by id. When the
-		// request carries an n8n session user, enforce that user's access instead.
-		const credential =
-			user && scope
-				? await this.credentialsFinderService.findCredentialForUser(credentialId, user, [scope])
-				: await this.enterpriseCredentialsService.getOne(credentialId);
+	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
+		// No project scope is checked: the connect half of this flow never had one, and
+		// the resolver keys every read and write on the caller's own identity, so a
+		// caller can only reach their own stored token.
+		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 
-		if (!credential) {
+		// These routes serve only end-user credentials, whose token is per-caller. A
+		// fixed credential's token lives on the shared row, so changing it is an edit
+		// and stays on the `credential:update` paths. Folded into the not-found branch
+		// so the response cannot tell "fixed" from "no such credential".
+		if (!credential?.isResolvable) {
 			throw new NotFoundError('Credential not found');
 		}
 
@@ -119,8 +115,7 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -161,8 +156,7 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
-		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
+		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);

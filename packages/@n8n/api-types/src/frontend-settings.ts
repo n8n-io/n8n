@@ -337,6 +337,17 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the instance-reporting module. Present only when the
+	 * module is enabled on this instance.
+	 */
+	'instance-reporting'?: {
+		/** Whether a receiver is configured, i.e. whether reports are actually sent. */
+		enabled: boolean;
+		/** Minute of the UTC day the daily report fires at, as `HH:mm`. Absent when disabled. */
+		reportTime?: string;
+	};
+
+	/**
 	 * Client settings for the encryption-key-manager module.
 	 */
 	'encryption-key-manager'?: {

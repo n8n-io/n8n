@@ -223,7 +223,10 @@ const openCommunityRegisterModal = () => {
 					</template>
 				</I18nT>
 				<span v-if="badgedPlanName.badge && badgedPlanName.name" :class="$style.titleTooltip">
-					<N8nTooltip placement="top">
+					<!-- `as-child` makes the badge itself the tooltip trigger. Without it the
+						 tooltip adds an inline span trigger that becomes the flex item, so the
+						 badge sits on the heading baseline instead of the optical center. -->
+					<N8nTooltip placement="top" as-child>
 						<template #content>
 							<I18nT
 								v-if="isCommunityEditionRegistered"

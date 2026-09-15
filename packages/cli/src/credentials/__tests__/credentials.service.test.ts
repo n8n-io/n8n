@@ -1414,7 +1414,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('updateInstanceCredential', () => {
-		const payload = { name: 'AI Assistant model', type: 'openAiApi', data: { apiKey: 'new-key' } };
+		const payload = { name: 'n8n Assistant model', type: 'openAiApi', data: { apiKey: 'new-key' } };
 		const preparedCredential = {
 			name: payload.name,
 			type: payload.type,
@@ -1597,7 +1597,7 @@ describe('CredentialsService', () => {
 
 	describe('runInstanceCredentialHooks', () => {
 		it('returns the payload after the matching hook runs', async () => {
-			const encrypted = { name: 'AI Assistant model', type: 'openAiApi', data: 'encrypted' };
+			const encrypted = { name: 'n8n Assistant model', type: 'openAiApi', data: 'encrypted' };
 			const createEncryptedDataSpy = vi
 				.spyOn(service, 'createEncryptedData')
 				.mockResolvedValue(encrypted as never);
@@ -1609,14 +1609,14 @@ describe('CredentialsService', () => {
 
 			const result = await service.runInstanceCredentialHooks('create', {
 				id: null,
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'k' },
 			});
 
 			expect(createEncryptedDataSpy).toHaveBeenCalledWith({
 				id: null,
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'k' },
 			});
@@ -1633,7 +1633,7 @@ describe('CredentialsService', () => {
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 			const payload = {
 				id: '',
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'key' },
 			};
@@ -1652,7 +1652,7 @@ describe('CredentialsService', () => {
 			await expect(
 				service.testWithCredentials(memberUser, {
 					id: '',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'key' },
 				}),
@@ -3598,14 +3598,14 @@ describe('CredentialsService', () => {
 		describe('assigned instance credentials', () => {
 			const existingCredential = mockExistingCredential({
 				id: 'instance-credential-id',
-				name: 'AI Assistant sandbox',
+				name: 'n8n Assistant sandbox',
 				type: 'httpHeaderAuth',
 				data: {},
 				usageScope: 'instance',
 				shared: [],
 			});
 			const payload = {
-				name: 'AI Assistant sandbox',
+				name: 'n8n Assistant sandbox',
 				type: 'httpHeaderAuth',
 				data: { name: 'Authorization', value: 'secret' },
 			};

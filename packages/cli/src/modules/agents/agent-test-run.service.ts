@@ -44,6 +44,8 @@ interface StreamDraftRunInput {
 	sessionId: string;
 	attachments?: StoredAttachmentRef[];
 	source?: string;
+	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
+	previewChat?: boolean;
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
@@ -64,6 +66,8 @@ interface ResumeDraftRunInput {
 	resumeData: unknown;
 	user: User;
 	source?: string;
+	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
+	previewChat?: boolean;
 	response: string;
 	abortSignal?: AbortSignal;
 }
@@ -189,6 +193,7 @@ export class AgentTestRunService {
 		sessionId,
 		attachments,
 		source,
+		previewChat,
 		onExecutionRecorded,
 		abortSignal,
 	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
@@ -203,6 +208,7 @@ export class AgentTestRunService {
 			},
 			attachments,
 			source,
+			previewChat,
 			onExecutionRecorded,
 			abortSignal,
 		});
@@ -245,6 +251,7 @@ export class AgentTestRunService {
 				resourceId: draftChatMemoryResourceId(input.user.id),
 			},
 			source: input.source,
+			previewChat: input.previewChat,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 			},
