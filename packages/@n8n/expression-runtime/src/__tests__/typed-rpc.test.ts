@@ -19,6 +19,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
+import { ExpressionError } from '../types';
 import { createBridge } from './test-bridge';
 
 describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
@@ -956,5 +957,25 @@ describe('Typed RPC: a result the engine cannot transfer', () => {
 
 		expect((caught as Error).name).toBe('ExpressionError');
 		expect((caught as Error).message).toContain('cannot be used in an expression');
+	});
+
+	it('raises the error a lazy read threw, even when the error carries a function', () => {
+		const thrown = Object.assign(new ExpressionError('lazy read failed', {}), { retry: () => 1 });
+		const data: Record<string, unknown> = {
+			$json: {
+				get boom(): never {
+					throw thrown;
+				},
+			},
+		};
+
+		let caught: unknown;
+		try {
+			evaluator.evaluate('{{ $json.boom }}', data, caller);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).message).toBe('lazy read failed');
 	});
 });
