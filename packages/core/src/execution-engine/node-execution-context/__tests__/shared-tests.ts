@@ -370,6 +370,55 @@ export const describeCommonTests = (
 			expect(result.waitTill).toBe(waitTill);
 		});
 
+		describe('tagging the parked task with its waiting sub-executions', () => {
+			beforeEach(() => {
+				delete executeData.metadata;
+			});
+
+			it('should record the id of a sub-execution that went into waiting', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					executionId: 'child_1',
+					waitTill: new Date(),
+				});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toEqual(['child_1']);
+			});
+
+			it('should record every sub-execution that went into waiting during the same node run', async () => {
+				additionalData.executeWorkflow
+					.mockResolvedValueOnce({
+						...executeWorkflowData,
+						executionId: 'child_1',
+						waitTill: new Date(),
+					})
+					.mockResolvedValueOnce({
+						...executeWorkflowData,
+						executionId: 'child_2',
+						waitTill: new Date(),
+					});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toEqual(['child_1', 'child_2']);
+			});
+
+			it('should not record a sub-execution that ran to completion', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					executionId: 'child_1',
+					waitTill: undefined,
+				});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toBeUndefined();
+			});
+		});
+
 		describe('execution context propagation to sub-workflows', () => {
 			const executionContext: IExecutionContext = {
 				version: 1,
