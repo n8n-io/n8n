@@ -87,12 +87,12 @@ ENV npm_config_nodedir=/usr/local
 # ---------------------------------------------------------------------------
 
 # `n8nio/base:26.x` with one change, namely the stock Node files (node, npm,
-# npx, corepack) are swapped for the pointer-compressed build's files.
+# npx) are swapped for the pointer-compressed build's files.
 # Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the tag and digest together when updating.
 FROM n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8 AS runtime
 
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack /usr/local/bin/node
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
 RUN node --version \
     && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }"

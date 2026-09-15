@@ -140,7 +140,7 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     apk del apk-tools
 
 # Bring pnpm over, to make the image easier to extend. pnpm 12 installs a
-# standalone native executable, so the runtime does not need npm or Corepack.
+# standalone native executable, so the runtime does not need npm.
 COPY --from=node-alpine /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
