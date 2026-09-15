@@ -9,15 +9,13 @@ export type EngineMode = 'in-process';
 
 export const ENGINE_MODULE = 'engine-v2';
 
-/** The data plane keeps its own database on the stack Postgres. */
-export const ENGINE_DATABASE = 'n8n_engine';
-
 /** The values the Postgres service contributes, and the URL is built from. */
 const CONNECTION_KEYS = [
 	'DB_POSTGRESDB_USER',
 	'DB_POSTGRESDB_PASSWORD',
 	'DB_POSTGRESDB_HOST',
 	'DB_POSTGRESDB_PORT',
+	'DB_POSTGRESDB_DATABASE',
 ] as const;
 
 interface EngineEnvOptions {
@@ -29,7 +27,9 @@ interface EngineEnvOptions {
  * Adds the env that turns on engine 2.0 to an n8n environment in place.
  *
  * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
- * so the caller never handles credentials. No-op when `engine` is unset.
+ * so the caller never handles credentials. The data plane shares that database:
+ * its tables do not collide, and it keeps its own migrations table. No-op when
+ * `engine` is unset.
  */
 export function applyEngineEnv(
 	env: Record<string, string>,
@@ -58,5 +58,5 @@ export function applyEngineEnv(
 
 	const user = encodeURIComponent(env.DB_POSTGRESDB_USER);
 	const password = encodeURIComponent(env.DB_POSTGRESDB_PASSWORD);
-	env.N8N_ENGINE_DATABASE_URL = `postgres://${user}:${password}@${env.DB_POSTGRESDB_HOST}:${env.DB_POSTGRESDB_PORT}/${ENGINE_DATABASE}`;
+	env.N8N_ENGINE_DATABASE_URL = `postgres://${user}:${password}@${env.DB_POSTGRESDB_HOST}:${env.DB_POSTGRESDB_PORT}/${env.DB_POSTGRESDB_DATABASE}`;
 }

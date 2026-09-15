@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { applyEngineEnv, ENGINE_DATABASE } from '../engine';
+import { applyEngineEnv } from '../engine';
 
 const postgresEnv: Record<string, string> = {
 	DB_TYPE: 'postgresdb',
@@ -36,13 +36,13 @@ describe('applyEngineEnv', () => {
 		expect(env.N8N_ENABLED_MODULES).toBe('insights,engine-v2');
 	});
 
-	test('points the data plane at its own database on the stack Postgres', () => {
+	test('points the data plane at the stack database', () => {
 		const env = { ...postgresEnv };
 
 		applyEngineEnv(env, { engine: 'in-process', isQueueMode: false });
 
 		expect(env.N8N_ENGINE_DATABASE_URL).toBe(
-			`postgres://n8n_user:test_password@postgres:5432/${ENGINE_DATABASE}`,
+			'postgres://n8n_user:test_password@postgres:5432/n8n_db',
 		);
 	});
 
@@ -58,7 +58,7 @@ describe('applyEngineEnv', () => {
 		const env: Record<string, string> = { DB_TYPE: 'postgresdb', DB_POSTGRESDB_HOST: 'postgres' };
 
 		expect(() => applyEngineEnv(env, { engine: 'in-process', isQueueMode: false })).toThrow(
-			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_PORT/,
+			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_PORT, DB_POSTGRESDB_DATABASE/,
 		);
 	});
 

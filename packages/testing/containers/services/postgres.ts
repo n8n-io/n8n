@@ -1,10 +1,9 @@
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import { ENGINE_DATABASE } from './engine';
-import type { HelperContext, Service, ServiceResult, StartContext } from './types';
+import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'postgres';
 
@@ -20,12 +19,7 @@ export const postgres: Service<PostgresResult> = {
 	description: 'PostgreSQL database',
 	shouldStart: (ctx) => ctx.usePostgres,
 
-	async start(
-		network: StartedNetwork,
-		projectName: string,
-		_options?: unknown,
-		ctx?: StartContext,
-	): Promise<PostgresResult> {
+	async start(network: StartedNetwork, projectName: string): Promise<PostgresResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		const builder = new PostgreSqlContainer(TEST_CONTAINER_IMAGES.postgres)
@@ -83,8 +77,6 @@ export const postgres: Service<PostgresResult> = {
 				'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;',
 			]);
 
-			if (ctx?.config.engine) await createEngineDatabase(container);
-
 			return {
 				container,
 				meta: {
@@ -109,28 +101,6 @@ export const postgres: Service<PostgresResult> = {
 		};
 	},
 };
-
-/**
- * Gives the engine 2.0 data plane its own database, next to the n8n one. Both
- * sides run TypeORM migrations into a `migrations` table, so they cannot share
- * a schema. `CREATE DATABASE` has no `IF NOT EXISTS`; a reused container that
- * already has it is fine.
- */
-async function createEngineDatabase(container: StartedPostgreSqlContainer): Promise<void> {
-	const result = await container.exec([
-		'psql',
-		'-U',
-		container.getUsername(),
-		'-d',
-		container.getDatabase(),
-		'-c',
-		`CREATE DATABASE ${ENGINE_DATABASE};`,
-	]);
-
-	if (result.exitCode !== 0 && !result.output.includes('already exists')) {
-		throw new Error(`Failed to create the engine database: ${result.output}`);
-	}
-}
 
 /** Runs introspection SQL via `psql` inside the container. */
 export class PostgresHelper {
