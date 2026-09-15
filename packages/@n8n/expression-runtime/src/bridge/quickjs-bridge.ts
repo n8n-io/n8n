@@ -21,6 +21,8 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import type { TransferProbe } from './transfer-diagnostics';
+import { diagnosticBudgetMs, untransferableItemError } from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -302,15 +304,20 @@ function loadRuntimeBundle(): string {
  * JSON round-trip and rebuild in the guest via __unwrapFromHost — matching
  * what isolated-vm's structured clone delivers.
  */
-function hostValueToJson(value: unknown): string {
+const ENCODING_FAILED = Symbol('encoding-failed');
+
+function hostValueToJson(value: unknown): string | typeof ENCODING_FAILED {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return safeStringify(wrapSpecialValuesForGuest(value));
+		const json: string | undefined = safeStringify(wrapSpecialValuesForGuest(value));
+		return json === undefined ? ENCODING_FAILED : json;
 	} catch {
-		return 'undefined';
+		return ENCODING_FAILED;
 	}
 }
+
+const quickjsTransferProbe: TransferProbe = (value) => hostValueToJson(value) !== ENCODING_FAILED;
 
 // ============================================================================
 // Intl host delegation
@@ -1112,7 +1119,17 @@ export class QuickJsBridge implements RuntimeBridge {
 			const rawMsg = vm.dump(msgHandle);
 			try {
 				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
+				return this.hostValueToQuickJSHandle(result, (rejected) =>
+					serializeError(
+						untransferableItemError(
+							rejected,
+							quickjsTransferProbe,
+							rawMsg,
+							data,
+							this.diagnosticBudget(),
+						),
+					),
+				);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
@@ -1127,7 +1144,10 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
 	 */
-	private hostValueToQuickJSHandle(value: unknown): import('quickjs-emscripten').QuickJSHandle {
+	private hostValueToQuickJSHandle(
+		value: unknown,
+		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+	): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		if (value === undefined) return this.vm.undefined;
@@ -1147,20 +1167,36 @@ export class QuickJsBridge implements RuntimeBridge {
 			const dateResult = this.vm.evalCode(`(new Date(${value.getTime()}))`);
 			if (dateResult.error) {
 				dateResult.error.dispose();
-				return this.vm.undefined;
+				return this.transferFailureHandle(value, onTransferFailure);
 			}
 			return dateResult.value;
 		}
 
 		const json = hostValueToJson(value);
+		if (json === ENCODING_FAILED) return this.transferFailureHandle(value, onTransferFailure);
 		if (json === 'undefined') return this.vm.undefined;
 
 		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
 		if (result.error) {
 			result.error.dispose();
-			return this.vm.undefined;
+			return this.transferFailureHandle(value, onTransferFailure);
 		}
 		return result.value;
+	}
+
+	// The interrupt handler reads the wall clock, so time spent here counts against the
+	// expression's own deadline. Take half of what is left, at most.
+	private diagnosticBudget(): number {
+		return diagnosticBudgetMs(Math.min(...this.deadlines) - Date.now());
+	}
+
+	private transferFailureHandle(
+		value: unknown,
+		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+	): import('quickjs-emscripten').QuickJSHandle {
+		if (!this.vm) throw new Error('Context not initialized');
+		if (!onTransferFailure) return this.vm.undefined;
+		return this.hostValueToQuickJSHandle(onTransferFailure(value));
 	}
 
 	/**

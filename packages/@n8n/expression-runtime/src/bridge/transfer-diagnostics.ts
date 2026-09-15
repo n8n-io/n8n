@@ -1,0 +1,271 @@
+import { types } from 'node:util';
+
+import type { WorkflowData } from '../types';
+import { ExpressionError } from '../types';
+
+export type TransferProbe = (value: unknown) => boolean;
+
+const MAX_RECURSION_DEPTH = 128;
+
+export const MAX_DIAGNOSTIC_MS = 250;
+
+interface TransferRejection {
+	path: string;
+	descriptor?: string;
+}
+
+interface Member {
+	path: string;
+	key: string;
+	descriptor: PropertyDescriptor;
+}
+
+interface WalkState {
+	probe: TransferProbe;
+	seen: Set<object>;
+	deadline: number;
+	exhausted: boolean;
+}
+
+const ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
+
+export function diagnosticBudgetMs(msLeft: number): number {
+	if (!Number.isFinite(msLeft)) return MAX_DIAGNOSTIC_MS;
+	return Math.max(0, Math.min(MAX_DIAGNOSTIC_MS, msLeft / 2));
+}
+
+function childPath(path: string, key: string): string {
+	return path === '' ? key : `${path}.${key}`;
+}
+
+function isBinary(value: unknown): boolean {
+	return (
+		ArrayBuffer.isView(value) || types.isArrayBuffer(value) || types.isSharedArrayBuffer(value)
+	);
+}
+
+/** Values both engines take, skipped so a large buffer or string is never copied to ask. */
+function alwaysTransferable(value: unknown): boolean {
+	if (value === null || value === undefined) return true;
+	const kind = typeof value;
+	if (kind === 'string' || kind === 'number' || kind === 'boolean') return true;
+	return isBinary(value);
+}
+
+function describe(value: unknown): string | undefined {
+	switch (typeof value) {
+		case 'function':
+			return 'a function';
+		case 'symbol':
+			return 'a symbol';
+		case 'bigint':
+			return 'a bigint';
+		default:
+			break;
+	}
+	if (value === null || typeof value !== 'object') return undefined;
+	if (types.isProxy(value)) return 'a proxy';
+	if (types.isPromise(value)) return 'a promise';
+	if (types.isWeakMap(value)) return 'a WeakMap';
+	if (types.isWeakSet(value)) return 'a WeakSet';
+	if (types.isMap(value)) return 'a value inside a Map';
+	if (types.isSet(value)) return 'a value inside a Set';
+	return undefined;
+}
+
+function probe(state: WalkState, value: unknown): boolean {
+	if (Date.now() > state.deadline) {
+		// Report the value as accepted so the walk unwinds; `exhausted` is what the caller reads.
+		state.exhausted = true;
+		return true;
+	}
+	try {
+		return state.probe(value);
+	} catch {
+		return false;
+	}
+}
+
+function defineMember(holder: object, key: string, value: unknown): void {
+	Object.defineProperty(holder, key, {
+		value,
+		enumerable: true,
+		writable: true,
+		configurable: true,
+	});
+}
+
+/** Holds the owner's data properties alone, so asking about one getter never runs another. */
+function dataReceiver(members: Member[]): object {
+	const receiver = {};
+	for (const member of members) {
+		if (!('value' in member.descriptor)) continue;
+		try {
+			defineMember(receiver, member.key, member.descriptor.value);
+		} catch {}
+	}
+	return receiver;
+}
+
+function memberHolder(member: Member, receiverFor: () => object): object | undefined {
+	const holder = {};
+	try {
+		if ('value' in member.descriptor) {
+			defineMember(holder, member.key, member.descriptor.value);
+			return holder;
+		}
+		const getter = member.descriptor.get;
+		if (getter === undefined) {
+			return Object.defineProperty(holder, member.key, member.descriptor);
+		}
+		// Keep the getter's own object as its receiver, so it reads the siblings it expects.
+		const receiver = receiverFor();
+		return Object.defineProperty(holder, member.key, {
+			enumerable: true,
+			configurable: true,
+			get: () => getter.call(receiver),
+		});
+	} catch {
+		return undefined;
+	}
+}
+
+function acceptsMember(state: WalkState, member: Member, receiverFor: () => object): boolean {
+	if ('value' in member.descriptor && alwaysTransferable(member.descriptor.value)) return true;
+	const holder = memberHolder(member, receiverFor);
+	if (holder === undefined) return false;
+	return probe(state, holder);
+}
+
+function ownMembers(value: object, path: string): Member[] | undefined {
+	let keys: string[];
+	try {
+		keys = Object.keys(value);
+	} catch {
+		return undefined;
+	}
+	const indexed = Array.isArray(value);
+	const members: Member[] = [];
+	for (const key of keys) {
+		let descriptor: PropertyDescriptor | undefined;
+		try {
+			descriptor = Object.getOwnPropertyDescriptor(value, key);
+		} catch {
+			return undefined;
+		}
+		if (descriptor === undefined) continue;
+		members.push({
+			path: indexed && ARRAY_INDEX.test(key) ? `${path}[${key}]` : childPath(path, key),
+			key,
+			descriptor,
+		});
+	}
+	return members;
+}
+
+function walk(
+	value: unknown,
+	path: string,
+	depth: number,
+	state: WalkState,
+): TransferRejection | undefined {
+	if (state.exhausted) return undefined;
+	if (value === null || typeof value !== 'object') return { path, descriptor: describe(value) };
+	if (types.isProxy(value)) return { path, descriptor: 'a proxy' };
+	if (state.seen.has(value)) return { path, descriptor: 'a circular reference' };
+	if (depth >= MAX_RECURSION_DEPTH) {
+		state.exhausted = true;
+		return undefined;
+	}
+	state.seen.add(value);
+
+	const members = ownMembers(value, path);
+	if (members === undefined) return { path, descriptor: describe(value) };
+
+	let receiver: object | undefined;
+	const receiverFor = () => (receiver ??= dataReceiver(members));
+
+	for (const member of members) {
+		const accepted = acceptsMember(state, member, receiverFor);
+		if (state.exhausted) return undefined;
+		if (accepted) continue;
+		if (!('value' in member.descriptor)) return { path: member.path, descriptor: 'a getter' };
+		const deeper = walk(member.descriptor.value, member.path, depth + 1, state);
+		if (state.exhausted) return undefined;
+		return deeper;
+	}
+	return { path, descriptor: describe(value) };
+}
+
+function buildError(
+	nodeName: string | undefined,
+	found: TransferRejection | undefined,
+	stopped: boolean,
+): ExpressionError {
+	const source = nodeName === undefined ? 'an upstream node' : `node '${nodeName}'`;
+	let where: string;
+	let cause: string;
+	if (found === undefined) {
+		where = stopped ? 'a value inside the item' : 'the item';
+		cause = stopped ? ' (the search for it stopped early)' : '';
+	} else {
+		where = found.path === '' ? 'the item' : `the value at ${found.path}`;
+		cause = found.descriptor === undefined ? '' : ` (${found.descriptor})`;
+	}
+	return new ExpressionError(
+		`Can't read item from ${source}: ${where} cannot be used in an expression${cause}`,
+		nodeName === undefined ? {} : { nodeCause: nodeName },
+	);
+}
+
+function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefined {
+	if (
+		typeof rawMsg === 'object' &&
+		rawMsg !== null &&
+		'nodeName' in rawMsg &&
+		typeof rawMsg.nodeName === 'string'
+	) {
+		return rawMsg.nodeName;
+	}
+	try {
+		const prevNode: unknown = data.$prevNode;
+		if (
+			typeof prevNode === 'object' &&
+			prevNode !== null &&
+			'name' in prevNode &&
+			typeof prevNode.name === 'string'
+		) {
+			return prevNode.name;
+		}
+	} catch {}
+	return undefined;
+}
+
+/**
+ * Build the error for a value the engine refuses, naming the node and the key path of the
+ * member it refused. Asks the engine itself through `transferProbe`, within `budgetMs`.
+ */
+export function untransferableItemError(
+	value: unknown,
+	transferProbe: TransferProbe,
+	rawMsg: unknown,
+	data: WorkflowData,
+	budgetMs: number,
+): ExpressionError {
+	let nodeName: string | undefined;
+	try {
+		nodeName = nodeNameForCall(rawMsg, data);
+	} catch {}
+	try {
+		const state: WalkState = {
+			probe: transferProbe,
+			seen: new Set<object>(),
+			deadline: Date.now() + budgetMs,
+			exhausted: false,
+		};
+		const found = walk(value, '', 0, state);
+		return buildError(nodeName, found, state.exhausted);
+	} catch {
+		return buildError(nodeName, undefined, false);
+	}
+}

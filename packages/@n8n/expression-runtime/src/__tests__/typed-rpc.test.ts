@@ -19,6 +19,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
+import { ExpressionError } from '../types';
 import { createBridge } from './test-bridge';
 
 describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
@@ -897,5 +898,86 @@ describe('Typed RPC: nested special values in results', () => {
 		expect(result.m).toBeInstanceOf(Map);
 		expect(result.s).toBeInstanceOf(Set);
 		expect(result.marked).toEqual({ __isNaN: true });
+	});
+});
+
+describe('Typed RPC: a result the engine cannot transfer', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge,
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	const dataReturning = (value: unknown): Record<string, unknown> => ({
+		$: (_nodeName: string) => ({ first: () => value }),
+	});
+
+	it.each([
+		['a function', () => () => 1],
+		['a symbol', () => Symbol('s')],
+	])('raises an ExpressionError when the whole result is %s', (_name, make) => {
+		let caught: unknown;
+		try {
+			evaluator.evaluate("{{ $('SourceNode').first() }}", dataReturning(make()), caller);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).name).toBe('ExpressionError');
+		expect((caught as Error).message).toContain("node 'SourceNode'");
+	});
+
+	it('raises an ExpressionError for an item nested past the walk depth cap', () => {
+		const root: Record<string, unknown> = {};
+		let tip = root;
+		for (let i = 0; i < 5000; i++) {
+			const next: Record<string, unknown> = {};
+			tip.next = next;
+			tip = next;
+		}
+		tip.fn = () => 1;
+
+		let caught: unknown;
+		try {
+			evaluator.evaluate("{{ $('SourceNode').first() }}", dataReturning({ json: root }), caller);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).name).toBe('ExpressionError');
+		expect((caught as Error).message).toBe(
+			"Can't read item from node 'SourceNode': a value inside the item cannot be used in an expression (the search for it stopped early)",
+		);
+	});
+
+	it('raises the error a lazy read threw, even when the error carries a function', () => {
+		const thrown = Object.assign(new ExpressionError('lazy read failed', {}), { retry: () => 1 });
+		const data: Record<string, unknown> = {
+			$json: {
+				get boom(): never {
+					throw thrown;
+				},
+			},
+		};
+
+		let caught: unknown;
+		try {
+			evaluator.evaluate('{{ $json.boom }}', data, caller);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).message).toBe('lazy read failed');
 	});
 });
