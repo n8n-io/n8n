@@ -182,6 +182,7 @@ These only run if specific files changed:
 | `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
+| `packages/nodes-base/credentials/**`, `packages/@n8n/nodes-langchain/credentials/**`, the scope-check scripts | `ci-pull-requests.yml` (`credential-scopes`) | any        |
 
 ### On PR Review
 
