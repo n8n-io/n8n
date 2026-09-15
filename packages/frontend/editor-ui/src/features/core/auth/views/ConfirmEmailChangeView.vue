@@ -53,13 +53,22 @@ const onConfirm = async () => {
 	});
 
 	// The email changed, so end the session and send the user to sign in.
-	// A failed logout must not strand the confirmed user: fall back to a full
-	// reload, which resets local session state so the /signin guard passes.
 	try {
 		await usersStore.logout();
-		await router.push({ name: VIEWS.SIGNIN });
 	} catch {
-		window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
+		// A failed logout must not strand the confirmed user. If they are still
+		// on this view, force a full reload to sign-in so local session state
+		// resets and the /signin guard passes. Skip it if they already left.
+		if (isActive.value) {
+			window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
+		}
+		loading.value = false;
+		return;
+	}
+
+	// Skip the redirect if the user left the view while logout was pending.
+	if (isActive.value) {
+		await router.push({ name: VIEWS.SIGNIN });
 	}
 	loading.value = false;
 };
