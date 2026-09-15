@@ -146,10 +146,19 @@ export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
 );
 
+export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment(
+	'112_aia_inspiration_from_taxonomy',
+);
+
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 );
 
+/**
+ * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
+ * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
+ * The default `control` / `variant` arms match the PostHog flag.
+ */
 export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -191,5 +200,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	MCP_JSON_NUDGE_EXPERIMENT.name,
 ];

@@ -9,6 +9,7 @@ import {
 } from '@/app/constants/injectionKeys';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -455,6 +456,31 @@ describe('useWorkflowSaving', () => {
 				createWorkflowDocumentId(created.id),
 			).getSettingsSnapshot();
 			expect(snapshot.availableInMCP).toBe(true);
+		});
+
+		it('syncs the workflow scopes and home project from the create response into the document', async () => {
+			const workflow = getDuplicateTestWorkflow();
+			const homeProject = {
+				id: 'proj-1',
+				name: 'Acme',
+				type: 'team',
+				icon: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			} as ProjectSharingData;
+			const created = createTestWorkflow({
+				id: 'new-wf-id',
+				scopes: ['workflow:read', 'workflow:update'],
+				homeProject,
+			});
+			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue(created);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({ name: workflow.name, data: workflow });
+
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(created.id));
+			expect(documentStore.scopes).toEqual(['workflow:read', 'workflow:update']);
+			expect(documentStore.homeProject).toEqual(homeProject);
 		});
 
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {

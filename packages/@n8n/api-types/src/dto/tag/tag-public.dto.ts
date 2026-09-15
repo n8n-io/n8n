@@ -1,20 +1,30 @@
 import '../../openapi-extend';
 import { z } from 'zod';
 
+import { tagFieldDocs, tagRequestReadOnlyFieldDocs } from './tag-public.openapi';
+import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 
 export const tagPublicSchema = z.object({
-	id: z.string().openapi({ readOnly: true, example: '2tUt1wbLX592XDdX' }),
-	name: z.string().openapi({ example: 'Production' }),
-	createdAt: z.string().datetime().openapi({ readOnly: true }),
-	updatedAt: z.string().datetime().openapi({ readOnly: true }),
+	id: z.string().openapi(tagFieldDocs.id),
+	name: z.string().openapi(tagFieldDocs.name),
+	createdAt: z.string().datetime().openapi(tagFieldDocs.createdAt),
+	updatedAt: z.string().datetime().openapi(tagFieldDocs.updatedAt),
 });
 
-// Built from `tagPublicSchema` so the generated spec keeps the `readOnly` flags and examples the
-// hand-written `tag.yml` carried.
 export class TagPublicDto extends Z.class(tagPublicSchema.shape) {}
 
 export class TagListPublicDto extends Z.class({
 	data: z.array(tagPublicSchema),
 	nextCursor: z.string().nullable(),
 }) {}
+
+export class CreateTagPublicDto extends Z.class(
+	{
+		id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
+		name: z.string().openapi(tagFieldDocs.name),
+		createdAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.createdAt),
+		updatedAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.updatedAt),
+	},
+	{ strict: true },
+) {}

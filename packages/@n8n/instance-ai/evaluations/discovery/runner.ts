@@ -47,12 +47,15 @@ import {
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
 import type {
+	BuilderTurnStream,
 	InstanceAiContext,
+	InstanceAiBuilderDelegate,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -122,6 +125,7 @@ export async function runDiscoveryScenario(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
 			workspace: createStubWorkspace(),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -263,6 +267,49 @@ function applyInstanceState(
 
 function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+function completedBuilderTurn(): BuilderTurnStream {
+	return {
+		fullStream: (async function* () {
+			await Promise.resolve();
+			yield {
+				type: 'tool-call',
+				toolCallId: 'discovery-write',
+				toolName: 'write_config',
+				input: {},
+			};
+			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
+		})(),
+		text: Promise.resolve('Agent configured for discovery evaluation.'),
+	};
+}
+
+function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	return {
+		createAgent: async (name) =>
+			await Promise.resolve({
+				agentId: 'discovery-agent',
+				projectId: 'discovery-project',
+				name,
+			}),
+		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		findOpenSuspensions: async () => await Promise.resolve([]),
+		cancelOpenSuspension: async () => await Promise.resolve(),
+		listAgents: async () => await Promise.resolve([]),
+		listAgentCapabilities: async () =>
+			await Promise.resolve({
+				channels: [],
+				agentCapabilities: [
+					'Use tools',
+					'Run scheduled tasks',
+					'Keep memory across sessions and runs',
+				],
+				limitations: [],
+			}),
+		resolveAgentName: async () => await Promise.resolve(undefined),
+	};
 }
 
 interface StubOrchestrationContextOptions {

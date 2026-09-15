@@ -9,27 +9,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TagService } from '@/services/tag.service';
 
 type TagHandlers = {
-	createTag: PublicAPIEndpoint<TagRequest.Create>;
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
-	getTag: PublicAPIEndpoint<TagRequest.Get>;
 };
 
 const tagHandlers: TagHandlers = {
-	createTag: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:create' }),
-		async (req, res) => {
-			const { name } = req.body;
-
-			const newTag = Container.get(TagService).toEntity({ name: name.trim() });
-
-			try {
-				const createdTag = await Container.get(TagService).save(newTag, 'create');
-				return res.status(201).json(createdTag);
-			} catch {
-				throw new ConflictError('Tag already exists');
-			}
-		},
-	],
 	updateTag: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:update' }),
 		async (req, res) => {
@@ -49,19 +32,6 @@ const tagHandlers: TagHandlers = {
 				return res.json(updatedTag);
 			} catch {
 				throw new ConflictError('Tag already exists');
-			}
-		},
-	],
-	getTag: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:read' }),
-		async (req, res) => {
-			const { id } = req.params;
-
-			try {
-				const tag = await Container.get(TagService).getById(id);
-				return res.json(tag);
-			} catch (error) {
-				throw new NotFoundError('Not Found');
 			}
 		},
 	],

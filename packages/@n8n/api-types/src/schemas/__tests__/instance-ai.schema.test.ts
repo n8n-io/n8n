@@ -28,6 +28,7 @@ import {
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadMessagesQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
@@ -1121,5 +1122,24 @@ describe('instanceAiHandoffContextSchema', () => {
 			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
 				.success,
 		).toBe(false);
+	});
+});
+
+describe('InstanceAiThreadHistoryQuery', () => {
+	it('defaults the page size and trims the search text', () => {
+		expect(InstanceAiThreadHistoryQuery.parse({ search: ' Invoice ' })).toEqual({
+			limit: 30,
+			search: 'Invoice',
+		});
+	});
+
+	it.each([
+		{ limit: 0 },
+		{ limit: 101 },
+		{ search: 'x'.repeat(501) },
+		{ search: 'invoice\u0000draft' },
+		{ cursor: '' },
+	])('rejects %o', (query) => {
+		expect(InstanceAiThreadHistoryQuery.safeParse(query).success).toBe(false);
 	});
 });

@@ -1,0 +1,88 @@
+type: object
+properties:
+  policy:
+    type: object
+    properties:
+      id:
+        type: string
+      kind:
+        type: string
+      rules:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            action:
+              type: string
+              enum:
+                - allow
+                - deny
+                - delegate
+            selector:
+              oneOf:
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - name
+                    value:
+                      type: string
+                      minLength: 1
+                  required:
+                    - kind
+                    - value
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - package
+                    value:
+                      type: string
+                      minLength: 1
+                  required:
+                    - kind
+                    - value
+          required:
+            - id
+            - action
+            - selector
+      version:
+        type: integer
+        minimum: 0
+        exclusiveMinimum: true
+      updatedBy:
+        type: string
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+    required:
+      - id
+      - kind
+      - rules
+      - version
+      - updatedBy
+      - createdAt
+      - updatedAt
+  warnings:
+    type: array
+    items:
+      type: object
+      properties:
+        ruleId:
+          type: string
+        shadowedByRuleId:
+          type: string
+      required:
+        - ruleId
+        - shadowedByRuleId
+required:
+  - policy
+  - warnings
