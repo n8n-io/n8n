@@ -27,6 +27,8 @@ import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
+	modelIdTraceMetadata,
+	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
 import type {
@@ -229,10 +231,12 @@ export async function createInstanceAgent(
 		orchestrationContext?.tracing,
 		orchestrationContext?.promptConfiguration?.version,
 	);
+	setTraceModelId(orchestrationContext?.tracing, modelId);
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
+		metadata: modelIdTraceMetadata(modelId),
 	});
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)

@@ -95,6 +95,9 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 	buildAgentTraceInputs: vi.fn().mockReturnValue({}),
 	mergeTraceRunInputs: vi.fn(),
 	setTracePromptVersion: vi.fn(),
+	setTraceModelId: vi.fn(),
+	modelIdTraceMetadata: (modelId: unknown) =>
+		typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 }));
 
 vi.mock('../system-prompt', () => ({
@@ -105,7 +108,7 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
-import { setTracePromptVersion } from '../../tracing/langsmith-tracing';
+import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -414,6 +417,13 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
+		expect(setTraceModelId).toHaveBeenCalledWith(tracing, 'test-model');
+		expect(tracing.getTelemetry).toHaveBeenCalledWith({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'foreground',
+			metadata: { model_id: 'test-model' },
+		});
 	});
 
 	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
