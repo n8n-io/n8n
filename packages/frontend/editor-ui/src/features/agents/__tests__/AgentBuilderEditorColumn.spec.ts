@@ -307,6 +307,14 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+		expect(
+			knowledgeWrapper
+				.findAllComponents({ name: 'AgentPanel' })
+				.find(function hasFilesHeader(panel) {
+					return panel.props('header') === 'agents.builder.files.title';
+				})
+				?.props('description'),
+		).toBe('agents.builder.files.titleTooltip');
 	});
 
 	it('keeps vector stores under the collapsed Advanced disclosure on the Knowledge tab', async () => {

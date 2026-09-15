@@ -1,13 +1,4 @@
 import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
-import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
-import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
-import { InstanceSettings } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
-import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
-import type { Mock, Mocked } from 'vitest';
-
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -17,12 +8,23 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
+import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { InstanceSettings } from 'n8n-core';
+import type { IRun } from 'n8n-workflow';
+import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -42,7 +44,6 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
@@ -127,6 +128,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
+			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
 			eventService,
 			mockInstance(FolderService),
@@ -180,6 +182,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
@@ -388,6 +391,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
@@ -1154,6 +1158,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
@@ -1209,6 +1214,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowPublishedDataService),
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
+				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
@@ -1289,6 +1295,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowPublishedDataService),
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
+					mockInstance(McpPostSaveMetricsService),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
 					mockInstance(FolderService),
