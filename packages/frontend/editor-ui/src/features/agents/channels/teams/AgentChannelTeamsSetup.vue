@@ -148,7 +148,26 @@ async function runCredentialCheck() {
 
 // Re-checks whenever the picked credential changes, including the one discovery
 // adopted, so the gate never reflects a previous selection.
-watch(credentialId, async () => await runCredentialCheck(), { immediate: true });
+// The deployment and the package are both built from the picked credential, so
+// they have to be refetched whenever it changes.
+watch(
+	credentialId,
+	async () => {
+		await Promise.all([runCredentialCheck(), loadSetupState()]);
+	},
+	{ immediate: true },
+);
+
+/**
+ * A bot reached us, but not the one this credential describes — usually the
+ * endpoint was pasted onto the wrong bot.
+ */
+const botMismatch = computed(
+	() =>
+		discovered.value !== null &&
+		setupState.value?.botId != null &&
+		discovered.value.clientId !== setupState.value.botId,
+);
 
 // The manifest needs the bot's client ID, which discovery supplies before the
 // credential is connected, so the step does not wait on connecting.
@@ -164,6 +183,7 @@ async function downloadPackage() {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			credentialId.value || undefined,
 		);
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement('a');
@@ -191,6 +211,7 @@ async function loadSetupState() {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			credentialId.value || undefined,
 		);
 	} catch {
 		// Leave the fallback endpoint URL in place; the rest of the step still works.
@@ -261,6 +282,11 @@ onBeforeUnmount(() => {
 
 const steps = computed(() => [
 	{
+		id: 'create-credential',
+		title: i18n.baseText('agents.channels.teams.setup.createCredential.title'),
+		description: i18n.baseText('agents.channels.teams.setup.createCredential.description'),
+	},
+	{
 		id: 'create-bot',
 		title: i18n.baseText('agents.channels.teams.setup.createBot.title'),
 		description: i18n.baseText('agents.channels.teams.setup.createBot.description'),
@@ -294,29 +320,55 @@ defineExpose({
 		<N8nStepper v-if="mode === 'setup'" :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
-					<!-- 1. Create the Azure Bot -->
-					<div v-if="step.id === 'create-bot'" :class="$style.stepStack">
-						<div :class="$style.buttonRow">
-							<N8nButton
-								:href="ENTRA_APP_REGISTRATION_URL"
-								target="_blank"
-								variant="outline"
-								size="medium"
-								data-testid="teams-entra-register-link"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.createBot.entraButton') }}
-							</N8nButton>
-							<N8nButton
-								v-if="setupState?.deployToAzureUrl"
-								:href="setupState.deployToAzureUrl"
-								target="_blank"
-								variant="subtle"
-								size="medium"
-								data-testid="teams-deploy-to-azure"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
-							</N8nButton>
-						</div>
+					<!-- 1. Register the app and add the credential -->
+					<div v-if="step.id === 'create-credential'" :class="$style.stepStack">
+						<N8nButton
+							:href="ENTRA_APP_REGISTRATION_URL"
+							target="_blank"
+							variant="subtle"
+							size="medium"
+							data-testid="teams-entra-register-link"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.createCredential.button') }}
+						</N8nButton>
+
+						<AgentIntegrationCredentialConnection
+							v-if="!connected"
+							v-model="credentialId"
+							:integration-type="integration.type"
+							:integration-label="integration.label"
+							:credentials="credentials"
+							:credential-permissions="credentialPermissions"
+							:credentials-loading="credentialsLoading"
+							:disabled="loading"
+							:loading="loading"
+							:error-message="errorMessage"
+							:error-is-conflict="errorIsConflict"
+							:force-new-credential="forceNewCredential"
+							@create="emit('create')"
+							@edit="emit('edit')"
+						/>
+
+						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
+							{{ i18n.baseText('agents.channels.teams.setup.createCredential.prerequisites') }}
+						</N8nText>
+					</div>
+
+					<!-- 2. Deploy the Azure Bot -->
+					<div v-else-if="step.id === 'create-bot'" :class="$style.stepStack">
+						<N8nButton
+							v-if="setupState?.deployToAzureUrl"
+							:href="setupState.deployToAzureUrl"
+							target="_blank"
+							variant="subtle"
+							size="medium"
+							data-testid="teams-deploy-to-azure"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
+						</N8nButton>
+						<N8nText v-else :class="$style.hint" size="small" data-testid="teams-deploy-blocked">
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.needsCredential') }}
+						</N8nText>
 
 						<div :class="$style.urlField">
 							<label for="teams-messaging-endpoint-url">
@@ -336,36 +388,49 @@ defineExpose({
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
 						</N8nText>
-						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
-							{{ i18n.baseText('agents.channels.teams.setup.createBot.prerequisites') }}
-						</N8nText>
 					</div>
 
-					<!-- 2. Connect the bot -->
+					<!-- 3. Confirm the bot reaches n8n -->
 					<div v-else-if="step.id === 'connect-bot'" :class="$style.stepStack">
-						<template v-if="discovery.status === 'waiting' && !manualEntry">
-							<N8nButton
-								:href="AZURE_BOT_SERVICES_URL"
-								target="_blank"
-								variant="subtle"
-								size="medium"
-								data-testid="teams-open-bot-link"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.openBotButton') }}
-							</N8nButton>
-							<N8nText
-								v-if="setupState?.suggestedBotName"
-								:class="$style.hint"
-								size="small"
-								data-testid="teams-open-bot-hint"
-							>
-								{{
-									i18n.baseText('agents.channels.teams.setup.connectBot.openBotHint', {
-										interpolate: { botName: setupState.suggestedBotName },
-									})
-								}}
-							</N8nText>
+						<N8nButton
+							:href="AZURE_BOT_SERVICES_URL"
+							target="_blank"
+							variant="subtle"
+							size="medium"
+							data-testid="teams-open-bot-link"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.connectBot.openBotButton') }}
+						</N8nButton>
+						<N8nText
+							v-if="setupState?.suggestedBotName"
+							:class="$style.hint"
+							size="small"
+							data-testid="teams-open-bot-hint"
+						>
+							{{
+								i18n.baseText('agents.channels.teams.setup.connectBot.openBotHint', {
+									interpolate: { botName: setupState.suggestedBotName },
+								})
+							}}
+						</N8nText>
 
+						<template v-if="manualEntry">
+							<N8nText :class="$style.hint" size="small" data-testid="teams-discovery-skipped">
+								{{ i18n.baseText('agents.channels.teams.setup.connectBot.skipped') }}
+							</N8nText>
+						</template>
+						<template v-else-if="botMismatch">
+							<N8nText size="small" :class="$style.error" data-testid="teams-discovery-mismatch">
+								{{ i18n.baseText('agents.channels.teams.setup.connectBot.mismatch') }}
+							</N8nText>
+						</template>
+						<template v-else-if="discovered">
+							<N8nText size="small" bold data-testid="teams-discovery-found">
+								{{ i18n.baseText('agents.channels.teams.setup.connectBot.found') }}
+							</N8nText>
+						</template>
+						<!-- Only once it really is listening; `idle` is the brief gap before. -->
+						<template v-else-if="discovery.status === 'waiting'">
 							<N8nText size="small" data-testid="teams-discovery-listening">
 								{{ i18n.baseText('agents.channels.teams.setup.connectBot.listening') }}
 							</N8nText>
@@ -381,69 +446,6 @@ defineExpose({
 								{{ i18n.baseText('agents.channels.teams.setup.connectBot.manualLink') }}
 							</N8nButton>
 						</template>
-
-						<template v-if="discovered">
-							<N8nText size="small" bold data-testid="teams-discovery-found">
-								{{
-									discovered.existingCredentialId
-										? i18n.baseText('agents.channels.teams.setup.connectBot.foundExisting')
-										: i18n.baseText('agents.channels.teams.setup.connectBot.found')
-								}}
-							</N8nText>
-							<div :class="$style.urlField" data-testid="teams-discovered-client-id">
-								<N8nText size="small" bold>
-									{{ i18n.baseText('agents.channels.teams.setup.connectBot.clientIdLabel') }}
-								</N8nText>
-								<N8nCopyInput
-									:value="discovered.clientId"
-									size="large"
-									:class="$style.urlInput"
-									:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-									:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-								/>
-							</div>
-							<div
-								v-if="discovered.tenantId"
-								:class="$style.urlField"
-								data-testid="teams-discovered-tenant-id"
-							>
-								<N8nText size="small" bold>
-									{{ i18n.baseText('agents.channels.teams.setup.connectBot.tenantIdLabel') }}
-								</N8nText>
-								<N8nCopyInput
-									:value="discovered.tenantId"
-									size="large"
-									:class="$style.urlInput"
-									:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-									:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-								/>
-							</div>
-							<N8nText
-								v-else
-								:class="$style.hint"
-								size="small"
-								data-testid="teams-discovery-no-tenant"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.tenantMissing') }}
-							</N8nText>
-						</template>
-
-						<AgentIntegrationCredentialConnection
-							v-if="!connected && (discovered || manualEntry)"
-							v-model="credentialId"
-							:integration-type="integration.type"
-							:integration-label="integration.label"
-							:credentials="credentials"
-							:credential-permissions="credentialPermissions"
-							:credentials-loading="credentialsLoading"
-							:disabled="loading"
-							:loading="loading"
-							:error-message="errorMessage"
-							:error-is-conflict="errorIsConflict"
-							:force-new-credential="forceNewCredential"
-							@create="emit('create')"
-							@edit="emit('edit')"
-						/>
 					</div>
 
 					<!-- 3. Choose where it's available -->

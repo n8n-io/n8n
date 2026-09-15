@@ -10,12 +10,23 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 const integrationPath = (projectId: string, agentId: string) =>
 	`/projects/${projectId}/agents/v2/${agentId}/integrations/teams`;
 
+/**
+ * `credentialId` is the credential picked in the setup but not yet connected to
+ * the agent. Everything the setup offers is derived from it, and it is not on
+ * the agent until the very last step.
+ */
 export const getTeamsSetupState = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	credentialId?: string,
 ): Promise<TeamsAgentSetupState> =>
-	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/setup`);
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/setup`,
+		credentialId ? { credentialId } : undefined,
+	);
 
 /** Opens the window in which the endpoint will record the bot behind an activity. */
 export const startTeamsDiscovery = async (
@@ -60,11 +71,16 @@ export const fetchTeamsAppPackage = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	credentialId?: string,
 ): Promise<Blob> => {
-	const response = await fetch(`${context.baseUrl}${integrationPath(projectId, agentId)}/package`, {
-		credentials: 'include',
-		headers: { 'browser-id': getBrowserId() },
-	});
+	const query = credentialId ? `?credentialId=${encodeURIComponent(credentialId)}` : '';
+	const response = await fetch(
+		`${context.baseUrl}${integrationPath(projectId, agentId)}/package${query}`,
+		{
+			credentials: 'include',
+			headers: { 'browser-id': getBrowserId() },
+		},
+	);
 	if (!response.ok) {
 		throw new Error(`Could not download the Teams app package (${response.status})`);
 	}

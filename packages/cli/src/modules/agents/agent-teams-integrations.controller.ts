@@ -37,11 +37,15 @@ export class AgentTeamsIntegrationsController {
 	@Get('/:agentId/integrations/teams/setup')
 	@ProjectScope('agent:read')
 	async getSetupState(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { credentialId?: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<TeamsAgentSetupState> {
-		return await this.setupService.getSetupState({ projectId: req.params.projectId, agentId });
+		const credentialId = req.query.credentialId;
+		return await this.setupService.getSetupState(
+			{ projectId: req.params.projectId, agentId },
+			typeof credentialId === 'string' ? credentialId : undefined,
+		);
 	}
 
 	/**
@@ -84,14 +88,15 @@ export class AgentTeamsIntegrationsController {
 	@Get('/:agentId/integrations/teams/package')
 	@ProjectScope('agent:read')
 	async downloadPackage(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { credentialId?: string }>,
 		res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<void> {
-		const archive = await this.setupService.buildPackage({
-			projectId: req.params.projectId,
-			agentId,
-		});
+		const credentialId = req.query.credentialId;
+		const archive = await this.setupService.buildPackage(
+			{ projectId: req.params.projectId, agentId },
+			typeof credentialId === 'string' ? credentialId : undefined,
+		);
 
 		res.setHeader('Content-Type', 'application/zip');
 		res.setHeader('Content-Disposition', 'attachment; filename="n8n-agent-teams-app.zip"');
@@ -112,11 +117,12 @@ export class AgentTeamsIntegrationsController {
 		res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<void> {
-		const token = req.query.token;
+		const { token, credentialId } = req.query;
 		const template = await this.setupService.buildArmTemplate({
 			projectId: req.params.projectId,
 			agentId,
 			token: typeof token === 'string' ? token : '',
+			credentialId: typeof credentialId === 'string' ? credentialId : '',
 		});
 
 		res.setHeader('Content-Type', 'application/json');

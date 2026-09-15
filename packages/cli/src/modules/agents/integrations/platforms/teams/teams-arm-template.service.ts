@@ -120,39 +120,56 @@ export class TeamsArmTemplateService {
 		};
 	}
 
-	buildDeployUrl(projectId: string, agentId: string): string {
+	buildDeployUrl(projectId: string, agentId: string, credentialId: string): string {
 		return `https://portal.azure.com/#create/Microsoft.Template/uri/${encodeURIComponent(
-			this.buildTemplateUrl(projectId, agentId),
+			this.buildTemplateUrl(projectId, agentId, credentialId),
 		)}`;
 	}
 
-	buildTemplateUrl(projectId: string, agentId: string): string {
-		const token = this.signToken(projectId, agentId, Date.now() + TOKEN_TTL_MS);
-		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/integrations/teams/arm-template?token=${token}`;
+	/**
+	 * The credential is named in the URL and covered by the signature, because
+	 * the deployment happens before the channel is connected: the agent has no
+	 * credential attached yet, so the template has no other way to learn the
+	 * Entra IDs it must pre-fill.
+	 */
+	buildTemplateUrl(projectId: string, agentId: string, credentialId: string): string {
+		const token = this.signToken(projectId, agentId, credentialId, Date.now() + TOKEN_TTL_MS);
+		const query = new URLSearchParams({ token, credentialId });
+		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/integrations/teams/arm-template?${query.toString()}`;
 	}
 
 	/**
 	 * The portal fetches the template with no n8n session, so the token is the
 	 * only thing standing between this endpoint and the open internet.
 	 */
-	verifyToken(projectId: string, agentId: string, token: string): boolean {
+	verifyToken(projectId: string, agentId: string, credentialId: string, token: string): boolean {
 		const [expiry, signature] = token.split('.');
 		const expiresAt = Number(expiry);
 		if (!Number.isSafeInteger(expiresAt) || expiresAt < Date.now()) return false;
 		if (!signature) return false;
 
-		const expected = Buffer.from(this.sign(projectId, agentId, expiresAt), 'hex');
+		const expected = Buffer.from(this.sign(projectId, agentId, credentialId, expiresAt), 'hex');
 		const received = Buffer.from(signature, 'hex');
 		return expected.length === received.length && timingSafeEqual(expected, received);
 	}
 
-	private signToken(projectId: string, agentId: string, expiresAt: number): string {
-		return `${expiresAt}.${this.sign(projectId, agentId, expiresAt)}`;
+	private signToken(
+		projectId: string,
+		agentId: string,
+		credentialId: string,
+		expiresAt: number,
+	): string {
+		return `${expiresAt}.${this.sign(projectId, agentId, credentialId, expiresAt)}`;
 	}
 
-	private sign(projectId: string, agentId: string, expiresAt: number): string {
+	private sign(
+		projectId: string,
+		agentId: string,
+		credentialId: string,
+		expiresAt: number,
+	): string {
 		return createHmac('sha256', this.instanceSettings.encryptionKey)
-			.update(`teams-arm:${projectId}:${agentId}:${expiresAt}`)
+			.update(`teams-arm:${projectId}:${agentId}:${credentialId}:${expiresAt}`)
 			.digest('hex');
 	}
 

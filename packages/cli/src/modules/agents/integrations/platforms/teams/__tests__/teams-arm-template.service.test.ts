@@ -7,6 +7,7 @@ import { TeamsArmTemplateService } from '../teams-arm-template.service';
 
 const PROJECT_ID = 'project-1';
 const AGENT_ID = 'agent-1';
+const CREDENTIAL_ID = 'cred-1';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' });
 const urlService = mock<UrlService>();
@@ -105,7 +106,7 @@ describe('TeamsArmTemplateService', () => {
 
 	describe('buildDeployUrl', () => {
 		it('points the Azure portal at the template URL', () => {
-			const url = service.buildDeployUrl(PROJECT_ID, AGENT_ID);
+			const url = service.buildDeployUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID);
 
 			expect(url.startsWith('https://portal.azure.com/#create/Microsoft.Template/uri/')).toBe(true);
 			const encoded = url.slice('https://portal.azure.com/#create/Microsoft.Template/uri/'.length);
@@ -115,7 +116,7 @@ describe('TeamsArmTemplateService', () => {
 		});
 
 		it('carries no credential secret in the URL', () => {
-			expect(service.buildDeployUrl(PROJECT_ID, AGENT_ID)).not.toMatch(/secret/i);
+			expect(service.buildDeployUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID)).not.toMatch(/secret/i);
 		});
 	});
 
@@ -123,54 +124,69 @@ describe('TeamsArmTemplateService', () => {
 		const tokenFrom = (url: string) => new URL(url).searchParams.get('token') ?? '';
 
 		it('accepts the token it just issued', () => {
-			const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID));
+			const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID));
 
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(true);
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(true);
 		});
 
 		it('rejects an expired token', () => {
 			vi.useFakeTimers();
 			try {
-				const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID));
-				expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(true);
+				const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID));
+				expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(true);
 
 				vi.advanceTimersByTime(16 * 60 * 1000);
 
-				expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(false);
+				expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 			} finally {
 				vi.useRealTimers();
 			}
 		});
 
 		it('rejects a tampered signature', () => {
-			const [expiry, signature] = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID)).split(
-				'.',
-			);
+			const [expiry, signature] = tokenFrom(
+				service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID),
+			).split('.');
 			const flipped = signature.startsWith('a')
 				? `b${signature.slice(1)}`
 				: `a${signature.slice(1)}`;
 
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, `${expiry}.${flipped}`)).toBe(false);
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, `${expiry}.${flipped}`)).toBe(
+				false,
+			);
 		});
 
 		it('rejects a token whose expiry was pushed out', () => {
-			const [, signature] = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID)).split('.');
+			const [, signature] = tokenFrom(
+				service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID),
+			).split('.');
 
 			expect(
-				service.verifyToken(PROJECT_ID, AGENT_ID, `${Date.now() + 86_400_000}.${signature}`),
+				service.verifyToken(
+					PROJECT_ID,
+					AGENT_ID,
+					CREDENTIAL_ID,
+					`${Date.now() + 86_400_000}.${signature}`,
+				),
 			).toBe(false);
 		});
 
 		it('rejects a token minted for a different agent', () => {
-			const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, 'other-agent'));
+			const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, 'other-agent', CREDENTIAL_ID));
 
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(false);
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
+		});
+
+		it('rejects a token minted for a different credential, so it cannot be swapped', () => {
+			const token = tokenFrom(service.buildTemplateUrl(PROJECT_ID, AGENT_ID, 'other-cred'));
+
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 		});
 
 		it('rejects a token minted for a different project', () => {
-			const token = tokenFrom(service.buildTemplateUrl('other-project', AGENT_ID));
+			const token = tokenFrom(service.buildTemplateUrl('other-project', AGENT_ID, CREDENTIAL_ID));
 
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(false);
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 		});
 
 		it.each([
@@ -178,7 +194,7 @@ describe('TeamsArmTemplateService', () => {
 			['nonsense', 'malformed'],
 			['123.', 'signature-less'],
 		])('rejects a %s token (%s)', (token) => {
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, token)).toBe(false);
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 		});
 	});
 });

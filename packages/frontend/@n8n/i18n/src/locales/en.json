@@ -9005,5 +9005,12 @@
 	"agents.channels.teams.setup.install.failed.unreachable": "Could not reach Microsoft to check the credential. Check this instance has outbound internet access, then try again.",
 	"agents.channels.teams.setup.install.recheck": "Check again",
 	"agents.channels.teams.setup.createBot.entraButton": "Register an app in Entra",
-	"agents.channels.teams.setup.connectBot.openBotButton": "Open Azure Bot Services"
+	"agents.channels.teams.setup.connectBot.openBotButton": "Open Azure Bot Services",
+	"agents.channels.teams.setup.createCredential.title": "Register the app and add the credential",
+	"agents.channels.teams.setup.createCredential.description": "Register an app in Microsoft Entra, add a client secret, then put its Directory (tenant) ID, Application (client) ID and secret into a credential here. Everything after this is built from it.",
+	"agents.channels.teams.setup.createCredential.button": "Register an app in Entra",
+	"agents.channels.teams.setup.createCredential.prerequisites": "You need a work or school account with an Azure subscription, and permission to register an app in Microsoft Entra. If either is missing, ask an administrator for the app's Application and Directory IDs and a client secret.",
+	"agents.channels.teams.setup.createBot.needsCredential": "Add the credential first. The deployment needs its Application and Directory IDs.",
+	"agents.channels.teams.setup.connectBot.mismatch": "A bot reached n8n, but it is not the one this credential describes. Check the endpoint is on the right bot.",
+	"agents.channels.teams.setup.connectBot.skipped": "Check skipped. You can still finish, but nothing has confirmed the endpoint yet."
 }
