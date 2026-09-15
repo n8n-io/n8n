@@ -101,7 +101,8 @@ rather run n8n yourself.
 This command:
 - Starts n8n in a container on `http://localhost:5678` (unless using `--external-n8n`)
 - Mounts your project into the container's custom nodes directory
-- Persists workflows and credentials in the `n8n-node-cli-data` volume
+- Persists workflows and credentials in a `n8n-node-cli-data-<image>` volume,
+  one for each `--n8n-image`
 - Recompiles on change and pushes a reload to n8n, including for icons and JSON assets
 
 `CONTAINER_ENGINE=docker|podman` overrides engine detection. Colima, Rancher

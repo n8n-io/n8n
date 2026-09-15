@@ -95,7 +95,8 @@ itself with. It:
 - Mounts your project into the container's custom nodes directory
 - Recompiles on change and reloads your node without a restart, including icons
   and JSON assets
-- Persists workflows and credentials in the `n8n-node-cli-data` volume
+- Persists workflows and credentials in a `n8n-node-cli-data-<image>` volume,
+  one for each `--n8n-image`
 
 Use `--external-n8n` if you would rather run n8n yourself.
 
@@ -249,7 +250,8 @@ Choose the right template for your use case:
 ```bash
 # Reset the dev instance's data volume and restart. Use the engine that
 # created the volume — a Podman volume is not visible to Docker.
-docker volume rm n8n-node-cli-data   # or: podman volume rm n8n-node-cli-data
+docker volume ls --filter name=n8n-node-cli-data   # or: podman volume ls ...
+docker volume rm <volume>                          # or: podman volume rm <volume>
 npm run dev
 ```
 
