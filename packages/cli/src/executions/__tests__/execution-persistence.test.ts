@@ -2153,22 +2153,67 @@ describe('ExecutionPersistence', () => {
 	});
 
 	describe('deleteUnsaved', () => {
-		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
+		const stoppedAt = new Date('2025-01-13T18:25:51.267Z');
+		const target = {
+			workflowId: 'wf-1',
+			executionId: 'exec-1',
+			storedAt: 'db' as const,
+			status: 'success' as const,
+			finished: true,
+			stoppedAt,
+		};
 
-		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
+		it('should soft-delete with the terminal state when pruning is enabled', async () => {
 			vi.useFakeTimers();
 			const now = Date.now();
 
 			executionsConfig.pruneData = true;
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce({
+				affected: 1,
+				generatedMaps: [],
+				raw: {},
+			});
 
 			await executionPersistence.deleteInFlightExecution(target);
 
-			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'exec-1', status: expect.anything() }),
+				{
+					deletedAt: new Date(now - 3600_000),
+					status: 'success',
+					finished: true,
+					stoppedAt,
+				},
+			);
+			expect(executionRepository.update).toHaveBeenCalledTimes(1);
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+
+			vi.useRealTimers();
+		});
+
+		it('should preserve a canceled status while soft-deleting a late completion', async () => {
+			vi.useFakeTimers();
+			const now = Date.now();
+
+			executionsConfig.pruneData = true;
+			executionsConfig.pruneDataHardDeleteBuffer = 1;
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update
+				.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} })
+				.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} });
+
+			await executionPersistence.deleteInFlightExecution(target);
+
+			expect(executionRepository.update).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ id: 'exec-1', status: expect.anything() }),
+				expect.objectContaining({ status: 'success' }),
+			);
+			expect(executionRepository.update).toHaveBeenNthCalledWith(2, 'exec-1', {
 				deletedAt: new Date(now - 3600_000),
 			});
-			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 
 			vi.useRealTimers();
 		});

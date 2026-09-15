@@ -44,6 +44,9 @@ import { EventService } from '../events/event.service';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
+type InFlightDeletionTarget = DeletionTarget &
+	Pick<IExecutionResponse, 'finished' | 'status' | 'stoppedAt'>;
+
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
 type UpdatableEntityColumns = Omit<
@@ -636,11 +639,22 @@ export class ExecutionPersistence {
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(target: InFlightDeletionTarget) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			const result = await this.executionRepository.update(
+				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
+				{
+					deletedAt,
+					status: target.status,
+					finished: target.finished,
+					stoppedAt: target.stoppedAt,
+				},
+			);
+			if ((result.affected ?? 0) === 0) {
+				await this.executionRepository.update(target.executionId, { deletedAt });
+			}
 		} else {
 			await this.hardDelete(target);
 		}
