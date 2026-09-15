@@ -265,6 +265,14 @@ export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVer
 	() => loadLangsmithTracing().setTracePromptVersion,
 );
 
+export const setTraceModelId: typeof LangsmithTracingMod.setTraceModelId = lazyFunction(
+	() => loadLangsmithTracing().setTraceModelId,
+);
+
+export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetadata = lazyFunction(
+	() => loadLangsmithTracing().modelIdTraceMetadata,
+);
+
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
 
