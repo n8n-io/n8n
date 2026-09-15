@@ -613,7 +613,7 @@ describe('GlobalConfig', () => {
 		},
 		sso: {
 			justInTimeProvisioning: true,
-			redirectLoginToSso: true,
+			redirectLoginToSso: false,
 			saml: {
 				loginEnabled: false,
 				loginLabel: '',

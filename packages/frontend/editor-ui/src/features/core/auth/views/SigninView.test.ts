@@ -2,13 +2,20 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { VIEWS } from '@/app/constants';
+import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
+
+vi.mock('@/features/core/auth/ssoLoginRedirectSuppression', () => ({
+	consumeSsoLoginRedirectSuppression: vi.fn(() => false),
+}));
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -187,6 +194,95 @@ describe('SigninView', () => {
 		unmount();
 
 		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
+	});
+
+	describe('when SSO is the active authentication method', () => {
+		let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
+		let route: ReturnType<typeof useRoute>;
+		const SSO_URL = 'https://idp.example/login';
+
+		beforeEach(() => {
+			ssoStore = mockedStore(useSSOStore);
+			ssoStore.showSsoLoginButton = true;
+			ssoStore.redirectLoginToSso = true;
+			ssoStore.resolveActiveSsoRedirectUrl = vi.fn().mockResolvedValue(SSO_URL);
+
+			route = useRoute();
+			global.window = Object.create(window);
+			Object.defineProperty(window, 'location', {
+				value: { href: '', origin: 'https://n8n.local' },
+				writable: true,
+			});
+		});
+
+		it('redirects to the SSO provider and hides the email/password form', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { queryByTestId } = renderComponent();
+
+			await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith(SSO_URL));
+			expect(queryByTestId('signin-form')).not.toBeInTheDocument();
+		});
+
+		it('falls back to the login form when the SSO redirect URL cannot be resolved', async () => {
+			ssoStore.resolveActiveSsoRedirectUrl = vi.fn().mockRejectedValue(new Error('no url'));
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+		});
+
+		it('shows the email/password form via the internal-auth fallback (?internalAuth=true)', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
+		});
+
+		it('shows the email/password form when an admin disabled the SSO redirect', async () => {
+			ssoStore.redirectLoginToSso = false;
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not redirect when an SSO error must be shown (avoids a redirect loop)', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ ssoError: 'access-denied' });
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: "You don't have access to n8n", type: 'error' }),
+			);
+		});
+
+		it('does not redirect right after a logout', async () => {
+			vi.mocked(consumeSsoLoginRedirectSuppression).mockReturnValueOnce(true);
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when redirect query parameter is set', () => {

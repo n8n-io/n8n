@@ -72,6 +72,7 @@ export namespace PubSub {
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
+		export type ReloadSsoLoginRedirect = ToCommand<'reload-sso-login-redirect'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
@@ -121,6 +122,7 @@ export namespace PubSub {
 		| Commands.ReloadSamlConfiguration
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
+		| Commands.ReloadSsoLoginRedirect
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig

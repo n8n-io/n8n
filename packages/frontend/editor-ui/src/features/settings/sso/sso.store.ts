@@ -21,6 +21,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const authenticationMethod = ref<AuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
 	const ssoManagedByEnv = ref(false);
+	const redirectLoginToSso = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -35,9 +36,27 @@ export const useSSOStore = defineStore('sso', () => {
 	const getSSORedirectUrl = async (existingRedirect?: string) =>
 		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
+	/**
+	 * Resolve the redirect URL for the currently active SSO protocol: SAML needs a
+	 * server round-trip to build the IdP URL, OIDC exposes a static login URL.
+	 * Fails fast when the OIDC login URL is missing so callers do not navigate to an
+	 * empty URL (which reloads the current page and can loop the auto-redirect).
+	 */
+	const resolveActiveSsoRedirectUrl = async (existingRedirect = ''): Promise<string> => {
+		if (isDefaultAuthenticationSaml.value) {
+			return await getSSORedirectUrl(existingRedirect);
+		}
+		const oidcLoginUrl = oidc.value.loginUrl;
+		if (!oidcLoginUrl) {
+			throw new Error('OIDC login URL is not configured');
+		}
+		return oidcLoginUrl;
+	};
+
 	const initialize = (options: {
 		authenticationMethod: AuthenticationMethod;
 		managedByEnv?: boolean;
+		redirectLoginToSso?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -54,6 +73,7 @@ export const useSSOStore = defineStore('sso', () => {
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
 		ssoManagedByEnv.value = options.managedByEnv ?? false;
+		redirectLoginToSso.value = options.redirectLoginToSso ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {
@@ -208,13 +228,21 @@ export const useSSOStore = defineStore('sso', () => {
 			: SupportedProtocols.SAML;
 	};
 
+	const toggleRedirectLoginToSso = async (enabled: boolean) => {
+		await ssoApi.setSsoLoginRedirect(rootStore.restApiContext, enabled);
+		redirectLoginToSso.value = enabled;
+	};
+
 	return {
 		showSsoLoginButton,
 		getSSORedirectUrl,
+		resolveActiveSsoRedirectUrl,
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
 		ssoManagedByEnv,
+		redirectLoginToSso,
+		toggleRedirectLoginToSso,
 
 		saml,
 		samlConfig,
