@@ -921,7 +921,10 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
 				{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false },
 			]);
-			policyRepository.findByIdAndKind.mockResolvedValue(null);
+			// The id resolves, but only under the other kind — what the scoped read filters out.
+			policyRepository.findByIdAndKind.mockImplementation(async (_id, kind) =>
+				kind === KIND ? null : makePolicy({ kind: 'other-kind' }),
+			);
 
 			await expect(
 				service.setEffectivePolicy(
@@ -933,6 +936,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				),
 			).rejects.toThrow(NotFoundError);
 
+			expect(policyRepository.findByIdAndKind).toHaveBeenCalledWith('policy-1', KIND, ROOT, true);
 			expect(policyRepository.updateRules).not.toHaveBeenCalled();
 			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
