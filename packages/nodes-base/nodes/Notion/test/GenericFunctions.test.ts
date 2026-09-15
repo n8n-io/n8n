@@ -24,7 +24,7 @@ import {
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
-import { wordFrom } from '@test/text-families';
+import { examplesFrom, wordFrom } from '@test/text-families';
 import type { Mock } from 'vitest';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
@@ -627,6 +627,7 @@ describe('Test Notion, simplifyObjects', () => {
 				fc.property(accentedWord, (name) => {
 					expect(keyFor(name, 3)).toBe(`property_${name}`);
 				}),
+				{ examples: examplesFrom('latin-accented').map((name) => [name.toLowerCase()]) },
 			);
 		});
 	});
@@ -668,6 +669,7 @@ describe('Test Notion, simplifyObjects', () => {
 
 					expect(keyFor(name, 2)).toBe(`property_${words.join('_')}`);
 				}),
+				{ examples: examplesFrom('latin-accented').map((name) => [name]) },
 			);
 		});
 	});

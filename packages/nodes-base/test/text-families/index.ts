@@ -355,9 +355,14 @@ export const families = [
 
 export type FamilyName = (typeof families)[number]['name'];
 
-/** One word from the family. */
-export const wordFrom = (name: FamilyName): fc.Arbitrary<string> => {
+const familyByName = (name: FamilyName): Family => {
 	const family = families.find((candidate) => candidate.name === name);
 	if (!family) throw new Error(`Unknown string family: ${name}`);
-	return family.word;
+	return family;
 };
+
+/** One word from the family. */
+export const wordFrom = (name: FamilyName): fc.Arbitrary<string> => familyByName(name).word;
+
+/** The hand-picked words of the family, for the `examples` of `fc.assert`. */
+export const examplesFrom = (name: FamilyName): readonly string[] => familyByName(name).examples;
