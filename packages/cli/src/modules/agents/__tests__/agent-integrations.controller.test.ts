@@ -13,6 +13,7 @@ import type { AgentChannelStatusReporter } from '../integrations/agent-channel-s
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -28,6 +29,7 @@ function makeController({
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -36,6 +38,7 @@ function makeController({
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -49,6 +52,7 @@ function makeController({
 			channelStatusRepository,
 			statusReporter,
 			agentUpdateBroadcaster,
+			collaborationService,
 		),
 		managementService,
 		chatIntegrationService,

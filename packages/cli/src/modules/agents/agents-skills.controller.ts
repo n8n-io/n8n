@@ -13,10 +13,14 @@ import {
 import type { Response } from 'express';
 
 import { AgentSkillsService } from './agent-skills.service';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsSkillsController {
-	constructor(private readonly agentSkillsService: AgentSkillsService) {}
+	constructor(
+		private readonly agentSkillsService: AgentSkillsService,
+		private readonly collaborationService: CollaborationService,
+	) {}
 
 	@Get('/:agentId/skills')
 	@ProjectScope('agent:read')
@@ -46,6 +50,13 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			agentId,
+			'create skill for',
+		);
 		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
@@ -64,6 +75,13 @@ export class AgentsSkillsController {
 	) {
 		const { projectId } = req.params;
 		const { baseSkillHash, ...updates } = payload;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			agentId,
+			'update skill for',
+		);
 		return await this.agentSkillsService.updateSkill(
 			agentId,
 			projectId,
@@ -87,6 +105,13 @@ export class AgentsSkillsController {
 		@Param('skillId') skillId: string,
 	) {
 		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			agentId,
+			'delete skill for',
+		);
 		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId, {
 			user: req.user,
 			modifiedBy: 'user',

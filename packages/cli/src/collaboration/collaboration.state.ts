@@ -224,4 +224,133 @@ export class CollaborationState {
 		await this.setWriteLock(workflowId, clientId, userId);
 		return true;
 	}
+
+	// --- Agent-scoped collaboration --------------------------------------
+
+	/**
+	 * Mark client (tab) active for given agent.
+	 */
+	async addAgentCollaborator(agentId: string, userId: User['id'], clientId: string) {
+		const cacheKey = this.formAgentCacheKey(agentId);
+		const cacheEntry: WorkflowCacheHash = {
+			[clientId]: `${userId}|${new Date().toISOString()}`,
+		};
+
+		await this.cache.setHash(cacheKey, cacheEntry);
+	}
+
+	/**
+	 * Remove client (tab) from agent's active collaborators.
+	 */
+	async removeAgentCollaborator(agentId: string, clientId: string) {
+		const cacheKey = this.formAgentCacheKey(agentId);
+
+		await this.cache.deleteFromHash(cacheKey, clientId);
+	}
+
+	async getAgentCollaborators(agentId: string): Promise<CacheEntry[]> {
+		const cacheKey = this.formAgentCacheKey(agentId);
+
+		const cacheValue = await this.cache.getHash<string>(cacheKey);
+		if (!cacheValue) {
+			return [];
+		}
+
+		const { valid, invalid } = this.parseCacheHashToCollaborators(cacheValue);
+		const [expired, stillActive] = this.splitToExpiredAndStillActive(valid);
+
+		const toRemove = [...expired, ...invalid];
+		if (toRemove.length > 0) {
+			void this.removeExpiredAgentCollaborators(agentId, toRemove);
+		}
+
+		// Deduplicate by userId - keep the most recent entry for each user
+		const userMap = new Map<string, CacheEntry>();
+		for (const entry of stillActive) {
+			const existing = userMap.get(entry.userId);
+			if (!existing || new Date(entry.lastSeen) > new Date(existing.lastSeen)) {
+				userMap.set(entry.userId, entry);
+			}
+		}
+
+		return Array.from(userMap.values());
+	}
+
+	private formAgentCacheKey(agentId: string) {
+		return `collaboration:agent:${agentId}`;
+	}
+
+	private async removeExpiredAgentCollaborators(agentId: string, expiredClients: CacheEntry[]) {
+		const cacheKey = this.formAgentCacheKey(agentId);
+		await Promise.all(
+			expiredClients.map(
+				async (client) => await this.cache.deleteFromHash(cacheKey, client.clientId),
+			),
+		);
+	}
+
+	async setAgentWriteLock(agentId: string, clientId: string, userId: User['id']) {
+		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
+		const lockData = JSON.stringify({ clientId, userId });
+		await this.cache.set(cacheKey, lockData, this.writeLockTtl);
+	}
+
+	async renewAgentWriteLock(agentId: string, clientId: string) {
+		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
+		const currentLock = await this.getAgentWriteLock(agentId);
+
+		if (currentLock?.clientId === clientId) {
+			const lockData = JSON.stringify(currentLock);
+			await this.cache.set(cacheKey, lockData, this.writeLockTtl);
+		}
+	}
+
+	async getAgentWriteLock(agentId: string): Promise<{ clientId: string; userId: string } | null> {
+		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
+		const lockData = await this.cache.get<string>(cacheKey);
+
+		if (!lockData) {
+			return null;
+		}
+
+		const parsed = jsonParse<{ clientId: string; userId: string } | null>(lockData, {
+			fallbackValue: null,
+		});
+
+		if (!parsed?.clientId || !parsed?.userId) {
+			return null;
+		}
+
+		return parsed;
+	}
+
+	async releaseAgentWriteLock(agentId: string) {
+		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
+		await this.cache.delete(cacheKey);
+	}
+
+	private formAgentWriteLockCacheKey(agentId: string) {
+		return `collaboration:write-lock:agent:${agentId}`;
+	}
+
+	/**
+	 * Acquire agent write lock forcefully, stealing from same user's other tab.
+	 *
+	 * @returns true if lock was acquired, false if lock is held by different user
+	 */
+	async acquireAgentWriteLockForce(
+		agentId: string,
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
+		const currentLock = await this.getAgentWriteLock(agentId);
+
+		if (currentLock && currentLock.userId !== userId) {
+			// Different user owns the lock, cannot steal
+			return false;
+		}
+
+		await this.setAgentWriteLock(agentId, clientId, userId);
+		return true;
+	}
 }

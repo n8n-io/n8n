@@ -7,6 +7,7 @@ import type { AgentPublishService } from '../agent-publish.service';
 import { AgentPublishController } from '../agent-publish.controller';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -16,10 +17,12 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -28,7 +31,11 @@ function makeController({
 	);
 
 	return {
-		controller: new AgentPublishController(agentPublishService, agentRunnableStateService),
+		controller: new AgentPublishController(
+			agentPublishService,
+			agentRunnableStateService,
+			collaborationService,
+		),
 		agentPublishService,
 		agentValidationService,
 	};

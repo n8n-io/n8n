@@ -7,6 +7,7 @@ import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsConfigController } from '../agents-config.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -38,6 +39,7 @@ describe('AgentsConfigController getValidation', () => {
 			agentValidationService,
 			mock<CredentialsService>(),
 			agentRepository,
+			mock<CollaborationService>(),
 		);
 
 		await expect(

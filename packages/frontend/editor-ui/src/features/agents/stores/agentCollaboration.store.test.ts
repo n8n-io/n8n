@@ -1,0 +1,219 @@
+import { setActivePinia, createPinia } from 'pinia';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { useAgentCollaborationStore } from './agentCollaboration.store';
+
+const mockGetAgentWriteLock = vi.fn();
+
+const mockPushStore = {
+	send: vi.fn(),
+	addEventListener: vi.fn().mockReturnValue(vi.fn()),
+	clearQueue: vi.fn(),
+};
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => mockPushStore,
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => ({
+		currentUserId: 'user-1',
+	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		restApiContext: {},
+		pushRef: 'push-1',
+	}),
+}));
+
+vi.mock('../composables/useAgentApi', () => ({
+	getAgentWriteLock: (...args: unknown[]) => mockGetAgentWriteLock(...args),
+}));
+
+describe('useAgentCollaborationStore', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		mockGetAgentWriteLock.mockResolvedValue(null);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('initialize', () => {
+		test('sends agentOpened and requests write access when no lock exists', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentOpened',
+				agentId: 'agent-1',
+			});
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentWriteAccessRequested',
+				agentId: 'agent-1',
+			});
+		});
+
+		test('does not request write access when a lock already exists', async () => {
+			mockGetAgentWriteLock.mockResolvedValue({
+				clientId: 'otherClient',
+				userId: 'otherUser',
+			});
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentOpened',
+				agentId: 'agent-1',
+			});
+			const requestCall = mockPushStore.send.mock.calls.find(
+				(call) => (call[0] as { type: string }).type === 'agentWriteAccessRequested',
+			);
+			expect(requestCall).toBeUndefined();
+		});
+	});
+
+	describe('re-initialize with a different agent', () => {
+		test('closes the previous agent before opening the next one', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			mockPushStore.send.mockClear();
+
+			await store.initialize('project-1', 'agent-2');
+
+			const messages = mockPushStore.send.mock.calls.map(
+				(call) => call[0] as { type: string; agentId: string },
+			);
+			const closedIndex = messages.findIndex(
+				(m) => m.type === 'agentClosed' && m.agentId === 'agent-1',
+			);
+			const openedIndex = messages.findIndex(
+				(m) => m.type === 'agentOpened' && m.agentId === 'agent-2',
+			);
+			expect(closedIndex).toBeGreaterThanOrEqual(0);
+			expect(openedIndex).toBeGreaterThan(closedIndex);
+		});
+
+		test('is a no-op when re-initialized with the same agent', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			mockPushStore.send.mockClear();
+
+			await store.initialize('project-1', 'agent-1');
+
+			expect(mockPushStore.send).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('terminate', () => {
+		test('sends agentClosed on terminate', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			mockPushStore.send.mockClear();
+
+			store.terminate();
+
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentClosed',
+				agentId: 'agent-1',
+			});
+		});
+	});
+
+	describe('requestWriteAccessForce', () => {
+		test('sends a forced agentWriteAccessRequested message', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			mockPushStore.send.mockClear();
+
+			store.requestWriteAccessForce();
+
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentWriteAccessRequested',
+				agentId: 'agent-1',
+				force: true,
+			});
+		});
+	});
+
+	describe('push event handling', () => {
+		type PushHandler = (event: {
+			type: string;
+			data: { agentId: string; clientId?: string; userId?: string };
+		}) => void;
+
+		test('sets the write lock and starts heartbeat on writeAccessAcquired for the current tab', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'push-1', userId: 'user-1' },
+			});
+
+			expect(store.isCurrentTabWriter).toBe(true);
+			expect(store.shouldBeReadOnly).toBe(false);
+		});
+
+		test('sets read-only mode on writeAccessAcquired for a different tab', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'otherClient', userId: 'otherUser' },
+			});
+
+			expect(store.isCurrentTabWriter).toBe(false);
+			expect(store.shouldBeReadOnly).toBe(true);
+		});
+
+		test('clears the write lock on writeAccessReleased', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'otherClient', userId: 'otherUser' },
+			});
+			expect(store.shouldBeReadOnly).toBe(true);
+
+			handler({
+				type: 'writeAccessReleased',
+				data: { agentId: 'agent-1' },
+			});
+
+			expect(store.shouldBeReadOnly).toBe(false);
+		});
+
+		test('ignores push events for a different agent', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-2', clientId: 'otherClient', userId: 'otherUser' },
+			});
+
+			expect(store.shouldBeReadOnly).toBe(false);
+		});
+	});
+});
