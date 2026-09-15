@@ -471,6 +471,37 @@ describe('Test Notion, notionApiRequest', () => {
 			expect.objectContaining({ method: 'GET' }),
 		);
 	});
+
+	it('rewrites a formula-of-unknown-type filter error into actionable guidance', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('apiKey');
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue({
+			response: {
+				status: 400,
+				data: { message: 'Unable to filter based on a formula of unknown type.' },
+			},
+		});
+
+		await expect(
+			notionApiRequest.call(mockExecuteFunctions, 'POST', '/databases/abc/query'),
+		).rejects.toMatchObject({
+			message: "Notion couldn't determine this formula's return type",
+			description: expect.stringContaining('empty()'),
+		});
+	});
+
+	it('leaves unrelated API errors untouched', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('apiKey');
+		(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue({
+			response: { status: 404, data: { message: 'Could not find database.' } },
+		});
+
+		await expect(
+			notionApiRequest.call(mockExecuteFunctions, 'GET', '/databases/missing'),
+		).rejects.toMatchObject({
+			message: 'The resource you are requesting could not be found',
+			description: 'Could not find database.',
+		});
+	});
 });
 
 describe('Test Notion, notionApiRequestAllItems', () => {
