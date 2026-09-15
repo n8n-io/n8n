@@ -732,7 +732,8 @@ describe('nodes tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					requestId: expect.any(String),
-					message: 'n8n-nodes-base.set',
+					message: '',
+					resourceName: 'n8n-nodes-base.set node',
 					severity: 'warning',
 				}),
 			);
@@ -776,7 +777,7 @@ describe('nodes tool', () => {
 			],
 		};
 
-		async function suspendMessageFor(
+		async function suspendPayloadFor(
 			parameters: Record<string, unknown>,
 			description: unknown = splitNodeDescription,
 		) {
@@ -795,28 +796,37 @@ describe('nodes tool', () => {
 				{ suspend: suspendFn } as never,
 			);
 
-			return suspendFn.mock.calls[0][0].message;
+			return suspendFn.mock.calls[0][0];
 		}
 
-		it('should use the display names of node, resource and operation in the confirmation message', async () => {
-			expect(await suspendMessageFor({ resource: 'sheet', operation: 'create' })).toBe(
-				'Google Sheets > Sheet Within Document > Create Sheet',
-			);
+		it('should name the node in the title and the operation in the description', async () => {
+			expect(await suspendPayloadFor({ resource: 'sheet', operation: 'create' })).toMatchObject({
+				resourceName: 'Google Sheets node',
+				message: 'Sheet Within Document > Create Sheet',
+			});
 		});
 
 		it('should label a shared operation value by the resource it belongs to', async () => {
-			expect(await suspendMessageFor({ resource: 'spreadsheet', operation: 'create' })).toBe(
-				'Google Sheets > Document > Create Document',
-			);
+			expect(
+				await suspendPayloadFor({ resource: 'spreadsheet', operation: 'create' }),
+			).toMatchObject({ message: 'Document > Create Document' });
 		});
 
 		it('should fall back to the node defaults for omitted discriminators', async () => {
-			expect(await suspendMessageFor({ operation: 'create' })).toBe(
-				'Google Sheets > Sheet Within Document > Create Sheet',
-			);
-			expect(await suspendMessageFor({})).toBe(
-				'Google Sheets > Sheet Within Document > Get Row(s)',
-			);
+			expect(await suspendPayloadFor({ operation: 'create' })).toMatchObject({
+				message: 'Sheet Within Document > Create Sheet',
+			});
+			expect(await suspendPayloadFor({})).toMatchObject({
+				message: 'Sheet Within Document > Get Row(s)',
+			});
+		});
+
+		it('should leave the description empty for a node without discriminators', async () => {
+			const flatNode = { name: 'n8n-nodes-base.code', displayName: 'Code', properties: [] };
+			expect(await suspendPayloadFor({}, flatNode)).toMatchObject({
+				resourceName: 'Code node',
+				message: '',
+			});
 		});
 
 		it('should fall back to raw values when the node description does not resolve', async () => {
@@ -835,7 +845,10 @@ describe('nodes tool', () => {
 				{ suspend: suspendFn } as never,
 			);
 
-			expect(suspendFn.mock.calls[0][0].message).toBe('n8n-nodes-base.slack > message > post');
+			expect(suspendFn.mock.calls[0][0]).toMatchObject({
+				resourceName: 'n8n-nodes-base.slack node',
+				message: 'message > post',
+			});
 		});
 
 		it('should deny without suspending when the admin policy blocks workflow runs', async () => {

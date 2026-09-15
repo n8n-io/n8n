@@ -189,6 +189,7 @@ type ExecuteInput = z.infer<typeof executeAction>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -476,14 +477,16 @@ function isShownForResource(
 }
 
 /**
- * Human-readable subject for the execute-node approval prompt, e.g.
- * `Google Sheets > Sheet Within Document > Append Row`. Falls back to the node type ID and
- * the raw parameter values when the node description or its option lists don't resolve.
+ * Human-readable subjects for the execute-node approval card: the node the card names in its
+ * title (`Google Sheets node`) and the operation it describes below (`Sheet Within Document >
+ * Append Row`). Falls back to the node type ID and the raw parameter values when the node
+ * description or its option lists don't resolve; the description is empty for a node without
+ * resource/operation discriminators.
  */
-async function buildExecuteNodeLabel(
+async function buildExecuteNodeLabels(
 	context: InstanceAiContext,
 	input: ExecuteInput,
-): Promise<string> {
+): Promise<{ resourceName: string; message: string }> {
 	let description: NodeDescription | undefined;
 	try {
 		description = await context.nodeService.getDescription(input.type, input.version);
@@ -513,9 +516,10 @@ async function buildExecuteNodeLabel(
 	const resource = resolveDiscriminator('resource');
 	const operation = resolveDiscriminator('operation', resource?.value);
 
-	return [description?.displayName ?? input.type, resource?.label, operation?.label]
-		.filter(Boolean)
-		.join(' > ');
+	return {
+		resourceName: `${description?.displayName ?? input.type} node`,
+		message: [resource?.label, operation?.label].filter(Boolean).join(' > '),
+	};
 }
 
 async function handleExecute(
@@ -580,7 +584,7 @@ async function handleExecute(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await suspend({
 			requestId: nanoid(),
-			message: await buildExecuteNodeLabel(context, input),
+			...(await buildExecuteNodeLabels(context, input)),
 			severity: 'warning' as const,
 		});
 	}
