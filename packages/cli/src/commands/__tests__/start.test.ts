@@ -31,12 +31,16 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
+import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { JwtService } from '@/services/jwt.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
+
+const canvasOnlyPersonalSpaceRoleService = mockInstance(CanvasOnlyPersonalSpaceRoleService);
+canvasOnlyPersonalSpaceRoleService.run.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
@@ -107,6 +111,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 		// Re-register all mocks
 		Container.set(AuthRolesService, authRolesService);
+		Container.set(CanvasOnlyPersonalSpaceRoleService, canvasOnlyPersonalSpaceRoleService);
 		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 		Container.set(DbConnection, dbConnection);
 		Container.set(InstanceSettings, instanceSettings);
