@@ -70,13 +70,32 @@ describe('TeamsArmTemplateService', () => {
 			expect((bot.properties as Record<string, unknown>).msaAppType).toBe('SingleTenant');
 		});
 
-		it('derives a bot name per agent, since the name is globally unique in Azure', () => {
+		it('names the bot after the agent, with a digest because Azure names are global', () => {
 			const mine = parametersOf(service.buildTemplate(options)).botName.defaultValue;
 			const other = parametersOf(service.buildTemplate({ ...options, agentId: 'agent-2' })).botName
 				.defaultValue;
 
-			expect(mine).not.toBe(other);
-			expect(mine).toMatch(/^n8n-agent-[0-9a-f]{12}$/);
+			expect(mine).toMatch(/^support-bot-[0-9a-f]{8}$/);
+			expect(other).not.toBe(mine);
+		});
+
+		it('falls back to a usable name when the agent name cannot start one', () => {
+			const name = parametersOf(service.buildTemplate({ ...options, agentName: '123 🎉' })).botName
+				.defaultValue;
+
+			expect(name).toMatch(/^n8n-agent-[0-9a-f]{8}$/);
+		});
+
+		it('omits the Entra defaults when unknown, so the portal marks them required', () => {
+			const parameters = parametersOf(
+				service.buildTemplate({ ...options, msaAppId: '', msaAppTenantId: '' }),
+			);
+
+			// An empty default looks filled in, and the deployment then fails at the
+			// end with "Microsoft App ID is required".
+			expect(parameters.msaAppId).not.toHaveProperty('defaultValue');
+			expect(parameters.msaAppTenantId).not.toHaveProperty('defaultValue');
+			expect(parameters.messagingEndpoint.defaultValue).toBe(options.messagingEndpoint);
 		});
 
 		it('carries no credential secret', () => {

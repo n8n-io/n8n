@@ -163,9 +163,9 @@ describe('TeamsSetupService', () => {
 				token: validToken(),
 			});
 
-			const parameters = template.parameters as Record<string, { defaultValue: unknown }>;
-			expect(parameters.msaAppId.defaultValue).toBe('');
-			expect(parameters.msaAppTenantId.defaultValue).toBe('');
+			const parameters = template.parameters as Record<string, { defaultValue?: unknown }>;
+			expect(parameters.msaAppId).not.toHaveProperty('defaultValue');
+			expect(parameters.msaAppTenantId).not.toHaveProperty('defaultValue');
 			// The fiddly half is still filled in, which is the point of the button.
 			expect(parameters.messagingEndpoint.defaultValue).toContain('/webhooks/teams');
 		});

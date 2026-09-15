@@ -12,6 +12,7 @@ import type {
 	AgentTeamsIntegrationSettings,
 	ChatIntegrationDescriptor,
 	TeamsAgentSetupState,
+	TeamsCredentialCheck,
 	TeamsDiscoveryState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
@@ -20,9 +21,10 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 import {
+	checkTeamsCredential,
+	fetchTeamsAppPackage,
 	getTeamsDiscovery,
 	getTeamsSetupState,
-	fetchTeamsAppPackage,
 	startTeamsDiscovery,
 	stopTeamsDiscovery,
 } from './api';
@@ -67,7 +69,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 
-const AZURE_PORTAL_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
+const AZURE_BOT_SERVICES_URL =
+	'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
+const ENTRA_APP_REGISTRATION_URL =
+	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 const DISCOVERY_POLL_MS = 2000;
 
 const setupState = ref<TeamsAgentSetupState | null>(null);
@@ -107,6 +112,43 @@ const messagingEndpointUrl = computed(() => {
 const discovered = computed(() => (discovery.value.status === 'found' ? discovery.value : null));
 const downloading = ref(false);
 const downloadError = ref('');
+const credentialCheck = ref<TeamsCredentialCheck | null>(null);
+const checking = ref(false);
+
+/**
+ * Connecting is gated on the credential actually reaching Microsoft. Without
+ * this the channel connects on a wrong secret and fails on the first message,
+ * long after the setup said it succeeded.
+ */
+const credentialVerified = computed(() => credentialCheck.value?.status === 'ok');
+const credentialProblem = computed(() =>
+	credentialCheck.value?.status === 'failed' ? credentialCheck.value.reason : null,
+);
+
+async function runCredentialCheck() {
+	const id = credentialId.value;
+	if (!id) {
+		credentialCheck.value = null;
+		return;
+	}
+	checking.value = true;
+	try {
+		credentialCheck.value = await checkTeamsCredential(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			id,
+		);
+	} catch {
+		credentialCheck.value = { status: 'failed', reason: 'unreachable' };
+	} finally {
+		checking.value = false;
+	}
+}
+
+// Re-checks whenever the picked credential changes, including the one discovery
+// adopted, so the gate never reflects a previous selection.
+watch(credentialId, async () => await runCredentialCheck(), { immediate: true });
 
 // The manifest needs the bot's client ID, which discovery supplies before the
 // credential is connected, so the step does not wait on connecting.
@@ -256,6 +298,15 @@ defineExpose({
 					<div v-if="step.id === 'create-bot'" :class="$style.stepStack">
 						<div :class="$style.buttonRow">
 							<N8nButton
+								:href="ENTRA_APP_REGISTRATION_URL"
+								target="_blank"
+								variant="outline"
+								size="medium"
+								data-testid="teams-entra-register-link"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.createBot.entraButton') }}
+							</N8nButton>
+							<N8nButton
 								v-if="setupState?.deployToAzureUrl"
 								:href="setupState.deployToAzureUrl"
 								target="_blank"
@@ -264,15 +315,6 @@ defineExpose({
 								data-testid="teams-deploy-to-azure"
 							>
 								{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
-							</N8nButton>
-							<N8nButton
-								:href="AZURE_PORTAL_URL"
-								target="_blank"
-								variant="outline"
-								size="medium"
-								data-testid="teams-azure-portal-link"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.createBot.portalButton') }}
 							</N8nButton>
 						</div>
 
@@ -302,6 +344,28 @@ defineExpose({
 					<!-- 2. Connect the bot -->
 					<div v-else-if="step.id === 'connect-bot'" :class="$style.stepStack">
 						<template v-if="discovery.status === 'waiting' && !manualEntry">
+							<N8nButton
+								:href="AZURE_BOT_SERVICES_URL"
+								target="_blank"
+								variant="subtle"
+								size="medium"
+								data-testid="teams-open-bot-link"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.connectBot.openBotButton') }}
+							</N8nButton>
+							<N8nText
+								v-if="setupState?.suggestedBotName"
+								:class="$style.hint"
+								size="small"
+								data-testid="teams-open-bot-hint"
+							>
+								{{
+									i18n.baseText('agents.channels.teams.setup.connectBot.openBotHint', {
+										interpolate: { botName: setupState.suggestedBotName },
+									})
+								}}
+							</N8nText>
+
 							<N8nText size="small" data-testid="teams-discovery-listening">
 								{{ i18n.baseText('agents.channels.teams.setup.connectBot.listening') }}
 							</N8nText>
@@ -309,7 +373,7 @@ defineExpose({
 								{{ i18n.baseText('agents.channels.teams.setup.connectBot.slow') }}
 							</N8nText>
 							<N8nButton
-								variant="outline"
+								variant="ghost"
 								size="small"
 								data-testid="teams-discovery-manual"
 								@click="enterValuesManually"
@@ -493,27 +557,55 @@ defineExpose({
 
 						<!--
 							Connecting is the last thing that happens, because the modal closes
-							on it. Offered here so the package is already downloaded by then.
+							on it. Offered here so the package is already downloaded by then,
+							and gated on a credential that has actually reached Microsoft.
 						-->
-						<N8nButton
-							v-if="!connected"
-							variant="solid"
-							size="medium"
-							:disabled="!credentialId || loading"
-							:loading="loading"
-							data-testid="teams-connect"
-							@click="emit('connect')"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.install.connectButton') }}
-						</N8nButton>
-						<N8nText
-							v-if="!connected && !credentialId"
-							:class="$style.hint"
-							size="small"
-							data-testid="teams-connect-blocked"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.install.needsCredential') }}
-						</N8nText>
+						<template v-if="!connected">
+							<N8nText
+								v-if="checking"
+								:class="$style.hint"
+								size="small"
+								data-testid="teams-credential-checking"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.checking') }}
+							</N8nText>
+							<N8nText
+								v-else-if="credentialVerified"
+								size="small"
+								data-testid="teams-credential-verified"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.verified') }}
+							</N8nText>
+							<template v-else-if="credentialProblem">
+								<N8nText size="small" :class="$style.error" data-testid="teams-credential-problem">
+									{{
+										i18n.baseText(`agents.channels.teams.setup.install.failed.${credentialProblem}`)
+									}}
+								</N8nText>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									data-testid="teams-credential-recheck"
+									@click="runCredentialCheck()"
+								>
+									{{ i18n.baseText('agents.channels.teams.setup.install.recheck') }}
+								</N8nButton>
+							</template>
+							<N8nText v-else :class="$style.hint" size="small" data-testid="teams-connect-blocked">
+								{{ i18n.baseText('agents.channels.teams.setup.install.needsCredential') }}
+							</N8nText>
+
+							<N8nButton
+								variant="solid"
+								size="medium"
+								:disabled="!credentialVerified || loading"
+								:loading="loading"
+								data-testid="teams-connect"
+								@click="emit('connect')"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.install.connectButton') }}
+							</N8nButton>
+						</template>
 						<N8nText
 							v-if="connected && !isPublished"
 							:class="$style.hint"
