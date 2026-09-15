@@ -1,5 +1,7 @@
 import { expect, type Locator } from '@playwright/test';
 
+import { hoverToReveal } from '../../utils/retry-utils';
+
 export class InstanceAiSidebar {
 	constructor(private root: Locator) {}
 
@@ -22,8 +24,9 @@ export class InstanceAiSidebar {
 	async renameThreadByTitle(title: string, newTitle: string): Promise<void> {
 		const threadItem = this.getThreadByTitle(title);
 		await expect(threadItem).toBeVisible({ timeout: 5_000 });
-		await threadItem.hover();
-		await this.getThreadActionsTrigger(threadItem).click();
+		const trigger = this.getThreadActionsTrigger(threadItem);
+		await hoverToReveal(threadItem, trigger);
+		await trigger.click();
 		await this.root.page().getByRole('menuitem', { name: 'Rename', exact: true }).click();
 
 		const input = this.getRenameInput();

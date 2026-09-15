@@ -23,16 +23,15 @@ import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
+import { useInstanceAiThreadHistory } from '../composables/useInstanceAiThreadHistory';
 import { useToast } from '@n8n/composables/useToast';
 
 const props = withDefaults(
 	defineProps<{
 		maxHeight?: string;
-		maxThreads?: number;
 	}>(),
 	{
 		maxHeight: undefined,
-		maxThreads: undefined,
 	},
 );
 
@@ -46,11 +45,10 @@ const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
 const toast = useToast();
+const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
-const savingRename = ref(false);
-const searchQuery = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
 const threadListRef = ref<InstanceType<typeof N8nScrollArea>>();
 const comboboxRef = ref<{
@@ -84,24 +82,15 @@ const dateGroupI18nMap: Record<string, string> = {
 
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 
-const visibleThreads = computed(() => {
-	const query = searchQuery.value.trim().toLocaleLowerCase();
-	const matches = query
-		? store.threads.filter((thread) => thread.title.toLocaleLowerCase().includes(query))
-		: store.threads;
-
-	return props.maxThreads === undefined ? matches : matches.slice(0, props.maxThreads);
-});
-
 const groupedThreads = computed(() => {
 	const now = new Date();
-	const groups = new Map<string, typeof store.threads>();
+	const groups = new Map<string, typeof history.value.threads>();
 
-	// Group by last activity, not creation date — a thread created weeks ago
+	// Group by last activity, not creation date: a thread created weeks ago
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of visibleThreads.value) {
+	for (const thread of history.value.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -129,18 +118,18 @@ function updateOverflowCue() {
 }
 
 watch(
-	visibleThreads,
-	async () => {
+	() => history.value.threads.length,
+	async (length, previousLength) => {
 		await nextTick();
 		updateOverflowCue();
+		// A search response replaces the rows (the count passes through 0). Highlight the
+		// first match so Enter opens it. Pages that append rows keep the highlight where it is.
+		if (previousLength === 0 && length > 0 && history.value.search) {
+			comboboxRef.value?.highlightFirstItem?.();
+		}
 	},
 	{ flush: 'post' },
 );
-
-watch(searchQuery, async () => {
-	await nextTick();
-	comboboxRef.value?.highlightFirstItem?.();
-});
 
 onMounted(() => {
 	void nextTick(() => {
@@ -196,18 +185,15 @@ function startRename(threadId: string, currentTitle: string) {
 }
 
 async function confirmRename(threadId: string) {
-	if (savingRename.value || editingThreadId.value !== threadId) return;
+	// Enter and the blur it causes both call this; leaving edit mode first keeps one request.
+	if (editingThreadId.value !== threadId) return;
+	editingThreadId.value = null;
 	const title = editingTitle.value.trim();
-	savingRename.value = true;
+	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
 	try {
-		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
-			await store.renameThread(threadId, title);
-		}
+		await store.renameThread(threadId, title);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error'));
-	} finally {
-		savingRename.value = false;
-		if (editingThreadId.value === threadId) editingThreadId.value = null;
+		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}
 }
 
@@ -219,7 +205,7 @@ function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
-		const thread = store.threads.find((t) => t.id === threadId);
+		const thread = history.value.threads.find((t) => t.id === threadId);
 		if (thread) {
 			startRename(threadId, thread.title);
 		}
@@ -255,7 +241,7 @@ function handleThreadAction(action: string, threadId: string) {
 				<div :class="$style.searchControl">
 					<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
 					<ComboboxInput
-						v-model="searchQuery"
+						v-model="search"
 						:class="$style.searchInput"
 						:auto-focus="true"
 						autocomplete="off"
@@ -264,27 +250,27 @@ function handleThreadAction(action: string, threadId: string) {
 						data-test-id="instance-ai-thread-search"
 					/>
 					<button
-						v-if="searchQuery"
+						v-if="search"
 						type="button"
 						:class="$style.clearSearch"
 						:aria-label="i18n.baseText('generic.list.clearSelection')"
 						@mousedown.prevent
-						@click="searchQuery = ''"
+						@click="search = ''"
 					>
 						<N8nIcon icon="x" size="small" />
 					</button>
 				</div>
 			</form>
 
-			<ComboboxContent force-mount :class="$style.comboboxContent">
-				<N8nScrollArea
-					ref="threadListRef"
-					:class="[$style.threadList, { [$style.hasOverflowBelow]: hasOverflowBelow }]"
-					:max-height="props.maxHeight"
-					type="auto"
-					@scroll-capture="updateOverflowCue"
-				>
-					<template v-if="groupedThreads.length > 0">
+			<ComboboxContent force-mount as-child>
+				<div ref="listRef" :class="$style.comboboxContent">
+					<N8nScrollArea
+						ref="threadListRef"
+						:class="[$style.threadList, { [$style.hasOverflowBelow]: hasOverflowBelow }]"
+						:max-height="props.maxHeight"
+						type="auto"
+						@scroll-capture="updateOverflowCue"
+					>
 						<ComboboxGroup v-for="group in groupedThreads" :key="group.label" :class="$style.group">
 							<ComboboxLabel :class="$style.groupLabel">
 								<N8nText tag="span" size="small" color="text-light">
@@ -304,6 +290,7 @@ function handleThreadAction(action: string, threadId: string) {
 										v-model="editingTitle"
 										:class="$style.renameInput"
 										type="text"
+										maxlength="255"
 										:aria-label="i18n.baseText('instanceAi.threads.rename')"
 										@keydown.enter="confirmRename(thread.id)"
 										@keydown.escape="cancelRename"
@@ -344,19 +331,33 @@ function handleThreadAction(action: string, threadId: string) {
 								</template>
 							</div>
 						</ComboboxGroup>
-					</template>
-					<div v-else :class="$style.empty" role="status">
-						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText(
-									searchQuery
-										? 'instanceAi.threads.noSearchResults'
-										: 'instanceAi.sidebar.noThreads',
-								)
-							}}
-						</N8nText>
-					</div>
-				</N8nScrollArea>
+						<div v-if="history.loading" :class="$style.status" role="status">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('instanceAi.threads.loading') }}
+							</N8nText>
+						</div>
+						<div v-else-if="history.error" :class="$style.status" role="alert">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('instanceAi.threads.loadError') }}
+							</N8nText>
+							<N8nButton variant="ghost" size="xsmall" @click="loadMore">
+								{{ i18n.baseText('generic.retry') }}
+							</N8nButton>
+						</div>
+						<div v-else-if="history.hasMore" ref="sentinelRef" :class="$style.sentinel" />
+						<div v-else-if="history.threads.length === 0" :class="$style.empty" role="status">
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText(
+										history.search
+											? 'instanceAi.threads.noSearchResults'
+											: 'instanceAi.sidebar.noThreads',
+									)
+								}}
+							</N8nText>
+						</div>
+					</N8nScrollArea>
+				</div>
 			</ComboboxContent>
 		</div>
 	</ComboboxRoot>
@@ -561,11 +562,6 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 }
 
-.threadIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtle);
-}
-
 .threadTitle {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -615,6 +611,18 @@ function handleThreadAction(action: string, threadId: string) {
 	&:focus {
 		border-color: var(--border-color--strong);
 	}
+}
+
+.status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+}
+
+.sentinel {
+	height: 1px;
 }
 
 .empty {

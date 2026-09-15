@@ -104,7 +104,7 @@ onMounted(() => {
 		source_url: sourceUrl,
 	});
 
-	void store.loadThreads({ limit: 5, once: true });
+	void store.loadThreads();
 	void store.fetchCredits();
 
 	// Subscribe to push + fetch backend gateway state. The backend keeps the

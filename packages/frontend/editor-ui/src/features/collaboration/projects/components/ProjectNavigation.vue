@@ -78,12 +78,11 @@ const instanceAiChatsCollapsed = ref(
 	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
 );
 
+// The recent chats read the store list; fetch it once the AI Assistant entry is shown.
 watch(
-	[isInstanceAiNavVisible, () => props.collapsed],
-	([visible, collapsed]) => {
-		if (visible && !collapsed) {
-			void instanceAiStore.loadThreads({ limit: 5, once: true });
-		}
+	isInstanceAiNavVisible,
+	(visible) => {
+		if (visible) void instanceAiStore.loadThreads();
 	},
 	{ immediate: true },
 );
