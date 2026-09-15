@@ -329,8 +329,8 @@ export class AgentChatHitlResumeHandler {
 		try {
 			claim.abortSignal.throwIfAborted();
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			claim.abortSignal.throwIfAborted();
 			statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
+			claim.abortSignal.throwIfAborted();
 			const stream = this.options.agentService.resumeForChat(config, claim);
 			await this.options.streamConsumer.consume(stream, thread, {
 				...resumeExecutionContext,
