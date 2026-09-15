@@ -633,6 +633,37 @@ describe('runtime', () => {
 			]);
 		});
 
+		it('labels options with the tool title when the server provides one', async () => {
+			const titledTool = { ...sampleTool, name: 'list_limetypes', title: 'List object types' };
+			const annotatedTool = {
+				...sampleTool,
+				name: 'query_limeobjects',
+				annotations: { title: 'Query CRM data' },
+			};
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [titledTool, annotatedTool, sampleTool],
+			});
+			vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+			const ctx = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP' })),
+				...egressHelpers<ILoadOptionsFunctions>(),
+			});
+
+			const result = await loadMcpToolOptions(ctx, baseConnectionConfig);
+
+			expect(result.map((option) => option.name)).toEqual([
+				'List object types',
+				'Query CRM data',
+				'search',
+			]);
+			expect(result.map((option) => option.value)).toEqual([
+				'list_limetypes',
+				'query_limeobjects',
+				'search',
+			]);
+		});
+
 		it('throws NodeOperationError when connect fails', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('boom'));
 			const ctx = mock<ILoadOptionsFunctions>({
