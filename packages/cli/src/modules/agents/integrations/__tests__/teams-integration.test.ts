@@ -141,6 +141,28 @@ describe('TeamsIntegration', () => {
 			expect(createTeamsAdapter).not.toHaveBeenCalled();
 		});
 
+		it.each(['tenant/id', 'tenant id', 'tenant@id', 'tenant?id', 'tenant#id'])(
+			'rejects the malformed tenant ID %p',
+			async (tenantId) => {
+				await expect(
+					integration.createAdapter(connectionContext(servicePrincipalCredential({ tenantId }))),
+				).rejects.toThrow(/invalid Directory \(tenant\) ID/);
+				expect(createTeamsAdapter).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([TENANT_ID, 'contoso.onmicrosoft.com'])(
+			'accepts the tenant ID %p',
+			async (tenantId) => {
+				await expect(
+					integration.createAdapter(connectionContext(servicePrincipalCredential({ tenantId }))),
+				).resolves.toBeDefined();
+				expect(createTeamsAdapter).toHaveBeenCalledWith(
+					expect.objectContaining({ appTenantId: tenantId }),
+				);
+			},
+		);
+
 		it.each([
 			['clientId', /Application \(client\) ID/],
 			['clientSecret', /Client Secret/],
@@ -174,14 +196,31 @@ describe('TeamsIntegration', () => {
 	describe('formatActionDecisionMessage', () => {
 		const user = { userId: 'u-1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false };
 
-		it('names the decision when one was resolved', () => {
+		it.each([
+			[true, '✅ Approved by Alice'],
+			[false, '🚫 Declined by Alice'],
+		])('names the decision when one was resolved: %p', (approved, expected) => {
 			expect(
 				integration.formatActionDecisionMessage({
-					approved: false,
+					approved,
 					raw: {},
 					user,
 				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
-			).toBe('🚫 Declined by Alice');
+			).toBe(expected);
+		});
+
+		it.each([
+			[{ userId: 'u-1', userName: 'alice', fullName: 'Alice' }, 'Alice'],
+			[{ userId: 'u-1', userName: 'alice', fullName: '' }, 'alice'],
+			[{ userId: 'u-1', userName: '', fullName: '' }, 'u-1'],
+		])('resolves the responder from %p', (responder, expected) => {
+			expect(
+				integration.formatActionDecisionMessage({
+					approved: true,
+					raw: {},
+					user: { ...responder, isBot: false, isMe: false },
+				} as Parameters<typeof integration.formatActionDecisionMessage>[0]),
+			).toBe(`✅ Approved by ${expected}`);
 		});
 
 		// Without the CallbackStore the resume handler resolves neither the
