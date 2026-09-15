@@ -1,4 +1,5 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { setSafeObjectProperty } from 'n8n-workflow';
 
 import type { ICustomProperties, ICustomInterface } from '../transport';
 
@@ -148,5 +149,49 @@ export function resolveCustomFieldsV2(
 	}
 
 	json.custom_fields = resolved;
+	item.json = json;
+}
+
+/**
+ * The v1 Leads endpoint (used for lead create/update) expects custom fields as
+ * top-level 40-char keys, not nested under a `custom_fields` object. Moves the
+ * encoded custom fields from `body.custom_fields` to the root of the body.
+ */
+export function flattenCustomFieldsToRoot(body: IDataObject): void {
+	const customFields = body.custom_fields;
+	if (!customFields || typeof customFields !== 'object') {
+		return;
+	}
+
+	for (const [key, value] of Object.entries(customFields as IDataObject)) {
+		setSafeObjectProperty(body, key, value);
+	}
+	delete body.custom_fields;
+}
+
+/**
+ * The v1 Leads endpoint returns custom fields as top-level 40-char keys. Moves
+ * the known custom field keys under `custom_fields` so the shared resolver can
+ * map them to human-readable names, keeping lead output consistent with other
+ * v2 resources.
+ */
+export function nestRootCustomFields(
+	customProperties: ICustomProperties,
+	item: INodeExecutionData,
+): void {
+	const json = item.json as IDataObject;
+	const customFields = (json.custom_fields as IDataObject) ?? {};
+
+	for (const key of Object.keys(json)) {
+		// Only 40-char keys defined in the account's lead fields are custom fields.
+		if (customProperties[key] !== undefined) {
+			customFields[key] = json[key];
+			delete json[key];
+		}
+	}
+
+	if (Object.keys(customFields).length > 0) {
+		json.custom_fields = customFields;
+	}
 	item.json = json;
 }

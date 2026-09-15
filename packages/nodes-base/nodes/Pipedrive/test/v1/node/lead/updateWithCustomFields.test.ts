@@ -2,26 +2,26 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import { credentials } from '../credentials';
-import { mockFieldsApi } from '../fieldsApiMock';
 
-describe('Test PipedriveV2, lead => update', () => {
-	mockFieldsApi('lead');
-
+describe('Test PipedriveV1, lead => update with custom fields', () => {
+	// V1 sends both the custom field (keyed by field key) and the other update
+	// fields (e.g. owner_id) in a single PATCH body via addAdditionalFields.
 	nock('https://api.pipedrive.com/v1')
-		.put('/leads/9ce77a10-2e16-11f1-91c1-d76c55e1594b', {
-			title: 'Updated Lead',
+		.patch('/leads/aaa11111-bb22-cc33-dd44-ee5555555555', {
+			owner_id: 25455458,
+			'48f483ac81a7b619c59322931ea839310e987725': 'option_c',
 		})
 		.reply(200, {
 			success: true,
 			data: {
-				id: '9ce77a10-2e16-11f1-91c1-d76c55e1594b',
-				title: 'Updated Lead',
+				id: 'aaa11111-bb22-cc33-dd44-ee5555555555',
+				title: 'Existing Lead',
 				owner_id: 25455458,
 				creator_id: 25455458,
 				label_ids: [],
 				value: null,
 				expected_close_date: null,
-				person_id: 10,
+				person_id: null,
 				organization_id: 7,
 				is_archived: false,
 				archive_time: null,
@@ -36,12 +36,13 @@ describe('Test PipedriveV2, lead => update', () => {
 				add_time: '2026-04-01T22:03:28.177Z',
 				update_time: '2026-04-01T22:03:32.984Z',
 				visible_to: '3',
-				cc_email: 'added-cauliflower+14712380+lead9aeonoweeh1wbg0z8godmoua3@pipedrivemail.com',
+				cc_email: 'test+lead@pipedrivemail.com',
+				'48f483ac81a7b619c59322931ea839310e987725': 'option_c',
 			},
 		});
 
 	new NodeTestHarness().setupTests({
 		credentials,
-		workflowFiles: ['update.workflow.json'],
+		workflowFiles: ['updateWithCustomFields.workflow.json'],
 	});
 });
