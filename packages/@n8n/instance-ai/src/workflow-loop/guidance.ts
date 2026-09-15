@@ -1,4 +1,4 @@
-import { describeClaimCoverage, formatClaimHeadline } from './render-claim';
+import { describeClaimCoverage, describeClaimLiveState, formatClaimHeadline } from './render-claim';
 import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
@@ -13,7 +13,23 @@ export interface WorkflowLoopGuidanceOptions {
  * was the strongest license for the false success claims in AIA-31.
  */
 function formatClaimLead(claim: VerificationClaim | undefined): string {
-	if (claim?.level === 'verified') return 'Workflow verified successfully.';
+	if (claim?.level === 'verified') {
+		// The run proves the draft. While the live version is the older one,
+		// "verified successfully" is the sentence a model turns into "it is live
+		// and working" — the workflow the user depends on is still the old one.
+		if (claim.liveState === 'live-stale') {
+			// No publish prompt here: this lead is also the opening of the
+			// setup branch below, where the workflow is not publish-ready yet.
+			// The prompt to publish belongs to the branch that has nothing left
+			// to configure.
+			return (
+				`${formatClaimHeadline(claim)} ${describeClaimLiveState(claim) ?? ''} ` +
+				'Do NOT call the workflow live, running, or working in production. ' +
+				'Say the fix is in the draft.'
+			);
+		}
+		return 'Workflow verified successfully.';
+	}
 
 	// No claim means no verification run recorded a verdict for this build — a
 	// trigger-only workflow, or a verdict reported without verifying. Saying
@@ -43,8 +59,9 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');
 }
 
+/** A verified draft that production does not run yet is not a completed job. */
 function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
-	return claim?.level === 'verified';
+	return claim?.level === 'verified' && claim.liveState !== 'live-stale';
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
@@ -78,7 +95,7 @@ export function formatWorkflowLoopGuidance(
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				if (options.setupPanelEnabled) {
 					return (
-						'Workflow verified successfully with temporary mock data. ' +
+						`${claimLead} It still uses temporary mock data. ` +
 						`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
 						'it lists the remaining credentials and values in the setup panel next to the chat and returns them to you. ' +
 						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
@@ -94,9 +111,15 @@ export function formatWorkflowLoopGuidance(
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
-			const closing = isVerifiedClaim(action.claim)
-				? 'Report completion to the user.'
-				: 'Report the outcome to the user.';
+			// Only a verified draft earns the publish question. Below `verified` the
+			// lead already says "Do NOT offer to publish it", and asking anyway
+			// would contradict it in the same message.
+			const closing =
+				action.claim?.level === 'verified' && action.claim.liveState === 'live-stale'
+					? 'Report the outcome to the user, and ask whether to publish the fix.'
+					: isVerifiedClaim(action.claim)
+						? 'Report completion to the user.'
+						: 'Report the outcome to the user.';
 			return `${claimLead} ${closing}${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		}
 		case 'verify':

@@ -135,10 +135,6 @@ export async function createInstanceAgent(
 			})
 		: createToolRegistry();
 
-	const browserToolNames = new Set(
-		context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? [],
-	);
-
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
 		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
@@ -207,11 +203,10 @@ export async function createInstanceAgent(
 		{
 			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 			formBaseUrl: orchestrationContext?.formBaseUrl,
-			localGateway: context.localGatewayStatus,
+			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
-			browserAvailable: browserToolNames.size > 0,
 			branchReadOnly: context.branchReadOnly,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
@@ -268,11 +263,12 @@ export async function createInstanceAgent(
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, onTaskUsage } =
+			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
 				memoryConfig.observationalMemory;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
+				...(midRunObservation !== undefined ? { midRunObservation } : {}),
 				...(onTaskUsage
 					? {
 							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),

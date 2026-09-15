@@ -3,6 +3,7 @@ import {
 	ListTagsQueryDto,
 	TagListPublicDto,
 	TagPublicDto,
+	tagIdParamSchema,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import {
@@ -14,6 +15,7 @@ import {
 	ApiTags,
 	Body,
 	Get,
+	Param,
 	Post,
 	PublicApiController,
 	Query,
@@ -21,6 +23,7 @@ import {
 import type { Response } from 'express';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -84,5 +87,28 @@ export class TagsPublicController {
 		} catch {
 			throw new ConflictError('Tag already exists');
 		}
+	}
+
+	@Get('/:tagId')
+	@ApiKeyScope('tag:read')
+	@ApiSummary('Retrieves a tag')
+	@ApiDescription('Retrieves a tag.')
+	@ApiTags(tags)
+	@ApiResponse(200, TagPublicDto)
+	@ApiErrorResponse(404)
+	async getTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('tagId', tagIdParamSchema) tagId: string,
+	): Promise<TagPublicDto> {
+		let tag: TagEntity;
+
+		try {
+			tag = await this.tagService.getById(tagId);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		return toTagPublicDto(tag);
 	}
 }

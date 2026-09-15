@@ -288,6 +288,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
+		setComputerUseChannels: Mock;
+		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -313,6 +315,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
+		setComputerUseChannels: vi.fn(),
+		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -748,6 +752,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -784,6 +789,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
+				aiPreferencesEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -818,6 +824,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1065,6 +1072,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1102,6 +1110,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: true,
+				aiPreferencesEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1132,6 +1141,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1406,6 +1416,29 @@ describe('InstanceAiService — run start', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+		const service = createStartRunService();
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'build',
+			undefined,
+			undefined,
+			'UTC',
+			undefined,
+			undefined,
+			undefined,
+			['browser'],
+		);
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
+			'browser',
+		]);
+
+		// A client that stops reporting clears it, so nothing is advertised.
+		service.startRun(fakeUser, 'thread-a', 'continue');
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('records each request mode for later internal runs', () => {
@@ -6003,6 +6036,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
+		getComputerUseChannels: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -6021,6 +6055,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
+		getComputerUseChannels: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 
@@ -6109,5 +6144,72 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — resolveAiPreferencesBlock', () => {
+	type Internals = {
+		resolveAiPreferencesBlock: (
+			userId: string,
+			project: { id: string; name: string; type: 'team' } | undefined,
+		) => Promise<string | undefined>;
+		aiPreferenceService: { getApplicable: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reads the preferences for the user and the bound project and renders the block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: ['Keep replies short.'],
+			projects: [{ id: 'project-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', {
+			id: 'project-1',
+			name: 'Marketing',
+			type: 'team',
+		});
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
+			{ id: 'project-1', name: 'Marketing', type: 'team' },
+		]);
+		expect(block).toContain('<ai-preferences>');
+		expect(block).toContain('Preferences for project "Marketing":');
+		expect(block).toContain('- Keep replies short.');
+	});
+
+	it('reads only user and instance preferences when the project could not be resolved', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: [],
+			projects: [],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', []);
+		expect(block).toBeUndefined();
+	});
+
+	it('warns and skips the block when the read fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(block).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId: 'user-1', error: 'db down' },
+		);
 	});
 });
