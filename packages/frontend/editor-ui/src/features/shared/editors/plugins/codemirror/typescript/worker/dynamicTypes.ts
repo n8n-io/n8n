@@ -2,6 +2,13 @@ import type { Schema } from '@/Interface';
 import { pascalCase } from 'change-case';
 import { globalTypeDefinition } from './utils';
 
+/** Returns true when name is a valid unquoted TypeScript property identifier. */
+function isValidIdentifier(name: string): boolean {
+	return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name);
+}
+
+const safeKey = (key: string): string => (isValidIdentifier(key) ? key : JSON.stringify(key));
+
 function processSchema(schema: Schema): string {
 	switch (schema.type) {
 		case 'string':
@@ -35,7 +42,7 @@ function processSchema(schema: Schema): string {
 				.map((prop) => {
 					const key = prop.key ?? 'unknown';
 					const type = processSchema(prop);
-					return `  ${key}: ${type};`;
+					return `  ${safeKey(key)}: ${type};`;
 				})
 				.join('\n');
 
