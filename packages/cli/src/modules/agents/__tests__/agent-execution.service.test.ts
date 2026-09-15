@@ -102,7 +102,7 @@ describe('AgentExecutionService', () => {
 	async function recordExecution(params: RecordMessageParams): Promise<string> {
 		const { record, ...startParams } = params;
 		const executionId = await service.startExecutionRecording(
-			{ ...startParams, agentName: 'Agent' },
+			{ ...startParams, agentName: startParams.agentName ?? 'Agent' },
 			new Date(record.startTime),
 		);
 		return await service.finalizeExecution(executionId, params);
