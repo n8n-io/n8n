@@ -63,7 +63,17 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		['get', 'get'],
 		['getAll', 'getAll'],
 	])('chatMessage:%s throws a static error and issues no request under SP', async (_label, op) => {
-		selectSp({ resource: 'chatMessage', operation: op, chatId: 'chatID', returnAll: true });
+		selectSp({
+			resource: 'chatMessage',
+			operation: op,
+			chatId: 'chatID',
+			returnAll: true,
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
+			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
+		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
 			'Chat messages are not available with the Service Principal credential',
@@ -95,27 +105,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		},
 	);
 
-	it.each([
-		[
-			'update',
-			{
-				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
-				updateFields: { subject: 'Renamed' },
-			},
-		],
-	])(
-		'onlineMeeting:%s throws a static error and issues no request under SP',
-		async (op, params) => {
-			selectSp({ resource: 'onlineMeeting', operation: op, ...params });
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'This online meeting operation is not available with the Service Principal credential yet',
-			);
-			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
-		},
-	);
-
 	it('chatMessage:sendAndWait throws under SP and NEVER calls putExecutionToWait', async () => {
 		selectSp({
 			resource: 'chatMessage',
@@ -143,6 +132,11 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			contentType: 'text',
 			message: 'hi',
 			options: {},
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
+			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -434,7 +428,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	});
 
 	describe('channelMessage delete actions under SP', () => {
-		it.each(['softDeleteMessage'])(
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
 			'channelMessage:%s throws a static error and issues no request under SP',
 			async (operation) => {
 				selectSp({

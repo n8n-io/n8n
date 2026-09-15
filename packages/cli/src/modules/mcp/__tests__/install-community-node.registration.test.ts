@@ -31,6 +31,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
@@ -137,6 +138,7 @@ describe('install_community_node registration', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry, {
 				isActive: vi.fn().mockImplementation((name: string) => name === 'community-packages'),
 			}),

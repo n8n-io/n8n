@@ -2,7 +2,20 @@ import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
+
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
+	getAllowedToolNames,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
+import { McpService } from '../mcp.service';
+import type { McpFeatureFlags } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -30,18 +43,6 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
-
-import {
-	AGENT_TOOLS,
-	BUILDER_TOOLS,
-	COMMUNITY_PACKAGE_TOOLS,
-	getAllowedToolNames,
-	TOOLS_BY_SCOPE,
-} from '../mcp-scopes';
-import { McpConfig } from '../mcp.config';
-import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
@@ -147,6 +148,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
 			mockInstance(FolderService),

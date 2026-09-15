@@ -12,6 +12,7 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -228,6 +229,7 @@ export class InstanceAiController {
 			payload.pushRef,
 			payload.mode,
 			payload.promptVersion,
+			payload.computerUseChannels,
 		);
 		return { runId };
 	}
@@ -809,6 +811,25 @@ export class InstanceAiController {
 	async listThreads(req: AuthenticatedRequest) {
 		this.requireInstanceAiEnabled();
 		return await this.memoryService.listThreads(req.user.id);
+	}
+
+	@Get('/threads/history')
+	@GlobalScope('instanceAi:message')
+	async listThreadHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadHistoryQuery,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.memoryService.listThreadHistory(req.user.id, query);
+	}
+
+	@Get('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
+	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { thread: await this.memoryService.getThreadInfo(threadId) };
 	}
 
 	@Post('/threads')

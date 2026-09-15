@@ -360,6 +360,24 @@ export class ApiHelpers {
 		return data.activeModules ?? [];
 	}
 
+	/**
+	 * The engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read from the instance rather than the
+	 * env, so a spec can skip when the instance does not run the engine it needs.
+	 */
+	async getFrontendExpressionEngine(): Promise<string | undefined> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.expressionEngine;
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {
