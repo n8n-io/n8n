@@ -138,19 +138,6 @@ export declare namespace CredentialRequest {
 	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 
-export declare namespace InsightsRequest {
-	type GetSummary = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			startDate?: string;
-			endDate?: string;
-			projectId?: string;
-		}
-	>;
-}
-
 export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
