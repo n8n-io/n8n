@@ -1,5 +1,5 @@
 import { type ChildProcess, execSync, spawn } from 'node:child_process';
-import { type FSWatcher, statSync, watch } from 'node:fs';
+import { type Dirent, type FSWatcher, readdirSync, statSync, watch } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -46,6 +46,15 @@ function mockDirs(isDir: (target: string) => boolean): void {
 		if (!isDir(String(target))) throw new Error('ENOENT');
 		return { isDirectory: () => true } as unknown as ReturnType<typeof statSync>;
 	});
+}
+
+function mockTopLevel(names: string[], dirs: string[] = names): void {
+	vi.mocked(readdirSync).mockReturnValue(
+		names.map(
+			(name) => ({ name, isDirectory: () => dirs.includes(name) }) as unknown as Dirent,
+		) as unknown as ReturnType<typeof readdirSync>,
+	);
+	mockDirs((target) => dirs.some((name) => target.endsWith(name)));
 }
 
 describe('dev utils', () => {
@@ -265,13 +274,22 @@ describe('dev utils', () => {
 			expect(Date.now() - start).toBeLessThan(2000);
 		});
 
-		it('should return true as soon as healthz answers', async () => {
+		it('should return true as soon as readiness answers', async () => {
 			vi.stubGlobal(
 				'fetch',
 				vi.fn(async () => ({ ok: true })),
 			);
 
 			await expect(waitForN8n('http://localhost:5678', 5000)).resolves.toBe(true);
+		});
+
+		it('should wait on readiness, not on the plain health endpoint', async () => {
+			const fetchMock = vi.fn(async (_url: string) => ({ ok: true }));
+			vi.stubGlobal('fetch', fetchMock);
+
+			await waitForN8n('http://localhost:5678', 5000);
+
+			expect(fetchMock.mock.calls[0]?.[0]).toBe('http://localhost:5678/healthz/readiness');
 		});
 	});
 
@@ -290,7 +308,7 @@ describe('dev utils', () => {
 			expect(init.signal).toBeInstanceOf(AbortSignal);
 		});
 
-		it('should return false when the request exceeds its timeout', async () => {
+		it('should report the url when the request exceeds its timeout', async () => {
 			vi.stubGlobal(
 				'fetch',
 				vi.fn(async () => {
@@ -298,7 +316,69 @@ describe('dev utils', () => {
 				}),
 			);
 
-			await expect(triggerReload('http://localhost:5678')).resolves.toBe(false);
+			await expect(triggerReload('http://localhost:5678')).resolves.toEqual({
+				ok: false,
+				error: 'n8n not reachable at http://localhost:5678',
+			});
+		});
+
+		it('should succeed without a reason', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({ ok: true })),
+			);
+
+			await expect(triggerReload('http://localhost:5678')).resolves.toEqual({
+				ok: true,
+				result: undefined,
+			});
+		});
+
+		it('should explain a 404 as a missing reload endpoint', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({
+					ok: false,
+					status: 404,
+					text: async () => '<!DOCTYPE html>',
+				})),
+			);
+
+			const result = await triggerReload('http://localhost:5678');
+			expect(result.ok).toBe(false);
+			expect(result.ok ? '' : result.error).toContain('no reload endpoint');
+		});
+
+		it('should surface the error message n8n returned', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({
+					ok: false,
+					status: 500,
+					text: async () => JSON.stringify({ message: 'Cannot find module ./broken' }),
+				})),
+			);
+
+			await expect(triggerReload('http://localhost:5678')).resolves.toEqual({
+				ok: false,
+				error: 'Cannot find module ./broken',
+			});
+		});
+
+		it('should fall back to the status when the body carries no message', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => ({
+					ok: false,
+					status: 503,
+					text: async () => 'Service Unavailable',
+				})),
+			);
+
+			await expect(triggerReload('http://localhost:5678')).resolves.toEqual({
+				ok: false,
+				error: 'n8n answered 503',
+			});
 		});
 	});
 
@@ -307,83 +387,108 @@ describe('dev utils', () => {
 			vi.clearAllMocks();
 		});
 
-		it('should watch only the asset directories, never node_modules or the cwd', () => {
-			mockDirs(() => true);
+		const watchedPaths = () => vi.mocked(watch).mock.calls.map((call) => String(call[0]));
+
+		// The root watch passes its callback second, a recursive one passes it third.
+		const listenerFor = (target: string) => {
+			const call = vi.mocked(watch).mock.calls.find((args) => String(args[0]) === target);
+			return call?.find((arg) => typeof arg === 'function') as unknown as (
+				event: string,
+				filename: string | null,
+			) => void;
+		};
+
+		it('should watch every top-level directory, not just the asset ones', () => {
+			mockTopLevel(['nodes', 'credentials', 'icons', 'assets', 'shared']);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn());
 
-			const watched = vi.mocked(watch).mock.calls.map((call) => call[0]);
-			expect(watched).toEqual([
-				path.join(process.cwd(), 'nodes'),
-				path.join(process.cwd(), 'credentials'),
-				path.join(process.cwd(), 'icons'),
-			]);
-			expect(watched).not.toContain(process.cwd());
-			expect(watched.some((dir) => String(dir).includes('node_modules'))).toBe(false);
+			expect(watchedPaths()).toContain(path.join(process.cwd(), 'assets'));
+			expect(watchedPaths()).toContain(path.join(process.cwd(), 'shared'));
 		});
 
-		it('should not watch asset directories that do not exist', () => {
-			mockDirs((target) => target.endsWith('nodes'));
+		it('should never watch the shared ignore list or dotted directories', () => {
+			mockTopLevel(['nodes', 'dist', 'node_modules', '.git', '.turbo']);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn());
 
-			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
-			expect(watched).toContain(path.join(process.cwd(), 'nodes'));
-			expect(watched).not.toContain(path.join(process.cwd(), 'icons'));
+			const recursive = watchedPaths().filter((target) => target !== process.cwd());
+			expect(recursive).toEqual([path.join(process.cwd(), 'nodes')]);
 		});
 
-		it('should watch an asset directory created after startup', () => {
-			let exists = (target: string) => target.endsWith('nodes');
-			mockDirs((target) => exists(target));
+		it('should skip top-level entries that are not directories', () => {
+			mockTopLevel(['nodes', 'package.json'], ['nodes']);
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			watchStaticFiles(vi.fn());
+
+			expect(watchedPaths()).not.toContain(path.join(process.cwd(), 'package.json'));
+		});
+
+		it('should react to an asset in the project root', () => {
+			mockTopLevel(['nodes']);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			const onChange = vi.fn();
 			watchStaticFiles(onChange);
 
-			// Only the root watcher can see a new asset root appear.
-			const rootCall = vi
-				.mocked(watch)
-				.mock.calls.find((call) => String(call[0]) === process.cwd());
-			expect(rootCall).toBeDefined();
-
-			const rootListener = rootCall?.[1] as unknown as (
-				event: string,
-				filename: string | null,
-			) => void;
-
-			exists = (target) => target.endsWith('nodes') || target.endsWith('icons');
-			rootListener('rename', 'icons');
-
-			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
-			expect(watched).toContain(path.join(process.cwd(), 'icons'));
+			listenerFor(process.cwd())('change', 'logo.svg');
 			expect(onChange).toHaveBeenCalledTimes(1);
 		});
 
-		it('should ignore a non-directory appearing with an asset directory name', () => {
-			mockDirs((target) => target.endsWith('nodes'));
+		it('should watch a directory created after startup', () => {
+			mockTopLevel(['nodes']);
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			const onChange = vi.fn();
+			watchStaticFiles(onChange);
+
+			mockDirs((target) => target.endsWith('nodes') || target.endsWith('icons'));
+			listenerFor(process.cwd())('rename', 'icons');
+
+			expect(watchedPaths()).toContain(path.join(process.cwd(), 'icons'));
+			expect(onChange).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not attach a second watcher when a directory is seen twice', () => {
+			mockTopLevel(['nodes']);
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			watchStaticFiles(vi.fn());
+			const before = watchedPaths().length;
+
+			listenerFor(process.cwd())('rename', 'nodes');
+
+			expect(watchedPaths()).toHaveLength(before);
+		});
+
+		it('should ignore a non-directory appearing with a directory name', () => {
+			mockTopLevel(['nodes']);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn());
 
-			const rootListener = vi
-				.mocked(watch)
-				.mock.calls.find((call) => String(call[0]) === process.cwd())?.[1] as unknown as (
-				event: string,
-				filename: string | null,
-			) => void;
-
 			// `icons` exists as a file, so statSync never reports a directory.
-			expect(() => rootListener('rename', 'icons')).not.toThrow();
-			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
-			expect(watched).not.toContain(path.join(process.cwd(), 'icons'));
+			expect(() => listenerFor(process.cwd())('rename', 'icons')).not.toThrow();
+			expect(watchedPaths()).not.toContain(path.join(process.cwd(), 'icons'));
+		});
+
+		it('should keep working when the project root cannot be read', () => {
+			vi.mocked(readdirSync).mockImplementation(() => {
+				throw new Error('EACCES');
+			});
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			expect(() => watchStaticFiles(vi.fn())).not.toThrow();
+			expect(watchedPaths()).toEqual([process.cwd()]);
 		});
 
 		it('should close every watcher on cleanup', () => {
 			const watchers = [createFakeWatcher(), createFakeWatcher(), createFakeWatcher()];
 			let index = 0;
-			mockDirs(() => true);
+			mockTopLevel(['nodes', 'credentials']);
 			vi.mocked(watch).mockImplementation(() => watchers[index++] as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn())();
@@ -395,16 +500,12 @@ describe('dev utils', () => {
 
 		it('should only react to static asset changes', () => {
 			const onChange = vi.fn();
-			mockDirs((target) => target.endsWith('nodes'));
+			mockTopLevel(['nodes']);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(onChange);
 
-			const [, , listener] = vi.mocked(watch).mock.calls[0] as unknown as [
-				string,
-				unknown,
-				(event: string, filename: string | null) => void,
-			];
+			const listener = listenerFor(path.join(process.cwd(), 'nodes'));
 
 			listener('change', 'Example/example.svg');
 			listener('change', 'Example/__schema__/v1.json');
