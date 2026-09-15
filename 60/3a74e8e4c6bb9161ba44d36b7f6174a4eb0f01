@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_47aa7c6dc9e003::t_f355dcee5c0059 830-864
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_47aa7c6dc9e003::t_7ea098e7983641 7,95-103,109-110,138,144-150,181
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_47aa7c6dc9e003::t_5be309765fe630 3,21,159,1117-1121
+  s_47aa7c6dc9e003::t_4957c612eacf7c 1122
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_47aa7c6dc9e003::t_4cdc4202f354f1 142,152,160-211
+  s_47aa7c6dc9e003::t_cca1f3e6e15d64 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "603a74e8e4c6bb9161ba44d36b7f6174a4eb0f01",
+  "prompts": {},
+  "sessions": {
+    "s_47aa7c6dc9e003": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "741cda10-7caf-4404-980c-8816daa3a8c2",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
