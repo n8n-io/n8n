@@ -51,6 +51,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import {
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -230,6 +231,7 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
@@ -724,6 +726,8 @@ export class McpService {
 			dataTableOps,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -827,6 +831,8 @@ export class McpService {
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 		registerIfAllowed(updateTool);
 

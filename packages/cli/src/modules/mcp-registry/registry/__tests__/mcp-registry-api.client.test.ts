@@ -143,7 +143,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -297,7 +297,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
@@ -339,7 +339,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: ['server-a', 'server-b', 'server-c'],
@@ -392,7 +392,7 @@ describe('McpRegistryApiClient', () => {
 				1,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(0, 100),
@@ -408,7 +408,7 @@ describe('McpRegistryApiClient', () => {
 				2,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(100, 200),
@@ -424,7 +424,7 @@ describe('McpRegistryApiClient', () => {
 				3,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(200, 250),
