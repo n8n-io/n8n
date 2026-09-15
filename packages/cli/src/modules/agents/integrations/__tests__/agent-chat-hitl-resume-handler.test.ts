@@ -28,8 +28,7 @@ function makeHandler(callback: {
 		(
 			_config: { beforeResume?: (abortSignal: AbortSignal) => Promise<void> },
 			_claim: AgentTurnClaim,
-		) =>
-			(async function* () {})(),
+		) => (async function* () {})(),
 	);
 	const claim: AgentTurnClaim = {
 		executionId: 'exec-1',
