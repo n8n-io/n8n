@@ -264,21 +264,29 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 			: 'failures' in event
 				? {
 						executionId: event.executionId,
-						initialDraft: buildAgentFixWithAssistantPrompt(
-							{
-								projectId: projectId.value,
-								agentId: agentId.value,
-								agentName: agentName.value || undefined,
-								threadId,
-								sessionTitle,
-								...(sessionNumber !== undefined ? { sessionNumber } : {}),
-								executionId: event.executionId,
-								failures: event.failures,
-							},
-							locale,
-						),
+						initialDraft: {
+							text: buildAgentFixWithAssistantPrompt(
+								{
+									projectId: projectId.value,
+									agentId: agentId.value,
+									agentName: agentName.value || undefined,
+									threadId,
+									sessionTitle,
+									...(sessionNumber !== undefined ? { sessionNumber } : {}),
+									executionId: event.executionId,
+									failures: event.failures,
+								},
+								locale,
+							),
+							prefillType: 'handoff_agent_change_request',
+						},
 					}
-				: { initialDraft: buildAgentChangeRequestPrompt(event.changeRequest, locale) }),
+				: {
+						initialDraft: {
+							text: buildAgentChangeRequestPrompt(event.changeRequest, locale),
+							prefillType: 'handoff_agent_change_request',
+						},
+					}),
 	};
 
 	if (isArtifactMode.value) {

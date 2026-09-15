@@ -23,6 +23,7 @@ import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/inst
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	INSTANCE_AI_THREAD_VIEW,
@@ -405,10 +406,17 @@ function handleTemplateHoverEnd() {
 const inputPulsing = ref(false);
 const selectedTemplatePrompt = ref<string | null>(null);
 
+type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+};
+
 function handleTemplateSelectPrompt(prompt: string) {
 	templatePreviewPrompt.value = null;
 	if (chatInputRef.value) {
-		chatInputRef.value.setText(prompt);
+		chatInputRef.value.setPrefill({ text: prompt, prefillType: 'template_example' });
 		chatInputRef.value.focus();
 	}
 	selectedTemplatePrompt.value = prompt;
@@ -473,8 +481,9 @@ function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boo
 
 async function handleSubmit(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: (() => boolean) | undefined,
+	authorship: InstanceAiMessageAuthorship,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -516,7 +525,11 @@ async function handleSubmit(
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
 	// mount, which always precedes this response. `sendMessage` has already surfaced the
 	// reason, so restore what was typed and stay put.
-	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	const sent = await thread.sendMessage(finalMessage, {
+		authorship,
+		attachments,
+		pushRef: rootStore.pushRef,
+	});
 	if (!sent) {
 		isStartingThread.value = false;
 		restoreDraftAfterFailedSubmit(message, restoreDraft);
@@ -554,21 +567,11 @@ async function handleSubmit(
 	});
 }
 
-function handleShelfSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 	void chatInputRef.value?.submitSuggestion(payload);
 }
 
-function handleShelfSuggestionInsert(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
 }

@@ -965,13 +965,17 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			...(event
 				? {
 						executionId: event.executionId,
-						initialDraft: expect.any(String),
+						initialDraft: {
+							text: expect.any(String),
+							prefillType: 'handoff_agent_change_request',
+						},
 					}
 				: {}),
 		});
 
 		if (event) {
-			const initialDraft = sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft;
+			const initialDraft =
+				sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft?.text;
 			expect(initialDraft).toContain(
 				'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
 			);
@@ -1038,9 +1042,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					threadId: 'thread-1',
 					sessionTitle: 'Failed order lookup',
 					executionId: 'exec-turn-1',
-					initialDraft: expect.stringContaining(
-						'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
-					),
+					initialDraft: {
+						text: expect.stringContaining(
+							'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+						),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);
@@ -1122,7 +1129,10 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.emitted('assistant-handoff')).toEqual([
 			[
 				expect.objectContaining({
-					initialDraft: expect.stringContaining('"sessionNumber": 42'),
+					initialDraft: {
+						text: expect.stringContaining('"sessionNumber": 42'),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);
