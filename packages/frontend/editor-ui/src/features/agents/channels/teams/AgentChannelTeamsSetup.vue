@@ -322,16 +322,6 @@ defineExpose({
 				<div :class="$style.stepContent">
 					<!-- 1. Register the app and add the credential -->
 					<div v-if="step.id === 'create-credential'" :class="$style.stepStack">
-						<N8nButton
-							:href="ENTRA_APP_REGISTRATION_URL"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							data-testid="teams-entra-register-link"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.createCredential.button') }}
-						</N8nButton>
-
 						<AgentIntegrationCredentialConnection
 							v-if="!connected"
 							v-model="credentialId"
@@ -349,8 +339,21 @@ defineExpose({
 							@edit="emit('edit')"
 						/>
 
+						<!--
+							A link, not a button: the credential is the action on this step. It
+							stays because the credential's own fields say where to copy each
+							value from, never that the registration has to exist first.
+						-->
 						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
 							{{ i18n.baseText('agents.channels.teams.setup.createCredential.prerequisites') }}
+							<a
+								:href="ENTRA_APP_REGISTRATION_URL"
+								target="_blank"
+								rel="noopener noreferrer"
+								data-testid="teams-entra-register-link"
+							>
+								{{ i18n.baseText('agents.channels.teams.setup.createCredential.button') }}
+							</a>
 						</N8nText>
 					</div>
 
