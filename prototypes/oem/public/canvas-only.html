@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>API-317 · N8N_CANVAS_ONLY mock</title>
+		<link rel="stylesheet" href="/styles.css" />
+		<link rel="stylesheet" href="/canvas-only.css" />
+	</head>
+	<body class="canvas-only">
+		<a class="back" href="/">← Hub</a>
+
+		<!-- Floating tab bar stays in canvas-only mode (MainHeader TabBar floating) -->
+		<nav class="floating-tabs" aria-label="Workflow views">
+			<button type="button" class="is-active">Editor</button>
+			<button type="button">Executions</button>
+			<button type="button">Evaluations</button>
+		</nav>
+
+		<div class="canvas" aria-label="Workflow canvas">
+			<!-- API-317: logo on canvas when sidebar chrome is stripped -->
+			<a
+				class="canvas-logo"
+				href="https://docs.n8n.io/"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="n8n"
+			>
+				<img src="/n8n-logo-icon.svg" alt="" width="32" height="26" />
+				<img class="logo-text" src="/n8n-logo-text.svg" alt="n8n" height="14" />
+			</a>
+
+			<article class="node" style="top: 8rem; left: 4rem">
+				<span class="node-badge">⚡</span>
+				<strong>On form submission</strong>
+				<small>Trigger</small>
+			</article>
+			<article class="node" style="top: 14rem; left: 4rem">
+				<span class="node-badge">⚡</span>
+				<strong>When Executed by Another Workflow</strong>
+				<small>Trigger</small>
+			</article>
+			<article class="node" style="top: 11rem; left: 18rem">
+				<strong>Extract from File</strong>
+				<small>Action</small>
+			</article>
+			<article class="node" style="top: 11rem; left: 32rem">
+				<strong>Get WorkflowJSON</strong>
+				<small>Action</small>
+			</article>
+			<article class="node" style="top: 11rem; left: 46rem">
+				<strong>Final result</strong>
+				<small>Action</small>
+			</article>
+
+			<div class="canvas-controls" aria-label="Canvas controls">
+				<button type="button" title="Fit view">⊡</button>
+				<button type="button" title="Zoom out">−</button>
+				<button type="button" title="Zoom in">+</button>
+				<button type="button" title="Tidy up">▦</button>
+			</div>
+		</div>
+
+		<footer class="logs-bar">Logs</footer>
+
+		<p class="flag-note">
+			Mock of <code>N8N_CANVAS_ONLY=true</code>: sidebar and header chrome removed. Logo on
+			canvas is the API-317 proposal.
+		</p>
+	</body>
+</html>
