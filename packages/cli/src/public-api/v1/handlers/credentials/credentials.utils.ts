@@ -53,11 +53,6 @@ export function buildSharedForCredential(
 		}));
 }
 
-export function sanitizeCredentials(credential: CredentialsEntity): Partial<CredentialsEntity> {
-	const { data, shared, ...rest } = credential;
-	return rest;
-}
-
 /**
  * Validates credential data against the JSON Schema derived from its type's properties.
  */

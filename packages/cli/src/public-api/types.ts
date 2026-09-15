@@ -68,10 +68,6 @@ export declare namespace TagRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
 }
 
-export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
-}
-
 export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -132,10 +128,6 @@ export declare namespace UserRequest {
 			password: string;
 		}
 	>;
-}
-
-export declare namespace CredentialRequest {
-	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }
 
 export declare namespace InsightsRequest {
