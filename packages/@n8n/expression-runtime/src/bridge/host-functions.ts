@@ -85,20 +85,45 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
-/** Read a host path and return its value or metadata for lazy access. */
-export function getValueAtPath(resolver: HostDataResolver, pathArr: readonly string[]): unknown {
-	return toHostMetadata(resolver.resolve(pathArr));
-}
-
-/** Read one array item and return its value or metadata for lazy access. */
-export function getArrayElement(
-	resolver: HostDataResolver,
-	pathArr: readonly string[],
-	index: number,
-): unknown {
-	const arr = resolver.resolve(pathArr);
-	if (!Array.isArray(arr)) {
-		return undefined;
+/**
+ * Navigate the data object by path and return metadata or a primitive value.
+ *
+ * Used by createDeepLazyProxy when accessing properties. Returns metadata
+ * markers for arrays and objects, or the primitive value directly.
+ *
+ * Special-case: paths starting with ['$item', index] call data.$item(index)
+ * to get the sub-proxy for that item, then continue navigating the rest;
+ * likewise ['$', nodeName] calls data.$(nodeName).
+ *
+ * Function-typed values are returned as `undefined` — every callable on
+ * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
+ * `$evaluateExpression()`) is wired guest-side via
+ * the typed-RPC dispatcher (`callHost`). No expression form should
+ * reach a function through this path (invariant:
+ * __tests__/host-fn-shadowing.test.ts).
+ */
+export function getValueAtPath(data: WorkflowData, pathArr: string[]): unknown {
+	let value: unknown = data;
+	let startIndex = 0;
+	const itemFn = (data as Record<string, unknown>).$item;
+	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
+		const itemIndex = parseInt(pathArr[1], 10);
+		if (!isNaN(itemIndex)) {
+			value = (itemFn as (i: number) => unknown)(itemIndex);
+			startIndex = 2;
+		}
+	} else {
+		const dollarFn = (data as Record<string, unknown>).$;
+		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
+			value = (dollarFn as (name: string) => unknown)(pathArr[1]);
+			startIndex = 2;
+		}
+	}
+	for (let i = startIndex; i < pathArr.length; i++) {
+		value = (value as Record<string, unknown>)?.[pathArr[i]];
+		if (value === undefined || value === null) {
+			return value;
+		}
 	}
 
 	// Only non-negative integer indices select array items.
@@ -266,22 +291,6 @@ function dispatchHostMessage(rawMsg: unknown, resolver: HostDataResolver): unkno
 		// which is the same shape the legacy engine supports.
 		case 'evaluateExpression':
 			return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-		// `$getPairedItem(destinationNodeName, incomingSourceData,
-		// initialPairedItem)`. Forwards directly to the host binding, which
-		// walks the paired-item ancestry chain back to the named upstream
-		// node and returns the matching execution item.
-		//
-		// The two trailing host parameters — `usedMethodName` and
-		// `nodeBeforeLast` — are deliberately not part of the wire protocol:
-		// the host's default for `usedMethodName` is already `$getPairedItem`,
-		// and `nodeBeforeLast` is an internal recursion argument the host sets
-		// during traversal.
-		case 'getPairedItem':
-			return data.$getPairedItem?.(
-				msg.destinationNodeName,
-				msg.incomingSourceData,
-				msg.initialPairedItem,
-			);
 		default: {
 			// Unreachable at runtime — zod rejects unknown `type` values
 			// before the switch. The `never` assignment is the compile-time
