@@ -98,7 +98,7 @@ function makeStepStore(
 		resumeStep: vi.fn(),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		failStep: vi.fn(),
-		cancelQueuedSteps: vi.fn(),
+		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
 			await Promise.resolve();
@@ -215,7 +215,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-c' });
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
@@ -432,7 +432,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle(event);
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(stepStore.countSettledSteps).not.toHaveBeenCalled();
@@ -449,7 +449,7 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('plans nothing more once the execution is finished', async () => {

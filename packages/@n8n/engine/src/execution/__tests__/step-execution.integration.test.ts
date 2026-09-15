@@ -329,6 +329,51 @@ describe('step execution (integration)', () => {
 		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
 	});
 
+	it('cancels a waiting step when a sibling branch fails', async () => {
+		// The trigger fans out. A suspends, then B throws, which fails the whole
+		// execution. A must not survive as a live row: nothing would ever resume a
+		// request-only wait, and the sweep would run a deadline wait inside a
+		// failed execution.
+		const forkGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// far future, so no sweep in another case can fire this row if the
+		// cancellation regresses
+		const wait = {
+			resumeAt: '2099-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'node-a') return { wait };
+				throw new Error('node blew up');
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-cancelled',
+			graph: forkGraph,
+		});
+
+		expect(execution.status).toBe('failed');
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('failed');
+
+		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(waiting?.status).toBe('cancelled');
+		// the declaration stays on the row as a record of what it was waiting for
+		expect(waiting?.wait).toEqual(wait);
+	});
+
 	it('runs the execution to completion even when every status batch is refused', async () => {
 		// A host that cannot be reached costs freshness, never correctness.
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
