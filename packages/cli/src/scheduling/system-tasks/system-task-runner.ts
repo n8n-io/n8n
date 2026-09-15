@@ -294,9 +294,18 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
+		const { task } = routed;
+		if (task.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
+			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
+				name: task.name,
+			});
+			return;
+		}
+
 		const { signal } = this.inMemoryRunsController;
+		if (signal.aborted) return;
 		try {
-			await routed.task.run(signal);
+			await task.run(signal);
 		} catch (error) {
 			// A rejection after the run's signal aborted is the task honoring the
 			// abort, not a failure.

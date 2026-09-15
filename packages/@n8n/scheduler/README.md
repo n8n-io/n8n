@@ -281,9 +281,11 @@ so a job another instance restamps in between survives. The resolver answers by 
 same rule, so the sweep only retires what a failed startup cleanup left behind. Two
 cases are deploy constraints, not code: rolling back to a version without a task
 leaves that task's job in place, unclaimed, until a version that runs it boots again or
-a newer version that does not run it deletes it at startup; and every instance must
-share the same system-task configuration, since an instance that does not run a task
-durably deletes its job at startup.
+a newer version that does not run it deletes it at startup, and a version that still
+declares the task durable but has the flag off skips the task's in-memory runs while
+that job stays in place; and every instance must share the same system-task
+configuration, since an instance that does not run a task durably deletes its job at
+startup.
 
 **2. Register a liveness resolver.**
 

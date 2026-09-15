@@ -34,6 +34,7 @@ describe('SystemTaskRunner', () => {
 		durableScheduler.isActive.mockReturnValue(schedulerActive);
 		const errorReporter = mock<ErrorReporter>();
 		const jobRegistrar = mock<SystemTaskJobRegistrar>();
+		jobRegistrar.isProvisioned.mockResolvedValue(false);
 		const jobs = mock<ScheduledJobRepository>();
 		jobs.findPayloadsByOwnerIds.mockResolvedValue([]);
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
@@ -56,6 +57,7 @@ describe('SystemTaskRunner', () => {
 			metadata,
 			durableScheduler,
 			jobRegistrar,
+			jobs,
 			systemTaskOwner,
 			errorReporter,
 			logger,
@@ -370,6 +372,82 @@ describe('SystemTaskRunner', () => {
 				expect.any(Error),
 				expect.objectContaining({ extra: { systemTask: 'dummy' } }),
 			);
+		});
+	});
+
+	describe('in-memory runs of a task provisioned elsewhere', () => {
+		it('skips the run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar, logger } = setup();
+			dummy.durable = true;
+			dummy.retryDelaySeconds = 1;
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(0);
+			expect(jobRegistrar.isProvisioned).toHaveBeenCalledTimes(2);
+			expect(jobRegistrar.isProvisioned).toHaveBeenCalledWith('dummy');
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipped'), {
+				name: 'dummy',
+			});
+		});
+
+		it('skips a takeover run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			dummy.runOnTakeover = true;
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('runs when no durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			jobRegistrar.isProvisioned.mockResolvedValue(false);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('does not run a task whose store check settles after stepdown', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			let settleCheck!: (exists: boolean) => void;
+			jobRegistrar.isProvisioned.mockReturnValue(
+				new Promise<boolean>((resolve) => {
+					settleCheck = resolve;
+				}),
+			);
+			metadata.register(DummySystemTask);
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			const stepdown = runner.stopTimers();
+			settleCheck(false);
+			await stepdown;
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('does not ask for a task that never runs durably', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+			expect(jobRegistrar.isProvisioned).not.toHaveBeenCalled();
 		});
 	});
 

@@ -54,7 +54,7 @@ export class SystemTaskJobRegistrar {
 
 	constructor(
 		logger: Logger,
-		private readonly jobs: ScheduledJobRepository,
+		private readonly scheduledJobRepository: ScheduledJobRepository,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
@@ -122,9 +122,30 @@ export class SystemTaskJobRegistrar {
 		}
 	}
 
+	/**
+	 * Whether any instance stored a durable job for the task that the scheduler
+	 * will claim. Never throws: a store this instance cannot read must not
+	 * silence the task's in-memory timer.
+	 */
+	async isProvisioned(taskName: string): Promise<boolean> {
+		try {
+			return await this.scheduledJobRepository.existsRunnableByOwner(
+				this.systemTaskOwner.owner(taskName),
+			);
+		} catch (error) {
+			this.logger.warn('Could not check for the durable job of a system task, so it runs', {
+				name: taskName,
+				error,
+			});
+			return false;
+		}
+	}
+
 	/** The stored jobs this instance does not run durably and no newer version stamped, as read. */
 	async findStale(): Promise<StaleSystemTaskJob[]> {
-		const rows = await this.jobs.findPayloadsByOwnerType(this.systemTaskOwner.ownerType);
+		const rows = await this.scheduledJobRepository.findPayloadsByOwnerType(
+			this.systemTaskOwner.ownerType,
+		);
 		return rows.filter(({ ownerId, payload }) => !this.systemTaskOwner.isAlive(ownerId, payload));
 	}
 

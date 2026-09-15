@@ -198,6 +198,19 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('existsRunnableByOwner', () => {
+		it('checks only the enabled jobs of the owner that are not quarantined', async () => {
+			entityManager.exists.mockResolvedValueOnce(true);
+
+			const result = await repository.existsRunnableByOwner(OWNER);
+
+			expect(entityManager.exists).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ...OWNER, enabled: true, orphanedAt: IsNull() },
+			});
+			expect(result).toBe(true);
+		});
+	});
+
 	describe('backdateNextRunAt', () => {
 		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
 			const qb = updateQb();
