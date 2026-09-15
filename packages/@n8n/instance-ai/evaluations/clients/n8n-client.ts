@@ -264,6 +264,14 @@ export class N8nApiError extends Error {
 	}
 }
 
+/** n8n reports a workflow that no longer exists as 403 to a user who holds
+ *  `workflow:delete` globally, and as 404 to everyone else. The scope
+ *  middleware passes for the global user, so the controller answers the
+ *  missing row with `ForbiddenError`. To a delete, both mean gone. */
+function isGoneStatus(status: number): boolean {
+	return status === 403 || status === 404;
+}
+
 export class N8nClient {
 	private sessionCookie?: string;
 	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
@@ -747,15 +755,26 @@ export class N8nClient {
 	 * folder held), so a 400 there goes straight to the delete, which refuses a
 	 * live workflow on its own. Refusing here left every such leftover
 	 * undeletable by eviction and cleanup alike.
+	 *
+	 * A workflow that is already gone is a success, not a failure. A cleanup
+	 * retry re-runs on the same build, and an eviction deletes what it listed a
+	 * moment earlier, so both meet ids another pass already took. See
+	 * `isGoneStatus` for why that reads as 403 here and not as 404.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
 		try {
 			await this.archiveWorkflow(id);
 		} catch (error: unknown) {
-			if (!(error instanceof N8nApiError && error.status === 400)) throw error;
+			if (!(error instanceof N8nApiError)) throw error;
+			if (isGoneStatus(error.status)) return;
+			if (error.status !== 400) throw error;
 		}
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		try {
+			await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && isGoneStatus(error.status))) throw error;
+		}
 	}
 
 	/**

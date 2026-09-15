@@ -131,14 +131,18 @@ export async function cleanupBuild(
 	let clean = true;
 	let workflowsClean = true;
 
-	// A 404 means the workflow is already gone: the end-of-run retry re-runs this
-	// on the same build, so the workflows a first pass deleted 404 here. That is
-	// the state this wants, and only a real failure may hold back the folders.
+	// A workflow that is already gone is the state this wants, not a failure: the
+	// end-of-run retry re-runs this on the same build, so every id a first pass
+	// took comes back gone. n8n reports that as 403 to the eval user, who holds
+	// `workflow:delete` globally, and as 404 to a member. `deleteWorkflow`
+	// swallows both already. The check is repeated here because any client that
+	// does not would deadlock the folders below, which wait on this flag. Only a
+	// real failure may hold them back.
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
 		} catch (error: unknown) {
-			if (error instanceof N8nApiError && error.status === 404) continue;
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 404)) continue;
 			workflowsClean = false; // Best-effort cleanup
 		}
 	}
@@ -191,11 +195,18 @@ export async function cleanupBuild(
 		logger.verbose(reportCleanup('data table(s)', build.createdDataTableIds.length, tablesClean));
 	}
 
-	// The root folders a seed created (the delete cascades to subfolders). Only
-	// once every workflow is gone: a folder delete archives what it still holds
-	// and moves it to the root, and the retry would then find the workflow but
-	// 404 on the folder, so the cleanup could never complete. Left for the
-	// retry, which deletes the workflows first.
+	// The root folders a seed created (the delete cascades to subfolders). Held
+	// back until every workflow this tracked is gone: a folder delete does not
+	// delete what it still holds, it archives it and moves it to the project
+	// root. The retry would then find the workflow but no folder, so the cleanup
+	// could never complete. Left for the retry, which deletes the workflows first.
+	//
+	// `workflowsClean` does not promise the folder is empty. A build that
+	// succeeded reports only the workflows its own turn created, so a seeded
+	// workflow the agent never touched is not in `createdWorkflowIds` and is
+	// still inside. That one is archived to the project root here rather than
+	// deleted. `remapSeedArtifactIds` renames every iteration's seed, so nothing
+	// turns ambiguous, and the next run's name-based eviction clears it.
 	if (workflowsClean && build.createdFolderIds?.length) {
 		const foldersClean = await deleteEachInProject(
 			build.createdFolderIds,

@@ -205,7 +205,7 @@ describe('cleanupBuild seeded folders', () => {
 
 	it('leaves the folders for the retry when a workflow delete failed', async () => {
 		// A folder delete archives the workflows still inside and moves them to the
-		// root; the retry would then 404 on the folder and never complete.
+		// root. The retry would then find no folder and never complete.
 		const { client, mocks } = makeClient({
 			deleteWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 502')),
 		});
@@ -217,19 +217,26 @@ describe('cleanupBuild seeded folders', () => {
 		expect(mocks.deleteDataTable).toHaveBeenCalledWith('project-1', 'DT1');
 	});
 
-	it('still deletes the folders on a retry whose workflows are already gone', async () => {
-		// The end-of-run retry re-runs cleanupBuild on the same build, so a workflow
-		// the first pass deleted now 404s. That is the state the cleanup wants, not
-		// a failure: gating the folders on it would leak them for good.
-		const { client, mocks } = makeClient({
-			deleteWorkflow: vi.fn().mockRejectedValue(new N8nApiError('HTTP 404', 404)),
-		});
-		const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
+	it.each([
+		['403, the status a globally scoped user gets', 403],
+		['404, the status a member gets', 404],
+	])(
+		'still deletes the folders on a retry whose workflows are already gone (%s)',
+		async (_label, status) => {
+			// The end-of-run retry re-runs cleanupBuild on the same build, so a workflow
+			// the first pass deleted is already gone now. That is the state the cleanup
+			// wants, not a failure: gating the folders on it would leak them for good.
+			// A single transient 502 on one delete is enough to reach this.
+			const { client, mocks } = makeClient({
+				deleteWorkflow: vi.fn().mockRejectedValue(new N8nApiError(`HTTP ${status}`, status)),
+			});
+			const build: BuildResult = { ...makeBuild(), createdFolderIds: ['F1'] };
 
-		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+			await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
 
-		expect(mocks.deleteFolder).toHaveBeenCalledWith('project-1', 'F1');
-	});
+			expect(mocks.deleteFolder).toHaveBeenCalledWith('project-1', 'F1');
+		},
+	);
 
 	it('does not report a clean folder cleanup when the project lookup failed', async () => {
 		// The retry exists for exactly this leak; a "Cleaned up" line would hide it.
