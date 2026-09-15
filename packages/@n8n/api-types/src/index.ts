@@ -150,6 +150,8 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	executionIdParamSchema,
+	nodeTypePolicyIdParamSchema,
+	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -415,6 +417,7 @@ export {
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	computerUseChannelSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -504,6 +507,7 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	ComputerUseChannel,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -807,3 +811,8 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	instanceAiApprovalDetailsSchema,
+	type InstanceAiApprovalDetails,
+} from './schemas/instance-ai-approval.schema';
