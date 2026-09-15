@@ -14,7 +14,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
-import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
 import { SidebarStateKey } from './instanceAiLayout';
 import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
 
@@ -91,6 +91,23 @@ function handleSidebarResize({ width }: { width: number }) {
 function handleOnboardingCompleted() {
 	onboardingCompletionPending.value = false;
 	onboardingActive.value = false;
+}
+
+const activeThreadId = computed(() =>
+	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
+);
+
+function threadLinkTo(threadId: string) {
+	return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+}
+
+function handleThreadDeleted(wasActive: boolean) {
+	if (!wasActive) return;
+	if (store.threads.length > 0) {
+		void router.push(threadLinkTo(store.threads[0].id));
+	} else {
+		void router.push({ name: INSTANCE_AI_VIEW });
+	}
 }
 
 provide(SidebarStateKey, {
@@ -211,7 +228,13 @@ onUnmounted(() => {
 					:max-width="400"
 					@resize="handleSidebarResize"
 				>
-					<InstanceAiThreadList @collapse="toggleSidebarCollapse" />
+					<InstanceAiThreadList
+						:active-thread-id="activeThreadId"
+						:link-to="threadLinkTo"
+						:new-thread-to="{ name: INSTANCE_AI_VIEW }"
+						@collapse="toggleSidebarCollapse"
+						@deleted="handleThreadDeleted"
+					/>
 				</N8nResizeWrapper>
 			</Transition>
 

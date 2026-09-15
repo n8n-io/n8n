@@ -14,7 +14,7 @@ import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
@@ -425,20 +425,6 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 		},
 	},
 });
-
-type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
-
-const defaultModuleSettings: InstanceAiModuleSettings = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
 
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
