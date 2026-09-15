@@ -326,6 +326,59 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			expect(result.method).toBe('GET');
 			expect(result.url).toBe('/b/my-bucket/o/my-object');
 		});
+
+		it('keeps the bearer token on the follow-up metadata request', async () => {
+			const fileSize = 100;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer sa-token' });
+		});
+
+		it('merges encryption headers into the follow-up metadata request', async () => {
+			const fileSize = 100;
+			ctx.getNodeParameter
+				.mockReturnValueOnce('my-object') //     objectName  → metadata
+				.mockReturnValueOnce({}) //              createData
+				.mockReturnValueOnce(true) //            createFromBinary
+				.mockReturnValueOnce('data') //          createBinaryPropertyName
+				.mockReturnValueOnce('my-bucket') //     bucketName  → resumable path
+				.mockReturnValueOnce('my-object') //     objectName  → resumable path
+				.mockReturnValueOnce('serviceAccount') // authentication
+				.mockReturnValueOnce({ 'x-goog-encryption-algorithm': 'AES256' }); // encryptionHeaders
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sa-token',
+				'x-goog-encryption-algorithm': 'AES256',
+			});
+		});
 	});
 
 	describe('final GET request', () => {
