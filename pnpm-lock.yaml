@@ -3323,6 +3323,9 @@ importers:
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@oclif/core':
         specifier: ^4.5.2
         version: 4.5.2
