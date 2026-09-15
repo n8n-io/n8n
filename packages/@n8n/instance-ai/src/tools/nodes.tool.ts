@@ -147,10 +147,12 @@ const executeAction = z.object({
 		.describe(
 			'Execute a single node standalone with real credentials and return its real output ' +
 				'items. Use it to learn the exact output shape of a node before wiring downstream ' +
-				'expressions, or to test one node in isolation. The node really runs — side effects ' +
-				'happen (messages get sent, rows get written). Every call prompts the user for ' +
-				'approval. Expressions referencing other nodes cannot resolve; binary output is ' +
-				'returned as metadata only.',
+				"expressions, or to test one node in isolation. Always read the node's " +
+				'`action: "type-definition"` first and build the parameters from it — never guess ' +
+				'parameter names, resource/operation values, or the version. The node really runs — ' +
+				'side effects happen (messages get sent, rows get written). ' +
+				'Expressions referencing other nodes cannot resolve; binary ' +
+				'output is returned as metadata only.',
 		),
 	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),

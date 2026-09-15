@@ -85,14 +85,6 @@ replaces the payload flowing into the next node with its own API response.
 Branch it in parallel, reorder it upstream of the data producer, or make the
 downstream node reference the data node explicitly.
 
-## Testing a Single Node
-
-`nodes(action="execute")` runs one node standalone: use it to learn a real
-output shape or isolate a suspect node. Pass `{ type, version, config:
-{ parameters, credentials } }` plus literal `input` items, with resolved
-`{ id, name }` credentials. Expressions referencing other nodes cannot
-resolve, so inline test values. Side effects are real: do not test writes.
-
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
