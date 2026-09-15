@@ -54,7 +54,12 @@ vi.mock('@/features/resolvers/composables/useNodePrivateCredential', () => ({
 	useNodePrivateCredential: vi.fn(),
 }));
 
+vi.mock('@/features/resolvers/composables/useNodeRunAsBadge', () => ({
+	useNodeRunAsBadge: vi.fn(),
+}));
+
 import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
+import { useNodeRunAsBadge } from '@/features/resolvers/composables/useNodeRunAsBadge';
 
 const stubs = {
 	NodeIcon: {
@@ -91,6 +96,10 @@ beforeEach(() => {
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 	vi.mocked(useNodePrivateCredential).mockReturnValue({
 		hasPrivateCredential: computed(() => false),
+		tooltipText: computed(() => ''),
+	});
+	vi.mocked(useNodeRunAsBadge).mockReturnValue({
+		showRunAsBadge: computed(() => false),
 		tooltipText: computed(() => ''),
 	});
 });
@@ -139,6 +148,38 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeIcon).toHaveAttribute(
 				'data-badge-tooltip',
 				'This node uses private credentials that are resolved at runtime.',
+			);
+		});
+	});
+
+	describe('run-as badge', () => {
+		it('shows the run-as icon (with tooltip) as the node badge on a Schedule Trigger', () => {
+			vi.mocked(useNodeRunAsBadge).mockReturnValue({
+				showRunAsBadge: computed(() => true),
+				tooltipText: computed(() => 'Scheduled executions run as Ada Lovelace'),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { icon: { type: 'file', src: 'https://example.com/icon.png' } },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeIcon = getByTestId('canvas-default-node').querySelector('node-icon-stub');
+			expect(nodeIcon).toHaveAttribute('data-badge-name', 'circle-user-round');
+			expect(nodeIcon).toHaveAttribute(
+				'data-badge-tooltip',
+				'Scheduled executions run as Ada Lovelace',
 			);
 		});
 	});

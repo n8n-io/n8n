@@ -3135,6 +3135,8 @@
 	"runAs.callout.switchToMe": "Switch to me",
 	"runAs.callout.unknownUser": "another user",
 	"runAs.callout.error.title": "Could not change who scheduled executions run as",
+	"runAs.badge.you": "Scheduled executions run as you",
+	"runAs.badge.other": "Scheduled executions run as {name}",
 	"runData.pinData.insertedExecutionData": "💡 Inserted data from last successful execution. You can edit as needed.",
 	"runData.openSubExecutionSingle": "View sub-execution",
 	"runData.openSubExecutionWithId": "View sub-execution {id}",

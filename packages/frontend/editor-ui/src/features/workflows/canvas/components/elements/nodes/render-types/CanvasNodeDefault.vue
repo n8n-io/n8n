@@ -9,6 +9,7 @@ import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
 import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
+import { useNodeRunAsBadge } from '@/features/resolvers/composables/useNodeRunAsBadge';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -51,6 +52,7 @@ const {
 } = useCanvasNode();
 const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
 	useNodePrivateCredential(name);
+const { showRunAsBadge, tooltipText: runAsTooltip } = useNodeRunAsBadge(name);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
@@ -168,6 +170,17 @@ const iconSource = computed(() => {
 			type: 'icon',
 			name: 'user-round-key',
 			tooltip: privateCredentialTooltip.value,
+		};
+		return { ...source, badge };
+	}
+
+	// A Schedule Trigger with a run-as user shows who scheduled executions run as.
+	// The Schedule Trigger never carries a private credential, so the slot is free.
+	if (showRunAsBadge.value && source) {
+		const badge: NodeIconSource['badge'] = {
+			type: 'icon',
+			name: 'circle-user-round',
+			tooltip: runAsTooltip.value,
 		};
 		return { ...source, badge };
 	}
