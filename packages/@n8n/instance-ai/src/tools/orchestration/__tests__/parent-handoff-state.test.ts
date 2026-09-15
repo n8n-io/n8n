@@ -1,6 +1,7 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
 import {
+	consumeUserDecisions,
 	formatParentHandoffEnvelope,
 	hydrateUserDecisions,
 	listUserDecisions,
@@ -74,6 +75,16 @@ describe('formatParentHandoffEnvelope', () => {
 		expect(envelope).not.toContain('Preview session');
 	});
 
+	it('ignores a non-string current user message', () => {
+		expect(
+			formatParentHandoffEnvelope(
+				createOrchestration(undefined, {
+					currentUserMessage: vi.fn() as unknown as string,
+				}),
+			),
+		).toBe('');
+	});
+
 	it('truncates a current user message longer than 2000 characters', () => {
 		const long = 'a'.repeat(2001);
 		const envelope = formatParentHandoffEnvelope(
@@ -112,6 +123,17 @@ describe('formatParentHandoffEnvelope', () => {
 		expect(envelope).toContain('threadId=th_1');
 		expect(envelope).toContain('executionId=ex_1');
 		expect(envelope).not.toContain('transcript');
+	});
+
+	it('renders a skipped question as no selection', () => {
+		const domain = createDomain({
+			resolvedUserDecisions: [{ question: 'Which model?', answer: '(skipped)', skipped: true }],
+		});
+
+		const envelope = formatParentHandoffEnvelope(createOrchestration(domain));
+
+		expect(envelope).toContain('Skipped by the user; proceed without a selection');
+		expect(envelope).not.toContain('A: (skipped)');
 	});
 });
 
@@ -156,6 +178,38 @@ describe('recordUserDecision and hydrateUserDecisions', () => {
 		]);
 	});
 
+	it('merges each write with decisions already persisted by another context', async () => {
+		const threadMemory = createThreadMemory();
+		const first = createDomain({ threadMemory, resolvedUserDecisions: [] });
+		const second = createDomain({ threadMemory, resolvedUserDecisions: [] });
+
+		await recordUserDecision(first, { question: 'Which model?', answer: 'Claude' });
+		await recordUserDecision(second, { question: 'Which channel?', answer: 'Chat' });
+
+		const nextTurn = createDomain({ threadMemory });
+		await hydrateUserDecisions(nextTurn);
+		expect(listUserDecisions(nextTurn)).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+			{ question: 'Which channel?', answer: 'Chat' },
+		]);
+	});
+
+	it('consumes handed-off decisions without deleting a newer answer', async () => {
+		const original = { question: 'Which model?', answer: 'Claude' };
+		const threadMemory = createThreadMemory({ [METADATA_KEY]: [original] });
+		const context = createDomain({
+			threadMemory,
+			resolvedUserDecisions: [original],
+		});
+		threadMemory.thread.metadata = {
+			[METADATA_KEY]: [{ question: 'Which model?', answer: 'GPT-5' }],
+		};
+
+		await consumeUserDecisions(context, [original]);
+
+		expect(listUserDecisions(context)).toEqual([{ question: 'Which model?', answer: 'GPT-5' }]);
+	});
+
 	it('drops the oldest decision once the cap is exceeded', async () => {
 		const context = createDomain({ threadMemory: undefined, threadId: undefined });
 		for (let i = 0; i < 41; i++) {
@@ -176,7 +230,7 @@ describe('recordUserDecision and hydrateUserDecisions', () => {
 		expect(listUserDecisions(context)).toEqual([{ question: 'Channel?', answer: 'chat' }]);
 	});
 
-	it('does not throw when getThread rejects and still records in memory', async () => {
+	it('records without a separate thread read', async () => {
 		const threadMemory = createThreadMemory();
 		threadMemory.getThread.mockRejectedValue(new Error('storage unavailable'));
 		const context = createDomain({ threadMemory });
@@ -185,6 +239,7 @@ describe('recordUserDecision and hydrateUserDecisions', () => {
 			recordUserDecision(context, { question: 'Channel?', answer: 'chat' }),
 		).resolves.toBeUndefined();
 		expect(listUserDecisions(context)).toEqual([{ question: 'Channel?', answer: 'chat' }]);
+		expect(threadMemory.getThread).not.toHaveBeenCalled();
 	});
 
 	it('does not throw when patchThread rejects', async () => {

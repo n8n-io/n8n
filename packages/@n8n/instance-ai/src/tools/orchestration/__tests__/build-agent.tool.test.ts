@@ -336,6 +336,7 @@ describe('build-agent tool', () => {
 		expect(outbound).toContain('brief.pdf');
 		expect(outbound).toContain('application/pdf');
 		expect(outbound).not.toContain('QUJD');
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([]);
 	});
 
 	it('forwards the parent MCP tools to the initial builder turn', async () => {
@@ -454,6 +455,7 @@ describe('build-agent tool', () => {
 
 	it('publishes agent-completed and rethrows when streamBuild throws an unknown error', async () => {
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
 
@@ -470,6 +472,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: 'boom',
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {

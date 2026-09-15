@@ -20,6 +20,32 @@ function normalizeQuestion(question: string): string {
 	return question.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+function upsertDecisions(
+	existing: ResolvedUserDecision[],
+	incoming: ResolvedUserDecision[],
+): ResolvedUserDecision[] {
+	const decisions = existing.map((decision) => ({ ...decision }));
+	for (const decision of incoming) {
+		const normalizedQuestion = normalizeQuestion(decision.question);
+		const match = decisions.find(
+			(candidate) => normalizeQuestion(candidate.question) === normalizedQuestion,
+		);
+		if (match) {
+			match.question = decision.question;
+			match.answer = decision.answer;
+			match.skipped = decision.skipped;
+		} else {
+			decisions.push({ ...decision });
+		}
+	}
+	return decisions.slice(-MAX_DECISIONS);
+}
+
+function readPersistedDecisions(metadata: Record<string, unknown>): ResolvedUserDecision[] {
+	const parsed = decisionsSchema.safeParse(metadata[METADATA_KEY]);
+	return parsed.success ? parsed.data : [];
+}
+
 export function listUserDecisions(context: InstanceAiContext): ResolvedUserDecision[] {
 	return context.resolvedUserDecisions ?? [];
 }
@@ -71,27 +97,27 @@ export async function recordUserDecisions(
 		return;
 	}
 
-	await hydrateUserDecisions(context);
-	const decisions = context.resolvedUserDecisions ?? [];
-	context.resolvedUserDecisions = decisions;
+	context.resolvedUserDecisions = upsertDecisions(context.resolvedUserDecisions ?? [], valid);
+	if (!context.threadId || !context.threadMemory) return;
 
-	for (const decision of valid) {
-		const normalizedQuestion = normalizeQuestion(decision.question);
-		const existing = decisions.find((d) => normalizeQuestion(d.question) === normalizedQuestion);
-		if (existing) {
-			existing.question = decision.question;
-			existing.answer = decision.answer;
-			existing.skipped = decision.skipped;
-		} else {
-			decisions.push(decision);
-		}
+	try {
+		let persisted = context.resolvedUserDecisions;
+		await patchThread(context.threadMemory, {
+			threadId: context.threadId,
+			update: ({ metadata = {} }) => {
+				persisted = upsertDecisions(readPersistedDecisions(metadata), valid);
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: persisted,
+					},
+				};
+			},
+		});
+		context.resolvedUserDecisions = persisted;
+	} catch (error) {
+		context.logger.debug(`Failed to save user decisions: ${String(error)}`);
 	}
-
-	while (decisions.length > MAX_DECISIONS) {
-		decisions.shift();
-	}
-
-	await saveUserDecisions(context);
 }
 
 export async function recordUserDecision(
@@ -101,30 +127,57 @@ export async function recordUserDecision(
 	await recordUserDecisions(context, [decision]);
 }
 
-async function saveUserDecisions(context: InstanceAiContext): Promise<void> {
-	if (!context.threadId || !context.threadMemory) {
-		return;
-	}
+function isSameDecision(left: ResolvedUserDecision, right: ResolvedUserDecision): boolean {
+	return (
+		normalizeQuestion(left.question) === normalizeQuestion(right.question) &&
+		left.answer === right.answer &&
+		Boolean(left.skipped) === Boolean(right.skipped)
+	);
+}
+
+/** Remove only decisions included in a successful builder handoff. */
+export async function consumeUserDecisions(
+	context: InstanceAiContext,
+	consumed: ResolvedUserDecision[],
+): Promise<void> {
+	if (consumed.length === 0) return;
+
+	const removeConsumed = (decisions: ResolvedUserDecision[]) =>
+		decisions.filter(
+			(decision) => !consumed.some((candidate) => isSameDecision(decision, candidate)),
+		);
+	context.resolvedUserDecisions = removeConsumed(context.resolvedUserDecisions ?? []);
+	if (!context.threadId || !context.threadMemory) return;
 
 	try {
+		let persisted = context.resolvedUserDecisions;
 		await patchThread(context.threadMemory, {
 			threadId: context.threadId,
-			update: ({ metadata = {} }) => ({
-				metadata: {
-					...metadata,
-					[METADATA_KEY]: context.resolvedUserDecisions,
-				},
-			}),
+			update: ({ metadata = {} }) => {
+				persisted = removeConsumed(readPersistedDecisions(metadata));
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: persisted,
+					},
+				};
+			},
 		});
+		context.resolvedUserDecisions = persisted;
 	} catch (error) {
-		context.logger.debug(`Failed to save user decisions: ${String(error)}`);
+		context.logger.debug(`Failed to consume user decisions: ${String(error)}`);
 	}
+}
+
+function currentUserMessageText(context: OrchestrationContext): string {
+	const raw = context.currentUserMessage;
+	return typeof raw === 'string' ? raw.trim() : '';
 }
 
 export function formatParentHandoffEnvelope(context: OrchestrationContext): string {
 	const sections: string[] = [];
 
-	const rawMessage = context.currentUserMessage?.trim() ?? '';
+	const rawMessage = currentUserMessageText(context);
 	if (rawMessage.length > 0) {
 		const text =
 			rawMessage.length > CURRENT_USER_MESSAGE_CAP
@@ -138,12 +191,18 @@ export function formatParentHandoffEnvelope(context: OrchestrationContext): stri
 	if (decisions.length > 0) {
 		sections.push(
 			`Answers the user already gave:\n${decisions
-				.map((d) => `- Q: ${d.question} → A: ${d.answer}`)
+				.map((d) =>
+					d.skipped
+						? `- Q: ${d.question} → Skipped by the user; proceed without a selection and do not re-ask.`
+						: `- Q: ${d.question} → A: ${d.answer}`,
+				)
 				.join('\n')}`,
 		);
 	}
 
-	const attachments = domain?.currentUserAttachments ?? [];
+	const attachments = Array.isArray(domain?.currentUserAttachments)
+		? domain.currentUserAttachments
+		: [];
 	if (attachments.length > 0) {
 		sections.push(
 			`Current attachments (names only):\n${attachments

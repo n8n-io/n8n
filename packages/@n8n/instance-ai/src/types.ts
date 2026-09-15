@@ -1547,6 +1547,7 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+	/** Ask-user decisions waiting for the next successful Agent Builder handoff. */
 	resolvedUserDecisions?: ResolvedUserDecision[];
 }
 

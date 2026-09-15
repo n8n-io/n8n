@@ -69,7 +69,12 @@ import type {
 	OrchestrationContext,
 	SessionWorkflowRef,
 } from '../../types';
-import { formatParentHandoffEnvelope, hydrateUserDecisions } from './parent-handoff-state';
+import {
+	consumeUserDecisions,
+	formatParentHandoffEnvelope,
+	hydrateUserDecisions,
+	listUserDecisions,
+} from './parent-handoff-state';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
@@ -1087,6 +1092,9 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 
 			const session = builderSessionFor(context, boundTarget.agentId);
 			await hydrateUserDecisions(domainContext);
+			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
+				...decision,
+			}));
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
@@ -1110,7 +1118,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				throw error;
 			}
 
-			return await runBuilderConsumeLoop({
+			const output = await runBuilderConsumeLoop({
 				context,
 				delegate,
 				ctx,
@@ -1128,6 +1136,8 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 						}
 					: undefined,
 			});
+			await consumeUserDecisions(domainContext, handedOffDecisions);
+			return output;
 		})
 		.build();
 }
