@@ -16,7 +16,10 @@ import type { RequirementsExtractor } from '../requirements-extractor';
 const VARS_REFERENCE_PATTERN =
 	/\$vars\s*(?:\.\s*([A-Za-z_][A-Za-z0-9_]*)|\[\s*(?:'([^']+)'|"([^"]+)")\s*\])/g;
 
-/** The fields the scan reads. A workflow from a package file fits without becoming an entity. */
+/**
+ * Describes the workflow fields needed to find variable references.
+ * Accepts data from package files without requiring a database WorkflowEntity.
+ */
 export interface VariableScanSource {
 	id: string;
 	nodes?: Array<{ parameters?: unknown }>;

@@ -2,14 +2,6 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
-/**
- * Result of the read-only binding check before Apply imports a package.
- * Lists credential and variable bindings that need review. Includes variables
- * that resolve through a global fallback. Each record contains facts from the
- * package and target. The check never chooses where to create an item.
- * All ids and names are source values from the package files.
- */
-
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({
@@ -139,6 +131,13 @@ export const promotionBindingReviewSchema = z.discriminatedUnion('kind', [
 	promotionVariableBindingReviewSchema,
 ]);
 
+/**
+ * Result of the read-only binding check before Apply imports a package.
+ * Lists credential and variable bindings that need review. Includes variables
+ * that resolve through a global fallback. Each record contains facts from the
+ * package and target. The check never chooses where to create an item.
+ * All ids and names are source values from the package files.
+ */
 export const promotionBindingPreflightResultSchema = z.object({
 	bindingsNeedingReview: z.array(promotionBindingReviewSchema),
 });
