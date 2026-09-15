@@ -240,8 +240,15 @@ describe('InstanceContextService', () => {
 		});
 
 		/** The late commit the span exists for still arrives, as long as it lands above the cut. */
+		/**
+		 * A late commit is a row that was invisible when a turn read, sits below that turn's mark,
+		 * and was therefore never shown. Built by handing `buildBlock` a cursor that accounts for
+		 * every row in the band except one, rather than by inserting a row at a chosen id —
+		 * an explicit primary key is honoured on sqlite and ignored on Postgres, so seeding the
+		 * hole that way proves the mechanism on one driver and something else on the other.
+		 */
 		it('still recovers a late commit that lands above the cut', async () => {
-			for (let i = 1; i <= 46; i++) {
+			for (let i = 1; i <= 45; i++) {
 				await record({
 					category: 'workflow',
 					action: 'created',
@@ -251,52 +258,35 @@ describe('InstanceContextService', () => {
 					resourceName: `Workflow ${i}`,
 				});
 			}
-
-			// One id near the top is freed up, so a row can later commit into it — which is what an
-			// out-of-order sequence value looks like from here. Near the top, so it is above whatever
-			// the first window cuts.
+			// Newest first, so index 0 is the high-water mark.
 			const seeded = await activity.findFeed({
 				projectIds: [project.id],
 				categories: ['workflow', 'credential'],
 				limit: 50,
 			});
-			const hole = seeded[5].id;
-			await activity.delete({ id: hole });
-
-			const opening = await service.buildBlock({
-				user,
-				projectId: project.id,
-				cursor: null,
-				enabled: true,
-			});
-			const cursor = cursorOf(opening);
-			expect(shownIds(blockOf(opening))).not.toContain(hole);
-			expect(hole).toBeGreaterThan(cursor.activityFloor);
-
-			await activity.insert({
-				id: hole,
-				category: 'workflow',
-				action: 'deleted',
-				typeVersion: 1,
-				userId: user.id,
-				projectId: project.id,
-				resourceType: 'workflow',
-				// A name only renders beside an id, so the row needs both to be readable.
-				resourceId: 'wf-late',
-				resourceName: 'Committed out of order',
-				createdAt: new Date(),
-			});
+			const straggler = seeded[5];
+			const floor = seeded[10];
 
 			const delta = await service.buildBlock({
 				user,
 				projectId: project.id,
-				cursor,
+				cursor: {
+					activityMark: seeded[0].id,
+					activityFloor: floor.id,
+					activityCategories: ['workflow', 'credential'],
+					// Every row above the floor is accounted for except the straggler.
+					activitySeen: seeded
+						.slice(0, 10)
+						.map((row) => row.id)
+						.filter((id) => id !== straggler.id),
+					runsThrough: new Date().toISOString(),
+				},
 				enabled: true,
 			});
 
-			expect(blockOf(delta)).toContain('Committed out of order');
-			// Only the late commit, not the rows the window cut beneath it.
-			expect(shownIds(blockOf(delta))).toEqual([hole]);
+			// Only the straggler: the rows below the floor were cut and must not come back.
+			expect(shownIds(blockOf(delta))).toEqual([straggler.id]);
+			expect(blockOf(delta)).toContain(straggler.resourceName);
 		});
 
 		it('leaves the inventory out of a delta and says it is an addition', async () => {
