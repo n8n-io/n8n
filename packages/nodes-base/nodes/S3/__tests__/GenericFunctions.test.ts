@@ -78,6 +78,31 @@ describe('S3 Node Generic Functions', () => {
 				expect.any(Object),
 			);
 		});
+
+		it.each(['has+plus.txt', 'has%2Bplus.txt'])(
+			'should encode the object key in the signed path and request URI for %s',
+			async (fileKey) => {
+				mockContext.getCredentials.mockResolvedValueOnce({
+					endpoint: 'https://s3.amazonaws.com',
+					forcePathStyle: true,
+				});
+				mockContext.helpers.request.mockResolvedValueOnce('success');
+
+				await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+
+				expect(sign).toHaveBeenCalledWith(
+					expect.objectContaining({
+						path: '/test-bucket/has%2Bplus.txt?',
+					}),
+					expect.any(Object),
+				);
+				expect(mockContext.helpers.request).toHaveBeenCalledWith(
+					expect.objectContaining({
+						uri: 'https://s3.amazonaws.com/test-bucket/has%2Bplus.txt',
+					}),
+				);
+			},
+		);
 	});
 
 	describe('s3ApiRequestREST', () => {
