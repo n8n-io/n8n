@@ -87,7 +87,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
-		const { TeamsIntegration } = await import('./integrations/platforms/teams-integration.js');
+		const { TeamsIntegration } = await import(
+			'./integrations/platforms/teams/teams-integration.js'
+		);
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
