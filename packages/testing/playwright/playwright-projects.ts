@@ -245,7 +245,9 @@ export function getProjects(): Project[] {
 			testDir: './tests/e2e',
 			grep: new RegExp(ENGINE_TAG_PREFIX),
 			timeout: 180000,
-			fullyParallel: true,
+			// One worker, one stack. Every worker boots its own Postgres and main,
+			// and the CI job asks for one worker anyway.
+			workers: 1,
 			use: { containerConfig: { postgres: true, engine: 'in-process' } },
 		});
 
