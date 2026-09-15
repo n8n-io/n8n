@@ -214,6 +214,15 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').isVisible()).toBe(true);
 	});
 
+	it('should not render Web Search', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+
+		expect(wrapper.text()).not.toContain('agents.builder.advanced.webSearch');
+	});
+
 	it('loads the model catalog for the current project', () => {
 		mount(AgentAdvancedPanel, {
 			props: { config: makeConfig(), projectId: 'project-1' },
