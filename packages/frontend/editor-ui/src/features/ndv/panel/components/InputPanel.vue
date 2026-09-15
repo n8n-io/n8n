@@ -527,7 +527,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</I18nT>
 						<template #actions>
 							<NodeExecuteButton
-								square
+								icon-only
 								hide-label
 								variant="subtle"
 								size="small"
