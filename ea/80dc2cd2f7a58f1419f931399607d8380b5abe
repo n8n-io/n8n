@@ -1,0 +1,14 @@
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  h_ed1b2d65e81e8e 490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ea80dc2cd2f7a58f1419f931399607d8380b5abe",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

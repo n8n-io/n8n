@@ -1,0 +1,36 @@
+packages/cli/src/modules/external-secrets.ee/__tests__/retry-manager.service.test.ts
+  s_c7f0a2b3e0a627::t_0d886b919aa41a 155-181
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_c7f0a2b3e0a627::t_e7bf3b632d0a9b 1189-1191,1395,1406
+packages/cli/src/modules/external-secrets.ee/retry-manager.service.ts
+  s_c7f0a2b3e0a627::t_a9a5c444658948 7
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_c7f0a2b3e0a627::t_0200fac26d4f2c 10,38,53-57,62-63,91-92,102,406,473,528,532,558,586,590-591,609-610,869
+  s_c7f0a2b3e0a627::t_3329f02a0e46e7 353-387
+  s_c7f0a2b3e0a627::t_b8abdf6083d28b 611,619-621
+  s_c7f0a2b3e0a627::t_3d996f8fd7a148 625-700
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_c7f0a2b3e0a627::t_4014f60bb94255 50
+  s_c7f0a2b3e0a627::t_f400aaf8bae118 500-505
+  s_c7f0a2b3e0a627::t_58ea54c767bd12 114-115,350-351,354,369,411-412,455,464
+  s_c7f0a2b3e0a627::t_ee3d3fbebcd0a6 237-240
+  s_c7f0a2b3e0a627::t_c7f9dc20b3ca55 298-301
+  s_c7f0a2b3e0a627::t_15619c571eb6fb 234-236,241-242
+  s_c7f0a2b3e0a627::t_6036eaa8bbb29e 222,296-297,302,312-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f799290e1f78a6412a1295ccfe7e249780bc5ab",
+  "prompts": {},
+  "sessions": {
+    "s_c7f0a2b3e0a627": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e60472a-615d-4741-aacc-ba03dc7489a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

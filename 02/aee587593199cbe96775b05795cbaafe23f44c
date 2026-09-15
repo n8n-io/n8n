@@ -1,0 +1,50 @@
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_6aa508bda4a755::t_1690949a0563bd 36-42
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_6aa508bda4a755::t_8562926860910d 22
+  s_b370a35485f958::t_e4a4f82a67c3b2 23
+packages/@n8n/utils/src/scrub-secrets.property.test.ts
+  s_054fb04c8dd77a::t_0f585d504df6f0 3,9-22
+packages/@n8n/utils/src/redaction/sanitize-error-detail.ts
+  s_04b7b854d094b6::t_763f0eddcd7ca8 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "02aee587593199cbe96775b05795cbaafe23f44c",
+  "prompts": {},
+  "sessions": {
+    "s_04b7b854d094b6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ee896a89-b376-4611-bae8-2520d3f014f0",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_054fb04c8dd77a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "775b6b45-02dc-424b-9980-50f689f46091",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6aa508bda4a755": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fd876053-d1ad-4776-8e94-a64535f55dc1",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

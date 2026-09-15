@@ -1,0 +1,34 @@
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_c6542a835c36e8::t_5f635f0ac6309d 35-49,60
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  ai_agent 101-106,172-177,324-329,338-343,348-353,365,407-411
+  s_c6542a835c36e8::t_c23786b0d61020 7,11,54-57,208-209
+  s_c6542a835c36e8::t_b1b792acaf036e 1-6,8-10,12-53,58-100,107-171,178-207,210-323,330-337,344-347,354-364,366-406,412-416
+packages/@n8n/instance-ai/src/index.ts
+  s_c6542a835c36e8::t_5448bc3abd35bf 635-637
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_c6542a835c36e8::t_fcb7b2eb97973c 1-201,203-294,296-297,302-340,342-416,418-422,424-534,536-556,561-566
+  s_c6542a835c36e8::t_6db6e4f4aa54ec 535,557-560
+  s_c6542a835c36e8::t_7dd35e605884f0 202,417,423
+  ai_agent 295,298-301,341
+packages/@n8n/instance-ai/src/types.ts
+  s_c6542a835c36e8::t_5448bc3abd35bf 559-600
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_c6542a835c36e8::t_373673757dd482 33-43,95-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "808e3297103f19a547ba5ea249c691ca48f714ff",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

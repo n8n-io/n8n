@@ -1,0 +1,19 @@
+packages/@n8n/config/test/config.test.ts
+  s_6e3f52ff14ba6e::t_9379f2a30bba5e 294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60edd9a9fbc15f6d28d792e4f7426670eb65a65a",
+  "prompts": {},
+  "sessions": {
+    "s_6e3f52ff14ba6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62e55d43-3015-410a-8652-f8d8d66de8ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

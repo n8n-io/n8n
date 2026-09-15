@@ -1,0 +1,33 @@
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.transfer.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 6
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.schema.id.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 6
+packages/cli/src/public-api/v1/openapi.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 30
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 7
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_644fa653780ed3::t_26099a9c31c83c 75,109
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 6,42
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_644fa653780ed3::t_618bb379113ead 189
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/credentials.id.test.yml
+  s_644fa653780ed3::t_8a8cfaf477f379 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f063f2931769510d53b9ab4a562d768b8d6e791",
+  "prompts": {},
+  "sessions": {
+    "s_644fa653780ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d77ebb3-11d2-4f3f-ba25-48171f0149f8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

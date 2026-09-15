@@ -1,0 +1,36 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_2d3483454c5671::t_83c31b27fb0a90 291,307
+  s_2d3483454c5671::t_180846ced06b83 286,290,306,314-320,322-348,369-408
+  s_2d3483454c5671::t_970e16f527b586 302,321
+  s_2d3483454c5671::t_290b9b94011f40 409-410
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_2d3483454c5671::t_83c31b27fb0a90 218-221,240-247,250-275
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_2d3483454c5671::t_629c054bbc1c20 225-233
+  s_2d3483454c5671::t_970e16f527b586 269,285
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_2d3483454c5671::t_970e16f527b586 211,244,311,323
+  s_2d3483454c5671::t_180846ced06b83 295-296
+  s_2d3483454c5671::t_629c054bbc1c20 226,255-291,301,305-310,312-313,315,325-349,368,375-384
+  s_2d3483454c5671::t_30c0cdee1a475e 314
+  s_2d3483454c5671::t_80c3913eb11f8b 385
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_2d3483454c5671::t_970e16f527b586 308
+  s_2d3483454c5671::t_180846ced06b83 462,500-505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "55eb0e81589802244068efab179d9f711698fab4",
+  "prompts": {},
+  "sessions": {
+    "s_2d3483454c5671": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05d96-3a8b-7313-b951-ff390832ee97",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

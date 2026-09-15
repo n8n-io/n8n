@@ -1,0 +1,124 @@
+packages/@n8n/db/src/entities/data-table-row-automation.ts
+  s_31091a67d599db::t_64dfaf589d3ad6 1-42
+packages/cli/src/modules/data-table/__tests__/data-table-trigger-delivery.consumer.test.ts
+  s_31091a67d599db::t_fe08cf25fba759 6,19,95-96
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableOperations.ts
+  s_31091a67d599db::t_dde0704db013db 345,362
+  s_31091a67d599db::t_fe08cf25fba759 10,331-341,343-344,388
+  s_31091a67d599db::t_29d469a4a2d20c 342,346-361,363-378,383
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_31091a67d599db::t_fe08cf25fba759 15,91-92
+  s_31091a67d599db::t_43eb7e2d29e46b 93
+packages/nodes-base/nodes/DataTable/actions/row/get.operation.ts
+  s_31091a67d599db::t_fe08cf25fba759 2,120
+  s_31091a67d599db::t_dde0704db013db 121-122
+packages/@n8n/db/src/repositories/data-table-trigger-subscription.repository.ts
+  s_31091a67d599db::t_fe08cf25fba759 9,64-81
+  s_31091a67d599db::t_80ff91d7a33e1a 82-83
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.ts
+  s_31091a67d599db::t_fe08cf25fba759 8,22,156-182,251,274-275
+packages/cli/src/modules/data-table/data-table-mutation-event.repository.ts
+  s_31091a67d599db::t_fe08cf25fba759 3,33
+  s_31091a67d599db::t_dde0704db013db 53,188-203
+packages/cli/src/modules/data-table/__tests__/data-table-trigger.integration.test.ts
+  s_31091a67d599db::t_dde0704db013db 129-131,157-160
+  s_31091a67d599db::t_fe08cf25fba759 4,31,103-128,132-156,161-177
+  s_31091a67d599db::t_6f1be0ee096be7 178-179
+packages/@n8n/db/src/migrations/common/1789045785000-CreateDataTableRowAutomation.ts
+  s_31091a67d599db::t_f46d8ed4a5bd7a 1-37
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_31091a67d599db::t_dde0704db013db 17-21
+  s_31091a67d599db::t_fe08cf25fba759 9-13
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_31091a67d599db::t_fe08cf25fba759 145
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.types.ts
+  s_31091a67d599db::t_fe08cf25fba759 7-16,24
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AutomationStatusCellRenderer.vue
+  s_31091a67d599db::t_5df6957dd2491b 4,33-36,46,56,68-69
+  s_31091a67d599db::t_d524ffa6d01fe7 52-55,61-63,70-79
+  s_31091a67d599db::t_b77787dbac5774 1-3,5-30,32,37-45,47-51,57-60,64-67,80-81
+  s_31091a67d599db::t_273009779c851d 31
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_31091a67d599db::t_fe08cf25fba759 20-26,43-49,70,76-83,100-101,152-160,184-185,187,497,537-550,573-576,582-603,753-762,776,779,924-933,946,1037,1043-1044,1070,1134-1137
+  s_31091a67d599db::t_dde0704db013db 186,581,1038-1042
+packages/cli/src/workflows/publication/data-table-trigger-subscription-reconciler.ts
+  s_31091a67d599db::t_fe08cf25fba759 2,37,106-111
+packages/nodes-base/nodes/DataTable/common/selectMany.ts
+  s_31091a67d599db::t_fe08cf25fba759 1-5,153-156,165
+packages/cli/src/modules/data-table/data-table-rows.repository.ts
+  s_31091a67d599db::t_fe08cf25fba759 20,35,82,85-89,360,462,475,500,536,700-703,714,866,874,920-921,927-940,957-961,964,976-981,985-990,995-1011
+  s_31091a67d599db::t_a56f8b866e1042 1012-1013
+packages/nodes-base/nodes/DataTable/common/addRow.ts
+  s_31091a67d599db::t_fe08cf25fba759 3,54
+packages/cli/src/modules/data-table/__tests__/data-table.service.test.ts
+  s_31091a67d599db::t_fe08cf25fba759 4-10,91-92
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  s_31091a67d599db::t_fe08cf25fba759 8,41-42
+  s_31091a67d599db::t_dde0704db013db 130
+  s_31091a67d599db::t_e06221e3b4ab42 43
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_31091a67d599db::t_fe08cf25fba759 2-8
+packages/@n8n/db/src/repositories/data-table-row-automation.repository.ts
+  s_31091a67d599db::t_dde0704db013db 4-7,16,18,27-38,41,55,62-67
+  s_31091a67d599db::t_64dfaf589d3ad6 1-3,8-15,17,19-26,39-40,42-49,54,56-61,68-70,86-103
+  s_31091a67d599db::t_90458919d624cf 50-53,71-85
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/datatype.completions.ts
+  s_31091a67d599db::t_fe08cf25fba759 16,18
+  s_7189a6a4d7a286::t_8fa2c2d30666f8 1320-1328,1332
+packages/frontend/editor-ui/src/features/core/dataTable/composables/useDataTableColumns.test.ts
+  s_31091a67d599db::t_fe08cf25fba759 36-39
+packages/@n8n/db/src/repositories/index.ts
+  s_31091a67d599db::t_dde0704db013db 32
+packages/cli/src/modules/data-table/__tests__/data-table-mutation-event.service.test.ts
+  s_31091a67d599db::t_fe08cf25fba759 3,16-21
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/completions/dataTable.completions.test.ts
+  s_7189a6a4d7a286::t_8fa2c2d30666f8 52,55-58
+packages/cli/src/workflows/publication/__tests__/data-table-trigger-subscription-reconciler.test.ts
+  s_31091a67d599db::t_fe08cf25fba759 2,25
+packages/cli/src/modules/data-table/data-table-trigger-delivery.consumer.ts
+  s_31091a67d599db::t_fe08cf25fba759 5,8,22,49-50,56-57,63,175,184,212-215,217-218
+  s_31091a67d599db::t_833d7858be045e 13-19,58-62,219-224,226-235,244-253
+  s_31091a67d599db::t_dde0704db013db 192-196,216,225,236,243
+  s_31091a67d599db::t_8f092b830971f4 237-242
+packages/nodes-base/nodes/DataTable/common/methods.ts
+  s_31091a67d599db::t_fe08cf25fba759 3,47-50,132
+packages/workflow/src/data-table.types.ts
+  s_31091a67d599db::t_fe08cf25fba759 146-171
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AutomationStatusCellRenderer.test.ts
+  s_31091a67d599db::t_72b38fa549d91d 1-4,9-16,18,35-36,39-42,44-47
+  s_31091a67d599db::t_5df6957dd2491b 17,38
+  s_31091a67d599db::t_24c11d7d5ee7ae 37
+  s_31091a67d599db::t_ae361261be25e7 6-7,19-34,43
+  s_31091a67d599db::t_3bf2a196c20707 5,8
+packages/@n8n/db/src/entities/index.ts
+  s_31091a67d599db::t_fe08cf25fba759 25,145,235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "14c2f2231556db3f37d8a1b4d3dfb8056ceefb17",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_31091a67d599db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9c8686c-8105-40a9-aaf4-814fc474608d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    },
+    "s_7189a6a4d7a286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "832eb13c-08ad-4a3d-9529-3ec6b9ae083e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

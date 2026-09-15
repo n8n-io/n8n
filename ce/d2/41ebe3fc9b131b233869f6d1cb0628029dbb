@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/PROMOTION_DIFF_ENGINE_DESIGN.md
+  s_581435d77ed724::t_32c3bb3f005b7a 95-97,110-121,147-166,225-235,257-259
+packages/cli/src/modules/n8n-packages/__tests__/diff-engine-poc.integration.test.ts
+  ai_agent 203
+  s_581435d77ed724::t_0fd53a04e3a604 2-3,5,7,14,16,18,23-26,116-124,127-128,130,135,137,146,158-187,192-193,198-199,212-214,218-219,221,224-227,229-232,236-237,239,247-250,257-258,260,264-265,270-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ced241ebe3fc9b131b233869f6d1cb0628029dbb",
+  "prompts": {},
+  "sessions": {
+    "s_581435d77ed724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9913c61e-58ae-4fcc-9b3f-2be19ae42fbc",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

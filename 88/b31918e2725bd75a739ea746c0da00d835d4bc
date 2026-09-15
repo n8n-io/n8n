@@ -1,0 +1,37 @@
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  ai_agent 2-3,8-14,16-23,35
+packages/cli/src/modules/token-exchange/token-exchange.module.ts
+  ai_agent 42-50
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key.service.test.ts
+  ai_agent 60,87,140-141,145,147-148,153-155,157-165,188,208,227,231-241
+packages/cli/src/modules/token-exchange/__tests__/token-exchange.module.test.ts
+  s_e2b4eb4ee0550c::t_ad291d5dc81225 1-23
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  ai_agent 206,210,212-215,234,239-240,242-244,246-248
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  ai_agent 1-31
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  ai_agent 6,15,19,22-27,30-32,34,37,46,51-52,54,56,62,64-66
+packages/cli/src/modules/token-exchange/services/__tests__/trusted-key-refresh.task.test.ts
+  ai_agent 1-22
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  ai_agent 4,52-57,104,312-313,315
+packages/cli/eslint.config.mjs
+  ai_agent 58-60,387-426,431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88b31918e2725bd75a739ea746c0da00d835d4bc",
+  "prompts": {},
+  "sessions": {
+    "s_e2b4eb4ee0550c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d37752e2-95b2-4104-9833-de7298855167",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

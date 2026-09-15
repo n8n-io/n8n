@@ -1,0 +1,11 @@
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  ai_agent 49
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  ai_agent 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8585617c147bbc3fc68fde42557f57149756fabc",
+  "prompts": {}
+}

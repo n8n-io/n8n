@@ -1,0 +1,19 @@
+packages/cli/src/modules/external-secrets.ee/retry-manager.service.ts
+  s_c7f0a2b3e0a627::t_5d41b5f81b910d 68-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce40d8722f5e34e9d8cdc9dc04782ab8a2fdd25b",
+  "prompts": {},
+  "sessions": {
+    "s_c7f0a2b3e0a627": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e60472a-615d-4741-aacc-ba03dc7489a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

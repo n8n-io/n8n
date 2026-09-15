@@ -1,0 +1,59 @@
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_cf6b9c4cbf3539::t_4ea64b63c16ab8 421
+  s_cf6b9c4cbf3539::t_148ecc49d9f96e 66-71
+  s_cf6b9c4cbf3539::t_ee26238fab9812 388-390
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_cf6b9c4cbf3539::t_74487121124e0e 26-37
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_cf6b9c4cbf3539::t_386f0960720936 296
+packages/@n8n/workflow-sdk/src/node-deprecation.ts
+  s_cf6b9c4cbf3539::t_34737e2347ad2b 1-7,10
+  s_cf6b9c4cbf3539::t_92a9a135c4605c 8-9,11-12
+packages/@n8n/instance-ai/src/types.ts
+  h_2f80f0e06f710c 624
+  s_cf6b9c4cbf3539::t_66584e97beb466 619-623,625-626
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.ts
+  s_cf6b9c4cbf3539::t_94cf179f4bef03 68-71
+packages/@n8n/workflow-sdk/src/validation/deprecated-node-validation.test.ts
+  s_cf6b9c4cbf3539::t_af6bf2765e371d 1,3-87,95,97,99-100,104,109,113-114
+  s_cf6b9c4cbf3539::t_f68bd169941995 2,88-94,96,98,101-103,105-108,110-112
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_cf6b9c4cbf3539::t_3e4feb72f2cdfe 2053-2084
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_cf6b9c4cbf3539::t_acf3cbcbbde54a 467-478,489-502
+  s_cf6b9c4cbf3539::t_31a8f6986b1d21 546-548
+  s_cf6b9c4cbf3539::t_79a988b8b013c5 12
+  s_cf6b9c4cbf3539::t_81b16e82eed6b4 54-55
+  s_cf6b9c4cbf3539::t_12835ec8a60601 479-488
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_cf6b9c4cbf3539::t_138e5c87f6d709 477-515
+  s_cf6b9c4cbf3539::t_8a4c1d07300a46 476
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_cf6b9c4cbf3539::t_0c2aa9416e809d 570-572
+  s_cf6b9c4cbf3539::t_ae75c3dfa5af07 579-600
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_cf6b9c4cbf3539::t_287d087a0f99c2 32
+  s_cf6b9c4cbf3539::t_db83f87f65af10 2325-2329,2331-2333
+  s_cf6b9c4cbf3539::t_5d4bea8da5f62b 2330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc6af68ba7396cfe2f51fb6d197718aa2a5a75d8",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cf6b9c4cbf3539": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a14bde4e-982a-4388-b850-818472b4550a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

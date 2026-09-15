@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  ai_agent 1-12,14-55,59-69
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 16-24,289,311-319,321,323-325,328-331,335-337,339-354,357-441,467-472,584-588,595,598-606,614-615,626-636,639-647,650-676,679-681,683-710,717-726,787-827,1259
+pnpm-lock.yaml
+  ai_agent 2201-2203,2210-2215,2394-2396,2406-2411,2498-2500,2507-2512,3704-3730
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 9-10,14-15
+packages/cli/src/public-api/v1/shared/spec/schemas/credentialPublicDto.generated.yml
+  ai_agent 26-36
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  ai_agent 1-72
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredential.generated.yml
+  ai_agent 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd1120196de8a040ae0affe52e818b4d86754c49",
+  "prompts": {}
+}

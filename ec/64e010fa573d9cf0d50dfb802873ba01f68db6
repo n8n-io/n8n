@@ -1,0 +1,21 @@
+packages/@n8n/scheduler/README.md
+  s_993dd02373d2b0::t_c25571f3f94003 133
+  s_993dd02373d2b0::t_22f6ff4478ef56 80-81
+  s_993dd02373d2b0::t_a35b03723d336c 60-63,131-132,312-317,549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec64e010fa573d9cf0d50dfb802873ba01f68db6",
+  "prompts": {},
+  "sessions": {
+    "s_993dd02373d2b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "841c3127-d704-4d43-9046-216a2c12427d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

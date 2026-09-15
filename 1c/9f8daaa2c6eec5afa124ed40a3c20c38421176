@@ -1,0 +1,96 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/confirmationKinds.test.ts
+  s_70409176d79c44::t_1036f22b8a54e9 25-26,28-33,41,44-48,52,63-65
+  s_70409176d79c44::t_cf3b633afe6ab4 1-24,27,34-40,42-43,49-51,53-62,66-89
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_70409176d79c44::t_a7135751a80435 376-377
+  s_70409176d79c44::t_8d1c9b38ab0c10 492
+  s_70409176d79c44::t_bf35894fb4eab3 487-490
+  s_70409176d79c44::t_91513df523bbc0 662-678
+  s_70409176d79c44::t_ab2c072a877d05 45-55
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_70409176d79c44::t_fc4ca174cfcd8a 794-811,821-825
+  s_70409176d79c44::t_de46990f89a3d9 818-820
+  s_70409176d79c44::t_ec13bd6807de3b 812-817
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_70409176d79c44::t_5ecafe4ad8a9bb 519-521
+  s_70409176d79c44::t_ed81f063281e3c 807-821
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_70409176d79c44::t_fd2914cfdf8404 685-705
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_70409176d79c44::t_4b0a3b110b9d55 88-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_70409176d79c44::t_afe7e56cbb5ac4 38-54
+  s_70409176d79c44::t_6e7a9aaedc310a 1-2
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_70409176d79c44::t_8400849a277c30 2674-2731
+packages/@n8n/instance-ai/src/runtime/__tests__/orchestrator-run-control.test.ts
+  s_70409176d79c44::t_bd6b00b7941d3d 31-59
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_70409176d79c44::t_b6e5d97a81d5dc 213-240
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_70409176d79c44::t_433b01ba8caedb 93
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_70409176d79c44::t_a97742695bdda7 1399
+  s_70409176d79c44::t_fa9a71184f5564 64
+  s_70409176d79c44::t_2e1b9bda7c23f1 578-587
+packages/@n8n/instance-ai/src/runtime/stream-runner.ts
+  s_70409176d79c44::t_af173e36070cf6 34-35,97-99
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_70409176d79c44::t_3fa4ea84b74f88 558-569
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_70409176d79c44::t_3c9d2c2d76d124 247-281
+packages/@n8n/instance-ai/src/types.ts
+  s_70409176d79c44::t_38cdf0862b6f38 1205-1210
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_70409176d79c44::t_5e9a33ab7d8e4a 247-260
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  ai_agent 648-650
+  s_70409176d79c44::t_b000fc76580aae 526-647,651-654
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_70409176d79c44::t_f3ad36a1459db7 1229-1260
+packages/@n8n/instance-ai/src/runtime/orchestrator-run-control.ts
+  s_70409176d79c44::t_6bd11c4e151070 43-52
+  s_70409176d79c44::t_567eb09f45dacf 3-8
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.schema.ts
+  s_70409176d79c44::t_cd2d94bbc50af7 34-36
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_70409176d79c44::t_191c0365f29111 1177-1219
+  s_70409176d79c44::t_914163c1ae4b7e 28
+  s_70409176d79c44::t_743e51c8a0139b 2062,2065-2068,2071
+  s_70409176d79c44::t_b3c693c7d1bd7b 5398
+  s_70409176d79c44::t_f4fa046108e52e 5567-5582
+  s_70409176d79c44::t_fdb59a700b924c 5420
+  s_70409176d79c44::t_fb937e30a4eb48 2059-2061,2064,2069-2070
+  s_70409176d79c44::t_e9806852f8adff 5243-5246
+  s_70409176d79c44::t_4b72fd0b889c3b 5541,5555-5558
+packages/@n8n/api-types/src/index.ts
+  s_70409176d79c44::t_9f86037deea075 354
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_70409176d79c44::t_cb153b8f685126 53
+  s_70409176d79c44::t_34e192aa92f228 1618
+  s_70409176d79c44::t_1d4d20734143d0 1598-1617,1619-1620
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_70409176d79c44::t_1bad91e41dc466 872-895
+  s_70409176d79c44::t_869472252dc614 190-200
+  s_70409176d79c44::t_a7077ff7c657c3 1288,1290
+  s_70409176d79c44::t_09e44befe39e27 46
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_70409176d79c44::t_96a561a5a3e8cc 174-177
+  s_70409176d79c44::t_345f15aec4231b 278,281-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c9f8daaa2c6eec5afa124ed40a3c20c38421176",
+  "prompts": {},
+  "sessions": {
+    "s_70409176d79c44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e18b02-34af-4e49-9a5c-f48f4206363e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
