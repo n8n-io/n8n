@@ -955,6 +955,17 @@ export class WorkflowDataProxy {
 			});
 		}
 
+		function createPairedItemCycleError(nodeCause: string, itemIndex: number) {
+			return createExpressionError('Circular item linking', {
+				messageTemplate: 'Paired item references itself',
+				functionality: 'pairedItem',
+				functionOverrides: { message: 'Circular item linking' },
+				nodeCause,
+				description: `Item ${itemIndex} in node ${nodeCause} links back to itself, so the item cannot be traced.`,
+				type: 'paired_item_invalid_info',
+			});
+		}
+
 		function createPairedItemMultipleItemsFound(destNode: string, itemIndex: number) {
 			return createExpressionError('Multiple matches found', {
 				messageTemplate: `Multiple matching items for item [${itemIndex}]`,
@@ -1044,7 +1055,8 @@ export class WorkflowDataProxy {
 				undefined,
 				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
 				// Aggregate output pairing to all its inputs), so without memoization
-				// the walk revisits the same item exponentially often.
+				// the walk revisits the same item exponentially often. The memo also
+				// carries the cycle detection, since both key the same walk state.
 				new PairedItemMemo(),
 			);
 
@@ -1063,88 +1075,74 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			return memo.resolve(sourceData, pairedItem, () =>
-				resolvePairedItemUncached(
-					destinationNodeName,
-					sourceData,
-					pairedItem,
-					usedMethodName,
-					nodeBeforeLast,
-					memo,
-				),
-			);
-		};
+			const walkAncestry = (): INodeExecutionData => {
+				const taskData = getTaskData(sourceData);
+				const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
+				const item = outputData[pairedItem.item];
+				const sourceArray = taskData?.source ?? [];
 
-		const resolvePairedItemUncached = (
-			destinationNodeName: string,
-			sourceData: ISourceData,
-			pairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod,
-			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
-		): INodeExecutionData => {
-			const taskData = getTaskData(sourceData);
-			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
-			const item = outputData[pairedItem.item];
-			const sourceArray = taskData?.source ?? [];
+				// Done: reached the destination node in the ancestry chain
+				if (sourceData.previousNode === destinationNodeName) {
+					if (pairedItem.item >= outputData.length) {
+						throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
+					}
 
-			// Done: reached the destination node in the ancestry chain
-			if (sourceData.previousNode === destinationNodeName) {
-				if (pairedItem.item >= outputData.length) {
+					return item;
+				}
+
+				// Normalize paired item to always be IPairedItemData[]
+				const nextPairedItems = normalizePairedItem(item.pairedItem);
+
+				if (nextPairedItems.length === 0) {
 					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
-				return item;
-			}
+				// Recursively traverse ancestry to find the destination node + paired item
+				const results = nextPairedItems.flatMap((nextPairedItem) => {
+					const inputIndex = nextPairedItem.input ?? 0;
 
-			// Normalize paired item to always be IPairedItemData[]
-			const nextPairedItems = normalizePairedItem(item.pairedItem);
+					if (inputIndex >= sourceArray.length) return [];
 
-			if (nextPairedItems.length === 0) {
-				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
-			}
+					const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
 
-			// Recursively traverse ancestry to find the destination node + paired item
-			const results = nextPairedItems.flatMap((nextPairedItem) => {
-				const inputIndex = nextPairedItem.input ?? 0;
+					try {
+						return createResultOk(
+							resolvePairedItem(
+								destinationNodeName,
+								nextSource,
+								{ ...nextPairedItem, input: inputIndex },
+								usedMethodName,
+								sourceData.previousNode,
+								memo,
+							),
+						);
+					} catch (error) {
+						return createResultError(error);
+					}
+				});
 
-				if (inputIndex >= sourceArray.length) return [];
-
-				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
-
-				try {
-					return createResultOk(
-						resolvePairedItem(
-							destinationNodeName,
-							nextSource,
-							{ ...nextPairedItem, input: inputIndex },
-							usedMethodName,
-							sourceData.previousNode,
-							memo,
-						),
-					);
-				} catch (error) {
-					return createResultError(error);
+				if (results.length > 0 && results.every((result) => !result.ok)) {
+					throw results[0].error;
 				}
-			});
 
-			if (results.every((result) => !result.ok)) {
-				throw results[0].error;
-			}
+				const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
-			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
+				if (matchedItems.length === 0) {
+					if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
+					throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+				}
 
-			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
-			}
+				const [first, ...rest] = matchedItems;
+				if (rest.some((r) => r !== first)) {
+					throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
+				}
 
-			const [first, ...rest] = matchedItems;
-			if (rest.some((r) => r !== first)) {
-				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
-			}
+				return first;
+			};
 
-			return first;
+			return memo.resolve(sourceData, pairedItem, walkAncestry, () =>
+				createPairedItemCycleError(sourceData.previousNode, pairedItem.item),
+			);
 		};
 
 		const handleFromAi = (
