@@ -405,7 +405,6 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return originalText ? `${originalText}\n\n${outcome}` : outcome;
 	}
 
-	/** Discord embeds have no select menu. */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
 	}

@@ -76,8 +76,6 @@ interface ComponentRenderContext {
 }
 
 /**
- * Replace every select with one button per option.
- *
  * Shared by the platforms whose rich cards have no select control. Telegram
  * keeps its own override because it also rewrites images.
  */

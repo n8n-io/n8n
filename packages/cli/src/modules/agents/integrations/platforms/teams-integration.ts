@@ -19,12 +19,9 @@ import { resolveIntegrationActionDefinitions } from '../integration-tool-definit
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
-/** The only Microsoft cloud this channel reaches. */
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 
 /**
- * Microsoft Teams platform integration.
- *
  * Teams sits with Discord rather than Telegram on registration: the messaging
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
@@ -62,7 +59,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 		],
 	};
 
-	/** Adaptive Cards render all five natively; only selects need converting. */
 	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
@@ -143,8 +139,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Map the Entra service-principal credential onto the adapter's bot identity.
-	 *
 	 * The certificate check is ours to make: that mode stores no `clientSecret`,
 	 * so passing it through would build an adapter with no secret and fail later
 	 * with an opaque authentication error.

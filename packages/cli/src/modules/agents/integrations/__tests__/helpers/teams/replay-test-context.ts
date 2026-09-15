@@ -42,7 +42,6 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
-	/** Id the Bot Connector stub returned for the most recent outbound post. */
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -66,8 +65,8 @@ function buildBotFrameworkSigner() {
 	return {
 		jwks: { keys: [{ ...jwk, kid: keyId, use: 'sig', alg: 'RS256' }] },
 		/**
-		 * Outbound access token. The Teams SDK decodes the token it gets back from
-		 * the mint to read its claims, so an opaque placeholder string fails.
+		 * The Teams SDK decodes the token it gets back from the mint to read its
+		 * claims, so an opaque placeholder string fails.
 		 */
 		accessToken: () =>
 			jwt.sign({ aud: TOKEN_ISSUER, iss: TOKEN_ISSUER, appid: TEAMS_APP_ID }, privateKey, {
@@ -75,7 +74,6 @@ function buildBotFrameworkSigner() {
 				expiresIn: '1h',
 				keyid: keyId,
 			}),
-		/** Sign a token the adapter accepts for an activity on TEAMS_SERVICE_URL. */
 		sign: () =>
 			jwt.sign(
 				{
@@ -91,7 +89,6 @@ function buildBotFrameworkSigner() {
 	};
 }
 
-/** Answer the JWKS, the token mint, and the Bot Connector reply endpoint. */
 function installTeamsApiStub(jwks: object, accessToken: string) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
@@ -108,8 +105,7 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 			access_token: accessToken,
 		});
 
-	// Outbound replies. Recorded as `sendActivity` so assertions read the same
-	// way as the other platforms' `lastPost()`.
+	// Recorded as `sendActivity` so `lastPost()` reads like the other platforms'.
 	let nextMessageId = 1000;
 	const postedMessageIds: string[] = [];
 	nock(serviceUrl.origin)
