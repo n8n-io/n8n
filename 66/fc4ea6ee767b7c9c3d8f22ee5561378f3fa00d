@@ -1,0 +1,75 @@
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_adb5d982725a9c::t_735b647c4a32b1 4
+  s_adb5d982725a9c::t_1856d89cc9ce02 73
+  s_adb5d982725a9c::t_5457643761c371 450-456,458-460
+  s_adb5d982725a9c::t_107973e59f6a0d 457
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_adb5d982725a9c::t_635aa47e9a2f1b 339
+  s_adb5d982725a9c::t_e5226faf842aa2 303-304
+  s_adb5d982725a9c::t_1a46f5b5b0d311 536
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  ai_agent 17-22,2554-2556
+  s_adb5d982725a9c::t_723e7d6f830a9e 28-35
+  s_adb5d982725a9c::t_ad70a08f776a8b 71
+  s_adb5d982725a9c::t_9f6314a08253b6 73
+  s_adb5d982725a9c::t_a800fa9b5e0e6c 557-559
+  s_adb5d982725a9c::t_b96720739aee9c 690
+  s_adb5d982725a9c::t_56134e8af66020 776-778,783-798,801-808
+  s_adb5d982725a9c::t_e5c1292514eff2 779-782,799-800
+  s_adb5d982725a9c::t_4329e20c62a84c 822-848,898-942,2698-2725,2544,2551-2552,2558-2559
+  s_adb5d982725a9c::t_cb6e63bb457997 943-944
+  s_adb5d982725a9c::t_e8cbfb6dee6193 1046-1100,1103,1106,1109,1112-1113,1122-1124
+  s_adb5d982725a9c::t_e720c6ef3e80c9 1138-1178
+  s_adb5d982725a9c::t_bd3d9bddbf8aca 2320-2350
+  s_adb5d982725a9c::t_f516fd0d31151f 2726-2727
+  s_adb5d982725a9c::t_50d5b29cf0f4b3 2539-2543,2545-2550,2553,2557
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_adb5d982725a9c::t_f368070b62b150 7-12
+  s_adb5d982725a9c::t_6d6c3c37837358 182
+  s_adb5d982725a9c::t_9e8201915b4c14 435-443
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_adb5d982725a9c::t_cb6e837fea1b37 15
+  s_adb5d982725a9c::t_50763638c35cc8 90-93
+  s_adb5d982725a9c::t_333ccf505e4ea9 161
+  s_adb5d982725a9c::t_4603e8fbd86989 232-239
+  s_adb5d982725a9c::t_0ff6b0643240fe 265
+  s_adb5d982725a9c::t_28ef55f6f7e761 267-280
+  s_adb5d982725a9c::t_7e3d716d6dd166 372-387,390-396
+  s_adb5d982725a9c::t_9050cae6a5a0eb 400-412
+  s_adb5d982725a9c::t_4329e20c62a84c 1191-1192,1310,1355-1359,1479-1485,1491-1494,1498-1499,1509-1511,1550,203
+  s_adb5d982725a9c::t_5a18f710697a64 1293,1304-1307
+  ai_agent 1486-1490
+  s_adb5d982725a9c::t_f6b007b6e7c6c8 1495
+  s_adb5d982725a9c::t_687f9b8a81e9c2 2227
+  s_adb5d982725a9c::t_7f6ea108ddd495 200-202,204
+  s_adb5d982725a9c::t_fe1dc9ee0129f0 240-244
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_adb5d982725a9c::t_931c6dd1f8a908 311
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_adb5d982725a9c::t_480a3cff7c49cf 15-19,34-46,48-49
+  s_adb5d982725a9c::t_f7614cee5be771 314,318-321
+  s_adb5d982725a9c::t_0973da021213fb 337,340,342-345
+  s_adb5d982725a9c::t_a7f7b1af54927e 384,391-394,398-400
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_adb5d982725a9c::t_4329e20c62a84c 8272
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_adb5d982725a9c::t_cc2641fee44233 29
+  s_adb5d982725a9c::t_261309e94e3112 70
+  s_adb5d982725a9c::t_72ae5a7b49c280 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66fc4ea6ee767b7c9c3d8f22ee5561378f3fa00d",
+  "prompts": {},
+  "sessions": {
+    "s_adb5d982725a9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84758071-25ce-404a-9e8a-c2f810ded075",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
