@@ -72,6 +72,23 @@ export default class Dev extends Command {
 		const invalidNodeNameError = validateNodeName(packageName);
 		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
 
+		// Parse once: the published port and every consumer of baseUrl have to agree,
+		// or readiness polls and reloads hit a port nothing is listening on.
+		let n8nUrl: URL;
+		try {
+			n8nUrl = new URL(flags['n8n-url']);
+		} catch {
+			return onCancel(
+				`Invalid --n8n-url "${flags['n8n-url']}". Expected a full URL, e.g. http://localhost:5678`,
+			);
+		}
+		if (n8nUrl.protocol !== 'http:' && n8nUrl.protocol !== 'https:') {
+			return onCancel(
+				`Invalid --n8n-url "${flags['n8n-url']}". Expected an http:// or https:// URL`,
+			);
+		}
+		// URL.port is empty for an implicit port, so fall back to the protocol default.
+		const n8nPort = n8nUrl.port || (n8nUrl.protocol === 'https:' ? '443' : '80');
 		const baseUrl = flags['n8n-url'].replace(/\/$/, '');
 		const runsN8n = !flags['external-n8n'];
 		const projectDir = process.cwd();
@@ -105,7 +122,7 @@ export default class Dev extends Command {
 					'--name',
 					containerName,
 					'-p',
-					`${new URL(baseUrl).port || '5678'}:5678`,
+					`${n8nPort}:5678`,
 					'-v',
 					`${DATA_VOLUME}:/home/node/.n8n`,
 					'-v',
@@ -154,8 +171,12 @@ export default class Dev extends Command {
 		});
 
 		let n8nReady = false;
-		void waitForN8n(baseUrl).then((ready) => {
+		void waitForN8n(baseUrl).then(async (ready) => {
 			n8nReady = ready;
+			// The first clean compile can land before n8n serves /rest/dev/reload, so that
+			// reload is lost. This one fires exactly once, after n8n answers. A reload only
+			// re-reads what is already on disk, so doing it unconditionally is safe.
+			if (ready) await triggerReload(baseUrl);
 		});
 
 		watchStaticFiles(() => {
