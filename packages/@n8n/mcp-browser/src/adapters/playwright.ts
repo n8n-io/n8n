@@ -680,7 +680,7 @@ export class PlaywrightAdapter {
 	): Promise<{ data: string; pages: number }> {
 		const { page } = await this.ensurePage(pageId);
 		const buffer = await page.pdf({
-			format: (options?.format as 'A4' | 'Letter' | 'Legal') ?? 'A4',
+			format: options?.format ?? 'A4',
 			landscape: options?.landscape,
 		});
 		// Rough page count estimation (PDF doesn't easily expose page count)
@@ -758,7 +758,7 @@ export class PlaywrightAdapter {
 			expires: c.expires,
 			httpOnly: c.httpOnly,
 			secure: c.secure,
-			sameSite: c.sameSite as Cookie['sameSite'],
+			sameSite: c.sameSite,
 		}));
 	}
 

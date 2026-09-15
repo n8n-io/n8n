@@ -95,5 +95,7 @@ export enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	SETTINGS_CONTEXT = 'SettingsContext',
+	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

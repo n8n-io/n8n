@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { computed, ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -45,7 +45,11 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 }
 
 function setup(
-	overrides: { supportsToolApproval?: boolean; ensureAgentPersisted?: () => Promise<void> } = {},
+	overrides: {
+		supportsToolApproval?: boolean;
+		ensureAgentPersisted?: () => Promise<void>;
+		agent?: Ref<AgentResource | null>;
+	} = {},
 ) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
 	const uiStore = useUIStore();
@@ -212,6 +216,28 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		await flushPromises();
 
 		expect(createAgentSkill).toHaveBeenCalled();
+	});
+
+	it('records the created skill hash so a follow-up edit is checked against it', async () => {
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions } = setup({ agent });
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(agent.value?.skillHashes).toEqual({ skill_new: 'hash-new' });
 	});
 
 	it('does not create the skill when persisting the agent fails', async () => {

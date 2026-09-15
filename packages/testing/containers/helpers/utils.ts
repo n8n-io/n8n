@@ -72,7 +72,7 @@ export function createReadinessProbe(
 
 /**
  * Polls a container's HTTP endpoint until it returns a 200 status.
- * Logs a warning if the endpoint does not return 200 within the specified timeout.
+ * Throws if the endpoint does not return 200 within the specified timeout.
  *
  * @param container The started container.
  * @param endpoint The HTTP health check endpoint (e.g., '/healthz/readiness').
@@ -100,10 +100,9 @@ export async function pollContainerHttpEndpoint(
 		await wait(retryIntervalMs);
 	}
 
-	console.error(
-		`WARNING: HTTP endpoint at ${url} did not return 200 within ${
-			timeoutMs / 1000
-		} seconds. Proceeding with caution.`,
+	console.error(`HTTP endpoint at ${url} did not return 200 within ${timeoutMs / 1000} seconds.`);
+	throw new Error(
+		`HTTP endpoint at ${url} did not become ready within ${timeoutMs / 1000} seconds`,
 	);
 }
 

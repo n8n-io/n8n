@@ -148,6 +148,49 @@ function makeClient(seedDataTableRows: Mock): N8nClient {
 }
 
 describe('reseedScenarioTables', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('reduces the next request budget by the time spent seeding earlier tables', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now += 600;
+			await Promise.resolve();
+		});
+
+		await reseedScenarioTables(
+			makeClient(seedDataTableRows),
+			scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+			'thread-1',
+			{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+			silentLogger,
+			2_000,
+		);
+
+		expect(seedDataTableRows.mock.calls.map((call) => call[3])).toEqual([1_000, 400]);
+	});
+
+	it('does not seed the next table when the previous request consumes the deadline', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now = 2_000;
+			await Promise.resolve();
+		});
+
+		await expect(
+			reseedScenarioTables(
+				makeClient(seedDataTableRows),
+				scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+				'thread-1',
+				{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+				silentLogger,
+				2_000,
+			),
+		).rejects.toThrow('Case timed out');
+		expect(seedDataTableRows).toHaveBeenCalledTimes(1);
+	});
+
 	it('clears + seeds each declared table by its bound real id', async () => {
 		const seedDataTableRows = vi.fn().mockResolvedValue(undefined);
 		const client = makeClient(seedDataTableRows);
@@ -160,7 +203,12 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', jobApplications.rows);
+		expect(seedDataTableRows).toHaveBeenCalledWith(
+			'thread-1',
+			'dt-real-1',
+			jobApplications.rows,
+			undefined,
+		);
 	});
 
 	it('seeds an empty row set when a table declares no rows', async () => {
@@ -176,7 +224,7 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', []);
+		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', [], undefined);
 	});
 
 	it('does nothing when the scenario declares no seed tables', async () => {

@@ -1,8 +1,13 @@
 import { createSkillLoadTool } from '@n8n/agents';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
+import {
+	INSTANCE_AI_SKILLS_DIR,
+	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
+} from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
@@ -15,6 +20,39 @@ describe('Instance AI runtime skills', () => {
 		} else {
 			process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
 		}
+	});
+
+	// `load_tool` only resolves DEFERRED tools, so a gate that names an always-loaded
+	// tool can only answer `not_found`. The model then falls back to `search_tools`,
+	// which costs 2 to 4 full-context round trips (INS-1394). This caught the
+	// `n8n-docs` gates that went stale when INS-749 made the tool always-loaded.
+	it('never tells the model to load an always-loaded tool', () => {
+		const gatePatterns = [
+			/load\s+`?([\w.-]+)`?\s+via\s+`?load_tool/gi,
+			/calling\s+`?([\w.-]+)`?,\s+load it via\s+`?load_tool/gi,
+		];
+		const offenders: string[] = [];
+
+		for (const skillId of readdirSync(INSTANCE_AI_SKILLS_DIR, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name)) {
+			const skillPath = join(INSTANCE_AI_SKILLS_DIR, skillId, 'SKILL.md');
+			if (!existsSync(skillPath)) continue;
+			const content = readFileSync(skillPath, 'utf-8');
+
+			for (const pattern of gatePatterns) {
+				for (const match of content.matchAll(pattern)) {
+					const toolName = match[1];
+					// "load it via load_tool" names the tool earlier; the second pattern catches it.
+					if (toolName === 'it') continue;
+					if (ALWAYS_LOADED_TOOL_NAMES.has(toolName)) {
+						offenders.push(`${skillId}/SKILL.md tells the model to load "${toolName}"`);
+					}
+				}
+			}
+		}
+
+		expect(offenders).toEqual([]);
 	});
 
 	it('points the workflow-builder skill at the SDK language reference', () => {
@@ -160,15 +198,34 @@ describe('Instance AI runtime skills', () => {
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: false, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: false,
+				instanceContextEnabled: true,
+			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				instanceContextEnabled: true,
+			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
+	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const progressive = source.registry.skills.find(
+			(skill) => skill.name === 'progressive-building',
+		);
+		expect(progressive?.id).toBe('progressive-building');
+		for (const mode of ['default', 'progressive'] as const) {
+			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
+			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
+			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
+		}
 	});
 
 	it('excludes bundled Agents module skills unless the module is enabled', async () => {
@@ -232,14 +289,15 @@ describe('Instance AI runtime skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
-		expect(skill?.description).toContain('Load n8n-docs via load_tool before calling it');
+		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
+		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
+			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
+		expect(loaded?.instructions).not.toContain('load_tool');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
@@ -312,7 +370,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
@@ -396,7 +454,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
-		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
+		expect(loaded?.instructions).toMatch(/inline setup card in\s+the n8n Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);

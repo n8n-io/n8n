@@ -1,4 +1,3 @@
-import { redactText } from '@n8n/agents';
 import {
 	createFilesystem,
 	createSandbox,
@@ -14,6 +13,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';

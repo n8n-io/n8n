@@ -70,6 +70,7 @@ const keyboardExecution = {
 	stoppedAt: null,
 	duration: 0,
 	userMessage: 'Hello',
+	author: null,
 	attachments: null,
 	model: null,
 	promptTokens: null,

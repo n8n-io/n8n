@@ -30,13 +30,22 @@ export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ResolvedRouteArg =
 	| { type: 'param'; key: string; schema?: ZodTypeAny }
-	| { type: 'body' | 'query'; dto: ZodClass };
+	| { type: 'body'; dto: ZodClass; required?: boolean }
+	| { type: 'query'; dto: ZodClass };
 
 export function isDtoArg(
 	arg: ResolvedRouteArg,
 	type: 'body' | 'query',
 ): arg is Extract<ResolvedRouteArg, { type: 'body' | 'query' }> {
 	return arg.type === type;
+}
+
+export function findBodyArg(
+	args: ResolvedRouteArg[],
+): Extract<ResolvedRouteArg, { type: 'body' }> | undefined {
+	return args.find(
+		(arg): arg is Extract<ResolvedRouteArg, { type: 'body' }> => arg.type === 'body',
+	);
 }
 
 export interface ResolvedPublicApiRoute {
@@ -48,6 +57,8 @@ export interface ResolvedPublicApiRoute {
 	path: string;
 	args: ResolvedRouteArg[];
 	requestBodyDto?: ZodClass;
+	/** Explicit `@Body({ required })` override; falls back to `isRequestBodyRequired` when unset. */
+	requestBodyRequired?: boolean;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
@@ -111,7 +122,16 @@ export function resolveRouteArgs(
 			);
 		}
 
-		resolved.push({ type: arg.type, dto: paramType });
+		if (arg.type === 'body') {
+			resolved.push({
+				type: 'body',
+				dto: paramType,
+				...(arg.required !== undefined && { required: arg.required }),
+			});
+			continue;
+		}
+
+		resolved.push({ type: 'query', dto: paramType });
 	}
 
 	return resolved;
@@ -228,7 +248,9 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 
 		for (const [handlerName, route] of controllerMetadata.routes) {
 			const args = resolveRouteArgs(controllerClass, handlerName, route.args);
-			const requestBodyDto = args.find((arg) => isDtoArg(arg, 'body'))?.dto;
+			const requestBodyArg = findBodyArg(args);
+			const requestBodyDto = requestBodyArg?.dto;
+			const requestBodyRequired = requestBodyArg?.required;
 			const requestQueryDto = args.find((arg) => isDtoArg(arg, 'query'))?.dto;
 
 			const joined = `${prefix}${route.path}`.replace(/\/+/g, '/');
@@ -242,6 +264,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				path,
 				args,
 				requestBodyDto,
+				requestBodyRequired,
 				requestQueryDto,
 				responseDto: route.responseDto,
 				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),

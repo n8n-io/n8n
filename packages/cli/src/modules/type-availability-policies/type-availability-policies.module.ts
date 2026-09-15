@@ -16,6 +16,7 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		// Side-effecting imports: register the controllers' routes via `@RestController`.
 		await import('./type-availability-policy-instance.controller.js');
 		await import('./type-availability-policy-project.controller.js');
+		await import('./available-types.controller.js');
 	}
 
 	async entities() {

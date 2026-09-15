@@ -21,7 +21,19 @@ const MAX_TIMEOUT_MS = 600_000;
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List recent workflow executions'),
+	action: z
+		.literal('list')
+		.describe(
+			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
+				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
+				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
+				'whether the LIVE workflow works: a row ran the published code only when its ' +
+				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
+				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
+				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
+				'unknown version, which is not the same as a draft. A draft version different from the ' +
+				'published one means the latest changes are not live yet.',
+		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
 		.string()
@@ -37,7 +49,13 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get execution status without blocking (poll running ones)'),
+	action: z
+		.literal('get')
+		.describe(
+			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
+				'version this run executed; it only tells you whether the run was live when compared ' +
+				"with the workflow's `activeVersionId`.",
+		),
 	executionId: z.string().describe('Execution ID'),
 });
 
@@ -50,7 +68,9 @@ const runAction = z.object({
 		.describe(
 			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
 				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
+				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
+				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
+				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
 		),
@@ -88,7 +108,9 @@ const debugAction = z.object({
 const getNodeOutputAction = z.object({
 	action: z
 		.literal('get-node-output')
-		.describe('Retrieve raw output of a specific node from an execution'),
+		.describe(
+			"Retrieve raw output of a specific node from an execution, grouped per output (e.g. a Filter's Kept and Discarded). All outputs are listed, including outputs with no downstream connection; only items on a connected output continue through the workflow.",
+		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
@@ -160,12 +182,39 @@ const resumeSchema = instanceAiApprovalResumeSchema;
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const executions = await context.executionService.list({
-		workflowId: input.workflowId,
-		status: input.status,
-		limit: input.limit,
-	});
-	return { executions };
+	const [executions, workflow] = await Promise.all([
+		context.executionService.list({
+			workflowId: input.workflowId,
+			status: input.status,
+			limit: input.limit,
+		}),
+		resolveListedWorkflowVersions(context, input.workflowId),
+	]);
+
+	return workflow === undefined ? { executions } : { executions, workflow };
+}
+
+/**
+ * Published and draft version of the listed workflow. Only for a list scoped to
+ * one workflow: without it, "did the live version run?" is unanswerable from
+ * the rows alone. A failed read drops the block rather than the whole list.
+ */
+async function resolveListedWorkflowVersions(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+): Promise<{ activeVersionId: string | null; draftVersionId: string } | undefined> {
+	if (workflowId === undefined) return undefined;
+
+	try {
+		const head = await context.workflowService.getWorkflowHead(workflowId);
+		return { activeVersionId: head.activeVersionId, draftVersionId: head.versionId };
+	} catch (error) {
+		context.logger.warn('Failed to read workflow versions for the execution list', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -345,6 +394,9 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
+				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+				'do not treat such a request as a request to build something. ' +
 				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)

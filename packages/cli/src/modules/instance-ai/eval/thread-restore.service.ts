@@ -5,11 +5,18 @@ import {
 	type InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { SharedWorkflowRepository, WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+	type User,
+	type WorkflowEntity,
+} from '@n8n/db';
 import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
+import { jsonParse, type IConnections, type INode, type INodeCredentials } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -17,6 +24,8 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 function isWorkflowNode(value: unknown): value is INode {
 	if (!isRecord(value)) return false;
@@ -60,8 +69,12 @@ export class EvalThreadRestoreService {
 	constructor(
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly sharedWorkflowRepo: SharedWorkflowRepository,
+		private readonly credentialsRepo: CredentialsRepository,
+		private readonly workflowPublishedVersionRepo: WorkflowPublishedVersionRepository,
 		private readonly dataTableService: DataTableService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	/**
@@ -229,13 +242,18 @@ export class EvalThreadRestoreService {
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
 		dataTableIdMap: Map<string, string> = new Map(),
+		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
 		const created: string[] = [];
 		try {
 			for (const workflow of workflows) {
-				if (await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap)) {
-					created.push(workflow.id);
-				}
+				const isNew = await this.createWorkflowPinnedToId(
+					workflow,
+					projectId,
+					dataTableIdMap,
+					allowedCredentialIds,
+				);
+				if (isNew) created.push(workflow.id);
 			}
 		} catch (error) {
 			await this.deleteWorkflows(created);
@@ -244,9 +262,62 @@ export class EvalThreadRestoreService {
 		return created;
 	}
 
-	/** Best-effort delete (rollback of a failed restore). */
-	async deleteWorkflows(workflowIds: string[]): Promise<void> {
+	/** Publish the seeds flagged `published` on the product's own activation path,
+	 *  so the workflow is live the way the user's publish left it. Runs before the
+	 *  messages: a refusal (unresolved credential, no trigger, webhook conflict)
+	 *  must fail while the restore can still be rolled back, and the messages
+	 *  cannot be. Every seed attempted is unpublished again on failure. Returns
+	 *  the ids it published: the caller's rollback only deletes the workflows this
+	 *  restore created, and a re-applied seed is not one of them, so the caller
+	 *  unpublishes these when a later step fails. */
+	async publishSeedWorkflows(
+		workflows: InstanceAiEvalSeedWorkflow[],
+		user: User,
+	): Promise<string[]> {
+		const attempted: string[] = [];
+		try {
+			for (const workflow of workflows) {
+				if (!workflow.published) continue;
+				// Activation looks the versionId up in the history ("Version not found"
+				// without the row); the snapshot writes it once and verifies it landed.
+				await this.workflowHistoryService.snapshotCurrent(workflow.id);
+				// Before the await: activation can throw after its triggers are registered.
+				attempted.push(workflow.id);
+				await this.workflowService.activateWorkflow(user, workflow.id);
+			}
+		} catch (error) {
+			await this.unpublishWorkflows(attempted);
+			throw error;
+		}
+		return attempted;
+	}
+
+	/** Best-effort unpublish (rollback of a failed restore). A re-applied seed that
+	 *  was live before the restore ends inactive, on purpose: the restore has already
+	 *  overwritten its content, and no trigger should run on a half-restored seed.
+	 *  The harness never gets here, it gives every seed a fresh id per run. */
+	async unpublishWorkflows(workflowIds: string[]): Promise<void> {
 		for (const id of workflowIds) {
+			try {
+				await this.workflowService.deactivateWorkflowAsSystem(id);
+			} catch {
+				// best-effort, like deleteWorkflows
+			}
+		}
+	}
+
+	/** Best-effort delete (rollback of a failed restore). A published seed is
+	 *  unpublished first, so no trigger stays registered for a row that is gone. */
+	async deleteWorkflows(workflowIds: string[]): Promise<void> {
+		// One deadline for the whole batch, not one per seed.
+		const deadline = Date.now() + 10_000;
+		for (const id of workflowIds) {
+			try {
+				await this.workflowService.deactivateWorkflowAsSystem(id);
+			} catch {
+				// best-effort
+			}
+			await this.awaitPublicationTeardown(id, deadline);
 			try {
 				await this.workflowRepo.delete({ id });
 			} catch {
@@ -255,35 +326,60 @@ export class EvalThreadRestoreService {
 		}
 	}
 
+	/** On the publication service an unpublish only enqueues the teardown: the
+	 *  published-version mapping goes once the consumer has torn the triggers
+	 *  down, and its RESTRICT FK blocks the delete until then. Wait for it,
+	 *  bounded, so a slow consumer costs seconds rather than a leaked seed. Off
+	 *  the service no mapping is ever written, so this returns at once. Never
+	 *  throws: the delete it guards is attempted either way. */
+	private async awaitPublicationTeardown(workflowId: string, deadline: number): Promise<void> {
+		try {
+			while (await this.workflowPublishedVersionRepo.getPublishedVersionId(workflowId)) {
+				if (Date.now() >= deadline) return;
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			}
+		} catch {
+			// best-effort
+		}
+	}
+
 	/**
 	 * Insert a workflow at its seeded id (the BeforeInsert hook only generates an
-	 * id when unset) and make the project its owner. Node credentials are stripped
-	 * (the eval credential pin owns the credential view). Data-table references are
-	 * rewritten to the recreated tables' ids. Returns true if newly created.
+	 * id when unset) and make the project its owner. Node credentials are resolved
+	 * against the project's (see `resolveNodeCredentials`). Data-table references
+	 * are rewritten to the recreated tables' ids. Returns true if newly created.
 	 */
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
 		dataTableIdMap: Map<string, string>,
+		allowedCredentialIds?: Set<string>,
 	): Promise<boolean> {
 		const remapDataTableIds = (value: unknown): unknown =>
 			this.remapDataTableIds(value, dataTableIdMap);
 
-		const nodes: INode[] = workflow.nodes.map((node, index) => {
+		const nodes: INode[] = [];
+		for (const [index, node] of workflow.nodes.entries()) {
 			if (!isWorkflowNode(node)) {
 				throw new BadRequestError(
 					`Seed workflow ${workflow.id} node at index ${index} is not a valid workflow node`,
 				);
 			}
-			const { credentials: _stripped, ...rest } = node;
-			const remapped = remapDataTableIds(rest);
+			const { credentials, ...rest } = node;
+			const resolved = await this.resolveNodeCredentials(
+				workflow,
+				credentials,
+				projectId,
+				allowedCredentialIds,
+			);
+			const remapped = remapDataTableIds(resolved ? { ...rest, credentials: resolved } : rest);
 			if (!isWorkflowNode(remapped)) {
 				throw new BadRequestError(
 					`Seed workflow ${workflow.id} node at index ${index} became invalid after data-table id remap`,
 				);
 			}
-			return remapped;
-		});
+			nodes.push(remapped);
+		}
 
 		const connections = remapDataTableIds(workflow.connections);
 		if (!isConnections(connections)) {
@@ -320,12 +416,54 @@ export class EvalThreadRestoreService {
 					{ name, nodes, connections, active, versionId },
 					ctx,
 				);
-				return;
+			} else {
+				await this.workflowRepo.createContent(entity, ctx);
+				await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId, em);
 			}
-			await this.workflowRepo.createContent(entity, ctx);
-			await this.sharedWorkflowRepo.makeOwner([workflow.id], projectId, em);
 		});
 		return stored === null;
+	}
+
+	/** A seed names a node's credential the way the case's fixture does. Keep the
+	 *  ref only when the thread's project holds exactly one credential of that type
+	 *  and name (among those the thread's credential allowlist admits, when it has
+	 *  one), pointed at it, as the product's own resolver does. Anything else
+	 *  addresses the source instance and is stripped, so a seed can never reach
+	 *  past the eval credential pin. A `published` seed is refused instead: it
+	 *  would go live with a node the case meant to be configured, and the case
+	 *  could pass for the wrong reason. */
+	private async resolveNodeCredentials(
+		seed: InstanceAiEvalSeedWorkflow,
+		credentials: unknown,
+		projectId: string,
+		allowedCredentialIds?: Set<string>,
+	): Promise<INodeCredentials | undefined> {
+		if (!isRecord(credentials)) return undefined;
+		const resolved: INodeCredentials = {};
+		for (const [type, ref] of Object.entries(credentials)) {
+			const name = isRecord(ref) && typeof ref.name === 'string' ? ref.name : undefined;
+			if (name === undefined) {
+				// Nothing to resolve against: dropped on a draft, refused on a published
+				// seed, where activation would not notice the missing credential.
+				if (seed.published) {
+					throw new BadRequestError(
+						`Seed workflow ${seed.id} is published, but its ${type} credential reference has no name`,
+					);
+				}
+				continue;
+			}
+			const candidates = (
+				await this.credentialsRepo.findByNameAndTypeInProject(name, type, projectId)
+			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+			if (candidates.length === 1) {
+				resolved[type] = { id: candidates[0].id, name: candidates[0].name };
+			} else if (seed.published) {
+				throw new BadRequestError(
+					`Seed workflow ${seed.id} is published, but its ${type} credential "${name}" matched ${candidates.length} project credentials (need exactly 1)`,
+				);
+			}
+		}
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private async findStoredWorkflow(id: string): Promise<PolicedWorkflow | null> {

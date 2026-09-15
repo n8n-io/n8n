@@ -3,6 +3,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
+import { PROXY_WITHOUT_COMMUNITY_PACKAGES } from '../../../fixtures/capabilities';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
@@ -21,12 +22,7 @@ type ChatHubFixtures = {
 
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
-	capability: {
-		services: ['proxy'],
-		env: {
-			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
-		},
-	},
+	capability: PROXY_WITHOUT_COMMUNITY_PACKAGES,
 } as const;
 
 export const test = base.extend<ChatHubFixtures>({

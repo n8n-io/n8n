@@ -1,4 +1,7 @@
-import { ref, reactive, computed, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
+import { useDocumentVisibility } from '@vueuse/core';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { TIME } from '@/app/constants/durations';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
@@ -95,6 +98,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const preserveTerminalStateOnAbort = new WeakSet<AbortController>();
 	const historyLoaded = ref(false);
+	const pushStore = usePushConnectionStore();
+	const visibility = useDocumentVisibility();
+	let disposed = false;
+	let historyVersion = 0;
+	let streamVersion = 0;
+	let refreshAfterStream = false;
+	let retryCount = 0;
+	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	const targetKey = () =>
+		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
@@ -120,14 +133,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function refreshHistory({
 		clearOnNotFound = false,
 		silent = false,
-		abortIfStale,
 	}: {
 		clearOnNotFound?: boolean;
 		silent?: boolean;
-		/** Checked after the fetch — drop the result rather than overwrite newer state. */
-		abortIfStale?: () => boolean;
 	} = {}): Promise<boolean> {
+		if (disposed) return false;
 		const continueId = params.continueSessionId?.value;
+		// Reject outdated session, request, and stream snapshots to preserve the current conversation.
+		const target = targetKey();
+		const version = ++historyVersion;
+		const streamAtStart = streamVersion;
+		const isCurrent = () => !disposed && target === targetKey() && version === historyVersion;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
@@ -149,16 +165,32 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			}
-			if (abortIfStale?.()) return false;
-			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+			if (!isCurrent()) return false;
+			retryCount = 0;
+			clearTimeout(retryTimer);
+			if (!isStreaming.value && streamAtStart === streamVersion) {
+				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+			} else if (isStreaming.value) {
+				refreshAfterStream = true;
+			} else {
+				refreshHistoryFromPush();
+			}
 			return true;
 		} catch (error) {
+			if (!isCurrent()) return false;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				if (clearOnNotFound) messages.value = [];
+				if (clearOnNotFound && !isStreaming.value && streamAtStart === streamVersion) {
+					messages.value = [];
+				}
 				return clearOnNotFound;
 			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			}
+			// Keep the current transcript and retry twice before waiting for another update or recovery event.
+			if (retryCount < 2) {
+				clearTimeout(retryTimer);
+				retryTimer = setTimeout(() => refreshHistoryFromPush(), TIME.SECOND * 2 ** retryCount++);
 			}
 			return false;
 		}
@@ -173,7 +205,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	// A turn can complete with no stream attached — a Wait node finishing wakes the
 	// run server-side, long after this chat's SSE stream closed.
-	useAgentExecutionUpdates(
+	const refreshHistoryFromPush = useAgentExecutionUpdates(
 		{
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -182,13 +214,45 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
 		},
 		async () => {
-			// A live stream is already writing the transcript — let it finish. Checked
-			// again after the fetch, since a send can start while it is in flight.
-			if (isStreaming.value) return;
-			// Nobody asked for this refetch, so a transient failure must stay quiet.
-			await refreshHistory({ silent: true, abortIfStale: () => isStreaming.value });
+			// Defer history refreshes until the local stream ends to preserve streamed text.
+			if (isStreaming.value) {
+				refreshAfterStream = true;
+				return;
+			}
+			await refreshHistory({ silent: true });
+		},
+		() => {
+			historyVersion++;
+			retryCount = 0;
+			clearTimeout(retryTimer);
 		},
 	);
+
+	// Recover missed updates when the preview reopens, reconnects, becomes visible, or changes session.
+	function refresh() {
+		retryCount = 0;
+		clearTimeout(retryTimer);
+		refreshHistoryFromPush();
+	}
+	watch(
+		() => pushStore.isConnected,
+		(connected) => {
+			if (connected) refresh();
+		},
+	);
+	watch(visibility, (value) => {
+		if (value === 'visible') refresh();
+	});
+	watch(targetKey, () => {
+		historyVersion++;
+		streamVersion++;
+		refresh();
+	});
+	// Clear retry timers and ignore late responses when this chat closes.
+	onScopeDispose(() => {
+		disposed = true;
+		clearTimeout(retryTimer);
+	});
 
 	async function clearHistory(): Promise<void> {
 		try {
@@ -728,6 +792,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 
 		isStreaming.value = true;
+		streamVersion++;
 		const controller = new AbortController();
 		abortController.value = controller;
 		let settleStream: (() => void) | undefined;
@@ -790,6 +855,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			preserveTerminalStateOnAbort.delete(controller);
 			streamSettlements.delete(controller);
 			settleStream?.();
+			streamVersion++;
+			if (refreshAfterStream && !isStreaming.value) {
+				refreshAfterStream = false;
+				refreshHistoryFromPush();
+			}
 		}
 
 		return {
@@ -1043,6 +1113,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError,
 		warnings,
 		loadHistory,
+		refresh,
 		clearHistory,
 		sendMessage,
 		stopGenerating,
