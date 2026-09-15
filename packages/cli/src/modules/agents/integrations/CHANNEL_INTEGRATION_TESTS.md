@@ -77,11 +77,10 @@ it goes through the adapter:
   `platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json` so the
   test needs no network. The schema is **draft-04**, hence `ajv-draft-04`. Icon
   checks decode the bundled PNGs with `node:zlib` rather than adding a decoder.
-- `teams-discovery.service.test.ts` reuses the same Bot Framework signer idea as
-  the replay helper, but verifies the token *itself* rather than handing it to
-  the adapter: the setup step's claim is that real Bot Framework traffic reaches
-  the messaging endpoint, and only the signature proves it. Falsifying that
-  verification must fail the foreign-signature and wrong-issuer cases.
+- `teams-credential-check.service.test.ts` mints a Bot Framework token the way
+  the channel will, so the check fails for the same reasons the channel would.
+  A 200 carrying no token counts as a failure: anything short of a real token is
+  not evidence the channel works.
 - The bundled icons live in `platforms/teams/assets/`. `copyAgentIntegrationAssets`
   in `packages/cli/scripts/build.mjs` discovers every `platforms/*/assets`
   directory; a platform that hardcodes itself out of that list works in dev,

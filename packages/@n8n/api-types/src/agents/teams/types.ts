@@ -75,27 +75,6 @@ export interface TeamsAgentSetupState {
 }
 
 /**
- * Progress of the "connect the bot" step, which picks a bot up from the first
- * activity that reaches the messaging endpoint.
- */
-export type TeamsDiscoveryState =
-	| { status: 'idle' }
-	| { status: 'waiting' }
-	| { status: 'expired' }
-	| {
-			status: 'found';
-			/** Application (client) ID, read from the verified Bot Framework token. */
-			clientId: string;
-			/** Absent when the activity carried no tenant, e.g. from Web Chat. */
-			tenantId: string | null;
-			/**
-			 * An existing credential in this project already holding these values,
-			 * so the step can offer reuse instead of asking for a secret.
-			 */
-			existingCredentialId: string | null;
-	  };
-
-/**
  * Result of checking that a credential can actually reach Microsoft, before the
  * channel is connected. A wrong client secret otherwise surfaces only when the
  * first message fails.

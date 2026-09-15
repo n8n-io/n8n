@@ -6,28 +6,20 @@
  * an identity, so the credential is derived in step two instead of being asked
  * for up front. That inverts Discord's stepper, where connecting comes last.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nCheckbox, N8nCopyInput, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentTeamsIntegrationSettings,
 	ChatIntegrationDescriptor,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
-	TeamsDiscoveryState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
-import {
-	checkTeamsCredential,
-	fetchTeamsAppPackage,
-	getTeamsDiscovery,
-	getTeamsSetupState,
-	startTeamsDiscovery,
-	stopTeamsDiscovery,
-} from './api';
+import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -71,13 +63,9 @@ const rootStore = useRootStore();
 
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
-const DISCOVERY_POLL_MS = 2000;
 
 const setupState = ref<TeamsAgentSetupState | null>(null);
-const discovery = ref<TeamsDiscoveryState>({ status: 'idle' });
-const manualEntry = ref(false);
 const showEndpoint = ref(false);
-let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const availability = ref({
 	teamChannels: props.savedSettings?.teamChannels ?? false,
@@ -108,9 +96,11 @@ const messagingEndpointUrl = computed(() => {
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/teams`;
 });
 
-const discovered = computed(() => (discovery.value.status === 'found' ? discovery.value : null));
 const downloading = ref(false);
 const downloadError = ref('');
+// The manifest needs the bot's client ID, which the picked credential supplies
+// before it is connected, so the step does not wait on connecting.
+const canDownloadPackage = computed(() => Boolean(setupState.value?.botId));
 const credentialCheck = ref<TeamsCredentialCheck | null>(null);
 const checking = ref(false);
 
@@ -145,8 +135,8 @@ async function runCredentialCheck() {
 	}
 }
 
-// Re-checks whenever the picked credential changes, including the one discovery
-// adopted, so the gate never reflects a previous selection.
+// Re-checks whenever the picked credential changes, so the gate never reflects
+// a previous selection.
 // The deployment and the package are both built from the picked credential, so
 // they have to be refetched whenever it changes.
 watch(
@@ -155,23 +145,6 @@ watch(
 		await Promise.all([runCredentialCheck(), loadSetupState()]);
 	},
 	{ immediate: true },
-);
-
-/**
- * A bot reached us, but not the one this credential describes — usually the
- * endpoint was pasted onto the wrong bot.
- */
-const botMismatch = computed(
-	() =>
-		discovered.value !== null &&
-		setupState.value?.botId != null &&
-		discovered.value.clientId !== setupState.value.botId,
-);
-
-// The manifest needs the bot's client ID, which discovery supplies before the
-// credential is connected, so the step does not wait on connecting.
-const canDownloadPackage = computed(() =>
-	Boolean(setupState.value?.botId ?? discovered.value?.clientId),
 );
 
 async function downloadPackage() {
@@ -218,66 +191,10 @@ async function loadSetupState() {
 	}
 }
 
-function stopPolling() {
-	clearInterval(pollTimer);
-	pollTimer = undefined;
-}
-
-/**
- * Listens for as long as the stepper is open, renewing the window as it lapses.
- *
- * A button to start it would be a button whose only job is to arm something the
- * user already asked for by opening the setup. Opening on mount alone is not
- * enough either: creating the Azure bot in step one takes longer than one
- * window, so it has to renew rather than lapse into an error the user has to
- * clear.
- */
-async function pollDiscovery() {
-	try {
-		const state = await getTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
-		if (state.status === 'expired' && !manualEntry.value) {
-			await startTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
-			return;
-		}
-		discovery.value = state;
-	} catch {
-		// A blip should not end the wait; the next tick tries again.
-		return;
-	}
-	if (discovery.value.status === 'found') {
-		stopPolling();
-		// Saying we found a credential and then leaving the picker empty reads as
-		// a failure, so adopt it.
-		if (discovery.value.existingCredentialId) {
-			credentialId.value = discovery.value.existingCredentialId;
-		}
-	}
-}
-
-async function beginListening() {
-	await startTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
-	discovery.value = { status: 'waiting' };
-	stopPolling();
-	pollTimer = setInterval(pollDiscovery, DISCOVERY_POLL_MS);
-}
-
-function enterValuesManually() {
-	manualEntry.value = true;
-	stopPolling();
-	void stopTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
-}
-
-onMounted(async () => {
-	await loadSetupState();
-	if (props.mode === 'setup' && !props.connected) await beginListening();
-});
+onMounted(loadSetupState);
 // The package is minted from the connected credential, so it appears only once
 // connecting has succeeded.
 watch(() => props.connected, loadSetupState);
-onBeforeUnmount(() => {
-	stopPolling();
-	void stopTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
-});
 
 const steps = computed(() => [
 	{
@@ -299,14 +216,6 @@ const steps = computed(() => [
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),
 		description: i18n.baseText('agents.channels.teams.setup.install.description'),
-	},
-	// Last, because the message that confirms the path is the first real one the
-	// user sends — which needs the app installed. Testing earlier would mean
-	// hunting for Test in Web Chat in the Azure portal instead.
-	{
-		id: 'connect-bot',
-		title: i18n.baseText('agents.channels.teams.setup.connectBot.title'),
-		description: i18n.baseText('agents.channels.teams.setup.connectBot.description'),
 	},
 ]);
 
@@ -411,66 +320,6 @@ defineExpose({
 								{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBotHint') }}
 							</N8nText>
 						</div>
-					</div>
-
-					<!-- 3. Confirm the bot reaches n8n -->
-					<div v-else-if="step.id === 'connect-bot'" :class="$style.stepStack">
-						<N8nButton
-							v-if="setupState?.teamsChatDeepLink"
-							:href="setupState.teamsChatDeepLink"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="teams"
-							data-testid="teams-open-bot-link"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.connectBot.openBotButton') }}
-						</N8nButton>
-						<N8nText
-							v-if="setupState?.suggestedBotName"
-							:class="$style.hint"
-							size="small"
-							data-testid="teams-open-bot-hint"
-						>
-							{{
-								i18n.baseText('agents.channels.teams.setup.connectBot.openBotHint', {
-									interpolate: { botName: setupState.suggestedBotName },
-								})
-							}}
-						</N8nText>
-
-						<template v-if="manualEntry">
-							<N8nText :class="$style.hint" size="small" data-testid="teams-discovery-skipped">
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.skipped') }}
-							</N8nText>
-						</template>
-						<template v-else-if="botMismatch">
-							<N8nText size="small" :class="$style.error" data-testid="teams-discovery-mismatch">
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.mismatch') }}
-							</N8nText>
-						</template>
-						<template v-else-if="discovered">
-							<N8nText size="small" bold data-testid="teams-discovery-found">
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.found') }}
-							</N8nText>
-						</template>
-						<!-- Only once it really is listening; `idle` is the brief gap before. -->
-						<template v-else-if="discovery.status === 'waiting'">
-							<N8nText size="small" data-testid="teams-discovery-listening">
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.listening') }}
-							</N8nText>
-							<N8nText :class="$style.hint" size="small">
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.slow') }}
-							</N8nText>
-							<N8nButton
-								variant="ghost"
-								size="small"
-								data-testid="teams-discovery-manual"
-								@click="enterValuesManually"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.connectBot.manualLink') }}
-							</N8nButton>
-						</template>
 					</div>
 
 					<!-- 3. Choose where it's available -->
@@ -581,6 +430,19 @@ defineExpose({
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
 						</N8nText>
+
+						<!-- Where to go next, not a check: the first message speaks for itself. -->
+						<N8nButton
+							v-if="setupState?.teamsChatDeepLink"
+							:href="setupState.teamsChatDeepLink"
+							target="_blank"
+							variant="outline"
+							size="medium"
+							icon="teams"
+							data-testid="teams-open-chat"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.openChat') }}
+						</N8nButton>
 
 						<!--
 							Connecting is the last thing that happens, because the modal closes

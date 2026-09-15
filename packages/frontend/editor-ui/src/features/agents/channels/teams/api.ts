@@ -1,8 +1,4 @@
-import type {
-	TeamsAgentSetupState,
-	TeamsCredentialCheck,
-	TeamsDiscoveryState,
-} from '@n8n/api-types';
+import type { TeamsAgentSetupState, TeamsCredentialCheck } from '@n8n/api-types';
 import { getBrowserId } from '@n8n/constants';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -27,28 +23,6 @@ export const getTeamsSetupState = async (
 		`${integrationPath(projectId, agentId)}/setup`,
 		credentialId ? { credentialId } : undefined,
 	);
-
-/** Opens the window in which the endpoint will record the bot behind an activity. */
-export const startTeamsDiscovery = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<TeamsDiscoveryState> =>
-	await makeRestApiRequest(context, 'POST', `${integrationPath(projectId, agentId)}/discovery`);
-
-export const getTeamsDiscovery = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<TeamsDiscoveryState> =>
-	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/discovery`);
-
-export const stopTeamsDiscovery = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<TeamsDiscoveryState> =>
-	await makeRestApiRequest(context, 'DELETE', `${integrationPath(projectId, agentId)}/discovery`);
 
 export const checkTeamsCredential = async (
 	context: IRestApiContext,
