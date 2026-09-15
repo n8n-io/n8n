@@ -44,6 +44,7 @@ function isBinary(value: unknown): boolean {
 	);
 }
 
+/** Values both engines take, skipped so a large buffer or string is never copied to ask. */
 function alwaysTransferable(value: unknown): boolean {
 	if (value === null || value === undefined) return true;
 	const kind = typeof value;
@@ -74,6 +75,7 @@ function describe(value: unknown): string | undefined {
 
 function probe(state: WalkState, value: unknown): boolean {
 	if (Date.now() > state.deadline) {
+		// Report the value as accepted so the walk unwinds; `exhausted` is what the caller reads.
 		state.exhausted = true;
 		return true;
 	}
@@ -93,6 +95,7 @@ function defineMember(holder: object, key: string, value: unknown): void {
 	});
 }
 
+/** Holds the owner's data properties alone, so asking about one getter never runs another. */
 function dataReceiver(members: Member[]): object {
 	const receiver = {};
 	for (const member of members) {
@@ -115,6 +118,7 @@ function memberHolder(member: Member, receiverFor: () => object): object | undef
 		if (getter === undefined) {
 			return Object.defineProperty(holder, member.key, member.descriptor);
 		}
+		// Keep the getter's own object as its receiver, so it reads the siblings it expects.
 		const receiver = receiverFor();
 		return Object.defineProperty(holder, member.key, {
 			enumerable: true,
@@ -237,6 +241,10 @@ function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefine
 	return undefined;
 }
 
+/**
+ * Build the error for a value the engine refuses, naming the node and the key path of the
+ * member it refused. Asks the engine itself through `transferProbe`, within `budgetMs`.
+ */
 export function untransferableItemError(
 	value: unknown,
 	transferProbe: TransferProbe,

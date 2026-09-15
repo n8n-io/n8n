@@ -1184,6 +1184,8 @@ export class QuickJsBridge implements RuntimeBridge {
 		return result.value;
 	}
 
+	// The interrupt handler reads the wall clock, so time spent here counts against the
+	// expression's own deadline. Take half of what is left, at most.
 	private diagnosticBudget(): number {
 		return diagnosticBudgetMs(Math.min(...this.deadlines) - Date.now());
 	}

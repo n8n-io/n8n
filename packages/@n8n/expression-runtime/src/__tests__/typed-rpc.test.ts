@@ -956,7 +956,9 @@ describe('Typed RPC: a result the engine cannot transfer', () => {
 		}
 
 		expect((caught as Error).name).toBe('ExpressionError');
-		expect((caught as Error).message).toContain('cannot be used in an expression');
+		expect((caught as Error).message).toBe(
+			"Can't read item from node 'SourceNode': a value inside the item cannot be used in an expression (the search for it stopped early)",
+		);
 	});
 
 	it('raises the error a lazy read threw, even when the error carries a function', () => {

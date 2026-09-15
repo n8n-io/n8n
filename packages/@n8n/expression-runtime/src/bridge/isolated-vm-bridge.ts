@@ -45,6 +45,7 @@ const vmTransferProbe: TransferProbe = (value) => {
 	return true;
 };
 
+/** For `callHost`, whose guest side unwraps a copy. Drops the extra fields when they do not copy. */
 function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
 	try {
 		return new (getIvm().ExternalCopy)(sentinel);
@@ -58,6 +59,7 @@ function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
 	}
 }
 
+/** For the lazy callbacks, whose guest side reads the value as it stands. */
 function transferableSentinel(sentinel: ErrorSentinel): ErrorSentinel {
 	try {
 		new (getIvm().ExternalCopy)(sentinel).release();
@@ -384,11 +386,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * zod parse failures — are caught and returned as sentinels instead of
 	 * crossing the isolate boundary.
 	 *
-	 * Return-value note: the dispatcher returns plain, structured-clone-able
-	 * data. Results cross into the isolate through an ivm.Callback, which
-	 * copies them via the structured-clone algorithm — JSON-shaped values,
-	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
-	 * non-cloneable values.
+	 * Return-value note: the result is copied here, inside the callback body,
+	 * so a value the isolate refuses fails where it can be caught. The guest
+	 * unwraps the copy; a copy that fails becomes an error sentinel naming the
+	 * node and the key path of the refused value.
 	 *
 	 * @param data - Current workflow data
 	 * @private
