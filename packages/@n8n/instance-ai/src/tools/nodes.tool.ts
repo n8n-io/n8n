@@ -578,7 +578,7 @@ async function handleExecute(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute node ${await buildExecuteNodeLabel(context, input)}`,
+			message: await buildExecuteNodeLabel(context, input),
 			severity: 'warning' as const,
 		});
 	}

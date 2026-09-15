@@ -732,7 +732,7 @@ describe('nodes tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					requestId: expect.any(String),
-					message: 'Execute node n8n-nodes-base.set',
+					message: 'n8n-nodes-base.set',
 					severity: 'warning',
 				}),
 			);
@@ -800,22 +800,22 @@ describe('nodes tool', () => {
 
 		it('should use the display names of node, resource and operation in the confirmation message', async () => {
 			expect(await suspendMessageFor({ resource: 'sheet', operation: 'create' })).toBe(
-				'Execute node Google Sheets > Sheet Within Document > Create Sheet',
+				'Google Sheets > Sheet Within Document > Create Sheet',
 			);
 		});
 
 		it('should label a shared operation value by the resource it belongs to', async () => {
 			expect(await suspendMessageFor({ resource: 'spreadsheet', operation: 'create' })).toBe(
-				'Execute node Google Sheets > Document > Create Document',
+				'Google Sheets > Document > Create Document',
 			);
 		});
 
 		it('should fall back to the node defaults for omitted discriminators', async () => {
 			expect(await suspendMessageFor({ operation: 'create' })).toBe(
-				'Execute node Google Sheets > Sheet Within Document > Create Sheet',
+				'Google Sheets > Sheet Within Document > Create Sheet',
 			);
 			expect(await suspendMessageFor({})).toBe(
-				'Execute node Google Sheets > Sheet Within Document > Get Row(s)',
+				'Google Sheets > Sheet Within Document > Get Row(s)',
 			);
 		});
 
@@ -835,9 +835,7 @@ describe('nodes tool', () => {
 				{ suspend: suspendFn } as never,
 			);
 
-			expect(suspendFn.mock.calls[0][0].message).toBe(
-				'Execute node n8n-nodes-base.slack > message > post',
-			);
+			expect(suspendFn.mock.calls[0][0].message).toBe('n8n-nodes-base.slack > message > post');
 		});
 
 		it('should deny without suspending when the admin policy blocks workflow runs', async () => {
