@@ -1,9 +1,8 @@
 import { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';

@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import type { RedisClientService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,7 +8,6 @@ import {
 	ChatHubExecutionStore,
 	type ChatHubExecutionContext,
 } from '@/modules/chat-hub/chat-hub-execution-store.service';
-import type { RedisClientService } from '@/services/redis-client.service';
 
 const EXECUTION_ID = '12345678';
 const SESSION_ID = 'bbbbbbbb-2222-4000-8000-000000000002';

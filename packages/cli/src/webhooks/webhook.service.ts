@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { HookContext, WebhookContext } from 'n8n-core';
 import {
@@ -26,7 +27,6 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
-import { CacheService } from '@/services/cache/cache.service';
 
 import type { Method } from './webhook.types';
 

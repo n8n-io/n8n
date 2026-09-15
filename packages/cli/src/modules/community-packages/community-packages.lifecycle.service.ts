@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
@@ -10,9 +11,6 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';

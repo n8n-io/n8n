@@ -5,9 +5,8 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/services-common';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { CredentialsService } from './credentials.service';
 import {

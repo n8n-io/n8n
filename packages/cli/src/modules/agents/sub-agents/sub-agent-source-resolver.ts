@@ -7,9 +7,8 @@ import {
 	type SubAgentSource,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 import { UserError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';

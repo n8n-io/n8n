@@ -1,8 +1,7 @@
 import { Service } from '@n8n/di';
 import { lifecycleEventBatchSchema } from '@n8n/engine';
+import { BadRequestError } from '@n8n/services-common';
 import type { Request, Response } from 'express';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { EngineLifecycleEventPushRelay } from './engine-lifecycle-event-push-relay';
 

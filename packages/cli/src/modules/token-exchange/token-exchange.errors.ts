@@ -1,5 +1,4 @@
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError, BadRequestError } from '@n8n/services-common';
 
 import type { TokenExchangeFailureReason } from './token-exchange.types';
 

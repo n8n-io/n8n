@@ -1,7 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { FavoritesController } from '../favorites.controller';

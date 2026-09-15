@@ -1,12 +1,11 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
+import type { CacheService } from '@n8n/services-common';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import type { JSONWebKeySet, JWTPayload, KeyObject } from 'jose';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';

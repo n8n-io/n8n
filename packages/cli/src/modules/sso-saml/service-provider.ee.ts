@@ -1,8 +1,7 @@
 import type { SamlPreferences } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import type { ServiceProviderInstance } from 'samlify';
-
-import { UrlService } from '@/services/url.service';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 

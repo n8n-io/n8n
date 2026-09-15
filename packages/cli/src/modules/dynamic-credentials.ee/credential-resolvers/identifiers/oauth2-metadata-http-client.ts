@@ -2,12 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { IHttpRequestOptions, IN8nHttpFullResponse } from 'n8n-workflow';
 import type { z } from 'zod';
 
 import { IdentifierValidationError } from './identifier-interface';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 const REQUEST_TIMEOUT = 10 * Time.seconds.toMilliseconds;
 const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour

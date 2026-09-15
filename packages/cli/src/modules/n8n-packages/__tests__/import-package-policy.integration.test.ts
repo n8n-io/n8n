@@ -22,12 +22,12 @@ import type {
 } from '@n8n/decorators';
 import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/services-common';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { createOwner } from '@test-integration/db/users';

@@ -1,9 +1,8 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';

@@ -19,12 +19,12 @@ import {
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { BadRequestError } from '@n8n/services-common';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';

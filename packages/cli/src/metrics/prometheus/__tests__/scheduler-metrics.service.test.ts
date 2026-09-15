@@ -2,14 +2,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
+import type { CacheService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 vi.mock('prom-client');
 

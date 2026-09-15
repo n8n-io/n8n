@@ -6,8 +6,7 @@ import {
 } from '@n8n/api-types';
 import { type DeploymentKey } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decorators';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/services-common';
 
 import { KeyManagerService } from '@/encryption/key-manager.service';
 

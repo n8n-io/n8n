@@ -1,8 +1,7 @@
+import { BadRequestError } from '@n8n/services-common';
 import { jsonParse } from 'n8n-workflow';
 import path from 'node:path';
 import { Parser, type ReadEntry } from 'tar';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageReader } from '../package-reader';

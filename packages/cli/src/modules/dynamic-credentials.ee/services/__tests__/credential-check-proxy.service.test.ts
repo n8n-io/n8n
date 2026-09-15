@@ -1,3 +1,4 @@
+import type { UrlService } from '@n8n/services-common';
 import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import type {
@@ -12,7 +13,6 @@ import type {
 import type { CredentialTypes } from '@/credential-types';
 import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { NodeTypes } from '@/node-types';
-import type { UrlService } from '@/services/url.service';
 import type { ExecutionContextService } from 'n8n-core';
 import { CredentialsEntity } from '@n8n/db';
 

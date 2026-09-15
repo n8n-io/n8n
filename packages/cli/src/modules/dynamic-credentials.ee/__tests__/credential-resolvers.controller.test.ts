@@ -1,12 +1,9 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverValidationError, type ICredentialResolver } from '@n8n/decorators';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
 import { IdentifierValidationError } from '../credential-resolvers/identifiers/identifier-interface';

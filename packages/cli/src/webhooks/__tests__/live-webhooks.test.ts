@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import { WebhookNotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 import type {
 	IConnections,
@@ -25,7 +26,6 @@ import {
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type { NodeTypes } from '@/node-types';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';

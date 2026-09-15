@@ -17,18 +17,20 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
+import {
+	BadRequestError,
+	ContentTooLargeError,
+	InternalServerError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/services-common';
 import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
 import { STREAM_SEPARATOR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';

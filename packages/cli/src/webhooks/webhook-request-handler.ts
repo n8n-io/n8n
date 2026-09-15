@@ -1,12 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { WebhookNotFoundError } from '@n8n/services-common';
 import type express from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { PrometheusWebhookAndFormMetricsService } from '@/metrics/prometheus/webhook-and-form-metrics.service';
 import * as ResponseHelper from '@/response-helper';
 import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';

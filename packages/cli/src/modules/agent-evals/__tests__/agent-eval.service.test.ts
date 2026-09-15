@@ -8,10 +8,9 @@ import type {
 	AgentEvalRunRepository,
 	User,
 } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 

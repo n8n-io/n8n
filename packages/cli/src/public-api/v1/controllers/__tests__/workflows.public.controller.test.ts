@@ -1,9 +1,9 @@
 import type { UpdateWorkflowPublicDto, UpdateWorkflowQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

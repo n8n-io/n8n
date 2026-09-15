@@ -18,6 +18,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { BadRequestError, NotFoundError, TransferWorkflowError } from '@n8n/services-common';
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
@@ -35,9 +36,6 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';

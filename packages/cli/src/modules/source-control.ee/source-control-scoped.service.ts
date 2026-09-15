@@ -9,9 +9,9 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { ForbiddenError } from '@n8n/services-common';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { SourceControlContextFactory } from './source-control-context.factory';

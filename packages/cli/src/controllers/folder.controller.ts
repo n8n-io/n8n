@@ -20,13 +20,11 @@ import {
 	Licensed,
 	Middleware,
 } from '@n8n/decorators';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/services-common';
 import { NextFunction, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

@@ -27,14 +27,12 @@ import {
 	Post,
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
+import { ForbiddenError, NotFoundError, UrlService } from '@n8n/services-common';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UserRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')

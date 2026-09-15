@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { ServiceUnavailableError } from '@n8n/services-common';
 import type { DistributiveOmit } from '@n8n/utils/types';
 import { InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 

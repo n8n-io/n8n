@@ -6,6 +6,7 @@ import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { AuthError, BadRequestError, CacheService, UrlService } from '@n8n/services-common';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -17,12 +18,8 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,

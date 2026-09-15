@@ -16,11 +16,8 @@ import {
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { randomUUID } from 'node:crypto';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 /** `type` lets the prompt name a personal project without its owner's name. */
 export type AiPreferenceProjectRef = { id: string; name: string; type?: Project['type'] };

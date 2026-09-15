@@ -4,12 +4,12 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { User, PublicUser, AuthenticatedRequest } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { PostHogClient } from '@/posthog';

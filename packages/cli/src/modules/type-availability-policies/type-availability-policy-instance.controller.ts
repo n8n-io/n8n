@@ -18,9 +18,8 @@ import {
 	Put,
 	RestController,
 } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { NODE_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';

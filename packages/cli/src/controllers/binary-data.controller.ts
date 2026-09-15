@@ -1,6 +1,7 @@
 import { BinaryDataQueryDto, BinaryDataSignedQueryDto, ViewableMimeTypes } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Query, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/services-common';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import {
@@ -11,7 +12,6 @@ import {
 } from 'n8n-core';
 
 import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/binary-data')
 export class BinaryDataController {

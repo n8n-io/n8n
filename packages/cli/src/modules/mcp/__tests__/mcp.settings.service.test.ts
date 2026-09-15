@@ -2,14 +2,14 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import type { CacheService } from '@n8n/services-common';
+import { BadRequestError } from '@n8n/services-common';
 import type { EntityManager, FindOperator } from '@n8n/typeorm';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { CacheService } from '@/services/cache/cache.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';

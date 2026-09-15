@@ -6,12 +6,12 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { RedisClientService } from '@n8n/services-common';
 import type { Cluster, Redis } from 'ioredis';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { RedisClientService } from '@/services/redis-client.service';
 import { OnShutdown } from '@n8n/decorators';
 
 const COMMAND_TIMEOUT_MS = 5_000;

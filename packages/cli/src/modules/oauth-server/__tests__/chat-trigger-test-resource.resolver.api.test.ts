@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/services-common';
 import type { INode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -16,9 +17,6 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';

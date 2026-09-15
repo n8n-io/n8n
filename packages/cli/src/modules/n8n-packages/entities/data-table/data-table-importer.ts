@@ -1,8 +1,8 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/services-common';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';

@@ -34,10 +34,9 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { ForbiddenError, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	encodeNextCursor,

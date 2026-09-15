@@ -8,9 +8,9 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
 import {

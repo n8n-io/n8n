@@ -14,13 +14,12 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, CacheService } from '@n8n/services-common';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 import { PasswordUtility } from './password.utility';
 

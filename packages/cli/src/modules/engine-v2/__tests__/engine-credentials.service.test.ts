@@ -1,11 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import { ForbiddenError, NotFoundError } from '@n8n/services-common';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 
 import type { ResolveCredentialRequest } from '../engine-credentials.contract';

@@ -38,10 +38,9 @@ import {
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 

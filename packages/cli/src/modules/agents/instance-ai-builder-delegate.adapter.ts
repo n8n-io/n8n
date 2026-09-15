@@ -10,10 +10,10 @@ import {
 	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
+import { ForbiddenError } from '@n8n/services-common';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';

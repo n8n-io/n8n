@@ -3,9 +3,9 @@ import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 

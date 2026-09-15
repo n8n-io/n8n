@@ -1,7 +1,6 @@
+import type { CacheService } from '@n8n/services-common';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 import { CollaborationState } from '../collaboration.state';
 

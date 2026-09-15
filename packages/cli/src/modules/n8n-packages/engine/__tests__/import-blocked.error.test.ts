@@ -1,5 +1,4 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ConflictError, UnprocessableRequestError } from '@n8n/services-common';
 
 import type { BlockingIssue } from '../../n8n-packages.types';
 import { toImportBlockedError } from '../import-blocked.error';

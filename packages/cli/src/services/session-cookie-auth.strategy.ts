@@ -1,11 +1,11 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
+import { AuthError } from '@n8n/services-common';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 

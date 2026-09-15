@@ -1,8 +1,7 @@
 import type { ChatAttachment } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/services-common';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';

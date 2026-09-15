@@ -8,11 +8,11 @@ import type {
 	AgentEvalRunRepository,
 	User,
 } from '@n8n/db';
+import { NotFoundError } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
 import type { Agent } from '@/modules/agents/entities/agent.entity';

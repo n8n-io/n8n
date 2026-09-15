@@ -4,6 +4,7 @@ import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
@@ -12,7 +13,6 @@ import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } 
 import path from 'path';
 
 import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';

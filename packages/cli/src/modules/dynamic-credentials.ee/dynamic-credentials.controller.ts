@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BadRequestError, NotFoundError, UrlService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -9,11 +10,8 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';

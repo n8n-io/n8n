@@ -6,6 +6,7 @@ import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { RoutingNode } from 'n8n-core';
 import {
 	type ILoadOptionsFunctions,
@@ -30,8 +31,6 @@ import { DynamicNodeParametersService } from '../dynamic-node-parameters.service
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
 

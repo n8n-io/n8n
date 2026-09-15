@@ -8,6 +8,7 @@ import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	getParentNodes,
@@ -23,9 +24,6 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';

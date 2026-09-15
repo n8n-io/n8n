@@ -1,4 +1,4 @@
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/services-common';
 
 /**
  * An SSO login denied because role mapping resolved to "Block access".

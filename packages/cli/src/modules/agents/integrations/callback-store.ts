@@ -1,8 +1,7 @@
+import type { CacheService } from '@n8n/services-common';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { LockNamespace, type LockService } from '@n8n/backend-common';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 export interface CallbackPayload {
 	actionId: string;
