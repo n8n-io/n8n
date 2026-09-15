@@ -392,20 +392,18 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 		</div>
 
 		<div :class="$style.section">
-			<div :class="$style.sectionInner">
-				<div v-if="loading" :class="$style.loading">
-					{{ i18n.baseText('generic.loadingEllipsis') }}
-				</div>
-				<SessionTimelineTable
-					v-else
-					:items="items"
-					:idle-ranges="idleRanges"
-					:selected-index="highlightedIndex"
-					:visible-kinds="selectedFilters"
-					:search-query="searchQuery"
-					@select="selectTimelineItem"
-				/>
+			<div v-if="loading" :class="$style.loading">
+				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
+			<SessionTimelineTable
+				v-else
+				:items="items"
+				:idle-ranges="idleRanges"
+				:selected-index="highlightedIndex"
+				:visible-kinds="selectedFilters"
+				:search-query="searchQuery"
+				@select="selectTimelineItem"
+			/>
 		</div>
 	</div>
 </template>
@@ -453,11 +451,6 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	flex: 1;
 	min-height: 0;
 	background-color: var(--background--subtle);
-}
-.sectionInner {
-	width: 100%;
-	max-width: 75ch;
-	margin: 0 auto;
 }
 .loading {
 	padding: var(--spacing--sm);
