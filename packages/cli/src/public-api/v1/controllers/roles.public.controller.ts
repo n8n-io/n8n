@@ -6,6 +6,7 @@ import {
 	RoleListQueryPublicDto,
 	RolePublicDto,
 	UpdateRolePublicDto,
+	roleSlugParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -96,7 +97,7 @@ export class RolesPublicController {
 		};
 	}
 
-	@Get('/:slug')
+	@Get('/:roleSlug')
 	@ApiKeyScope('role:read')
 	@ApiSummary('Retrieve a role')
 	@ApiDescription(
@@ -108,11 +109,11 @@ export class RolesPublicController {
 	async getRole(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug') slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Query query: RoleListQueryPublicDto,
 	): Promise<RoleGetPublicDto> {
 		const { withUsageCount } = query;
-		const role = await this.roleService.getRole(slug, withUsageCount);
+		const role = await this.roleService.getRole(roleSlug, withUsageCount);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -150,7 +151,7 @@ export class RolesPublicController {
 		return toRolePublicDto({ ...role, roleType: createRole.roleType });
 	}
 
-	@Put('/:slug')
+	@Put('/:roleSlug')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Update a custom role')
@@ -163,10 +164,10 @@ export class RolesPublicController {
 	async updateRole(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug') slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Body updateRole: UpdateRolePublicDto,
 	): Promise<RolePublicDto> {
-		const role = await this.roleService.getRole(slug);
+		const role = await this.roleService.getRole(roleSlug);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -178,7 +179,7 @@ export class RolesPublicController {
 		});
 
 		const result = await this.roleService.updateCustomRole({
-			slug,
+			slug: roleSlug,
 			newRole: updateRole,
 			userId: req.user.id,
 		});
@@ -186,7 +187,7 @@ export class RolesPublicController {
 		return toRolePublicDto({ ...result, roleType: role.roleType });
 	}
 
-	@Delete('/:slug')
+	@Delete('/:roleSlug')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	@ApiSummary('Delete a custom role')
@@ -199,10 +200,10 @@ export class RolesPublicController {
 	async deleteRole(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('slug') slug: string,
+		@Param('roleSlug', roleSlugParamSchema) roleSlug: string,
 		@Query query: RoleDeleteQueryDto,
 	): Promise<RolePublicDto> {
-		const role = await this.roleService.getRole(slug);
+		const role = await this.roleService.getRole(roleSlug);
 		if (!isPublicRole(role)) {
 			throw new NotFoundError('Role not found');
 		}
@@ -220,7 +221,7 @@ export class RolesPublicController {
 			: undefined;
 
 		const result = await this.roleService.removeCustomRole({
-			slug,
+			slug: roleSlug,
 			reassignRoleSlug,
 			userId: req.user.id,
 		});

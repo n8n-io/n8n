@@ -1,0 +1,78 @@
+# Moves open PRs in n8n-io/n8n-private off a bundle branch's base and back onto the bundle
+# branch: master -> bundle/2.x, 1.x -> bundle/1.x.
+#
+# When a bundle branch is deleted, GitHub retargets every open PR that pointed at it to that
+# branch's own base. Re-creating the branch does not undo this, so the fixes sit on master
+# until they are moved back by hand.
+#
+# Called by sec-sync-bundle-branches.yml once its sync has run, so the bundle branch is known
+# to exist by the time the PRs are moved. Also dispatchable on its own.
+#
+# Every open PR on a bundle branch's base is treated as a fix that belongs on the bundle
+# branch. The one exception is the bundle cut PR itself (bundle/2.x -> master), which is
+# excluded by its head branch — it must keep pointing at the base.
+
+name: 'Security: Retarget bundle PRs'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+# Least privilege by default; the retarget job opts into exactly what it needs.
+permissions: {}
+
+jobs:
+  retarget:
+    name: Retarget onto ${{ matrix.bundle }}
+    if: github.repository == 'n8n-io/n8n-private'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # move a PR's base branch
+    strategy:
+      fail-fast: false # one branch failing must not hold back the other
+      matrix:
+        include:
+          - base: 'master'
+            bundle: 'bundle/2.x'
+          - base: '1.x'
+            bundle: 'bundle/1.x'
+    steps:
+      - name: Move open PRs from ${{ matrix.base }} onto ${{ matrix.bundle }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ matrix.base }}
+          BUNDLE: ${{ matrix.bundle }}
+        run: |
+          # Nothing to move onto a branch that is not there; the sync re-creates it.
+          if ! gh api "repos/$REPO/git/ref/heads/$BUNDLE" --silent 2>/dev/null; then
+            echo "$BUNDLE does not exist; nothing to retarget."
+            exit 0
+          fi
+
+          # `bundle/*` heads are the cut PRs, which target the base on purpose.
+          PRS=$(gh pr list --repo "$REPO" --base "$BASE" --state open --limit 200 \
+            --json number,headRefName \
+            -q '.[] | select(.headRefName | startswith("bundle/") | not) | .number')
+
+          if [ -z "$PRS" ]; then
+            echo "No PRs on $BASE to move onto $BUNDLE."
+            exit 0
+          fi
+
+          FAILED=0
+          for PR in $PRS; do
+            if gh pr edit "$PR" --repo "$REPO" --base "$BUNDLE"; then
+              echo "ok   #$PR -> $BUNDLE"
+            else
+              echo "FAIL #$PR" >&2
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          # PR numbers only: a title or branch name hints at the vulnerability.
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error title=Retarget incomplete::$FAILED PR(s) could not be moved onto $BUNDLE."
+            exit 1
+          fi

@@ -158,6 +158,8 @@ export async function buildMcpToolkit(
 		);
 	}
 
+	const attribution = config.registryCredential?.connection.attribution;
+
 	try {
 		const tools = mcpTools.map((tool) => {
 			const prefixedName = buildMcpToolName(node.name, tool.name);
@@ -177,6 +179,7 @@ export async function buildMcpToolkit(
 						},
 						() => ctx.getExecutionCancelSignal(),
 					),
+					attribution,
 				),
 				ctx,
 			);

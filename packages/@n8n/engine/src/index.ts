@@ -29,6 +29,7 @@ export type {
 	LifecycleEventBatch,
 } from './lifecycle-events';
 
+export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
 export { deriveLoops, isBatchStepConfig } from './graph';

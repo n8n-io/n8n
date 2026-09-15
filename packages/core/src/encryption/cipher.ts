@@ -1,3 +1,4 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
@@ -7,7 +8,7 @@ import { assertUnreachable } from '@/utils/assertions';
 
 import { CipherAes256CBC } from './aes-256-cbc';
 import { CipherAes256GCM } from './aes-256-gcm';
-import { EncryptionKeyProxy } from './encryption-key-proxy';
+import { EncryptionKeyProxy, KeyInfo } from './encryption-key-proxy';
 import { CipherAlgorithm } from './interface';
 
 /**
@@ -18,8 +19,17 @@ import { CipherAlgorithm } from './interface';
  */
 const KEY_ID_PATTERN = /^[A-Za-z0-9_-]{1,36}$/;
 
+/** Latency signals emitted by the read path for observability. */
+export type CipherMetricsEventMap = {
+	decrypt: { algorithm: CipherAlgorithm; durationMs: number };
+	'key-lookup': { source: 'prefixed' | 'legacy'; durationMs: number };
+};
+
 @Service()
 export class Cipher {
+	/** Latency events for the decrypt path. A cli-side collector turns these into metrics. */
+	readonly events = new TypedEmitter<CipherMetricsEventMap>();
+
 	/**
 	 * No-prefix descriptors whose key material was already verified to unwrap
 	 * to the instance key. The module memoizes its descriptor, so verifying
@@ -61,36 +71,34 @@ export class Cipher {
 			return this.encryptWithKey(plaintext, customEncryptionKey, 'aes-256-cbc');
 		}
 
-		if (this.encryptionKeyProxy.isConfigured()) {
-			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
+		const keyInfo = await this.encryptionKeyProxy.getActiveKey();
 
-			if (keyInfo.format === 'no-prefix') {
-				// No-prefix output must stay byte-compatible with the pre-rotation
-				// format, which readers decrypt with the instance key directly.
-				if (!this.verifiedLegacyDescriptors.has(keyInfo)) {
-					if (
-						this.decryptDEKWithInstanceKey(keyInfo.value) !== this.instanceSettings.encryptionKey ||
-						keyInfo.algorithm !== 'aes-256-cbc'
-					) {
-						throw new UnexpectedError(
-							'A no-prefix encryption descriptor must resolve to the instance key',
-						);
-					}
-					this.verifiedLegacyDescriptors.add(keyInfo);
+		if (keyInfo.format === 'no-prefix') {
+			// No-prefix output must stay byte-compatible with the pre-rotation
+			// format, which readers decrypt with the instance key directly.
+			if (!this.verifiedLegacyDescriptors.has(keyInfo)) {
+				if (
+					this.decryptDEKWithInstanceKey(keyInfo.value) !== this.instanceSettings.encryptionKey ||
+					keyInfo.algorithm !== 'aes-256-cbc'
+				) {
+					throw new UnexpectedError(
+						'A no-prefix encryption descriptor must resolve to the instance key',
+					);
 				}
-				return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+				this.verifiedLegacyDescriptors.add(keyInfo);
 			}
-
-			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-			const ciphertext = this.encryptWithKey(
-				plaintext,
-				plaintextKey,
-				keyInfo.algorithm as CipherAlgorithm,
-			);
-			return `${keyInfo.id}:${ciphertext}`;
 		}
 
-		return this.encryptWithKey(plaintext, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+		const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
+		const ciphertext = this.encryptWithKey(
+			plaintext,
+			plaintextKey,
+			keyInfo.algorithm as CipherAlgorithm,
+		);
+		if (keyInfo.format === 'no-prefix') {
+			return ciphertext;
+		}
+		return `${keyInfo.id}:${ciphertext}`;
 	}
 
 	/**
@@ -103,25 +111,69 @@ export class Cipher {
 			return this.decryptWithKey(data, customEncryptionKey, 'aes-256-cbc');
 		}
 
-		if (this.encryptionKeyProxy.isConfigured()) {
-			const colonIdx = data.indexOf(':');
-			if (colonIdx !== -1) {
-				const keyId = data.slice(0, colonIdx);
-				if (KEY_ID_PATTERN.test(keyId)) {
-					const ciphertext = data.slice(colonIdx + 1);
-					const keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
-					if (!keyInfo) throw new UnexpectedError(`Encryption key not found: ${keyId}`);
-					const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
-					return this.decryptWithKey(
-						ciphertext,
-						plaintextKey,
-						keyInfo.algorithm as CipherAlgorithm,
-					);
-				}
+		// Decrypt latency covers the whole read: key lookup, DEK unwrap, and the AES step.
+		const start = performance.now();
+
+		let keyInfo: KeyInfo | null = null;
+		let ciphertext = data;
+
+		const colonIdx = data.indexOf(':');
+		if (colonIdx !== -1) {
+			const keyId = data.slice(0, colonIdx);
+			if (KEY_ID_PATTERN.test(keyId)) {
+				ciphertext = data.slice(colonIdx + 1);
+				keyInfo = await this.lookupKey(
+					'prefixed',
+					async () => await this.encryptionKeyProxy.getKeyById(keyId),
+				);
+				if (!keyInfo) throw new UnexpectedError(`Encryption key not found: ${keyId}`);
 			}
+		} else {
+			keyInfo = await this.lookupKey(
+				'legacy',
+				async () => await this.encryptionKeyProxy.getLegacyKey(),
+			);
 		}
 
-		return this.decryptWithKey(data, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+		if (!keyInfo) throw new UnexpectedError('Encryption key not found!');
+
+		const algorithm = keyInfo.algorithm as CipherAlgorithm;
+		try {
+			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
+			return this.decryptWithKey(ciphertext, plaintextKey, algorithm);
+		} finally {
+			// Emit even on failure so the metric also captures slow or failing decryptions.
+			this.emitMetric('decrypt', { algorithm, durationMs: performance.now() - start });
+		}
+	}
+
+	/** Times a key lookup and emits its latency, whether the lookup succeeds or fails. */
+	private async lookupKey(
+		source: 'prefixed' | 'legacy',
+		lookup: () => Promise<KeyInfo | null>,
+	): Promise<KeyInfo | null> {
+		const start = performance.now();
+		try {
+			return await lookup();
+		} finally {
+			// Emit even on failure so the metric also captures slow or failing lookups.
+			this.emitMetric('key-lookup', { source, durationMs: performance.now() - start });
+		}
+	}
+
+	/**
+	 * Best-effort metrics emit. A misbehaving listener must never break or mask a
+	 * decrypt, so listener errors are swallowed.
+	 */
+	private emitMetric<E extends keyof CipherMetricsEventMap>(
+		event: E,
+		payload: CipherMetricsEventMap[E],
+	): void {
+		try {
+			this.events.emit(event, payload);
+		} catch {
+			// Telemetry is best-effort; ignore listener failures.
+		}
 	}
 
 	/**
@@ -142,6 +194,7 @@ export class Cipher {
 	/**
 	 * Encrypts a data-encryption key (DEK) with the instance key using AES-256-GCM.
 	 * DEKs are always wrapped with GCM for authenticated encryption and integrity.
+	 * Signing-secret rows in `deployment_key` reuse this same wrapping.
 	 */
 	encryptDEKWithInstanceKey(data: string): string {
 		return this.encryptWithKey(data, this.dekWrappingKey, 'aes-256-gcm');

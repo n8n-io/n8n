@@ -1,5 +1,5 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { TelemetryOptions } from 'ai';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { buildAiSdkTelemetry } from './telemetry-options';
 import { Telemetry } from '../../sdk/telemetry';
@@ -56,7 +56,7 @@ function getToolInputSchema(tool: BuiltTool | BuiltProviderTool): unknown {
 		return undefined;
 	}
 
-	return isZodSchema(tool.inputSchema) ? zodToJsonSchema(tool.inputSchema) : tool.inputSchema;
+	return isZodSchema(tool.inputSchema) ? zodSchemaToJsonSchema(tool.inputSchema) : tool.inputSchema;
 }
 
 function summarizeToolForTelemetry(tool: BuiltTool): Record<string, unknown> {

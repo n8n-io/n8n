@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
@@ -54,14 +55,9 @@ function isEnabledForProvider(
 	return config[provider] !== false;
 }
 
-/** Provider prefix of a `provider/model` id (e.g. `anthropic` from `anthropic/claude-...`). */
-export function getModelProvider(modelId: string): string {
-	return modelId.split('/')[0];
-}
-
 /** Providers that speak the Anthropic Messages API (including Vertex Claude). */
 export function isAnthropicMessagesProvider(modelId: string): boolean {
-	const provider = getModelProvider(modelId);
+	const provider = getProviderPrefix(modelId);
 	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
 }
 
@@ -163,7 +159,7 @@ export function buildCallPromptCacheOptions(
 	modelId: string,
 	context: { agentName: string; instructions: string },
 ): ProviderOptions | undefined {
-	if (getModelProvider(modelId) !== 'openai' || !isEnabledForProvider(config, 'openai')) {
+	if (getProviderPrefix(modelId) !== 'openai' || !isEnabledForProvider(config, 'openai')) {
 		return undefined;
 	}
 

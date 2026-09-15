@@ -209,6 +209,6 @@ export class NodeSearchEngine {
 	static getAiConnectionTypes(): NodeConnectionType[] {
 		return Object.values(NodeConnectionTypes).filter((type) =>
 			NodeSearchEngine.isAiConnectionType(type),
-		) as NodeConnectionType[];
+		);
 	}
 }

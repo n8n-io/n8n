@@ -1,10 +1,11 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {
@@ -392,7 +393,9 @@ function isActionableConfirmation(tc: InstanceAiToolCallState): boolean {
 	);
 }
 
-export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): string[] {
+export function collectConfirmationRequestIds(
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
+): string[] {
 	const requestIds: string[] = [];
 	for (const message of messages) {
 		if (!message.agentTree) continue;
@@ -414,7 +417,7 @@ export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): st
  * means "resolved", not "expired", so relabeling them would rewrite history.
  */
 export function markExpiredConfirmations(
-	messages: InstanceAiMessage[],
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
 	liveRequestIds: Set<string>,
 ): void {
 	for (const message of messages) {

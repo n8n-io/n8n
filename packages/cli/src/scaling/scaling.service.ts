@@ -14,6 +14,7 @@ import assert, { strict } from 'node:assert';
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
@@ -64,6 +65,7 @@ export class ScalingService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly webhookResponseRelay: WebhookResponseRelay,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -202,7 +204,17 @@ export class ScalingService {
 			errorStack: error.stack ?? '',
 		};
 
-		await job.progress(msg);
+		try {
+			await job.progress(msg);
+		} catch (progressError) {
+			// e.g. the job key was already deleted by a stall sweep - do not let
+			// this secondary error mask the original one from being reported below
+			this.logger.warn(`Failed to notify main of failed execution ${executionId} (job ${job.id})`, {
+				error: progressError,
+				executionId,
+				jobId: job.id,
+			});
+		}
 
 		this.errorReporter.error(error, { executionId });
 
@@ -768,7 +780,7 @@ export class ScalingService {
 			return waitMs;
 		}
 
-		await this.executionRepository.markAsCrashed(danglingIds);
+		await this.executionCrashService.markAsCrashed(danglingIds);
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,
