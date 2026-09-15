@@ -140,7 +140,7 @@ test.describe(
 			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 
-		test('removes the group when the last member is deleted', async ({ n8n }) => {
+		test('keeps the group when the last real member is deleted', async ({ n8n }) => {
 			await n8n.canvas.selectNodes(['Set A', 'Set B']);
 			await n8n.canvas.selectionToolbar.groupButton().click();
 			await n8n.canvas.deselectAll();
@@ -148,7 +148,8 @@ test.describe(
 
 			await n8n.canvas.deleteNodeFromContextMenu('Set B');
 			await n8n.canvas.deleteNodeFromContextMenu('Set A');
-			await expect(n8n.canvas.getNodeGroups()).toHaveCount(0);
+			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
+			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 
 		test('keeps the group when one of three members is deleted', async ({ n8n }) => {
