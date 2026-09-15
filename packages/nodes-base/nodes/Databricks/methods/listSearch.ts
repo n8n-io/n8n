@@ -13,6 +13,7 @@ import {
 	makePermissionErrorLegible,
 	sanitizeApiMessage,
 } from '../actions/helpers';
+import type { DatabricksJobRun } from '../actions/interfaces';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
@@ -476,6 +477,73 @@ export async function getJobs(
 			...(response.jobs ?? [])
 				.filter((job) => (job.settings?.name ?? '').toLowerCase().includes(filterLower))
 				.map(toListItem),
+		);
+		pageToken = response.next_page_token;
+	}
+
+	return { results, paginationToken: pageToken };
+}
+
+const RUNS_PAGE_SIZE = 25;
+const RUNS_SEARCH_MAX_PAGES = 10;
+
+type RunsListPage = { runs?: DatabricksJobRun[]; next_page_token?: string };
+
+async function fetchRunsPage(
+	context: ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	pageToken?: string,
+): Promise<RunsListPage> {
+	const qs: IDataObject = { limit: RUNS_PAGE_SIZE };
+	if (pageToken) qs.page_token = pageToken;
+	return await listRequest<RunsListPage>(context, credentialType, {
+		method: 'GET',
+		url: `${host}/api/2.2/jobs/runs/list`,
+		qs,
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
+}
+
+function describeRun(run: DatabricksJobRun): string {
+	const state = run.status?.state ?? run.state?.life_cycle_state;
+	const outcome = run.status?.termination_details?.code ?? run.state?.result_state;
+	const startedAt = run.start_time
+		? `${new Date(run.start_time).toISOString().replace('T', ' ').slice(0, 19)} UTC`
+		: undefined;
+	return [run.run_name || `Job ${run.job_id}`, outcome ?? state, startedAt, `Run ${run.run_id}`]
+		.filter(Boolean)
+		.join(' · ');
+}
+
+export async function getRuns(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const credentialType = getActiveCredentialType(this);
+	const host = await getHost(this, credentialType);
+	const toListItem = (run: DatabricksJobRun) => ({
+		name: describeRun(run),
+		value: String(run.run_id),
+		url: run.run_page_url,
+	});
+
+	if (!filter) {
+		const page = await fetchRunsPage(this, credentialType, host, paginationToken);
+		return { results: (page.runs ?? []).map(toListItem), paginationToken: page.next_page_token };
+	}
+
+	const filterLower = filter.toLowerCase();
+	const results: INodeListSearchResult['results'] = [];
+	let pageToken = paginationToken;
+	for (let page = 0; page < RUNS_SEARCH_MAX_PAGES && (page === 0 || pageToken); page++) {
+		const response = await fetchRunsPage(this, credentialType, host, pageToken);
+		results.push(
+			...(response.runs ?? [])
+				.map(toListItem)
+				.filter((item) => item.name.toLowerCase().includes(filterLower)),
 		);
 		pageToken = response.next_page_token;
 	}
