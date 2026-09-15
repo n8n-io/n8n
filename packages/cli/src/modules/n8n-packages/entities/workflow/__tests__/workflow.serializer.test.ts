@@ -41,6 +41,7 @@ describe('WorkflowSerializer.deserialize', () => {
 			},
 		]);
 		expect(result.connections).toEqual({});
+		expect(result.versionId).toBe('version-from-source');
 	});
 
 	it('includes settings when present in the wire', () => {
