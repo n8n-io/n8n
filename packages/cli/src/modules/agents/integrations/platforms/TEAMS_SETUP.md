@@ -54,10 +54,67 @@ On the bot resource, open **Channels** and add **Microsoft Teams**.
 
 ## 5. Install the bot in the tenant
 
-Build a Teams app manifest whose `bots[].botId` is the application ID from
-step 1, then upload it in the Teams client under **Apps → Manage your apps →
-Upload an app**. Install it for yourself so you can direct-message the bot.
-Only 1:1 direct messages are supported in this slice.
+A Teams app package is three files in a **flat** zip. A nested folder makes the
+upload fail:
+
+```
+manifest.json
+color.png     # 192x192
+outline.png   # 32x32, transparent
+```
+
+`manifest.json`, with `botId` set to the application ID from step 1. `id` is a
+different value: a fresh GUID identifying the app itself. `personal` is the only
+scope this slice supports.
+
+```json
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "<a fresh GUID>",
+  "packageName": "com.example.n8n.agent",
+  "developer": {
+    "name": "n8n dev",
+    "websiteUrl": "https://n8n.io",
+    "privacyUrl": "https://n8n.io/legal/privacy",
+    "termsOfUseUrl": "https://n8n.io/legal/terms"
+  },
+  "name": { "short": "n8n Agent (dev)", "full": "n8n Agent channel test bot" },
+  "description": {
+    "short": "Local test bot for the n8n Teams agent channel.",
+    "full": "Development-only bot used to test the n8n Microsoft Teams agent channel."
+  },
+  "icons": { "color": "color.png", "outline": "outline.png" },
+  "accentColor": "#EA4B71",
+  "bots": [
+    {
+      "botId": "<Application (client) ID from step 1>",
+      "scopes": ["personal"],
+      "isNotificationOnly": false,
+      "supportsFiles": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}
+```
+
+Upload it in the **Teams desktop or web client** — not the Azure portal and not
+the Teams admin center:
+
+1. **Apps** in the left rail.
+2. **Manage your apps** at the bottom of the left panel.
+3. **Upload an app → Upload a customised app.**
+4. Pick the zip, then **Add**.
+
+The bot then appears in your chat list and you can direct-message it.
+
+**If "Upload a customised app" is missing or greyed out,** the tenant disables
+sideloading. Turn on **Upload custom apps** in Teams admin center under
+**Teams apps → Setup policies → Global**; it needs Teams Administrator and takes
+a while to propagate. Without that role, try the Developer Portal for Teams
+(`dev.teams.microsoft.com`) → **Apps → Import app**, then **Preview in Teams**.
 
 ## 6. Create the credential and connect
 
