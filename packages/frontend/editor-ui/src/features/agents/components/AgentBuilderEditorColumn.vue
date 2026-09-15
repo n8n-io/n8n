@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nCard, N8nIcon, N8nTabs, N8nText, N8nButton } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -27,6 +27,7 @@ import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
+import AgentPreviewButton from './AgentPreviewButton.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -131,14 +132,11 @@ const i18n = useI18n();
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
 						<template #header-actions>
-							<N8nButton
-								variant="subtle"
-								icon="play"
-								size="medium"
-								:disabled="childrenDisabled"
-								:label="i18n.baseText('agents.builder.preview.button')"
-								data-testid="agent-triggers-preview-chat-button"
-								@click="emit('open-preview')"
+							<AgentPreviewButton
+								:is-runnable="props.agent?.isRunnable === true"
+								:validation-issues="props.configValidationIssues ?? []"
+								test-id="agent-triggers-preview-chat-button"
+								@open-preview="emit('open-preview')"
 							/>
 						</template>
 						<AgentTriggersSection
