@@ -1529,6 +1529,7 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+	resolvedUserDecisions?: ResolvedUserDecision[];
 }
 
 // ── Setup panel v2 ───────────────────────────────────────────────────────────
@@ -2078,3 +2079,9 @@ export interface CreateInstanceAgentOptions {
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
+
+export type ResolvedUserDecision = {
+	question: string;
+	answer: string;
+	skipped?: boolean;
+};

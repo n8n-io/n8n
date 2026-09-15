@@ -2,6 +2,8 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import type { InstanceAiContext, ResolvedUserDecision } from '../../types';
+import { recordUserDecision } from '../orchestration/parent-handoff-state';
 import { ASK_USER_TOOL_ID } from '../tool-ids';
 
 export { ASK_USER_TOOL_ID };
@@ -38,7 +40,26 @@ export const askUserResumeSchema = z.object({
 	answers: z.array(answerSchema).optional(),
 });
 
-export function createAskUserTool() {
+function toDecision(
+	question: string,
+	answer?: { selectedOptions: string[]; customText?: string; skipped?: boolean },
+): ResolvedUserDecision {
+	if (!answer || answer.skipped) {
+		return {
+			question,
+			answer: '(skipped)',
+			skipped: true,
+		};
+	}
+	const text = [...answer.selectedOptions, answer.customText]
+		.filter((part): part is string => Boolean(part))
+		.join(', ');
+	return text
+		? { question, answer: text, skipped: false }
+		: { question, answer: '(skipped)', skipped: true };
+}
+
+export function createAskUserTool(context?: InstanceAiContext) {
 	return new Tool(ASK_USER_TOOL_ID)
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
@@ -99,6 +120,11 @@ export function createAskUserTool() {
 
 			// User skipped or dismissed
 			if (!resumeData.approved || !resumeData.answers) {
+				if (context) {
+					for (const q of input.questions) {
+						await recordUserDecision(context, toDecision(q.question));
+					}
+				}
 				return { answered: false };
 			}
 
@@ -112,7 +138,11 @@ export function createAskUserTool() {
 					question: q?.question ?? a.questionId,
 				};
 			});
-
+			if (context) {
+				for (const a of enrichedAnswers) {
+					await recordUserDecision(context, toDecision(a.question, a));
+				}
+			}
 			return { answered: true, answers: enrichedAnswers };
 		})
 		.build();

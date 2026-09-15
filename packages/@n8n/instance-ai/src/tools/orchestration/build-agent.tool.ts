@@ -69,6 +69,7 @@ import type {
 	OrchestrationContext,
 	SessionWorkflowRef,
 } from '../../types';
+import { formatParentHandoffEnvelope, hydrateUserDecisions } from './parent-handoff-state';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
@@ -118,9 +119,19 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	].join('\n');
 }
 
-function buildOutboundMessage(message: string, workflowContext?: SessionWorkflowRef[]): string {
-	if (!workflowContext || workflowContext.length === 0) return message;
-	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
+function buildOutboundMessage(
+	message: string,
+	workflowContext: SessionWorkflowRef[] | undefined,
+	context: OrchestrationContext,
+): string {
+	const parts = [message];
+	if (workflowContext && workflowContext.length > 0) {
+		parts.push(formatWorkflowContextEnvelope(workflowContext));
+	}
+	const handoff = formatParentHandoffEnvelope(context);
+	if (handoff) parts.push(handoff);
+
+	return parts.length === 1 ? message : parts.join('\n\n');
 }
 
 async function collectRequiredArtifacts(
@@ -1075,7 +1086,8 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const bindAfterTurn = resolution.bindAfterTurn;
 
 			const session = builderSessionFor(context, boundTarget.agentId);
-			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
+			await hydrateUserDecisions(domainContext);
+			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
