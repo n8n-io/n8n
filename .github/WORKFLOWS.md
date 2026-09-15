@@ -889,14 +889,22 @@ PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
 does not show red CI; any non-success state blocks the merge equally. The
-ruleset for `master` must list
-that status as a required check for the block to take effect. Merge-queue runs
-report success on the queue head without re-evaluating: a PR cannot enter the
-queue unless the status is green on its head, and the queue does not change
-approvals.
+ruleset for a branch must list that status as a required check for the block
+to take effect. Merge-queue runs report success on the queue head without
+re-evaluating: a PR cannot enter the queue unless the status is green on its
+head, and the queue does not change approvals.
 
-The workflow reads OWNERS and its scripts from the base branch only, so a PR
-cannot lift its own review requirement.
+The status is evaluated for a PR into any base branch. Routes that skip the
+evaluation are listed in `REQUIRED_REVIEW_EXEMPTIONS` in
+`required-reviews.mjs`. An entry is `<head> -> <base>` or just `<base>`
+(any head); `*` matches any run of characters. An exempt PR reports
+`success` with the route in the description. Only heads in this repository
+can match, so a fork branch with a matching name is still evaluated. Add a
+route only when every commit it carries was already reviewed elsewhere, as
+with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+
+The workflow reads OWNERS, its scripts and the exemption routes from the base
+branch only, so a PR cannot lift its own review requirement.
 
 ### Transition from CODEOWNERS
 

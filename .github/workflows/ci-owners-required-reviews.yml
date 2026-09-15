@@ -8,6 +8,10 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # Replaces the GitHub-native CODEOWNERS enforcement, which could not express
 # team ownership metadata beyond "request a review".
 #
+# Every base branch is enforced. The routes that skip the evaluation (for
+# example the master-to-3.x sync branch) live in REQUIRED_REVIEW_EXEMPTIONS
+# in required-reviews.mjs; an exempt PR gets a success status.
+#
 # Triggers
 #   - pull_request (opened/synchronize/reopened/ready_for_review):
 #     re-evaluates whenever the changeset can change. Skipped for fork PRs
@@ -40,8 +44,6 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - master
   pull_request_review:
     types: [submitted, dismissed]
   merge_group:
@@ -91,16 +93,13 @@ jobs:
   required-reviews:
     name: Check required reviews
     # Fork PRs are skipped on pull_request (no secrets for the app token);
-    # pull_request_review covers them. pull_request_review has no `branches`
-    # filter; the script also skips non-master bases, the guard here keeps
-    # the early pending status off non-master heads.
+    # pull_request_review covers them.
     if: >-
       github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request_review' ||
-       (github.event.pull_request.base.ref == 'master' &&
-        github.event.review.state != 'commented'))
+       github.event.review.state != 'commented')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # Job-level, not workflow-level: a run whose job is skipped must not
@@ -145,10 +144,10 @@ jobs:
             -f "target_url=${RUN_URL}"
 
       # Always check out the base branch, never the PR merge ref: the OWNERS
-      # file and the scripts must be trusted input. The 'master' fallback
-      # covers workflow_dispatch, so a dispatch from another branch cannot
-      # run that branch's policy. The script reads only `.github/` and the
-      # root files, which cone mode always includes.
+      # file, the scripts and the exemption routes must be trusted input. The
+      # 'master' fallback covers workflow_dispatch, so a dispatch from another
+      # branch cannot run that branch's policy. The script reads only
+      # `.github/` and the root files, which cone mode always includes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.base.ref || 'master' }}

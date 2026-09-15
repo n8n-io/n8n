@@ -46,13 +46,103 @@ mock.module('./owners.mjs', {
 });
 
 const {
+	REQUIRED_REVIEW_EXEMPTIONS,
 	STATUS_CONTEXT,
 	buildStatus,
 	collectApprovers,
+	findExemption,
 	latestReviewStates,
+	matchesBranchPattern,
+	parseExemption,
 	resolvePullRequestNumber,
 	run,
 } = await import('./required-reviews.mjs');
+
+const REPO = 'n8n-io/n8n';
+
+/** @param {string} head @param {string} base @param {string} [headRepo] */
+function pullRequestFor(head, base, headRepo = REPO) {
+	return {
+		head: { ref: head, sha: 'head-sha', repo: { full_name: headRepo } },
+		base: { ref: base, repo: { full_name: REPO } },
+	};
+}
+
+describe('parseExemption', () => {
+	it('splits a "<head> -> <base>" route', () => {
+		assert.deepEqual(parseExemption('sync/master-to-3x -> 3.x'), {
+			head: 'sync/master-to-3x',
+			base: '3.x',
+			source: 'sync/master-to-3x -> 3.x',
+		});
+	});
+
+	it('treats a bare "<base>" as any head', () => {
+		assert.deepEqual(parseExemption('release/*'), { head: '*', base: 'release/*', source: 'release/*' });
+	});
+
+	it('rejects malformed routes', () => {
+		assert.throws(() => parseExemption('a -> b -> c'), /Invalid exemption/);
+		assert.throws(() => parseExemption(' -> 3.x'), /Invalid exemption/);
+		assert.throws(() => parseExemption('3.x -> '), /Invalid exemption/);
+	});
+
+	it('accepts every configured exemption', () => {
+		for (const entry of REQUIRED_REVIEW_EXEMPTIONS) parseExemption(entry);
+	});
+});
+
+describe('matchesBranchPattern', () => {
+	it('matches whole branch names', () => {
+		assert.equal(matchesBranchPattern('3.x', '3.x'), true);
+		assert.equal(matchesBranchPattern('3.xy', '3.x'), false);
+		assert.equal(matchesBranchPattern('v3.x', '3.x'), false);
+	});
+
+	it('treats "." as a literal', () => {
+		assert.equal(matchesBranchPattern('3ax', '3.x'), false);
+	});
+
+	it('expands "*" across path separators', () => {
+		assert.equal(matchesBranchPattern('release/2.39.5', 'release/*'), true);
+		assert.equal(matchesBranchPattern('release/2.39.5/hotfix', 'release/*'), true);
+		assert.equal(matchesBranchPattern('anything', '*'), true);
+		assert.equal(matchesBranchPattern('release-candidate/2.40.0', 'release/*'), false);
+	});
+});
+
+describe('findExemption', () => {
+	const exemptions = ['sync/master-to-3x -> 3.x', 'release/*'];
+
+	it('finds the route for a matching head and base', () => {
+		const route = findExemption(pullRequestFor('sync/master-to-3x', '3.x'), exemptions);
+		assert.equal(route?.source, 'sync/master-to-3x -> 3.x');
+	});
+
+	it('returns nothing when only the base matches', () => {
+		assert.equal(findExemption(pullRequestFor('feature/x', '3.x'), exemptions), undefined);
+	});
+
+	it('returns nothing when only the head matches', () => {
+		assert.equal(findExemption(pullRequestFor('sync/master-to-3x', 'master'), exemptions), undefined);
+	});
+
+	it('matches a bare base route for any head', () => {
+		const route = findExemption(pullRequestFor('feature/x', 'release/2.39.5'), exemptions);
+		assert.equal(route?.source, 'release/*');
+	});
+
+	it('ignores heads from another repository', () => {
+		const fromFork = pullRequestFor('sync/master-to-3x', '3.x', 'someone/n8n');
+		assert.equal(findExemption(fromFork, exemptions), undefined);
+	});
+
+	it('ignores heads whose repository is gone', () => {
+		const pullRequest = pullRequestFor('sync/master-to-3x', '3.x');
+		pullRequest.head.repo = null;
+		assert.equal(findExemption(pullRequest, exemptions), undefined);
+	});
+});
 
 describe('resolvePullRequestNumber', () => {
 	it('reads the PR number from pull_request payloads', () => {
@@ -152,8 +242,7 @@ describe('run', () => {
 
 		eventImpl = () => ({ pull_request: { number: 42 } });
 		getPullRequestByIdImpl = async () => ({
-			base: { ref: 'master' },
-			head: { sha: 'head-sha' },
+			...pullRequestFor('feature/x', 'master'),
 			user: { login: 'author' },
 		});
 		getChangedFilesImpl = async () => new Set(['a.ts']);
@@ -267,15 +356,41 @@ describe('run', () => {
 		assert.equal(status.state, 'pending');
 	});
 
-	it('skips PRs that do not target master without setting a status', async () => {
-		getPullRequestByIdImpl = async () => ({
-			base: { ref: 'release-candidate/2.9.x' },
-			head: { sha: 'head-sha' },
-		});
+	it('evaluates PRs into branches other than master', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('feature/x', 'release-candidate/2.9.x');
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
 
 		await run();
 
-		assert.equal(setCommitStatus.mock.calls.length, 0);
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
+		assert.match(status.description, /Waiting for approval from: qa-dx/);
+	});
+
+	it('reports success without evaluating a PR on an exempt route', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x');
+		const getChangedFiles = mock.fn(async () => new Set(['a.ts']));
+		getChangedFilesImpl = getChangedFiles;
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		assert.equal(getChangedFiles.mock.calls.length, 0);
+		assert.equal(setCommitStatus.mock.calls.length, 2);
+		assert.equal(setCommitStatus.mock.calls[0].arguments[1].state, 'pending');
+		const [, status] = setCommitStatus.mock.calls[1].arguments;
+		assert.equal(status.state, 'success');
+		assert.equal(status.description, 'Exempt route: sync/master-to-3x -> 3.x');
+	});
+
+	it('does not exempt a fork branch that is named like an exempt route', async () => {
+		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x', 'someone/n8n');
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+
+		await run();
+
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
+		assert.equal(status.state, 'pending');
 	});
 
 });
