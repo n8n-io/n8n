@@ -130,7 +130,7 @@ function withSlackCredential(credential: CredentialResponse) {
 test.use({ capability: 'proxy' });
 
 test.describe(
-	'Send and Wait @capability:proxy',
+	'Send and Wait workflow interactions',
 	{ annotation: [{ type: 'owner', description: 'NODES' }] },
 	() => {
 		test('should complete approval flow when clicking approve URL', async ({

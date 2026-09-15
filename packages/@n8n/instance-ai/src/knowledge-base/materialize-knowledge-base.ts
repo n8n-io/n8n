@@ -4,8 +4,8 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import {
-	GROUPING_GUIDANCE,
 	NODE_GROUPS_REFERENCE,
 	SDK_LANGUAGE_REFERENCE,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
@@ -166,16 +166,18 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-sdk-language',
 		description:
-			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups',
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, native node mappings that replace Code nodes',
 		fileName: 'workflow-sdk-language.md',
-		content: SDK_LANGUAGE_REFERENCE,
+		// The mapping table ships with the SDK reference so the builder reads
+		// "which native node replaces this Code node" in the same file.
+		content: `${SDK_LANGUAGE_REFERENCE}\n## Native node mappings\n\n${NATIVE_NODE_PREFERENCE}\n`,
 	},
 	{
 		id: 'node-groups',
 		description:
-			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid, when to group',
+			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid',
 		fileName: 'node-groups.md',
-		content: `${NODE_GROUPS_REFERENCE}\n\n${GROUPING_GUIDANCE}`,
+		content: NODE_GROUPS_REFERENCE,
 	},
 ];
 

@@ -9,6 +9,7 @@ import type {
 import type {
 	Connection,
 	DefaultEdge,
+	GraphNode,
 	Node,
 	NodeProps,
 	Position,
@@ -20,7 +21,10 @@ import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutSource,
+	CanvasLayoutTarget,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
@@ -213,6 +217,10 @@ export type CanvasGroupNode = Node<CanvasGroupNodeData>;
 
 export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
 
+/** A rendered VueFlow node as auto-layout sees it: a regular node or a group node. */
+export type CanvasLayoutNode = GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>;
+export type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
+
 export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
 export function isCanvasGroupNode(node: { type?: string }): boolean;
 export function isCanvasGroupNode(node: { type?: string }): boolean {
@@ -273,6 +281,7 @@ export type CanvasEventBusEvents = {
 	};
 	tidyUp: {
 		source: CanvasLayoutSource;
+		target?: CanvasLayoutTarget;
 		nodeIdsFilter?: string[];
 		trackEvents?: boolean;
 		trackHistory?: boolean;

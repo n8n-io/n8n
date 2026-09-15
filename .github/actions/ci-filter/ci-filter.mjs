@@ -95,7 +95,19 @@ export function parseFilters(input) {
 
 const SAFE_REF = /^[a-zA-Z0-9_./-]+$/;
 
-export function getChangedFiles(baseRef) {
+/**
+ * Ref to diff against the base branch.
+ *
+ * On pull_request events checkout lands on GitHub's test-merge commit. For a
+ * stacked PR its first parent is the parent PR's test merge, which already
+ * carries every base-branch commit the stack lacks, so a diff against HEAD
+ * reports that drift as changed. The second parent is the PR head itself.
+ */
+export function resolveHeadRef(eventName = process.env.GITHUB_EVENT_NAME) {
+	return eventName === 'pull_request' || eventName === 'pull_request_review' ? 'HEAD^2' : 'HEAD';
+}
+
+export function getChangedFiles(baseRef, headRef = 'HEAD') {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
@@ -104,8 +116,8 @@ export function getChangedFiles(baseRef) {
 	// direction, so files added to base-branch after the PR diverged show up as
 	// "changed" — spuriously triggering path-filtered jobs. The merge base
 	// scopes the diff to PR-only changes.
-	fetchUntilMergeBase(baseRef);
-	const output = execSync('git diff --name-only --no-renames --merge-base FETCH_HEAD HEAD', {
+	fetchUntilMergeBase(baseRef, headRef);
+	const output = execSync(`git diff --name-only --no-renames --merge-base FETCH_HEAD ${headRef}`, {
 		encoding: 'utf-8',
 	});
 	return output
@@ -116,12 +128,12 @@ export function getChangedFiles(baseRef) {
 
 // Files added (not merely modified) in this PR. Same merge-base scoping as
 // getChangedFiles; assumes the fetch it performs has already run.
-export function getAddedFiles(baseRef) {
+export function getAddedFiles(baseRef, headRef = 'HEAD') {
 	if (!SAFE_REF.test(baseRef)) {
 		throw new Error(`Unsafe base ref: "${baseRef}"`);
 	}
 	const output = execSync(
-		'git diff --name-only --no-renames --diff-filter=A --merge-base FETCH_HEAD HEAD',
+		`git diff --name-only --no-renames --diff-filter=A --merge-base FETCH_HEAD ${headRef}`,
 		{ encoding: 'utf-8' },
 	);
 	return output
@@ -132,7 +144,7 @@ export function getAddedFiles(baseRef) {
 
 /**
  * Deepen the shallow clone until the merge base between the fetched base ref
- * (FETCH_HEAD) and HEAD is reliably reachable.
+ * (FETCH_HEAD) and headRef is reliably reachable.
  *
  * A single fixed deepen is not enough for stale PRs whose divergence point is
  * older than the shallow boundary. We fetch with an exponentially growing
@@ -144,15 +156,15 @@ export function getAddedFiles(baseRef) {
  * git's signed int32 `--deepen` limit), switch to `--unshallow` instead of
  * passing an ever-larger integer that git would reject.
  */
-function fetchUntilMergeBase(baseRef) {
+function fetchUntilMergeBase(baseRef, headRef) {
 	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
 	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
 	deepenFetch(baseRef, step, maxDeepen);
 
-	while (!hasReliableMergeBase()) {
+	while (!hasReliableMergeBase(headRef)) {
 		if (!isShallow()) {
 			throw new Error(
-				`No merge base between FETCH_HEAD and HEAD after fetching the full history of "${baseRef}" (unrelated histories).`,
+				`No merge base between FETCH_HEAD and ${headRef} after fetching the full history of "${baseRef}" (unrelated histories).`,
 			);
 		}
 		step *= 2;
@@ -168,9 +180,7 @@ function deepenFetch(baseRef, step, maxDeepen) {
 }
 
 function isShallow() {
-	return (
-		execSync('git rev-parse --is-shallow-repository', { encoding: 'utf-8' }).trim() === 'true'
-	);
+	return execSync('git rev-parse --is-shallow-repository', { encoding: 'utf-8' }).trim() === 'true';
 }
 
 /**
@@ -179,12 +189,12 @@ function isShallow() {
  * sub-history is truncated; that result is unreliable, so we must deepen further
  * before trusting it.
  */
-function hasReliableMergeBase() {
+function hasReliableMergeBase(headRef) {
 	let base;
 	try {
-		base = execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
+		base = execSync(`git merge-base FETCH_HEAD ${headRef}`, { encoding: 'utf-8' }).trim();
 	} catch {
-		return false; // no common ancestor reachable yet
+		return false; // no common ancestor reachable yet, or headRef still hidden by the shallow graft
 	}
 	if (!base) return false;
 	return !readShallowBoundaries().has(base);
@@ -208,12 +218,12 @@ function readShallowBoundaries() {
 }
 
 /**
- * Resolve the merge-base SHA between FETCH_HEAD and HEAD.
+ * Resolve the merge-base SHA between FETCH_HEAD and headRef.
  * Used to give downstream tools (e.g. janitor's AST diff) a stable, PR-only
  * comparison point that doesn't drift when the base branch moves forward.
  */
-export function getMergeBase() {
-	return execSync('git merge-base FETCH_HEAD HEAD', { encoding: 'utf-8' }).trim();
+export function getMergeBase(headRef = 'HEAD') {
+	return execSync(`git merge-base FETCH_HEAD ${headRef}`, { encoding: 'utf-8' }).trim();
 }
 
 // --- Filter evaluation ---
@@ -290,10 +300,12 @@ export function runFilter() {
 	}
 
 	const filters = parseFilters(filtersInput);
-	const changedFiles = getChangedFiles(baseRef);
-	const addedFiles = getAddedFiles(baseRef);
-	const mergeBase = getMergeBase();
+	const headRef = resolveHeadRef();
+	const changedFiles = getChangedFiles(baseRef, headRef);
+	const addedFiles = getAddedFiles(baseRef, headRef);
+	const mergeBase = getMergeBase(headRef);
 
+	console.log(`Diffing ${headRef} against ${baseRef}`);
 	console.log(`Merge base: ${mergeBase}`);
 	console.log(`Changed files (${changedFiles.length}):`);
 	for (const f of changedFiles) {
