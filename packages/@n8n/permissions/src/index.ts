@@ -25,5 +25,6 @@ export { staticRolesWithScope } from './utilities/static-roles-with-scope.ee';
 export { getGlobalScopes } from './utilities/get-global-scopes.ee';
 export { getRoleScopes, getAuthPrincipalScopes } from './utilities/get-role-scopes.ee';
 export { getResourcePermissions } from './utilities/get-resource-permissions.ee';
+export { parseRemovedPersonalSpaceScopes } from './utilities/parse-removed-personal-space-scopes.ee';
 export type { PermissionsRecord } from './utilities/get-resource-permissions.ee';
 export * from './public-api-permissions.ee';

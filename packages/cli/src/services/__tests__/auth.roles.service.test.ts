@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, Role, Scope } from '@n8n/db';
 import type { DbLock, DbLockService } from '@n8n/db';
 import {
@@ -12,6 +13,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING,
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -43,7 +45,9 @@ describe('AuthRolesService', () => {
 			await fn(mockEntityManager),
 	);
 
-	const authRolesService = new AuthRolesService(logger, dbLockService);
+	const globalConfig = mock<GlobalConfig>({ canvasOnly: false });
+
+	const authRolesService = new AuthRolesService(logger, dbLockService, globalConfig);
 
 	// Helper functions for creating test data
 	function createScope(
@@ -118,6 +122,7 @@ describe('AuthRolesService', () => {
 		// Default: no settings rows (backward compat: undefined values => grant scopes)
 		mockEntityManager.findBy.mockResolvedValue([]);
 		mockEntityManager.findOneBy.mockResolvedValue(null);
+		globalConfig.canvasOnly = false;
 		dbLockService.withLock.mockImplementation(
 			async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
 				await fn(mockEntityManager),
@@ -620,6 +625,122 @@ describe('AuthRolesService', () => {
 					expect(updatedRole).toBeDefined();
 					const scopeSlugs = updatedRole?.scopes.map((s) => s.slug) ?? [];
 					expect(scopeSlugs).not.toContain('workflow:publish');
+				});
+			});
+
+			describe('canvas-only personal space role', () => {
+				const REMOVABLE_SCOPES = CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.scopes;
+
+				function mockCanvasOnlyChoice(value: string | null): void {
+					mockEntityManager.findOneBy.mockImplementation(async (_entity, where) => {
+						const key = (where as { key?: string }).key;
+						if (key === CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key && value !== null) {
+							return { key, value, loadOnStartup: false } as never;
+						}
+						return null;
+					});
+				}
+
+				/** The scope slugs the sync gives the personal owner role on a fresh instance. */
+				async function syncedPersonalOwnerScopes(): Promise<string[]> {
+					setupDefaultMocks(createAllScopes());
+					await authRolesService.init();
+
+					const personalOwnerCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					expect(personalOwnerCall).toBeDefined();
+					return (personalOwnerCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+				}
+
+				test('should give the personalOwner role every removable scope by default', async () => {
+					globalConfig.canvasOnly = true;
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					expect(scopeSlugs).toEqual(expect.arrayContaining(REMOVABLE_SCOPES));
+				});
+
+				test('should remove the stored scopes when canvas-only mode is on', async () => {
+					globalConfig.canvasOnly = true;
+					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					expect(scopeSlugs).not.toContain('credential:create');
+					expect(scopeSlugs).toContain('dataTable:create');
+					expect(scopeSlugs).toContain('agent:create');
+					expect(scopeSlugs).toContain('workflow:create');
+				});
+
+				test('should remove every removable scope when all are stored', async () => {
+					globalConfig.canvasOnly = true;
+					mockCanvasOnlyChoice(JSON.stringify(REMOVABLE_SCOPES));
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					for (const scope of REMOVABLE_SCOPES) {
+						expect(scopeSlugs).not.toContain(scope);
+					}
+					expect(scopeSlugs).toContain('workflow:create');
+				});
+
+				test('should ignore the stored choice when canvas-only mode is off', async () => {
+					globalConfig.canvasOnly = false;
+					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					expect(scopeSlugs).toContain('credential:create');
+				});
+
+				test('should ignore a malformed stored choice', async () => {
+					globalConfig.canvasOnly = true;
+					mockCanvasOnlyChoice('not json');
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					expect(scopeSlugs).toEqual(expect.arrayContaining(REMOVABLE_SCOPES));
+				});
+
+				test('should ignore a stored scope that is not removable', async () => {
+					globalConfig.canvasOnly = true;
+					mockCanvasOnlyChoice(JSON.stringify(['workflow:create']));
+
+					const scopeSlugs = await syncedPersonalOwnerScopes();
+
+					expect(scopeSlugs).toContain('workflow:create');
+				});
+
+				test('should update an existing personalOwner role to remove the stored scopes', async () => {
+					globalConfig.canvasOnly = true;
+					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+					const allScopes = createAllScopes();
+					const personalOwnerRoleDef = ALL_ROLES.project.find(
+						(r) => r.slug === PROJECT_OWNER_ROLE_SLUG,
+					)!;
+					const existingRole = createRole(PROJECT_OWNER_ROLE_SLUG, {
+						displayName: personalOwnerRoleDef.displayName,
+						description: personalOwnerRoleDef.description ?? null,
+						roleType: 'project',
+						scopes: allScopes.filter((s) => personalOwnerRoleDef.scopes.includes(s.slug)),
+					});
+					scopeRepository.find.mockResolvedValue(allScopes);
+					roleRepository.find.mockResolvedValue([existingRole]);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
+
+					await authRolesService.init();
+
+					const projectRoleSaveCall = roleRepository.save.mock.calls.find((call) => {
+						const roles = call[0] as Role[];
+						return Array.isArray(roles) && roles.some((r) => r?.roleType === 'project');
+					});
+					expect(projectRoleSaveCall).toBeDefined();
+					const savedRoles = projectRoleSaveCall?.[0] as Role[];
+					const updatedRole = savedRoles.find((r) => r?.slug === PROJECT_OWNER_ROLE_SLUG);
+					const scopeSlugs = updatedRole?.scopes.map((s) => s.slug) ?? [];
+					expect(scopeSlugs).not.toContain('credential:create');
+					expect(scopeSlugs).toContain('dataTable:create');
 				});
 			});
 

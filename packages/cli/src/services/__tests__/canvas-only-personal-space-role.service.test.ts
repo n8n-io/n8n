@@ -1,36 +1,42 @@
-import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { Settings, SettingsRepository } from '@n8n/db';
+import type { AuthRolesService, SettingsRepository } from '@n8n/db';
 import type { Role as RoleDTO } from '@n8n/permissions';
-import { PROJECT_OWNER_ROLE_SLUG, PROJECT_SCOPE_MAP } from '@n8n/permissions';
+import {
+	CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_SCOPE_MAP,
+	parseRemovedPersonalSpaceScopes,
+} from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
+import type { RoleCacheService } from '@/services/role-cache.service';
 import type { RoleService } from '@/services/role.service';
 import type { Telemetry } from '@/telemetry';
 
-const SETTINGS_KEY = 'canvasOnly.personalSpaceRoleRemovedScopes';
+const SETTINGS_KEY = CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key;
 
 describe('CanvasOnlyPersonalSpaceRoleService', () => {
 	const globalConfig = mock<GlobalConfig>({ canvasOnly: true });
 	const roleService = mock<RoleService>();
+	const authRolesService = mock<AuthRolesService>();
+	const roleCacheService = mock<RoleCacheService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const telemetry = mock<Telemetry>();
-	const logger = mock<Logger>();
 
 	const service = new CanvasOnlyPersonalSpaceRoleService(
 		globalConfig,
 		roleService,
+		authRolesService,
+		roleCacheService,
 		settingsRepository,
 		telemetry,
-		logger,
 	);
 
-	/** Mirrors the service's own list on purpose, so a change there shows up here. */
-	const removableScopes = ['credential:create', 'dataTable:create', 'agent:create'];
+	const removableScopes = CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.scopes;
 	/** The real default scopes of the role, so the tests cannot drift from them. */
 	const defaultScopes: string[] = [...PROJECT_SCOPE_MAP[PROJECT_OWNER_ROLE_SLUG]];
 	const without = (...removed: string[]) => defaultScopes.filter((s) => !removed.includes(s));
@@ -44,6 +50,8 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 
 	/** The role as stored, which the service reads before and after the change. */
 	let storedScopes: string[];
+	/** The stored setting, which the simulated role sync reads. */
+	let storedChoice: string | undefined;
 
 	const body = (scopes: string[]) => ({
 		displayName: 'Project Owner',
@@ -55,6 +63,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		vi.clearAllMocks();
 		globalConfig.canvasOnly = true;
 		storedScopes = [...defaultScopes];
+		storedChoice = undefined;
 
 		roleService.getRole.mockImplementation(
 			async () =>
@@ -67,13 +76,13 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 					scopes: storedScopes,
 				}) as unknown as RoleDTO,
 		);
-		roleService.removeScopesFromRole.mockImplementation(async (_slug, scopeSlugs) => {
-			storedScopes = storedScopes.filter((s) => !scopeSlugs.includes(s));
+		settingsRepository.upsertByKey.mockImplementation(async (_key, value) => {
+			storedChoice = value;
 		});
-		roleService.addScopesToRole.mockImplementation(async (_slug, scopeSlugs) => {
-			storedScopes = [...new Set([...storedScopes, ...scopeSlugs])];
+		// The real sync resets the role to its defaults and then applies the stored choice.
+		authRolesService.init.mockImplementation(async () => {
+			storedScopes = without(...parseRemovedPersonalSpaceScopes(storedChoice));
 		});
-		settingsRepository.findByKey.mockResolvedValue(null);
 	});
 
 	describe('isActiveFor', () => {
@@ -106,7 +115,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 			).rejects.toThrow(ForbiddenError);
 			expect(roleService.getRole).not.toHaveBeenCalled();
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+			expect(authRolesService.init).not.toHaveBeenCalled();
 		});
 
 		it('rejects a caller with no scopes', async () => {
@@ -117,20 +126,14 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		it('removes credential:create, stores the choice and reports it', async () => {
 			const result = await update(body(withoutCredentialCreate));
 
-			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
-				'credential:create',
-			]);
-			// The other removable scopes stay, so the service puts them back explicitly.
-			expect(roleService.addScopesToRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
-				'dataTable:create',
-				'agent:create',
-			]);
 			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				SETTINGS_KEY,
 				JSON.stringify(['credential:create']),
 				false,
 				{},
 			);
+			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+			expect(roleCacheService.invalidateCache).toHaveBeenCalledTimes(1);
 			expect(result.scopes).toEqual(withoutCredentialCreate);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.ROLES.USER_UPDATED_PERSONAL_SPACE_ROLE,
@@ -138,12 +141,26 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 			);
 		});
 
+		it('stores the choice before it re-syncs the roles', async () => {
+			const order: string[] = [];
+			settingsRepository.upsertByKey.mockImplementation(async () => {
+				order.push('store');
+			});
+			authRolesService.init.mockImplementation(async () => {
+				order.push('sync');
+			});
+			roleCacheService.invalidateCache.mockImplementation(async () => {
+				order.push('invalidate');
+			});
+
+			await update(body(withoutCredentialCreate));
+
+			expect(order).toEqual(['store', 'sync', 'invalidate']);
+		});
+
 		it.each(['dataTable:create', 'agent:create'])('removes %s on its own', async (scope) => {
 			const result = await update(body(without(scope)));
 
-			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
-				scope,
-			]);
 			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				SETTINGS_KEY,
 				JSON.stringify([scope]),
@@ -157,11 +174,6 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		it('removes all removable scopes at once', async () => {
 			const result = await update(body(without(...removableScopes)));
 
-			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(
-				PROJECT_OWNER_ROLE_SLUG,
-				removableScopes,
-			);
-			expect(roleService.addScopesToRole).not.toHaveBeenCalled();
 			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				SETTINGS_KEY,
 				JSON.stringify(removableScopes),
@@ -176,17 +188,13 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 
 			const result = await update(body(defaultScopes));
 
-			expect(roleService.addScopesToRole).toHaveBeenCalledWith(
-				PROJECT_OWNER_ROLE_SLUG,
-				removableScopes,
-			);
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
 			expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 				SETTINGS_KEY,
 				JSON.stringify([]),
 				false,
 				{},
 			);
+			expect(authRolesService.init).toHaveBeenCalledTimes(1);
 			expect(result.scopes).toContain('credential:create');
 		});
 
@@ -195,7 +203,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 				BadRequestError,
 			);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+			expect(authRolesService.init).not.toHaveBeenCalled();
 		});
 
 		it.each(['workflow:create', 'credential:read', 'workflow:delete'])(
@@ -205,7 +213,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 					`The following scopes cannot be removed from the personal space role: ${scope}`,
 				);
 				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
-				expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+				expect(authRolesService.init).not.toHaveBeenCalled();
 			},
 		);
 
@@ -215,7 +223,6 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 			expect(result.scopes).toEqual(
 				expect.arrayContaining(['credential:update', 'workflow:delete']),
 			);
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
 		});
 
 		it('rejects a changed display name', async () => {
@@ -237,69 +244,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 
 			expect(result.scopes).toEqual(defaultScopes);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('run', () => {
-		const storedRow = (value: string) => mock<Settings>({ key: SETTINGS_KEY, value });
-
-		it('applies the stored choice', async () => {
-			settingsRepository.findByKey.mockResolvedValue(
-				storedRow(JSON.stringify(['credential:create'])),
-			);
-
-			await service.run();
-			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
-				'credential:create',
-			]);
-			expect(roleService.addScopesToRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
-				'dataTable:create',
-				'agent:create',
-			]);
-		});
-
-		it('applies a stored choice that removes every removable scope', async () => {
-			settingsRepository.findByKey.mockResolvedValue(storedRow(JSON.stringify(removableScopes)));
-
-			await service.run();
-			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(
-				PROJECT_OWNER_ROLE_SLUG,
-				removableScopes,
-			);
-			expect(roleService.addScopesToRole).not.toHaveBeenCalled();
-		});
-
-		it('skips when canvas-only mode is off', async () => {
-			globalConfig.canvasOnly = false;
-			settingsRepository.findByKey.mockResolvedValue(
-				storedRow(JSON.stringify(['credential:create'])),
-			);
-
-			await service.run();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
-		});
-
-		it('skips when no choice is stored', async () => {
-			await service.run();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
-		});
-
-		it('skips a malformed stored value', async () => {
-			settingsRepository.findByKey.mockResolvedValue(storedRow('not json'));
-
-			await service.run();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalled();
-		});
-
-		it('ignores a stored scope that is no longer removable', async () => {
-			settingsRepository.findByKey.mockResolvedValue(
-				storedRow(JSON.stringify(['workflow:create'])),
-			);
-
-			await service.run();
-			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+			expect(authRolesService.init).not.toHaveBeenCalled();
 		});
 	});
 });
