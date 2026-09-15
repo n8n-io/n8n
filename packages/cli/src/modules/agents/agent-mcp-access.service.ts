@@ -2,6 +2,7 @@ import type { ListAgentsQueryDto, UpdateAgentsMcpAvailabilityDto } from '@n8n/ap
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
@@ -28,6 +29,7 @@ export class AgentMcpAccessService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	/**
@@ -55,6 +57,7 @@ export class AgentMcpAccessService {
 	async bulkSetAvailableInMCP(
 		user: User,
 		dto: UpdateAgentsMcpAvailabilityDto,
+		pushRef: string | undefined,
 	): Promise<BulkSetAvailableInMCPResult> {
 		const targets = [dto.agentIds, dto.projectId, dto.allAgents].filter(
 			(target) => target !== undefined,
@@ -76,6 +79,17 @@ export class AgentMcpAccessService {
 				: candidates.filter((agent) => allowedProjectIds.has(agent.projectId));
 
 		const toUpdate = accessible.filter((agent) => agent.availableInMCP !== dto.availableInMCP);
+
+		// Refuse the whole bulk if any target agent is locked by another client.
+		// A partial update would silently leave some agents in the old state.
+		for (const agent of toUpdate) {
+			await this.collaborationService.validateAgentWriteLock(
+				user.id,
+				pushRef,
+				agent.id,
+				'toggle MCP availability for',
+			);
+		}
 
 		const agentIds = toUpdate.map((agent) => agent.id);
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {

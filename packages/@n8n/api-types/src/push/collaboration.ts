@@ -9,7 +9,8 @@ export type Collaborator = {
 export type CollaboratorsChanged = {
 	type: 'collaboratorsChanged';
 	data: {
-		workflowId: string;
+		workflowId?: string;
+		agentId?: string;
 		collaborators: Collaborator[];
 	};
 };
@@ -17,7 +18,8 @@ export type CollaboratorsChanged = {
 export type WriteAccessAcquired = {
 	type: 'writeAccessAcquired';
 	data: {
-		workflowId: string;
+		workflowId?: string;
+		agentId?: string;
 		userId: string;
 		clientId: string;
 	};
@@ -26,7 +28,8 @@ export type WriteAccessAcquired = {
 export type WriteAccessReleased = {
 	type: 'writeAccessReleased';
 	data: {
-		workflowId: string;
+		workflowId?: string;
+		agentId?: string;
 	};
 };
 

@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';
@@ -17,7 +18,12 @@ const candidate = (id: string, projectId: string, availableInMCP: boolean) => ({
 describe('AgentMcpAccessService', () => {
 	const agentRepository = mockInstance(AgentRepository);
 	const projectScopeService = mockInstance(ProjectScopeService);
-	const service = new AgentMcpAccessService(agentRepository, projectScopeService);
+	const collaborationService = mockInstance(CollaborationService);
+	const service = new AgentMcpAccessService(
+		agentRepository,
+		projectScopeService,
+		collaborationService,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -89,17 +95,21 @@ describe('AgentMcpAccessService', () => {
 	describe('bulkSetAvailableInMCP', () => {
 		it('rejects when no target is provided', async () => {
 			await expect(
-				service.bulkSetAvailableInMCP(user, { availableInMCP: true } as never),
+				service.bulkSetAvailableInMCP(user, { availableInMCP: true } as never, undefined),
 			).rejects.toThrow('exactly one');
 		});
 
 		it('rejects when multiple targets are provided', async () => {
 			await expect(
-				service.bulkSetAvailableInMCP(user, {
-					availableInMCP: true,
-					agentIds: ['a1'],
-					allAgents: true,
-				} as never),
+				service.bulkSetAvailableInMCP(
+					user,
+					{
+						availableInMCP: true,
+						agentIds: ['a1'],
+						allAgents: true,
+					} as never,
+					undefined,
+				),
 			).rejects.toThrow('exactly one');
 		});
 
@@ -110,10 +120,14 @@ describe('AgentMcpAccessService', () => {
 				candidate('a3', 'project-2', false),
 			]);
 
-			const result = await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: true,
-				agentIds: ['a1', 'a2', 'a3'],
-			} as never);
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: true,
+					agentIds: ['a1', 'a2', 'a3'],
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.setAvailableInMCP).toHaveBeenCalledWith(['a1'], true);
 			expect(result).toEqual({
@@ -129,10 +143,14 @@ describe('AgentMcpAccessService', () => {
 				candidate('a1', 'p1', true),
 			]);
 
-			const result = await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: false,
-				allAgents: true,
-			} as never);
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: false,
+					allAgents: true,
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.findMcpAvailabilityCandidates).toHaveBeenCalledWith({
 				projectIds: ['p1', 'p2'],
@@ -150,10 +168,14 @@ describe('AgentMcpAccessService', () => {
 				candidate('a2', 'p2', false),
 			]);
 
-			const result = await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: true,
-				allAgents: true,
-			} as never);
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: true,
+					allAgents: true,
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.findMcpAvailabilityCandidates).toHaveBeenCalledWith({ all: true });
 			expect(agentRepository.setAvailableInMCP).toHaveBeenCalledWith(['a1', 'a2'], true);
@@ -167,10 +189,14 @@ describe('AgentMcpAccessService', () => {
 			);
 			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue(candidates);
 
-			const result = await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: true,
-				allAgents: true,
-			} as never);
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: true,
+					allAgents: true,
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.setAvailableInMCP).toHaveBeenCalledTimes(2);
 			expect(agentRepository.setAvailableInMCP).toHaveBeenNthCalledWith(
@@ -189,10 +215,14 @@ describe('AgentMcpAccessService', () => {
 		it('does not load agents from a project the user cannot update', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue([]);
 
-			const result = await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: true,
-				projectId: 'p1',
-			} as never);
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: true,
+					projectId: 'p1',
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.findMcpAvailabilityCandidates).not.toHaveBeenCalled();
 			expect(agentRepository.setAvailableInMCP).not.toHaveBeenCalled();
@@ -205,10 +235,14 @@ describe('AgentMcpAccessService', () => {
 				candidate('a1', 'p1', false),
 			]);
 
-			await service.bulkSetAvailableInMCP(user, {
-				availableInMCP: true,
-				projectId: 'p1',
-			} as never);
+			await service.bulkSetAvailableInMCP(
+				user,
+				{
+					availableInMCP: true,
+					projectId: 'p1',
+				} as never,
+				undefined,
+			);
 
 			expect(agentRepository.findMcpAvailabilityCandidates).toHaveBeenCalledWith({
 				projectIds: ['p1'],

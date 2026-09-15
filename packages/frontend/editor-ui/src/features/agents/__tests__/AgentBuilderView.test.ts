@@ -123,6 +123,8 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		pushConnect: pushConnectMock,
 		pushDisconnect: vi.fn(),
+		send: vi.fn(),
+		clearQueue: vi.fn(),
 		addEventListener: (listener: (event: PushMessage) => void) => {
 			pushListeners.add(listener);
 			return () => pushListeners.delete(listener);
@@ -184,6 +186,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentWriteLock: vi.fn().mockResolvedValue(null),
 }));
 
 const generateDraftCasesMock = vi.fn();

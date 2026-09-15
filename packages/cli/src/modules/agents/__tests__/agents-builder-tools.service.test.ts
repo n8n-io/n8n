@@ -26,6 +26,8 @@ import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-reg
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
@@ -105,6 +107,7 @@ function makeService() {
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
+	const collaborationService = mock<CollaborationService>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -129,10 +132,12 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
+		collaborationService,
 	);
 
 	return {
 		service,
+		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
 		attachableWorkflowsService,
@@ -369,6 +374,43 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual(expect.objectContaining({ ok: false }));
 			expect(result).not.toHaveProperty('configMutated');
+		});
+
+		it('write_config returns a locked failure while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					json: JSON.stringify({ ...baseConfig, instructions: 'Changed.' }),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('patch_config reports stage "locked" while a user holds the builder write lock', async () => {
+			const { service, agentsService, collaborationService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(baseConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/instructions', value: 'Changed.' }]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ ok: false, stage: 'locked' }));
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {

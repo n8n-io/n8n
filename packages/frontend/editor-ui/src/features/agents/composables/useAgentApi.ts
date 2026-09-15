@@ -627,3 +627,15 @@ export const listAgentIntegrations = async (
 		`/projects/${projectId}/agents/v2/catalog/integrations`,
 	);
 };
+
+export const getAgentWriteLock = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ clientId: string; userId: string } | null> => {
+	return await makeRestApiRequest<{ clientId: string; userId: string } | null>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
+	);
+};
