@@ -18,6 +18,8 @@ jobs:
     with:
       test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:performance
+      workers: '1'
+      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance
     secrets: inherit
@@ -43,13 +45,13 @@ jobs:
         with:
           pattern: performance-shard-*
           path: performance-artifacts
-          merge-multiple: true
+          merge-multiple: false
 
       - name: Run canvas perf sentinels
         run: |
-          RESULTS_PATH=$(find performance-artifacts -name 'test-results.json' -print -quit)
-          if [ -z "$RESULTS_PATH" ]; then
+          mapfile -t RESULTS_PATHS < <(find performance-artifacts -name 'test-results.json' -print)
+          if [ "${#RESULTS_PATHS[@]}" -eq 0 ]; then
             echo "::warning::No test-results.json found in performance artifacts — sentinel skipped."
             exit 0
           fi
-          node packages/testing/playwright/scripts/canvas-perf-sentinels.mjs "$RESULTS_PATH"
+          node packages/testing/playwright/scripts/canvas-perf-sentinels.mjs "${RESULTS_PATHS[@]}"

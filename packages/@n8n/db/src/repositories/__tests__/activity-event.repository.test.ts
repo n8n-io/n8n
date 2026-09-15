@@ -90,7 +90,7 @@ describe('ActivityEventRepository', () => {
 			});
 
 			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
-				where: { projectId: In(['project1']) },
+				where: { projectId: In(['project1']), category: In(['workflow', 'credential']) },
 				order: { id: 'DESC' },
 				take: 30,
 			});
@@ -119,7 +119,11 @@ describe('ActivityEventRepository', () => {
 			});
 
 			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
-				where: { projectId: In(['project1']), id: And(MoreThan(5), LessThan(40)) },
+				where: {
+					projectId: In(['project1']),
+					category: In(['workflow', 'credential']),
+					id: And(MoreThan(5), LessThan(40)),
+				},
 				order: { id: 'DESC' },
 				take: 10,
 			});
@@ -130,7 +134,11 @@ describe('ActivityEventRepository', () => {
 		it.each([0, -1, 1.5])(
 			'reads nothing for a limit of %s rather than the whole table',
 			async (limit) => {
-				const entries = await repository.findFeed({ projectIds: ['project1'], limit });
+				const entries = await repository.findFeed({
+					projectIds: ['project1'],
+					categories: ['workflow', 'credential'],
+					limit,
+				});
 
 				expect(entries).toEqual([]);
 				expect(entityManager.find).not.toHaveBeenCalled();

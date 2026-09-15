@@ -165,15 +165,39 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Workflow version this execution actually ran, read back from the
+	 * execution record. Authoritative: a save landing while the run was in
+	 * flight moves the workflow head, but not this. Null for an execution of an
+	 * unsaved workflow, absent when the record could not be read.
+	 */
+	workflowVersionId?: string | null;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
 }
 
+export interface NodeOutputBranch {
+	/** Position of the output on the node; 0 is the first output. */
+	index: number;
+	/** Label the node's output pane shows for the output, e.g. a Filter's "Kept" / "Discarded". */
+	name?: string;
+	/** Item count on this output, before pagination. */
+	totalItems: number;
+	items: unknown[];
+}
+
 export interface NodeOutputResult {
 	nodeName: string;
-	items: unknown[];
+	/**
+	 * One entry per output of the node's last run, in output order. Multi-output
+	 * nodes (Filter, IF, Switch) keep each output separate, so their items are
+	 * never merged into one list.
+	 */
+	outputs: NodeOutputBranch[];
+	/** Item count across all outputs. */
 	totalItems: number;
+	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
 }
 
@@ -434,10 +458,14 @@ export interface InstanceAiWorkflowService {
 	getPinnedDataSummary?(
 		workflowId: string,
 	): Promise<Array<{ nodeName: string; itemCount: number }>>;
-	/** Cheap version-only lookup. The adapter projects just `versionId` and
-	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
-	 *  Use to validate per-session caches when the body isn't needed. */
-	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Cheap version-only lookup. The adapter projects just `versionId`,
+	 *  `activeVersionId` and `updatedAt` from the workflow row, skipping
+	 *  `nodes`/`connections`/etc. Use to validate per-session caches when the
+	 *  body isn't needed, or to compare the draft against the published
+	 *  version. `activeVersionId` is null while the workflow is unpublished. */
+	getWorkflowHead(
+		workflowId: string,
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: number }>;
 	/** Single fetch returning the SDK WorkflowJSON together with the version it
 	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
 	 *  versionId you'll pin to it land in one round-trip. */
@@ -513,6 +541,13 @@ export interface ExecutionSummary {
 	startedAt: string;
 	finishedAt?: string;
 	mode: string;
+	/**
+	 * Workflow version this execution ran. Compare it with the workflow's
+	 * `activeVersionId` to tell a run of the published version from a run of a
+	 * draft. Null for executions of an unsaved workflow, and on rows recorded
+	 * before the column existed.
+	 */
+	workflowVersionId?: string | null;
 }
 
 export interface InstanceAiExecutionService {
@@ -1745,6 +1780,8 @@ export interface InstanceAiMemoryConfig {
 	observationalMemory?: {
 		observerThresholdTokens: number;
 		reflectorThresholdTokens: number;
+		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
+		midRunObservation?: boolean;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};

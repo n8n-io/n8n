@@ -31,6 +31,7 @@
 | ---- | ---------- |
 | IDX_f36dea4d38fe92e0e8f44d5a56 | CREATE INDEX "IDX_f36dea4d38fe92e0e8f44d5a56" ON public.instance_ai_threads USING btree ("resourceId") |
 | IDX_instance_ai_threads_projectId | CREATE INDEX "IDX_instance_ai_threads_projectId" ON public.instance_ai_threads USING btree ("projectId") |
+| IDX_instance_ai_threads_resourceId_updatedAt_id | CREATE INDEX "IDX_instance_ai_threads_resourceId_updatedAt_id" ON public.instance_ai_threads USING btree ("resourceId", "updatedAt", id) |
 | PK_35575100e45cdedeb89ae0643e9 | CREATE UNIQUE INDEX "PK_35575100e45cdedeb89ae0643e9" ON public.instance_ai_threads USING btree (id) |
 
 ## Relations

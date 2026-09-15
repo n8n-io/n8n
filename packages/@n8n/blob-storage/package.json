@@ -48,7 +48,6 @@
     "@n8n/utils": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
-    "reflect-metadata": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

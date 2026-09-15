@@ -689,6 +689,7 @@ export type {
 	WorkflowVersionDetail,
 	ExecutionResult,
 	ExecutionDebugInfo,
+	NodeOutputBranch,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
 	ResolvedParametersDebugBundle,

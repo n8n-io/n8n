@@ -34,6 +34,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -115,7 +116,9 @@ const nodeSettingsInputSchema = z.object({
 	onError: z
 		.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
 		.optional()
-		.describe('Error behavior.'),
+		.describe(
+			'Error behavior. "continueErrorOutput" appends an error output after the node\'s regular outputs — index 1 on a single-output node such as HTTP Request. Wire that branch with an addConnection operation whose sourceIndex is that index.',
+		),
 	retryOnFail: z.boolean().optional(),
 	maxTries: z.number().int().min(2).max(5).optional(),
 	waitBetweenTries: z.number().int().min(0).max(5000).optional(),
@@ -160,13 +163,17 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 				.int()
 				.nonnegative()
 				.optional()
-				.describe('For connection ops; default 0.'),
+				.describe(
+					'For connection ops; which output of the source node the connection starts from. Default 0, the first output. Use it to wire a branch: on an If node the false branch is index 1, and onError "continueErrorOutput" appends an error output after the regular ones (index 1 on a single-output node such as HTTP Request, index 2 on an If node). This is the only field that selects an output.',
+				),
 			targetIndex: z
 				.number()
 				.int()
 				.nonnegative()
 				.optional()
-				.describe('For connection ops; default 0.'),
+				.describe(
+					'For connection ops; which input of the target node the connection ends at. Default 0.',
+				),
 			connectionType: z.string().optional().describe('For connection ops; default "main".'),
 			credentialKey: z.string().optional().describe('For setNodeCredential.'),
 			credentialId: z.string().optional().describe('For setNodeCredential.'),
@@ -219,6 +226,11 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 					}
 				: {}),
 		})
+		// Strict, so a field this schema does not declare fails the call instead of
+		// being stripped. Stripping made the tool report success for an operation it
+		// never ran: a guessed output-index field (e.g. sourceOutput) vanished and
+		// the connection was wired from output 0.
+		.strict()
 		.describe('Workflow update operation. Provide fields matching type.');
 type OperationInput = {
 	type: (typeof baseOperationTypes)[number] | (typeof gatedGroupOperationTypes)[number];
@@ -339,7 +351,10 @@ const outputSchema = {
 				reason: z.string(),
 			}),
 		)
-		.optional(),
+		.optional()
+		.describe(
+			'Existing groups this update made invalid and removed. Repair them before you report the workflow as done.',
+		),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -1336,6 +1351,35 @@ export const createUpdateWorkflowTool = (
 					skippedOperations,
 					result.groupOperations,
 				);
+
+				// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+				// A canvas that was already this wide before the update is marked pre-existing,
+				// so the agent does not rework a layout it did not make.
+				const ceilingWarning = canvasGroupsEnabled
+					? topLevelItemsWarning(updatedWorkflow)
+					: undefined;
+
+				if (ceilingWarning) {
+					const preExistingUngroupedNodeNames = new Set(
+						summarizeUngroupedNodeNames(existingWorkflow),
+					);
+
+					const hasNewlyAddedUngroupedNodeNames = summarizeUngroupedNodeNames(updatedWorkflow).some(
+						(name) => !preExistingUngroupedNodeNames.has(name),
+					);
+
+					const wasOverCeilingBefore = topLevelItemsWarning(existingWorkflow) !== undefined;
+					const preExisting = wasOverCeilingBefore && !hasNewlyAddedUngroupedNodeNames;
+					validationWarnings.push(
+						preExisting
+							? {
+									...ceilingWarning,
+									message: `[pre-existing] ${ceilingWarning.message}`,
+									preExisting: true,
+								}
+							: ceilingWarning,
+					);
+				}
 
 				const output: UpdateWorkflowOutput = {
 					workflowId: updatedWorkflow.id,

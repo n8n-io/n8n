@@ -16,7 +16,7 @@ const DELEGATION_PROMPT =
 	'Report the results of all three tasks.';
 
 test.describe(
-	'Instance-AI Memory: Lightweight Delegation @capability:observability',
+	'Instance-AI Memory: Lightweight Delegation',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

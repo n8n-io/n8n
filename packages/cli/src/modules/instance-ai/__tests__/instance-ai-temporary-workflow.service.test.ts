@@ -49,6 +49,7 @@ function createService() {
 		nodeUsageEnabled: false,
 		instanceContextEnabled: false,
 		folderExplorationEnabled: false,
+		aiPreferencesEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

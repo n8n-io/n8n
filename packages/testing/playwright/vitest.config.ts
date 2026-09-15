@@ -5,9 +5,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	test: {
 		include: [
-			'scripts/**/*.test.ts',
+			'scripts/**/*.test.{ts,mjs}',
 			'fixtures/**/*.test.ts',
 			'reporters/**/*.test.ts',
+			'utils/**/*.test.ts',
 			'tests/framework/telemetry.test.ts',
 			'tests/framework/telemetry-integration.test.ts',
 			'*.test.ts',

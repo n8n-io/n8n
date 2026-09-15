@@ -5,6 +5,7 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -282,7 +283,8 @@ export class PostHogClient {
 		}
 
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
-			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] = true;
+			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
+				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
 		}
 
 		// One flag over both sides of instance-activity context, so the env var that turns the

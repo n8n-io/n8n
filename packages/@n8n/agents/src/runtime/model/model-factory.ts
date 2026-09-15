@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
+import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import {
+	endpointRouteKey,
+	guardOpenAiRoutes,
+	withChatCompletionsFallback,
+} from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
 	type ProviderId,
@@ -38,6 +43,12 @@ function isLanguageModel(config: unknown): config is LanguageModel {
  * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
  * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
+/**
+ * Resolves `globalThis.fetch` per request, the same way the SDK does when no
+ * `fetch` is passed, so a transport installed after the model was built is used.
+ */
+const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
+
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
@@ -181,18 +192,35 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
-			const provider = createOpenAI({ ...providerCreds, fetch });
-			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
-			// vLLM, Ollama), which speaks /chat/completions; the provider's default
-			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. OpenAI credentials also carry the official
-			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
-			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
-			return useChat ? provider.chat(model) : provider(model);
+			const { baseURL } = providerCreds;
+			// The official API serves /responses, which the provider's default model
+			// targets. OpenAI credentials also carry that base URL. `isOpenAiCustomEndpoint`
+			// reads the model-discovery host list, so a host added there to fix a model
+			// dropdown also stops this endpoint from being probed.
+			if (baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
+				const provider = createOpenAI({ ...providerCreds, fetch });
+				return apiStyle === 'chat' ? provider.chat(model) : provider(model);
+			}
+			// A custom baseURL can sit behind a reverse proxy whose catch-all answers
+			// 200 with an HTML page, which the SDK stream parser accepts as an empty
+			// stream. Every route through such an endpoint runs on the guarded
+			// transport, whichever API the user pinned.
+			const guarded = createOpenAI({
+				...providerCreds,
+				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
+			});
+			// `apiStyle` is the explicit override and wins over the automatic choice:
+			// it pins the route, so a refusal on it surfaces instead of falling back.
+			if (apiStyle === 'chat') return guarded.chat(model);
+			if (apiStyle === 'responses') return guarded(model);
+			// Without it, only the endpoint knows whether it is a proxy for real
+			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
+			// transport and the first answer decides.
+			return withChatCompletionsFallback(
+				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
+				guarded(model),
+				guarded.chat(model),
+			);
 		},
 	},
 	custom: {

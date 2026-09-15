@@ -7,11 +7,15 @@ import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
 	OrchestrationContext,
+	ResolvedNodeParametersResult,
 	WorkflowTaskService,
 } from '../../../types';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
 import { deriveWorkflowVerificationObligationFromOutcome } from '../../../workflow-loop/verification-obligation';
-import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	VerificationClaim,
+	WorkflowBuildOutcome,
+} from '../../../workflow-loop/workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../../../workflow-loop/workflow-task-service';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
@@ -32,10 +36,26 @@ type VerifyBuiltWorkflowOutput = {
 	}>;
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
+	resolvedParameterWarnings?: Array<{
+		nodeName: string;
+		executionId?: string;
+		path: string;
+		raw: string;
+		issue: 'empty' | 'failed';
+		detail?: string;
+	}>;
+	skippedParameterChecks?: Array<{
+		nodeName: string;
+		executionId?: string;
+		reason: string;
+	}>;
+	skippedParameterCheckCount?: number;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
+	liveStateNote?: string;
+	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
@@ -83,6 +103,9 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			userId: 'user_1',
 			workflowService: {
 				getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [] }),
+				getWorkflowHead: vi
+					.fn()
+					.mockResolvedValue({ versionId: 'draft-v1', activeVersionId: null, updatedAt: 0 }),
 			} as unknown as InstanceAiWorkflowService,
 			executionService: {
 				run: vi.fn().mockResolvedValue({
@@ -441,6 +464,7 @@ type ExecutionRunResult = {
 	executedNodeNames?: string[];
 	lastNodeExecuted?: string;
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
+	workflowVersionId?: string | null;
 	error?: string;
 };
 
@@ -456,6 +480,9 @@ interface VerifyToolContext {
 						{ timeout?: number; verificationPinData?: unknown },
 					]
 				) => Promise<ExecutionRunResult>
+			>;
+			getResolvedNodeParameters?: Mock<
+				(executionId: string, nodeName: string) => Promise<ResolvedNodeParametersResult>
 			>;
 		};
 		workflowService?: InstanceAiWorkflowService;
@@ -496,6 +523,9 @@ function makeContext(
 		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		availableCredentials?: Array<{ id: string; name: string; type: string }>;
+		workflowHead?: { versionId: string; activeVersionId: string | null };
+		/** Replayed parameter resolution per simulated node; nodes not listed make the replay throw. */
+		resolvedParameters?: Record<string, ResolvedNodeParametersResult>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -562,6 +592,11 @@ function makeContext(
 				connections: overrides.workflowConnections ?? {},
 			};
 		}),
+		getWorkflowHead: vi.fn().mockResolvedValue({
+			versionId: overrides.workflowHead?.versionId ?? 'draft-v1',
+			activeVersionId: overrides.workflowHead?.activeVersionId ?? null,
+			updatedAt: 0,
+		}),
 	} as unknown as InstanceAiWorkflowService;
 
 	const credentialService = {
@@ -583,6 +618,13 @@ function makeContext(
 		error: vi.fn(),
 	};
 
+	const getResolvedNodeParameters = vi.fn(async (_executionId: string, nodeName: string) => {
+		await Promise.resolve();
+		const replayed = overrides.resolvedParameters?.[nodeName];
+		if (!replayed) throw new Error(`no run data for ${nodeName}`);
+		return replayed;
+	});
+
 	const ctx: VerifyToolContext = {
 		workflowTaskService: {
 			reportBuildOutcome: vi.fn(),
@@ -602,7 +644,7 @@ function makeContext(
 			recordVerification: vi.fn(coordinator.recordVerification.bind(coordinator)),
 		} as unknown as WorkflowTaskService,
 		domainContext: {
-			executionService: { run },
+			executionService: { run, getResolvedNodeParameters },
 			workflowService,
 			dataTableService,
 			credentialService,
@@ -894,6 +936,38 @@ describe('verify-built-workflow tool', () => {
 		).toBe(14);
 	});
 
+	it('reports per-output counts for a multi-output node', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-outputs',
+			status: 'success',
+			data: {
+				Filter: wrapExecutionOutput({
+					outputs: [
+						{ index: 0, name: 'Kept', items: [{ id: 1 }] },
+						{ index: 1, name: 'Discarded', items: [{ id: 2 }, { id: 3 }] },
+					],
+					totalItems: 3,
+				}),
+			},
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.nodePreviews).toEqual([
+			expect.objectContaining({
+				nodeName: 'Filter',
+				itemCount: 3,
+				outputs: [
+					{ index: 0, name: 'Kept', itemCount: 1 },
+					{ index: 1, name: 'Discarded', itemCount: 2 },
+				],
+			}),
+		]);
+		expect(
+			updateBuildOutcome.mock.calls.at(-1)![1].verification?.evidence?.producedOutputRows,
+		).toBe(3);
+	});
+
 	it('treats a waiting status with output as a successful run (e.g. Form Trigger response page)', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-form-1',
@@ -1165,6 +1239,99 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		]);
 		expect(result.simulationNote).toContain('Send Slack');
 		expect(result.simulationNote).toContain('no real external writes');
+	});
+
+	it('surfaces parameters of reached simulated nodes that resolved to empty or threw', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					simulateVerdict('Send Slack', 'Sends a message to a Slack channel'),
+					simulateVerdict('Send SMS', 'Sends an SMS'),
+				],
+				simulationFixtures: { 'Send Slack': [{ ok: true }], 'Send SMS': [{ sid: 'SM1' }] },
+			}),
+			{
+				executionId: 'exec-sim',
+				status: 'success',
+				data: {
+					Webhook: [{ headers: {}, query: {}, body: { CallStatus: 'no-answer' } }],
+					'Send Slack': [{ ok: true }],
+				},
+			},
+			{
+				resolvedParameters: {
+					'Send Slack': {
+						nodeName: 'Send Slack',
+						runIndex: 0,
+						itemIndex: 0,
+						parameters: { text: '={{ $json.query.caller }}' },
+						resolved: '{"text":""}',
+						failedExpressions: [
+							{ path: 'channel', raw: '={{ $json.body.ch.id }}', error: 'Cannot read id' },
+						],
+						emptyResolutions: [
+							{ path: 'text', raw: '={{ $json.query.caller }}', resolved: undefined },
+						],
+					},
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		// Only nodes the run reached are replayed; Send SMS never executed.
+		expect(ctx.domainContext.executionService.getResolvedNodeParameters).toHaveBeenCalledTimes(1);
+		expect(ctx.domainContext.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+			'exec-sim',
+			'Send Slack',
+		);
+		expect(result.resolvedParameterWarnings).toEqual([
+			{
+				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
+				path: 'channel',
+				raw: '={{ $json.body.ch.id }}',
+				issue: 'failed',
+				detail: 'Cannot read id',
+			},
+			{
+				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
+				path: 'text',
+				raw: '={{ $json.query.caller }}',
+				issue: 'empty',
+			},
+		]);
+		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('Send Slack: `channel`');
+		expect(result.simulationNote).toContain('`text` (={{ $json.query.caller }}) resolved to empty');
+	});
+
+	it('keeps the verification result when the parameter replay fails', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Send Slack', 'Sends a message to a Slack channel')],
+				simulationFixtures: { 'Send Slack': [{ ok: true }] },
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: { 'Send Slack': [{ ok: true }] } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedParameterWarnings).toBeUndefined();
+		expect(result.skippedParameterChecks).toEqual([
+			{ nodeName: 'Send Slack', executionId: 'exec-sim', reason: 'replay-failed' },
+		]);
+		expect(result.skippedParameterCheckCount).toBe(1);
+		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('Parameter check skipped');
+		expect(result.simulationNote).toContain('unchecked dynamic fields');
+		expect(ctx.logger.debug).toHaveBeenCalledWith(
+			'Resolved-parameter check skipped for simulated node',
+			expect.objectContaining({ nodeName: 'Send Slack' }),
+		);
 	});
 
 	it('fails closed when the build outcome has no simulation plan at all', async () => {
@@ -1786,5 +1953,158 @@ describe('verify-built-workflow tool — trigger selection', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: undefined });
+	});
+});
+
+describe('verify-built-workflow tool — publish state', () => {
+	it('warns that the fix is not live when the published version is an older one', async () => {
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-stale');
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).toContain('Do NOT describe the workflow as live');
+		// The persisted claim carries it too: later turns read this record, not
+		// the tool result.
+		expect(getOutcome().verification?.claim?.liveState).toBe('live-stale');
+	});
+
+	it('states the stale live version without asking to publish a failed run', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Send Email failed',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.level).toBe('failed');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).not.toMatch(/ask the user whether/i);
+	});
+
+	it('says nothing about publishing when the published version is the verified one', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('names the version the execution ran, not one saved while the run was in flight', async () => {
+		// A save landing mid-run moves the workflow head. The execution keeps
+		// running the version it started with, and the claim must name that one.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-3', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.claim?.liveState).toBe('live-stale');
+	});
+
+	it('reads the published version after the run, so a publish mid-run is not called stale', async () => {
+		// Starts stale, and the user publishes the verified draft while the run
+		// is in flight. Only a lookup that happens after the run sees that.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+		const head = vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead);
+		vi.mocked(ctx.domainContext.executionService.run).mockImplementation(async () => {
+			head.mockResolvedValue({
+				versionId: 'draft-2',
+				activeVersionId: 'draft-2',
+				updatedAt: 0,
+			});
+			await Promise.resolve();
+			return {
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			};
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('leaves publish state unknown when the run reported no version', async () => {
+		// The head is published and equals its own draft, so substituting it
+		// would report `live-current` — "production is proven" — for a run whose
+		// version nobody knows.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{ workflowHead: { versionId: 'published-1', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.claim?.verifiedVersionId).toBeUndefined();
+	});
+
+	it('leaves the claim without publish state when the lookup fails', async () => {
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: { 'Form Trigger': {} },
+			workflowVersionId: 'draft-2',
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead).mockRejectedValue(
+			new Error('no access'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.liveStateNote).toBeUndefined();
 	});
 });

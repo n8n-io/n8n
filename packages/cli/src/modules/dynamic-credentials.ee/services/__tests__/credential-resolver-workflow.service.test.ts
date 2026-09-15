@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { CredentialsRepository, WorkflowRepository } from '@n8n/db';
+import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
 import { CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
@@ -924,7 +924,7 @@ describe('CredentialResolverWorkflowService', () => {
 			});
 
 			it('enforces user access on the root but resolves sub-workflows by id', async () => {
-				const user = { id: 'user-1' } as unknown as Parameters<typeof service.getWorkflowStatus>[2];
+				const user = { id: 'user-1' } as unknown as User;
 				mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(
 					createMockWorkflow({
 						id: 'workflow-1',
@@ -944,7 +944,7 @@ describe('CredentialResolverWorkflowService', () => {
 					createMockCredential({ id: 'cred-sub' }),
 				]);
 
-				const result = await service.getWorkflowStatus('workflow-1', credentialContext, user);
+				const result = await service.getWorkflowStatus('workflow-1', credentialContext, { user });
 
 				expect(result.map((s) => s.credentialId).sort()).toEqual(['cred-root', 'cred-sub']);
 				expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
@@ -955,6 +955,161 @@ describe('CredentialResolverWorkflowService', () => {
 				// Sub-workflow loaded by id, not through the user-scoped finder.
 				expect(mockWorkflowRepository.get).toHaveBeenCalledWith({ id: 'sub-1' });
 				expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledTimes(1);
+			});
+
+			describe('root node override (running snapshot as source of truth)', () => {
+				it('checks the caller-provided root nodes, ignoring the persisted node list', async () => {
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [
+								nodeWithCredential('cred-reachable', { id: 'n-reach', name: 'Reachable' }),
+								nodeWithCredential('cred-orphan', { id: 'n-orphan', name: 'Orphan' }),
+							],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-reachable' }),
+						createMockCredential({ id: 'cred-orphan' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext, {
+						rootNodes: [nodeWithCredential('cred-reachable', { id: 'n-reach', name: 'Reachable' })],
+					});
+
+					expect(result.map((s) => s.credentialId)).toEqual(['cred-reachable']);
+				});
+
+				it('checks the credential from the running snapshot when the persisted entity was renamed', async () => {
+					// The persisted (draft) entity carries a different node name and credential than
+					// the running version. A name-based filter would drop the running node; the override
+					// pins the check to the snapshot the caller passed.
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [nodeWithCredential('cred-draft-only', { id: 'n-1', name: 'RenamedInDraft' })],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-running' }),
+						createMockCredential({ id: 'cred-draft-only' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext, {
+						rootNodes: [nodeWithCredential('cred-running', { id: 'n-1', name: 'RunningName' })],
+					});
+
+					expect(result.map((s) => s.credentialId)).toEqual(['cred-running']);
+				});
+
+				it('checks every enabled node of the persisted entity when no root nodes are given', async () => {
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [
+								nodeWithCredential('cred-reachable', { id: 'n-reach', name: 'Reachable' }),
+								nodeWithCredential('cred-orphan', { id: 'n-orphan', name: 'Orphan' }),
+							],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-reachable' }),
+						createMockCredential({ id: 'cred-orphan' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext);
+
+					expect(result.map((s) => s.credentialId).sort()).toEqual([
+						'cred-orphan',
+						'cred-reachable',
+					]);
+				});
+
+				it('skips a disabled node among the caller-provided root nodes', async () => {
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-enabled' }),
+						createMockCredential({ id: 'cred-disabled' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext, {
+						rootNodes: [
+							nodeWithCredential('cred-enabled', { id: 'n-on', name: 'On' }),
+							nodeWithCredential('cred-disabled', { id: 'n-off', name: 'Off', disabled: true }),
+						],
+					});
+
+					expect(result.map((s) => s.credentialId)).toEqual(['cred-enabled']);
+				});
+
+				it('applies the override to the root only, never to sub-workflow nodes', async () => {
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [nodeWithCredential('cred-root', { id: 'n-root', name: 'Trigger' })],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+						'sub-1': createMockWorkflow({
+							id: 'sub-1',
+							// A sub-workflow node not present in the root override.
+							nodes: [nodeWithCredential('cred-sub', { name: 'SubNode' })],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-root' }),
+						createMockCredential({ id: 'cred-sub' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext, {
+						rootNodes: [
+							nodeWithCredential('cred-root', { id: 'n-root', name: 'Trigger' }),
+							createExecuteWorkflowNode({ value: 'sub-1' }, { name: 'Exec' }),
+						],
+					});
+
+					expect(result.map((s) => s.credentialId).sort()).toEqual(['cred-root', 'cred-sub']);
+				});
+
+				it('does not traverse an Execute Sub-workflow node absent from the root override', async () => {
+					mockWorkflowsById({
+						'workflow-1': createMockWorkflow({
+							id: 'workflow-1',
+							nodes: [
+								nodeWithCredential('cred-root', { id: 'n-root', name: 'Trigger' }),
+								createExecuteWorkflowNode({ value: 'sub-1' }, { name: 'Exec' }),
+							],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+						'sub-1': createMockWorkflow({
+							id: 'sub-1',
+							nodes: [nodeWithCredential('cred-sub', { name: 'SubNode' })],
+							settings: { credentialResolverId: 'resolver-1' },
+						}),
+					});
+					mockFindReturning([
+						createMockCredential({ id: 'cred-root' }),
+						createMockCredential({ id: 'cred-sub' }),
+					]);
+
+					const result = await service.getWorkflowStatus('workflow-1', credentialContext, {
+						// Only the trigger is in the running snapshot; the Execute node is not.
+						rootNodes: [nodeWithCredential('cred-root', { id: 'n-root', name: 'Trigger' })],
+					});
+
+					expect(result.map((s) => s.credentialId)).toEqual(['cred-root']);
+					// The absent Execute node's sub-workflow is never loaded.
+					expect(mockWorkflowRepository.get).not.toHaveBeenCalledWith({ id: 'sub-1' });
+				});
 			});
 		});
 	});

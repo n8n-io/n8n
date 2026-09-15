@@ -1,4 +1,5 @@
 import type {
+	AgentMessageAuthor,
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
 	AgentSessionStatus,
@@ -89,6 +90,8 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	/** Chat platform user who wrote the turn; null outside chat integrations. */
+	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
 	promptTokens: number | null;
