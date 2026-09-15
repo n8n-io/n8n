@@ -4,6 +4,7 @@ import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
 	ExecutionDataRepository,
+	UserRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -32,6 +33,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -41,10 +43,12 @@ import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	executeAgent,
 	executeWorkflow,
@@ -102,6 +106,15 @@ const getCancelablePromise = async (run: IRun) =>
 
 const processRunExecutionData = vi.fn();
 
+vi.mock('@/execution-lifecycle/execution-lifecycle-hooks', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/execution-lifecycle/execution-lifecycle-hooks')>();
+	return {
+		...actual,
+		getLifecycleHooksForSubExecutions: vi.fn(actual.getLifecycleHooksForSubExecutions),
+	};
+});
+
 vi.mock('n8n-core', async () => ({
 	__esModule: true,
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
@@ -133,6 +146,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
+	// A sub-execution installs push hooks when its parent carries a push ref, and
+	// `mock<IWorkflowExecuteAdditionalData>()` stubs `pushRef` truthy, so these
+	// have to resolve here.
+	mockInstance(Push);
+	mockInstance(UserRepository);
+	mockInstance(ExecutionRedactionServiceProxy);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
 	const workflowsConfig = Container.get(WorkflowsConfig);
 	afterEach(() => {
@@ -207,6 +226,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('blocked');
 
 			expect(activeExecutions.add).not.toHaveBeenCalled();
+		});
+
+		describe('live sub-execution push gate', () => {
+			const CALLING_NODE = 'Execute Sub-workflow';
+
+			async function runSubWorkflow() {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>({ pushRef: 'push-1', executionId: 'e-parent' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: undefined,
+						doNotWaitToFinish: false,
+						node: mock<INode>({ name: CALLING_NODE }),
+						nodeRunIndex: 2,
+					}),
+				);
+
+				return vi.mocked(getLifecycleHooksForSubExecutions).mock.calls.at(-1)?.[0];
+			}
+
+			it('passes the push session and calling node run when enabled', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', 'true');
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBe('push-1');
+				expect(options?.subExecutionParent).toEqual({
+					executionId: 'e-parent',
+					nodeName: CALLING_NODE,
+					runIndex: 2,
+				});
+			});
+
+			it('withholds both when disabled, so no push hooks install', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', 'false');
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBeUndefined();
+				expect(options?.subExecutionParent).toBeUndefined();
+			});
+
+			it('is off when the flag is unset', async () => {
+				vi.stubEnv('N8N_ENV_FEAT_LIVE_SUB_EXECUTIONS', undefined);
+
+				const options = await runSubWorkflow();
+
+				expect(options?.pushRef).toBeUndefined();
+			});
 		});
 
 		it('should execute workflow, return data and execution id', async () => {

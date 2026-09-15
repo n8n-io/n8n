@@ -16,16 +16,22 @@ export async function nodeExecuteAfterData(
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	// Ignore node events that don't belong to the execution this document is
-	// tracking — a concurrent execution's data must not land on this document.
+	// Ignore events for anything but the tracked execution or its sub-executions.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (activeExecutionId !== pushData.executionId) {
+	const isSubExecution = workflowExecutionStateStore.isTrackedSubExecution(pushData.executionId);
+	if (activeExecutionId !== pushData.executionId && !isSubExecution) {
 		return;
 	}
 
 	useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionRunData(
 		pushData,
 	);
+
+	// Schema previews are per workflow, so a sub-execution's data would be
+	// attributed to the wrong one.
+	if (isSubExecution) {
+		return;
+	}
 
 	const node = workflowDocumentStore.getNodeByName(pushData.nodeName);
 
