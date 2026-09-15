@@ -2177,14 +2177,16 @@ export class InstanceAiAdapterService {
 						);
 					}
 
-					// A toolkit node holds several tools and the Tool Executor runs only
-					// the one `toolName` matches. Unnamed, nothing matches and the run
-					// reports success with no result at all.
-					if (isToolkitNode(target) && options?.toolName === undefined) {
+					// A toolkit node holds several tools and the Tool Executor runs only the
+					// one whose name matches the request. That name is built from the node
+					// name and the server's tool name, so nothing here can name a member
+					// reliably, and a miss reports success with no result at all.
+					if (isToolkitNode(target)) {
 						throw new UserError(
-							`Node "${nodeName}" holds several tools, so a step run has to name the one to run. ` +
-								'Pass toolName. The node\'s "includedTools" parameter lists the tools it exposes; ' +
-								'workflows(action="get-as-code") shows it.',
+							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
+								`Run ${roots} instead, then read this node with ` +
+								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'tool call returned.',
 						);
 					}
 
@@ -2199,14 +2201,10 @@ export class InstanceAiAdapterService {
 						);
 					}
 
-					agentRequest = buildToolAgentRequest({
-						target,
-						toolArguments: options?.toolArguments,
-						toolName: options?.toolName,
-					});
-				} else if (options?.toolArguments !== undefined || options?.toolName !== undefined) {
+					agentRequest = buildToolAgentRequest({ target, toolArguments: options?.toolArguments });
+				} else if (options?.toolArguments !== undefined) {
 					throw new UserError(
-						`toolArguments and toolName apply only to a tool node. "${nodeName}" runs in the main graph, ` +
+						`toolArguments applies only to a tool node. "${nodeName}" runs in the main graph, ` +
 							'so its input comes from mockInput, reuseExecutionId, or the nodes above it.',
 					);
 				}

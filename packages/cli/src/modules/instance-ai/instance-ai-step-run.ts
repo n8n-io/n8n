@@ -412,9 +412,14 @@ export function pinDataForStepRun(
 
 /**
  * Node types that supply a toolkit — several tools behind one node — rather than
- * one tool. The Tool Executor runs the member whose name matches `toolName` and
- * skips every other, so a toolkit needs one named: without it nothing matches
- * and the run returns no result and no error.
+ * one tool.
+ *
+ * A step run cannot target one of these. The Tool Executor runs the member whose
+ * name matches the agent request and skips every other, and that name is not the
+ * server's tool name: `buildMcpToolName` prefixes it with the node's name and
+ * caps the result at 64 characters. Resolving it needs the server's tool list
+ * and a rule that lives in the nodes package, and a name that misses matches
+ * nothing — the run then reports success with no result and no error.
  */
 const TOOLKIT_NODE_TYPES = new Set<string>([
 	MCP_CLIENT_TOOL_NODE_TYPE,
@@ -438,9 +443,7 @@ export function declaredToolArguments(node: INode): string[] {
  *
  * `rewireGraph` copies this onto the virtual Tool Executor, which looks the
  * arguments up by the tool's own name — `nodeNameToToolName` of the node,
- * because every tool node names its tool that way. A toolkit node (MCP Client
- * Tool, a HITL tool) holds several tools, so `toolName` picks one; the Tool
- * Executor skips every member whose name does not match.
+ * because every tool node names its tool that way.
  *
  * A bare string is a valid argument set: a tool with one free-text input
  * (Wikipedia, Code Tool, a vector store used as a tool) takes the query
@@ -449,9 +452,8 @@ export function declaredToolArguments(node: INode): string[] {
 export function buildToolAgentRequest(args: {
 	target: INode;
 	toolArguments?: Record<string, unknown> | string;
-	toolName?: string;
 }): AiAgentRequest {
-	const name = nodeNameToToolName(args.toolName ?? args.target.name);
+	const name = nodeNameToToolName(args.target.name);
 	return {
 		query: { [name]: args.toolArguments ?? {} },
 		tool: { name },
