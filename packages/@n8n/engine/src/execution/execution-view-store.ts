@@ -24,7 +24,7 @@ export interface ExecutionListItemView {
 }
 
 export interface ExecutionListQuery {
-	workflowIds: string[] | 'all';
+	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
 	mode?: string;
 	createdAfter?: string;
