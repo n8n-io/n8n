@@ -656,6 +656,6 @@ describe('AgentExecutionRepository', () => {
 					resumeData: { approved: false },
 				},
 			}),
-		).rejects.toBeInstanceOf(AgentThreadQueueFullError);
+		).rejects.toBeInstanceOf(AgentActionAlreadyHandledError);
 	});
 });
