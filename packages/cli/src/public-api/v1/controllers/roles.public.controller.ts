@@ -181,7 +181,7 @@ export class RolesPublicController {
 		});
 
 		const result = this.canvasOnlyPersonalSpaceRole.isActiveFor(roleSlug)
-			? await this.canvasOnlyPersonalSpaceRole.updateRole(updateRole, req.user.id)
+			? await this.canvasOnlyPersonalSpaceRole.updateRole(updateRole)
 			: await this.roleService.updateCustomRole({
 					slug: roleSlug,
 					newRole: updateRole,

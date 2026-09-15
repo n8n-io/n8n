@@ -50,7 +50,7 @@ export class CanvasOnlyPersonalSpaceRoleService {
 	 * Applies the scopes of a role update, and stores which scopes the admin
 	 * removed, so the next start can apply the same choice again.
 	 */
-	async updateRole(newRole: RoleUpdate, userId: string): Promise<RoleDTO> {
+	async updateRole(newRole: RoleUpdate): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(PROJECT_OWNER_ROLE_SLUG);
 
 		// Omitted fields count as unchanged, so a partial update body stays usable.
@@ -89,11 +89,7 @@ export class CanvasOnlyPersonalSpaceRoleService {
 
 		const updatedRole = await this.roleService.getRole(PROJECT_OWNER_ROLE_SLUG);
 
-		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_UPDATED_PERSONAL_SPACE_ROLE, {
-			user_id: userId,
-			scopes: updatedRole.scopes,
-			removed_scopes: removedScopes,
-		});
+		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_UPDATED_PERSONAL_SPACE_ROLE, {});
 
 		return updatedRole;
 	}
