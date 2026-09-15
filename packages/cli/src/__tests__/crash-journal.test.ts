@@ -3,12 +3,16 @@ import { sleep } from '@n8n/utils/sleep';
 import { existsSync } from 'fs';
 import { mkdir, utimes } from 'fs/promises';
 
+// Hoisted so the assertions can reach the spy without importing the mocked
+// module here, which would run the factory below before `@n8n/di` initialises.
+const { loggerError } = vi.hoisted(() => ({ loggerError: vi.fn() }));
+
 // `inProduction` is derived from NODE_ENV at import time, which is `test` here,
 // so force it on — otherwise `init()` bails before reaching the guard under test.
 vi.mock('@n8n/backend-common', () => {
 	@Service()
 	class Logger {
-		error = vi.fn();
+		error = loggerError;
 	}
 
 	return { inProduction: true, Logger };
@@ -50,6 +54,7 @@ describe('crash journal init()', () => {
 		expect(sleep).not.toHaveBeenCalled();
 		expect(mkdir).not.toHaveBeenCalled();
 		expect(utimes).not.toHaveBeenCalled();
+		expect(loggerError).not.toHaveBeenCalled();
 	});
 
 	it('pauses and rewrites the journal when N8N_DEV_RELOAD is not set', async () => {
@@ -57,6 +62,7 @@ describe('crash journal init()', () => {
 
 		await init();
 
+		expect(loggerError).toHaveBeenCalledWith('Last session crashed');
 		expect(sleep).toHaveBeenCalledWith(10_000);
 		expect(utimes).toHaveBeenCalled();
 	});
