@@ -126,7 +126,10 @@ export class AgentIntegrationsController {
 			// `url_verification` challenge) before credentials are configured,
 			// so the user doesn't have to come back and re-verify URLs after
 			// connecting the credential.
-			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
+			const earlyResponse = await integration?.handleUnauthenticatedWebhook?.({
+				headers: req.headers,
+				body: req.body,
+			});
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);
 				return;

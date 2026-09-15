@@ -26,8 +26,8 @@ describe('Slack channel integration scenarios', () => {
 
 		expect(
 			integration.handleUnauthenticatedWebhook({
-				type: 'url_verification',
-				challenge: 'url-verification-challenge',
+				headers: {},
+				body: { type: 'url_verification', challenge: 'url-verification-challenge' },
 			}),
 		).toEqual({ status: 200, body: { challenge: 'url-verification-challenge' } });
 	});

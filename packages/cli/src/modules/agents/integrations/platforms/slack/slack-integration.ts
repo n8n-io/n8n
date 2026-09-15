@@ -19,6 +19,7 @@ import {
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
+	type WebhookRequestContext,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { assertCredentialNotClaimed } from '../../credential-claim';
@@ -209,7 +210,9 @@ export class SlackIntegration extends AgentChatIntegration {
 	 * bot token + signing secret in n8n. Slack's docs:
 	 * https://api.slack.com/events/url_verification
 	 */
-	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+	handleUnauthenticatedWebhook({
+		body,
+	}: WebhookRequestContext): UnauthenticatedWebhookResponse | undefined {
 		if (!body || typeof body !== 'object') return undefined;
 		const evt = body as { type?: unknown; challenge?: unknown };
 		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {

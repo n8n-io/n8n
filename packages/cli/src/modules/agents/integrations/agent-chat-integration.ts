@@ -301,14 +301,21 @@ export abstract class AgentChatIntegration {
 	 * into n8n. Without this hook, the standard handler returns 404 and the
 	 * user has to manually re-verify URLs after configuring the credential.
 	 *
-	 * Implementations inspect the parsed JSON body; return a response to send
-	 * back, or undefined to fall through to the standard 404.
+	 * Implementations inspect the request; return a response to send back, or
+	 * undefined to fall through to the standard 404.
 	 *
-	 * Security note: this hook bypasses signature verification, so it must
-	 * only echo non-sensitive data (e.g. a challenge token sent by the caller
-	 * in the request itself).
+	 * Security note: nothing upstream of this hook has authenticated the
+	 * request. An implementation must therefore either echo only non-sensitive
+	 * data the caller already sent (Slack's challenge token), or authenticate
+	 * the request itself — which is why it receives the headers and may be
+	 * asynchronous (Teams verifies the Bot Framework token during setup).
 	 */
-	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+	handleUnauthenticatedWebhook?(
+		request: WebhookRequestContext,
+	):
+		| Promise<UnauthenticatedWebhookResponse | undefined>
+		| UnauthenticatedWebhookResponse
+		| undefined;
 
 	/**
 	 * Resolve platform-specific routing before selecting a connected adapter.
