@@ -205,4 +205,34 @@ describe('ToolSettingsModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		expect(onConfirmMock).not.toHaveBeenCalled();
 	});
+
+	it('should pass syncNodeToNdv: true to NodeToolSettingsContent', () => {
+		let capturedProps: Record<string, unknown> = {};
+		const ToolSettingsContentStub = defineComponent({
+			props: ['initialNode', 'existingToolNames', 'syncNodeToNdv'],
+			setup(props) {
+				capturedProps = props;
+				return () => null;
+			},
+		});
+
+		renderComponent(ToolSettingsModal, {
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					node: createMockNode(),
+					existingToolNames: [],
+					onConfirm: onConfirmMock,
+				},
+			},
+			global: {
+				stubs: {
+					...sharedStubs,
+					NodeToolSettingsContent: ToolSettingsContentStub,
+				},
+			},
+		});
+
+		expect(capturedProps.syncNodeToNdv).toBe(true);
+	});
 });
