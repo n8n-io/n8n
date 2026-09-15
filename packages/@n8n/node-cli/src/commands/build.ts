@@ -51,9 +51,12 @@ async function runTscBuild(): Promise<void> {
 	});
 }
 
+/** Shared with the dev watcher, so copied and watched paths cannot drift. */
+export const STATIC_ASSET_IGNORE = ['dist', 'node_modules'];
+
 export async function copyStaticFiles() {
 	const staticFiles = glob.sync(['**/*.{png,svg}', '**/__schema__/**/*.json'], {
-		ignore: ['dist', 'node_modules'],
+		ignore: STATIC_ASSET_IGNORE,
 	});
 
 	return await Promise.all(

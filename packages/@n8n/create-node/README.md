@@ -283,7 +283,7 @@ CONTAINER_ENGINE=podman npm run dev
 ### Pinning the n8n Version
 
 ```bash
-npm run dev -- --n8n-image docker.n8n.io/n8nio/n8n:2.20.7
+npm run dev -- --n8n-image docker.n8n.io/n8nio/n8n:VERSION
 ```
 
 ### Using External n8n Instance
