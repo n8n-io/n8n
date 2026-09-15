@@ -8,9 +8,9 @@
 
 The n8n [UX guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/ux-guidelines/)
 keep the top level of a node to the fields the user must fill in. Put every
-other field in a `collection` named `Additional Fields` or `Additional Options`.
-The user then sees a short form, and opens the collection only to change a
-default.
+other field in a `collection`, usually named `Additional Fields` or `Additional
+Options`. The user then sees a short form, and opens the collection only to
+change a default.
 
 This rule reports each field in `description.properties` that is not marked
 `required: true`. These fields are exempt:
@@ -22,8 +22,28 @@ This rule reports each field in `description.properties` that is not marked
 - The `resource`, `operation`, and `authentication` selectors, because they
   decide which other fields n8n shows.
 
+The rule checks placement only. It does not check the name of a container: a
+collection named `additionalFields`, `options`, `updateFields` or `filters` is
+equally valid, and the rule does not look at the fields inside a container.
+
 A `required` value that is not a boolean literal (for example a variable) is
 unknowable at lint time, so the rule makes no report for that field.
+
+## Why a lint rule and not a type
+
+`INodeTypeDescription.properties` is an `INodeProperties[]`, so a type could
+only demand `required: true` at the top level for every node in the ecosystem
+at once. That has three problems a lint rule does not have:
+
+1. It is a breaking change to a public interface. Every community node that
+   states a convention-breaking field stops compiling against the new
+   `n8n-workflow` types, for a convention that is advisory.
+2. Node descriptions are built by spreading arrays declared in other modules
+   (`properties: [...userFields, ...userOperations]`). Those arrays are typed
+   `INodeProperties[]`, which widens `required: true` to `boolean | undefined`
+   and loses the information a type-level check needs.
+3. A type has one severity. This convention needs `warn`, so an author reads it
+   and adopts it in their own time.
 
 ## Examples
 

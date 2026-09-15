@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import type { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
 import { NonRequiredFieldsInCollectionRule } from './non-required-fields-in-collection.js';
@@ -40,14 +41,19 @@ const REQUIRED_FIELD = `
 	},
 `;
 
+/** The severity a config gives the rule, so a later change to `'off'` fails. */
+function severityIn(config: Linter.Config): Linter.RuleEntry | undefined {
+	return config.rules?.[RULE_KEY];
+}
+
 describe('rule registration', () => {
 	it('registers the rule in the plugin rules index', () => {
 		expect(Object.keys(rules)).toContain(RULE_NAME);
 	});
 
-	it('enables the rule in both recommended configs', () => {
-		expect(configs.recommended.rules).toHaveProperty(RULE_KEY);
-		expect(configs.recommendedWithoutN8nCloudSupport.rules).toHaveProperty(RULE_KEY);
+	it('enables the rule at warn in both recommended configs', () => {
+		expect(severityIn(configs.recommended)).toBe('warn');
+		expect(severityIn(configs.recommendedWithoutN8nCloudSupport)).toBe('warn');
 	});
 });
 
@@ -154,6 +160,45 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 			`),
 		},
 		{
+			name: 'container name is not checked',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				${REQUIRED_FIELD}
+				{
+					displayName: 'Filters',
+					name: 'filters',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Filter',
+							name: 'filter',
+							values: [
+								{
+									displayName: 'Limit',
+									name: 'limit',
+									type: 'number',
+									default: 50,
+								},
+							],
+						},
+					],
+				},
+			`),
+		},
+		{
+			name: 'element without a name is skipped',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				${REQUIRED_FIELD}
+				{
+					displayName: 'Limit',
+					type: 'number',
+					default: 50,
+				},
+			`),
+		},
+		{
 			name: 'fields that hold no user input',
 			filename: '/tmp/TestNode.node.ts',
 			code: createNodeCode(`
@@ -216,6 +261,19 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 					name: 'limit',
 					type: 'number',
 					required: false,
+					default: 50,
+				},
+			`),
+			errors: [{ messageId: MESSAGE_ID, data: { field: 'limit' } }],
+		},
+		{
+			name: 'top-level field that omits type',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				${REQUIRED_FIELD}
+				{
+					displayName: 'Limit',
+					name: 'limit',
 					default: 50,
 				},
 			`),

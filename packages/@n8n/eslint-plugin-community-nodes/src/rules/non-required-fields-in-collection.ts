@@ -1,5 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import type { NodePropertyTypes } from 'n8n-workflow';
 
 import {
 	isNodeTypeClass,
@@ -14,12 +15,26 @@ import {
 
 /**
  * The containers that hold non-required fields. Exempt, because they are the
- * place this rule moves fields into.
+ * place this rule moves fields into. The rule does not check the container
+ * name: `additionalFields`, `options`, `updateFields` and `filters` are all
+ * usual names.
+ *
+ * `satisfies NodePropertyTypes[]` keeps these lists tied to the property types
+ * `n8n-workflow` declares, so a renamed or removed type fails the typecheck
+ * instead of silently turning an exemption off.
  */
-const CONTAINER_TYPES = new Set(['collection', 'fixedCollection']);
+const CONTAINER_TYPES = new Set<string>([
+	'collection',
+	'fixedCollection',
+] satisfies NodePropertyTypes[]);
 
 /** Types that show information or hold no user input, so they are not fields. */
-const NON_INPUT_TYPES = new Set(['notice', 'callout', 'hidden', 'curlImport']);
+const NON_INPUT_TYPES = new Set<string>([
+	'notice',
+	'callout',
+	'hidden',
+	'curlImport',
+] satisfies NodePropertyTypes[]);
 
 /**
  * Selectors that decide which other fields n8n shows. They belong at the top
