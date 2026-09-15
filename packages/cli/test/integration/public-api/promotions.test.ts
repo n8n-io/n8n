@@ -826,6 +826,7 @@ describe('Promotions in Public API', () => {
 						expect(response.status, JSON.stringify(response.body)).toBe(200);
 						expect(response.body).toEqual(result);
 					}
+					expect(initial).toHaveBeenCalledWith(id, expect.objectContaining({ id: owner.id }));
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: owner.id }),
