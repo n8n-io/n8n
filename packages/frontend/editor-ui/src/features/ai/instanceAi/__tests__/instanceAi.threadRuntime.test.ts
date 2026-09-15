@@ -12,6 +12,8 @@ import {
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -1083,7 +1085,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage pushes the optimistic user message synchronously and posts without syncing the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		const sendPromise = activeRuntime(registry).sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).messages[0]).toMatchObject({
@@ -1102,21 +1106,35 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await activeRuntime(registry).sendMessage('first');
-		await activeRuntime(registry).sendMessage('second');
+		await activeRuntime(registry).sendMessage('first', { authorship: USER_TYPED_MESSAGE });
+		await activeRuntime(registry).sendMessage('second', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(1, 'User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
-		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: false,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
+			1,
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
+			2,
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: false,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
@@ -1135,14 +1153,20 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await runtime.sendMessage('hello');
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: 'canvas_action_button',
-		});
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: 'canvas_action_button',
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
@@ -1157,14 +1181,20 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await runtime.sendMessage('hello');
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
@@ -1173,10 +1203,77 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		warnSpy.mockRestore();
 	});
 
+	test('sendMessage reports the pre-fill type and id on the message event', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Build a workflow that scrapes a page', {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'suggestion_catalog',
+				prefillId: 'v4-engineering-data-management-1',
+				promptModified: true,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: 'suggestion_catalog',
+				prefill_id: 'v4-engineering-data-management-1',
+				prompt_modified: true,
+			},
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage treats an auto-sent pre-fill as unmodified', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('The execution failed.', {
+			authorship: { kind: 'prefill', prefillType: 'handoff_execution_error' },
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				prefill_type: 'handoff_execution_error',
+				prefill_id: null,
+				prompt_modified: false,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage nulls every pre-fill property for a message the user typed', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await activeRuntime(registry).sendMessage('hello', undefined, 'iframe-push-ref-123');
+		await activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			pushRef: 'iframe-push-ref-123',
+		});
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
@@ -1202,7 +1299,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			},
 		};
 
-		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+		await activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			handoffContext: context,
+		});
 
 		expect(activeRuntime(registry).messages[0]).toMatchObject({
 			role: 'user',
@@ -1225,7 +1325,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage omits pushRef when not provided', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await activeRuntime(registry).sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
@@ -1250,7 +1350,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		// Clear capturedInstance so we can verify a *new* EventSource is created
 		capturedInstance = null;
 
-		await activeRuntime(registry).sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
@@ -1260,7 +1360,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {
 		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
 
-		const sendPromise = activeRuntime(registry).sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 
 		expect(activeRuntime(registry).isSendingMessage).toBe(true);
 		expect(activeRuntime(registry).messages).toHaveLength(1);
@@ -1279,7 +1381,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
 
-		const sendPromise = activeRuntime(registry).sendMessage('hello');
+		const sendPromise = activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 		await vi.waitFor(() => {
 			expect(activeRuntime(registry).activeRunId).toBe('run-from-post');
 		});
@@ -1525,7 +1629,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 			},
 		];
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-live-elsewhere' });
-		await runtime.sendMessage('go');
+		await runtime.sendMessage('go', { authorship: USER_TYPED_MESSAGE });
 		expect(runtime.activeRunId).toBe('run-live-elsewhere');
 		mockFetchThreadStatus.mockResolvedValue({
 			hasActiveRun: false,
@@ -1621,7 +1725,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		const statusPromise = runtime.loadThreadStatus();
 
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-new' });
-		await runtime.sendMessage('new request');
+		await runtime.sendMessage('new request', { authorship: USER_TYPED_MESSAGE });
 		expect(runtime.activeRunId).toBe('run-new');
 
 		resolveStatus?.({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] });
@@ -2494,7 +2598,9 @@ describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
 	test('arms when a message send starts a run while the stream stays silent', async () => {
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-silent' });
 
-		await activeRuntime(registry).sendMessage('build me a workflow');
+		await activeRuntime(registry).sendMessage('build me a workflow', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 		// Let the isGenerationPending watcher observe the new run id.
 		await nextTick();
 
