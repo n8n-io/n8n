@@ -3,7 +3,7 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import Dev from './index';
-import { runCommands, triggerReload } from './utils';
+import { runCommands, triggerReload, waitForN8n } from './utils';
 import { setupTestPackage } from '../../test-utils/package-setup';
 import { tmpdirTest } from '../../test-utils/temp-fs';
 import { detectContainerEngine } from '../../utils/container-engine';
@@ -122,6 +122,8 @@ describe('dev command', () => {
 
 	tmpdirTest('pushes a reload when the TypeScript build succeeds', async ({ tmpdir }) => {
 		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+		// Keep n8n unreachable so only the tsc path can reload here.
+		vi.mocked(waitForN8n).mockResolvedValueOnce(false);
 
 		await new Dev(['--external-n8n'], createMockConfig(tmpdir)).run();
 
@@ -131,6 +133,45 @@ describe('dev command', () => {
 
 		tsc?.onOutput?.('Found 0 errors. Watching for file changes.');
 		expect(triggerReload).toHaveBeenCalledWith('http://localhost:5678');
+	});
+
+	tmpdirTest('maps the implicit port of --n8n-url onto the container', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await new Dev(['--n8n-url', 'http://localhost'], createMockConfig(tmpdir)).run();
+
+		expect(lastRunCommandsCall()?.commands[1]?.args).toContain('80:5678');
+	});
+
+	tmpdirTest('rejects a malformed --n8n-url instead of throwing', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+
+		await expect(
+			new Dev(['--n8n-url', 'not a url'], createMockConfig(tmpdir)).run(),
+		).rejects.toThrow('EEXIT');
+
+		expect(vi.mocked(onCancel).mock.calls[0]?.[0]).toContain('Invalid --n8n-url');
+		expect(runCommands).not.toHaveBeenCalled();
+	});
+
+	tmpdirTest('reloads once n8n becomes reachable', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+		vi.mocked(waitForN8n).mockResolvedValueOnce(true);
+
+		await new Dev(['--external-n8n'], createMockConfig(tmpdir)).run();
+
+		await vi.waitFor(() => expect(triggerReload).toHaveBeenCalledWith('http://localhost:5678'));
+		expect(triggerReload).toHaveBeenCalledTimes(1);
+	});
+
+	tmpdirTest('does not reload when n8n never becomes reachable', async ({ tmpdir }) => {
+		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
+		vi.mocked(waitForN8n).mockResolvedValueOnce(false);
+
+		await new Dev(['--external-n8n'], createMockConfig(tmpdir)).run();
+
+		await vi.waitFor(() => expect(waitForN8n).toHaveBeenCalled());
+		expect(triggerReload).not.toHaveBeenCalled();
 	});
 
 	tmpdirTest('offers "o" to open n8n in external mode too', async ({ tmpdir }) => {
