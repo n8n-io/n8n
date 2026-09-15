@@ -1,8 +1,9 @@
+import { useUsersStore } from '@n8n/stores/users.store';
+
 import { MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MCP_JSON_NUDGE_CALLOUT } from '@/experiments/mcpJsonNudge/constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 
 const IMPRESSION_CAP = 2;
 
@@ -11,14 +12,30 @@ export function useMcpJsonNudgeEligibility() {
 	const posthogStore = usePostHog();
 	const usersStore = useUsersStore();
 
-	function canShow(): boolean {
+	/**
+	 * Every condition except the experiment arm: this user would see the nudge if
+	 * they were in the enabled arm, which makes them part of the experiment's
+	 * exposed population, control included. Deliberately does not read the flag,
+	 * because the trigger reports exposure off this and exposure must not depend
+	 * on which arm the user landed in.
+	 */
+	function isEligibleApartFromExperiment(): boolean {
 		const impressions = usersStore.currentUser?.settings?.mcpJsonNudge?.impressions ?? 0;
 
 		return (
 			!mcpStore.mcpAccessEnabled &&
-			posthogStore.isFeatureEnabled(MCP_JSON_NUDGE_EXPERIMENT.name) &&
 			impressions < IMPRESSION_CAP &&
 			!usersStore.isCalloutDismissed(MCP_JSON_NUDGE_CALLOUT)
+		);
+	}
+
+	function canShow(): boolean {
+		return (
+			isEligibleApartFromExperiment() &&
+			posthogStore.isVariantEnabled(
+				MCP_JSON_NUDGE_EXPERIMENT.name,
+				MCP_JSON_NUDGE_EXPERIMENT.variant,
+			)
 		);
 	}
 
@@ -48,5 +65,5 @@ export function useMcpJsonNudgeEligibility() {
 		});
 	}
 
-	return { canShow, recordImpression, dismissForever };
+	return { canShow, isEligibleApartFromExperiment, recordImpression, dismissForever };
 }

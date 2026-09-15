@@ -674,10 +674,20 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { name, type } = response.body;
-
-		expect(name).toBe(savedCredential.name);
-		expect(type).toBe(savedCredential.type);
+		// Exact-shape check - proves the DTO's allowlisted fields
+		expect(response.body).toStrictEqual({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+			isManaged: savedCredential.isManaged,
+			isGlobal: savedCredential.isGlobal,
+			isResolvable: savedCredential.isResolvable,
+			resolvableAllowFallback: savedCredential.resolvableAllowFallback,
+			resolverId: savedCredential.resolverId,
+			createdAt: savedCredential.createdAt.toISOString(),
+			updatedAt: savedCredential.updatedAt.toISOString(),
+			usageScope: savedCredential.usageScope,
+		});
 
 		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
@@ -804,6 +814,20 @@ describe('DELETE /credentials/:id', () => {
 		const response = await authOwnerAgent.delete('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when the API key lacks credential:delete', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const agent = await makeGlobalRoleUserAgent(['credential:read']);
+
+		const response = await agent.delete(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(403);
+
+		const stillThere = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
+		expect(stillThere).not.toBeNull();
 	});
 });
 
@@ -1715,6 +1739,49 @@ describe('PUT /credentials/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 when the API key lacks credential:move', async () => {
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('first-project', owner),
+			createTeamProject('second-project', owner),
+		]);
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			firstProject,
+		);
+		const agent = await makeGlobalRoleUserAgent(['credential:read']);
+
+		const response = await agent
+			.put(`/credentials/${credentials.id}/transfer`)
+			.send({ destinationProjectId: secondProject.id });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharings = await getCredentialSharings(credentials);
+		expect(sharings).toHaveLength(1);
+		expect(sharings[0]).toMatchObject({ projectId: firstProject.id });
+	});
+
+	test('should not transfer a credential the user has no access to', async () => {
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('first-project', owner),
+			createTeamProject('second-project', owner),
+		]);
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			firstProject,
+		);
+
+		const response = await authMemberAgent
+			.put(`/credentials/${credentials.id}/transfer`)
+			.send({ destinationProjectId: secondProject.id });
+
+		expect(response.statusCode).toBe(403);
+
+		const sharings = await getCredentialSharings(credentials);
+		expect(sharings).toHaveLength(1);
+		expect(sharings[0]).toMatchObject({ projectId: firstProject.id });
 	});
 });
 

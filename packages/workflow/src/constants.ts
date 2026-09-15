@@ -5,6 +5,13 @@ export const ALPHABET = [DIGITS, UPPERCASE_LETTERS, LOWERCASE_LETTERS].join('');
 
 export const BINARY_ENCODING = 'base64';
 export const WAIT_INDEFINITELY = new Date('3000-01-01T00:00:00.000Z');
+// A parent parked on a sub-execution gets its own sentinel so the waiting-executions sweep can select those rows by equality.
+export const WAIT_FOR_SUB_EXECUTION = new Date('2999-12-31T00:00:00.000Z');
+
+export function isIndefiniteWait(waitTill: Date): boolean {
+	const time = waitTill.getTime();
+	return time === WAIT_INDEFINITELY.getTime() || time === WAIT_FOR_SUB_EXECUTION.getTime();
+}
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug'] as const;
 

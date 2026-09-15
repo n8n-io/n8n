@@ -1,3 +1,4 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -715,6 +716,13 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
@@ -1691,6 +1699,24 @@ export interface InstanceAiThreadListResponse {
 	threads: InstanceAiThreadInfo[];
 	total: number;
 	page: number;
+	hasMore: boolean;
+}
+
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
+	search: z
+		.string()
+		.trim()
+		.max(500)
+		.refine((value) => !value.includes('\u0000'))
+		.optional(),
+	cursor: z.string().min(1).max(256).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
 	hasMore: boolean;
 }
 

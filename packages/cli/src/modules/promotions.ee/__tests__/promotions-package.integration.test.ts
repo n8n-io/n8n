@@ -14,7 +14,7 @@ import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
@@ -55,6 +55,7 @@ import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
+import { WorkingCopyUpdater } from '../working-copy-updater';
 
 type TestRemote = {
 	bareDir: string;
@@ -133,9 +134,11 @@ beforeEach(async () => {
 	cipher.encryptV2.mockImplementation(async (value) => String(value));
 	const logger = mockLogger();
 	const gitService = new PromotionsGitService(logger);
-	workingDirectory = new PromotionWorkingDirectoryService(
-		mock<InstanceSettings>({ n8nFolder: path.join(testRoot, 'instance') }),
-	);
+	const instanceSettings = mock<InstanceSettings>({
+		n8nFolder: path.join(testRoot, 'instance'),
+		instanceId: 'inst-test',
+	});
+	workingDirectory = new PromotionWorkingDirectoryService(instanceSettings);
 	service = new PromotionsService(
 		new PromotionConfigResolver(
 			configRepository,
@@ -145,6 +148,7 @@ beforeEach(async () => {
 		),
 		new PromotionProvidersService(providerRepository, connectionRepository, gitService, cipher),
 		workingDirectory,
+		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
 		projectService,
@@ -227,6 +231,51 @@ async function createInstanceConnection(
 		},
 	});
 	return connection;
+}
+
+async function inspectBranch(
+	bareDir: string,
+	branch = 'main',
+): Promise<{ git: SimpleGit; dir: string }> {
+	const inspectionDir = path.join(testRoot, `inspection-${Date.now()}`);
+	await simpleGit().clone(bareDir, inspectionDir, ['--branch', branch, '--single-branch']);
+	return { git: simpleGit(inspectionDir), dir: inspectionDir };
+}
+
+async function readBranchEntities(
+	inspectionDir: string,
+	fileName: 'workflow.json' | 'folder.json' | 'project.json',
+): Promise<Array<{ id: string; name: string; target: string }>> {
+	const exportRoot = path.join(inspectionDir, 'n8n-export');
+	const found: Array<{ id: string; name: string; target: string }> = [];
+	const walk = async (dir: string): Promise<void> => {
+		const entries = await readdir(dir, { withFileTypes: true });
+		for (const entry of entries) {
+			const fullPath = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(fullPath);
+				continue;
+			}
+			if (entry.name !== fileName) continue;
+			const parsed = jsonParse<{ id: string; name: string }>(await readFile(fullPath, 'utf-8'));
+			found.push({
+				id: parsed.id,
+				name: parsed.name,
+				target: path.relative(exportRoot, path.dirname(fullPath)).split(path.sep).join('/'),
+			});
+		}
+	};
+	await walk(exportRoot);
+	return found;
+}
+
+async function setupProjectWithWorkflows(projectName: string, workflowNames: string[]) {
+	const project = await createTeamProject(projectName, owner);
+	const workflows = [];
+	for (const name of workflowNames) {
+		workflows.push(await createWorkflow({ name, nodes: [], connections: {} }, project));
+	}
+	return { project, workflows };
 }
 
 async function writeRemoteFile(remote: TestRemote, relativePath: string, content: string) {
@@ -615,6 +664,311 @@ describe('Promote and Apply', () => {
 	});
 });
 
+describe('Promote a selection', () => {
+	it('refuses a selection when the branch has no package yet', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
+
+		await expect(
+			service.promoteSelection(
+				connection.id,
+				owner,
+				{ canExportVariableValues: true, commitMessage: 'Add w1' },
+				{ projectId: project.id, workflowIds: [workflows[0].id], deletedWorkflowIds: [] },
+			),
+		).rejects.toThrow('Promote the instance first');
+	});
+
+	it('adds only the selected workflow, leaving existing workflows untouched', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
+		const result = await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Add w4' },
+			{ projectId: project.id, workflowIds: [w4.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = await readBranchEntities(dir, 'workflow.json');
+		const workflowIds = onBranch.map((w) => w.id);
+
+		expect(onBranch).toHaveLength(4);
+		expect(workflowIds).toContain(w4.id);
+		for (const w of workflows) {
+			expect(workflowIds).toContain(w.id);
+		}
+		expect(result.counts.workflows).toBe(1);
+	});
+
+	it('updates only the selected workflow, leaving others untouched', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+		const before = await inspectBranch(remote.bareDir);
+		const w1Target = (await readBranchEntities(before.dir, 'workflow.json')).find(
+			(w) => w.id === workflows[0].id,
+		)!.target;
+		const w1FileBefore = await readFile(
+			path.join(before.dir, 'n8n-export', w1Target, 'workflow.json'),
+			'utf-8',
+		);
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflows[0].id, {
+			name: 'w1-changed-but-not-selected',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+		await workflowRepository.update(workflows[1].id, { name: 'w2-updated' });
+
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Update w2' },
+			{
+				projectId: project.id,
+				workflowIds: [workflows[1].id],
+				deletedWorkflowIds: [],
+			},
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = await readBranchEntities(dir, 'workflow.json');
+
+		expect(onBranch).toHaveLength(3);
+		expect(onBranch.find((w) => w.id === workflows[1].id)!.name).toBe('w2-updated');
+
+		const w1Entry = onBranch.find((w) => w.id === workflows[0].id)!;
+		expect(w1Entry).toEqual({ id: workflows[0].id, name: 'w1', target: w1Target });
+		expect(await readFile(path.join(dir, 'n8n-export', w1Target, 'workflow.json'), 'utf-8')).toBe(
+			w1FileBefore,
+		);
+	});
+
+	it('deletes the selected workflow from the branch', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Delete w3' },
+			{
+				projectId: project.id,
+				workflowIds: [],
+				deletedWorkflowIds: [workflows[2].id],
+			},
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const workflowIds = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+
+		expect(workflowIds).toHaveLength(2);
+		expect(workflowIds).not.toContain(workflows[2].id);
+		expect(workflowIds).toContain(workflows[0].id);
+		expect(workflowIds).toContain(workflows[1].id);
+	});
+
+	it('handles add and delete in the same promote atomically', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+		const headAfterFull = (
+			await (await inspectBranch(remote.bareDir)).git.revparse(['HEAD'])
+		).trim();
+
+		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Add w4, delete w3' },
+			{
+				projectId: project.id,
+				workflowIds: [w4.id],
+				deletedWorkflowIds: [workflows[2].id],
+			},
+		);
+
+		const after = await inspectBranch(remote.bareDir);
+		const workflowIds = (await readBranchEntities(after.dir, 'workflow.json')).map((w) => w.id);
+		const commits = (await after.git.raw(['rev-list', '--count', `${headAfterFull}..HEAD`])).trim();
+
+		expect(commits).toBe('1');
+		expect(workflowIds).toHaveLength(3);
+		expect(workflowIds).toContain(w4.id);
+		expect(workflowIds).not.toContain(workflows[2].id);
+	});
+
+	it('preserves workflows from other projects during a selective promote', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project: p1, workflows: p1Workflows } = await setupProjectWithWorkflows('Orders', [
+			'p1-w1',
+		]);
+		const { workflows: p2Workflows } = await setupProjectWithWorkflows('Billing', ['p2-w1']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		const p1w2 = await createWorkflow({ name: 'p1-w2', nodes: [], connections: {} }, p1);
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Add p1-w2' },
+			{ projectId: p1.id, workflowIds: [p1w2.id], deletedWorkflowIds: [] },
+		);
+
+		const workflowIds = (
+			await readBranchEntities((await inspectBranch(remote.bareDir)).dir, 'workflow.json')
+		).map((w) => w.id);
+
+		expect(workflowIds).toContain(p1Workflows[0].id);
+		expect(workflowIds).toContain(p1w2.id);
+		expect(workflowIds).toContain(p2Workflows[0].id);
+	});
+
+	it('moves a renamed workflow to its new directory and removes the old one', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+		const oldTarget = (
+			await readBranchEntities((await inspectBranch(remote.bareDir)).dir, 'workflow.json')
+		).find((w) => w.id === workflows[1].id)!.target;
+
+		await Container.get(WorkflowRepository).update(workflows[1].id, { name: 'Renamed' });
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Rename w2' },
+			{ projectId: project.id, workflowIds: [workflows[1].id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = await readBranchEntities(dir, 'workflow.json');
+		const renamed = onBranch.find((w) => w.id === workflows[1].id)!;
+
+		expect(renamed.name).toBe('Renamed');
+		expect(renamed.target).not.toBe(oldTarget);
+		expect(renamed.target).toMatch(new RegExp(`/workflows/renamed-${workflows[1].id}$`));
+		await expect(
+			stat(path.join(dir, 'n8n-export', renamed.target, 'workflow.json')),
+		).resolves.toBeDefined();
+		await expect(stat(path.join(dir, 'n8n-export', oldTarget))).rejects.toThrow();
+		expect(onBranch).toHaveLength(2);
+	});
+
+	it('leaves a renamed folder alone, so unselected workflows keep their place', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+
+		const project = await createTeamProject('Orders', owner);
+		const folder = await createFolder(project, { name: 'Sales' });
+		const selected = await createWorkflow(
+			{ name: 'Selected', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		const unselected = await createWorkflow(
+			{ name: 'Unselected', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+		const folderBefore = (
+			await readBranchEntities((await inspectBranch(remote.bareDir)).dir, 'folder.json')
+		).find((f) => f.id === folder.id)!;
+
+		const folderRepository = Container.get(FolderRepository);
+		await folderRepository.update(folder.id, { name: 'Revenue' });
+		await service.promoteSelection(
+			connection.id,
+			owner,
+			{ canExportVariableValues: true, commitMessage: 'Rename folder, promote one workflow' },
+			{ projectId: project.id, workflowIds: [selected.id], deletedWorkflowIds: [] },
+		);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const folders = await readBranchEntities(dir, 'folder.json');
+		const workflows = await readBranchEntities(dir, 'workflow.json');
+		const folderEntry = folders.find((f) => f.id === folder.id)!;
+		const selectedEntry = workflows.find((w) => w.id === selected.id)!;
+		const unselectedEntry = workflows.find((w) => w.id === unselected.id)!;
+
+		expect(folderEntry).toMatchObject({ name: 'Sales', target: folderBefore.target });
+		expect(selectedEntry.target).toBe(`${folderEntry.target}/workflows/selected-${selected.id}`);
+		expect(unselectedEntry.target).toBe(
+			`${folderEntry.target}/workflows/unselected-${unselected.id}`,
+		);
+		await expect(
+			stat(path.join(dir, 'n8n-export', unselectedEntry.target, 'workflow.json')),
+		).resolves.toBeDefined();
+		const renamedTarget = folderEntry.target.replace(/[^/]+$/, `revenue-${folder.id}`);
+		await expect(stat(path.join(dir, 'n8n-export', renamedTarget))).rejects.toThrow();
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.delete(unselected.id);
+		await service.apply(connection.id, owner);
+
+		expect(
+			await workflowRepository.findOne({
+				where: { id: unselected.id },
+				relations: ['parentFolder'],
+			}),
+		).toMatchObject({ name: 'Unselected', parentFolder: { id: folder.id } });
+	});
+});
+
 describe('Promotion base branch listing', () => {
 	let project: Project;
 
@@ -650,7 +1004,7 @@ describe('Promotion base branch listing', () => {
 			},
 			{ user: owner, role: 'credential:owner' },
 		);
-		await createVariable('API_URL', 'https://api.example.com');
+		const variable = await createVariable('API_URL', 'https://api.example.com');
 		const workflow = await createWorkflow(
 			{
 				name: 'Process order',
@@ -707,17 +1061,17 @@ describe('Promotion base branch listing', () => {
 
 		const files = await service.listBaseBranchFiles(project.id);
 
-		expect(files.map(({ key, type }) => ({ key, type }))).toEqual(
+		expect(files.map(({ entityId, type }) => ({ entityId, type }))).toEqual(
 			expect.arrayContaining([
-				{ key: project.id, type: 'project' },
-				{ key: parentFolder.id, type: 'folder' },
-				{ key: childFolder.id, type: 'folder' },
-				{ key: workflow.id, type: 'workflow' },
-				{ key: credential.id, type: 'credential' },
-				{ key: 'apiurl', type: 'variable' },
-				{ key: tag.id, type: 'tag' },
-				{ key: projectTable.id, type: 'dataTable' },
-				{ key: sharedTable.id, type: 'dataTable' },
+				{ entityId: project.id, type: 'project' },
+				{ entityId: parentFolder.id, type: 'folder' },
+				{ entityId: childFolder.id, type: 'folder' },
+				{ entityId: workflow.id, type: 'workflow' },
+				{ entityId: credential.id, type: 'credential' },
+				{ entityId: variable.id, type: 'variable' },
+				{ entityId: tag.id, type: 'tag' },
+				{ entityId: projectTable.id, type: 'dataTable' },
+				{ entityId: sharedTable.id, type: 'dataTable' },
 			]),
 		);
 		expect(files.map(({ path }) => path).sort()).toEqual(expectedPaths.sort());
@@ -744,7 +1098,10 @@ describe('Promotion base branch listing', () => {
 		await service.clone(instance.id, 'promote');
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				key: project.id,
+				entityId: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: await remoteBlobSha(remote, projectPath),
 				type: 'project',
@@ -768,7 +1125,10 @@ describe('Promotion base branch listing', () => {
 
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				key: project.id,
+				entityId: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: (await remote.git.revparse([`production:${projectPath}`])).trim(),
 				type: 'project',
@@ -801,7 +1161,10 @@ describe('Promotion base branch listing', () => {
 		const firstListing = await service.listBaseBranchFiles(project.id);
 		expect(firstListing).toHaveLength(2);
 		expect(firstListing).toContainEqual({
-			key: 'my "quoted" var',
+			entityId: 'Va45zz67',
+			slug: 'my "quoted" var',
+			projectId: null,
+			fileName: 'variable.json',
 			path: variablePath,
 			blobSha: await remoteBlobSha(remote, variablePath),
 			type: 'variable',
@@ -814,7 +1177,10 @@ describe('Promotion base branch listing', () => {
 		const secondListing = await service.listBaseBranchFiles(project.id);
 
 		expect(secondListing).toContainEqual({
-			key: 'Wf99zz88',
+			entityId: 'Wf99zz88',
+			slug: 'my-hyphen-ated-slug',
+			projectId: project.id,
+			fileName: 'workflow.json',
 			path: workflowPath,
 			blobSha: await remoteBlobSha(remote, workflowPath),
 			type: 'workflow',
@@ -838,15 +1204,46 @@ describe('Promotion base branch listing', () => {
 		const remote = await createRemote();
 		const projectRoot = `n8n-export/projects/orders-${project.id}`;
 		const entities = [
-			{ key: '42', type: 'folder', path: `${projectRoot}/folders/legacy-42/folder.json` },
 			{
-				key: '42',
+				entityId: '42',
+				slug: 'legacy',
+				projectId: project.id,
+				fileName: 'folder.json',
+				type: 'folder',
+				path: `${projectRoot}/folders/legacy-42/folder.json`,
+			},
+			{
+				entityId: '42',
+				slug: 'order',
+				projectId: project.id,
+				fileName: 'workflow.json',
 				type: 'workflow',
 				path: `${projectRoot}/folders/legacy-42/workflows/order-42/workflow.json`,
 			},
-			{ key: '42', type: 'credential', path: `${projectRoot}/credentials/api-42/credential.json` },
-			{ key: 'apiurl', type: 'variable', path: `${projectRoot}/variables/apiurl-1/variable.json` },
-			{ key: 'apiurl', type: 'variable', path: 'n8n-export/variables/apiurl-2/variable.json' },
+			{
+				entityId: '42',
+				slug: 'api',
+				projectId: project.id,
+				fileName: 'credential.json',
+				type: 'credential',
+				path: `${projectRoot}/credentials/api-42/credential.json`,
+			},
+			{
+				entityId: '1',
+				slug: 'apiurl',
+				projectId: project.id,
+				fileName: 'variable.json',
+				type: 'variable',
+				path: `${projectRoot}/variables/apiurl-1/variable.json`,
+			},
+			{
+				entityId: '2',
+				slug: 'apiurl',
+				projectId: null,
+				fileName: 'variable.json',
+				type: 'variable',
+				path: 'n8n-export/variables/apiurl-2/variable.json',
+			},
 		];
 		for (const entity of entities) {
 			await writeRemoteFile(remote, entity.path, '{}');
@@ -898,7 +1295,10 @@ describe('Promotion base branch listing', () => {
 
 		expect(files).toEqual([
 			{
-				key: project.id,
+				entityId: project.id,
+				slug: 'orders',
+				projectId: project.id,
+				fileName: 'project.json',
 				path: projectPath,
 				blobSha: (await remote.git.revparse([`production:${projectPath}`])).trim(),
 				type: 'project',

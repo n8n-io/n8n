@@ -54,29 +54,29 @@
 		"layer": "base",
 		"native": null,
 		"reason": "Needs type information. oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws and the rule reports `Error running JS plugin` on any file that calls a checked method. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
-		"impact": "An Oxlint-only package does not enforce the WorkflowEntity node-write seal.",
-		"replacement": "Run this rule in a focused ESLint compatibility pass beside Oxlint."
+		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
 	},
 	"n8n-local-rules/no-legacy-cipher-methods": {
 		"layer": "backend",
 		"native": null,
 		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve a Cipher receiver.",
-		"impact": "An Oxlint-only package does not guard the deprecated Cipher.encrypt and Cipher.decrypt APIs.",
-		"replacement": "Run this rule in a focused ESLint compatibility pass beside Oxlint."
+		"impact": "The deprecated Cipher.encrypt and Cipher.decrypt APIs are not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
 	},
 	"n8n-local-rules/no-misplaced-cipher-primitives": {
 		"layer": "backend",
 		"native": null,
 		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve the imported cipher primitive.",
-		"impact": "An Oxlint-only package does not guard raw cipher primitive placement.",
-		"replacement": "Run this rule in a focused ESLint compatibility pass beside Oxlint."
+		"impact": "Raw cipher primitive placement is not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
 	},
 	"n8n-local-rules/no-deployment-key-delete": {
 		"layer": "backend",
 		"native": null,
 		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot identify DeploymentKey repository receivers.",
-		"impact": "An Oxlint-only package does not guard deployment-key deletion.",
-		"replacement": "Run this rule in a focused ESLint compatibility pass beside Oxlint."
+		"impact": "Deployment-key deletion is not guarded by an Oxlint-only package.",
+		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
 	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",
