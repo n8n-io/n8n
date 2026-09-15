@@ -35,6 +35,11 @@ const outputSchema = {
 	preferences: z
 		.array(
 			z.object({
+				id: z
+					.string()
+					.describe(
+						'Stable id of the preference. Name it when you update this preference, so an edit replaces the row instead of adding a second one.',
+					),
 				scope: z
 					.enum(['instance', 'user', 'project'])
 					.describe(
@@ -101,7 +106,17 @@ export const createGetUserPreferencesTool = (
 			const items = flattenAiPreferences(preferences);
 			const hasPreferences = items.length > 0;
 
-			telemetryPayload.results = { success: true, data: { hasPreferences } };
+			// Count and scopes, not text: how much a client is given and where it came from
+			// is what the preferences work needs to read, and the text is the person's own
+			// writing (CONTEXT-137).
+			telemetryPayload.results = {
+				success: true,
+				data: {
+					hasPreferences,
+					count: items.length,
+					scopes: [...new Set(items.map((item) => item.scope))],
+				},
+			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
