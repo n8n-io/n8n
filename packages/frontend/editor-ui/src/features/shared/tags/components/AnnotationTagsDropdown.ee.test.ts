@@ -55,6 +55,8 @@ describe('AnnotationTagsDropdown', () => {
 		hasPermission.mockReturnValue(false);
 		renderComponent(AnnotationTagsDropdown, { props: { createEnabled: true } });
 
+		expect(capturedProps).toHaveLength(1);
+		expect(capturedProps.at(-1)?.createEnabled).toBe(false);
 		expect(capturedProps.at(-1)?.createBlockedI18nKey).toBeUndefined();
 	});
 });

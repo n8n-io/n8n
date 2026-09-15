@@ -43,11 +43,12 @@ const tagsById = computed(() => tagsStore.tagsById);
 
 const isCreateEnabled = computed(() => props.createEnabled && canCreate.value);
 const isManageEnabled = computed(() => canManage.value);
-
 // Only when the user wanted to create but lacks the scope — a consumer that
 // turned creation off itself (e.g. the workflow-list filter) gets no note.
+const isCreateBlocked = computed(() => props.createEnabled && !canCreate.value);
+
 const createBlockedI18nKey = computed<BaseTextKey | undefined>(() =>
-	props.createEnabled && !canCreate.value ? 'tagsDropdown.noPermissionToCreate' : undefined,
+	isCreateBlocked.value ? 'tagsDropdown.noPermissionToCreate' : undefined,
 );
 
 async function createTag(name: string) {

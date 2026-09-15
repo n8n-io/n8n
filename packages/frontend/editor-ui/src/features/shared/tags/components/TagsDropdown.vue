@@ -427,18 +427,19 @@ onClickOutside(
 	}
 
 	// The permission note needs a second line, unlike every other row.
-	// element-plus lays each item out as a centred flex *row*, so the note has to
-	// be stacked explicitly — `display: block` on it alone is inert inside a row.
+	// element-plus lays each item out as a centred flex *row*, so the note has to be
+	// stacked explicitly — `display: block` on it alone is inert inside a row, and the
+	// inherited `align-items: center` would centre the two lines.
 	li.message {
 		height: auto;
 		white-space: normal;
 		flex-direction: column;
-		align-items: flex-start;
+		align-items: stretch;
 	}
 
 	.create-blocked-note {
 		display: block;
-		margin-top: 2px;
+		margin-top: var(--spacing--5xs);
 		color: var(--color--text--tint-1);
 		font-size: var(--font-size--2xs);
 	}
