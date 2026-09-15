@@ -951,6 +951,90 @@ describe('WaitTracker', () => {
 			expect(logger.error).not.toHaveBeenCalled();
 		});
 
+		it('rescues a parent whose child finished before the parent reached waiting', async () => {
+			const runningParent: IExecutionResponse = { ...parkedParent([childId]), status: 'running' };
+			const waitingChild: IExecutionResponse = {
+				...finishedChild(),
+				finished: false,
+				status: 'waiting',
+				data: createRunExecutionData({
+					parentExecution: {
+						executionId: parentId,
+						workflowId: 'parent_workflow_id',
+						shouldResume: true,
+					},
+				}),
+			};
+			executionPersistence.findSingleExecution
+				.calledWith(parentId)
+				.mockResolvedValueOnce(runningParent)
+				.mockResolvedValue(parkedParent([childId]));
+			executionPersistence.findSingleExecution
+				.calledWith(childId)
+				.mockResolvedValueOnce(waitingChild)
+				.mockResolvedValue(finishedChild());
+			const postExecutePromise = createDeferredPromise<IRun | undefined>();
+			activeExecutions.getPostExecutePromise
+				.calledWith(childId)
+				.mockReturnValue(postExecutePromise.promise);
+			workflowRunner.run
+				.mockResolvedValueOnce(childId)
+				.mockRejectedValueOnce(new ExecutionAlreadyResumingError(parentId))
+				.mockResolvedValue(parentId);
+
+			await waitTracker.startExecution(childId);
+			const { data, mode, startedAt, stoppedAt, status, finished, storedAt } = finishedChild();
+			postExecutePromise.resolve({ data, mode, startedAt, stoppedAt, status, finished, storedAt });
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+
+			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'success' }]);
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			const dataCaptor = captor<{ data: IRunExecutionData }>();
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				parentId,
+				dataCaptor,
+			);
+			expect(dataCaptor.value.data.executionData?.nodeExecutionStack[0].data.main).toEqual([
+				[{ json: { data: 'child output' }, pairedItem: { item: 0 } }],
+			]);
+			expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
+				executionId: parentId,
+				expectedStatus: 'waiting',
+			});
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('leaves the parent parked when the finished child carries no result', async () => {
+			const crashedChild: IExecutionResponse = {
+				...finishedChild(),
+				finished: false,
+				status: 'crashed',
+				data: createRunExecutionData({}),
+			};
+			executionPersistence.findSingleExecution
+				.calledWith(parentId)
+				.mockResolvedValue(parkedParent([childId]));
+			executionPersistence.findSingleExecution.calledWith(childId).mockResolvedValue(crashedChild);
+			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'crashed' }]);
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('leaving it parked'),
+				expect.objectContaining({
+					parentExecutionId: parentId,
+					childExecutionId: childId,
+					childStatus: 'crashed',
+				}),
+			);
+		});
+
 		it('continues with the next parent when one fails', async () => {
 			executionRepository.findParkedOnSubExecution.mockResolvedValue(['broken', parentId]);
 			const parent = parkedParent([childId]);

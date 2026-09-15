@@ -482,16 +482,17 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns whether the parent's stack was patched: `false` when the child carried no usable
+ * result, or the parent was not in a state that can take one
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return false;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -499,14 +500,14 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return false;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -569,6 +570,8 @@ export async function updateParentExecutionWithChildResults(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+
+	return true;
 }
 
 /**

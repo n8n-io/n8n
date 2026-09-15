@@ -202,11 +202,8 @@ export class WaitTracker {
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
-			await this.patchAndResumeParent(
-				parentExecution.executionId,
-				subworkflowResults,
-				childExecution,
-			);
+			await this.patchParent(parentExecution.executionId, subworkflowResults, childExecution);
+			await this.claimParent(parentExecution.executionId, childExecution);
 		} catch (error) {
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
 				parentExecutionId: parentExecution.executionId,
@@ -215,27 +212,38 @@ export class WaitTracker {
 		}
 	}
 
-	/**
-	 * Patch the parent's stack with the child's results and claim the parent. When the claim
-	 * fails the parent is either already claimed by a sibling, or not parked yet; in the
-	 * latter case `resumeParentsOfFinishedSubExecutions` picks it up on the next tick.
-	 */
-	private async patchAndResumeParent(
+	/** Patch the parent's stack with the child's results, reporting whether the patch landed. */
+	private async patchParent(
 		parentExecutionId: string,
 		subworkflowResults: IRun,
 		childExecution?: RelatedExecution,
-	): Promise<void> {
+	): Promise<boolean> {
+		let patched = false;
+
 		await this.withRetry(
-			async () =>
-				await updateParentExecutionWithChildResults(
+			async () => {
+				patched = await updateParentExecutionWithChildResults(
 					parentExecutionId,
 					subworkflowResults,
 					childExecution,
-				),
+				);
+			},
 			MAX_PARENT_RESUME_ATTEMPTS,
 			isRetryableResumeError,
 		);
 
+		return patched;
+	}
+
+	/**
+	 * Claim the parent so it resumes. When the claim fails the parent is either already
+	 * claimed by a sibling, or not parked yet; in the latter case
+	 * `resumeParentsOfFinishedSubExecutions` picks it up on the next tick.
+	 */
+	private async claimParent(
+		parentExecutionId: string,
+		childExecution?: RelatedExecution,
+	): Promise<void> {
 		try {
 			await this.withRetry(
 				async () => await this.startExecution(parentExecutionId),
@@ -327,10 +335,21 @@ export class WaitTracker {
 			storedAt: child.storedAt,
 		};
 
-		await this.patchAndResumeParent(parentId, childRun, {
-			executionId: child.id,
-			workflowId: child.workflowId,
-		});
+		const childExecution = { executionId: child.id, workflowId: child.workflowId };
+
+		// A crashed or cancelled child is terminal but often carries neither an error nor node
+		// output. Resuming on it would re-run the parent's node disabled, passing the parent's
+		// own input off as the sub-workflow's result, so leave the parent parked instead.
+		if (!(await this.patchParent(parentId, childRun, childExecution))) {
+			this.logger.warn('Parent not patched with the sub-execution result, leaving it parked', {
+				parentExecutionId: parentId,
+				childExecutionId: child.id,
+				childStatus: child.status,
+			});
+			return;
+		}
+
+		await this.claimParent(parentId, childExecution);
 	}
 
 	/**
