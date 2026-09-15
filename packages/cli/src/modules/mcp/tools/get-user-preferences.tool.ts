@@ -40,7 +40,7 @@ const outputSchema = {
 	hasPreferences: z
 		.boolean()
 		.describe(
-			'False when nothing is saved for the instance, the caller, or their projects. True when `preferences` holds at least one item.',
+			'False when nothing is saved for the instance, the caller, or their projects, and also false when `error` is set. True when `preferences` holds at least one item.',
 		),
 	preferences: z
 		.array(
@@ -59,6 +59,12 @@ const outputSchema = {
 		)
 		.describe(
 			'Every saved preference as its own item, instance first, then personal, then projects. Empty when hasPreferences is false.',
+		),
+	error: z
+		.string()
+		.optional()
+		.describe(
+			'Set when the read failed. The preferences are unknown, not absent: do not build as if none were saved.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -100,8 +106,6 @@ export const createGetUserPreferencesTool = (
 		try {
 			// The OAuth grant decides whether this client may call the tool. No RBAC check: the
 			// service only returns rows the user may see, and their own rows need no scope.
-			// A failed read throws rather than answering "no preferences": that answer would
-			// send the assistant off to build against nothing.
 			const preferences = await aiPreferenceService.getApplicableAcrossProjects(user);
 			// One source for "is there anything", so the flag and the list cannot disagree.
 			const items = flattenAiPreferences(preferences);
@@ -117,12 +121,20 @@ export const createGetUserPreferencesTool = (
 				structuredContent: { hasPreferences, preferences: items },
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
+			const message = error instanceof Error ? error.message : String(error);
+			telemetryPayload.results = { success: false, error: message };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			// An error result shaped by the output schema, not a throw: a strict client
+			// validates structured content against the schema and would reject a bare error.
+			// `isError` plus the `error` field keep it distinct from "no preferences", which
+			// would send the assistant off to build against nothing.
+			const output = { hasPreferences: false, preferences: [], error: message };
+			return {
+				content: [{ type: 'text', text: `Could not read the saved preferences: ${message}` }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });

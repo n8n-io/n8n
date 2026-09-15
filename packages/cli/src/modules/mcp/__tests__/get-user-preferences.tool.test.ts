@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import z from 'zod';
 
 import type { ApplicableAiPreferences } from '@/services/ai-preference.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
@@ -212,11 +213,33 @@ describe('get-user-preferences MCP tool', () => {
 	});
 
 	describe('failures', () => {
-		test('throws rather than reporting no preferences, so no build proceeds blind', async () => {
+		test('answers with an error result, not with "no preferences", so no build proceeds blind', async () => {
 			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
 
-			await expect(tool.handler({})).rejects.toThrow('db down');
+			const result = await tool.handler({});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				hasPreferences: false,
+				preferences: [],
+				error: 'db down',
+			});
+			expect(result.content).toEqual([
+				{ type: 'text', text: 'Could not read the saved preferences: db down' },
+			]);
+			expect(result.content).not.toEqual([{ type: 'text', text: NOTHING_SAVED }]);
+		});
+
+		test('keeps the error result inside the output schema', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			const result = await tool.handler({});
+
+			expect(z.object(tool.config.outputSchema!).safeParse(result.structuredContent).success).toBe(
+				true,
+			);
 		});
 	});
 
@@ -239,11 +262,11 @@ describe('get-user-preferences MCP tool', () => {
 			});
 		});
 
-		test('reports a failed call before rethrowing', async () => {
+		test('reports a failed call', async () => {
 			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
 
-			await expect(tool.handler({})).rejects.toThrow('db down');
+			await tool.handler({});
 
 			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
 				user_id: 'user-1',
