@@ -99,5 +99,23 @@ jobs:
 
           echo 'npm OIDC token exchange succeeded.'
 
-      - name: Dry-run publish with pnpm
-        run: pnpm --filter "$PACKAGE_NAME" publish --access public --no-git-checks --dry-run
+      - name: Dry-run an unpublished package version with pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROBE_DIRECTORY="$RUNNER_TEMP/npm-oidc-probe"
+          mkdir "$PROBE_DIRECTORY"
+          node --input-type=module -e '
+            import { writeFileSync } from "node:fs";
+            const [path, name, runId, attempt] = process.argv.slice(1);
+            writeFileSync(path, JSON.stringify({
+              name,
+              version: "0.0.0-oidc-probe." + runId + "." + attempt,
+            }));
+          ' "$PROBE_DIRECTORY/package.json" "$PACKAGE_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+
+          pnpm --dir "$PROBE_DIRECTORY" publish --access public --no-git-checks --dry-run 2>&1 | tee "$RUNNER_TEMP/pnpm-oidc.log"
+          if rg --quiet 'Skipped OIDC|ERR_PNPM_AUTH_TOKEN_FETCH' "$RUNNER_TEMP/pnpm-oidc.log"; then
+            echo '::error::pnpm failed to exchange the OIDC token.'
+            exit 1
+          fi
