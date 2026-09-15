@@ -58,6 +58,20 @@ function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
 	}
 }
 
+function transferableSentinel(sentinel: ErrorSentinel): ErrorSentinel {
+	try {
+		new (getIvm().ExternalCopy)(sentinel).release();
+		return sentinel;
+	} catch {
+		return {
+			__isError: true,
+			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
+			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
+			extra: {},
+		};
+	}
+}
+
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
 const safeStringify = JSON.stringify;
@@ -337,7 +351,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return getValueAtPath(data, pathArr);
 			} catch (err) {
-				return serializeError(err);
+				return transferableSentinel(serializeError(err));
 			}
 		});
 	}
@@ -357,7 +371,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return getArrayElement(data, pathArr, index);
 			} catch (err) {
-				return serializeError(err);
+				return transferableSentinel(serializeError(err));
 			}
 		});
 	}
