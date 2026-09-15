@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Confluence/test/actions/page/get.operation.test.ts
+  s_bece9de20e550d::t_1c7405b41cc164 772,788,790
+  s_bece9de20e550d::t_afc997543f3654 816
+  s_bece9de20e550d::t_ce9fbd90e3015f 470,486,490-496,502,506,511-549
+  s_bece9de20e550d::t_8a61915bf03ce6 647-705
+  s_bece9de20e550d::t_6bab8f09b638f7 826-829
+  s_bece9de20e550d::t_9a0b94c21a9a51 448-456,458-461,464
+  s_bece9de20e550d::t_84e71bfb47726e 554
+  s_bece9de20e550d::t_1ee7c83e69889e 588
+packages/nodes-base/nodes/Confluence/actions/page/get.operation.ts
+  s_bece9de20e550d::t_f14e6bf817b6d2 21-22
+  s_bece9de20e550d::t_218d70f5028090 133-136
+  s_bece9de20e550d::t_6343552fd1bc78 148-150
+  s_bece9de20e550d::t_c1847696e59871 216
+  s_bece9de20e550d::t_8d2b47809e0a19 23-32,67-68,126,157,168,170-184,207,217-220
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_bece9de20e550d::t_990573397a1c52 301-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62e4e4d9efbbea0f78954ef4e15c254fc54e5adb",
+  "prompts": {},
+  "sessions": {
+    "s_bece9de20e550d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5068e82b-67d8-4ad1-9313-628dd263a8a9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
