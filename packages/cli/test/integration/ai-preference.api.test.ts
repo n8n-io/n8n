@@ -1,4 +1,5 @@
-import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
+import type { AiPreferenceSource } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -60,12 +61,15 @@ async function seed(attributes: {
 	content: string;
 	userId?: string | null;
 	projectId?: string | null;
+	source?: AiPreferenceSource;
 	createdAt?: Date;
 }) {
 	const row = await repository().save(
 		repository().create({
 			id: crypto.randomUUID(),
 			content: attributes.content,
+			// The column is NOT NULL and carries no default, so every write names a surface.
+			source: attributes.source ?? 'ui',
 			userId: attributes.userId ?? null,
 			projectId: attributes.projectId ?? null,
 		}),
@@ -102,6 +106,41 @@ describe('POST /ai-preferences', () => {
 
 		const stored = await repository().findByIdWithRelations(response.body.data.id);
 		expect(stored).toMatchObject({ content: 'Keep replies short.', userId: member.id });
+	});
+
+	test('records the settings area as the surface that wrote the row', async () => {
+		// The write path names the surface. A client cannot claim `aia` or `mcp` by
+		// sending a source of its own (CONTEXT-137).
+		const response = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'From settings.', scope: 'user', source: 'aia' });
+
+		expect(response.body.data.source).toBe('ui');
+		const stored = await repository().findOneByOrFail({ id: response.body.data.id });
+		expect(stored.source).toBe('ui');
+	});
+
+	test('refuses a write once the scope holds the cap', async () => {
+		const filler = Array.from({ length: AI_PREFERENCE_MAX_PER_SCOPE }, (_, index) => ({
+			id: crypto.randomUUID(),
+			content: `Rule ${index}.`,
+			source: 'ui' as const,
+			userId: outsider.id,
+			projectId: null,
+			createdById: outsider.id,
+		}));
+		await repository().insert(filler);
+
+		const response = await outsiderAgent
+			.post('/ai-preferences')
+			.send({ content: 'One too many.', scope: 'user' });
+
+		expect(response.statusCode).toBe(400);
+		expect(await repository().countForTarget({ scope: 'user', userId: outsider.id })).toBe(
+			AI_PREFERENCE_MAX_PER_SCOPE,
+		);
+
+		await repository().delete({ userId: outsider.id });
 	});
 
 	test('records the author', async () => {
@@ -612,10 +651,18 @@ describe('the preferences a write produces', () => {
 
 		const applicable = await Container.get(AiPreferenceService).getApplicableAcrossProjects(member);
 
+		// Each item carries its row id, which is what lets a later edit address it.
 		expect(applicable).toEqual({
-			instance: ['Everyone.'],
-			user: ['Just me.'],
-			projects: [{ id: project.id, name: 'Marketing', type: 'team', items: ['Marketing rule.'] }],
+			instance: [{ id: expect.any(String), content: 'Everyone.' }],
+			user: [{ id: expect.any(String), content: 'Just me.' }],
+			projects: [
+				{
+					id: project.id,
+					name: 'Marketing',
+					type: 'team',
+					items: [{ id: expect.any(String), content: 'Marketing rule.' }],
+				},
+			],
 		});
 	});
 
@@ -637,7 +684,12 @@ describe('the preferences a write produces', () => {
 			{ id: personal.id, name: personal.name, type: 'personal' },
 		]);
 		expect(inPersonalProject.projects).toEqual([
-			{ id: personal.id, name: personal.name, type: 'personal', items: ['Only here.'] },
+			{
+				id: personal.id,
+				name: personal.name,
+				type: 'personal',
+				items: [{ id: expect.any(String), content: 'Only here.' }],
+			},
 		]);
 		const block = renderAiPreferencesBlock(inPersonalProject);
 		expect(block).toContain('Personal preferences:\n- Only here.');
