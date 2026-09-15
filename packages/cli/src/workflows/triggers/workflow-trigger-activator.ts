@@ -435,6 +435,36 @@ export class WorkflowTriggerActivator {
 		}
 	}
 
+	/**
+	 * Tears down the local state of nodes whose type this instance cannot load.
+	 * Both registrars key on workflow and node id or name, not on type, so the
+	 * webhook rows, in-memory registrations and durable jobs go even though no
+	 * `Workflow` can be built around these nodes. External webhook
+	 * deregistration needs the node type and is left behind, as an abandoned
+	 * teardown would be.
+	 */
+	async deregisterUnresolvableNodes(
+		workflowId: WorkflowId,
+		nodes: INode[],
+		abort: TriggerOperationAbort,
+	): Promise<void> {
+		if (nodes.length === 0) return;
+
+		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+			workflowId,
+			nodes.map((node) => node.name),
+		);
+		await Promise.all(
+			nodes.map(
+				async (node) =>
+					await raceAbort(
+						this.nonWebhookTriggerRegistrar.deregister(workflowId, node.id, abort.onDetached),
+						abort,
+					),
+			),
+		);
+	}
+
 	private async deactivateInternal(
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,

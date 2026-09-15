@@ -1206,7 +1206,7 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
-				{ nodes: [triggerNode('a')], connections: {} },
+				expect.objectContaining({ nodes: [triggerNode('a')] }),
 				new Set(['a']),
 				abort,
 			);
@@ -1232,6 +1232,99 @@ describe('WorkflowPublicationApplier', () => {
 			for (const [version] of workflowTriggerActivator.getEnabledTriggerNodes.mock.calls) {
 				expect(version?.nodes).not.toContainEqual(unknownNode);
 			}
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+		});
+
+		test('writes a single failed row when the unknown node is the only trigger', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(withNodes(newVersion, [unknownNode]));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+			});
+		});
+
+		test('recomputes the trigger count from the part of the new version it can build', async () => {
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerActivator.updateTriggerCount).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				{ nodes: [triggerNode('a')], connections: {} },
+			);
+		});
+
+		test('returns failed without rows when advancing the version throws, leaving the retry to reconciliation', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a')])),
+			);
+			workflowPublishedVersionRepository.setPublishedVersion.mockRejectedValueOnce(
+				new Error('db down'),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({
+				type: 'failed',
+				error: expect.objectContaining({ message: 'db down' }),
+			});
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalled();
+		});
+
+		test('republishing a version without the unknown node tears the old one down and completes', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				withNodes(newVersion, [triggerNode('a')]),
+			);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+			for (const [version] of workflowTriggerActivator.getEnabledTriggerNodes.mock.calls) {
+				expect(version?.nodes).not.toContainEqual(unknownNode);
+			}
+		});
+
+		test('unpublishing a workflow whose published version holds the unknown node tears down and removes the mapping', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: null }));
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'unpublished' });
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+				expect.anything(),
+				{ nodes: [triggerNode('a')], connections: {} },
+				new Set(['a']),
+				abort,
+			);
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 		});
 
 		test('fails even when the unknown node is disabled', async () => {
