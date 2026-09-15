@@ -415,6 +415,33 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Polls one execution by id until it settles. Unlike {@link waitForExecution},
+	 * it never reads the executions list, so it also sees engine 2.0 runs, which
+	 * the list does not include yet.
+	 */
+	async waitForExecutionById(
+		executionId: string,
+		timeoutMs = 10000,
+		pollIntervalMs = 250,
+	): Promise<ExecutionListResponse> {
+		const settled = new Set(['success', 'error', 'crashed', 'canceled']);
+		const deadline = Date.now() + timeoutMs;
+
+		let execution = await this.getExecution(executionId);
+		while (!settled.has(execution.status)) {
+			if (Date.now() >= deadline) {
+				throw new TestError(
+					`Execution ${executionId} did not settle within ${timeoutMs}ms (status: ${execution.status})`,
+				);
+			}
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			execution = await this.getExecution(executionId);
+		}
+
+		return execution;
+	}
+
 	/** Stops a running or waiting execution and returns the stopped execution summary. */
 	async stopExecution(executionId: string): Promise<ExecutionListResponse> {
 		const response = await this.api.request.post(`/rest/executions/${executionId}/stop`);

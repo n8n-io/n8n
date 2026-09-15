@@ -210,7 +210,7 @@ The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 specs that engine 2.0 does not run yet:
 
 ```bash
-pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
+pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-run-outcome.spec.ts
 ```
 
 For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.

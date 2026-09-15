@@ -53,3 +53,41 @@ describe('WorkflowApiHelper workflow settings defaults', () => {
 		expect(postedSettings(post)).toEqual({ engineType: 'v2' });
 	});
 });
+
+describe('WorkflowApiHelper.waitForExecutionById', () => {
+	function apiReturning(statuses: string[]) {
+		const get = vi.fn();
+		for (const status of statuses) {
+			get.mockResolvedValueOnce({
+				ok: () => true,
+				json: async () => ({ data: { id: 'exec-1', status } }),
+			});
+		}
+		return { api: { request: { get }, options: {} } as unknown as ApiHelpers, get };
+	}
+
+	test('returns the execution once it reaches a settled status', async () => {
+		const { api, get } = apiReturning(['running', 'running', 'success']);
+
+		const execution = await new WorkflowApiHelper(api).waitForExecutionById('exec-1', 2000, 0);
+
+		expect(execution.status).toBe('success');
+		expect(get).toHaveBeenCalledTimes(3);
+	});
+
+	test('returns a failed execution instead of waiting for success', async () => {
+		const { api } = apiReturning(['error']);
+
+		const execution = await new WorkflowApiHelper(api).waitForExecutionById('exec-1', 2000, 0);
+
+		expect(execution.status).toBe('error');
+	});
+
+	test('throws when the execution does not settle in time', async () => {
+		const { api } = apiReturning(Array(50).fill('running'));
+
+		await expect(new WorkflowApiHelper(api).waitForExecutionById('exec-1', 20, 5)).rejects.toThrow(
+			/did not settle/,
+		);
+	});
+});
