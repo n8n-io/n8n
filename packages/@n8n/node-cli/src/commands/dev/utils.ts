@@ -1,5 +1,5 @@
 import { type ChildProcess, execSync, spawn, type SpawnOptions } from 'node:child_process';
-import { existsSync, watch } from 'node:fs';
+import { type FSWatcher, statSync, watch } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
@@ -684,19 +684,44 @@ const STATIC_ASSET_DIRS = ['nodes', 'credentials', 'icons'];
  * without this an icon or schema edit never reaches `dist`.
  */
 export function watchStaticFiles(onChange: () => void): () => void {
-	const watchers = STATIC_ASSET_DIRS.flatMap((dir) => {
+	const watchers: FSWatcher[] = [];
+
+	const watchAssetDir = (dir: string): boolean => {
 		const target = path.join(process.cwd(), dir);
-		if (!existsSync(target)) return [];
+		try {
+			if (!statSync(target).isDirectory()) return false;
+		} catch {
+			return false;
+		}
 
 		// `filename` is relative to `target`, which the pattern already allows for.
-		return watch(target, { recursive: true }, (_event, filename) => {
+		const watcher = watch(target, { recursive: true }, (_event, filename) => {
 			if (!filename) return;
 			if (!STATIC_ASSET_PATTERN.test(filename)) return;
 			onChange();
 		});
-	});
+		watcher.unref();
+		watchers.push(watcher);
+		return true;
+	};
 
-	for (const watcher of watchers) watcher.unref();
+	const missing = new Set(STATIC_ASSET_DIRS.filter((dir) => !watchAssetDir(dir)));
+
+	// An asset root created after startup would otherwise stay unwatched until a
+	// restart. One non-recursive watch on the project root costs a single
+	// descriptor, where watching the tree would cost one per subdirectory.
+	if (missing.size > 0) {
+		const rootWatcher = watch(process.cwd(), (_event, filename) => {
+			if (!filename || !missing.has(filename)) return;
+			if (!watchAssetDir(filename)) return;
+			missing.delete(filename);
+			// The directory can already hold assets by the time the watcher attaches.
+			onChange();
+		});
+		rootWatcher.unref();
+		watchers.push(rootWatcher);
+	}
+
 	return () => {
 		for (const watcher of watchers) watcher.close();
 	};
