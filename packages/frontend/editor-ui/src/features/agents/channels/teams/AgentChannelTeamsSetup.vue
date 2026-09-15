@@ -7,7 +7,15 @@
  * for up front. That inverts Discord's stepper, where connecting comes last.
  */
 import { computed, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nCheckbox, N8nCopyInput, N8nStepper, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCollapsiblePanel,
+	N8nCopyInput,
+	N8nIcon,
+	N8nStepper,
+	N8nSwitch2,
+	N8nText,
+} from '@n8n/design-system';
 import type {
 	AgentTeamsIntegrationSettings,
 	ChatIntegrationDescriptor,
@@ -101,6 +109,36 @@ const downloadError = ref('');
 // The manifest needs the bot's client ID, which the picked credential supplies
 // before it is connected, so the step does not wait on connecting.
 const canDownloadPackage = computed(() => Boolean(setupState.value?.botId));
+
+const whereOpen = ref(true);
+const readingOpen = ref(true);
+
+/** Collapsed panels still have to say what they are set to. */
+const whereSummary = computed(() =>
+	[
+		i18n.baseText('agents.channels.teams.setup.availability.directChat'),
+		...(availability.value.teamChannels
+			? [i18n.baseText('agents.channels.teams.setup.availability.teamChannels')]
+			: []),
+		...(availability.value.groupChats
+			? [i18n.baseText('agents.channels.teams.setup.availability.groupChats')]
+			: []),
+	].join(', '),
+);
+
+const readingSummary = computed(() => {
+	const reads = [
+		...(availability.value.readAllChannelMessages
+			? [i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')]
+			: []),
+		...(availability.value.readAllGroupMessages
+			? [i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')]
+			: []),
+	];
+	return reads.length > 0
+		? reads.join(', ')
+		: i18n.baseText('agents.channels.teams.setup.availability.readingSummaryNone');
+});
 const credentialCheck = ref<TeamsCredentialCheck | null>(null);
 const checking = ref(false);
 
@@ -324,77 +362,134 @@ defineExpose({
 
 					<!-- 3. Choose where it's available -->
 					<div v-else-if="step.id === 'availability'" :class="$style.stepStack">
-						<div :class="$style.toggle">
-							<N8nCheckbox
-								:model-value="true"
-								disabled
-								:label="i18n.baseText('agents.channels.teams.setup.availability.directChat')"
-								data-testid="teams-scope-direct"
-							/>
-							<N8nText :class="$style.hint" size="small">
-								{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
-							</N8nText>
-						</div>
+						<N8nCollapsiblePanel v-model="whereOpen" :class="$style.panel">
+							<template #title>
+								<span :class="$style.panelTitle">
+									<N8nText size="small" bold>
+										{{ i18n.baseText('agents.channels.teams.setup.availability.whereTitle') }}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint" data-testid="teams-where-summary">
+										{{ whereSummary }}
+									</N8nText>
+								</span>
+							</template>
 
-						<div :class="$style.toggle">
-							<N8nCheckbox
-								v-model="availability.teamChannels"
-								:label="i18n.baseText('agents.channels.teams.setup.availability.teamChannels')"
-								data-testid="teams-scope-channels"
-							/>
-							<N8nText :class="$style.hint" size="small">
-								{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint') }}
-							</N8nText>
-						</div>
+							<div :class="$style.row" data-testid="teams-scope-direct">
+								<div :class="$style.rowText">
+									<N8nText size="small">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.directChat') }}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
+									</N8nText>
+								</div>
+								<!-- Fixed, so a tick rather than a control that cannot move. -->
+								<N8nIcon icon="check" size="small" :class="$style.fixed" />
+							</div>
 
-						<div :class="$style.toggle">
-							<N8nCheckbox
-								v-model="availability.groupChats"
-								:label="i18n.baseText('agents.channels.teams.setup.availability.groupChats')"
-								data-testid="teams-scope-groups"
-							/>
-							<N8nText :class="$style.hint" size="small">
-								{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
-							</N8nText>
-						</div>
+							<div :class="$style.row">
+								<div :class="$style.rowText">
+									<N8nText size="small">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannels') }}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint') }}
+									</N8nText>
+								</div>
+								<N8nSwitch2
+									v-model="availability.teamChannels"
+									:aria-label="
+										i18n.baseText('agents.channels.teams.setup.availability.teamChannels')
+									"
+									data-testid="teams-scope-channels"
+								/>
+							</div>
 
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.channels.teams.setup.availability.readingTitle') }}
-						</N8nText>
+							<div :class="$style.row">
+								<div :class="$style.rowText">
+									<N8nText size="small">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.groupChats') }}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint">
+										{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
+									</N8nText>
+								</div>
+								<N8nSwitch2
+									v-model="availability.groupChats"
+									:aria-label="i18n.baseText('agents.channels.teams.setup.availability.groupChats')"
+									data-testid="teams-scope-groups"
+								/>
+							</div>
+						</N8nCollapsiblePanel>
 
-						<div :class="$style.toggle">
-							<N8nCheckbox
-								v-model="availability.readAllChannelMessages"
-								:disabled="!availability.teamChannels"
-								:label="
-									i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')
-								"
-								data-testid="teams-read-channels"
-							/>
-							<N8nText :class="$style.hint" size="small">
-								{{
-									i18n.baseText(
-										'agents.channels.teams.setup.availability.readAllChannelMessagesHint',
-									)
-								}}
-							</N8nText>
-						</div>
+						<N8nCollapsiblePanel v-model="readingOpen" :class="$style.panel">
+							<template #title>
+								<span :class="$style.panelTitle">
+									<N8nText size="small" bold>
+										{{ i18n.baseText('agents.channels.teams.setup.availability.readingTitle') }}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint" data-testid="teams-reading-summary">
+										{{ readingSummary }}
+									</N8nText>
+								</span>
+							</template>
 
-						<div :class="$style.toggle">
-							<N8nCheckbox
-								v-model="availability.readAllGroupMessages"
-								:disabled="!availability.groupChats"
-								:label="
-									i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
-								"
-								data-testid="teams-read-groups"
-							/>
-							<N8nText :class="$style.hint" size="small">
-								{{
-									i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessagesHint')
-								}}
+							<N8nText size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.channels.teams.setup.availability.readingNote') }}
 							</N8nText>
-						</div>
+
+							<div :class="$style.row">
+								<div :class="$style.rowText">
+									<N8nText size="small" :class="{ [$style.hint]: !availability.teamChannels }">
+										{{
+											i18n.baseText(
+												'agents.channels.teams.setup.availability.readAllChannelMessages',
+											)
+										}}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint">
+										{{
+											i18n.baseText(
+												'agents.channels.teams.setup.availability.readAllChannelMessagesHint',
+											)
+										}}
+									</N8nText>
+								</div>
+								<N8nSwitch2
+									v-model="availability.readAllChannelMessages"
+									:disabled="!availability.teamChannels"
+									:aria-label="
+										i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')
+									"
+									data-testid="teams-read-channels"
+								/>
+							</div>
+
+							<div :class="$style.row">
+								<div :class="$style.rowText">
+									<N8nText size="small" :class="{ [$style.hint]: !availability.groupChats }">
+										{{
+											i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
+										}}
+									</N8nText>
+									<N8nText size="small" :class="$style.hint">
+										{{
+											i18n.baseText(
+												'agents.channels.teams.setup.availability.readAllGroupMessagesHint',
+											)
+										}}
+									</N8nText>
+								</div>
+								<N8nSwitch2
+									v-model="availability.readAllGroupMessages"
+									:disabled="!availability.groupChats"
+									:aria-label="
+										i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
+									"
+									data-testid="teams-read-groups"
+								/>
+							</div>
+						</N8nCollapsiblePanel>
 
 						<N8nText :class="$style.hint" size="small" data-testid="teams-availability-untested">
 							{{ i18n.baseText('agents.channels.teams.setup.availability.untested') }}
@@ -568,10 +663,37 @@ defineExpose({
 	gap: var(--spacing--2xs);
 }
 
-.toggle {
+.panel {
+	width: 100%;
+	border: var(--border);
+	border-radius: var(--radius);
+	padding: var(--spacing--2xs);
+}
+
+.panelTitle {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	text-align: left;
+}
+
+.row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) 0;
+}
+
+.rowText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.fixed {
+	color: var(--text-color--subtler);
+	flex-shrink: 0;
 }
 
 .urlField {

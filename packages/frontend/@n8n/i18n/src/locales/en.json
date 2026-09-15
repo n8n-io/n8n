@@ -9015,5 +9015,8 @@
 	"agents.channels.teams.setup.connectBot.skipped": "Check skipped. You can still finish, but nothing has confirmed the endpoint yet.",
 	"agents.channels.teams.setup.createBot.existingBot": "Already have an Azure bot?",
 	"agents.channels.teams.setup.createBot.existingBotHint": "Paste this into your bot's Configuration page as the messaging endpoint, and turn on the Microsoft Teams channel.",
-	"agents.channels.teams.setup.install.openChat": "Open the chat in Teams"
+	"agents.channels.teams.setup.install.openChat": "Open the chat in Teams",
+	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
+	"agents.channels.teams.setup.availability.readingSummaryNone": "Only messages addressed to it",
+	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app."
 }

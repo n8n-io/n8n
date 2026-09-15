@@ -149,14 +149,39 @@ describe('AgentChannelTeamsSetup', () => {
 		// N8nCheckbox is a Reka UI checkbox: a button with aria-checked, not an input.
 		const checked = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true';
 
-		it('has direct chat on and locked, and everything else off', async () => {
+		it('shows direct chat as fixed, with no control to change it', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-scope-direct')).toBeVisible());
-			expect(checked(getByTestId('teams-scope-direct'))).toBe(true);
-			expect(getByTestId('teams-scope-direct')).toBeDisabled();
+			expect(getByTestId('teams-scope-direct').querySelector('[role="switch"]')).toBeNull();
+		});
+
+		it('starts with everything else off', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 			expect(checked(getByTestId('teams-scope-channels'))).toBe(false);
 			expect(checked(getByTestId('teams-scope-groups'))).toBe(false);
+		});
+
+		it('summarises each panel, so a collapsed one still says what it is set to', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
+			expect(getByTestId('teams-where-summary').textContent).toContain(
+				'setup.availability.directChat',
+			);
+			expect(getByTestId('teams-reading-summary').textContent).toContain(
+				'setup.availability.readingSummaryNone',
+			);
+
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+
+			await waitFor(() =>
+				expect(getByTestId('teams-where-summary').textContent).toContain(
+					'setup.availability.teamChannels',
+				),
+			);
 		});
 
 		it('keeps a read permission locked until its surface is on', async () => {
