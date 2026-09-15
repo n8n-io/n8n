@@ -78,6 +78,7 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
@@ -448,6 +449,7 @@ async function directPostBuildFlowHandoff(
 }
 
 interface ValidationFailureArgs {
+	abortSignal?: AbortSignal;
 	context: InstanceAiContext;
 	blocking: ValidationWarning[];
 	informational: ValidationWarning[];
@@ -464,7 +466,7 @@ interface ValidationFailureArgs {
 	owner: WorkflowBuildOutcome['owner'];
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
-	withEscalation: (errors: string[]) => string[];
+	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
 }
@@ -525,8 +527,12 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	} = args;
 
+	const validationErrors = blocking.map(
+		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+	);
 	const formattedErrors = withEscalation(
-		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+		await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal),
+		{ trackingErrors: validationErrors },
 	);
 	const remediation = createCodeFixableRemediation({ reason, guidance });
 	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
@@ -988,9 +994,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 			const withEscalation = (
 				errors: string[],
-				options: { includeSdkLanguageGuidance?: boolean } = {},
+				options: { includeSdkLanguageGuidance?: boolean; trackingErrors?: string[] } = {},
 			): string[] => {
-				const escalation = failureTracker.record(workItemKey, errors, options);
+				// Supplemental diagnostics can time out. Keep the original failure signature stable.
+				const escalation = failureTracker.record(
+					workItemKey,
+					options.trackingErrors ?? errors,
+					options,
+				);
 				return escalation ? [...errors, escalation] : errors;
 			};
 
@@ -1041,7 +1052,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 			if (!compiled.success) {
-				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
+				const buildErrors =
+					compiled.reason === 'workflow_source_build_failed'
+						? await appendWorkflowSourceDiagnostics(
+								context,
+								filePath,
+								compiled.errors,
+								ctx.abortSignal,
+							)
+						: compiled.errors;
+				const errors = compiled.editable
+					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
+					: buildErrors;
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
@@ -1097,6 +1119,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedWarnings.blocking,
 					informational,
@@ -1212,6 +1235,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (partitionedChatModelWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
+					abortSignal: ctx.abortSignal,
 					context,
 					blocking: partitionedChatModelWarnings.blocking,
 					informational,
@@ -1322,6 +1346,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						: informational;
 
 					return await handleValidationFailure({
+						abortSignal: ctx.abortSignal,
 						context,
 						blocking: [blocker],
 						informational: informationalWithoutDrops,
