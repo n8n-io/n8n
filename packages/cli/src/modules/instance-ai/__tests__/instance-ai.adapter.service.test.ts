@@ -80,6 +80,7 @@ import {
 	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -113,7 +114,11 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		activityLogEnabled?: boolean;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
@@ -121,6 +126,9 @@ function globalConfigStub(
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
+		// The instance-context read needs the record to be accruing as well as the flag, so
+		// gate resolution reads this.
+		activityLog: { enabled: overrides.activityLogEnabled ?? false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
@@ -5148,6 +5156,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		activityLogEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5167,7 +5176,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ activityLogEnabled: overrides?.activityLogEnabled ?? false });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -5468,9 +5477,13 @@ describe('resolveExperimentGates', () => {
 		return getFeatureFlags;
 	}
 
-	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
+	function createAdapter(
+		mcpAccessEnabled = true,
+		activityLogEnabled = true,
+	): InstanceAiAdapterService {
 		return createAdapterWithGatewayMock(vi.fn(), {
 			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
+			activityLogEnabled,
 		});
 	}
 
@@ -5482,6 +5495,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+		[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5493,11 +5507,35 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
+			instanceContextEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	/**
+	 * The rollout turns the read on by itself, with no deploy. The record then holds only
+	 * what accrued before, so the block's edit leg is thin — its other two legs read the
+	 * workflows and the executions directly and are unaffected.
+	 */
+	it('turns the instance-context read on from the rollout alone', async () => {
+		stubContainer(allEnabled);
+
+		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: true,
+			nodeUsageEnabled: true,
+		});
+	});
+
+	/** Neither control on means nothing is written and nothing is read. */
+	it('keeps the instance-context read off when neither control is on', async () => {
+		stubContainer({});
+
+		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
+		});
 	});
 
 	it('is off for flags on the control variant', async () => {
@@ -5509,6 +5547,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
+			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5517,6 +5556,7 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 		});
@@ -5552,6 +5592,7 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 		});
@@ -5567,6 +5608,7 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 		});

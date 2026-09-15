@@ -7,7 +7,12 @@ function streamResult(
 	return {
 		status: 'completed',
 		agentRunId: 'run-1',
-		workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		workSummary: {
+			toolCalls: [],
+			totalToolCalls: 0,
+			totalToolErrors: 0,
+			askedClarifyingQuestion: false,
+		},
 		...overrides,
 	};
 }

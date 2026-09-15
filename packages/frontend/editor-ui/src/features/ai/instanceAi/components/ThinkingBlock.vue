@@ -8,9 +8,12 @@ import { N8nAiActivityStep } from '@n8n/design-system';
 import { computed } from 'vue';
 import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import InstanceContextStep from './InstanceContextStep.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
@@ -25,6 +28,7 @@ const props = withDefaults(
 );
 
 const { getToolLabel } = useToolLabel();
+const { getInstanceContextLabel } = useInstanceContextLabel();
 
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -45,9 +49,24 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+/**
+ * The collapsed subline's label. Without one it falls back to `ai.thinking.active`,
+ * which is the same "Thinking" string the header already shows — so the row reads as a
+ * duplicate of the header rather than as the current activity.
+ *
+ * The context row is the tail for the whole first leg of a turn, before any tool runs, so
+ * it has to carry the subline the way a running tool call does. It carries the row's own
+ * label rather than a wording of its own: the states worth telling apart are "told
+ * nothing", "the read failed" and "told this much", and a second wording would have to
+ * pick one of them — so a turn handed nothing would read as a read in flight.
+ */
 const activityLabel = computed<string | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	return toolCall ? getToolLabel(toolCall.toolName, toolCall.args) : undefined;
+	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);
+
+	if (!props.active || props.awaitingInput) return undefined;
+	const last = props.entries[props.entries.length - 1];
+	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });
 
 const segments = computed(() => {
@@ -97,6 +116,8 @@ const durationSec = computed<number | undefined>(() => {
 				:entry="entry"
 				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 			/>
+
+			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"

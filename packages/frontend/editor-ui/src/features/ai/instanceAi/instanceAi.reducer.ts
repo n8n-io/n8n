@@ -296,6 +296,10 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		case 'confirmation-request':
 		case 'tasks-update':
 		case 'setup-items':
+		// Folds onto the root node and needs nothing else from this layer. Omitting it
+		// here made the trace row appear only after a reload, because replay rebuilds the
+		// tree from the durable log while a live run never applied the event at all.
+		case 'instance-context':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {

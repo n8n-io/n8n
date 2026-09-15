@@ -1,14 +1,16 @@
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ActivityEventRepository, WorkflowRepository } from '@n8n/db';
+import { ActivityEventRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import type { Project, User, WorkflowEntity, ActivityEvent } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
+import { PostHogClient } from '@/posthog';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -34,6 +36,8 @@ describe('ActivityEventRelay', () => {
 	let project: Project;
 	let workflow: WorkflowEntity;
 	let owner: User;
+	/** Held from before `init()`: the relay keeps the instance it was constructed with. */
+	let postHogClient: ReturnType<typeof mockInstance<PostHogClient>>;
 
 	/** `activity_event.userId` is a foreign key, so the acting user has to be a real row. */
 	const actor = () => ({
@@ -48,6 +52,7 @@ describe('ActivityEventRelay', () => {
 		await testDb.init();
 		repository = Container.get(ActivityEventRepository);
 		eventService = Container.get(EventService);
+		postHogClient = mockInstance(PostHogClient);
 		Container.get(GlobalConfig).activityLog.enabled = true;
 		Container.get(ActivityEventRelay).init();
 	});
@@ -64,7 +69,11 @@ describe('ActivityEventRelay', () => {
 	/** A handler awaits a lookup and an insert, so the row lands some turns after the emit. */
 	const waitForEntry = async (projectId: string) =>
 		await vi.waitFor(async () => {
-			const entries = await repository.findFeed({ projectIds: [projectId], limit: 10 });
+			const entries = await repository.findFeed({
+				projectIds: [projectId],
+				categories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(entries).not.toHaveLength(0);
 			return entries;
 		});
@@ -108,6 +117,39 @@ describe('ActivityEventRelay', () => {
 			resourceId: workflow.id,
 			resourceName: 'Lead enrichment',
 		});
+	});
+
+	/**
+	 * The env var short-circuits the gate, so the rollout path is the only one that reads a
+	 * user from the database. It has to send the real signup date: the assistant evaluates
+	 * this same flag with it, and a rollout conditioned on it would otherwise record for a
+	 * user who cannot read the record back.
+	 */
+	it('gates on the signup date the database holds when only the rollout says yes', async () => {
+		Container.get(GlobalConfig).activityLog.enabled = false;
+		postHogClient.getFeatureFlags.mockResolvedValue({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true });
+
+		try {
+			eventService.emit('workflow-saved', {
+				user: actor(),
+				workflow: { ...workflow, nodes: [] },
+				publicApi: false,
+				source: 'ui',
+			});
+			const [entry] = await waitForEntry(project.id);
+
+			expect(entry).toMatchObject({ action: 'saved', resourceId: workflow.id });
+
+			// Read back through the full entity, so the gate's single-column read is held to
+			// the same hydrated value rather than to itself.
+			const stored = await Container.get(UserRepository).findByIdWithRole(owner.id);
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith({
+				id: owner.id,
+				createdAt: stored?.createdAt,
+			});
+		} finally {
+			Container.get(GlobalConfig).activityLog.enabled = true;
+		}
 	});
 
 	it('holds the table to its caps on an instance busy enough to need more than one batch', async () => {

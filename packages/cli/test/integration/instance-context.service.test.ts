@@ -4,12 +4,15 @@ import {
 	createWorkflow,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ActivityEventRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import type {
+	InstanceContextCursor,
+	InstanceContextResult,
+} from '@/modules/instance-ai/instance-context.service';
 
 import { createExecution } from '@test-integration/db/executions';
 import { createMember } from '@test-integration/db/users';
@@ -23,9 +26,26 @@ describe('InstanceContextService', () => {
 
 	const recently = () => new Date(Date.now() - 60_000);
 
+	/** Reads an injected result's block, asserting the state on the way through. */
+	function blockOf(result: InstanceContextResult): string {
+		expect(result.state).toBe('injected');
+		if (result.state !== 'injected') throw new Error('expected an injected block');
+		return result.block;
+	}
+
+	/** The bracketed entry ids a block rendered, newest first — the ids every tool takes. */
+	function shownIds(block: string): number[] {
+		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+	}
+
+	function cursorOf(result: InstanceContextResult): InstanceContextCursor {
+		expect(result.state).toBe('injected');
+		if (result.state !== 'injected') throw new Error('expected an injected block');
+		return result.cursor;
+	}
+
 	beforeAll(async () => {
 		await testDb.init();
-		Container.get(GlobalConfig).instanceAi.instanceContextEnabled = true;
 		service = Container.get(InstanceContextService);
 		activity = Container.get(ActivityEventRepository);
 		user = await createMember();
@@ -60,24 +80,23 @@ describe('InstanceContextService', () => {
 			user,
 			projectId: project.id,
 			cursor: null,
+			enabled: true,
 		});
 
-		expect(built?.block).toContain('Workflows that already exist here: 1');
-		expect(built?.block).toContain('"Lead enrichment" (workflow:' + workflow.id + ') [published]');
-		expect(built?.block).toContain('ran 1×, 1 failed');
-		expect(built?.block).toContain('+1 slack');
+		expect(blockOf(built)).toContain('Workflows in this project: 1');
+		expect(blockOf(built)).toContain(
+			'"Lead enrichment" (workflow:' + workflow.id + ') [published]',
+		);
+		expect(blockOf(built)).toContain('ran 1×, 1 failed');
+		expect(blockOf(built)).toContain('+1 slack');
 	});
 
 	it('builds nothing with the reader disabled', async () => {
-		const config = Container.get(GlobalConfig);
 		await createWorkflow({ name: 'Lead enrichment' }, project);
-		config.instanceAi.instanceContextEnabled = false;
 
-		try {
-			expect(await service.buildBlock({ user, projectId: project.id, cursor: null })).toBeNull();
-		} finally {
-			config.instanceAi.instanceContextEnabled = true;
-		}
+		expect(
+			await service.buildBlock({ user, projectId: project.id, cursor: null, enabled: false }),
+		).toMatchObject({ state: 'absent', reason: 'disabled' });
 	});
 
 	describe('scoping', () => {
@@ -100,12 +119,13 @@ describe('InstanceContextService', () => {
 				user,
 				projectId: project.id,
 				cursor: null,
+				enabled: true,
 			});
 
-			expect(built?.block).toContain('Ours');
-			expect(built?.block).not.toContain('Their secret plan');
-			expect(built?.block).not.toContain('Their deleted workflow');
-			expect(built?.block).toContain('Workflows that already exist here: 1');
+			expect(blockOf(built)).toContain('Ours');
+			expect(blockOf(built)).not.toContain('Their secret plan');
+			expect(blockOf(built)).not.toContain('Their deleted workflow');
+			expect(blockOf(built)).toContain('Workflows in this project: 1');
 		});
 
 		it('returns nothing for an entry in a project the user cannot see', async () => {
@@ -116,7 +136,11 @@ describe('InstanceContextService', () => {
 				resourceType: 'workflow',
 				resourceId: 'wf-theirs',
 			});
-			const [entry] = await activity.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [otherProject.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			// Scoped to the user's own project, so the other project's entry is out of reach.
 			expect(await service.expand({ id: entry.id, user, projectId: project.id })).toBeNull();
@@ -149,22 +173,119 @@ describe('InstanceContextService', () => {
 					resourceName: name,
 				});
 			}
-			const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [newest] = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const delta = await service.buildBlock({
 				user,
 				projectId: project.id,
 				cursor: {
 					activityMark: newest.id,
+					// No turn has cut anything yet, so every id below the mark is still offerable.
+					activityFloor: 0,
+					activityCategories: ['workflow', 'credential'],
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},
+				enabled: true,
 			});
 
-			expect(delta?.block).toContain('Committed late');
-			expect(delta?.block).toContain('Also late');
+			expect(blockOf(delta)).toContain('Committed late');
+			expect(blockOf(delta)).toContain('Also late');
 			// The one the mark accounted for is not repeated.
-			expect(delta?.block).not.toContain('Seen already');
+			expect(blockOf(delta)).not.toContain('Seen already');
+		});
+
+		/**
+		 * A backlog deeper than one window used to drain a window per turn: the delta re-read a fixed
+		 * span below the mark, which holds the rows the window trimmed as well as the late commits it
+		 * is there for. Each turn then presented forty entries older than the last batch under a
+		 * preamble that calls them additions, and it did so whatever the conversation was about.
+		 */
+		it('does not re-offer the entries a full window already cut', async () => {
+			const backlog = 90;
+			for (let i = 1; i <= backlog; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+
+			const opening = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: null,
+				enabled: true,
+			});
+			// The window's worth, newest first, and it says there is more behind it.
+			expect(shownIds(blockOf(opening))).toHaveLength(40);
+			expect(blockOf(opening)).toContain('and more than these');
+
+			const next = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: cursorOf(opening),
+				enabled: true,
+			});
+
+			// Nothing happened in between, so there is nothing to add — not the next forty down.
+			expect(next).toMatchObject({ state: 'absent', reason: 'empty' });
+		});
+
+		/**
+		 * A late commit is a row that was invisible when a turn read, sits below that turn's mark,
+		 * and was therefore never shown. Built by handing `buildBlock` a cursor that accounts for
+		 * every row in the band except one, rather than by inserting a row at a chosen id —
+		 * an explicit primary key is honoured on sqlite and ignored on Postgres, so seeding the
+		 * hole that way proves the mechanism on one driver and something else on the other.
+		 */
+		it('still recovers a late commit that lands above the cut', async () => {
+			for (let i = 1; i <= 45; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+			// Newest first, so index 0 is the high-water mark.
+			const seeded = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 50,
+			});
+			const straggler = seeded[5];
+			const floor = seeded[10];
+
+			const delta = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: {
+					activityMark: seeded[0].id,
+					activityFloor: floor.id,
+					activityCategories: ['workflow', 'credential'],
+					// Every row above the floor is accounted for except the straggler.
+					activitySeen: seeded
+						.slice(0, 10)
+						.map((row) => row.id)
+						.filter((id) => id !== straggler.id),
+					runsThrough: new Date().toISOString(),
+				},
+				enabled: true,
+			});
+
+			// Only the straggler: the rows below the floor were cut and must not come back.
+			expect(shownIds(blockOf(delta))).toEqual([straggler.id]);
+			expect(blockOf(delta)).toContain(straggler.resourceName);
 		});
 
 		it('leaves the inventory out of a delta and says it is an addition', async () => {
@@ -182,7 +303,9 @@ describe('InstanceContextService', () => {
 				user,
 				projectId: project.id,
 				cursor: null,
+				enabled: true,
 			});
+			const firstCursor = cursorOf(first);
 			await record({
 				category: 'credential',
 				action: 'created',
@@ -196,30 +319,33 @@ describe('InstanceContextService', () => {
 			const delta = await service.buildBlock({
 				user,
 				projectId: project.id,
-				cursor: first!.cursor,
+				cursor: firstCursor,
+				enabled: true,
 			});
 
-			expect(delta?.block).toContain('Slack account');
-			expect(delta?.block).toContain('since the list earlier in this conversation');
-			expect(delta?.block).not.toContain('Workflows that already exist here');
+			expect(blockOf(delta)).toContain('Slack account');
+			expect(blockOf(delta)).toContain('since the list earlier in this conversation');
+			expect(blockOf(delta)).not.toContain('Workflows in this project');
 		});
 
 		it('builds nothing when nothing has happened since the last block', async () => {
 			await createWorkflow({ name: 'Lead enrichment' }, project);
 
-			const first = await service.buildBlock({
+			const opening = await service.buildBlock({
 				user,
 				projectId: project.id,
 				cursor: null,
+				enabled: true,
 			});
 
 			expect(
 				await service.buildBlock({
 					user,
 					projectId: project.id,
-					cursor: first!.cursor,
+					cursor: cursorOf(opening),
+					enabled: true,
 				}),
-			).toBeNull();
+			).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
 	});
 
@@ -235,9 +361,13 @@ describe('InstanceContextService', () => {
 			user,
 			projectId: otherProject.id,
 			cursor: null,
+			enabled: true,
 		});
 
-		expect(built).toBeNull();
+		// `empty` rather than a scope-specific reason on purpose: an out-of-scope project has
+		// to be indistinguishable from one that simply holds nothing, or the absence itself
+		// answers whether a project the caller cannot read has work in it.
+		expect(built).toMatchObject({ state: 'absent', reason: 'empty' });
 	});
 
 	it('leaves evaluation runs out of the block', async () => {
@@ -248,9 +378,10 @@ describe('InstanceContextService', () => {
 			user,
 			projectId: project.id,
 			cursor: null,
+			enabled: true,
 		});
 
-		expect(built?.block).not.toContain('ran ');
+		expect(blockOf(built)).not.toContain('ran ');
 	});
 
 	it("expands an entry with the rest of that resource's history", async () => {
@@ -264,7 +395,11 @@ describe('InstanceContextService', () => {
 				resourceName: 'Lead enrichment',
 			});
 		}
-		const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+		const [newest] = await activity.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 1,
+		});
 
 		const expansion = await service.expand({
 			id: newest.id,
@@ -287,6 +422,9 @@ describe('InstanceContextService', () => {
 			resourceId: 'wf-1',
 		});
 
-		expect(await service.buildBlock({ user, cursor: null })).toBeNull();
+		expect(await service.buildBlock({ user, cursor: null, enabled: true })).toMatchObject({
+			state: 'absent',
+			reason: 'empty',
+		});
 	});
 });
