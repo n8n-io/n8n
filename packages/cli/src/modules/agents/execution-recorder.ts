@@ -4,6 +4,7 @@ import {
 	emptyChildTrace,
 	settleChildTrace,
 	type PersistedChildTrace,
+	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -261,6 +262,7 @@ export interface RecordedUsage {
 }
 
 export type TimelineEvent =
+	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -304,6 +306,25 @@ export type TimelineEvent =
 			timestamp: number;
 	  };
 
+/** The finished background tasks a wake run reports, with secrets scrubbed from the titles. */
+export function backgroundTaskSignalEvent(
+	signal: AgentBackgroundJobSignal,
+	timestamp: number,
+): TimelineEvent {
+	return {
+		type: 'background-task-signal',
+		timestamp,
+		signal: {
+			tasks: signal.tasks.map(({ id, title, kind, status }) => ({
+				id,
+				title: scrubSecretsInText(title),
+				kind,
+				status,
+			})),
+		},
+	};
+}
+
 /**
  * Collects execution data from agent stream chunks.
  * Used to build an execution record after a message cycle completes.
@@ -326,8 +347,12 @@ export class ExecutionRecorder {
 	constructor(
 		registry?: ToolRegistry,
 		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	) {
 		this.registry = registry ?? new Map();
+		if (backgroundJobSignal) {
+			this.timeline.push(backgroundTaskSignalEvent(backgroundJobSignal, this.startTime));
+		}
 	}
 
 	private textParts: string[] = [];
