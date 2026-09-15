@@ -104,7 +104,16 @@ const approvalCallback = {
 };
 
 it('stores a queued resume for the drain of the running turn', async () => {
-	const { handler, event, submitTurn, resumeForChat, consume } = makeHandler(approvalCallback);
+	const {
+		handler,
+		event,
+		submitTurn,
+		resumeForChat,
+		consume,
+		settleActionMessage,
+		updateLatest,
+		resolve,
+	} = makeHandler(approvalCallback);
 	submitTurn.mockResolvedValue({ status: 'queued', executionId: 'exec-2' });
 
 	await handler.handleAction(event as never);
@@ -126,6 +135,9 @@ it('stores a queued resume for the drain of the running turn', async () => {
 	});
 	expect(resumeForChat).not.toHaveBeenCalled();
 	expect(consume).not.toHaveBeenCalled();
+	expect(settleActionMessage).not.toHaveBeenCalled();
+	expect(updateLatest).not.toHaveBeenCalled();
+	expect(resolve).not.toHaveBeenCalled();
 	expect(event.thread.post).not.toHaveBeenCalled();
 });
 

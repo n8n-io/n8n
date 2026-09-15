@@ -56,6 +56,7 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 });
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
 
 /** Build a `Response` whose body streams the given events as SSE `data:` lines. */
 function makeSseResponse(events: AgentSseEvent[]): Response {
@@ -280,7 +281,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
 	});
 
-	it('keeps a queued card resume settled until its execution advances', async () => {
+	it('recovers a queued card resume when its execution update was missed', async () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(
@@ -355,22 +356,24 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
 
 		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
-		for (const executionStatus of ['queued', 'running', undefined] as const) {
-			for (const listener of [...pushListeners]) {
-				listener({
-					type: 'agentExecutionUpdated',
-					data: {
-						projectId: 'p1',
-						agentId: 'a1',
-						threadId: 'thread-1',
-						executionId: 'exec-queued-resume',
-						...(executionStatus ? { executionStatus } : {}),
-					},
-				});
-			}
-		}
+		hook.refresh();
 		await flushPromises();
 		expect(getTestChatMessagesMock).toHaveBeenCalledOnce();
+	});
+
+	it('ignores a queued stream result after the chat is disposed', async () => {
+		const stream = makeControllableSseResponse([], null);
+		globalThis.fetch = vi.fn().mockResolvedValue(stream.response) as typeof fetch;
+		const scope = effectScope();
+		const hook = scope.run(() => useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1') }))!;
+		const sending = hook.sendMessage('hello');
+		await flushPromises();
+
+		scope.stop();
+		stream.close([{ type: 'queued', sessionId: 'thread-1', executionId: 'stale-execution' }]);
+		await sending;
+
+		expect(hook.messages.value[0]).not.toHaveProperty('executionId');
 	});
 
 	it('cancels an open chat interaction before steering with a new message', async () => {
@@ -2485,6 +2488,48 @@ describe('useAgentChatStream — transcript push', () => {
 			openSuspensions: [],
 		};
 	}
+
+	it('retains status transitions for each execution while a refresh is in flight', async () => {
+		const firstRefresh = Promise.withResolvers<void>();
+		const seen: Array<{ executionId: string; executionStatus?: string } | undefined> = [];
+		let blockFirst = true;
+		const scope = effectScope();
+		scope.run(() =>
+			useAgentExecutionUpdates({ projectId: ref('p1'), agentId: ref('a1') }, async (event) => {
+				seen.push(
+					event
+						? {
+								executionId: event.data.executionId,
+								...(event.data.executionStatus
+									? { executionStatus: event.data.executionStatus }
+									: {}),
+							}
+						: undefined,
+				);
+				if (blockFirst) {
+					blockFirst = false;
+					await firstRefresh.promise;
+				}
+			}),
+		);
+
+		emitPush(update());
+		await flushPromises();
+		emitPush(update({ executionId: 'resume', executionStatus: 'running' }));
+		emitPush(update({ executionId: 'other', executionStatus: 'running' }));
+		emitPush(update({ executionId: 'terminal' }));
+		firstRefresh.resolve();
+
+		await vi.waitFor(() =>
+			expect(seen).toEqual([
+				{ executionId: 'exec-1' },
+				{ executionId: 'resume', executionStatus: 'running' },
+				{ executionId: 'other', executionStatus: 'running' },
+				{ executionId: 'terminal' },
+			]),
+		);
+		scope.stop();
+	});
 
 	it('discards a snapshot when a newer push arrives during its request', async () => {
 		const stale = Promise.withResolvers<ReturnType<typeof history>>();

@@ -130,11 +130,11 @@ describe('AddAgentTurnQueue migration', () => {
 			expect(table?.findColumnByName('resourceId')).toBeUndefined();
 			expect(table?.findColumnByName('enqueueSequence')).toBeUndefined();
 
-			const queued = await context.runQuery<Array<{ status: string }>>(
+			const executions = await context.runQuery<Array<{ status: string }>>(
 				`SELECT "status" FROM ${context.escape.tableName('agent_execution')} WHERE "threadId" = :threadId`,
 				{ threadId: ids.thread },
 			);
-			expect(queued.map(({ status }) => status)).not.toContain('queued');
+			expect(executions.map(({ status }) => status).sort()).toEqual(['cancelled', 'running']);
 		});
 	});
 });

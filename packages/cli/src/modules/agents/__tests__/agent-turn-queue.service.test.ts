@@ -91,19 +91,23 @@ describe('AgentTurnQueueService', () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});
 
-	it('runs a blocked resume when the active turn releases its claim', async () => {
+	it('runs a blocked resume before an earlier queued message', async () => {
 		const { service, ran, finish, orchestrator } = makeService();
 		const first = await service.tryRunNow(messageTurn('first'));
 		if (!first) throw new Error('Expected the first turn to be claimed');
-		expect(await service.submit(resumeTurn(false))).toEqual({
+		expect(await service.submit(messageTurn('second'))).toEqual({
 			status: 'queued',
 			executionId: 'exec-2',
+		});
+		expect(await service.submit(resumeTurn(false))).toEqual({
+			status: 'queued',
+			executionId: 'exec-3',
 		});
 
 		finish(first);
 		await first.release();
 
-		await settled(() => expect(ran).toEqual(['resume:run-1']));
+		await settled(() => expect(ran).toEqual(['resume:run-1', 'second']));
 		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({ previewChat: false }),
 			expect.objectContaining({ threadId }),

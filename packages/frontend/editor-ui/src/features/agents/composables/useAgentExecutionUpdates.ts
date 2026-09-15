@@ -36,21 +36,26 @@ export function useAgentExecutionUpdates(
 		return !threadId || event.data.threadId === threadId;
 	}
 
-	// Combine push notifications into one active refresh and one queued refresh.
+	// Run one refresh at a time. Coalesce invalidations, but retain the latest status per execution.
 	let inFlight: Promise<void> | undefined;
-	let queued = false;
-	let queuedEvent: AgentExecutionUpdate | undefined;
+	const queuedEvents: Array<AgentExecutionUpdate | undefined> = [];
 	let disposed = false;
 
 	function run(event?: AgentExecutionUpdate): void {
 		if (disposed) return;
 		if (inFlight) {
-			queued = true;
-			if (
-				event?.data.executionStatus !== undefined ||
-				queuedEvent?.data.executionStatus === undefined
+			if (event?.data.executionStatus !== undefined) {
+				const existingIndex = queuedEvents.findIndex(
+					(queuedEvent) =>
+						queuedEvent?.data.executionId === event.data.executionId &&
+						queuedEvent.data.executionStatus !== undefined,
+				);
+				if (existingIndex >= 0) queuedEvents[existingIndex] = event;
+				else queuedEvents.push(event);
+			} else if (
+				!queuedEvents.some((queuedEvent) => queuedEvent?.data.executionStatus === undefined)
 			) {
-				queuedEvent = event;
+				queuedEvents.push(event);
 			}
 			return;
 		}
@@ -62,12 +67,7 @@ export function useAgentExecutionUpdates(
 			.catch(() => {})
 			.finally(() => {
 				inFlight = undefined;
-				if (queued) {
-					queued = false;
-					const nextEvent = queuedEvent;
-					queuedEvent = undefined;
-					run(nextEvent);
-				}
+				if (queuedEvents.length > 0) run(queuedEvents.shift());
 			});
 	}
 

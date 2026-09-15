@@ -238,8 +238,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				refreshAfterStream = true;
 				return;
 			}
-			if (pendingQueuedResumes.size > 0 && !pendingResumeSettled) return;
-			await refreshHistory({ silent: true });
+			if (event && pendingQueuedResumes.size > 0 && !pendingResumeSettled) return;
+			const refreshed = await refreshHistory({ silent: true });
+			if (!event && refreshed) pendingQueuedResumes.clear();
 		},
 		() => {
 			historyVersion++;
@@ -769,7 +770,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return undefined;
 	}
 
-	async function consumeStream(response: Response, session: StreamSession): Promise<void> {
+	async function consumeStream(
+		response: Response,
+		session: StreamSession,
+		isCurrent: () => boolean,
+	): Promise<void> {
 		if (!response.body) return;
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
@@ -778,6 +783,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		try {
 			readerLoop: while (true) {
 				const { done, value } = await reader.read();
+				if (!isCurrent()) return;
 				if (done) break;
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split('\n');
@@ -835,11 +841,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
 		};
+		const streamTarget = targetKey();
 
 		isStreaming.value = true;
 		streamVersion++;
 		const controller = new AbortController();
 		abortController.value = controller;
+		const isCurrent = () =>
+			!disposed && streamTarget === targetKey() && abortController.value === controller;
 		let settleStream: (() => void) | undefined;
 		const streamSettlement = new Promise<void>((resolve) => {
 			settleStream = resolve;
@@ -856,6 +865,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				body: JSON.stringify(body),
 				signal: controller.signal,
 			});
+			if (!isCurrent()) return { outcome: 'aborted' };
 
 			if (!response.ok || !response.body) {
 				transportFailed = true;
@@ -869,7 +879,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				return { outcome: 'failed' };
 			}
 
-			await consumeStream(response, session);
+			await consumeStream(response, session, isCurrent);
+			if (!isCurrent()) return { outcome: 'aborted' };
 			if (!session.terminalEventReceived) {
 				transportFailed = true;
 				markStreamInterrupted(session);
@@ -877,6 +888,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			finalizeStream(session);
 		} catch (error) {
+			if (!isCurrent()) return { outcome: 'aborted' };
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				dropOrphanMintedBubbles(session);
 				if (preserveTerminalStateOnAbort.has(controller) && session.terminalEventReceived) {
@@ -896,16 +908,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (abortController.value === controller) {
 				abortController.value = null;
 				isStreaming.value = false;
+				streamVersion++;
+				executionTransitionsSeenDuringStream.clear();
+				if (refreshAfterStream) {
+					refreshAfterStream = false;
+					if (pendingQueuedResumes.size === 0) refreshHistoryFromPush();
+				}
 			}
 			preserveTerminalStateOnAbort.delete(controller);
 			streamSettlements.delete(controller);
 			settleStream?.();
-			streamVersion++;
-			executionTransitionsSeenDuringStream.clear();
-			if (refreshAfterStream && !isStreaming.value) {
-				refreshAfterStream = false;
-				if (pendingQueuedResumes.size === 0) refreshHistoryFromPush();
-			}
 		}
 
 		return {

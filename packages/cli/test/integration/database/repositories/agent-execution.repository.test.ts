@@ -345,7 +345,18 @@ describe('AgentExecutionRepository', () => {
 				failureSummary: null,
 				createdAt: new Date('2026-01-02T00:00:00Z'),
 			});
-			await createExecution({ threadId: succeeded.id, status: 'success', failureSummary: null });
+			await createExecution({
+				threadId: succeeded.id,
+				status: 'success',
+				failureSummary: null,
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+			});
+			await createExecution({
+				threadId: succeeded.id,
+				status: 'queued',
+				runContext: { kind: 'message' },
+				createdAt: new Date('2026-01-02T00:00:00Z'),
+			});
 			await createExecution({
 				threadId: recovered.id,
 				status: 'success',
@@ -531,6 +542,13 @@ describe('AgentExecutionRepository', () => {
 			error: null,
 			failureSummary: null,
 		});
+		await expect(
+			repository.insertExecution({
+				...resumeValues('running-duplicate'),
+				status: 'running',
+				startedAt: new Date(),
+			}),
+		).rejects.toBeInstanceOf(AgentActionAlreadyHandledError);
 		await expect(
 			repository.insertExecution({
 				...resumeValues('blocked-running'),

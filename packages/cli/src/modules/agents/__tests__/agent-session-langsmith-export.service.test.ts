@@ -210,7 +210,17 @@ describe('AgentSessionLangSmithExportService', () => {
 		const { service, agentExecutionService, threadRepository } = setup();
 		const parentDetail: ThreadDetail = {
 			thread: makeThread(),
-			executions: [makeExecution()],
+			executions: [
+				makeExecution(),
+				makeExecution({
+					id: 'queued-execution',
+					status: 'queued',
+					startedAt: null,
+					stoppedAt: null,
+					userMessage: null,
+					timeline: null,
+				}),
+			],
 		};
 		const childThread = makeThread({
 			id: 'child-thread',
@@ -262,6 +272,8 @@ describe('AgentSessionLangSmithExportService', () => {
 			'Agent turn',
 			'Agent response',
 		]);
+		expect(firstRuns[0].outputs.executionCount).toBe(1);
+		expect(JSON.stringify(firstRuns)).not.toContain('queued-execution');
 		expect(JSON.stringify(firstRuns)).not.toContain('robin@example.com');
 		expect(JSON.stringify(firstRuns)).not.toContain('top-secret-key');
 		expect(JSON.stringify(firstRuns)).not.toContain('first-value');

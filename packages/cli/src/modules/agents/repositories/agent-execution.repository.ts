@@ -109,11 +109,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 				});
 			}
 
-			if (
-				values.status === 'running' &&
-				values.runContext !== null &&
-				values.runContext.kind !== 'resume'
-			) {
+			if (values.status === 'running' && values.runContext !== null) {
 				return await this.runInTransaction(ctx, async (entityManager) => {
 					await entityManager
 						.getRepository(AgentExecutionThread)
@@ -124,7 +120,18 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 						.execute();
 
 					const repository = entityManager.getRepository(AgentExecution);
-					if (await repository.existsBy({ threadId: values.threadId, status: 'queued' })) {
+					if (values.runContext?.kind === 'resume') {
+						const active = await repository.find({
+							select: ['runContext'],
+							where: [
+								{ threadId: values.threadId, status: 'queued' },
+								{ threadId: values.threadId, status: 'running' },
+							],
+						});
+						if (active.some((row) => row.runContext?.kind === 'resume')) {
+							throw new AgentActionAlreadyHandledError();
+						}
+					} else if (await repository.existsBy({ threadId: values.threadId, status: 'queued' })) {
 						throw new AgentThreadClaimConflictError();
 					}
 					return await repository.save(repository.create({ ...values, enqueueSequence: null }));
