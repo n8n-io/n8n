@@ -7,6 +7,7 @@ import {
 	databricksApiRequest,
 	getActiveCredentialType,
 	getHost,
+	readIdParameter,
 	sanitizeApiMessage,
 } from '../helpers';
 import type { DatabricksJobRun, DatabricksRunNowResponse } from '../interfaces';
@@ -56,21 +57,7 @@ function describeRunPage(run: DatabricksJobRun): string | undefined {
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
 	const host = await getHost(this, credentialType);
-	const jobId = String(this.getNodeParameter('jobId', i, '', { extractValue: true }));
-
-	if (!/^[0-9]+$/.test(jobId)) {
-		throw new NodeOperationError(this.getNode(), 'Job ID must be a whole number', {
-			itemIndex: i,
-			description: 'Use the numeric ID shown in the job URL in Databricks.',
-		});
-	}
-	if (!Number.isSafeInteger(Number(jobId))) {
-		throw new NodeOperationError(this.getNode(), 'Job ID is too large to send exactly', {
-			itemIndex: i,
-			description:
-				'IDs above 9007199254740991 lose precision in JavaScript, so the node cannot run this job.',
-		});
-	}
+	const jobId = readIdParameter(this, i, 'jobId', 'job');
 
 	const jobParameters = readJobParameters(this, i);
 	const waitForCompletion = this.getNodeParameter('waitForCompletion', i, false) === true;
@@ -88,7 +75,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		method: 'POST',
 		url: `${host}/api/2.2/jobs/run-now`,
 		body: {
-			job_id: Number(jobId),
+			job_id: jobId,
 			...(Object.keys(jobParameters).length > 0 && { job_parameters: jobParameters }),
 		},
 		headers: { 'Content-Type': 'application/json' },
