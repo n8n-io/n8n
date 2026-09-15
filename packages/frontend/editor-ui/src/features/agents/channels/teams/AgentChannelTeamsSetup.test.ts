@@ -79,6 +79,12 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 		});
 
+		it('says up front what account and permissions the bot needs', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-create-bot-prerequisites')).toBeVisible());
+		});
+
 		it('keeps the plain portal link for someone who already has a bot', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 

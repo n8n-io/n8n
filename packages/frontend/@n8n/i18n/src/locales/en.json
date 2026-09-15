@@ -8732,6 +8732,7 @@
 	"agents.channels.teams.setup.createBot.button": "Deploy to Azure",
 	"agents.channels.teams.setup.createBot.portalButton": "Open Azure portal",
 	"agents.channels.teams.setup.createBot.hint": "The deployment fills in the endpoint and turns the Teams channel on. Paste your app registration's Application and Directory IDs into it, then pick a subscription and resource group.",
+	"agents.channels.teams.setup.createBot.prerequisites": "You need a work or school account with an Azure subscription, and permission to register an app in Microsoft Entra. If either is missing, ask an administrator to create the bot and send you its Application and Directory IDs.",
 	"agents.channels.teams.setup.connectBot.title": "Connect the bot",
 	"agents.channels.teams.setup.connectBot.description": "In your bot's Azure page, open Test in Web Chat and send any message. We'll pick the bot up from it.",
 	"agents.channels.teams.setup.connectBot.button": "Start listening",

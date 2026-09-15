@@ -243,6 +243,9 @@ defineExpose({
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
 						</N8nText>
+						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.prerequisites') }}
+						</N8nText>
 					</div>
 
 					<!-- 2. Connect the bot -->
