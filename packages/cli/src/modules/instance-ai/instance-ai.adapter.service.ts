@@ -117,6 +117,7 @@ import {
 	type ExecutionError,
 	type IRunData,
 	type ITaskData,
+	NodeConnectionTypes,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -203,6 +204,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	buildToolAgentRequest,
 	declaredToolArguments,
+	isToolkitNode,
 	pinDataForStepRun,
 	planStepRun,
 	toExecutionItems,
@@ -2170,7 +2172,19 @@ export class InstanceAiAdapterService {
 					if (!isToolNode(nodeTypes, target)) {
 						throw new UserError(
 							`Node "${nodeName}" cannot run on its own — n8n runs it as part of ${roots}. ` +
-								`Run ${roots} instead, and read this node's output from that execution.`,
+								`Run ${roots} instead: its execution records what this node returned on every ` +
+								'call it made.',
+						);
+					}
+
+					// A toolkit node holds several tools and the Tool Executor runs only
+					// the one `toolName` matches. Unnamed, nothing matches and the run
+					// reports success with no result at all.
+					if (isToolkitNode(target) && options?.toolName === undefined) {
+						throw new UserError(
+							`Node "${nodeName}" holds several tools, so a step run has to name the one to run. ` +
+								'Pass toolName. The node\'s "includedTools" parameter lists the tools it exposes; ' +
+								'workflows(action="get-as-code") shows it.',
 						);
 					}
 
@@ -4602,12 +4616,20 @@ export async function extractNodeOutput(
 		await workflow?.expression.releaseIsolate();
 	}
 
+	// A sub-node (a model, a memory, a tool) records its run under the connection
+	// type that carried it, never `main`. Read that instead, so the output of a
+	// node the agent can only run through its owner is still readable.
+	const nodeOutputs =
+		lastRun?.data?.main ??
+		Object.entries(lastRun?.data ?? {}).find(([type]) => type !== NodeConnectionTypes.Main)?.[1] ??
+		[];
+
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.
 	// Only the requested slice is materialized — avoids OOM on huge result sets.
 	let index = 0;
 	let returnedCount = 0;
-	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
+	const outputs = nodeOutputs.map((output, outputIndex) => {
 		const items = output ?? [];
 		const firstInPage = Math.max(startIndex - index, 0);
 		const collected: unknown[] = [];

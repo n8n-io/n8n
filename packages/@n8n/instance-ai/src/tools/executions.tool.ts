@@ -153,9 +153,9 @@ const runStepAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Only for a toolkit node that holds several tools (MCP Client Tool, a HITL ' +
-				'tool): which one to run. The run returns nothing if this does not match ' +
-				"one of the node's tools.",
+			'Only for a node that holds several tools (MCP Client Tool): which one to ' +
+				'run. Required for such a node, because the run matches no tool without ' +
+				"it. Any other tool defaults to the node's own.",
 		),
 	versionId: z
 		.string()

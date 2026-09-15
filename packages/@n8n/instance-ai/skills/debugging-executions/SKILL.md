@@ -166,14 +166,18 @@ executions(action="run-step", workflowId, nodeName="Create Ticket Tool",
 Use the argument names from the node's `$fromAI` calls, which
 `workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
 that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
-tool). For a toolkit node such as the MCP Client Tool, name the tool you want
-with `toolName`.
+tool). A node that holds several tools (MCP Client Tool) needs the one you want
+named in `toolName`.
 
-A tool that declares `$fromAI` arguments is refused without them, so you cannot
-accidentally read "the tool is broken" off a run that only lacked its input.
+Two of these are refused rather than run: a tool that declares `$fromAI`
+arguments without `toolArguments`, and a toolkit node without `toolName`. Both
+would otherwise fail, or return nothing, for a reason that has nothing to do
+with the user's problem — and you would report that as the defect.
 
 Any other sub-node — a model, memory, embeddings — cannot be run this way at
-all. Run the Agent and read the sub-node's output from that execution.
+all. Run the Agent, and read the sub-node with
+`executions(action="get-node-output")` on **that** execution: n8n records every
+call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 

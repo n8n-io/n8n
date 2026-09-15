@@ -1254,6 +1254,62 @@ describe('extractNodeOutput', () => {
 		expect(result.returned).toEqual({ from: 0, to: 10 });
 	});
 
+	it("reads a sub-node's run, which is recorded under its connection type", async () => {
+		// A model, memory or tool never writes a `main` output. Without this the
+		// node was found but reported no items at all, which reads as "the model
+		// returned nothing".
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					'OpenAI Chat Model': [
+						{
+							startTime: 1000,
+							executionTime: 500,
+							executionIndex: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { ai_languageModel: [[{ json: { response: 'four' } }]] },
+						} as ITaskData,
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'OpenAI Chat Model');
+
+		expect(result.totalItems).toBe(1);
+		expect(result.outputs[0].items[0]).toContain('"response": "four"');
+	});
+
+	it('prefers the main output when a node has both', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					'Set Node': [
+						{
+							startTime: 1000,
+							executionTime: 500,
+							executionIndex: 0,
+							executionStatus: 'success',
+							source: [],
+							data: {
+								main: [[{ json: { real: true } }]],
+								ai_tool: [[{ json: { ignored: true } }]],
+							},
+						} as ITaskData,
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Set Node');
+
+		expect(result.outputs[0].items[0]).toContain('"real": true');
+		expect(result.outputs).toHaveLength(1);
+	});
+
 	it('supports startIndex pagination', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
 		createMockExecutionRepository(
@@ -5750,6 +5806,70 @@ describe('createExecutionAdapter runStep()', () => {
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		it('refuses a node that holds several tools when none is named', async () => {
+			const withToolkit = {
+				...agentWorkflow,
+				nodes: agentWorkflow.nodes.map((node) =>
+					node.name === 'Calculator'
+						? {
+								...node,
+								name: 'MCP Client',
+								type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+								parameters: {},
+							}
+						: node,
+				),
+				connections: {
+					Trigger: agentWorkflow.connections.Trigger,
+					'Create Ticket': agentWorkflow.connections['Create Ticket'],
+					'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+			const harness = createRunAdapterForTests(withToolkit, {
+				execution: makeExecution({ status: 'success' }),
+			});
+			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+			// The Tool Executor matches no member, so the run would report success
+			// with no result and no error.
+			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{}] })).rejects.toThrow(
+				'holds several tools, so a step run has to name the one to run',
+			);
+			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('runs a named member of a toolkit node', async () => {
+			const withToolkit = {
+				...agentWorkflow,
+				nodes: agentWorkflow.nodes.map((node) =>
+					node.name === 'Calculator'
+						? {
+								...node,
+								name: 'MCP Client',
+								type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+								parameters: {},
+							}
+						: node,
+				),
+				connections: {
+					Trigger: agentWorkflow.connections.Trigger,
+					'Create Ticket': agentWorkflow.connections['Create Ticket'],
+					'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+
+			const { runData } = await runStepOn(withToolkit, 'MCP Client', {
+				mockInput: [{}],
+				toolName: 'list_issues',
+				toolArguments: { repo: 'n8n' },
+			});
+
+			expect(runData.agentRequest).toEqual({
+				query: { list_issues: { repo: 'n8n' } },
+				tool: { name: 'list_issues' },
+			});
+		});
+
 		it('refuses a sub-node that is not a tool', async () => {
 			const withModel = {
 				...agentWorkflow,
@@ -5779,6 +5899,7 @@ describe('createExecutionAdapter runStep()', () => {
 			await expect(runStep('wf-1', 'OpenAI Chat Model', undefined)).rejects.toThrow(
 				'cannot run on its own — n8n runs it as part of "Agent"',
 			);
+
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 

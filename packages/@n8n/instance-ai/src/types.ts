@@ -656,10 +656,17 @@ export interface InstanceAiExecutionService {
 			/**
 			 * Arguments for a tool target — the values an agent would fill from its
 			 * `$fromAI` calls. A string for a tool that takes one free-text input.
-			 * Without it the tool runs with empty arguments.
+			 *
+			 * Required when the tool declares `$fromAI` arguments: the
+			 * implementation rejects the call rather than run the tool on empty ones.
+			 * A tool with no such arguments needs nothing here.
 			 */
 			toolArguments?: Record<string, unknown> | string;
-			/** Which tool of a toolkit node (MCP Client Tool, a HITL tool) to run. */
+			/**
+			 * Which tool of a toolkit node (MCP Client Tool) to run. Required for
+			 * one of those, because the run matches no tool without it. Any other
+			 * tool defaults to the node's own.
+			 */
 			toolName?: string;
 			/** Run a past version's graph instead of the current draft. */
 			versionId?: string;
