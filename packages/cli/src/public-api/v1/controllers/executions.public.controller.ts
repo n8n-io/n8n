@@ -113,7 +113,7 @@ export class ExecutionsPublicController {
 
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 			query.projectId,
 		);
 
@@ -178,7 +178,7 @@ export class ExecutionsPublicController {
 	): Promise<ExecutionPublicDto> {
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -233,7 +233,7 @@ export class ExecutionsPublicController {
 	): Promise<DeletedExecutionPublicDto> {
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:delete'],
+			['execution:delete'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
