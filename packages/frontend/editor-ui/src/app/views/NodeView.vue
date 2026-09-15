@@ -989,6 +989,7 @@ function removeImportEventBindings() {
  * Node creator
  */
 const nodeCreatorReplaceTargetId = ref<string | undefined>(undefined);
+const isAddingEmptyGroup = ref(false);
 
 function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
@@ -1027,7 +1028,8 @@ async function onAddNodesAndConnections(
 }
 
 async function onAddEmptyGroup(position: XYPosition) {
-	if (!checkIfEditingIsAllowed()) return;
+	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
+	isAddingEmptyGroup.value = true;
 
 	const ownsUndoBulk = historyStore.currentBulkAction === null;
 	if (ownsUndoBulk) historyStore.startRecordingUndo();
@@ -1057,6 +1059,7 @@ async function onAddEmptyGroup(position: XYPosition) {
 		selectNodes([anchor.id]);
 	} finally {
 		if (ownsUndoBulk) historyStore.stopRecordingUndo();
+		isAddingEmptyGroup.value = false;
 	}
 }
 
