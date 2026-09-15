@@ -712,6 +712,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					scope: 'instance',
 					default_action: 'deny',
 					previous_default_action: null,
@@ -801,6 +802,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					operation: 'created',
 					policy_id: 'policy-1',
 					rule_count: 1,
@@ -1005,6 +1007,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					scope: 'project',
 					project_id: 'project-1',
 					scope_id: 'scope-2',
