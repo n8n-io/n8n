@@ -63,8 +63,9 @@ describe('toV1RunExecutionData', () => {
 		expect(data.resultData.runData.Trigger[0].executionStatus).toBe(expected);
 	});
 
-	// `cancelQueuedSteps` is the only writer of `cancelled`, and it updates queued
-	// rows only, so a cancelled step never ran.
+	// A cancelled step reports no run. `cancelPendingSteps` cancels a waiting step
+	// too, and that step did run, so this case also covers a run that the map
+	// hides. The status mapping work decides what the canvas shows for it.
 	it.each<StepStatus>(['queued', 'skipped', 'cancelled'])(
 		'reports no run for a %j step, the way v1 reports a node that did not run',
 		(status) => {
