@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
 import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
@@ -7,14 +8,7 @@ import {
 	type DatabricksContext,
 	type DatabricksCredentialType,
 } from '../actions/helpers';
-import {
-	clampPageSize,
-	collectPages,
-	DEFAULT_MAX_PAGES,
-	isJsonObject,
-	toPage,
-	type Page,
-} from './pagination';
+import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
 
 export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
 const PIPELINE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -74,7 +68,7 @@ export interface ListPipelineEventsParams {
 type PipelineEventsResponse = { events?: PipelineEvent[]; next_page_token?: string };
 
 function isPipelineEventsResponse(value: unknown): value is PipelineEventsResponse {
-	return isJsonObject(value) && (value.events === undefined || Array.isArray(value.events));
+	return isRecord(value) && (value.events === undefined || Array.isArray(value.events));
 }
 
 function isPipelineEventLevel(level: string): level is PipelineEventLevel {
@@ -116,7 +110,7 @@ function toQuery(params: ListPipelineEventsParams): IDataObject {
 	const qs: IDataObject = {};
 	const pageSize = clampPageSize(params.pageSize, PIPELINE_EVENTS_MAX_PAGE_SIZE);
 	if (pageSize !== undefined) qs.max_results = pageSize;
-	if (params.pageToken !== undefined) {
+	if (params.pageToken) {
 		qs.page_token = params.pageToken;
 		return qs;
 	}
@@ -126,15 +120,15 @@ function toQuery(params: ListPipelineEventsParams): IDataObject {
 	return qs;
 }
 
-export async function listPipelineEvents(
+async function fetchPipelineEventsPage(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
+	host: string,
 	params: ListPipelineEventsParams,
 ): Promise<Page<PipelineEvent>> {
 	if (!PIPELINE_ID_PATTERN.test(params.pipelineId)) {
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
-	const host = await getHost(context, credentialType);
 	const response: unknown = await databricksApiRequest(context, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/pipelines/${params.pipelineId}/events`,
@@ -152,15 +146,29 @@ export async function listPipelineEvents(
 	return toPage(response.events, response.next_page_token);
 }
 
+export async function listPipelineEvents(
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
+	params: ListPipelineEventsParams,
+): Promise<Page<PipelineEvent>> {
+	return await fetchPipelineEventsPage(
+		context,
+		credentialType,
+		await getHost(context, credentialType),
+		params,
+	);
+}
+
 export async function listAllPipelineEvents(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
 	params: ListPipelineEventsParams,
 	maxPages = DEFAULT_MAX_PAGES,
 ): Promise<Page<PipelineEvent>> {
+	const host = await getHost(context, credentialType);
 	return await collectPages(
 		async (pageToken) =>
-			await listPipelineEvents(context, credentialType, { ...params, pageToken }),
+			await fetchPipelineEventsPage(context, credentialType, host, { ...params, pageToken }),
 		params.pageToken,
 		maxPages,
 	);

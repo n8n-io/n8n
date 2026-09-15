@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -8,14 +9,7 @@ import {
 	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
-import {
-	clampPageSize,
-	collectPages,
-	DEFAULT_MAX_PAGES,
-	isJsonObject,
-	toPage,
-	type Page,
-} from './pagination';
+import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
 
 export const JOB_RUNS_MAX_PAGE_SIZE = 25;
 
@@ -32,7 +26,7 @@ export interface ListJobRunsParams {
 type JobRunsListResponse = { runs?: DatabricksJobRun[]; next_page_token?: string };
 
 function isJobRunsListResponse(value: unknown): value is JobRunsListResponse {
-	return isJsonObject(value) && (value.runs === undefined || Array.isArray(value.runs));
+	return isRecord(value) && (value.runs === undefined || Array.isArray(value.runs));
 }
 
 function toQuery(params: ListJobRunsParams): IDataObject {
@@ -45,16 +39,16 @@ function toQuery(params: ListJobRunsParams): IDataObject {
 	if (params.expandTasks) qs.expand_tasks = true;
 	const limit = clampPageSize(params.pageSize, JOB_RUNS_MAX_PAGE_SIZE);
 	if (limit !== undefined) qs.limit = limit;
-	if (params.pageToken !== undefined) qs.page_token = params.pageToken;
+	if (params.pageToken) qs.page_token = params.pageToken;
 	return qs;
 }
 
-export async function listJobRuns(
+async function fetchJobRunsPage(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
-	params: ListJobRunsParams = {},
+	host: string,
+	params: ListJobRunsParams,
 ): Promise<Page<DatabricksJobRun>> {
-	const host = await getHost(context, credentialType);
 	const response: unknown = await databricksApiRequest(context, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.2/jobs/runs/list`,
@@ -72,14 +66,29 @@ export async function listJobRuns(
 	return toPage(response.runs, response.next_page_token);
 }
 
+export async function listJobRuns(
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
+	params: ListJobRunsParams = {},
+): Promise<Page<DatabricksJobRun>> {
+	return await fetchJobRunsPage(
+		context,
+		credentialType,
+		await getHost(context, credentialType),
+		params,
+	);
+}
+
 export async function listAllJobRuns(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
 	params: ListJobRunsParams = {},
 	maxPages = DEFAULT_MAX_PAGES,
 ): Promise<Page<DatabricksJobRun>> {
+	const host = await getHost(context, credentialType);
 	return await collectPages(
-		async (pageToken) => await listJobRuns(context, credentialType, { ...params, pageToken }),
+		async (pageToken) =>
+			await fetchJobRunsPage(context, credentialType, host, { ...params, pageToken }),
 		params.pageToken,
 		maxPages,
 	);
