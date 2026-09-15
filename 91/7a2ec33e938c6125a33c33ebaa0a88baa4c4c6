@@ -1,0 +1,53 @@
+packages/@n8n/db/src/repositories/index.ts
+  s_af62986d6ef75e::t_c18fc74d3a98c4 95
+packages/@n8n/db/src/repositories/workflow-run-as-binding.repository.ts
+  s_af62986d6ef75e::t_ef4c95661c5710 4
+  s_af62986d6ef75e::t_52166037de78b5 1-3,5-31
+packages/@n8n/db/src/entities/workflow-run-as-binding.ts
+  s_af62986d6ef75e::t_97cae8b93f27cd 1-39
+  s_af62986d6ef75e::t_2d82464e29d5b4 40-42
+packages/cli/test/integration/workflows/workflow-run-as-binding.repository.test.ts
+  s_af62986d6ef75e::t_5f1d20dca54a42 78
+  s_af62986d6ef75e::t_c44ca56a42fb13 1-2,4-77,79-83
+  s_af62986d6ef75e::t_58000f3ee2dd38 3
+packages/@n8n/db/src/entities/index.ts
+  s_af62986d6ef75e::t_54b4fc25f82441 101
+  s_af62986d6ef75e::t_0d6e504020c0eb 179
+  s_af62986d6ef75e::t_6347da7a765fc6 247
+packages/@n8n/db/src/migrations/common/1789405306087-CreateWorkflowRunAsBindingTable.ts
+  s_af62986d6ef75e::t_2e5fafb03ad9d9 1-2,5,26-27,30-31
+  s_af62986d6ef75e::t_2f768ee42efc66 3-4,6-25,28-29
+  s_af62986d6ef75e::t_cadb923f880062 32-34
+docs/generated/postgres-schema/README.md
+  s_af62986d6ef75e::t_67244ada74200a 149,372-374,1742-1750
+docs/generated/postgres-schema/public.user.md
+  s_af62986d6ef75e::t_bbe56d21bd8042 11,83-84,404-412
+docs/generated/postgres-schema/public.workflow_entity.md
+  s_af62986d6ef75e::t_4f9056aa5539c2 12,89,329-337
+docs/generated/postgres-schema/public.workflow_run_as_binding.md
+  s_af62986d6ef75e::t_5730fa52d2a8aa 1-100
+docs/generated/sqlite-schema/README.md
+  s_af62986d6ef75e::t_2356e2dae2e724 149,359-361,1731-1739
+docs/generated/sqlite-schema/user.md
+  s_af62986d6ef75e::t_a2b5b7056f36f3 22,89-90,410-418
+docs/generated/sqlite-schema/workflow_entity.md
+  s_af62986d6ef75e::t_78378bbeb18901 23,88,320-328
+docs/generated/sqlite-schema/workflow_run_as_binding.md
+  s_af62986d6ef75e::t_9b321b5dc8116c 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "917a2ec33e938c6125a33c33ebaa0a88baa4c4c6",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
