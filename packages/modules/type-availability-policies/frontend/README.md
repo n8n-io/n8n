@@ -9,7 +9,8 @@ summary only.
 
 ## Status
 
-Store skeleton only. The descriptor declares no surface, so nothing renders yet.
+Descriptor only. The module is registered with the shell and declares no surface, so
+nothing renders and no request is made.
 
 The module id must stay the same as the backend module id
 (`packages/cli/src/modules/type-availability-policies`). The module is license-gated on
@@ -19,7 +20,6 @@ with `N8N_ENABLED_MODULES=type-availability-policies`.
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-type-availability-policies
 pnpm turbo lint --filter=@n8n/frontend-module-type-availability-policies
-pnpm turbo lint:styles --filter=@n8n/frontend-module-type-availability-policies
 pnpm turbo test --filter=@n8n/frontend-module-type-availability-policies
 ```
 
@@ -43,19 +43,18 @@ yet. Turbo builds them first; the bare pnpm form does not.
 
 ## Adding UI
 
-`vite.config.ts` already carries the three plugins a design-system consumer
-needs, so a `.vue` file compiles in tests without further setup:
+`vite.config.ts` carries `@vitejs/plugin-vue` only, so a `.vue` file compiles in
+tests. Rendering a design-system component needs three more pieces, which the
+scaffolder writes and this package dropped while it has no UI:
 
-- `@vitejs/plugin-vue` — single-file components.
-- `unplugin-icons` — the `~icons/lucide/*` virtual modules behind `N8nIcon`.
-- `vite-svg-loader` — design-system's `custom/*.svg` icon components. Without
-  it an `.svg` import is a data-URI string, which Vue renders as a tag name.
+- the `@n8n/design-system` dependency.
+- `unplugin-icons` and `vite-svg-loader` in `vite.config.ts`, for the
+  `~icons/lucide/*` virtual modules and the `custom/*.svg` icon components
+  behind `N8nIcon`. Without `svgLoader` an `.svg` import is a data-URI string,
+  which Vue renders as a tag name.
+- `stylelint.config.mjs` plus the `lint:styles` scripts, for SCSS in a scoped
+  `<style lang="scss">` block.
 
-`src/__tests__/design-system-icons.test.ts` renders one icon of each kind, so a
-plugin dropped from `vite.config.ts` fails this package's own suite. Keep that
-test while the module renders any design-system component.
-
-SCSS goes in a scoped `<style lang="scss">` block, with tokens from
-design-system — `stylelint.config.mjs` holds this package to the same rules the
-shell uses. Route components must load lazily — see the note in
+Copy them from `packages/modules/otel/frontend`, which renders UI. Route
+components must load lazily — see the note in
 `src/type-availability-policies.module.ts`.
