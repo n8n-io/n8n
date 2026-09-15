@@ -1,12 +1,13 @@
 import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
 import {
 	convertJsonToSpreadsheetBinary,
+	createBinaryFromJson,
 	extractDataFromPDF,
 	prepareBinariesDataList,
 	routeBinaryProperties,
 } from '@utils/binary';
 import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -347,5 +348,108 @@ describe('routeBinaryProperties', () => {
 		expect(json).toEqual({ id: 1 });
 		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'blob');
 		expect(binary.blob).toBe(binaryData);
+	});
+});
+
+describe('createBinaryFromJson base64 decoding', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const context = mock<IExecuteFunctions>({ helpers });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockResolvedValue({ data: '', mimeType: 'application/octet-stream' });
+	});
+
+	it.each([
+		['aGVsbG8=', 'hello'],
+		['aGVsbG8', 'hello'],
+		[' aGVs\n bG8= ', 'hello'],
+		['-_8=', '\xfb\xff'],
+		['', ''],
+		['data:text/plain;base64,aGVsbG8=', 'hello'],
+		['data:text/plain;charset=utf-8;base64,aGVsbG8=', 'hello'],
+		['data:;base64,aGVsbG8=', 'hello'],
+	])('decodes %j without changing the bytes', async (payload, expected) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(expected, 'latin1'));
+	});
+
+	it.each([undefined, '', 'application/octet-stream'])(
+		'respects MIME override %j',
+		async (mimeType) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload: 'data:text/plain;base64,aGk=' },
+				{
+					sourceKey: 'payload',
+					dataIsBase64: true,
+					mimeType,
+					fileName: 'example.txt',
+				},
+			);
+			expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('hi'),
+				'example.txt',
+				mimeType || 'text/plain',
+			);
+		},
+	);
+
+	it.each(['A', 'AA=A', '====', 'aGk===', 'aGk!', 'data:text/plain,hello', 1234, true, null, {}])(
+		'rejects invalid input %j before creating a file',
+		async (payload) => {
+			await expect(
+				createBinaryFromJson.call(
+					context,
+					{ payload },
+					{
+						sourceKey: 'payload',
+						dataIsBase64: true,
+						itemIndex: 2,
+					},
+				),
+			).rejects.toBeInstanceOf(NodeOperationError);
+			expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+		},
+	);
+
+	it('decodes the reported PNG data URI to the original 70 bytes', async () => {
+		const payload =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+		await createBinaryFromJson.call(
+			context,
+			{ payload: `data:image/png;base64,${payload}` },
+			{
+				sourceKey: 'payload',
+				dataIsBase64: true,
+			},
+		);
+		const output = helpers.prepareBinaryData.mock.calls[0][0];
+		expect(output).toEqual(Buffer.from(payload, 'base64'));
+		expect(output).toHaveLength(70);
+	});
+
+	it('preserves existing Buffer input', async () => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: Buffer.from('hello') },
+			{ sourceKey: 'payload', dataIsBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hello'));
+	});
+
+	it('preserves text conversion', async () => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: 'data:text/plain,hello' },
+			{ sourceKey: 'payload', dataIsBase64: false },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+			Buffer.from('data:text/plain,hello'),
+		);
 	});
 });
