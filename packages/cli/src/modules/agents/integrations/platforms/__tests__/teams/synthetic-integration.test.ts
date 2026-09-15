@@ -19,7 +19,6 @@ vi.mock('../../../esm-loader', () => ({
 	loadTeamsAdapter: async () => await import('@chat-adapter/teams'),
 }));
 
-/** Every `Action.Submit` on an outbound activity, at any depth. */
 function cardActions(body: unknown): Array<Record<string, unknown>> {
 	const found: Array<Record<string, unknown>> = [];
 	const visit = (node: unknown) => {
@@ -179,9 +178,7 @@ describe('Microsoft Teams integration scenarios', () => {
 				}),
 			);
 
-			// The answered card is settled in place rather than deleted. The wording
-			// is generic because the decision only reaches the formatter through the
-			// CallbackStore, which this channel does not use.
+			// Generic wording: no CallbackStore, so no decision reaches the formatter.
 			expect(ctx.lastEdit()?.body).toMatchObject({
 				text: '✅ Action selected by Alice',
 			});

@@ -51,7 +51,6 @@ export const dmMessage: TeamsActivityFixture = baseActivity({
 	text: 'hello agent',
 });
 
-/** A second message in the same 1:1 conversation. */
 export const dmFollowUp: TeamsActivityFixture = baseActivity({
 	id: 'activity-dm-2',
 	text: 'follow up',
