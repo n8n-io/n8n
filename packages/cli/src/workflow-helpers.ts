@@ -510,6 +510,19 @@ export async function updateParentExecutionWithChildResults(
 		return false;
 	}
 
+	// The parent may have moved on to a later wait since this child was spawned, and that wait
+	// belongs to whichever children it parked on. A child left over from an earlier wait would
+	// otherwise overwrite the node's input and resume the parent past the wait it is sitting in.
+	// A parent parked by an older build carries no ids, so an untagged stack entry takes any child.
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
+	}
+
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
 	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
