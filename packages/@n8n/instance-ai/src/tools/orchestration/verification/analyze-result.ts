@@ -30,6 +30,26 @@ type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
 export const WORKFLOW_PIN_SIMULATION_REASON =
 	'Output came from pinned data saved on the workflow — unpin it for a live test';
 
+/** Disclosure for a trigger whose output the assistant injected instead of a real event. */
+export const INJECTED_TRIGGER_SIMULATION_REASON =
+	'Trigger output was injected test input, not a real event — for a Webhook or Form Trigger, arm the test URL with executions(action="listen") for a live test';
+
+/** Injected trigger output, deduplicated against the other simulation sources. */
+export function injectedTriggerSimulations(
+	injectedTriggerNodeName: string | undefined,
+	reachedNames: ReadonlySet<string>,
+	alreadySimulatedNames: ReadonlySet<string>,
+): Array<{ nodeName: string; reason: string }> {
+	if (
+		injectedTriggerNodeName === undefined ||
+		!reachedNames.has(injectedTriggerNodeName) ||
+		alreadySimulatedNames.has(injectedTriggerNodeName)
+	) {
+		return [];
+	}
+	return [{ nodeName: injectedTriggerNodeName, reason: INJECTED_TRIGGER_SIMULATION_REASON }];
+}
+
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
 	'unauthorized',
@@ -496,9 +516,16 @@ export function analyzeVerificationResult(args: {
 	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
 		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
 		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
+	// An injected trigger (inputData or verification pin) never fired for real,
+	// so a run that starts from it is not a live test of the trigger either.
 	const reachedSimulatedNodes = [
 		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
 		...workflowPinnedNodes,
+		...injectedTriggerSimulations(
+			result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodes.map((n) => n.nodeName)]),
+		),
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
