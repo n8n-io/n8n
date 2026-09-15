@@ -14,7 +14,7 @@ const SECRET_REFERENCE = /\$secrets\b/;
 // data. Ceiling: also matches "$json" inside a string literal, and flags a
 // fallback like {{ $json.x ?? 'd' }} as redacted under redaction. Upgrade path:
 // have the resolver report whether redacted data was actually read.
-const DATA_ACCESSOR = /\$json|\$binary|\$input\b|\$items\b|\$node\b|\$\(/;
+const DATA_ACCESSOR = /\$json|\$binary|\$input\b|\$items\b|\$node\b|\$thisItem\b|\$\(/;
 
 /** Whether an expression reads execution item data (and so is emptied by redaction). */
 export const referencesExecutionData = (expression: string): boolean =>

@@ -72,7 +72,6 @@ const simplyText = computed(() => {
 	color: var(--color--secondary);
 }
 .redacted {
-	color: var(--color--text--danger);
 	font-style: italic;
 }
 </style>

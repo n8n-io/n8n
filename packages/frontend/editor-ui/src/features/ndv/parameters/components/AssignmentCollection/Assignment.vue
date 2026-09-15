@@ -265,6 +265,7 @@ const onValueDrop = async (droppedExpression: string) => {
 							:class="[$style.hint]"
 							:highlight="highlightHint"
 							:hint="hint"
+							:redacted="isRedacted"
 							single-line
 						/>
 					</div>

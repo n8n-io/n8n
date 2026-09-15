@@ -34,7 +34,7 @@ const resolvablesTheme = EditorView.theme({
 		backgroundColor: 'var(--expression-editor--resolvable--color--background--pending)',
 	},
 	['.' + cssClasses.redactedResolvable]: {
-		color: 'var(--expression-editor--resolvable--color--foreground--invalid)',
+		color: 'var(--expression-editor--resolvable--color--foreground--pending)',
 		fontStyle: 'italic',
 	},
 });

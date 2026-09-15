@@ -19,10 +19,13 @@ export function useRedactionHint() {
 	const isRedacted = computed(() => redactionInfo.value?.isRedacted === true);
 
 	const redactedHintText = computed(() => {
-		if (redactionInfo.value?.reason === 'dynamic_credentials') {
+		const info = redactionInfo.value;
+		if (info?.reason === 'dynamic_credentials') {
 			return i18n.baseText('expressionModalInput.redacted.dynamicCredentials');
 		}
-		if (redactionInfo.value?.canReveal !== true) {
+		// Live push data supplies a provisional canReveal:false before the finished
+		// execution metadata arrives. Show the neutral prompt until we know.
+		if (!info?.provisional && info?.canReveal !== true) {
 			return i18n.baseText('expressionModalInput.redacted.noPermission');
 		}
 		return i18n.baseText('expressionModalInput.redacted');

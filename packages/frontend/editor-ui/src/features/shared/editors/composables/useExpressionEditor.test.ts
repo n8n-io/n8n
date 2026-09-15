@@ -354,6 +354,32 @@ describe('useExpressionEditor', () => {
 			});
 		});
 
+		test('shows a no-permission prompt when the user cannot reveal redacted data', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+			mockActiveExecution = createRedactedExecution(false);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $json.test }}',
+						resolved: 'No permission to reveal redacted data',
+						state: 'redacted',
+						to: 16,
+					},
+				]);
+			});
+		});
+
 		test('shows [undefined] for a redacted execution when the expression does not read item data', async () => {
 			mockResolveExpression().mockReturnValueOnce(undefined);
 			mockActiveExecution = createRedactedExecution();
