@@ -7,14 +7,11 @@ import type {
 	AgentExecution,
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
-import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
-import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
 import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
-	sessionBounds,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
@@ -88,7 +85,6 @@ const items = computed<TimelineItem[]>(() =>
 	}),
 );
 const idleRanges = computed(() => computeIdleRanges(items.value));
-const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -395,20 +391,8 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 			/>
 		</div>
 
-		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
-			<SessionTimelineChart
-				:items="items"
-				:idle-ranges="idleRanges"
-				:session-start="bounds.start"
-				:session-end="bounds.end"
-				:visible-kinds="selectedFilters"
-				:selected-index="highlightedIndex"
-				@select="selectTimelineItem"
-			/>
-		</div>
-
-		<div :class="$style.panels">
-			<div :class="$style.tablePanel">
+		<div :class="$style.section">
+			<div :class="$style.sectionInner">
 				<div v-if="loading" :class="$style.loading">
 					{{ i18n.baseText('generic.loadingEllipsis') }}
 				</div>
@@ -422,16 +406,6 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					@select="selectTimelineItem"
 				/>
 			</div>
-			<Transition name="session-detail-panel">
-				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel
-						:item="selectedItem"
-						:project-id="props.projectId"
-						:agent-id="props.agentId"
-						@close="selectTimelineItem(null)"
-					/>
-				</div>
-			</Transition>
 		</div>
 	</div>
 </template>
@@ -474,60 +448,16 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	flex: 1;
 	min-width: 0;
 }
-.chartRow {
-	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	background-color: var(--background--surface);
-}
-.panels {
+.section {
 	display: flex;
 	flex: 1;
 	min-height: 0;
+	background-color: var(--background--subtle);
 }
-.tablePanel {
-	flex: 6;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
-}
-.detailPanel {
-	flex: 0 0 40%;
-	min-width: 0;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	border-left: var(--border);
-	background-color: var(--background--surface);
-}
-
-:global(.session-detail-panel-enter-active),
-:global(.session-detail-panel-leave-active) {
-	transition:
-		flex-basis var(--duration--snappy) var(--easing--ease-out),
-		opacity var(--duration--snappy) var(--easing--ease-out),
-		transform var(--duration--snappy) var(--easing--ease-out);
-	overflow: hidden;
-}
-:global(.session-detail-panel-enter-from),
-:global(.session-detail-panel-leave-to) {
-	flex-basis: 0;
-	opacity: 0;
-	transform: translateX(var(--spacing--sm));
-	border-left-color: transparent;
-}
-:global(.session-detail-panel-enter-to),
-:global(.session-detail-panel-leave-from) {
-	flex-basis: 40%;
-	opacity: 1;
-	transform: translateX(0);
-}
-@media (prefers-reduced-motion: reduce) {
-	:global(.session-detail-panel-enter-active),
-	:global(.session-detail-panel-leave-active) {
-		transition: none;
-	}
+.sectionInner {
+	width: 100%;
+	max-width: 75ch;
+	margin: 0 auto;
 }
 .loading {
 	padding: var(--spacing--sm);

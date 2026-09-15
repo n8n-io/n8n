@@ -8,7 +8,6 @@ import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
-const SCROLL_PADDING = 24;
 const VIRTUALIZE_AFTER_ROWS = 100;
 
 const props = defineProps<{
@@ -18,8 +17,6 @@ const props = defineProps<{
 	searchQuery?: string;
 	idleRanges?: IdleRange[];
 }>();
-
-const emit = defineEmits<{ select: [index: number] }>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
@@ -75,41 +72,39 @@ type Row =
 	| { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number }
 	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number };
 
-const rows = computed<Row[]>(() => {
+const rows = computed<Row[]>(function getRows() {
 	const events: Row[] = filteredTimelineItemIndexes(
 		props.items,
 		props.visibleKinds,
 		props.searchQuery ?? '',
 		labelForKey,
-	).map((index) => ({
-		id: `event-${index}`,
-		kind: 'event',
-		item: props.items[index],
-		index,
-		sortKey: props.items[index].timestamp,
-	}));
+	).map(function toEventRow(index) {
+		return {
+			id: `event-${index}`,
+			kind: 'event',
+			item: props.items[index],
+			index,
+			sortKey: props.items[index].timestamp,
+		};
+	});
 
-	const idles: Row[] = (props.idleRanges ?? []).map((range, index) => ({
-		id: `idle-${range.start}-${range.end}-${index}`,
-		kind: 'idle',
-		range,
-		sortKey: range.start,
-	}));
+	const idles: Row[] = (props.idleRanges ?? []).map(function toIdleRow(range, index) {
+		return {
+			id: `idle-${range.start}-${range.end}-${index}`,
+			kind: 'idle',
+			range,
+			sortKey: range.start,
+		};
+	});
 
-	return [...events, ...idles].sort((a, b) => a.sortKey - b.sortKey);
+	return [...events, ...idles].sort(function sortRows(a, b) {
+		return a.sortKey - b.sortKey;
+	});
 });
 
-const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
-const tabbableEventIndex = computed(() => {
-	const selectedRow = rows.value.find(
-		(row) => row.kind === 'event' && row.index === props.selectedIndex,
-	);
-	if (selectedRow?.kind === 'event') return selectedRow.index;
-
-	const firstEventRow = rows.value.find((row) => row.kind === 'event');
-	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
+const shouldVirtualizeRows = computed(function shouldVirtualize() {
+	return rows.value.length > VIRTUALIZE_AFTER_ROWS;
 });
-
 function updateScrollMask() {
 	if (!scrollContainer) {
 		canScrollUp.value = false;
@@ -133,62 +128,6 @@ function bindScrollContainer() {
 	updateScrollMask();
 }
 
-function visibleRowElement(rowId: string): HTMLElement | undefined {
-	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
-
-	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
-}
-
-function focusVisibleRow(rowId: string): boolean {
-	const rowElement = visibleRowElement(rowId);
-	if (!rowElement) return false;
-
-	rowElement.focus();
-	return true;
-}
-
-function scrollVisibleRowIntoView(rowId: string): boolean {
-	if (!scrollContainer) return false;
-
-	const rowElement = visibleRowElement(rowId);
-	if (!rowElement) return false;
-
-	const containerRect = scrollContainer.getBoundingClientRect();
-	const rowRect = rowElement.getBoundingClientRect();
-
-	if (rowRect.top - SCROLL_PADDING < containerRect.top) {
-		scrollContainer.scrollTop -= containerRect.top - rowRect.top + SCROLL_PADDING;
-	} else if (rowRect.bottom + SCROLL_PADDING > containerRect.bottom) {
-		scrollContainer.scrollTop += rowRect.bottom - containerRect.bottom + SCROLL_PADDING;
-	}
-
-	return true;
-}
-
-function scrollRowIntoView(rowId: string) {
-	if (!scrollContainer) return;
-	if (scrollVisibleRowIntoView(rowId)) return;
-
-	const rowIndex = rows.value.findIndex((row) => row.id === rowId);
-	if (rowIndex === -1) return;
-
-	const rowTop = rowIndex * ROW_HEIGHT;
-	const rowBottom = rowTop + ROW_HEIGHT;
-	const viewportTop = scrollContainer.scrollTop;
-	const viewportBottom = viewportTop + scrollContainer.clientHeight;
-
-	if (rowTop - SCROLL_PADDING < viewportTop) {
-		scrollContainer.scrollTop = Math.max(0, rowTop - SCROLL_PADDING);
-	} else if (rowBottom + SCROLL_PADDING > viewportBottom) {
-		scrollContainer.scrollTop = rowBottom + SCROLL_PADDING - scrollContainer.clientHeight;
-	}
-
-	void nextTick(() => {
-		scrollVisibleRowIntoView(rowId);
-		updateScrollMask();
-	});
-}
-
 watch(
 	() => rows.value.length,
 	() => {
@@ -206,26 +145,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	scrollContainer?.removeEventListener('scroll', updateScrollMask);
 });
-
-watch(
-	() => props.selectedIndex,
-	(selectedIndex) => {
-		if (selectedIndex === null) return;
-		const activeElement = document.activeElement;
-		const shouldMoveFocus =
-			activeElement instanceof HTMLElement &&
-			tableRef.value?.contains(activeElement) === true &&
-			activeElement.closest('[data-timeline-row-id]') !== null;
-		const rowId = `event-${selectedIndex}`;
-		void nextTick(() => {
-			scrollRowIntoView(rowId);
-			updateScrollMask();
-			if (shouldMoveFocus && !focusVisibleRow(rowId)) {
-				void nextTick(() => focusVisibleRow(rowId));
-			}
-		});
-	},
-);
 </script>
 
 <template>
@@ -245,20 +164,17 @@ watch(
 			data-timeline-scroll-container
 			role="rowgroup"
 		>
-			<template v-for="row in rows" :key="row.id">
+			<template v-for="(row, rowIndex) in rows" :key="row.id">
 				<div
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
-					@click="emit('select', row.index)"
-					@keydown.enter.self.prevent="emit('select', row.index)"
-					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 				<div
 					v-else
@@ -281,20 +197,17 @@ watch(
 			item-key="id"
 			role="rowgroup"
 		>
-			<template #default="{ item: row }">
+			<template #default="{ item: row, index: rowIndex }">
 				<div
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
-					@click="emit('select', row.index)"
-					@keydown.enter.self.prevent="emit('select', row.index)"
-					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
 				</div>
 				<div
 					v-else
@@ -318,12 +231,13 @@ watch(
 
 <style module lang="scss">
 .table {
-	background-color: var(--background--surface);
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--lg) 0;
 	height: 100%;
 }
 
 .rowWrapper {
+	display: flex;
+	flex-direction: column;
 	width: 100%;
 }
 
@@ -346,6 +260,8 @@ watch(
 }
 
 .directRows {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	overflow-y: auto;
 	scrollbar-width: none;
@@ -413,5 +329,18 @@ watch(
 	text-transform: lowercase;
 	letter-spacing: 0.02em;
 	white-space: nowrap;
+}
+
+.divider {
+	width: 100%;
+	padding-inline: var(--spacing--lg);
+	transform: translateX(2px);
+
+	> span {
+		display: block;
+		height: var(--height--4xs);
+		width: 1px;
+		background-color: var(--border-color);
+	}
 }
 </style>
