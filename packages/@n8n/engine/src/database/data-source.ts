@@ -20,9 +20,6 @@ export function createDataSource(url: string): DataSource {
 		url,
 		entities,
 		migrations,
-		// Own bookkeeping table, so the data plane can share a database with
-		// another TypeORM app (the control plane) instead of needing its own.
-		migrationsTableName: 'engine_migrations',
 		synchronize: false,
 		logging: false,
 	};
