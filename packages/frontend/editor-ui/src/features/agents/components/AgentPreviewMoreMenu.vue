@@ -124,6 +124,7 @@ const triggerIcon = computed<IconName>(() => {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'whatsapp':
 		case 'mcp':
 		case 'workflow':
 		case 'webhook':
