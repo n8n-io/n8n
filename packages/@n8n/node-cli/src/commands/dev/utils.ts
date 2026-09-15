@@ -1,6 +1,7 @@
-import { type ChildProcess, execSync, spawn } from 'node:child_process';
-import { watch } from 'node:fs';
+import { type ChildProcess, execSync, spawn, type SpawnOptions } from 'node:child_process';
+import { existsSync, watch } from 'node:fs';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import picocolors from 'picocolors';
 
 import { jsonParse } from '../../utils/json';
@@ -174,8 +175,17 @@ export function openUrl(url: string): void {
 	}
 }
 
-function quoteIfNeeded(arg: string): string {
-	return /\s/.test(arg) ? `"${arg}"` : arg;
+/**
+ * Quote one argument of a `cmd.exe /d /s /c` command line. Every argument is
+ * quoted rather than only those holding whitespace, because cmd.exe treats
+ * `&`, `|`, `<`, `>`, `(`, `)` and `^` as metacharacters wherever they appear
+ * outside quotes. `%VAR%` is still expanded; a command line cannot prevent it.
+ */
+function quoteForCmd(arg: string): string {
+	// A backslash is only special before a quote, so double just those runs,
+	// including the run that would otherwise escape our own closing quote.
+	const escaped = arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, '$1$1');
+	return `"${escaped}"`;
 }
 
 export interface CommandConfig {
@@ -383,10 +393,11 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 	}
 
 	// Wait for the whole process group to drain rather than only the direct
-	// child. The direct child (shell wrapper or `npx`) typically exits much
-	// faster than the n8n server it spawns, which needs time to release its
-	// listening port. Exiting before the descendants finish would leak the
-	// port until the user manually killed the process.
+	// child. The direct child is now the command itself (`docker run`, or the
+	// package manager wrapping `tsc`), and it can still report exit before the
+	// container or the n8n server below it releases the listening port. Exiting
+	// before the descendants finish would leak the port until the user manually
+	// killed the process.
 	const deadline = Date.now() + CONFIG.GRACEFUL_SHUTDOWN_TIMEOUT;
 	while (Date.now() < deadline) {
 		const groupDrained = isWindows || !isProcessGroupAlive(pid);
@@ -525,15 +536,12 @@ export function runCommands(config: CommandsConfig): void {
 
 		commandOutputs.push(output);
 
-		// Spawned through a shell, so any arg with whitespace (e.g. a project path
-		// containing a space in a bind mount) has to be quoted.
-		const commandString = [cmdConfig.cmd, ...cmdConfig.args.map(quoteIfNeeded)].join(' ');
-
-		const child = spawn(commandString, {
-			shell: true,
+		const isWindows = process.platform === 'win32';
+		const spawnOptions = {
 			cwd: cmdConfig.cwd,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			detached: process.platform !== 'win32',
+			// Own process group, so quitting can signal the whole tree at once.
+			detached: !isWindows,
 			env: {
 				...process.env,
 				...cmdConfig.env,
@@ -541,7 +549,20 @@ export function runCommands(config: CommandsConfig): void {
 				COLORTERM: 'truecolor',
 				TERM: 'xterm-256color',
 			},
-		});
+		} satisfies SpawnOptions;
+
+		// Pass the arguments as an array so no shell ever parses them: a project
+		// path holding `$`, a backtick, `;` or `&` has to reach the child intact.
+		// Windows package managers are `.cmd` shims, which cannot run without a
+		// terminal, so there we invoke cmd.exe ourselves. `shell: true` is not an
+		// option: it concatenates the arguments without escaping them (DEP0190).
+		const child = isWindows
+			? spawn(
+					process.env.ComSpec ?? 'cmd.exe',
+					['/d', '/s', '/c', `"${[cmdConfig.cmd, ...cmdConfig.args].map(quoteForCmd).join(' ')}"`],
+					{ ...spawnOptions, windowsVerbatimArguments: true },
+				)
+			: spawn(cmdConfig.cmd, cmdConfig.args, spawnOptions);
 
 		childProcesses.push(child);
 
@@ -557,12 +578,20 @@ export function runCommands(config: CommandsConfig): void {
 			}
 		};
 
-		child.stdout.on('data', handleData);
-		child.stderr.on('data', handleData);
+		child.stdout?.on('data', handleData);
+		child.stderr?.on('data', handleData);
+
+		// Without a shell in front, a missing binary arrives as an 'error' event
+		// instead of exit code 127, and an unhandled one would take down the CLI.
+		child.on('error', (error) => {
+			output.lines.push(picocolors.red(`Failed to start ${cmdConfig.cmd}: ${error.message}`));
+			output.isRunning = false;
+			output.exitCode ??= 127;
+		});
 
 		child.on('close', (code) => {
 			output.isRunning = false;
-			output.exitCode = code;
+			output.exitCode ??= code;
 		});
 	});
 
@@ -586,22 +615,42 @@ export function createOpenN8nHandler(url: string): KeyHandler {
 	};
 }
 
+/** Gap between /healthz attempts while n8n is still starting. */
+const HEALTH_POLL_INTERVAL_MS = 1000;
+
 /** Resolves once n8n answers on /healthz, or after `timeoutMs`. */
 export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<boolean> {
 	const deadline = Date.now() + timeoutMs;
 
-	while (Date.now() < deadline) {
+	for (;;) {
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) return false;
+
 		try {
-			const response = await fetch(`${baseUrl}/healthz`);
+			// Bound every attempt by the time left. A port that accepts but never
+			// answers would otherwise park this await forever, so the loop would
+			// never re-check the deadline and `timeoutMs` would mean nothing.
+			const response = await fetch(`${baseUrl}/healthz`, {
+				signal: AbortSignal.timeout(remaining),
+			});
 			if (response.ok) return true;
 		} catch {
 			// Not up yet
 		}
-		await sleep(1000);
-	}
 
-	return false;
+		// Clamp the backoff too, so a failure near the deadline cannot overshoot.
+		const left = deadline - Date.now();
+		if (left <= 0) return false;
+		await sleep(Math.min(HEALTH_POLL_INTERVAL_MS, left));
+	}
 }
+
+/**
+ * Reloading is a local call into an already-running n8n, so a few seconds is
+ * generous. This is called fire-and-forget on every compile, so an unbounded
+ * request would leave a pending promise and an open socket behind each time.
+ */
+const RELOAD_TIMEOUT_MS = 5000;
 
 /**
  * Tell a running n8n to re-read the node from disk. Push rather than watch: the
@@ -610,7 +659,10 @@ export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<
  */
 export async function triggerReload(baseUrl: string): Promise<boolean> {
 	try {
-		const response = await fetch(`${baseUrl}/rest/dev/reload`, { method: 'POST' });
+		const response = await fetch(`${baseUrl}/rest/dev/reload`, {
+			method: 'POST',
+			signal: AbortSignal.timeout(RELOAD_TIMEOUT_MS),
+		});
 		return response.ok;
 	} catch {
 		return false;
@@ -620,19 +672,34 @@ export async function triggerReload(baseUrl: string): Promise<boolean> {
 const STATIC_ASSET_PATTERN = /\.(png|svg)$|__schema__[\\/].*\.json$/;
 
 /**
+ * The only directories a node keeps icons and schemas in. Watching the whole
+ * working directory instead would register the watch first and filter after,
+ * and on Linux `recursive` costs one inotify watch per subdirectory — a large
+ * `node_modules` can exhaust `fs.inotify.max_user_watches` and fail as ENOSPC.
+ */
+const STATIC_ASSET_DIRS = ['nodes', 'credentials', 'icons'];
+
+/**
  * Watch static assets on the host. `copyStaticFiles()` only runs at startup, so
  * without this an icon or schema edit never reaches `dist`.
  */
 export function watchStaticFiles(onChange: () => void): () => void {
-	const watcher = watch(process.cwd(), { recursive: true }, (_event, filename) => {
-		if (!filename) return;
-		if (filename.startsWith('dist') || filename.includes('node_modules')) return;
-		if (!STATIC_ASSET_PATTERN.test(filename)) return;
-		onChange();
+	const watchers = STATIC_ASSET_DIRS.flatMap((dir) => {
+		const target = path.join(process.cwd(), dir);
+		if (!existsSync(target)) return [];
+
+		// `filename` is relative to `target`, which the pattern already allows for.
+		return watch(target, { recursive: true }, (_event, filename) => {
+			if (!filename) return;
+			if (!STATIC_ASSET_PATTERN.test(filename)) return;
+			onChange();
+		});
 	});
 
-	watcher.unref();
-	return () => watcher.close();
+	for (const watcher of watchers) watcher.unref();
+	return () => {
+		for (const watcher of watchers) watcher.close();
+	};
 }
 
 export function buildHelpText(hasN8n: boolean, isN8nReady: boolean): string {
