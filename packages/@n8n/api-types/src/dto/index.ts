@@ -133,9 +133,17 @@ export {
 	CredentialListPublicDto,
 	CreateCredentialPublicDto,
 	UpdateCredentialPublicDto,
+	DeleteCredentialPublicDto,
+	TransferCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
+export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
+export {
+	AiPreferenceListQueryDto,
+	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_PAGE_SIZE,
+} from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
@@ -223,7 +231,12 @@ export {
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
-export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
+export {
+	CreateTagPublicDto,
+	TagPublicDto,
+	TagListPublicDto,
+	tagPublicSchema,
+} from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';

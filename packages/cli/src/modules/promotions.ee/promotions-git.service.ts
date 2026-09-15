@@ -218,6 +218,7 @@ export class PromotionsGitService {
 		force,
 		stagePathspec,
 		onCheckoutRestored,
+		rollbackOnFailure = false,
 	}: GitOperation & {
 		/** Push to this new branch instead of the configured base branch. */
 		targetBranchName?: string;
@@ -227,6 +228,7 @@ export class PromotionsGitService {
 		stagePathspec: string;
 		/** Called only after the checkout returns to its base commit. */
 		onCheckoutRestored: () => Promise<void>;
+		rollbackOnFailure?: boolean;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.lockCheckout(
@@ -252,18 +254,39 @@ export class PromotionsGitService {
 								});
 							}
 
-							// Scope staging to the package while including removed entities.
-							await git.add(['--all', '--', stagePathspec]);
-							await git.commit(commitMessage);
-							const commitSha = (await git.revparse(['HEAD'])).trim();
+							const previousHead = rollbackOnFailure
+								? (await git.revparse(['HEAD'])).trim()
+								: undefined;
+							try {
+								// Scope staging to the package while including removed entities.
+								await git.add(['--all', '--', stagePathspec]);
+								await git.commit(commitMessage);
+								const commitSha = (await git.revparse(['HEAD'])).trim();
 
-							if (force) {
-								await git.push('origin', branchName, ['-f']);
-							} else {
-								await git.push('origin', branchName);
+								if (force) {
+									await git.push('origin', branchName, ['-f']);
+								} else {
+									await git.push('origin', branchName);
+								}
+
+								return { commitSha };
+							} catch (error) {
+								if (previousHead) {
+									try {
+										// Restore Git state. The caller restores the package files.
+										await git.raw(['reset', '--mixed', previousHead]);
+									} catch {
+										this.logger.warn(
+											'Failed to restore the Git revision after a failed promotion',
+											{
+												configId,
+												branchName,
+											},
+										);
+									}
+								}
+								throw error;
 							}
-
-							return { commitSha };
 						},
 					),
 			);

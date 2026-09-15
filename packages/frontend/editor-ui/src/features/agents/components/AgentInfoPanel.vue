@@ -380,6 +380,7 @@ function onInstructionsInput(value: string) {
 					<div :class="[$style.label, props.disabled && shared.disabled]">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText('agents.builder.agent.model.label') }}
+							<N8nText step="sm" bold color="danger">*</N8nText>
 						</N8nText>
 						<N8nText step="sm" color="text-light">
 							{{ i18n.baseText('agents.builder.agent.model.description') }}
@@ -461,6 +462,7 @@ function onInstructionsInput(value: string) {
 				<div :class="[$style.label, props.disabled && shared.disabled]">
 					<N8nText step="sm" bold :class="shared.dataEntryLabel">
 						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
+						<N8nText step="sm" bold color="danger">*</N8nText>
 					</N8nText>
 					<N8nText step="sm" color="text-light">
 						{{ i18n.baseText('agents.builder.agent.instructions.description') }}
