@@ -25,10 +25,6 @@ describe('parsePnpmVersion', () => {
 		assert.equal(parsePnpmVersion('pnpm@11.25.0'), '11.25.0');
 	});
 
-	it('drops the corepack integrity suffix', () => {
-		assert.equal(parsePnpmVersion('pnpm@11.25.0+sha512.abc123'), '11.25.0');
-	});
-
 	it('keeps a prerelease tag', () => {
 		assert.equal(parsePnpmVersion('pnpm@12.0.0-alpha.1'), '12.0.0-alpha.1');
 	});

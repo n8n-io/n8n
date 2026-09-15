@@ -29,7 +29,7 @@
 		}
 	},
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
-	"onCreateCommand": "corepack install && pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
+	"onCreateCommand": "pnpm install && (pnpm build > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log) && pnpm --filter=n8n-playwright exec playwright install chromium",
 	// On each container start: install the private skills marketplace into Claude
 	// (best-effort) and start the poll worker. `bash -lc` loads the secrets shim,
 	// so the worker gets its token. Logs: /tmp/post-start.log, /tmp/agent-worker.log.

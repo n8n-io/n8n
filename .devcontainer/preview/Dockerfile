@@ -1,4 +1,5 @@
 ARG NODE_VERSION=24
+ARG PNPM_VERSION=12.3.4
 
 # Debian to match the agent image's toolchain. No Playwright, no agent CLIs and no
 # Docker here: a preview only builds the repo and serves it.
@@ -23,7 +24,7 @@ RUN echo '. /usr/local/lib/codespaces-env.sh' >> /etc/bash.bashrc
 
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir -p /workspaces && chown node:node /workspaces
-RUN corepack enable
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH
