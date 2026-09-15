@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -8,10 +9,12 @@ import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow'
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
+	type BackgroundJobGroupItem,
 	type NewSubAgentJob,
 	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
@@ -37,6 +40,7 @@ export type BackgroundJobView = Pick<
 	| 'createdAt'
 	| 'timeoutAt'
 	| 'settledAt'
+	| 'notifiedAt'
 	| 'childExecutionId'
 >;
 
@@ -124,6 +128,8 @@ export class AgentBackgroundJobService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly publisher: Publisher,
 		private readonly logger: Logger,
+		private readonly agentsConfig: AgentsConfig,
+		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -146,6 +152,7 @@ export class AgentBackgroundJobService {
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
+		this.updateBroadcaster.notifyBackgroundJobsUpdated(params.parentAgentId, params.parentThreadId);
 
 		return { status: 'started', jobId: params.id };
 	}
@@ -163,6 +170,12 @@ export class AgentBackgroundJobService {
 			kind: 'workflow',
 			childExecutionId: executionId,
 		});
+		if (outcome.inserted) {
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(
+				params.parentAgentId,
+				params.parentThreadId,
+			);
+		}
 
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
 	}
@@ -180,12 +193,36 @@ export class AgentBackgroundJobService {
 
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
 		try {
-			return await this.jobRepository.settleIfRunning(jobId, settlement);
+			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
+			if (settled) {
+				const job = await this.findJob(jobId);
+				if (job) {
+					this.notifyJobUpdate(job);
+					await this.requestWakeSafely(job.parentThreadId);
+				}
+			}
+			return settled;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
 			// shield the still-running row from orphan reconciliation forever.
 			this.abortControllers.delete(jobId);
 		}
+	}
+
+	async markMailConsumed(parentThreadId: string, jobIds: string[]): Promise<number> {
+		if (this.agentsConfig.backgroundTasksEnabled) {
+			const { AgentWakeService } = await import('./agent-wake.service.js');
+			// A tool can read these results during a wake. Wait for chat delivery before marking them.
+			if (Container.get(AgentWakeService).isWakeActive(parentThreadId)) return 0;
+		}
+		return await this.consumeMail(parentThreadId, jobIds);
+	}
+
+	private async consumeMail(parentThreadId: string, jobIds: string[]): Promise<number> {
+		const count = await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
+		// Clear pending cards when a foreground turn consumes results without a signal.
+		if (count > 0 && jobIds[0]) await this.notifyJobUpdateById(jobIds[0]);
+		return count;
 	}
 
 	registerAbortController(jobId: string, controller: AbortController): void {
@@ -204,7 +241,11 @@ export class AgentBackgroundJobService {
 			jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
 		}
 
-		return jobs.map((job) => ({
+		return jobs.map((job) => this.toJobView(job));
+	}
+
+	private toJobView(job: AgentBackgroundJob): BackgroundJobView {
+		return {
 			id: job.id,
 			kind: job.kind,
 			title: job.title,
@@ -214,8 +255,41 @@ export class AgentBackgroundJobService {
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
+			notifiedAt: job.notifiedAt,
 			childExecutionId: job.childExecutionId,
-		}));
+		};
+	}
+
+	/**
+	 * A group contains jobs whose execution periods overlap. A gap with no running jobs starts a new group.
+	 * Return only the latest group while any job runs or has results that await consumption.
+	 * The preview can show completed jobs alongside jobs that still run.
+	 */
+	async listCurrentGroupForThread(
+		parentAgentId: string,
+		parentThreadId: string,
+	): Promise<BackgroundJobGroupItem[]> {
+		const jobs = (await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId)).sort(
+			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+		);
+		let group: BackgroundJobGroupItem[] = [];
+		let groupEndsAt = Number.NEGATIVE_INFINITY;
+
+		for (const job of jobs) {
+			const startedAt = job.createdAt.getTime();
+			// A gap with no running jobs starts a new group.
+			if (startedAt > groupEndsAt) group = [];
+			group.push(job);
+			groupEndsAt = Math.max(
+				groupEndsAt,
+				job.status === 'running'
+					? Number.POSITIVE_INFINITY
+					: (job.settledAt?.getTime() ?? startedAt),
+			);
+		}
+
+		// Keep finished jobs visible until the parent consumes their results.
+		return group.some((job) => job.status === 'running' || !job.notifiedAt) ? group : [];
 	}
 
 	/**
@@ -237,6 +311,7 @@ export class AgentBackgroundJobService {
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
+		this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -256,7 +331,45 @@ export class AgentBackgroundJobService {
 				this.logger.warn('Failed to relay background job cancellation', { jobId, error });
 			}
 		}
+
+		await this.consumeCancelledMail(parentThreadId, jobId);
 		return 'cancelled';
+	}
+
+	private async findJob(jobId: string): Promise<AgentBackgroundJob | null> {
+		try {
+			return await this.jobRepository.findById(jobId);
+		} catch (error) {
+			this.logger.warn('Failed to resolve background job update', { jobId, error });
+			return null;
+		}
+	}
+
+	private notifyJobUpdate(job: AgentBackgroundJob): void {
+		try {
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
+		} catch (error) {
+			this.logger.warn('Failed to notify background job update', { jobId: job.id, error });
+		}
+	}
+
+	private async notifyJobUpdateById(jobId: string): Promise<void> {
+		const job = await this.findJob(jobId);
+		if (job) this.notifyJobUpdate(job);
+	}
+
+	private async requestWakeSafely(parentThreadId: string): Promise<void> {
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
+
+		try {
+			const { AgentWakeService } = await import('./agent-wake.service.js');
+			await Container.get(AgentWakeService).requestWake(parentThreadId);
+		} catch (error) {
+			this.logger.warn('Failed to request a parent wake for a settled background job', {
+				parentThreadId,
+				error,
+			});
+		}
 	}
 
 	@OnPubSubEvent('cancel-agent-background-job', { instanceType: 'main' })
@@ -333,8 +446,24 @@ export class AgentBackgroundJobService {
 
 		// The stopped execution's settle hook may have written `cancelled` first;
 		// either way the job is cancelled.
-		await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		const settled = await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		if (settled) {
+			this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
+		}
+		await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';
+	}
+
+	/**
+	 * Mark the cancellation result as delivered after the child stops.
+	 * If this write fails, a later wake can repeat the result.
+	 */
+	private async consumeCancelledMail(parentThreadId: string, jobId: string): Promise<void> {
+		try {
+			await this.consumeMail(parentThreadId, [jobId]);
+		} catch (error) {
+			this.logger.warn('Failed to mark the cancelled job result as delivered', { jobId, error });
+		}
 	}
 
 	/**

@@ -14,6 +14,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
@@ -46,6 +47,7 @@ const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
 		intervalSeconds: null,
 		fireAt: null,
 		nextRunAt: CLOCK,
+		maxAttempts: 5,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 90,
 		...over,
@@ -59,6 +61,7 @@ describe('DurableJobProvisioner', () => {
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
 	const agentOwner = mock<AgentScheduledJobOwner>();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner();
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -85,6 +88,7 @@ describe('DurableJobProvisioner', () => {
 			globalConfig,
 			workflowOwner,
 			agentOwner,
+			systemTaskOwner,
 			tracing,
 		);
 	};
@@ -114,6 +118,20 @@ describe('DurableJobProvisioner', () => {
 			desired,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: misfireGraceSeconds as number | undefined,
+		});
+
+	/** Provision one job with a request-supplied retry ceiling. */
+	const provisionWithAttempts = async (
+		maxAttempts: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			maxAttempts,
 		});
 
 	beforeEach(() => {
@@ -184,7 +202,7 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
@@ -198,7 +216,8 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
 			});
@@ -218,7 +237,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], expect.anything());
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
 		});
 
@@ -232,7 +251,8 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 			});
@@ -291,6 +311,7 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 			});
@@ -583,7 +604,8 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(30);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
@@ -597,11 +619,71 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(300);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
+		});
+	});
+
+	describe('attempts resolution', () => {
+		it('stamps a request-supplied ceiling onto the inserted row, in place of the configured one', async () => {
+			await provisionWithAttempts(1);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 1 }),
+			]);
+		});
+
+		it('stamps the configured ceiling onto the inserted row when the request omits one', async () => {
+			await provisionWithAttempts(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 5 }),
+			]);
+		});
+
+		it("writes a request-supplied ceiling onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithAttempts(1, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ maxAttempts: 1 }),
+			);
+		});
+
+		it('reconciles the ceiling of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 5 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 1,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			// The grace is unchanged, so queued tasks keep their deadline.
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
+		it('leaves a job already stored at the requested ceiling out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 1 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 	});
 

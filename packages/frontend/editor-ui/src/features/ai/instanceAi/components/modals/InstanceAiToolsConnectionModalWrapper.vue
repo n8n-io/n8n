@@ -12,7 +12,6 @@ import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSet
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
-	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type McpServerTool,
@@ -111,14 +110,21 @@ const detailItem = computed<ToolConnectionItem | null>(() => {
 });
 
 const detailMode = computed<'detail' | 'settings'>(() =>
-	detailItem.value?.kind === 'mcp-server' && hasToolConnection(detailItem.value.status)
+	detailItem.value?.kind === 'mcp-server' &&
+	mcpStore.connections.some((connection) => connection.id === activeItemId.value)
 		? 'settings'
 		: 'detail',
 );
 
 type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
 
-const { connectServer, connectWithCredential, createCredentialAdapter } = useMcpServerConnect();
+const {
+	connectServer,
+	connectWithCredential,
+	createCredentialAdapter,
+	ignorePendingConnectResult,
+	isConnectLocked,
+} = useMcpServerConnect();
 
 /** Reveals the settings view of the server the user just connected */
 function showConnectedServer(connectionId: string | null): void {
@@ -206,7 +212,7 @@ function buildItem(
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
-		status: connection?.status ?? 'none',
+		status: isConnectLocked(server.slug) ? 'connecting' : (connection?.status ?? 'none'),
 		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
 		credentials: server.credentials.map(({ credentialType, name }) => ({
 			authType: credentialType,
@@ -323,10 +329,14 @@ provide(
 	}),
 );
 
-function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResponse | undefined {
+function serverSlugForItem(item: McpServerConnectionItem): string {
 	const connection = mcpStore.connections.find((c) => c.id === item.id);
-	const slug = connection?.serverSlug ?? item.id;
-	return mcpStore.catalog?.find((s) => s.slug === slug);
+	return connection?.serverSlug ?? item.id;
+}
+
+function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResponse | undefined {
+	const serverSlug = serverSlugForItem(item);
+	return mcpStore.catalog?.find((server) => server.slug === serverSlug);
 }
 
 function trackMcpCredentialInteraction(
@@ -365,6 +375,7 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
+	ignorePendingConnectResult(server.slug);
 	mcpTelemetry.trackExistingCredentialSelected(server.slug);
 	showConnectedServer(await connectWithCredential(server.slug, credentialId));
 }
@@ -386,6 +397,9 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
+	if (item.kind === 'mcp-server') {
+		ignorePendingConnectResult(serverSlugForItem(item));
+	}
 	const disconnected = await mcpStore.disconnect(item.id);
 	if (!disconnected) return;
 	activeItemId.value = null;

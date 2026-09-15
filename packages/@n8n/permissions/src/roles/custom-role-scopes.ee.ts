@@ -50,6 +50,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'delete',
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
+	projectAiPreference: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -73,8 +74,8 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page, including MCP and AI
-		// Assistant management. MCP and AI Assistant also have their own narrower
+		// Grants access to every instance Settings page, including MCP and n8n
+		// Assistant management. MCP and n8n Assistant also have their own narrower
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all
 		// four, so checking Manage checks them too, and unchecking any one of them
@@ -102,9 +103,14 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:list',
 			'variable:read',
 			'dataTable:list',
+			'aiPreference:create', // Context (instance-wide AI preferences)
+			'aiPreference:read',
+			'aiPreference:update',
+			'aiPreference:delete',
+			'aiPreference:list',
 			'chatHub:manage', // Chat
 			'chatHub:message', // needed for model listing on the Chat settings page
-			'aiAssistant:manage', // AI Assistant
+			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
 			'instanceAi:gateway', // computer-use gateway pairing
@@ -155,9 +161,12 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		'Manage all': ['apiKey:create', 'apiKey:update', 'apiKey:manage'],
 	},
 	tag: {
-		// read/list are bundled with write scopes: tags on workflows you can already
-		// read are always visible (they come embedded in the workflow response), so
-		// there is no meaningful "view-only" tier for tag definitions.
+		// Tags on a workflow you can read come embedded in the workflow response, and
+		// applying one rides on workflow:update, not a tag scope. read/list gate only
+		// the tag *picker* — listing every existing tag to choose from — which every
+		// role gets (see MANDATORY_INSTANCE_OPTIONS in instanceRoleScopes.ts). Manage
+		// keeps read/list so it stays a strict superset of View, matching `user`.
+		View: ['tag:read', 'tag:list'],
 		Manage: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
 	},
 	project: {

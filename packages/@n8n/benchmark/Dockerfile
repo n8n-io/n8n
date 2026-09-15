@@ -24,6 +24,8 @@ RUN apt-get update && \
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
+# Pin pnpm to the repo's packageManager version. pnpm 12 installs a standalone
+# native executable
 ARG PNPM_VERSION=12.3.4
 RUN npm i -g "pnpm@${PNPM_VERSION}"
 

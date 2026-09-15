@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { databricksApiRequest } from '../actions/helpers';
-import { databricksUserAgent } from '../constants';
+import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 describe('databricksApiRequest', () => {
 	let httpRequestWithAuthentication: Mock;
@@ -104,11 +104,11 @@ describe('databricksApiRequest', () => {
 		});
 
 		expect(capturedOptions().headers).toEqual({
-			'User-Agent': databricksUserAgent(),
+			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
 		});
 	});
 
 	it('should send the unversioned partner User-Agent', () => {
-		expect(databricksUserAgent()).toBe('n8n_DatabricksNode');
+		expect(DATABRICKS_PARTNER_USER_AGENT).toBe('n8n_DatabricksNode');
 	});
 });

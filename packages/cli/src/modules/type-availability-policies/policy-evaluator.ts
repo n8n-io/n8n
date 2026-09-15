@@ -1,6 +1,9 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+
 import type {
 	PolicyAction,
 	PolicyAttachment,
+	PolicyRule,
 	PolicySelector,
 	PolicyVerdict,
 } from './policy-rule.types';
@@ -16,11 +19,19 @@ export type ScopePolicy = {
  *
  * `matchedRuleId` carries the same "explicit rule vs. default action" distinction as
  * `PolicyVerdict`, from whichever scope's verdict is reported.
+ *
+ * `optInAvailable` marks a denial the project can lift on its own, because the instance
+ * delegated the type. It says nothing about who denied: a project that denied a delegated
+ * type itself can still opt back in, so the flag is about the delegation, not the scope.
+ *
+ * `scope` reuses the response type's scope union, so the verdict and what the API reports
+ * cannot drift apart.
  */
 export type ComposedVerdict = {
 	readonly action: 'allow' | 'deny';
-	readonly scope: 'instance' | 'project';
+	readonly scope: NodeTypeAvailabilityScope;
 	readonly matchedRuleId: string | null;
+	readonly optInAvailable: boolean;
 };
 
 /**
@@ -68,14 +79,52 @@ export function evaluateType(
 	typeName: string,
 ): PolicyVerdict {
 	for (const attachment of orderedAttachments(attachments)) {
-		for (const rule of attachment.rules) {
-			if (selectorMatches(rule.selector, typeName)) {
-				return { action: rule.action, matchedRuleId: rule.id };
-			}
-		}
+		const matched = firstMatch(attachment.rules, typeName);
+		if (matched) return matched;
 	}
 
 	return { action: defaultAction, matchedRuleId: null };
+}
+
+/** The first rule matching `typeName`, or `null` when none does. */
+function firstMatch(rules: readonly PolicyRule[], typeName: string): PolicyVerdict | null {
+	for (const rule of rules) {
+		if (selectorMatches(rule.selector, typeName)) {
+			return { action: rule.action, matchedRuleId: rule.id };
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Same first-match evaluation as `evaluateType`, for a caller that already holds the flattened
+ * rule sequence rather than the attachments it came from.
+ */
+export function evaluateRules(
+	rules: readonly PolicyRule[],
+	defaultAction: PolicyAction,
+	typeName: string,
+): PolicyVerdict {
+	return firstMatch(rules, typeName) ?? { action: defaultAction, matchedRuleId: null };
+}
+
+/**
+ * Sorts every known type name by what one scope's own policy decides for it. At project scope
+ * this is the project's layer alone, before composition with the instance policy.
+ */
+export function partitionTypesByAction(
+	rules: readonly PolicyRule[],
+	defaultAction: PolicyAction,
+	typeNames: readonly string[],
+): Record<PolicyAction, string[]> {
+	const partition: Record<PolicyAction, string[]> = { allow: [], deny: [], delegate: [] };
+
+	for (const typeName of typeNames) {
+		partition[evaluateRules(rules, defaultAction, typeName).action].push(typeName);
+	}
+
+	return partition;
 }
 
 /**
@@ -101,33 +150,59 @@ export function evaluateComposedType(
 	const instanceVerdict = evaluateType(instance.attachments, instance.defaultAction, typeName);
 
 	if (instanceVerdict.action === 'deny') {
-		return { action: 'deny', scope: 'instance', matchedRuleId: instanceVerdict.matchedRuleId };
+		return {
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: instanceVerdict.matchedRuleId,
+			optInAvailable: false,
+		};
 	}
 
 	const projectVerdict = evaluateType(project.attachments, project.defaultAction, typeName);
 
 	if (instanceVerdict.action === 'delegate') {
 		if (projectVerdict.action === 'allow' && projectVerdict.matchedRuleId !== null) {
-			return { action: 'allow', scope: 'project', matchedRuleId: projectVerdict.matchedRuleId };
+			return {
+				action: 'allow',
+				scope: 'project',
+				matchedRuleId: projectVerdict.matchedRuleId,
+				optInAvailable: false,
+			};
 		}
 		// The project restricted the type itself, by rule or by a `deny` default: the denial
 		// is the project's decision, not the unsatisfied delegation's.
 		if (projectVerdict.action !== 'allow') {
-			return { action: 'deny', scope: 'project', matchedRuleId: projectVerdict.matchedRuleId };
+			return {
+				action: 'deny',
+				scope: 'project',
+				matchedRuleId: projectVerdict.matchedRuleId,
+				optInAvailable: true,
+			};
 		}
 		// A bare project `allow` default never satisfies a delegation, so the unsatisfied
 		// instance `delegate` is what denies here.
-		return { action: 'deny', scope: 'instance', matchedRuleId: instanceVerdict.matchedRuleId };
+		return {
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: instanceVerdict.matchedRuleId,
+			optInAvailable: true,
+		};
 	}
 
 	// instanceVerdict.action === 'allow': the project's own verdict decides.
 	if (projectVerdict.action !== 'allow') {
-		return { action: 'deny', scope: 'project', matchedRuleId: projectVerdict.matchedRuleId };
+		return {
+			action: 'deny',
+			scope: 'project',
+			matchedRuleId: projectVerdict.matchedRuleId,
+			optInAvailable: false,
+		};
 	}
 
 	return {
 		action: 'allow',
 		scope: projectVerdict.matchedRuleId !== null ? 'project' : 'instance',
 		matchedRuleId: projectVerdict.matchedRuleId ?? instanceVerdict.matchedRuleId,
+		optInAvailable: false,
 	};
 }

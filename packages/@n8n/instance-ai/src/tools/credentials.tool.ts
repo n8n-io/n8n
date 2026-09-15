@@ -61,7 +61,7 @@ export const setupHintField = z
 						.string()
 						.optional()
 						.describe(
-							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the user asks the AI Assistant for that. No URLs or domains.',
+							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the user asks the n8n Assistant for that. No URLs or domains.',
 						),
 					type: z
 						.enum(['password', 'plain'])
@@ -199,7 +199,7 @@ export function findSetupHintProblems(
 	for (const placeholder of hint.placeholders) {
 		if (INFO_LINK_REGEX.test(placeholder.info ?? '')) {
 			problems.push(
-				`placeholder "${placeholder.name}" mentions a URL or domain in its info — keep info to the value itself (its format, or which of the provider's tokens it is); the user asks the AI Assistant where to get it`,
+				`placeholder "${placeholder.name}" mentions a URL or domain in its info — keep info to the value itself (its format, or which of the provider's tokens it is); the user asks the n8n Assistant where to get it`,
 			);
 		}
 	}
@@ -360,7 +360,11 @@ const deleteAction = z.object({
 });
 
 const searchTypesAction = z.object({
-	action: z.literal('search-types').describe('Search available credential types by keyword'),
+	action: z
+		.literal('search-types')
+		.describe(
+			"Search available credential types by keyword. Each result carries the type's `documentationUrl` — pass it to `n8n-docs` to ground an auth answer (scopes, permissions, setup steps) instead of recalling it.",
+		),
 	query: z
 		.string()
 		.optional()

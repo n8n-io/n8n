@@ -10,12 +10,12 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
 } from '@n8n/ai-utilities';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { CHAT_MODEL_USER_AGENT } from '../constants';
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
 import { getDatabricksTokenProvider } from '../token-provider';
 
@@ -125,7 +125,9 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
-			expect(callArgs?.configuration?.baseURL).toBe('https://my.databricks.com/serving-endpoints');
+			expect(callArgs?.configuration?.baseURL).toBe(
+				'https://my.databricks.com/ai-gateway/openai/v1',
+			);
 		});
 
 		it('should wire the refreshing fetch into ChatOpenAI', async () => {
@@ -135,7 +137,12 @@ describe('LmChatDatabricks', () => {
 
 			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(ctx, mockCredential, undefined);
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
-			expect(callArgs?.configuration?.fetch).toBe(mockFetch);
+			// The refreshing fetch sits behind the error-reshaping wrapper
+			const body = JSON.stringify({ choices: [] });
+			vi.mocked(mockFetch).mockResolvedValue(new Response(body, { status: 200 }));
+			const response = await callArgs?.configuration?.fetch?.('https://my.databricks.com/x');
+			expect(mockFetch).toHaveBeenCalledWith('https://my.databricks.com/x', undefined);
+			expect(await response?.text()).toBe(body);
 		});
 
 		it('should retry on the expiry status the credential declares, not the default 401', async () => {
@@ -156,7 +163,7 @@ describe('LmChatDatabricks', () => {
 			// Resolved per request, so a token minted mid-execution is picked up
 			const headers = new Headers(await fetchOptions.resolveHeaders?.());
 			expect(headers.get('authorization')).toBe('Bearer test-token');
-			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 		});
 
 		it('should re-authorize with the rotated token after a rejection', async () => {
@@ -168,7 +175,7 @@ describe('LmChatDatabricks', () => {
 			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
 			const headers = new Headers((await fetchOptions.refreshHeaders?.(new Headers())) ?? {});
 			expect(headers.get('authorization')).toBe('Bearer rotated-token');
-			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 		});
 
 		it('should not re-authorize when the session cannot be refreshed', async () => {
@@ -199,7 +206,7 @@ describe('LmChatDatabricks', () => {
 				egressFilter,
 			);
 			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
-				'https://my.databricks.com/serving-endpoints',
+				'https://my.databricks.com/ai-gateway/openai/v1',
 				expect.any(Object),
 				secureLookup,
 			);
@@ -311,22 +318,26 @@ describe('LmChatDatabricks', () => {
 	});
 
 	describe('searchModels', () => {
-		const endpointsResponse = {
-			endpoints: [
+		const modelServicesResponse = {
+			model_services: [
 				{
-					name: 'chat-endpoint',
-					task: 'llm/v1/chat',
-					config: { served_entities: [{ foundation_model: { name: 'llama-3' } }] },
+					name: 'model-services/system.ai.gpt-oss-120b',
+					comment: 'OpenAI gpt-oss 120B',
+					supported_api_types: ['mlflow/v1/chat/completions'],
 				},
-				{ name: 'embeddings-endpoint', task: 'llm/v1/embeddings' },
 				{
-					name: 'agent-endpoint',
-					task: 'agent/v1/chat',
-					config: { served_entities: [{ external_model: { name: 'gpt-4o' } }] },
+					name: 'model-services/system.ai.gte-large-en',
+					supported_api_types: ['mlflow/v1/embeddings'],
 				},
-				{ name: 'custom-endpoint' },
+				{
+					name: 'model-services/main.ml.custom-route',
+					supported_api_types: ['openai/v1/chat/completions'],
+				},
+				{ name: 'model-services/main.ml.untyped' },
 			],
 		};
+		const [chatService, embeddingsService, customRouteService] =
+			modelServicesResponse.model_services;
 
 		let mockContext: Mocked<ILoadOptionsFunctions>;
 		let httpRequestWithAuthentication: ReturnType<typeof vi.fn>;
@@ -340,8 +351,8 @@ describe('LmChatDatabricks', () => {
 			} as unknown as Mocked<ILoadOptionsFunctions>;
 		};
 
-		it('should reject non-https hosts before requesting the endpoint list', async () => {
-			setupSearchContext('http://my.databricks.com', endpointsResponse);
+		it('should reject non-https hosts before requesting the model service list', async () => {
+			setupSearchContext('http://my.databricks.com', modelServicesResponse);
 
 			await expect(node.methods.listSearch.searchModels.call(mockContext)).rejects.toThrow(
 				'Databricks host must use https',
@@ -349,8 +360,8 @@ describe('LmChatDatabricks', () => {
 			expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
-		it('should list only chat-capable endpoints', async () => {
-			setupSearchContext('https://my.databricks.com', endpointsResponse);
+		it('should list chat-capable model services without the resource prefix', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
 
 			const result = await node.methods.listSearch.searchModels.call(mockContext);
 
@@ -358,57 +369,145 @@ describe('LmChatDatabricks', () => {
 				'databricksOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://my.databricks.com/api/2.0/serving-endpoints',
+					url: 'https://my.databricks.com/api/2.1/unity-catalog/model-services',
+					qs: expect.objectContaining({ view: 'FULL' }),
 				}),
 			);
-			expect(result.results).toEqual([
+			expect(result.results).toStrictEqual([
 				{
-					name: 'chat-endpoint',
-					value: 'chat-endpoint',
-					url: 'https://my.databricks.com/ml/endpoints/chat-endpoint',
-					description: 'llama-3',
+					name: 'system.ai.gpt-oss-120b',
+					value: 'system.ai.gpt-oss-120b',
+					description: 'OpenAI gpt-oss 120B',
 				},
 				{
-					name: 'agent-endpoint',
-					value: 'agent-endpoint',
-					url: 'https://my.databricks.com/ml/endpoints/agent-endpoint',
-					description: 'gpt-4o',
+					name: 'main.ml.custom-route',
+					value: 'main.ml.custom-route',
+					description: undefined,
 				},
 			]);
 		});
 
-		it('should apply the substring filter', async () => {
-			setupSearchContext('https://my.databricks.com', endpointsResponse);
-
-			const result = await node.methods.listSearch.searchModels.call(mockContext, 'agent');
-
-			expect(result.results).toEqual([expect.objectContaining({ name: 'agent-endpoint' })]);
-		});
-
-		it('should return no results when the response has no endpoints field', async () => {
+		it('should follow next_page_token until the last page', async () => {
 			setupSearchContext('https://my.databricks.com', {});
+			httpRequestWithAuthentication
+				.mockReset()
+				.mockResolvedValueOnce({ model_services: [chatService], next_page_token: 'p2' })
+				.mockResolvedValueOnce({ model_services: [customRouteService] });
 
 			const result = await node.methods.listSearch.searchModels.call(mockContext);
+
+			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			const calls = httpRequestWithAuthentication.mock.calls;
+			expect(calls[0][1].qs.page_token).toBeUndefined();
+			expect(calls[1][1].qs.page_token).toBe('p2');
+			expect(result.results.map((r) => r.value)).toEqual([
+				'system.ai.gpt-oss-120b',
+				'main.ml.custom-route',
+			]);
+		});
+
+		it('should apply the substring filter to the name', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+
+			const result = await node.methods.listSearch.searchModels.call(mockContext, 'system');
+
+			expect(result.results).toEqual([expect.objectContaining({ name: 'system.ai.gpt-oss-120b' })]);
+		});
+
+		it('should apply the substring filter to the description, case-insensitively', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+
+			const result = await node.methods.listSearch.searchModels.call(mockContext, 'openai');
+
+			expect(result.results).toEqual([expect.objectContaining({ name: 'system.ai.gpt-oss-120b' })]);
+		});
+
+		it('should return no results, not an error, when the filter matches nothing', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+
+			const result = await node.methods.listSearch.searchModels.call(mockContext, 'nomatch');
 
 			expect(result).toEqual({ results: [] });
 		});
 
-		it('should strip the trailing slash from the host in the request URL', async () => {
-			setupSearchContext('https://my.databricks.com/', endpointsResponse);
+		it.each([{}, { model_services: [] }])(
+			'should throw when the workspace has no model services (%o)',
+			async (response) => {
+				setupSearchContext('https://my.databricks.com', response);
 
-			await node.methods.listSearch.searchModels.call(mockContext);
+				await expect(node.methods.listSearch.searchModels.call(mockContext)).rejects.toThrow(
+					'No model services found',
+				);
+			},
+		);
 
-			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.url).toBe('https://my.databricks.com/api/2.0/serving-endpoints');
+		it('should throw when no model service is chat-capable', async () => {
+			setupSearchContext('https://my.databricks.com', { model_services: [embeddingsService] });
+
+			await expect(node.methods.listSearch.searchModels.call(mockContext)).rejects.toThrow(
+				'No chat-capable model services found',
+			);
 		});
 
-		it('should send the partner User-Agent on the endpoints listing request', async () => {
-			setupSearchContext('https://my.databricks.com', endpointsResponse);
+		it('should stop after 50 pages', async () => {
+			setupSearchContext('https://my.databricks.com', {
+				model_services: [chatService],
+				next_page_token: 'again',
+			});
+
+			await expect(node.methods.listSearch.searchModels.call(mockContext)).rejects.toThrow(
+				'exceeded 50 pages',
+			);
+			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(50);
+		});
+
+		it('should retry scoped to system.ai when the unscoped list is rejected with 400', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+			httpRequestWithAuthentication
+				.mockReset()
+				.mockRejectedValueOnce(new NodeApiError(mockNodeDef, {}, { httpCode: '400' }))
+				.mockResolvedValueOnce({ model_services: [chatService] });
+
+			const result = await node.methods.listSearch.searchModels.call(mockContext);
+
+			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(httpRequestWithAuthentication.mock.calls[0][1].qs.parent).toBeUndefined();
+			expect(httpRequestWithAuthentication.mock.calls[1][1].qs.parent).toBe('schemas/system.ai');
+			expect(result.results).toEqual([
+				expect.objectContaining({ value: 'system.ai.gpt-oss-120b' }),
+			]);
+		});
+
+		it('should rethrow list errors other than 400', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+			httpRequestWithAuthentication
+				.mockReset()
+				.mockRejectedValueOnce(new NodeApiError(mockNodeDef, {}, { httpCode: '403' }));
+
+			await expect(node.methods.listSearch.searchModels.call(mockContext)).rejects.toThrow(
+				NodeApiError,
+			);
+			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		it('should strip the trailing slash from the host in the request URL', async () => {
+			setupSearchContext('https://my.databricks.com/', modelServicesResponse);
 
 			await node.methods.listSearch.searchModels.call(mockContext);
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.headers).toMatchObject({ 'User-Agent': CHAT_MODEL_USER_AGENT });
+			expect(requestOptions.url).toBe(
+				'https://my.databricks.com/api/2.1/unity-catalog/model-services',
+			);
+		});
+
+		it('should send the partner User-Agent on the model service listing request', async () => {
+			setupSearchContext('https://my.databricks.com', modelServicesResponse);
+
+			await node.methods.listSearch.searchModels.call(mockContext);
+
+			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
+			expect(requestOptions.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 		});
 	});
 });

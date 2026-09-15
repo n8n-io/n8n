@@ -81,18 +81,15 @@ If you already have VS Code and Docker installed, you can click [here](https://v
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 12.3.4 or newer is required for development.
-Install it with npm:
+[pnpm](https://pnpm.io/) is required for development. Install it globally with npm:
 
 ```bash
-npm install -g pnpm@12.3.4
+npm i -g pnpm@12.3.4
 ```
 
-If npm is not available, use one of the other options in the
-[pnpm installation guide](https://pnpm.io/installation).
+The root [package.json](package.json) pins the exact version in its `packageManager` field. Always install that version, and update your global install when the pin changes.
 
-The root `package.json` pins the pnpm version in its `packageManager` field.
-pnpm reads that field and uses the pinned version in this repository.
+If `npm` is not available on your machine, use one of the other methods in the [pnpm installation guide](https://pnpm.io/installation).
 
 ##### pnpm workspaces
 
@@ -351,6 +348,20 @@ When developing custom nodes or credentials, you can enable hot reload to automa
 ```bash
 N8N_DEV_RELOAD=true pnpm dev:be
 ```
+
+This enables two mechanisms:
+
+- a **file watcher** over the loaded node directories, and
+- `POST /rest/dev/reload`, an unauthenticated (rate-limited) endpoint that re-reads the node
+  files already on disk. `@n8n/node-cli`'s `dev` command uses this to push a
+  reload after each successful compile, because a container cannot watch a bind
+  mount and the Alpine image has no `@parcel/watcher` prebuild.
+
+The variable is honoured regardless of `NODE_ENV`, so it also applies to
+production builds and the published Docker image. Never set it on an instance
+reachable by anyone you would not give a shell to. It also disables the crash
+journal, so a dev container that was killed rather than shut down gracefully
+does not pay the 10 second crash-loop penalty on its next boot.
 
 **Performance considerations:**
 - File watching adds overhead to your system, especially on slower machines

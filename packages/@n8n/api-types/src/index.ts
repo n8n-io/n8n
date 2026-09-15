@@ -11,7 +11,9 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './instance-reporting';
 export type * from './worker-pools';
+export type * from './node-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -121,6 +123,25 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+export {
+	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	aiPreferenceContentSchema,
+	aiPreferenceScopeSchema,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	aiPreferenceScopeOf,
+	aiPreferenceTargetOf,
+} from './schemas/ai-preference.schema';
+export type {
+	AiPreferenceCountDto,
+	AiPreferenceDto,
+	AiPreferenceListDto,
+	AiPreferenceTarget,
+	AiPreferenceProjectDto,
+	AiPreferenceUserDto,
+	AiPreferenceScope,
+} from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
@@ -129,12 +150,17 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	executionIdParamSchema,
+	nodeTypePolicyIdParamSchema,
+	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
+	tagIdParamSchema,
+	userIdParamSchema,
+	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';
@@ -215,6 +241,11 @@ export {
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
+
+export {
+	ChangeEmailResponseSchema,
+	type ChangeEmailResponse,
+} from './schemas/change-email-response';
 
 export {
 	encryptionKeySchema,
@@ -380,8 +411,11 @@ export {
 	CANVAS_NODE_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -431,6 +465,7 @@ export {
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
@@ -449,10 +484,14 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	instanceAiBuildModeSchema,
+	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
@@ -524,6 +563,7 @@ export type {
 	InstanceAiSSEConnectionState,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
@@ -768,3 +808,8 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	instanceAiApprovalDetailsSchema,
+	type InstanceAiApprovalDetails,
+} from './schemas/instance-ai-approval.schema';

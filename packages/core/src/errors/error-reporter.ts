@@ -4,7 +4,6 @@ import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
-import type { NodeOptions } from '@sentry/node';
 import {
 	ApplicationError,
 	ExecutionCancelledError,
@@ -281,7 +280,7 @@ export class ErrorReporter {
 					}
 				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
-			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
+			beforeSend: this.beforeSend.bind(this),
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [

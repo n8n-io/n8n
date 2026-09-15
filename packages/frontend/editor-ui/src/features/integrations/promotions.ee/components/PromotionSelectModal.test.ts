@@ -2,13 +2,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import PromotionSelectModal from './PromotionSelectModal.vue';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import * as promotionsApi from '../promotions.api';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createServer, Response } from 'miragejs';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-
-vi.mock('../promotions.api');
 
 const mockChanges = [
 	{
@@ -50,12 +48,13 @@ const renderComponent = createComponentRenderer(PromotionSelectModal, {
 
 describe('PromotionSelectModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
+	let server: ReturnType<typeof createServer>;
 
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		vi.clearAllMocks();
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
-		vi.mocked(promotionsApi.promoteChanges).mockResolvedValue({ branchName: 'promote/test' });
+		server = createServer({ environment: 'test' });
+		server.get('/rest/promotions/project-1/changes', () => ({ data: mockChanges }));
 
 		const usersStore = useUsersStore();
 		usersStore.usersById = {
@@ -64,7 +63,15 @@ describe('PromotionSelectModal', () => {
 		} as unknown as typeof usersStore.usersById;
 	});
 
+	afterEach(() => server.shutdown());
+
 	it('should render change list after loading', async () => {
+		server.get('/rest/promotions/project-1/changes', () => ({
+			data: [
+				{ ...mockChanges[0], status: 'renamed' },
+				{ ...mockChanges[1], status: 'renamed-and-modified' },
+			],
+		}));
 		const { getByText } = renderComponent({
 			pinia,
 			props: {
@@ -76,6 +83,8 @@ describe('PromotionSelectModal', () => {
 		await waitFor(() => {
 			expect(getByText('Email summary')).toBeInTheDocument();
 			expect(getByText('Payment Handler')).toBeInTheDocument();
+			expect(getByText('Moved / renamed')).toBeInTheDocument();
+			expect(getByText('Moved / renamed and modified')).toBeInTheDocument();
 		});
 	});
 
@@ -92,7 +101,7 @@ describe('PromotionSelectModal', () => {
 		expect(submitButton).toBeDisabled();
 	});
 
-	it('should enable promote button after selecting a change', async () => {
+	it('should keep promotion unavailable after selecting a change', async () => {
 		const { findAllByTestId, findByTestId } = renderComponent({
 			pinia,
 			props: {
@@ -105,7 +114,8 @@ describe('PromotionSelectModal', () => {
 		await userEvent.click(rows[0]);
 
 		const submitButton = await findByTestId('promotion-submit');
-		expect(submitButton).not.toBeDisabled();
+		expect(submitButton).toBeDisabled();
+		expect(submitButton).toHaveTextContent('Promote 1 change');
 	});
 
 	it('should show changed by name', async () => {
@@ -125,7 +135,7 @@ describe('PromotionSelectModal', () => {
 	});
 
 	it('should show empty state when no changes', async () => {
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue([]);
+		server.get('/rest/promotions/project-1/changes', () => ({ data: [] }));
 
 		const { getByText } = renderComponent({
 			pinia,
@@ -140,8 +150,8 @@ describe('PromotionSelectModal', () => {
 		});
 	});
 
-	it('should select every row when clicking select all', async () => {
-		const { findByTestId } = renderComponent({
+	it('keeps only selections that remain after refreshing the change list', async () => {
+		const { findByTestId, findByText, queryByText } = renderComponent({
 			pinia,
 			props: {
 				modalName: PROMOTION_SELECT_MODAL_KEY,
@@ -149,17 +159,27 @@ describe('PromotionSelectModal', () => {
 			},
 		});
 
+		await findByText('Payment Handler');
 		const selectAll = await findByTestId('promotion-select-all');
 		await userEvent.click(selectAll);
 
 		const submitButton = await findByTestId('promotion-submit');
-		expect(submitButton).not.toBeDisabled();
-		// The label reports every mock row, proving select-all covers the whole list.
+		expect(submitButton).toBeDisabled();
 		expect(submitButton.textContent).toContain('Promote 2 changes');
+
+		server.get('/rest/promotions/project-1/changes', () => ({ data: [mockChanges[1]] }));
+		await userEvent.click(await findByTestId('promotion-refresh'));
+		await waitFor(() => {
+			expect(queryByText('Email summary')).not.toBeInTheDocument();
+			expect(submitButton).toHaveTextContent('Promote 1 change');
+		});
 	});
 
 	it('should show an error state with a retry action when loading fails', async () => {
-		vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(new Error('Network error'));
+		server.get(
+			'/rest/promotions/project-1/changes',
+			() => new Response(503, {}, { message: 'Preview unavailable' }),
+		);
 
 		const { findByTestId, getByText } = renderComponent({
 			pinia,
@@ -172,7 +192,7 @@ describe('PromotionSelectModal', () => {
 		await findByTestId('promotion-error');
 		expect(getByText('Could not load changes')).toBeInTheDocument();
 
-		// Retry succeeds (default mock) and the list replaces the error state.
+		server.get('/rest/promotions/project-1/changes', () => ({ data: mockChanges }));
 		await userEvent.click(await findByTestId('promotion-retry'));
 
 		await waitFor(() => {
@@ -198,28 +218,30 @@ describe('PromotionSelectModal', () => {
 	});
 
 	it('should show distinct labels for archived and deleted workflows', async () => {
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue([
-			{
-				id: 'wf-archived',
-				name: 'Archived workflow',
-				type: 'workflow',
-				status: 'archived',
-				version: 3,
-				updatedAt: new Date().toISOString(),
-				updatedBy: null,
-				dependencyCount: 0,
-			},
-			{
-				id: 'wf-deleted',
-				name: 'Deleted workflow',
-				type: 'workflow',
-				status: 'deleted',
-				version: null,
-				updatedAt: new Date().toISOString(),
-				updatedBy: null,
-				dependencyCount: 0,
-			},
-		]);
+		server.get('/rest/promotions/project-1/changes', () => ({
+			data: [
+				{
+					id: 'wf-archived',
+					name: 'Archived workflow',
+					type: 'workflow',
+					status: 'archived',
+					version: 3,
+					updatedAt: new Date().toISOString(),
+					updatedBy: null,
+					dependencyCount: 0,
+				},
+				{
+					id: 'wf-deleted',
+					name: 'Deleted workflow',
+					type: 'workflow',
+					status: 'deleted',
+					version: null,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+				},
+			],
+		}));
 
 		const { getAllByTestId } = renderComponent({
 			pinia,

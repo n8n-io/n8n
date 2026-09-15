@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { SystemTask, SystemTaskClass } from '@n8n/decorators';
+import type { SystemTask, SystemTaskClass, SystemTaskSchedule } from '@n8n/decorators';
 import {
 	OnLeaderStepdown,
 	OnLeaderTakeover,
 	OnShutdown,
+	resolveSystemTaskRunOptions,
 	SystemTaskMetadata,
 	resolveSystemTaskSchedule,
 } from '@n8n/decorators';
@@ -15,8 +16,11 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
+import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { DurableScheduler } from '../durable-scheduler';
 import { SystemTaskHandler } from './system-task-handler';
+import { systemTaskProvisionRequest } from './system-task-job';
+import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
@@ -33,6 +37,7 @@ type InFlightRun = {
 
 type RoutedTask = {
 	task: SystemTask;
+	schedule: SystemTaskSchedule;
 	timer?: SystemTaskTimer;
 	inFlightRun?: InFlightRun;
 	retryTimer?: NodeJS.Timeout;
@@ -68,6 +73,8 @@ export class SystemTaskRunner {
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
 		private readonly durableScheduler: DurableScheduler,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly errorReporter: ErrorReporter,
@@ -77,11 +84,11 @@ export class SystemTaskRunner {
 
 	/**
 	 * Take ownership of the registry: route every task registered so far and
-	 * every one registered later, then start the in-memory timers if this
-	 * instance is already the leader. Later leadership changes arrive through
-	 * {@link startTimers} and {@link stopTimers}.
+	 * every one registered later, start the in-memory timers if this instance is
+	 * already the leader, and provision the durable jobs. Later leadership
+	 * changes arrive through {@link startTimers} and {@link stopTimers}.
 	 */
-	init(): void {
+	async init(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
 		if (!this.initialized) {
@@ -92,6 +99,37 @@ export class SystemTaskRunner {
 			if (this.instanceSettings.isLeader) {
 				this.startTimers();
 			}
+
+			for (const routed of this.durableTasks()) {
+				await this.provisionOne(routed);
+			}
+		}
+	}
+
+	/** Never throws: one task that cannot be provisioned must not stop the rest. */
+	private async provisionOne({ task }: RoutedTask): Promise<void> {
+		try {
+			const summary = await this.durableJobProvisioner.provision(
+				systemTaskProvisionRequest(
+					task,
+					this.systemTaskOwner,
+					this.globalConfig.generic.timezone,
+					new Date(),
+				),
+			);
+			this.logger.debug('Provisioned the durable job of a system task', {
+				name: task.name,
+				inserted: summary.inserted.length,
+				redefined: summary.redefined.length,
+				unchanged: summary.unchanged.length,
+				removed: summary.removed.length,
+			});
+		} catch (error) {
+			this.reportFailure(
+				'Could not provision a durable system task, so it will not run',
+				task,
+				error,
+			);
 		}
 	}
 
@@ -133,6 +171,10 @@ export class SystemTaskRunner {
 		);
 	}
 
+	private durableTasks(): RoutedTask[] {
+		return [...this.routedTasksByName.values()].filter((routed) => this.runsDurably(routed.task));
+	}
+
 	private inFlightRuns(): Array<Promise<void>> {
 		return [...this.routedTasksByName.values()].flatMap(({ inFlightRun }) =>
 			inFlightRun ? [inFlightRun.promise] : [],
@@ -162,6 +204,9 @@ export class SystemTaskRunner {
 	 * @throws {UnexpectedError} When a task declares a `retryDelaySeconds` that is
 	 * not an integer between 1 and {@link MAX_RETRY_DELAY_SECONDS}. A timeout would
 	 * silently turn such a delay into an immediate retry.
+	 *
+	 * @throws {UnexpectedError} When a task declares a `maxAttempts` or
+	 * `misfireGraceSeconds` the scheduler cannot store.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -184,7 +229,9 @@ export class SystemTaskRunner {
 			});
 		}
 
-		const routed: RoutedTask = { task };
+		resolveSystemTaskRunOptions(task);
+
+		const routed: RoutedTask = { task, schedule: resolveSystemTaskSchedule(task) };
 		this.routedTasksByName.set(task.name, routed);
 
 		if (this.runsDurably(task)) {
@@ -194,17 +241,12 @@ export class SystemTaskRunner {
 					this.reportFailure('A durable system task run failed', task, error),
 				),
 			);
-			// Warn rather than debug while nothing provisions the occurrences: an
-			// operator who turns the flag on otherwise sees the task simply stop.
-			this.logger.warn(
-				'System task handed to the durable scheduler, which does not provision its occurrences yet, so it will not run',
-				{ name: task.name },
-			);
+			this.logger.debug('System task will run on the durable scheduler', { name: task.name });
 		} else {
 			routed.timer = this.createTimer(routed);
 			this.logger.debug('System task will run on an in-memory timer', {
 				name: task.name,
-				schedule: task.schedule,
+				schedule: routed.schedule,
 			});
 
 			if (this.timersStarted) {
@@ -226,10 +268,7 @@ export class SystemTaskRunner {
 
 	private createTimer(routed: RoutedTask): SystemTaskTimer {
 		const { task } = routed;
-		const schedule = scheduleFromDefinition(
-			resolveSystemTaskSchedule(task),
-			this.globalConfig.generic.timezone,
-		);
+		const schedule = scheduleFromDefinition(routed.schedule, this.globalConfig.generic.timezone);
 
 		return new SystemTaskTimer(
 			schedule,

@@ -4,6 +4,7 @@ import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { ReasoningLevel } from './reasoning';
 import type { BuiltProviderTool, BuiltTool } from './tool';
+import type { VolatileInstructionsProvider } from '../../runtime/loop/agent-runtime';
 import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 
@@ -19,6 +20,7 @@ import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
 	instructions(text: string): this;
+	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
 	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
 	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;

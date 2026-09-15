@@ -15,7 +15,7 @@ import {
 } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
-import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
+import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 import type {
 	AgentResource,
@@ -117,7 +117,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
 
-	function onOpenAddToolModal() {
+	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
 		const targetAgentId = agentId.value;
@@ -125,6 +125,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
+				mode,
 				tools: localConfig.value?.tools ?? [],
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
@@ -442,6 +443,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
+						let skillHash: string;
 						let versionId: string | null;
 						let skillId: string;
 						try {
@@ -454,6 +456,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							);
 							skillId = result.id;
 							created = result.skill;
+							skillHash = result.skillHash;
 							versionId = result.versionId;
 						} catch (error) {
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
@@ -463,6 +466,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						agent.value = {
 							...agent.value,
 							versionId,
+							skillHashes: {
+								...(agent.value.skillHashes ?? {}),
+								[skillId]: skillHash,
+							},
 							skills: {
 								...(agent.value.skills ?? {}),
 								[skillId]: created,
