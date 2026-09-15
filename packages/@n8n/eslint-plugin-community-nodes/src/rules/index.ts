@@ -7,6 +7,7 @@ import { CredentialDocumentationUrlRule } from './credential-documentation-url.j
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
+import { HintMaxLengthRule } from './hint-max-length.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -52,6 +53,7 @@ export const rules = {
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
+	'hint-max-length': HintMaxLengthRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
