@@ -231,8 +231,11 @@ export class TypeOrmStepStore implements StepStore {
 		}));
 	}
 
-	async cancelQueuedSteps(executionId: string): Promise<void> {
-		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
+	async cancelPendingSteps(executionId: string): Promise<void> {
+		await this.repo.update(
+			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
+			{ status: 'cancelled' },
+		);
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {

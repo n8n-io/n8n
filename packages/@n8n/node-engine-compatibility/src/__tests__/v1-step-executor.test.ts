@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { IConnections, IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionError } from 'n8n-workflow';
@@ -39,6 +39,16 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 			manualTriggerTo('Subject'),
 		),
 	);
+
+/**
+ * The outputs of a result that the test feeds into a later step. A step result
+ * holds outputs or a wait declaration, so a caller that needs the outputs must
+ * say which one it expects.
+ */
+function outputsOf(result: StepExecutionResult): StepSlots {
+	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
+	return result.outputs;
+}
 
 describe('V1StepExecutor', () => {
 	it('rejects legacy expression engine', async () => {
@@ -276,8 +286,9 @@ describe('V1StepExecutor', () => {
 			const graph = expressionWorkflow({ message: "={{ $('A').first().json.message }}" });
 
 			const aResult = await testStepExecutor(graph).execute(stepRequest(graph, 'a', items({})));
-			const bResult = await testStepExecutor(graph, { a: aResult.outputs }).execute(
-				stepRequest(graph, 'b', aResult.outputs),
+			const aOutputs = outputsOf(aResult);
+			const bResult = await testStepExecutor(graph, { a: aOutputs }).execute(
+				stepRequest(graph, 'b', aOutputs),
 			);
 
 			expect(bResult.outputs).toEqual([[{ json: { message: 'from-A' } }]]);
