@@ -27,8 +27,14 @@ import { copyStaticFiles } from '../build';
 
 /** Where the n8n container looks for custom nodes. */
 const CONTAINER_CUSTOM_NODES = '/home/node/.n8n/custom/node_modules';
-/** Named volume so workflows and credentials survive a restart. */
-const DATA_VOLUME = 'n8n-node-cli-data';
+/**
+ * Named volume so workflows and credentials survive a restart. Scoped to the
+ * image, because n8n only migrates a database forward — pointing an older
+ * `--n8n-image` at a database a newer one already migrated is unsupported.
+ */
+function dataVolumeFor(image: string): string {
+	return `n8n-node-cli-data-${image.replace(/[^a-zA-Z0-9_.-]/g, '-')}`;
+}
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
@@ -124,7 +130,7 @@ export default class Dev extends Command {
 					'-p',
 					`${n8nPort}:5678`,
 					'-v',
-					`${DATA_VOLUME}:/home/node/.n8n`,
+					`${dataVolumeFor(image)}:/home/node/.n8n`,
 					'-v',
 					`${projectDir}:${CONTAINER_CUSTOM_NODES}/${packageName}${mountSuffix}`,
 					'-e',
