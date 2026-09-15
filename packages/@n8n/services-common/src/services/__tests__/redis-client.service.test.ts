@@ -1,10 +1,10 @@
-import { Logger } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import Redis from 'ioredis';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '../redis-client.service';
 
 type EventHandler = (...args: unknown[]) => void;
 
@@ -27,10 +27,10 @@ vi.mock('ioredis', () => {
 });
 
 describe('RedisClientService', () => {
-	const logger = mockInstance(Logger);
+	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
-	const globalConfig = mockInstance(GlobalConfig, {
+	const globalConfig = mock<GlobalConfig>({
 		queue: {
 			bull: {
 				redis: {
