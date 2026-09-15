@@ -413,7 +413,10 @@ describe('IdleScalingPool', () => {
 		await pool.dispose();
 	});
 
-	it('should reset the idle timer when setTimeout returns a number', async () => {
+	it('should schedule the idle timer when setTimeout returns a number', async () => {
+		// The stub drops the callback: this covers the `unref` guard on the handle,
+		// not the scale-down the timer would later trigger. Scheduling for real
+		// would fire that scale-down after the pool is disposed.
 		vi.spyOn(globalThis, 'setTimeout').mockImplementation(
 			(() => 1) as unknown as typeof globalThis.setTimeout,
 		);
