@@ -379,7 +379,7 @@ describe('Package import workflowIdPolicy: new', () => {
 
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: summary.localId });
 		expect(stored.sourceWorkflowId).toBe('STILTON');
-		expect(stored.versionId).toBe(wireVersionId('STILTON'));
+		expect(stored.versionId).not.toBe(wireVersionId('STILTON'));
 	});
 
 	it('imports the same package into two projects as independent workflows', async () => {
@@ -2387,6 +2387,34 @@ describe('Package import workflow publishing policy', () => {
 		},
 	];
 
+	it('publishes both copies when one package is imported into two projects', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const packageBuffer = await buildImportPackageBuffer([
+			serializedWorkflow({
+				id: 'STILTON',
+				name: 'Cheese workflow',
+				published: true,
+				nodes: scheduleTriggerNodes(),
+			}),
+		]);
+		const importInto = async (projectId: string) =>
+			await importPackage({
+				user: owner,
+				projectId,
+				packageBuffer,
+				workflowIdPolicy: WorkflowIdPolicy.New,
+				workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+			});
+
+		const first = await importInto(projectA.id);
+		const second = await importInto(projectB.id);
+
+		expect(first.workflows[0].publishing).toEqual({ state: 'published' });
+		expect(second.workflows[0].publishing).toEqual({ state: 'published' });
+	});
+
 	it.each<WorkflowPublishingPolicyValue>([
 		WorkflowPublishingPolicy.PreservePublishedState,
 		WorkflowPublishingPolicy.MatchSource,
@@ -2548,7 +2576,7 @@ describe('Package import workflow publishing policy', () => {
 		// The package content lands as a draft, but the version that was live stays live.
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
-		expect(stored.versionId).toBe(wireVersionId('wf-active'));
+		expect(stored.versionId).not.toBe(originalActiveVersionId);
 	});
 
 	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {

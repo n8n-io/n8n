@@ -18,8 +18,11 @@ import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
-/** Distinct for each workflow: the target persists it, and it keys the history table. */
-export const wireVersionId = (workflowId: string) => `${workflowId}-wire-version`;
+/**
+ * Distinct for each workflow: the target persists it, and it keys the history table. Sized like a
+ * uuid, because the column is fixed width and reads back anything shorter padded with spaces.
+ */
+export const wireVersionId = (workflowId: string) => `${workflowId}-wire-version`.padEnd(36, '-');
 
 export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowMetadata>;
 

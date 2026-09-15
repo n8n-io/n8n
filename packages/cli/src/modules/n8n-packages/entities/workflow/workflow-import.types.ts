@@ -6,7 +6,7 @@ import type {
 	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
-import type { ImportContext } from '../../n8n-packages.types';
+import type { ImportContext, WorkflowIdPolicy } from '../../n8n-packages.types';
 
 /** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
 export interface WorkflowImportContext extends ImportContext {
@@ -97,6 +97,7 @@ export interface WorkflowArchiveForbidden {
  * the import before anything is written.
  */
 export interface WorkflowImportPlan {
+	workflowIdPolicy: WorkflowIdPolicy;
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
 	lineageConflicts: WorkflowLineageConflict[];
