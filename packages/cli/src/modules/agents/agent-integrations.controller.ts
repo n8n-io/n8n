@@ -104,6 +104,19 @@ export class AgentIntegrationsController {
 		);
 	}
 
+	// WhatsApp's Meta app verifies a webhook URL with a GET handshake
+	// (hub.mode/hub.challenge/hub.verify_token) before it will deliver any
+	// POST events to it. Every other platform here only ever sends POST, so
+	// this is purely additive — it reuses the same handler, which already
+	// branches on request method when building the forwarded Web Request.
+	@Get('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
+	async handleWebhookVerification(
+		req: Request<{ projectId: string; agentId: string; platform: string }>,
+		res: Response,
+	) {
+		return await this.handleWebhook(req, res);
+	}
+
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens
 	// via per-platform signature verification inside webhookHandler.
 	@Post('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
