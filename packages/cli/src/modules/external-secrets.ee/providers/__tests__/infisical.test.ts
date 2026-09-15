@@ -119,6 +119,7 @@ describe('InfisicalProvider', () => {
 				baseURL: SITE_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 20_000,
 			});
 		});
 

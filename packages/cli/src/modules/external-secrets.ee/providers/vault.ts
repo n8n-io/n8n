@@ -4,6 +4,7 @@ import {
 	isConnectionRefusedError,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import {
 	type IDataObject,
@@ -288,7 +289,7 @@ export class VaultProvider extends SecretsProvider {
 
 	#http: HttpRequestClient;
 
-	private refreshTimeout: NodeJS.Timeout | null;
+	private refreshTimeout: NodeJS.Timeout | null = null;
 
 	private refreshAbort = new AbortController();
 
@@ -307,6 +308,8 @@ export class VaultProvider extends SecretsProvider {
 			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open.
+			timeout: Container.get(ExternalSecretsConfig).connectTimeout * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Vault provider initialized');
@@ -357,10 +360,15 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
+		this.clearTokenRefresh();
+		this.refreshAbort.abort();
+	}
+
+	private clearTokenRefresh() {
 		if (this.refreshTimeout !== null) {
 			clearTimeout(this.refreshTimeout);
+			this.refreshTimeout = null;
 		}
-		this.refreshAbort.abort();
 	}
 
 	private setupTokenRefresh() {
@@ -376,11 +384,14 @@ export class VaultProvider extends SecretsProvider {
 			return;
 		}
 
+		// One renewal chain per provider: a late connect attempt must not start a second one.
+		this.clearTokenRefresh();
 		const expireDate = new Date(this.#tokenInfo.expire_time);
-		setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
+		this.refreshTimeout = setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
 	}
 
 	private tokenRefresh = async () => {
+		this.refreshTimeout = null;
 		if (this.refreshAbort.signal.aborted) {
 			return;
 		}

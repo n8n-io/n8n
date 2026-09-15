@@ -73,12 +73,12 @@ describe('VaultProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	// Use preferGet so list requests are plain GETs with `?list=true`.
-	mockInstance(ExternalSecretsConfig, { preferGet: true });
+	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		mockInstance(ExternalSecretsConfig, { preferGet: true });
+		mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20 });
 	});
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
@@ -104,6 +104,7 @@ describe('VaultProvider', () => {
 				baseURL: VAULT_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 20_000,
 			});
 		});
 
@@ -643,6 +644,38 @@ describe('VaultProvider', () => {
 					providerName: 'vault',
 				}),
 			);
+		});
+	});
+
+	describe('token refresh', () => {
+		it('keeps one renewal timer across repeated connects and clears it on disconnect', async () => {
+			const renewable = {
+				data: {
+					...tokenLookupResponse().data,
+					renewable: true,
+					expire_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+				},
+			};
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: renewable },
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+			]);
+
+			vi.useFakeTimers();
+			try {
+				await provider.connect();
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await provider.disconnect();
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
