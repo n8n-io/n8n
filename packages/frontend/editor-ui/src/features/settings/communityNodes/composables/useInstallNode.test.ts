@@ -404,6 +404,31 @@ describe('useInstallNode', () => {
 			);
 		});
 
+		it('should show the dedicated title when the package requires an unsupported node API version', async () => {
+			const error = Object.assign(
+				new Error('This community node requires n8n node API version 3.'),
+				{
+					httpStatusCode: 400,
+					meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+				},
+			);
+			vi.mocked(communityNodesStore.installPackage).mockRejectedValue(error);
+
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-node',
+			});
+
+			expect(result.success).toBe(false);
+			expect(showError).toHaveBeenCalledWith(
+				error,
+				'settings.communityNodes.messages.install.incompatible.title',
+			);
+		});
+
 		it('should handle getNpmVersion returning undefined', async () => {
 			vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockResolvedValue(null);
 
