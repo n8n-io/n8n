@@ -6,8 +6,13 @@ import { coverageExcludes } from './coverage-excludes.js';
 
 // Resolves to the empty component that stands in for `.svg` imports (see below).
 const svgStub = fileURLToPath(new URL('./svg-stub.js', import.meta.url));
+// Blocks real network access in every worker. See setup/network-guard.ts.
+const networkGuard = fileURLToPath(new URL('./setup/network-guard.js', import.meta.url));
 
-export const createVitestConfig = (options: InlineConfig = {}) => {
+export const createVitestConfig = ({
+	setupFiles = ['./src/__tests__/setup.ts'],
+	...options
+}: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
 		test: {
 			// Redirect the node-icon `.svg` imports (the ~80 files under
@@ -31,7 +36,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// module, a config-only package) would fail outright. Default it on here so
 			// every frontend package inherits it instead of rediscovering the failure.
 			passWithNoTests: true,
-			setupFiles: ['./src/__tests__/setup.ts'],
+			// The guard runs before the package's own setup files.
+			setupFiles: [networkGuard, ...(Array.isArray(setupFiles) ? setupFiles : [setupFiles])],
 			// Inline so vitest maps the `vitest` import inside it to the running instance.
 			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
 			server: { deps: { inline: ['vitest-mock-extended'] } },
