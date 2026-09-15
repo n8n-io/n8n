@@ -340,6 +340,10 @@ const isManagedOAuth = computed(
 	() => props.isOAuthType && props.managedOauthAvailable && !props.useCustomOauth,
 );
 
+const shouldShowOAuthRedirectUrl = computed(
+	() => props.isOAuthType && !isManagedOAuth.value && !props.credentialType.hideOAuthRedirectUrl,
+);
+
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
 }
@@ -397,7 +401,11 @@ async function onInstanceAiCredentialHelpClick() {
 		...(placeholderTitles.length ? { placeholderTitles } : {}),
 		...(recipeDocsUrl ? { docsUrl: recipeDocsUrl } : {}),
 		documentationUrl: documentationUrl.value || undefined,
-		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
+		// A device-code credential has no redirect URL to hand the assistant.
+		oauthRedirectUrl:
+			props.isOAuthType && !props.credentialType.hideOAuthRedirectUrl
+				? oAuthCallbackUrl.value
+				: undefined,
 	});
 	if (shouldCloseModal) {
 		uiStore.closeModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -699,7 +707,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 				<template v-if="canWrite">
 					<CopyInput
-						v-if="isOAuthType && !isManagedOAuth"
+						v-if="shouldShowOAuthRedirectUrl"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 						:value="oAuthCallbackUrl"
 						:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
