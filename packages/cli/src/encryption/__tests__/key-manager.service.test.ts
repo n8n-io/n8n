@@ -736,6 +736,18 @@ describe('KeyManagerService', () => {
 			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(rawKey);
 		});
 
+		it('recovers a raw instance key stored verbatim and re-wraps it as GCM', async () => {
+			const encryptionKey = randomBytes(24).toString('base64');
+			const { service, repo, cipher } = makeRepairService(encryptionKey);
+			repo.findDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'k', value: encryptionKey })]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [id, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(id).toBe('k');
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(encryptionKey);
+		});
+
 		it.each<[string, (cipher: Cipher, other: Cipher) => string]>([
 			['already GCM-wrapped', (cipher) => cipher.encryptDEKWithInstanceKey(rawKey)],
 			[

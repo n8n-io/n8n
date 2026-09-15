@@ -136,6 +136,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
 		const { value } = keyInfo;
+		// Older seed: the DEK stored as the instance key verbatim, unwrapped. Checked
+		// first so a value equal to the instance key is recovered whatever its shape.
+		if (value === this.instanceSettings.encryptionKey) {
+			return value;
+		}
+
 		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
 		if (RAW_DEK_PATTERN.test(value)) {
 			return value;
