@@ -22,6 +22,11 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import {
+	nodeNameForCall,
+	QUICKJS_TRANSFER_RULES,
+	untransferableItemError,
+} from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -298,13 +303,15 @@ function loadRuntimeBundle(): string {
  * JSON round-trip and rebuild in the guest via __unwrapFromHost — matching
  * what isolated-vm's structured clone delivers.
  */
-function hostValueToJson(value: unknown): string {
+const ENCODING_FAILED = Symbol('encoding-failed');
+
+function hostValueToJson(value: unknown): string | typeof ENCODING_FAILED {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
 		return safeStringify(wrapSpecialValuesForGuest(value));
 	} catch {
-		return 'undefined';
+		return ENCODING_FAILED;
 	}
 }
 
@@ -1100,7 +1107,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			const rawMsg = vm.dump(msgHandle);
 			try {
 				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
+				return this.hostValueToQuickJSHandle(result, (rejected) =>
+					serializeError(
+						untransferableItemError(
+							rejected,
+							QUICKJS_TRANSFER_RULES,
+							nodeNameForCall(rawMsg, data),
+						),
+					),
+				);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
@@ -1115,7 +1130,10 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
 	 */
-	private hostValueToQuickJSHandle(value: unknown): import('quickjs-emscripten').QuickJSHandle {
+	private hostValueToQuickJSHandle(
+		value: unknown,
+		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+	): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		if (value === undefined) return this.vm.undefined;
@@ -1135,20 +1153,30 @@ export class QuickJsBridge implements RuntimeBridge {
 			const dateResult = this.vm.evalCode(`(new Date(${value.getTime()}))`);
 			if (dateResult.error) {
 				dateResult.error.dispose();
-				return this.vm.undefined;
+				return this.transferFailureHandle(value, onTransferFailure);
 			}
 			return dateResult.value;
 		}
 
 		const json = hostValueToJson(value);
+		if (json === ENCODING_FAILED) return this.transferFailureHandle(value, onTransferFailure);
 		if (json === 'undefined') return this.vm.undefined;
 
 		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
 		if (result.error) {
 			result.error.dispose();
-			return this.vm.undefined;
+			return this.transferFailureHandle(value, onTransferFailure);
 		}
 		return result.value;
+	}
+
+	private transferFailureHandle(
+		value: unknown,
+		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+	): import('quickjs-emscripten').QuickJSHandle {
+		if (!this.vm) throw new Error('Context not initialized');
+		if (!onTransferFailure) return this.vm.undefined;
+		return this.hostValueToQuickJSHandle(onTransferFailure(value));
 	}
 
 	/**

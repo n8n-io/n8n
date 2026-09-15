@@ -13,6 +13,11 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
+import {
+	nodeNameForCall,
+	untransferableItemError,
+	VM_TRANSFER_RULES,
+} from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -355,10 +360,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 */
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
+			let result: unknown;
 			try {
-				return dispatchHostCall(rawMsg, data);
+				result = dispatchHostCall(rawMsg, data);
 			} catch (err) {
 				return serializeError(err);
+			}
+			try {
+				return new (getIvm().ExternalCopy)(result);
+			} catch {
+				return serializeError(
+					untransferableItemError(result, VM_TRANSFER_RULES, nodeNameForCall(rawMsg, data)),
+				);
 			}
 		});
 	}
