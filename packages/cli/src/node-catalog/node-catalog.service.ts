@@ -4,7 +4,6 @@ import type {
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -459,6 +458,7 @@ export class NodeCatalogService {
 			// on this instance can act on a discovery result: install() rejects
 			// every call. Offering uninstalled nodes here would only steer the
 			// agent into workflows that cannot run.
+			const { GlobalConfig } = await import('@n8n/config');
 			const { instanceSettingsLoader } = Container.get(GlobalConfig);
 			if (instanceSettingsLoader.communityPackagesManagedByEnv) return null;
 
