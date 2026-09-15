@@ -770,6 +770,35 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			);
 		});
 
+		test('keeps both deadlines referenced so a shutdown still reaches the abandon path', async () => {
+			// At shutdown the poll timer is already cleared, so an unref'd deadline
+			// could let the process exit before the abort and the reporting below run.
+			const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+			const deadlineFor = (delayMs: number) => {
+				const index = setTimeoutSpy.mock.calls.findIndex(([, delay]) => delay === delayMs);
+				expect(index).toBeGreaterThanOrEqual(0);
+				return setTimeoutSpy.mock.results[index].value as NodeJS.Timeout;
+			};
+
+			const stuck = makeRecord({ id: 1 });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(stuck).mockResolvedValue(null);
+			applier.apply.mockImplementationOnce(async () => await new Promise(() => {}));
+			consumer.startPolling();
+
+			const drain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(0);
+			expect(deadlineFor(ABORT_AFTER_MS).hasRef()).toBe(true);
+
+			await vi.advanceTimersByTimeAsync(ABORT_AFTER_MS);
+			expect(deadlineFor(ABANDON_GRACE_MS).hasRef()).toBe(true);
+
+			// Restored while the fake timers are still installed, so the spy cannot
+			// outlive the test.
+			setTimeoutSpy.mockRestore();
+			await vi.advanceTimersByTimeAsync(ABANDON_GRACE_MS);
+			await drain;
+		});
+
 		test('scales the abandon grace down for short leases so abandonment stays within the lease', async () => {
 			// Lease 16s: abort fires at 11.2s, grace is capped at 4s (a quarter of
 			// the lease) instead of the fixed 10s, so abandonment lands at 15.2s —
