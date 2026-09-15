@@ -62,16 +62,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The queue requires this status on the merge-group head, but there is
-  # nothing new to evaluate there: entering the queue already required the
-  # status to be green on the PR head, and queueing does not change approvals.
-  pass-in-merge-queue:
-    name: Pass in merge queue
-    if: github.event_name == 'merge_group'
+  setup-tokens:
+    name: Set up App Token
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      statuses: write
+    outputs:
+      token: ${{ steps.app-token.outputs.token }}
     steps:
       - name: Generate App Token
         id: app-token
@@ -84,9 +79,20 @@ jobs:
           permission-members: read
           permission-pull-requests: read
           permission-statuses: write
-
+  # The queue requires this status on the merge-group head, but there is
+  # nothing new to evaluate there: entering the queue already required the
+  # status to be green on the PR head, and queueing does not change approvals.
+  pass-in-merge-queue:
+    name: Pass in merge queue
+    needs: setup-tokens
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    steps:
       - env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ needs.setup-tokens.outputs.token }}
           SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -96,6 +102,7 @@ jobs:
 
   required-reviews:
     name: Check required reviews
+    needs: setup-tokens
     # Fork PRs are skipped on pull_request (no secrets for the app token);
     # pull_request_review covers them. pull_request_review has no `branches`
     # filter; the script also skips non-master bases, the guard here keeps
@@ -112,17 +119,6 @@ jobs:
       contents: read
       statuses: write
     steps:
-      - name: Generate App Token
-        id: app-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
-          # Scope the token to what the script needs; without these inputs it
-          # would inherit every permission of the app installation.
-          permission-members: read
-          permission-pull-requests: read
-          permission-statuses: write
       # Fail closed before any fallible step: replace a possibly-green status
       # with pending, so a failure in token generation, checkout, or setup
       # cannot leave a stale verdict in effect. The script sets the verdict.
@@ -131,7 +127,7 @@ jobs:
       - name: Set pending status
         if: github.event_name != 'workflow_dispatch'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ needs.setup-tokens.outputs.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -169,7 +165,7 @@ jobs:
       - name: Report the bootstrap state
         if: steps.bootstrap.outputs.ready != 'true' && github.event.pull_request.head.sha != ''
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ needs.setup-tokens.outputs.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -185,4 +181,4 @@ jobs:
         with:
           script: .github/scripts/owners/required-reviews.mjs
           # App token: reading org team membership is beyond GITHUB_TOKEN.
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ needs.setup-tokens.outputs.token }}
