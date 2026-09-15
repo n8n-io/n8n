@@ -40,14 +40,12 @@ const {
 	isCollapsingDetailsPanel,
 	isOverviewPanelFullWidth,
 	popOutWindow,
-	onResize,
+	resizer,
+	chatPanelResizer,
+	overviewPanelResizer,
 	onResizeEnd,
 	onToggleOpen,
 	onPopOut,
-	onChatPanelResize,
-	onChatPanelResizeEnd,
-	onOverviewPanelResize,
-	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
@@ -116,8 +114,6 @@ function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
 		select(undefined);
 	}
-
-	onOverviewPanelResizeEnd();
 }
 
 function handleOpenNdv(treeNode: LogEntry) {
@@ -162,12 +158,11 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 		/>
 		<div ref="popOutContent" :class="[$style.popOutContent, isPoppedOut ? $style.poppedOut : '']">
 			<N8nResizeWrapper
-				:height="isPoppedOut ? undefined : height"
+				:resizer="resizer"
 				:supported-directions="['top']"
 				:is-resizing-enabled="!isPoppedOut"
 				:class="$style.resizeWrapper"
 				:style="{ height: isOpen && !isPoppedOut ? `${height}px` : 'auto' }"
-				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
 				<div ref="container" :class="$style.container" tabindex="-1">
@@ -175,12 +170,10 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 						v-if="hasChat && (!props.isReadOnly || (chatOptions.messageHistory ?? []).length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
-						:width="chatPanelWidth"
+						:resizer="chatPanelResizer"
 						:style="{ width: `${chatPanelWidth}px` }"
 						:class="$style.chat"
 						:window="popOutWindow"
-						@resize="onChatPanelResize"
-						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
 							:key="`canvas-chat-${currentSessionId}-${isReadOnly ? (execution?.id ?? 'none') : 'live'}${isPoppedOut ? '-pop-out' : ''}`"
@@ -200,12 +193,11 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 					<div ref="logsContainer" :class="$style.logsContainer">
 						<N8nResizeWrapper
 							:class="$style.overviewResizer"
-							:width="overviewPanelWidth"
+							:resizer="overviewPanelResizer"
 							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
 							:is-resizing-enabled="isLogDetailsOpen"
 							:window="popOutWindow"
-							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
