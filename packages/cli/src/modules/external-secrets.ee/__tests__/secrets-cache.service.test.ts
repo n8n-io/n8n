@@ -1,8 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
-import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from '../constants';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 
@@ -11,6 +12,7 @@ describe('SecretsCache', () => {
 	let registry: ExternalSecretsProviderRegistry;
 	let dummyProvider: DummyProvider;
 	let anotherProvider: AnotherDummyProvider;
+	const config = Container.get(ExternalSecretsConfig);
 
 	const providerSettings = {
 		connected: true,
@@ -20,7 +22,7 @@ describe('SecretsCache', () => {
 
 	beforeEach(async () => {
 		registry = new ExternalSecretsProviderRegistry();
-		cache = new ExternalSecretsSecretsCache(mockLogger(), registry);
+		cache = new ExternalSecretsSecretsCache(mockLogger(), registry, config);
 
 		dummyProvider = new DummyProvider();
 		await dummyProvider.init(providerSettings);
@@ -63,7 +65,7 @@ describe('SecretsCache', () => {
 				);
 
 				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
-				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
 
 				await expect(refreshPromise).resolves.toBeUndefined();
 			} finally {

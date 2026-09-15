@@ -6,6 +6,14 @@ export class ExternalSecretsConfig {
 	@Env('N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL')
 	updateInterval: number = 300;
 
+	/** How long (in seconds) to wait for a provider to connect before it is marked errored and retried in the background */
+	@Env('N8N_EXTERNAL_SECRETS_CONNECT_TIMEOUT')
+	connectTimeout: number = 20;
+
+	/** How long (in seconds) to wait for a provider to fetch its secrets before the refresh is abandoned */
+	@Env('N8N_EXTERNAL_SECRETS_REFRESH_TIMEOUT')
+	refreshTimeout: number = 20;
+
 	/** Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault */
 	@Env('N8N_EXTERNAL_SECRETS_PREFER_GET')
 	preferGet: boolean = false;

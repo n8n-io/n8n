@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 
 import {
 	DummyProvider,
@@ -7,12 +8,13 @@ import {
 	MockProviders,
 } from '@test/external-secrets/utils';
 
-import { EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS } from '../constants';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 
 describe('ProviderLifecycle', () => {
 	let lifecycle: ExternalSecretsProviderLifecycle;
 	let mockProviders: MockProviders;
+	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
 
 	const providerSettings = {
 		connected: true,
@@ -114,7 +116,7 @@ describe('ProviderLifecycle', () => {
 			vi.useFakeTimers();
 			try {
 				const connectPromise = lifecycle.connect(provider);
-				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+				await vi.advanceTimersByTimeAsync(connectTimeoutMs);
 
 				const result = await connectPromise;
 				expect(result.success).toBe(false);
@@ -144,7 +146,7 @@ describe('ProviderLifecycle', () => {
 			vi.useFakeTimers();
 			try {
 				const timedOut = lifecycle.connect(provider);
-				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+				await vi.advanceTimersByTimeAsync(connectTimeoutMs);
 				expect((await timedOut).success).toBe(false);
 
 				expect((await lifecycle.connect(provider)).success).toBe(true);

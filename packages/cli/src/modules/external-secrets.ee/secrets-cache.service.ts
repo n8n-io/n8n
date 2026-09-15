@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from './constants';
+import { ExternalSecretsConfig } from './external-secrets.config';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import type { SecretsProvider } from './types';
 import { withTimeout } from './with-timeout';
@@ -16,6 +17,7 @@ export class ExternalSecretsSecretsCache {
 	constructor(
 		private readonly logger: Logger,
 		private readonly registry: ExternalSecretsProviderRegistry,
+		private readonly config: ExternalSecretsConfig,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -43,10 +45,11 @@ export class ExternalSecretsSecretsCache {
 		}
 
 		try {
+			const timeoutMs = this.config.refreshTimeout * Time.seconds.toMilliseconds;
 			await withTimeout(
 				provider.update(),
-				EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS,
-				`Timed out refreshing secrets after ${EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS}ms`,
+				timeoutMs,
+				`Timed out refreshing secrets after ${timeoutMs}ms`,
 			);
 			this.logger.debug(`Refreshed secrets from provider ${name}`);
 		} catch (error) {

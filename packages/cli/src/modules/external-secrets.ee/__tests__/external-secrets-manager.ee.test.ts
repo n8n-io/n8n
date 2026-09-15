@@ -1,15 +1,15 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SecretsProviderConnectionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
 
-import { EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
-import type { ExternalSecretsConfig } from '../external-secrets.config';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsRetryManager } from '../retry-manager.service';
@@ -27,6 +27,7 @@ const createDeferred = () => {
 };
 
 describe('ExternalSecretsManager', () => {
+	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
 	vi.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
@@ -1129,7 +1130,11 @@ describe('ExternalSecretsManager', () => {
 					providersFactory,
 				);
 				const retryManager = new ExternalSecretsRetryManager(mockLogger());
-				const secretsCache = new ExternalSecretsSecretsCache(mockLogger(), providerRegistry);
+				const secretsCache = new ExternalSecretsSecretsCache(
+					mockLogger(),
+					providerRegistry,
+					Container.get(ExternalSecretsConfig),
+				);
 				const providerConnectionManager = new ExternalSecretsProviderConnectionManager(
 					mockLogger(),
 					providerRegistry,
@@ -1473,7 +1478,7 @@ describe('ExternalSecretsManager', () => {
 					});
 
 					const initPromise = manager.init();
-					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
 
 					try {
 						await initPromise;
@@ -1501,7 +1506,7 @@ describe('ExternalSecretsManager', () => {
 					});
 
 					const initPromise = manager.init();
-					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
 
 					try {
 						await initPromise;
@@ -1531,7 +1536,7 @@ describe('ExternalSecretsManager', () => {
 					});
 
 					const initPromise = manager.init();
-					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_CONNECT_TIMEOUT_MS);
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
 
 					try {
 						await initPromise;
