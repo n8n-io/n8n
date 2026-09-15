@@ -661,6 +661,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		title: '',
 		children: [
 			{
+				uuid: 'additional-workflow-elements-trigger',
 				key: TRIGGER_NODE_CREATOR_VIEW,
 				type: 'view',
 				properties: {
