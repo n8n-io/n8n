@@ -3,7 +3,6 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
@@ -130,8 +129,6 @@ export type McpAppsResolution = {
 /** Per-user resolution of every PostHog-gated MCP feature. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/** Canvas node-group support in the workflow-builder tools. */
-	canvasGroupsEnabled: boolean;
 	/** Saved AI preferences in the server instructions. */
 	aiPreferencesEnabled: boolean;
 };
@@ -248,7 +245,7 @@ export class McpService {
 	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled } = this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
@@ -257,7 +254,6 @@ export class McpService {
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
@@ -462,7 +458,6 @@ export class McpService {
 				instructions: getMcpInstructions({
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
-					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
 					aiPreferences: await aiPreferences,
 				}),
@@ -703,9 +698,7 @@ export class McpService {
 		);
 		registerIfAllowed(getNodeTypesTool);
 
-		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
@@ -715,9 +708,7 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -734,7 +725,6 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -839,7 +829,6 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -868,9 +857,7 @@ export class McpService {
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(undefined, {
-							includeGroups: featureFlags.canvasGroupsEnabled,
-						}),
+						text: getSdkReferenceContent(),
 					},
 				],
 			}),
@@ -878,9 +865,7 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
 		registerIfAllowed(sdkRefTool);
 	}
 

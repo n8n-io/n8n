@@ -10,12 +10,6 @@ export const MCP_APPS_FLAG = '087_mcp_apps';
 export const MCP_APPS_VARIANT_CONTROL = 'control';
 export const MCP_APPS_VARIANT_ENABLED = 'variant';
 
-// PostHog boolean rollout flag id gating Canvas node-group support in the MCP
-// workflow-builder tools (group docs in the SDK reference, group handling in
-// the create/validate/update tools). `true` enables; anything else keeps the
-// current behaviour.
-export const MCP_CANVAS_GROUPS_FLAG = '102_mcp_canvas_groups';
-
 export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] as const;
 
 /**
