@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -64,7 +64,13 @@ const currentProjectId = computed(() => projectsStore.currentProject?.id);
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
 
 const promotableChangeCount = ref(0);
-const showPromoteButton = computed(() => isPromotionsEnabled.value && isTeamProject.value);
+const showPromoteButton = computed(
+	() =>
+		isTeamProject.value &&
+		isPromotionsEnabled.value &&
+		!!projectPermissions.value.export &&
+		!!getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection.push,
+);
 
 async function fetchPromotableChangeCount() {
 	// Capture the project this request is for, so a slow response for a project the
@@ -526,12 +532,7 @@ const promotionBannerText = computed(() => {
 	});
 });
 
-watch(currentProjectId, () => {
-	fetchPromotableChangeCount().catch(() => {});
-});
-onMounted(() => {
-	fetchPromotableChangeCount().catch(() => {});
-});
+watch([currentProjectId, showPromoteButton], fetchPromotableChangeCount, { immediate: true });
 
 function onOpenPromotionModal() {
 	if (!currentProjectId.value) return;
@@ -639,6 +640,8 @@ const onSelect = (action: string, source: CreateSource) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .projectHeader {
 	display: flex;
 	align-items: flex-start;
@@ -704,7 +707,7 @@ const onSelect = (action: string, source: CreateSource) => {
 	opacity: 1;
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.projectHeader {
 		flex-direction: column;
 		align-items: flex-start;

@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 
 import {
 	BOT_MARKER,
+	DISPATCH_OPERATIONS,
+	WORKFLOW_URL,
 	downComment,
 	expiredComment,
 	failureComment,
@@ -11,6 +13,7 @@ import {
 	parsePreviewJson,
 	portFromUrl,
 	readyComment,
+	resolveOperation,
 } from './codespace-preview.mjs';
 
 const PREVIEW = {
@@ -53,6 +56,30 @@ describe('operationFor', () => {
 		assert.equal(operationFor('opened'), undefined);
 		assert.equal(operationFor('reopened'), undefined);
 		assert.equal(operationFor(''), undefined);
+	});
+});
+
+describe('resolveOperation', () => {
+	it('falls back to the event mapping when no operation is requested', () => {
+		assert.equal(resolveOperation({ action: 'labeled', label: 'codespace-preview' }), 'up');
+		assert.equal(resolveOperation({ action: 'synchronize' }), 'refresh');
+		assert.equal(resolveOperation({ action: 'labeled', label: 'bug' }), undefined);
+		// The workflow sets the variable to '' on a pull_request run, not undefined.
+		assert.equal(resolveOperation({ action: 'closed', operation: '' }), 'down');
+	});
+
+	it('lets a manual run choose, over the event', () => {
+		for (const operation of DISPATCH_OPERATIONS) {
+			assert.equal(resolveOperation({ action: '', operation }), operation);
+		}
+		assert.equal(resolveOperation({ action: 'synchronize', operation: 'down' }), 'down');
+	});
+
+	it('rejects an operation that is not one of ours', () => {
+		// `ls` posts no comment and needs no PR, so the workflow does not offer it.
+		assert.equal(resolveOperation({ action: '', operation: 'ls' }), undefined);
+		assert.equal(resolveOperation({ action: '', operation: 'UP' }), undefined);
+		assert.equal(resolveOperation({ action: '', operation: 'up; rm -rf /' }), undefined);
 	});
 });
 
@@ -158,5 +185,16 @@ describe('comment bodies', () => {
 	it('the failure comment carries the cause and the run link', () => {
 		assert.match(bodies.failure, /exited 1/);
 		assert.match(bodies.failure, /actions\/runs\/1/);
+	});
+
+	it('quotes the idle timeout preview.mjs actually sets', () => {
+		// preview.mjs creates a box with --idle-timeout 2h.
+		assert.match(bodies.ready, /sleeps after 2 hours/);
+	});
+
+	it('points a slept, expired or failed box at the manual run', () => {
+		for (const name of ['ready', 'expired', 'failure']) {
+			assert.ok(bodies[name].includes(WORKFLOW_URL), `${name} must link the workflow`);
+		}
 	});
 });

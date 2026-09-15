@@ -32,7 +32,6 @@
     "nanoid": "catalog:",
     "picocolors": "catalog:",
     "playwright-core": "catalog:",
-    "selenium-webdriver": "4.39.0",
     "turndown": "catalog:",
     "ws": "8.20.1",
     "yargs-parser": "21.1.1",

@@ -237,7 +237,7 @@ defineExpose({
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	height: var(--height--lg);
+	height: var(--n8n-ai-select--height, var(--height--lg));
 	padding: 0 var(--spacing--xs);
 	gap: var(--spacing--xs);
 	border: var(--border);
@@ -271,9 +271,16 @@ defineExpose({
 .dropdownButtonBorderless {
 	border-color: transparent;
 	background-color: transparent;
+	padding: 0 var(--spacing--2xs);
 
 	&:hover {
-		background-color: var(--color--foreground);
+		background-color: var(--background--hover);
+	}
+
+	&:active,
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
+		background-color: var(--background--active);
 	}
 }
 

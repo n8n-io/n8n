@@ -50,6 +50,7 @@ describe('MessageEventBus.initialize', () => {
 			executionRepository,
 			mock(),
 			mock(),
+			mock(),
 			globalConfig,
 			mock<InstanceSettings>({ n8nFolder: tempDir }),
 		);

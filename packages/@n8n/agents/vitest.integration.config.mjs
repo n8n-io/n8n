@@ -4,7 +4,7 @@ import { config as loadEnv } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-loadEnv({ path: resolve(__dirname, '.env') });
+loadEnv({ path: resolve(__dirname, '.env'), quiet: true });
 
 export default defineConfig({
 	test: {

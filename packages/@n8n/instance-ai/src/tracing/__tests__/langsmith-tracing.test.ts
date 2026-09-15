@@ -1,5 +1,6 @@
 /* eslint-disable import-x/order */
 import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Context, ContextManager } from '@opentelemetry/api';
 import * as langsmithModule from 'langsmith';
 import { jsonParse } from 'n8n-workflow';
@@ -18,9 +19,14 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTracePromptVersion,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
+	withSandboxLifecycleTrace,
 } from '../langsmith-tracing';
+import { traceSandboxOperation, sandboxCommandTraceResult } from '../sandbox-tracing';
+import { runInSandbox } from '../../workspace/sandbox-fs';
+import { writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
 
 vi.mock('@n8n/agents', async () => {
@@ -441,6 +447,8 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing?.getTelemetry).toBeDefined();
+		setTracePromptVersion(tracing, undefined);
+		expect(tracing?.rootRun.metadata).not.toHaveProperty('prompt_version');
 
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
@@ -455,6 +463,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(telemetry.recordInputs).toBe(true);
 		expect(telemetry.recordOutputs).toBe(true);
 		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
+		expect(telemetry.metadata).not.toHaveProperty('prompt_version');
 		expect(telemetry.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
@@ -564,6 +573,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'What workflows do I have?' },
 		});
 		const actorRun = await startForegroundActor(tracing!);
+		setTracePromptVersion(tracing, 'default@1');
 
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
@@ -576,8 +586,15 @@ describe('createInstanceAiTraceContext', () => {
 			expect.objectContaining({
 				langsmith_root_run_id: tracing?.rootRun.id,
 				langsmith_actor_run_id: actorRun.id,
+				prompt_version: 'default@1',
 			}),
 		);
+		expect(tracing?.rootRun.metadata).toHaveProperty('prompt_version', 'default@1');
+		expect(actorRun.metadata).toHaveProperty('prompt_version', 'default@1');
+		for (const run of [tracing!.rootRun, actorRun]) {
+			const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+			expect(span?.attributes).toHaveProperty('langsmith.metadata.prompt_version', 'default@1');
+		}
 
 		await telemetry.provider?.shutdown();
 	});
@@ -1336,6 +1353,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		setTracePromptVersion(tracing, 'progressive@1');
 
 		const continuedTracing = await continueInstanceAiTraceContext(tracing!, {
 			threadId: 'thread-1',
@@ -1358,6 +1376,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
+				prompt_version: 'progressive@1',
 			}),
 		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
@@ -1377,6 +1396,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.orchestratorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
+				prompt_version: 'progressive@1',
 			}),
 		);
 	});
@@ -1499,6 +1519,22 @@ describe('createInstanceAiTraceContext', () => {
 		expect(inputs.runtime_skill_categories).toEqual(['data']);
 		expect(JSON.stringify(inputs)).toContain('data-table-manager');
 		expect(JSON.stringify(inputs)).not.toContain('Full skill instructions');
+	});
+
+	it('records the selected profile and system prompt hash in trace inputs', () => {
+		const inputs = buildAgentTraceInputs({
+			systemPrompt: 'Test instructions.',
+			promptConfiguration: {
+				version: 'default@1',
+				systemPromptVersion: 'instance-agent@1',
+				skillVariants: [],
+				skillsHash: 'selected-skills',
+				fallbackFrom: 'retired@1',
+			},
+		});
+		expect(inputs).toHaveProperty('prompt_configuration.version', 'default@1');
+		expect(inputs).toHaveProperty('prompt_configuration.fallbackFrom', 'retired@1');
+		expect(inputs.system_prompt_hash).toMatch(/^[a-f0-9]{64}$/);
 	});
 
 	it('redacts model secrets from trace metadata', async () => {
@@ -2279,6 +2315,355 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeUndefined();
+	});
+	describe('sandbox tracing', () => {
+		const createSandboxTrace = async (threadId = 'sandbox-thread') => {
+			const tracing = await createInstanceAiTraceContext({
+				threadId,
+				runId: 'run',
+				messageId: 'message',
+				userId: 'user',
+				input: 'test',
+			});
+			if (!tracing) throw new Error('Expected a trace');
+			return tracing;
+		};
+
+		it('records command metadata under the current turn without command contents', async () => {
+			const first = await createSandboxTrace();
+			await first.finishRun(first.rootRun);
+			const second = await createSandboxTrace();
+			const command = 'node -e "writeFile(payload)"';
+			const executeCommand = vi.fn(
+				async () =>
+					await Promise.resolve({
+						exitCode: 0,
+						stdout: 'private file contents',
+						stderr: '',
+					}),
+			);
+			await second.withActiveSpan(
+				second.rootRun,
+				async () => await runInSandbox({ sandbox: { executeCommand } }, command),
+			);
+			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: execute-command');
+			expect(span).toMatchObject({ parentSpanId: second.rootRun.otelSpanId, ended: true });
+			expect(span?.attributes['langsmith.metadata.thread_id']).toBe('sandbox-thread');
+			expect(jsonParse<Record<string, unknown>>(String(span?.attributes['gen_ai.prompt']))).toEqual(
+				{
+					commandBytes: Buffer.byteLength(command),
+				},
+			);
+			expect(JSON.stringify(span)).not.toContain('private file contents');
+			expect(JSON.stringify(span)).not.toContain(command);
+		});
+
+		it('records a nonzero command exit as a completed result', async () => {
+			const tracing = await createSandboxTrace();
+			const commandResult = { exitCode: 1, stdout: '', stderr: 'No matching entry' };
+			const executeCommand = vi.fn(async () => await Promise.resolve(commandResult));
+			const result = await tracing.withActiveSpan(
+				tracing.rootRun,
+				async () => await runInSandbox({ sandbox: { executeCommand } }, 'grep pattern file'),
+			);
+			expect(result).toEqual(commandResult);
+			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: execute-command');
+			expect(span).toMatchObject({ ended: true, status: { code: 1 } });
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('completed');
+			expect(
+				jsonParse<Record<string, unknown>>(String(span?.attributes['gen_ai.completion'])),
+			).toMatchObject({ exitCode: 1, stderr: 'No matching entry' });
+		});
+
+		it('records a thrown command execution error and preserves it for the caller', async () => {
+			const tracing = await createSandboxTrace();
+			const error = new Error('Command execution unavailable');
+			const executeCommand = vi.fn(async () => await Promise.reject(error));
+			await expect(
+				tracing.withActiveSpan(
+					tracing.rootRun,
+					async () => await runInSandbox({ sandbox: { executeCommand } }, 'command'),
+				),
+			).rejects.toBe(error);
+			const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: execute-command');
+			expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('error');
+		});
+
+		it.each([
+			{ status: { exitCode: 1 }, expectedError: undefined },
+			{ status: { exitCode: 0, timedOut: true }, expectedError: 'Command timed out' },
+			{ status: { exitCode: 0, killed: true }, expectedError: 'Command was killed' },
+		])('keeps bounded diagnostics for command result %j', async ({ status, expectedError }) => {
+			const key = `-----BEGIN PRIVATE KEY-----\n${'A'.repeat(2300)}\n-----END PRIVATE KEY-----`;
+			const result = await sandboxCommandTraceResult({
+				...status,
+				stdout: 'npm error EAI_AGAIN registry.npmjs.org',
+				stderr: key,
+			});
+			expect(result.error).toBe(expectedError);
+			expect(result.outputs).toEqual(
+				expect.objectContaining({
+					stdout: 'npm error EAI_AGAIN registry.npmjs.org',
+				}),
+			);
+			expect(JSON.stringify(result.outputs)).not.toContain('A'.repeat(20));
+			expect(JSON.stringify(result.outputs)).not.toContain('BEGIN PRIVATE KEY');
+			const long = await sandboxCommandTraceResult({
+				...status,
+				stdout: 'x '.repeat(3000),
+				stderr: 'y '.repeat(3000),
+			});
+			const diagnostics = long.outputs as { stdout: string; stderr: string };
+			expect(diagnostics.stdout.length).toBeLessThanOrEqual(2000);
+			expect(diagnostics.stderr.length).toBeLessThanOrEqual(2000);
+		});
+
+		it.each(['privateKey', 'private_key', 'private-key'])(
+			'filters %s fields in exported spans',
+			(key) => {
+				const value = 'opaque-test-material';
+				const span = {
+					attributes: { [key]: value },
+					events: [
+						{
+							name: 'operation',
+							attributes: { [key]: value, details: { [key]: value, format: 'example' } },
+						},
+					],
+				};
+				const filtered = redactLangSmithTelemetrySpan(span);
+				expect(filtered).toMatchObject({
+					attributes: { [key]: '[redacted]' },
+					events: [
+						{
+							name: 'operation',
+							attributes: {
+								[key]: '[redacted]',
+								details: { [key]: '[redacted]', format: 'example' },
+							},
+						},
+					],
+				});
+				expect(JSON.stringify(filtered)).not.toContain(value);
+			},
+		);
+
+		it('filters status and exception fields before export', () => {
+			const message = 'Could not open person@example.com.workflow.ts';
+			const span = {
+				attributes: {},
+				status: { code: 2, message },
+				events: [
+					{
+						name: 'exception',
+						time: [1, 2],
+						attributes: {
+							'exception.message': message,
+							'exception.stacktrace': `Error: ${message}\n at run()`,
+						},
+					},
+				],
+			};
+			const filtered = redactLangSmithTelemetrySpan(span);
+			expect(JSON.stringify(filtered)).not.toContain('person@example.com');
+			expect(filtered).toMatchObject({
+				status: { code: 2 },
+				events: [{ name: 'exception', time: [1, 2] }],
+			});
+		});
+
+		it('ends pending operations when their turn closes and preserves the eventual result', async () => {
+			const tracing = await createSandboxTrace();
+			const started = createDeferredPromise();
+			const release = createDeferredPromise<number>();
+			const operation = tracing.withActiveSpan(
+				tracing.rootRun,
+				async () =>
+					await traceSandboxOperation('initialize-workspace', {}, async () => {
+						started.resolve();
+						return await release.promise;
+					}),
+			);
+			await started.promise;
+			await tracing.finishRun(tracing.rootRun);
+			const span = agentsMock
+				.getSpans()
+				.find((entry) => entry.name === 'sandbox: initialize-workspace');
+			expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('cancelled');
+			release.resolve(42);
+			await expect(operation).resolves.toBe(42);
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('cancelled');
+		});
+
+		it('returns batch failure before remaining writes finish', async () => {
+			const tracing = await createSandboxTrace();
+			const slowWrite = createDeferredPromise();
+			const writeFile = vi.fn(async (path: string) => {
+				if (path === 'first') throw new Error('first write failed');
+				await slowWrite.promise;
+			});
+			const batch = tracing.withActiveSpan(
+				tracing.rootRun,
+				async () =>
+					await writeWorkspaceFileMap(
+						{ filesystem: { writeFile } },
+						new Map([
+							['first', 'one'],
+							['second', 'two'],
+						]),
+					),
+			);
+			let rejected = false;
+			const outcome = batch.catch((error: unknown) => {
+				rejected = true;
+				return error;
+			});
+			try {
+				await vi.waitFor(() => expect(rejected).toBe(true));
+				expect(writeFile).toHaveBeenCalledTimes(2);
+				expect(await outcome).toBeInstanceOf(Error);
+				const span = agentsMock.getSpans().find((entry) => entry.name === 'sandbox: write-files');
+				expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			} finally {
+				slowWrite.resolve();
+				await outcome;
+			}
+		});
+
+		it('creates detached lifecycle roots despite a live ambient turn', async () => {
+			const tracing = await createSandboxTrace();
+			await tracing.withActiveSpan(
+				tracing.rootRun,
+				async () =>
+					await withSandboxLifecycleTrace('sandbox-thread', 'evict-cache', {}, async () => {}, {
+						detached: true,
+					}),
+			);
+			const span = agentsMock
+				.getSpans()
+				.find((entry) => entry.name === 'internal: sandbox-evict-cache');
+			expect(span?.parentSpanId).toBeUndefined();
+			expect(span?.traceId).not.toBe(tracing.rootRun.otelTraceId);
+			expect(span?.attributes['langsmith.metadata.thread_id']).toBe('sandbox-thread');
+			expect(span?.attributes['langsmith.metadata.final_status']).toBe('completed');
+		});
+
+		it.each(['error', 'cancelled'])(
+			'records lifecycle status %s and preserves the error',
+			async (status) => {
+				const error = new Error('cleanup failed');
+				if (status === 'cancelled') error.name = 'AbortError';
+				await expect(
+					withSandboxLifecycleTrace(
+						'sandbox-thread',
+						'destroy',
+						{},
+						async () => await Promise.reject(error),
+					),
+				).rejects.toBe(error);
+				const span = agentsMock
+					.getSpans()
+					.find((entry) => entry.name === 'internal: sandbox-destroy');
+				expect(span?.attributes['langsmith.metadata.final_status']).toBe(status);
+				expect(span).toMatchObject({ ended: true, status: { code: 2 } });
+			},
+		);
+
+		it('uses supplied owner configuration for proxy lifecycle traces', async () => {
+			delete process.env.LANGSMITH_API_KEY;
+			const getAuthHeaders = vi.fn(
+				async () => await Promise.resolve({ Authorization: 'Bearer proxy-test' }),
+			);
+			await withSandboxLifecycleTrace(
+				'deleted-thread',
+				'destroy',
+				{},
+				async () => {
+					expect(getAuthHeaders).toHaveBeenCalledTimes(1);
+					await Promise.resolve();
+				},
+				{
+					resolveConfig: async () =>
+						await Promise.resolve({
+							userId: 'owner',
+							proxyConfig: { apiUrl: 'https://proxy.example.com/langsmith', getAuthHeaders },
+						}),
+				},
+			);
+			const span = agentsMock
+				.getSpans()
+				.find((entry) => entry.name === 'internal: sandbox-destroy');
+			expect(span?.attributes['langsmith.metadata.thread_id']).toBe('deleted-thread');
+			expect(span?.attributes['langsmith.metadata.user_id']).toBe('owner');
+			expect(getAuthHeaders).toHaveBeenCalled();
+		});
+
+		it('continues cleanup after the trace setup deadline and releases a late context', async () => {
+			vi.useFakeTimers();
+			try {
+				const headers = createDeferredPromise<Record<string, string>>();
+				const started = createDeferredPromise();
+				const cleanup = vi.fn(async () => await Promise.resolve('done'));
+				const operation = withSandboxLifecycleTrace('sandbox-thread', 'destroy', {}, cleanup, {
+					resolveConfig: async () =>
+						await Promise.resolve({
+							userId: 'owner',
+							proxyConfig: {
+								apiUrl: 'https://proxy.example.com/langsmith',
+								getAuthHeaders: async () => {
+									started.resolve();
+									return await headers.promise;
+								},
+							},
+						}),
+				});
+				await started.promise;
+				await vi.advanceTimersByTimeAsync(1000);
+				await expect(operation).resolves.toBe('done');
+				expect(cleanup).toHaveBeenCalledTimes(1);
+				headers.resolve({});
+				await vi.waitFor(() => expect(agentsMock.getProvider().shutdown).toHaveBeenCalledTimes(1));
+				expect(cleanup).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('preserves results when trace creation or result processing fails', async () => {
+			const tracing = await createSandboxTrace();
+			await expect(
+				tracing.withActiveSpan(
+					tracing.rootRun,
+					async () =>
+						await traceSandboxOperation(
+							'operation',
+							{
+								processResult: () => {
+									throw new Error('format failed');
+								},
+							},
+							async () => await Promise.resolve(42),
+						),
+				),
+			).resolves.toBe(42);
+			agentsMock.setBuildError(new Error('trace setup failed'));
+			const cleanup = vi.fn(async () => await Promise.resolve(43));
+			await expect(
+				withSandboxLifecycleTrace('another-thread', 'destroy', {}, cleanup),
+			).resolves.toBe(43);
+			expect(cleanup).toHaveBeenCalledTimes(1);
+		});
+
+		it('runs operations when tracing is disabled', async () => {
+			process.env.LANGSMITH_TRACING = 'false';
+			const operation = vi.fn(async () => await Promise.resolve(42));
+			await expect(traceSandboxOperation('write-file', {}, operation)).resolves.toBe(42);
+			await expect(withSandboxLifecycleTrace('thread', 'destroy', {}, operation)).resolves.toBe(42);
+			expect(operation).toHaveBeenCalledTimes(2);
+			expect(agentsMock.getSpans()).toEqual([]);
+		});
 	});
 });
 

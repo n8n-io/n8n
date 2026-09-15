@@ -284,11 +284,9 @@ export class McpClientManager {
 		// each other's failures.
 		const connectionFailures: McpConnectionFailure[] = [...client.getConnectionFailures()].map(
 			(f) => {
-				const server =
-					configs.find((c) => c.name === f.server) ??
-					({
-						name: f.server,
-					} as McpServerConfig);
+				const server = configs.find((c) => c.name === f.server) ?? {
+					name: f.server,
+				};
 				return { server, error: f.error };
 			},
 		);

@@ -17,7 +17,6 @@ import type {
 	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -65,9 +64,7 @@ export declare namespace TestRunRequest {
 }
 
 export declare namespace TagRequest {
-	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
-	type Get = AuthenticatedRequest<{ id: string }>;
-	type Delete = Get;
+	type Delete = AuthenticatedRequest<{ id: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
 }
 
@@ -138,38 +135,7 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		{
-			type: string;
-			name: string;
-			data: ICredentialDataDecryptedObject;
-			projectId?: string;
-			isResolvable?: boolean;
-		},
-		{}
-	>;
-
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{
-			type?: string;
-			name?: string;
-			data?: ICredentialDataDecryptedObject;
-			isGlobal?: boolean;
-			isResolvable?: boolean;
-			isPartialData?: boolean;
-		},
-		{}
-	>;
-
 	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-
-	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
-
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
 export declare namespace InsightsRequest {

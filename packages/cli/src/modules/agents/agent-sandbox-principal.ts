@@ -5,10 +5,10 @@ import type { JSONObject } from '@n8n/agents';
 export type AgentSandboxPrincipal =
 	| { type: 'n8n-user'; userId: string }
 	| {
-			type: 'integration-user';
+			type: 'integration-thread';
 			connectionId: string;
 			platform: string;
-			platformUserId: string;
+			platformThreadId: string;
 	  }
 	| { type: 'project-session'; projectId: string; sessionId: string }
 	| {
@@ -76,12 +76,12 @@ export function hashAgentSandboxPrincipal(
 		case 'n8n-user':
 			canonicalPrincipal = [principal.type, principal.userId];
 			break;
-		case 'integration-user':
+		case 'integration-thread':
 			canonicalPrincipal = [
 				principal.type,
 				principal.connectionId,
 				principal.platform,
-				principal.platformUserId,
+				principal.platformThreadId,
 			];
 			break;
 		case 'project-session':

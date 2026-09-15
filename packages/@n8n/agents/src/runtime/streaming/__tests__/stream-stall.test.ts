@@ -147,4 +147,47 @@ describe('raceWithStallDeadline', () => {
 		await expect(settled).resolves.toBeInstanceOf(ModelStreamStallError);
 		expect(onStall).toHaveBeenCalledTimes(1);
 	});
+
+	it('re-arms instead of stalling while out-of-band activity stays fresh', async () => {
+		const onStall = vi.fn();
+		// Activity (e.g. keepalive raw chunks consumed upstream of the iterator)
+		// keeps landing every 30s — fresher than the 60s deadline.
+		let lastActivityAt = Date.now();
+		const settled = raceWithStallDeadline(
+			new Promise<never>(() => {}),
+			60_000,
+			onStall,
+			() => lastActivityAt,
+		).then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+
+		for (let i = 0; i < 5; i++) {
+			await vi.advanceTimersByTimeAsync(30_000);
+			lastActivityAt = Date.now();
+		}
+		expect(onStall).not.toHaveBeenCalled();
+
+		// Activity stops: the deadline now runs down from the last activity.
+		await vi.advanceTimersByTimeAsync(60_000);
+		await expect(settled).resolves.toBeInstanceOf(ModelStreamStallError);
+		expect(onStall).toHaveBeenCalledTimes(1);
+	});
+
+	it('stalls on schedule when the activity timestamp never advances', async () => {
+		const start = Date.now();
+		const settled = raceWithStallDeadline(
+			new Promise<never>(() => {}),
+			60_000,
+			undefined,
+			() => start,
+		).then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		await expect(settled).resolves.toBeInstanceOf(ModelStreamStallError);
+	});
 });

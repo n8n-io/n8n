@@ -53,6 +53,16 @@ export class InstanceAiModule implements ModuleInterface {
 		}
 	}
 
+	async systemTasks() {
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
+
+		const { InstanceAiCheckpointPruningTask } = await import(
+			'./instance-ai-checkpoint-pruning.task.js'
+		);
+		return [InstanceAiCheckpointPruningTask];
+	}
+
 	async settings() {
 		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service.js');

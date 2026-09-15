@@ -10,6 +10,7 @@ import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
+import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -123,6 +124,7 @@ export {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -213,6 +215,7 @@ export const entities = {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,

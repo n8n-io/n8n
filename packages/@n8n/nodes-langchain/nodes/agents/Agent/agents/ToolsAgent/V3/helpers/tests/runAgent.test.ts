@@ -10,7 +10,7 @@ import * as agentExecution from '@utils/agent-execution';
 import * as tracing from '@utils/tracing';
 
 import type { ItemContext } from '../prepareItemContext';
-import { runAgent } from '../runAgent';
+import { appendToolAttributions, runAgent } from '../runAgent';
 
 vi.mock('@utils/agent-execution', async () => {
 	const originalModule = await vi.importActual('@utils/agent-execution');
@@ -586,5 +586,34 @@ describe('runAgent - intermediate steps', () => {
 
 		expect(result).toHaveProperty('intermediateSteps');
 		expect((result as any).intermediateSteps).toEqual([]);
+	});
+});
+
+describe('appendToolAttributions', () => {
+	const genie = mock<Tool>();
+	genie.name = 'Genie_ask';
+	genie.metadata = { sourceNodeName: 'Genie', attribution: '(Powered by Genie)' };
+	const plain = mock<Tool>();
+	plain.name = 'Calculator';
+	plain.metadata = { sourceNodeName: 'Calculator' };
+	const step = (tool: string): ToolCallData => ({
+		action: { tool, toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call' },
+		observation: '',
+	});
+
+	it('appends the attribution of a called tool after a blank line', () => {
+		expect(appendToolAttributions('42 rides', [step('Genie_ask')], [genie, plain])).toBe(
+			'42 rides\n\n(Powered by Genie)',
+		);
+	});
+
+	it('leaves the output alone when no called tool has an attribution', () => {
+		expect(appendToolAttributions('42', [step('Calculator')], [genie, plain])).toBe('42');
+		expect(appendToolAttributions('42', [], [genie])).toBe('42');
+	});
+
+	it('does not repeat an attribution the model already included', () => {
+		const output = 'See link\n\n(Powered by Genie)';
+		expect(appendToolAttributions(output, [step('Genie_ask')], [genie])).toBe(output);
 	});
 });

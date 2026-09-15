@@ -4,6 +4,15 @@ import * as utf8 from 'utf8';
 
 import { uuDecode } from './uudecode';
 
+/** A body that declares UTF-8 and then sends something else still has to come through. */
+const asUtf8 = (decoded: string): string => {
+	try {
+		return utf8.decode(decoded);
+	} catch {
+		return decoded;
+	}
+};
+
 export abstract class PartData {
 	constructor(readonly buffer: Buffer) {}
 
@@ -45,9 +54,8 @@ export class Base64PartData extends PartData {
 
 export class QuotedPrintablePartData extends PartData {
 	constructor(data: string, charset?: string) {
-		const decoded =
-			charset?.toUpperCase() === 'UTF-8' ? utf8.decode(qp.decode(data)) : qp.decode(data);
-		super(Buffer.from(decoded));
+		const decoded = qp.decode(data);
+		super(Buffer.from(charset?.toUpperCase() === 'UTF-8' ? asUtf8(decoded) : decoded));
 	}
 }
 
@@ -62,11 +70,13 @@ export class SevenBitPartData extends PartData {
 }
 
 export class BinaryPartData extends PartData {
-	constructor(
-		data: string,
-		readonly charset: string = 'utf-8',
-	) {
+	readonly charset: string;
+
+	constructor(data: string, charset = 'utf-8') {
 		super(Buffer.from(data));
+		// A mailer can declare a charset iconv-lite has never heard of, `unknown-8bit` among them,
+		// and decoding as UTF-8 is what this part did before any charset was read at all.
+		this.charset = iconvlite.encodingExists(charset) ? charset : 'utf-8';
 	}
 
 	toString() {

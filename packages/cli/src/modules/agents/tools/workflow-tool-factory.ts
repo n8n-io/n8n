@@ -44,6 +44,8 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 import type {
 	WorkflowToolWorkflowLoader,
@@ -163,6 +165,8 @@ export interface WorkflowToolContext {
 	agentId?: string;
 	/** Chat platform the run came from, if any. */
 	integrationType?: string;
+	/** The in-app preview chat started this run — see `RelatedAgentRun.previewChat`. */
+	previewChat?: boolean;
 	userId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
@@ -405,7 +409,7 @@ export function mergeWorkflowToolInput(
 		...llmInput,
 		...getFixedWorkflowToolInputs(inputs),
 	};
-	return fullSchema.parse(merged) as Record<string, unknown>;
+	return fullSchema.parse(merged);
 }
 
 // ---------------------------------------------------------------------------
@@ -638,6 +642,7 @@ function agentRunOf(
 		toolCallId: ctx.toolCallId,
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
 		...(context.userId ? { userId: context.userId } : {}),
+		...(context.previewChat ? { previewChat: true } : {}),
 	};
 }
 
@@ -690,7 +695,20 @@ async function backgroundWaitingExecution(
 	allOutputs: boolean,
 ): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
-	if (!agentRun || !reference.workflowId) return undefined;
+	const parentResourceId = ctx.persistence?.resourceId;
+	const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+	// Task sessions have no chat identity for a wake.
+	// Keep the existing wait behavior so the parent can receive the result.
+	if (
+		!agentRun ||
+		!reference.workflowId ||
+		!parentResourceId ||
+		isTaskRunMemoryResourceId(parentResourceId) ||
+		!sandboxScope ||
+		sandboxScope.projectId !== context.projectId
+	) {
+		return undefined;
+	}
 
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
@@ -698,6 +716,8 @@ async function backgroundWaitingExecution(
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			parentResourceId,
+			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,
 			workflowId: reference.workflowId,
 			executionId: result.executionId,
@@ -709,7 +729,9 @@ async function backgroundWaitingExecution(
 
 		const executionPersistence = Container.get(ExecutionPersistence);
 		const recheck = await executionPersistence.findSingleExecution(result.executionId);
-		if (!recheck) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+		if (!recheck) {
+			return await settleOutcomeUnknown(jobService, agentRun.threadId, jobId, result.executionId);
+		}
 
 		const rawStatus = recheck.status;
 		if (isTerminalExecutionStatus(rawStatus)) {
@@ -718,7 +740,9 @@ async function backgroundWaitingExecution(
 				unflattenData: true,
 			});
 			// Pruned between the status read and the data read.
-			if (!full) return await settleOutcomeUnknown(jobService, jobId, result.executionId);
+			if (!full) {
+				return await settleOutcomeUnknown(jobService, agentRun.threadId, jobId, result.executionId);
+			}
 
 			const fresh = formatResult(result.executionId, full.status, full.data, allOutputs);
 			// The job row keeps the last node's output for completed runs only,
@@ -733,6 +757,9 @@ async function backgroundWaitingExecution(
 						: null,
 				error: fresh.error ?? null,
 			});
+			// The tool returns the result directly. Mark it as delivered
+			// even if another writer settled the job.
+			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
 			return { ...withoutWaitState(fresh), jobId };
 		}
@@ -759,9 +786,29 @@ async function backgroundWaitingExecution(
 	}
 }
 
+/**
+ * Catch errors here so the caller can still return the tool result.
+ * If this DB write fails, a later wake can repeat the result.
+ */
+async function consumeInlineMail(
+	jobService: AgentBackgroundJobService,
+	parentThreadId: string,
+	jobId: string,
+): Promise<void> {
+	try {
+		await jobService.markMailConsumed(parentThreadId, [jobId]);
+	} catch (error) {
+		Container.get(Logger).warn('Failed to mark the inline workflow result as delivered', {
+			jobId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
 /** The execution is gone, so its outcome cannot be known; a lost claim means the settle hook recorded it first. */
 async function settleOutcomeUnknown(
 	jobService: AgentBackgroundJobService,
+	parentThreadId: string,
 	jobId: string,
 	executionId: string,
 ): Promise<WorkflowToolResult & { jobId: string }> {
@@ -769,6 +816,8 @@ async function settleOutcomeUnknown(
 		status: 'failed',
 		error: EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	});
+	// If another writer settled the job, leave its result pending for delivery.
+	if (claimed) await consumeInlineMail(jobService, parentThreadId, jobId);
 	return {
 		executionId,
 		status: 'unknown',
@@ -1016,7 +1065,7 @@ function assembleWorkflowTool(
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
 				const parsedInput = mergeWorkflowToolInput(
-					currentSchema.parse(input) as Record<string, unknown>,
+					currentSchema.parse(input),
 					toolInputs,
 					currentFullSchema,
 				);

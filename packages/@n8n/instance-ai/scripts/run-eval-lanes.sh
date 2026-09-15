@@ -367,7 +367,7 @@ if [[ "$INHERIT_ENV" == true ]]; then
 
 	export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 	export N8N_AI_ENABLED="${N8N_AI_ENABLED:-true}"
-	export N8N_ENABLED_MODULES="${N8N_ENABLED_MODULES:-instance-ai}"
+	export N8N_ENABLED_MODULES="${N8N_ENABLED_MODULES:-instance-ai,agents}"
 	export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 	export N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 	export N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080

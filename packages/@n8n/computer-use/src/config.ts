@@ -183,7 +183,7 @@ function buildEnvConfig(): PartialStructural {
 	const permissionConfirmation = envString('PERMISSION_CONFIRMATION');
 	if (permissionConfirmation) config.permissionConfirmation = permissionConfirmation;
 
-	return config as PartialStructural;
+	return config;
 }
 
 function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
@@ -216,7 +216,7 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	if (args['permission-confirmation'])
 		config.permissionConfirmation = args['permission-confirmation'];
 
-	return config as PartialStructural;
+	return config;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,10 +323,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	// Three-tier merge: Zod defaults ← env ← CLI
 	const envConfig = buildEnvConfig();
 	const cliConfig = buildCliConfig(args);
-	const merged = deepMerge(
-		envConfig as Record<string, unknown>,
-		cliConfig as Record<string, unknown>,
-	);
+	const merged = deepMerge(envConfig, cliConfig);
 
 	// Handle positional args: [url?, token?, dir?]
 	let url: string | undefined;
