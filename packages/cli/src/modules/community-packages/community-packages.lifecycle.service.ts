@@ -94,7 +94,6 @@ export class CommunityPackagesLifecycleService {
 		return { version: resolvedVersion, checksum };
 	}
 
-
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
