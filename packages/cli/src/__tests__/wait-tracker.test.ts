@@ -875,6 +875,22 @@ describe('WaitTracker', () => {
 			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(1);
 		});
 
+		it('skips a tick while the previous sweep is still running', async () => {
+			const held = createDeferredPromise<string[]>();
+			executionRepository.findParkedOnSubExecution.mockReturnValue(held.promise);
+
+			const inFlight = waitTracker.resumeParentsOfFinishedSubExecutions();
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(1);
+
+			held.resolve([]);
+			await inFlight;
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(2);
+		});
+
 		it('patches and resumes a parent whose tagged child has finished', async () => {
 			const parent = parkedParent([childId]);
 			executionPersistence.findSingleExecution.calledWith(parentId).mockResolvedValue(parent);

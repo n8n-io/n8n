@@ -47,6 +47,8 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	private sweepInFlight = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -270,25 +272,37 @@ export class WaitTracker {
 	 * selects. This sweep runs on the leader's tick and closes that gap.
 	 */
 	async resumeParentsOfFinishedSubExecutions() {
-		let parentIds: string[];
-		try {
-			parentIds = await this.executionRepository.findParkedOnSubExecution();
-		} catch (error) {
-			this.logger.error('Failed to query executions parked on a sub-execution', {
-				error: ensureError(error).message,
-			});
+		// A sweep that runs longer than the tick would otherwise be joined by the next one,
+		// walking the same parents again.
+		if (this.sweepInFlight) {
+			this.logger.debug('Still sweeping parents parked on a sub-execution, skipping this tick');
 			return;
 		}
 
-		for (const parentId of parentIds) {
+		this.sweepInFlight = true;
+		try {
+			let parentIds: string[];
 			try {
-				await this.resumeParentIfChildFinished(parentId);
+				parentIds = await this.executionRepository.findParkedOnSubExecution();
 			} catch (error) {
-				this.logger.error('Failed to resume parent execution parked on a sub-execution', {
-					parentExecutionId: parentId,
+				this.logger.error('Failed to query executions parked on a sub-execution', {
 					error: ensureError(error).message,
 				});
+				return;
 			}
+
+			for (const parentId of parentIds) {
+				try {
+					await this.resumeParentIfChildFinished(parentId);
+				} catch (error) {
+					this.logger.error('Failed to resume parent execution parked on a sub-execution', {
+						parentExecutionId: parentId,
+						error: ensureError(error).message,
+					});
+				}
+			}
+		} finally {
+			this.sweepInFlight = false;
 		}
 	}
 
