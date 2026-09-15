@@ -3427,6 +3427,8 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	/** Sub-executions whose wait parked this execution; read by the sweep that resumes the parent. */
+	waitingChildExecutionIds?: string[];
 	/**
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
