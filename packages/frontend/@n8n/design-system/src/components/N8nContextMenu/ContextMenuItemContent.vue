@@ -1,0 +1,80 @@
+<script setup lang="ts" generic="T extends ContextMenuId = ContextMenuId">
+import { computed, useCssModule } from 'vue';
+
+import type { ContextMenuId, ContextMenuItemSlots, ContextMenuLeaf } from './ContextMenu.types';
+import type { IconColor } from '../../types/icon';
+import type { TextColor } from '../../types/text';
+import Icon from '../N8nIcon/Icon.vue';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import N8nText from '../N8nText/Text.vue';
+
+defineOptions({ name: 'N8nContextMenuItemContent' });
+
+defineProps<{
+	item: ContextMenuLeaf<T>;
+	textColor?: TextColor;
+	iconColor: IconColor | (string & {});
+	title?: string;
+}>();
+
+const slots =
+	defineSlots<Pick<ContextMenuItemSlots<T>, 'item-leading' | 'item-label' | 'item-trailing'>>();
+const $style = useCssModule();
+
+const leadingProps = computed(() => ({ class: $style.itemLeading }));
+const labelProps = computed(() => ({ class: $style.itemLabel }));
+const trailingProps = computed(() => ({ class: $style.itemTrailing }));
+</script>
+
+<template>
+	<div :class="$style.content">
+		<slot name="item-leading" :item="item" :ui="leadingProps">
+			<Icon
+				v-if="item.icon?.type === 'icon'"
+				:icon="item.icon.value"
+				:class="$style.itemLeading"
+				:color="iconColor"
+				size="large"
+			/>
+			<span v-else-if="item.icon?.type === 'emoji'" :class="[$style.itemLeading, $style.emoji]">
+				{{ item.icon.value }}
+			</span>
+		</slot>
+		<slot name="item-label" :item="item" :ui="labelProps">
+			<N8nText :class="$style.itemLabel" :title="title" size="medium" :color="textColor">
+				{{ item.label }}
+			</N8nText>
+		</slot>
+		<slot name="item-trailing" :item="item" :ui="trailingProps">
+			<N8nKeyboardShortcut v-if="item.shortcut" v-bind="item.shortcut" :class="$style.shortcut" />
+		</slot>
+	</div>
+</template>
+
+<style module lang="scss">
+.content {
+	display: contents;
+}
+.itemLeading {
+	flex-shrink: 0;
+}
+
+.emoji {
+	font-size: var(--font-size--sm);
+	line-height: 1;
+}
+
+.itemLabel {
+	flex-grow: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.itemTrailing,
+.shortcut {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+</style>
