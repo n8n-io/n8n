@@ -868,6 +868,36 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 
+	it('forwards midRunObservation to the Memory builder when provided', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					midRunObservation: false,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			midRunObservation: false,
+		});
+	});
+
 	it('enables adaptive thinking by default for Anthropic models', async () => {
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-4-8',
