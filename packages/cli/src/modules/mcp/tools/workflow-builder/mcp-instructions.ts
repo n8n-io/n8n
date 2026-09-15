@@ -72,7 +72,14 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
 	// Named in the instructions rather than left to discovery: an instance is not empty, and a
-	// client that opens by asking what to build ignores work already in progress.
+	// client that opens by asking what to build ignores work already in progress. Measured: with
+	// this sentence the opening read happens on every run; with the tools registered but nothing
+	// pointing at them, the client never reaches for them at all.
+	//
+	// Placement is load-bearing. A client may keep only the first part of these instructions —
+	// Claude Code truncates at 2048 characters, and the full text here is several times that — so
+	// anything below the cut never arrives. This sits second, right after the intro, and a test
+	// pins it inside the budget. Do not push it down the list.
 	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
 		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer. It reports which workflows exist, what changed recently, and what has run or failed. When the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually the most recent thing there. Use ${GET_INSTANCE_ACTIVITY_TOOL_NAME} to look further back, and ${GET_NODE_USAGE_TOOL_NAME} to match how this instance already builds before choosing between equivalent nodes. Do not narrate any of it back unprompted — let it change what you do rather than what you say.`
 		: '';

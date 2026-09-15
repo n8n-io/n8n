@@ -130,4 +130,23 @@ describe('instance context', () => {
 		expect(instructions).not.toContain('n8n://instance/context');
 		expect(instructions).not.toContain('get_instance_context');
 	});
+
+	/**
+	 * A client may keep only the opening of these instructions — Claude Code truncates at 2048
+	 * characters — so a pointer below the cut never arrives and the surface goes undiscovered.
+	 * The full text is well past the budget, which is what makes the position matter.
+	 */
+	it('keeps the pointer inside the 2048 characters a client may truncate to', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isInstanceContextEnabled: true,
+		});
+
+		const start = instructions.indexOf('Start with the instance');
+		expect(start).toBeGreaterThan(-1);
+
+		const end = instructions.indexOf('\n\n', start);
+		expect(instructions.length).toBeGreaterThan(2048);
+		expect(end).toBeLessThan(2048);
+	});
 });
