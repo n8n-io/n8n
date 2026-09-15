@@ -132,7 +132,8 @@ describe('AgentTurnQueueService', () => {
 		expect(rows).toEqual([
 			expect.objectContaining({
 				id: 'exec-1',
-				status: 'queued',
+				status: 'error',
+				error: 'claim failed',
 				attachments: [attachment],
 			}),
 		]);
