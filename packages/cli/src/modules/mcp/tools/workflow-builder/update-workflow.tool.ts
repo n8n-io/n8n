@@ -763,6 +763,24 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
+ * Operations that change nothing about nodes or connections, so they cannot
+ * leave a required subnode input unsatisfied.
+ */
+const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
+	'addTags',
+	'removeTags',
+	'setWorkflowSettings',
+	'setWorkflowMetadata',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeGroups',
+	'setNodePosition',
+]);
+
+const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
+
+/**
  * Rejects operations this instance cannot serve, before anything is loaded or
  * applied. Throw order is part of the contract: gated group ops first, then
  * tag ops.
@@ -1216,9 +1234,11 @@ export const createUpdateWorkflowTool = (
 						}
 					}
 				}
-				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes, {
-					clearedInputs,
-				});
+				// A tag, settings or layout edit cannot create an unsatisfied input, and
+				// wiring one off the back of such an update would be a surprise.
+				const addedSubnodeLinks = strictOperations.some(touchesGraph)
+					? connectRequiredSubnodeInputs(result.workflow, nodeTypes, { clearedInputs })
+					: [];
 
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);

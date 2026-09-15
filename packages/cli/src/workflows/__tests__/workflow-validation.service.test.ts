@@ -1714,6 +1714,21 @@ describe('WorkflowValidationService', () => {
 			} as unknown as INodeTypeDescription,
 		} as INodeType;
 
+		/** A parent with no required gated inputs of its own. */
+		const agentType = {
+			description: {
+				displayName: 'Agent',
+				name: 'agent',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Agent' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
 		const modelType = {
 			description: {
 				displayName: 'Model',
@@ -1729,15 +1744,21 @@ describe('WorkflowValidationService', () => {
 		} as INodeType;
 
 		beforeEach(() => {
-			nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
-				type === 'parser' ? parserType : modelType,
-			);
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'parser') return parserType;
+				if (type === 'agent') return agentType;
+				return modelType;
+			});
 		});
 
 		it('rejects activation when a required input has nothing connected', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser')],
-				{},
+				[node('Parser', 'parser'), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
 				nodeTypes,
 			);
 
@@ -1745,6 +1766,35 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain(
 				"'Parser' has no node connected to its required 'Model' input",
 			);
+		});
+
+		it('ignores a node that is wired to nothing', async () => {
+			// A floating node cannot break a run, so it must not block publishing.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('does not rewrite the parameters of the nodes it was given', async () => {
+			// These are the nodes about to be persisted as the active version.
+			const parser = node('Parser', 'parser');
+			const before = parser.parameters;
+
+			await service.validateRequiredInputsConnected(
+				[parser, node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(parser.parameters).toBe(before);
 		});
 
 		it('allows activation once the required input is connected', async () => {
@@ -1777,8 +1827,12 @@ describe('WorkflowValidationService', () => {
 
 		it('ignores disabled nodes with unmet requirements', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser', 'parser', true)],
-				{},
+				[node('Parser', 'parser', true), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
 				nodeTypes,
 			);
 
@@ -1787,8 +1841,15 @@ describe('WorkflowValidationService', () => {
 
 		it('reports every unmet required input at once', async () => {
 			const result = await service.validateRequiredInputsConnected(
-				[node('Parser A', 'parser'), node('Parser B', 'parser')],
-				{},
+				[node('Parser A', 'parser'), node('Parser B', 'parser'), node('Agent', 'agent')],
+				{
+					'Parser A': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					'Parser B': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
 				nodeTypes,
 			);
 

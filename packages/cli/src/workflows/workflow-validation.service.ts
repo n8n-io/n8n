@@ -355,8 +355,16 @@ export class WorkflowValidationService {
 		connections: IConnections,
 		nodeTypes: NodeTypes,
 	): Promise<WorkflowValidationResult> {
-		// Transient, so dynamic `inputs` expressions can be evaluated.
-		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+		// Transient, so dynamic `inputs` expressions can be evaluated. Built over
+		// shallow node copies because the constructor reassigns `node.parameters`
+		// with defaults filled in, and these nodes are the version about to be saved.
+		const workflow = new Workflow({
+			nodes: nodes.map((node) => ({ ...node })),
+			connections,
+			active: false,
+			nodeTypes,
+		});
+		const connectionsByDestination = mapConnectionsByDestination(connections);
 		const issues: string[] = [];
 
 		// Those expressions need an isolate under the VM engine, or they throw.
@@ -366,6 +374,15 @@ export class WorkflowValidationService {
 
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType?.description) continue;
+
+				// A node wired to nothing cannot break a run, so it must not block
+				// publishing. Same rule as validateNodeConfiguration.
+				if (
+					!isNodeConnected(node.name, connections, connectionsByDestination) &&
+					!isTriggerLikeNode(nodeType)
+				) {
+					continue;
+				}
 
 				// Strictly: a swallowed expression error would read as "requires nothing".
 				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
