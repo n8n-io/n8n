@@ -30,6 +30,8 @@
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/permissions": "workspace:*",
+    "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
     "ioredis": "catalog:",

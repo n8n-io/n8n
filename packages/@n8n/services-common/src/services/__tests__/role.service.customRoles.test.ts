@@ -1,25 +1,22 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import type { LicenseState } from '@n8n/backend-common';
-import { Logger } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
-import type { Role, Scope as DBScope } from '@n8n/db';
-import { RoleRepository, ScopeRepository } from '@n8n/db';
-import { BadRequestError } from '@n8n/services-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { Role, Scope as DBScope, RoleRepository, ScopeRepository } from '@n8n/db';
+import { BadRequestError } from '../../errors/response-errors/bad-request.error';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
-import { RoleCacheService } from '@/services/role-cache.service';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import type { EventService } from '../../events/event.service';
+import type { RoleCacheService } from '../role-cache.service';
+import type { RoleDeletionCheckProxy } from '../role-deletion-check-proxy.service';
+import { RoleService } from '../role.service';
 
 describe('RoleService custom role scope whitelist', () => {
 	const licenseState = mock<LicenseState>();
-	const roleRepository = mockInstance(RoleRepository);
-	const scopeRepository = mockInstance(ScopeRepository);
-	const roleCacheService = mockInstance(RoleCacheService);
-	const logger = mockInstance(Logger);
-	const roleDeletionCheckProxy = mockInstance(RoleDeletionCheckProxy);
-	const eventService = mockInstance(EventService);
+	const roleRepository = mock<RoleRepository>();
+	const scopeRepository = mock<ScopeRepository>();
+	const roleCacheService = mock<RoleCacheService>();
+	const logger = mock<Logger>();
+	const roleDeletionCheckProxy = mock<RoleDeletionCheckProxy>();
+	const eventService = mock<EventService>();
 
 	const roleService = new RoleService(
 		licenseState,
