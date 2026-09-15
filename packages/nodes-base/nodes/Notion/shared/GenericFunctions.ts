@@ -1,4 +1,4 @@
-import { camelCase, capitalCase, snakeCase } from 'change-case';
+import { camelCase, capitalCase } from 'change-case';
 import set from 'lodash/set';
 import moment from 'moment-timezone';
 import type {
@@ -18,7 +18,13 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, safeRegex, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	deriveOutputKey,
+	NodeApiError,
+	NodeOperationError,
+	safeRegex,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -656,14 +662,12 @@ export function getPropertyTitle(properties: { [key: string]: any }) {
 	);
 }
 
-// Fold non-ASCII to separators so keys keep their pre-change-case-v5 shape (é → `_`).
-const foldedSnakeCase = (value: string) => snakeCase(value.replace(/[^\x20-\x7E]/g, ' '));
-
 function prepend(stringKey: string, properties: { [key: string]: any }, version: number) {
-	// Pre-v3 restores the old ASCII key shape so existing workflows keep resolving.
-	const toKey = version >= 3 ? snakeCase : foldedSnakeCase;
+	// Versions below 3 keep the ASCII key shape (`Prénom` → `property_pr_nom`) so existing
+	// expressions keep resolving. Version 3 keeps letters of every script.
+	const strategy = version >= 3 ? 'snake_case_unicode' : 'snake_case_ascii';
 	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${toKey(key)}`] = properties[key];
+		properties[deriveOutputKey(key, { strategy, prefix: stringKey })] = properties[key];
 		delete properties[key];
 	}
 	return properties;

@@ -1,4 +1,3 @@
-import { snakeCase } from 'change-case';
 import type {
 	JsonObject,
 	IDataObject,
@@ -9,7 +8,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { deriveOutputKey, NodeApiError } from 'n8n-workflow';
 
 export async function pagerDutyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -94,8 +93,9 @@ export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObj
 	}
 	for (const element of elements) {
 		for (const key of Object.keys(element)) {
-			if (key !== snakeCase(key)) {
-				element[snakeCase(key)] = element[key];
+			const snakeKey = deriveOutputKey(key, { strategy: 'snake_case_unicode' });
+			if (key !== snakeKey) {
+				element[snakeKey] = element[key];
 				delete element[key];
 			}
 		}
