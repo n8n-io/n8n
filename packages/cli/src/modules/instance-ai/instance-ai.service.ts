@@ -1296,27 +1296,6 @@ export class InstanceAiService {
 		return this.instanceAiConfig.runDebugEnabled;
 	}
 
-	private logModelIdForLocalDebug(
-		stage: 'langsmith-trace' | 'instance_ai_run_finished' | 'Builder generation errored',
-		details: {
-			threadId: string;
-			runId: string;
-			modelId?: ModelConfig;
-			tracingPresent?: boolean;
-		},
-	): void {
-		if (!this.isRunDebugEnabled()) return;
-		const modelId = modelConfigId(details.modelId) ?? 'null';
-		const tracing =
-			details.tracingPresent === undefined
-				? ''
-				: ` tracingPresent=${String(details.tracingPresent)}`;
-		// Put fields in the message: default text logs drop metadata at info level.
-		this.logger.info(
-			`Instance AI model_id ${stage} model_id=${modelId} threadId=${details.threadId} runId=${details.runId}${tracing}`,
-		);
-	}
-
 	private buildOrchestratorAgentStreamOptions(
 		user: User,
 		threadId: string,
@@ -3930,12 +3909,6 @@ export class InstanceAiService {
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
 			setTraceModelId(tracing, modelId);
-			this.logModelIdForLocalDebug('langsmith-trace', {
-				threadId,
-				runId,
-				modelId,
-				tracingPresent: tracing !== undefined,
-			});
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available since memory history only
@@ -5502,12 +5475,6 @@ export class InstanceAiService {
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
 		setTracePromptVersion(opts.tracing, promptVersion);
 		setTraceModelId(opts.tracing, opts.modelId);
-		this.logModelIdForLocalDebug('langsmith-trace', {
-			threadId: opts.threadId,
-			runId: opts.runId,
-			modelId: opts.modelId,
-			tracingPresent: opts.tracing !== undefined,
-		});
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
 		let resumeClaimed = false;
@@ -6447,11 +6414,6 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
-		this.logModelIdForLocalDebug('instance_ai_run_finished', {
-			threadId,
-			runId,
-			modelId: metadata?.modelId,
-		});
 		this.emitBrowserCredentialSetupOutcomes(threadId, runId, status, reason);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
@@ -6462,11 +6424,6 @@ export class InstanceAiService {
 				error_message: redactTelemetryText(metadata?.errorMessage ?? reason ?? 'unknown'),
 				...(metadata?.errorSource ? { error_source: metadata.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
-			});
-			this.logModelIdForLocalDebug('Builder generation errored', {
-				threadId,
-				runId,
-				modelId: metadata?.modelId,
 			});
 		}
 	}
