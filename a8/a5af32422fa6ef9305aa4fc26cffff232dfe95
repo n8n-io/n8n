@@ -11,6 +11,7 @@ packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
   s_b04c58447561ba::t_bdb5f8d5f9d4a2 211-212,219
   s_b04c58447561ba::t_56adfbd0e205e4 10,17-30,80-81,106,108,115-120
   s_b04c58447561ba::t_fd8ae2e8d7ad08 109-110,112-114
+  s_b04c58447561ba::t_8b4cf7198c4a2c 100-105,107,111
 packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
   s_b04c58447561ba::t_38db6545525af1 22-33,35-36,87-91,97-102,104,160,176-178,180-185,187,189-193,195-200,202-214,218-219,222-223,231,243,246-247,249,256-258,261,298,300,302,305,309,311-320
   s_b04c58447561ba::t_6e8b68a6c204e1 7
