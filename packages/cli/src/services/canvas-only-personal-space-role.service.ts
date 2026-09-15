@@ -110,6 +110,7 @@ export class CanvasOnlyPersonalSpaceRoleService {
 		if (removedScopes.length === 0) return;
 
 		await this.applyRemovedScopes(removedScopes);
+		this.logger.debug('Canvas-only personal space role init complete');
 	}
 
 	/** Takes the removed scopes off the role, and puts the others back. */

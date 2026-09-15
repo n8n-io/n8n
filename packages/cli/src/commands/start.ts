@@ -275,7 +275,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// The sync above gives the personal space role its defaults back, so any
 			// scopes an admin removed in canvas-only mode are re-applied here.
 			await Container.get(CanvasOnlyPersonalSpaceRoleService).run();
-			this.logger.debug('Canvas-only personal space role init complete');
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
