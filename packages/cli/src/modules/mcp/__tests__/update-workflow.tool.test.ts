@@ -3362,6 +3362,12 @@ describe('update-workflow MCP tool', () => {
 				const response = parseResult(result);
 				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
 				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				// The warning is derived from the links the repair added, so assert the
+				// graph too: dropping the warning must not be enough to pass this.
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
 			});
 
 			test('does not auto-wire anything for a settings-only update', async () => {
