@@ -52,7 +52,6 @@
 					"name": "Test Item",
 					"created_at": "2026-02-20T10:00:00Z",
 					"state": "active",
-					"subitems": [{ "id": "111222333", "name": "Subtask A" }],
 					"column_values": [
 						{
 							"id": "status",
@@ -85,6 +84,8 @@
 							"text": null,
 							"type": "subtasks",
 							"value": null,
+							"display_value": "Subtask A",
+							"subitems": [{ "id": "111222333", "name": "Subtask A" }],
 							"column": {
 								"title": "Subitems",
 								"archived": false,

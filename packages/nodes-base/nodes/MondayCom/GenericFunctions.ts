@@ -19,7 +19,7 @@ export async function mondayComApiRequest(
 
 	let options: IRequestOptions = {
 		headers: {
-			'API-Version': '2026-01',
+			'API-Version': '2026-07',
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
@@ -30,16 +30,38 @@ export async function mondayComApiRequest(
 
 	options = Object.assign({}, options, option);
 
-	try {
-		let credentialType = 'mondayComApi';
+	let credentialType = 'mondayComApi';
 
-		if (authenticationMethod === 'oAuth2') {
-			credentialType = 'mondayComOAuth2Api';
-		}
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	if (authenticationMethod === 'oAuth2') {
+		credentialType = 'mondayComOAuth2Api';
+	}
+
+	let response: IDataObject;
+	try {
+		response = (await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		)) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
+	// Since API version 2025-01 application-level errors (e.g. a failed mutation)
+	// are returned with HTTP 200 and an `errors` array in the body, so surface
+	// them explicitly instead of returning a response with missing data.
+	// https://developer.monday.com/api-reference/changelog/breaking-change-consistent-error-format
+	const errors = response?.errors as Array<{ message?: string }> | undefined;
+	if (errors?.length) {
+		throw new NodeApiError(this.getNode(), response as JsonObject, {
+			message: errors
+				.map((error) => error.message)
+				.filter(Boolean)
+				.join('\n'),
+		});
+	}
+
+	return response;
 }
 
 export async function mondayComApiRequestAllItems(

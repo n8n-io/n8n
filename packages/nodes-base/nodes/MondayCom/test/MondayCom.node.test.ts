@@ -3,16 +3,20 @@ import nock from 'nock';
 
 describe('MondayCom', () => {
 	const mondayApiUrl = 'https://api.monday.com';
-	const apiVersion = '2026-01';
+	const apiVersion = '2026-07';
 
 	/**
-	 * Shared column_values mock data aligned with API version 2026-01.
-	 * - BoardRelationValue: value is null, use display_value and linked_item_ids
-	 * - DependencyValue: value is null, use display_value and linked_item_ids
-	 * - MirrorValue: value is null, use display_value
+	 * Shared column_values mock data aligned with API version 2026-07.
+	 * Since 2025-04 the value field is null for these column types, so the data
+	 * comes from typed fragments instead:
+	 * - BoardRelationValue: display_value and linked_item_ids
+	 * - DependencyValue: display_value and linked_item_ids
+	 * - MirrorValue: display_value
+	 * - SubtasksValue: display_value and subitems { id name }
 	 * Ref: https://developer.monday.com/api-reference/reference/connect
 	 * Ref: https://developer.monday.com/api-reference/reference/dependency
 	 * Ref: https://developer.monday.com/api-reference/reference/mirror
+	 * Ref: https://developer.monday.com/api-reference/reference/subitems-column
 	 */
 	const columnValuesWithFragments = [
 		{
@@ -46,6 +50,8 @@ describe('MondayCom', () => {
 			text: null,
 			type: 'subtasks',
 			value: null,
+			display_value: 'Subtask A',
+			subitems: [{ id: '111222333', name: 'Subtask A' }],
 			column: {
 				title: 'Subitems',
 				archived: false,
@@ -87,7 +93,6 @@ describe('MondayCom', () => {
 		name: 'Test Item',
 		created_at: '2026-02-20T10:00:00Z',
 		state: 'active',
-		subitems: [{ id: '111222333', name: 'Subtask A' }],
 		column_values: columnValuesWithFragments,
 	};
 
@@ -95,10 +100,11 @@ describe('MondayCom', () => {
 	function hasExpectedQueryStructure(body: Record<string, unknown>): boolean {
 		const query = body.query as string;
 		return (
-			query.includes('subitems') &&
 			query.includes('... on BoardRelationValue') &&
 			query.includes('... on DependencyValue') &&
 			query.includes('... on MirrorValue') &&
+			query.includes('... on SubtasksValue') &&
+			/\bsubitems\s*\{\s*id\s+name\s*\}/.test(query) &&
 			query.includes('display_value') &&
 			query.includes('linked_item_ids')
 		);
@@ -190,6 +196,38 @@ describe('MondayCom', () => {
 
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['get.workflow.json'],
+		});
+	});
+
+	describe('boardItem:get - throws on application-level errors returned with HTTP 200', () => {
+		beforeAll(() => {
+			// Since 2025-01 failed requests return HTTP 200 with an `errors` array,
+			// so the node must surface them instead of returning empty data.
+			nock(mondayApiUrl)
+				.post('/v2/', (body: Record<string, unknown>) => {
+					const query = body.query as string;
+					return query.includes('items (ids: $itemId)');
+				})
+				.reply(200, {
+					data: [],
+					errors: [
+						{
+							message: 'User unauthorized to perform action',
+							locations: [{ line: 2, column: 3 }],
+							path: ['items'],
+							extensions: {
+								code: 'UserUnauthorizedException',
+								error_data: {},
+								status_code: 403,
+							},
+						},
+					],
+					account_id: 123456,
+				});
+		});
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['getError.workflow.json'],
 		});
 	});
 
