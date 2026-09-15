@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import type { Role as RoleDTO } from '@n8n/permissions';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_SCOPE_MAP } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
@@ -29,15 +29,18 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		logger,
 	);
 
+	/** Mirrors the service's own list on purpose, so a change there shows up here. */
 	const removableScopes = ['credential:create', 'dataTable:create', 'agent:create'];
-	const defaultScopes = [
-		'workflow:create',
-		'workflow:update',
-		'credential:read',
-		...removableScopes,
-	];
+	/** The real default scopes of the role, so the tests cannot drift from them. */
+	const defaultScopes: string[] = [...PROJECT_SCOPE_MAP[PROJECT_OWNER_ROLE_SLUG]];
 	const without = (...removed: string[]) => defaultScopes.filter((s) => !removed.includes(s));
 	const withoutCredentialCreate = without('credential:create');
+
+	it('models the role with its real default scopes', () => {
+		expect(defaultScopes).toEqual(expect.arrayContaining(removableScopes));
+		expect(defaultScopes).toEqual(expect.arrayContaining(['credential:update', 'workflow:delete']));
+		expect(defaultScopes).not.toContain('project:delete');
+	});
 
 	/** The role as stored, which the service reads before and after the change. */
 	let storedScopes: string[];
@@ -195,11 +198,23 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
 		});
 
-		it('rejects removing any other default scope', async () => {
-			await expect(
-				update(body(defaultScopes.filter((s) => s !== 'workflow:create'))),
-			).rejects.toThrow(BadRequestError);
-			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		it.each(['workflow:create', 'credential:read', 'workflow:delete'])(
+			'rejects removing the default scope %s',
+			async (scope) => {
+				await expect(update(body(without(scope)))).rejects.toThrow(
+					`The following scopes cannot be removed from the personal space role: ${scope}`,
+				);
+				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+			},
+		);
+
+		it('accepts every default scope of the role', async () => {
+			const result = await update(body(defaultScopes));
+
+			expect(result.scopes).toEqual(
+				expect.arrayContaining(['credential:update', 'workflow:delete']),
+			);
 			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
 		});
 
