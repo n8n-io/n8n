@@ -828,12 +828,14 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
- * Operations that change nothing about nodes or connections, so they cannot
- * leave a required subnode input unsatisfied.
+ * Operations that cannot leave a required subnode input unsatisfied: they touch
+ * neither connections nor the parameters a conditional `inputs` expression reads.
+ * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
  */
 const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
 	'addTags',
 	'removeTags',
+	'setNodeSettings',
 	'setWorkflowSettings',
 	'setWorkflowMetadata',
 	'addNodeGroup',
