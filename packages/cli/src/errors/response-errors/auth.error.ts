@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class AuthError extends ResponseError {
-	constructor(message: string, errorCode?: number) {
-		super(message, 401, errorCode);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { AuthError } from '@n8n/services-common';

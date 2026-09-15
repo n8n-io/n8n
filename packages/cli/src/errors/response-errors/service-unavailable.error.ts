@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class ServiceUnavailableError extends ResponseError {
-	constructor(message: string, errorCode = 503) {
-		super(message, 503, errorCode);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { ServiceUnavailableError } from '@n8n/services-common';

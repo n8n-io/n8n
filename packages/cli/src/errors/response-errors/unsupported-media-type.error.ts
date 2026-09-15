@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class UnsupportedMediaTypeError extends ResponseError {
-	constructor(message: string, hint: string | undefined = undefined) {
-		super(message, 415, 415, hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { UnsupportedMediaTypeError } from '@n8n/services-common';

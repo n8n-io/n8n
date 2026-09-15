@@ -72,6 +72,10 @@ const config: KnipConfig = {
 				'@types/psl',
 			],
 		}),
+		'packages/@n8n/services-common': pkg({
+			// ioredis-mock is loaded with vi.importActual, which knip does not link.
+			ignoreDependencies: ['ioredis-mock'],
+		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
 			ignoreDependencies: ['@types/psl'],

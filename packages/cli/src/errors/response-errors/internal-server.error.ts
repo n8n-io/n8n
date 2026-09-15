@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class InternalServerError extends ResponseError {
-	constructor(message?: string, cause?: unknown) {
-		super(message ? message : 'Internal Server Error', 500, 500, undefined, cause);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { InternalServerError } from '@n8n/services-common';

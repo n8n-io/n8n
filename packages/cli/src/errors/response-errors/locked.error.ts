@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class LockedError extends ResponseError {
-	constructor(message: string, hint: string | undefined = undefined) {
-		super(message, 423, 423, hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { LockedError } from '@n8n/services-common';

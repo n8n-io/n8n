@@ -1,7 +1,2 @@
-import { ForbiddenError } from './forbidden.error';
-
-export class InvalidMfaCodeError extends ForbiddenError {
-	constructor(hint?: string) {
-		super('Invalid two-factor code.', hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { InvalidMfaCodeError } from '@n8n/services-common';

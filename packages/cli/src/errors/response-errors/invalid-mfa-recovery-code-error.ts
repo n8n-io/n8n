@@ -1,7 +1,2 @@
-import { ForbiddenError } from './forbidden.error';
-
-export class InvalidMfaRecoveryCodeError extends ForbiddenError {
-	constructor(hint?: string) {
-		super('Invalid MFA recovery code', hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { InvalidMfaRecoveryCodeError } from '@n8n/services-common';

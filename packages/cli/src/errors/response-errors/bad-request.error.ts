@@ -1,11 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class BadRequestError extends ResponseError {
-	constructor(message: string, errorCode?: number, hint?: string, cause?: unknown) {
-		super(message, 400, errorCode, hint, cause);
-	}
-
-	static wrap(message: string, cause: unknown): BadRequestError {
-		return new BadRequestError(message, undefined, undefined, cause);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { BadRequestError } from '@n8n/services-common';

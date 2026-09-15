@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class NotImplementedError extends ResponseError {
-	constructor(message: string, hint: string | undefined = undefined) {
-		super(message, 501, 501, hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { NotImplementedError } from '@n8n/services-common';

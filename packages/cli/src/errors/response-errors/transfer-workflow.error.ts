@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class TransferWorkflowError extends ResponseError {
-	constructor(message: string) {
-		super(message, 400, 400);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { TransferWorkflowError } from '@n8n/services-common';

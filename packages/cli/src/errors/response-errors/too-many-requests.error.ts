@@ -1,7 +1,2 @@
-import { ResponseError } from './abstract/response.error';
-
-export class TooManyRequestsError extends ResponseError {
-	constructor(message: string, hint: string | undefined = undefined) {
-		super(message, 429, 429, hint);
-	}
-}
+// Re-export kept until every import points at @n8n/services-common.
+export { TooManyRequestsError } from '@n8n/services-common';
