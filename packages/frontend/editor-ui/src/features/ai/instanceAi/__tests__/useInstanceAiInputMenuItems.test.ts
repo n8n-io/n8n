@@ -38,8 +38,8 @@ const {
 		fetch: vi.fn(),
 		settings: { mcpAccessEnabled: true },
 		isLocalGatewayDisabled: false,
-		isLocalGatewayDisabledByAdmin: false,
-		isBrowserUseEnabledByAdmin: true,
+		isComputerUseAvailable: true,
+		isBrowserUseAvailable: true,
 		isGatewayConnected: false,
 		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
@@ -159,18 +159,18 @@ describe('useInstanceAiInputMenuItems', () => {
 		mcpStore.connections = [];
 		settingsStore.settings.mcpAccessEnabled = true;
 		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = false;
-		settingsStore.isBrowserUseEnabledByAdmin = true;
+		settingsStore.isComputerUseAvailable = true;
+		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.isGatewayConnected = false;
 		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups disabled by feature or admin settings', () => {
+	it('omits connection groups the store reports as unavailable', () => {
 		featureFlags.mcp = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = true;
-		settingsStore.isBrowserUseEnabledByAdmin = false;
+		settingsStore.isComputerUseAvailable = false;
+		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
