@@ -34,12 +34,8 @@ const maxHeldSignupDates = 1_000;
 const maxDetailStringLength = 64;
 
 /**
- * The acting user's id on any of the recorded events.
- *
- * Takes `unknown` rather than the declared `UserLike`: the handler map is generic over every
- * event name, so a call site widens to the union of all payloads, and several of those carry no
- * actor at all. An empty id is rejected too, because a row written against one would fail its
- * own foreign key.
+ * The acting user's id. `unknown` rather than `UserLike` because the generic handler map widens
+ * to every payload, several of which carry no actor. An empty id would fail the row's own key.
  */
 function actingUserId(payload: unknown): string | undefined {
 	if (typeof payload !== 'object' || payload === null || !('user' in payload)) return undefined;
@@ -158,12 +154,9 @@ export class ActivityEventRelay extends EventRelay {
 	 * on a successful read, so an outage mid-window leaves an already-evaluated user alone
 	 * and reaches only users it has not seen yet.
 	 *
-	 * The signup date is read from the database rather than taken from the event, whose
-	 * actor carries only a name and a role. It has to be the real one: the reader evaluates
-	 * the same flag with the real date, and a rollout that conditions on signup date would
-	 * otherwise answer one thing here and another there — recording for a user who cannot
-	 * read it back, or leaving a reader's own edits out of what they are handed. A user id
-	 * that resolves to nobody records nothing, for the same reason an unreadable flag does.
+	 * The signup date comes from the database, not the event, and has to be the real one: the
+	 * reader evaluates this flag with it, so a rollout conditioned on signup date would
+	 * otherwise split the two sides. An id that resolves to nobody records nothing.
 	 */
 	private async readGate(userId: string): Promise<boolean> {
 		try {
@@ -185,9 +178,8 @@ export class ActivityEventRelay extends EventRelay {
 	 * save, so without this every later event pays the read again while the evaluation it feeds
 	 * is still served from the client's own cache.
 	 *
-	 * Bounded by evicting the oldest rather than by an expiry — a signup date cannot change, so
-	 * there is nothing for an expiry to correct, and only the entry count needs a ceiling. A Map
-	 * iterates in insertion order, which is what makes the first key the oldest.
+	 * Bounded by evicting the oldest, not by an expiry: a signup date cannot change, so only the
+	 * entry count needs a ceiling.
 	 */
 	private async resolveSignupDate(userId: string): Promise<Date | undefined> {
 		const held = this.signupDates.get(userId);

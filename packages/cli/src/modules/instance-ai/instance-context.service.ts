@@ -49,28 +49,10 @@ const inventorySize = 8;
 const resourceHistoryLimit = 20;
 
 /**
- * Why a delta re-reads below its own high-water mark at all.
- *
- * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
- * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks only for "everything above the highest id seen" skips 100 for good. The
- * entries most worth surfacing are deletions, written by whichever request happens to be
- * committing.
- *
- * So a delta re-reads the span between the cursor's floor and its mark, and drops what it has
- * already shown. The floor is the highest id a turn deliberately cut — everything at or below it
- * has been decided against, and a later turn must never offer it again. Without that floor a
- * delta re-offers whatever the window trimmed, which is not a late commit but an ordinary older
- * row, and a backlog then drains a window per turn no matter what the conversation is about.
- *
- * What this does and does not promise. A straggler is recovered only while it sits above the
- * floor, so one that commits below a turn's cut is lost. That row was already further down than a
- * window's worth of newer ones, which is the same reason the window cut its neighbours.
- *
- * Ids are remembered so a delta cannot show one twice. Only ids above the floor can come
- * back, so that set needs to hold no more than a turn's shown rows plus those earlier turns
- * left above it — the cap below is a backstop for a long-lived thread on a busy project,
- * where the oldest forgotten id could reappear once before the age filter takes it.
+ * Shown ids a delta remembers, so it cannot offer one twice. A sequence value is allocated
+ * outside its transaction, so a delta re-reads between the cursor's floor and its mark to catch
+ * a late commit; the floor is the highest id a turn cut, which stops that re-read draining a
+ * backlog a window at a time.
  */
 const seenIdsCap = 200;
 
@@ -127,13 +109,7 @@ export function readInstanceContextCursor(
 	};
 }
 
-/**
- * The cursor this turn reads against.
- *
- * Only a widening of the category scope matters: a narrowed scope reads less than the cursor
- * already accounted for, which is safe, while a widened one has rows below the floor that were
- * never offered — the floor was set by turns that could not see them.
- */
+/** Lowers the floor when the scope widens: rows the narrower scope hid were never offered. */
 function cursorForScope(
 	cursor: InstanceContextCursor | null,
 	scope: ActivityReadScope,
@@ -145,11 +121,8 @@ function cursorForScope(
 	);
 	if (!widened) return cursor;
 
-	// Only the floor moves. The mark and the shown ids still hold, so nothing already in the
-	// conversation repeats; `runsThrough` and the inventory are untouched because a scope change
-	// says nothing about what exists or what has run. Rows the narrower scope hid were never
-	// shown, so dropping the floor is what makes them eligible while `activitySeen` keeps the
-	// rest suppressed.
+	// Only the floor: keeping the mark, the shown ids and `runsThrough` stops the inventory and
+	// the run window repeating for a change that says nothing about either.
 	return { ...cursor, activityFloor: 0, activityCategories: scope.categories };
 }
 
@@ -449,10 +422,8 @@ export class InstanceContextService {
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
 
-		// The span between the floor and the mark is read separately, not folded into the query
-		// above. One capped read cannot cover both: arrivals are unbounded and come back first, so
-		// a busy turn would fill the page and push this out — losing exactly the late commit it
-		// exists for.
+		// Read separately from the arrivals above: one capped query would let a busy turn fill the
+		// page and push the late commit out.
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
 					limit: entryFetchLimit,
@@ -476,17 +447,13 @@ export class InstanceContextService {
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// The highest row this turn cut, which is what the next delta must not read back down to.
-		// The list is newest-first, so the first row past the window is that one. A turn that cut
-		// nothing keeps the floor it inherited: nothing was decided against, so the span a
-		// straggler can still surface in must not shrink.
+		// The highest row this turn cut — newest-first, so it is the first past the window. A turn
+		// that cut nothing keeps its inherited floor.
 		const cut = fresh[windowSize];
 		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
 
-		// What was shown, not what was read: an entry the window cut is still unseen, and the span
-		// above the floor gives it another turn to appear rather than burying it under a mark it
-		// never reached. Only ids above the floor need remembering — at or below it, the floor
-		// already excludes them.
+		// What was shown, not what was read, and only above the floor — below it the floor already
+		// excludes them.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
 			.filter((id) => id > floor)
 			.sort((a, b) => b - a)
@@ -550,10 +517,8 @@ export class InstanceContextService {
 		// — so a user removed from a project would otherwise keep reading it here for the life of the
 		// thread, while every other read in this module refused them.
 		//
-		// `workflow:read` opens the block at all: it is what the inventory and run legs expose.
-		// Credential entries are asked for separately, because a project grants the two scopes
-		// independently — a role with workflow access and no credential access must not read a
-		// credential's name and type here when every other surface refuses it.
+		// Asked separately because a project grants the two independently: a role without
+		// `credential:read` must not read a credential's name and type here.
 		const [workflows, credentials] = await Promise.all([
 			userHasScopes(user, ['workflow:read'], false, { projectId }),
 			userHasScopes(user, ['credential:read'], false, { projectId }),
@@ -594,11 +559,8 @@ const updatePreamble = [
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
 function renderInventory(inventory: Inventory): string[] {
-	// Both headings name the scope rather than saying "here", and the empty one is a state, not
-	// a history. This block is suppressed only when every leg is empty, so an empty inventory
-	// always sits above a feed or a run list that does show work — and an unqualified "nothing
-	// has been built" then reads as a contradiction of the section under it. It is also just
-	// wrong wherever the work was deleted or moved out rather than never written.
+	// Names the scope, and states what is there now rather than what was never written: an empty
+	// inventory always sits above a leg that does show work.
 	if (inventory.total === 0) return ['Workflows in this project: none right now.', ''];
 
 	const named = inventory.workflows.map(

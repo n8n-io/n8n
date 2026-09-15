@@ -2487,42 +2487,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
- * Rollout flag for reading instance-activity context: the per-turn
- * `<instance-context>` block, the `activity` tool, and the skill that explains them.
- *
- * One flag over the whole feature rather than one per side, so **turning the record on turns
- * the read on** and neither control means nothing is read. Only an explicit override parts
- * them, and only in the one direction that is safe — see the last row:
- *
- * | `N8N_ACTIVITY_LOG_ENABLED` | this flag in PostHog | writes | reads |
- * | -- | -- | -- | -- |
- * | off | off | off | off |
- * | off | on | on | on |
- * | on | anything | on | on |
- * | on | explicit `false` override | on | off |
- *
- * The env var force-enables when it is true, including when PostHog is unreachable, since the
- * override is applied to the resolved flags rather than instead of fetching them. Setting it is
- * all that is needed to try this on a dev instance. It does not force anything off: unset or
- * false, it defers, and a flag PostHog turns on stays on. Only an explicit
- * `N8N_FEATURE_FLAG_OVERRIDES` entry switches the read off. With it unset the flag decides, and both sides follow it: the relay evaluates
- * it for the acting user of each recorded event, so a rollout reaches writes and reads at
- * the same time and needs no deploy. Both sides send the same person properties, including
- * the real signup date, so a rollout may condition on one without the two sides splitting.
- *
- * The last row is the kill switch and the one asymmetry left: an explicit override stops
- * the read while the env var keeps the record accruing, so a token regression can be
- * rolled back without losing history.
- *
- * Two costs of coupling this way, both deliberate. Recording consults the flag per acting
- * user rather than once at startup, which is a cached lookup per recorded event; and with
- * diagnostics off there is no PostHog to consult, so the relay keeps its original
- * zero-cost path and registers no listeners at all.
- *
- * Roll the read back if the agent starts answering about the most recent thing rather
- * than the question, or if turn tokens rise with no matching fall in clarifying
- * questions. Watch both numbers together: fewer questions with worse builds is a
- * regression, not a win. `INSTANCE_CONTEXT_TURN` carries both sides per turn.
+ * Rollout flag for the instance-activity read: the per-turn block, the `activity` tool and its
+ * skill. `N8N_ACTIVITY_LOG_ENABLED` force-enables it, so the record and the read move together;
+ * an explicit `N8N_FEATURE_FLAG_OVERRIDES` entry is the kill switch for the read alone.
  */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 

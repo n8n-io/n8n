@@ -23,23 +23,16 @@ const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = 
 };
 
 function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
-	// The node-usage index has two entrances under one flag: the `node-usage` action, and
-	// narrowing `list` by node type, which the tool documents as reading the same index.
-	// Crediting only the action would report a turn that asked "who uses Slack" the cheap
-	// way as never having left the block.
-	//
-	// Checked ahead of the action guard below, not after it: the node-type filter is recorded
-	// from the args on its own, so a call carrying it with no parsed action is still a read of
-	// this index, and crediting it must not depend on an action it never needed.
+	// The index has two entrances: the `node-usage` action and the `nodeTypes` filter on `list`.
+	// Checked before the action guard, since the filter is recorded without one.
 	if (call.toolName === DOMAIN_TOOL_IDS.WORKFLOWS && call.filteredByNodeTypes === true) {
 		return 'node-usage';
 	}
 
 	if (call.action === undefined) return undefined;
 
-	// `toolName` and `action` both come off the model's own tool call, so a plain index
-	// could return an inherited member — `action: "constructor"` would hand back a
-	// function and put it in `surfaces`, where the schema promises a surface name.
+	// Both come off the model's own tool call, so a plain index could return an inherited
+	// member — `action: "constructor"` would put a function in `surfaces`.
 	const byAction = Object.hasOwn(SURFACE_BY_CALL, call.toolName)
 		? SURFACE_BY_CALL[call.toolName]
 		: undefined;
@@ -49,14 +42,8 @@ function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
 }
 
 /**
- * Which context surfaces a turn used.
- *
- * Attempts count, not just successes: a turn that tried to read deeper and failed still
- * went looking, and dropping it would hide the cases where a surface is broken or too
- * hard to call.
- *
- * The single place this is derived. The trace shows it and telemetry reports it, and the
- * two have to agree about what happened.
+ * Which context surfaces a turn used. Attempts count, not just successes — a turn that tried
+ * and failed still went looking. Derived once, because the trace and telemetry must agree.
  */
 export function deriveInstanceContextReach(toolCalls: ToolCallSummary[]): InstanceContextReach {
 	const surfaces: InstanceContextSurface[] = [];

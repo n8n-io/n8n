@@ -30,18 +30,14 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
- * How long an evaluation that answered nothing is held — an outage, blocked egress, or a project
- * with no flags. Short, because it is not an answer and the next call may get a real one. Not
- * zero: a caller on a per-event path would otherwise re-request every time, and an unreachable
- * PostHog makes each of those a full timeout-and-retry cycle.
+ * How long an evaluation that answered nothing is held. Short, because it is not an answer — but
+ * not zero, or a per-event caller re-requests on every event while PostHog is unreachable.
  */
 const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
 /**
- * Slots the flag cache keeps. Expiry alone does not bound it — an expired entry is replaced only
- * when that same user is evaluated again, so an outage across many distinct users would otherwise
- * leave one slot per user for the process lifetime. Evicting the oldest insertion keeps the users
- * being evaluated now.
+ * Slots the flag cache keeps. Expiry alone does not bound it: an expired entry is replaced only
+ * when that user is evaluated again, so an outage would leave one slot per user for good.
  */
 export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
 
@@ -194,9 +190,8 @@ export class PostHogClient {
 			return cached;
 		}
 
-		// A failed evaluation is cached like an empty one rather than propagating uncached. The
-		// alternative retries on the next call, which on a per-event caller means one outbound
-		// request per event for as long as PostHog is unreachable.
+		// Cached like an empty one rather than propagating uncached, or a per-event caller sends
+		// one request per event for as long as PostHog is unreachable.
 		let data: FeatureFlagData;
 		try {
 			const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
@@ -264,11 +259,9 @@ export class PostHogClient {
 	 *    only; `false` defers to PostHog. Applied last so the generic map
 	 *    cannot undo a feature an operator enabled explicitly.
 	 *
-	 * One exception, and it is deliberate: `N8N_ACTIVITY_LOG_ENABLED` yields to
-	 * the generic map instead of overriding it, because that map is the only
-	 * way to stop the read while the record keeps accruing. Without the
-	 * exception an instance with the record on could not be rolled back. Do not
-	 * copy the shape of that block for a flag that has no such kill switch.
+	 * One deliberate exception: `N8N_ACTIVITY_LOG_ENABLED` yields to the generic
+	 * map, which is the only way to stop the read while the record accrues. Do
+	 * not copy that shape for a flag with no such kill switch.
 	 */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
