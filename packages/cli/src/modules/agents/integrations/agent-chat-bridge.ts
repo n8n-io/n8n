@@ -330,17 +330,18 @@ export class AgentChatBridge {
 
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
+			let replyThread = thread;
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				const anchoredThread = this.anchorInboundThread(thread, message);
+				replyThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
-				await this.executeAndStream(anchoredThread, message, {
+				await this.executeAndStream(replyThread, message, {
 					isNewMention: true,
 					subscribe: shouldSubscribe,
 				});
 			} catch (error) {
-				await this.postErrorToThread(thread, error);
+				await this.postErrorToThread(replyThread, error);
 			}
 		});
 

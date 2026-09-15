@@ -239,8 +239,10 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 				throw error;
 			} finally {
 				if (claim.abortSignal.aborted) status = 'error';
-				turnQueue.finish(claim, status);
-				await claim.release();
+				if (turnQueue.rows.find((row) => row.id === claim.executionId)?.status === 'running') {
+					turnQueue.finish(claim, status);
+					await claim.release();
+				}
 			}
 		})();
 	const messageContextStore = new MemoryMessageContextStore();

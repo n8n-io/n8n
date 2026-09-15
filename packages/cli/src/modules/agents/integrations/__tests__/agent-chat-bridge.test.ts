@@ -3320,6 +3320,20 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+
+			vi.mocked(Container.get(AgentTurnQueueService).submit).mockRejectedValueOnce(
+				new AgentThreadQueueFullError(),
+			);
+			await handlers.mention!(inbound, {
+				id: '456.789',
+				text: 'one more message',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(anchored.post).toHaveBeenCalledWith(
+				`⚠️ This thread already has ${MAX_QUEUED_TURNS_PER_THREAD} messages waiting. Try again after the agent processes a message.`,
+			);
+			expect(inbound.post).not.toHaveBeenCalled();
 		});
 
 		it('keeps a conversation-scoped Slack group DM on that thread id', async () => {
