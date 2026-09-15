@@ -1667,9 +1667,13 @@ function createNodeAdapterServiceForTests(
 		nodeCatalogService,
 		undefined,
 		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
 		options?.executeNodeService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[39],
+		>[43],
 	);
 
 	(

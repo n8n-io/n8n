@@ -87,30 +87,11 @@ downstream node reference the data node explicitly.
 
 ## Testing a Single Node
 
-`nodes(action="execute")` runs one node standalone with real credentials and
-returns its real output items (same approval flow as
-`executions(action="run")`). Two uses while building:
-
-- **Learn a real output shape** before wiring downstream expressions, when the
-  type definition has no output type and the operation is a read (get, list,
-  search). Prefer one observed run over guessing field names from
-  documentation.
-- **Isolate a suspect node during repair**: re-run just that node with
-  controlled `input` items and its resolved parameters instead of the whole
-  workflow, to separate "node config is wrong" from "upstream data is wrong".
-
-Pass the node the same shape as in SDK code — `{ type, version, config:
-{ parameters, credentials } }` — plus literal `input` items. Constraints: the
-node runs alone, so expressions referencing other nodes cannot resolve —
-inline literal test values; side effects are real, so do not test write
-operations unless the write itself is wanted; output is the returned items
-(binary as metadata only), capped at 60s. Credentials must be resolved
-`{ id, name }` references (or the n8n Connect managed form) — an unresolved
-`newCredential('...')` placeholder is rejected, so defer node testing until
-the credential exists.
-
-This never substitutes for `verify-built-workflow` or a live run: it proves
-one node's config and output shape, not the wiring between nodes.
+`nodes(action="execute")` runs one node standalone: use it to learn a real
+output shape or isolate a suspect node. Pass `{ type, version, config:
+{ parameters, credentials } }` plus literal `input` items, with resolved
+`{ id, name }` credentials. Expressions referencing other nodes cannot
+resolve, so inline test values. Side effects are real: do not test writes.
 
 ## Escalation
 
