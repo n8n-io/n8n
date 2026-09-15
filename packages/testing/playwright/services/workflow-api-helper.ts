@@ -1,6 +1,6 @@
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
-import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
+import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 // Type for execution responses from the n8n API
@@ -425,11 +425,10 @@ export class WorkflowApiHelper {
 		timeoutMs = 10000,
 		pollIntervalMs = 250,
 	): Promise<ExecutionListResponse> {
-		const settled = new Set(['success', 'error', 'crashed', 'canceled']);
 		const deadline = Date.now() + timeoutMs;
 
 		let execution = await this.getExecution(executionId);
-		while (!settled.has(execution.status)) {
+		while (!isTerminalExecutionStatus(execution.status)) {
 			if (Date.now() >= deadline) {
 				throw new TestError(
 					`Execution ${executionId} did not settle within ${timeoutMs}ms (status: ${execution.status})`,
