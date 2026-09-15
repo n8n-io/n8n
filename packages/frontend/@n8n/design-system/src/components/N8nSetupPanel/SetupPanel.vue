@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { useResizeObserver } from '@vueuse/core';
-import { CollapsibleRoot } from 'reka-ui';
-import { computed, nextTick, onScopeDispose, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { SetupPanelProps } from './SetupPanel.types';
@@ -21,36 +18,6 @@ const activeItem = computed(() =>
 );
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
-const overlayContent = useTemplateRef<HTMLElement>('overlayContent');
-const overlayHeight = ref<number>();
-const animateHeight = ref(false);
-let resizeFrame: number | undefined;
-
-function measureOverlay() {
-	if (activeItem.value && overlayContent.value)
-		overlayHeight.value = overlayContent.value.offsetHeight;
-}
-useResizeObserver(overlayContent, measureOverlay);
-watch(
-	() => activeItem.value?.id,
-	async (id) => {
-		if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
-		if (!id) return;
-		// A different item starts at its own height; only changes within it resize smoothly.
-		animateHeight.value = false;
-		overlayHeight.value = undefined;
-		await nextTick();
-		if (activeItem.value?.id !== id || !overlayContent.value) return;
-		measureOverlay();
-		resizeFrame = requestAnimationFrame(() => {
-			animateHeight.value = true;
-		});
-	},
-	{ immediate: true, flush: 'post' },
-);
-onScopeDispose(() => {
-	if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
-});
 
 function deactivateOverlay(element: Element) {
 	element.setAttribute('inert', '');
@@ -137,8 +104,8 @@ watch(
 					</N8nButton>
 				</template>
 			</div>
-			<CollapsibleRoot :open="showChecklist" :unmount-on-hide="false">
-				<N8nAnimatedCollapsibleContent>
+			<Transition :enter-active-class="$style.enterActive" :leave-active-class="$style.leaveActive">
+				<div v-show="showChecklist" :class="$style.checklist">
 					<div :class="{ [$style.listSpacing]: showTerminal }">
 						<ul
 							:id="checklistId"
@@ -185,12 +152,12 @@ watch(
 							</li>
 						</ul>
 					</div>
-				</N8nAnimatedCollapsibleContent>
-			</CollapsibleRoot>
+				</div>
+			</Transition>
 		</div>
 		<Transition
-			:enter-active-class="$style.overlayEnter"
-			:leave-active-class="$style.overlayLeave"
+			:enter-active-class="$style.enterActive"
+			:leave-active-class="$style.leaveActive"
 			@before-enter="activateOverlay"
 			@before-leave="deactivateOverlay"
 			@leave-cancelled="activateOverlay"
@@ -200,14 +167,13 @@ watch(
 				v-if="activeItem && showChecklist"
 				:key="activeItem.id"
 				ref="overlay"
-				:class="[$style.overlay, { [$style.resize]: animateHeight }]"
-				:style="overlayHeight === undefined ? undefined : { height: `${overlayHeight}px` }"
+				:class="$style.overlay"
 				role="dialog"
 				:aria-labelledby="titleId"
 				data-test-id="setup-panel-overlay"
 				@keydown.esc.stop="emit('update:activeItemId', undefined)"
 			>
-				<div ref="overlayContent" :class="$style.overlayContent">
+				<div :class="$style.overlayContent">
 					<header :class="$style.header">
 						<N8nButton
 							variant="ghost"
@@ -249,18 +215,25 @@ watch(
 	min-width: 0;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
-	@include motion.fade-in-up;
 }
 
 .base,
 .overlay {
+	--animation--popover-in--scale: 0.7;
+
 	// Reserve the taller card's height so the chat can scroll above it.
 	grid-area: 1 / 1;
 	align-self: end;
 }
 
-.base {
+.base,
+.overlay,
+.checklist {
 	transform-origin: bottom center;
+}
+
+.base {
+	@include motion.popover-in;
 	transition:
 		transform var(--duration--snappy) var(--easing--ease-out),
 		opacity var(--duration--snappy) var(--easing--ease-out),
@@ -271,7 +244,7 @@ watch(
 .hidden {
 	visibility: hidden;
 	opacity: 0;
-	transform: scale(0.92);
+	transform: scale(0.7);
 	transition-delay: 0s, 0s, var(--duration--snappy);
 }
 
@@ -316,15 +289,11 @@ watch(
 }
 
 .overlay {
-	--animation--popover-in--translate-y: var(--spacing--2xs);
-	--animation--popover-in--scale: 0.95;
-
 	position: relative;
 	z-index: 1;
 	box-sizing: content-box;
 	max-height: 60vh;
 	overflow: hidden;
-	transform-origin: bottom center;
 }
 
 .overlayContent {
@@ -333,17 +302,13 @@ watch(
 	max-height: 60vh;
 }
 
-.resize {
-	@include motion.height-transition;
-}
-
-.overlayEnter,
-.overlayLeave {
+.enterActive,
+.leaveActive {
 	@include motion.popover-in;
 	animation-fill-mode: both;
 }
 
-.overlayLeave {
+.leaveActive {
 	animation-direction: reverse;
 }
 
