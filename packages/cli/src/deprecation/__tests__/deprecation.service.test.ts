@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,11 +8,16 @@ import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
+	const globalConfig = mockInstance(GlobalConfig, {
+		nodes: { exclude: [] },
+		executions: { mode: 'regular' },
+		taskRunners: { mode: 'internal' },
+	});
 	const instanceSettings = mockInstance(InstanceSettings, {
 		instanceType: 'main',
 		isDocker: true,
 	});
-	const deprecationService = new DeprecationService(logger, instanceSettings);
+	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
@@ -121,6 +127,7 @@ describe('DeprecationService', () => {
 		test('should warn when not running in a container', () => {
 			const service = new DeprecationService(
 				logger,
+				globalConfig,
 				mock<InstanceSettings>({ instanceType: 'main', isDocker: false }),
 			);
 			service.warn();
@@ -130,6 +137,7 @@ describe('DeprecationService', () => {
 		test('should not warn when running in a container', () => {
 			const service = new DeprecationService(
 				logger,
+				globalConfig,
 				mock<InstanceSettings>({ instanceType: 'main', isDocker: true }),
 			);
 			service.warn();
