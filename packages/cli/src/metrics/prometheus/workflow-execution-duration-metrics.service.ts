@@ -10,7 +10,7 @@ import { DURATION_BUCKETS_SECONDS } from './constant';
 /**
  * Observes workflow execution duration as a histogram (`n8n_workflow_execution_duration_seconds`).
  * Labels: `status` (success/failed), `mode` (manual/trigger/webhook/etc.),
- * and optionally `workflow_id` (gated by config flag).
+ * and optionally `workflow_id`, `workflow_name`, `project_name` (each gated by a config flag).
  */
 @Service()
 export class PrometheusWorkflowExecutionDurationMetricsService
@@ -30,6 +30,12 @@ export class PrometheusWorkflowExecutionDurationMetricsService
 		if (this.config.includeWorkflowIdLabel) {
 			labelNames.push('workflow_id');
 		}
+		if (this.config.includeWorkflowNameLabel) {
+			labelNames.push('workflow_name');
+		}
+		if (this.config.includeProjectNameLabel) {
+			labelNames.push('project_name');
+		}
 
 		const durationHistogram = new promClient.Histogram({
 			name: `${this.config.prefix}workflow_execution_duration_seconds`,
@@ -38,7 +44,7 @@ export class PrometheusWorkflowExecutionDurationMetricsService
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
-		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+		this.eventService.on('workflow-post-execute', ({ runData, workflow, projectName }) => {
 			if (runData?.stoppedAt) {
 				const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
 				const labels: Record<string, string> = {
@@ -48,6 +54,14 @@ export class PrometheusWorkflowExecutionDurationMetricsService
 
 				if (this.config.includeWorkflowIdLabel) {
 					labels.workflow_id = String(workflow.id ?? 'unknown');
+				}
+				if (this.config.includeWorkflowNameLabel) {
+					labels.workflow_name = String(workflow.name ?? 'unknown');
+				}
+				if (this.config.includeProjectNameLabel) {
+					// Empty string (not "unknown") for workflows with no project: it is a valid
+					// "not applicable" state, and keeps the label set consistent across all series.
+					labels.project_name = String(projectName ?? '');
 				}
 
 				durationHistogram.observe(labels, durationSeconds);
