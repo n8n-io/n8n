@@ -72,6 +72,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
