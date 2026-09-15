@@ -1,3 +1,4 @@
+import { NodeOperationError } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -35,6 +36,7 @@ async function resolveTargets(
 	credentialType: 'databricksApi' | 'databricksOAuth2Api',
 	host: string,
 	runId: number,
+	itemIndex: number,
 ): Promise<{ run: DatabricksJobRun; targets: RunTarget[] }> {
 	const run = await fetchRunPage(context, credentialType, host, runId);
 	const tasks: DatabricksJobRunTask[] = [...(run.tasks ?? [])];
@@ -43,6 +45,16 @@ async function resolveTargets(
 		const next = await fetchRunPage(context, credentialType, host, runId, pageToken);
 		tasks.push(...(next.tasks ?? []));
 		pageToken = next.next_page_token;
+	}
+	if (pageToken) {
+		throw new NodeOperationError(
+			context.getNode(),
+			`Run ${runId} has more tasks than the node can read`,
+			{
+				itemIndex,
+				description: `The node reads at most ${TASK_PAGES_MAX * 100} tasks of one run. Read the remaining outputs by their task run IDs.`,
+			},
+		);
 	}
 
 	const targets = tasks
@@ -64,7 +76,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const host = await getHost(this, credentialType);
 	const runId = readIdParameter(this, i, 'runId', 'run');
 
-	const { run, targets } = await resolveTargets(this, credentialType, host, runId);
+	const { run, targets } = await resolveTargets(this, credentialType, host, runId, i);
 
 	const items: INodeExecutionData[] = [];
 	for (const target of targets) {

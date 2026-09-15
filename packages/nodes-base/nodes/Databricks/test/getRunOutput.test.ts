@@ -173,6 +173,28 @@ describe('Job -> Get Run Output', () => {
 		expect(result.map((item) => item.json.task_key)).toEqual(['extract', 'load']);
 	});
 
+	it('should fail instead of returning a partial task list when the run has more task pages than the node reads', async () => {
+		const context = setupContext({}, 2);
+		apiMock(context).mockResolvedValue({
+			job_id: JOB_ID,
+			run_id: RUN_ID,
+			tasks: [task('extract', 1001)],
+			next_page_token: 'more',
+		});
+
+		const result = getRunOutput.call(context, 2);
+
+		await expect(result).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(result).rejects.toMatchObject({
+			message: `Run ${RUN_ID} has more tasks than the node can read`,
+			context: { itemIndex: 2 },
+		});
+		expect(apiMock(context)).toHaveBeenCalledTimes(20);
+		expect(apiMock(context).mock.calls.map(([, options]) => options.url)).not.toContain(
+			`${HOST}/api/2.2/jobs/runs/get-output`,
+		);
+	});
+
 	it.each([
 		[
 			'the notebook output is truncated',
