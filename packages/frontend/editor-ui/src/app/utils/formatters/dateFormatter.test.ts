@@ -1,4 +1,4 @@
-import { formatTimeAgo } from './dateFormatter';
+import { convertToDisplayDate, convertToDisplayDateComponents, toDayMonth, toTime, formatTimeAgo } from './dateFormatter';
 
 describe('formatTimeAgo', () => {
 	const now = new Date('2023-07-15T12:00:00Z');
@@ -71,5 +71,57 @@ describe('formatTimeAgo', () => {
 		// Exactly 31 days ago
 		const exactlyThirtyOneDaysAgo = new Date('2023-06-14T12:00:00Z');
 		expect(formatTimeAgo(exactlyThirtyOneDaysAgo)).toBe('June 14, 2023');
+	});
+});
+
+describe('timezone consistency', () => {
+	const testTimestamp = '2025-08-07T14:52:28.000Z';
+	const testDate = new Date(testTimestamp);
+	const testEpoch = testDate.getTime();
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2025-08-07T12:00:00Z'));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('convertToDisplayDate should produce consistent results for string, Date, and epoch inputs', () => {
+		const fromString = convertToDisplayDate(testTimestamp);
+		const fromDate = convertToDisplayDate(testDate);
+		const fromEpoch = convertToDisplayDate(testEpoch);
+
+		// All three input formats must produce identical output
+		expect(fromString.date).toBe(fromDate.date);
+		expect(fromString.date).toBe(fromEpoch.date);
+		expect(fromString.time).toBe(fromDate.time);
+		expect(fromString.time).toBe(fromEpoch.time);
+	});
+
+	test('convertToDisplayDateComponents should produce consistent results for all input types', () => {
+		const fromString = convertToDisplayDateComponents(testTimestamp);
+		const fromDate = convertToDisplayDateComponents(testDate);
+		const fromEpoch = convertToDisplayDateComponents(testEpoch);
+
+		expect(fromString.date).toBe(fromDate.date);
+		expect(fromString.date).toBe(fromEpoch.date);
+		expect(fromString.time).toBe(fromDate.time);
+		expect(fromString.time).toBe(fromEpoch.time);
+	});
+
+	test('toDayMonth should produce consistent results for string and Date inputs', () => {
+		const fromString = toDayMonth(testTimestamp);
+		const fromDate = toDayMonth(testDate);
+
+		expect(fromString).toBe(fromDate);
+	});
+
+	test('toTime should produce consistent results for string and Date inputs', () => {
+		const fromString = toTime(testTimestamp);
+		const fromDate = toTime(testDate);
+
+		expect(fromString).toBe(fromDate);
 	});
 });
