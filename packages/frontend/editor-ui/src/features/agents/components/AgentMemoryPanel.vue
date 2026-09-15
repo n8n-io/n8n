@@ -226,19 +226,24 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 		:description="i18n.baseText('agents.builder.memory.description')"
 	>
 		<template #header-actions>
-			<N8nTooltip :content="i18n.baseText('generic.settings')">
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					icon="cog"
-					icon-size="large"
-					icon-only
-					:aria-label="i18n.baseText('generic.settings')"
-					:disabled="props.disabled"
-					data-testid="agent-memory-settings-button"
-					@click="settingsDialogOpen = true"
-				/>
-			</N8nTooltip>
+			<div :class="$style.headerActions">
+				<N8nText step="sm" color="text-light">
+					{{ i18n.baseText('agents.builder.memory.alwaysOn') }}
+				</N8nText>
+				<N8nTooltip :content="i18n.baseText('generic.settings')">
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						icon="cog"
+						icon-size="large"
+						icon-only
+						:aria-label="i18n.baseText('generic.settings')"
+						:disabled="props.disabled"
+						data-testid="agent-memory-settings-button"
+						@click="settingsDialogOpen = true"
+					/>
+				</N8nTooltip>
+			</div>
 		</template>
 
 		<div :class="$style.row">
@@ -346,6 +351,12 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	min-width: 0;
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .titleGroup > :global(.n8n-text) {
