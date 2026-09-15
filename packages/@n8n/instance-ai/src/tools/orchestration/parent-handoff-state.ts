@@ -53,11 +53,21 @@ export async function hydrateUserDecisions(
 	}
 }
 
-export async function recordUserDecision(
+/**
+ * Upsert a batch of decisions in one pass, then persist once.
+ * The caller (ask-user tool) enforces ask-once per question; the upsert is
+ * last-wins by normalized question, so a re-ask that the user dismisses would
+ * overwrite a prior real answer with `(skipped)`. That is acceptable only
+ * because the ask-user tool description forbids re-asking — do not call this
+ * for a question that may already hold a real answer unless overwriting it is
+ * the intent.
+ */
+export async function recordUserDecisions(
 	context: InstanceAiContext,
-	decision: ResolvedUserDecision,
+	newDecisions: ResolvedUserDecision[],
 ): Promise<void> {
-	if (decision.question.trim() === '') {
+	const valid = newDecisions.filter((d) => d.question.trim() !== '');
+	if (valid.length === 0) {
 		return;
 	}
 
@@ -65,14 +75,16 @@ export async function recordUserDecision(
 	const decisions = context.resolvedUserDecisions ?? [];
 	context.resolvedUserDecisions = decisions;
 
-	const normalizedQuestion = normalizeQuestion(decision.question);
-	const existing = decisions.find((d) => normalizeQuestion(d.question) === normalizedQuestion);
-	if (existing) {
-		existing.question = decision.question;
-		existing.answer = decision.answer;
-		existing.skipped = decision.skipped;
-	} else {
-		decisions.push(decision);
+	for (const decision of valid) {
+		const normalizedQuestion = normalizeQuestion(decision.question);
+		const existing = decisions.find((d) => normalizeQuestion(d.question) === normalizedQuestion);
+		if (existing) {
+			existing.question = decision.question;
+			existing.answer = decision.answer;
+			existing.skipped = decision.skipped;
+		} else {
+			decisions.push(decision);
+		}
 	}
 
 	while (decisions.length > MAX_DECISIONS) {
@@ -80,6 +92,13 @@ export async function recordUserDecision(
 	}
 
 	await saveUserDecisions(context);
+}
+
+export async function recordUserDecision(
+	context: InstanceAiContext,
+	decision: ResolvedUserDecision,
+): Promise<void> {
+	await recordUserDecisions(context, [decision]);
 }
 
 async function saveUserDecisions(context: InstanceAiContext): Promise<void> {

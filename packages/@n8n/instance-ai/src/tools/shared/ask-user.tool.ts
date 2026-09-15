@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext, ResolvedUserDecision } from '../../types';
-import { recordUserDecision } from '../orchestration/parent-handoff-state';
+import { recordUserDecisions } from '../orchestration/parent-handoff-state';
 import { ASK_USER_TOOL_ID } from '../tool-ids';
 
 export { ASK_USER_TOOL_ID };
@@ -121,9 +121,10 @@ export function createAskUserTool(context?: InstanceAiContext) {
 			// User skipped or dismissed
 			if (!resumeData.approved || !resumeData.answers) {
 				if (context) {
-					for (const q of input.questions) {
-						await recordUserDecision(context, toDecision(q.question));
-					}
+					await recordUserDecisions(
+						context,
+						input.questions.map((q) => toDecision(q.question)),
+					);
 				}
 				return { answered: false };
 			}
@@ -139,9 +140,10 @@ export function createAskUserTool(context?: InstanceAiContext) {
 				};
 			});
 			if (context) {
-				for (const a of enrichedAnswers) {
-					await recordUserDecision(context, toDecision(a.question, a));
-				}
+				await recordUserDecisions(
+					context,
+					enrichedAnswers.map((a) => toDecision(a.question, a)),
+				);
 			}
 			return { answered: true, answers: enrichedAnswers };
 		})
