@@ -427,6 +427,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						size="small"
 						:node-name="activeNode?.name ?? ''"
 						:aria-label="noOutputActionLabel"
+						:tooltip="noOutputActionLabel"
 						telemetry-source="inputs"
 						data-test-id="execute-step-compact"
 						@execute="emit('execute')"

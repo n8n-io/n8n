@@ -533,6 +533,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								size="small"
 								:node-name="nodeNameToExecute"
 								:aria-label="i18n.baseText('ndv.input.noOutputData.action')"
+								:tooltip="i18n.baseText('ndv.input.noOutputData.action')"
 								telemetry-source="inputs"
 								data-test-id="execute-previous-node-compact"
 								execution-mode="exclusive"
