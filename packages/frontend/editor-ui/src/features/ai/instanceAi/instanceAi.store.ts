@@ -9,6 +9,7 @@ import {
 	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
 	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type PushMessage,
 } from '@n8n/api-types';
@@ -397,6 +398,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	// Each pick is independent (unlike node sets), so no merge is needed here.
+	function stageElementSelection(attachment: InstanceAiElementAttachment): void {
+		pendingComposerAttachments.value = [...pendingComposerAttachments.value, attachment];
+	}
+
 	function consumePendingAttachments(): InstanceAiAttachment[] {
 		const staged = pendingComposerAttachments.value;
 		pendingComposerAttachments.value = [];
@@ -450,6 +456,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		syncThread,
 		pendingComposerAttachments,
 		stageNodeSets,
+		stageElementSelection,
 		consumePendingAttachments,
 		composerFocusRequest,
 		requestComposerFocus,

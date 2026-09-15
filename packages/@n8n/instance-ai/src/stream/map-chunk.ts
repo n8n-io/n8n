@@ -1,5 +1,7 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	appBindingMetaSchema,
+	appBlueprintSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -220,7 +222,8 @@ type ConfirmationInputType =
 	| 'questions'
 	| 'plan-review'
 	| 'resource-decision'
-	| 'continue';
+	| 'continue'
+	| 'app-blueprint';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -236,7 +239,10 @@ function parseSchemaArray<T>(value: unknown, schema: z.ZodType<T>): T[] | undefi
 	return parsed.length > 0 ? parsed : undefined;
 }
 
-function parseSchemaRecord<T>(value: unknown, schema: z.ZodType<T>): T | undefined {
+function parseSchemaRecord<T>(
+	value: unknown,
+	schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+): T | undefined {
 	if (!isRecord(value)) return undefined;
 	const parsed = schema.safeParse(value);
 	return parsed.success ? parsed.data : undefined;
@@ -257,6 +263,7 @@ function parseInputType(value: unknown): ConfirmationInputType | undefined {
 		'plan-review',
 		'resource-decision',
 		'continue',
+		'app-blueprint',
 	] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
@@ -339,6 +346,8 @@ function mapSuspendedChunk(
 	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
+	const appBindings = parseSchemaArray(suspendPayload.appBindings, appBindingMetaSchema);
+	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
 	const credentialDestination = parseSchemaRecord(
 		suspendPayload.credentialDestination,
@@ -388,6 +397,8 @@ function mapSuspendedChunk(
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
+			...(appBindings ? { appBindings } : {}),
+			...(appBlueprint ? { appBlueprint } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
 			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),

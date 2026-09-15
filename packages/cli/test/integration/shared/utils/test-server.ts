@@ -395,6 +395,10 @@ export const setupTestServer = ({
 						await import('@/modules/data-table/data-table.module.js');
 						break;
 
+					case 'apps':
+						await import('@/modules/apps/apps.module.js');
+						break;
+
 					case 'workflow-reviews':
 						await import('@/modules/workflow-reviews.ee/workflow-reviews.module.js');
 						break;

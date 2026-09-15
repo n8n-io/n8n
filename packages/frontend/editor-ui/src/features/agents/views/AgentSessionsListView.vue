@@ -151,6 +151,8 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
 		case 'workflow':
 			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'app':
+			return { icon: 'app-window', label: i18n.baseText('agentSessions.origin.app') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':

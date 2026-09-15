@@ -56,7 +56,7 @@ function createMockThread() {
 	const isStreaming = ref(false);
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
-	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const resourceIndex = ref(new Map<string, ResourceEntry>());
 
 	return reactive({
 		id: 'thread-1',
@@ -64,7 +64,7 @@ function createMockThread() {
 		isStreaming,
 		isHydratingThread,
 		producedArtifacts,
-		resourceNameIndex,
+		resourceIndex,
 	});
 }
 
@@ -80,9 +80,9 @@ function registerWorkflow(thread: MockThread, id: string, name = `Workflow ${id}
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 function registerDataTable(
@@ -95,9 +95,19 @@ function registerDataTable(
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
+}
+
+function registerApp(thread: MockThread, id: string, name = `App ${id}`, projectId?: string) {
+	const entry: ResourceEntry = { type: 'app', id, name, projectId, namespace: id };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
+	const nextByName = new Map(thread.resourceIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	thread.resourceIndex = nextByName;
 }
 
 function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, projectId?: string) {
@@ -105,9 +115,9 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 // ---------------------------------------------------------------------------
@@ -409,7 +419,7 @@ describe('useCanvasPreview', () => {
 		test('opens an agent that is not a produced artifact', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
-			ctx.thread.resourceNameIndex = new Map([
+			ctx.thread.resourceIndex = new Map([
 				[
 					'support agent',
 					{
@@ -450,6 +460,34 @@ describe('useCanvasPreview', () => {
 					projectId: 'project-registered',
 				}),
 			]);
+		});
+	});
+
+	describe('openAppPreview', () => {
+		test('exposes the active app namespace and version and clears other state', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			const entry: ResourceEntry = {
+				type: 'app',
+				id: 'app-1',
+				name: 'Greeter',
+				projectId: 'project-1',
+				namespace: 'greeter',
+				versionId: 'v-1',
+			};
+			ctx.thread.producedArtifacts = new Map([...ctx.thread.producedArtifacts, ['app-1', entry]]);
+			ctx.openWorkflowPreview('wf-1');
+
+			expect(ctx.openAppPreview('app-1', 'project-1')).toBe(true);
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeAppProjectId.value).toBe('project-1');
+			expect(ctx.activeAppNamespace.value).toBe('greeter');
+			expect(ctx.activeAppVersionId.value).toBe('v-1');
+			expect(ctx.activeAppBuilding.value).toBe(false);
+			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.openAppPreview('app-1', 'project-1')).toBe(false);
 		});
 	});
 
@@ -1057,6 +1095,117 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.dataTableRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('auto-open app preview', () => {
+		function appPublishMessage(overrides: Partial<InstanceAiToolCallState> = {}) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-publish-app',
+							toolName: 'apps',
+							args: { action: 'publish', appId: 'app-1' },
+							result: { appId: 'app-1', versionId: 'v-1', namespace: 'app-1' },
+							...overrides,
+						}),
+					],
+				}),
+			});
+		}
+
+		test('switches to the app preview when a publish completes', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [appPublishMessage()];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open the app preview while hydrating', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerApp(ctx.thread, 'app-1');
+
+			ctx.thread.messages = [appPublishMessage()];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not auto-open the app preview on a failed publish', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerApp(ctx.thread, 'app-1');
+
+			ctx.thread.messages = [
+				appPublishMessage({ result: { error: true, stage: 'compile', message: 'boom' } }),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBeNull();
+		});
+
+		function appCreateMessage(result: unknown) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-create-app',
+							toolName: 'apps',
+							args: { action: 'create', projectId: 'proj-1', name: 'Greeter' },
+							result,
+						}),
+					],
+				}),
+			});
+		}
+
+		test('switches to the app preview when an app is created, before any build', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [
+				appCreateMessage({
+					app: { id: 'app-1', name: 'Greeter', namespace: 'greeter', projectId: 'proj-1' },
+					workspacePath: '/w/apps/greeter',
+					installed: true,
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeAppVersionId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open the app preview on a denied create or while hydrating', async () => {
+			const denied = setup();
+			denied.thread.isStreaming = true;
+			registerApp(denied.thread, 'app-1');
+			denied.thread.messages = [appCreateMessage({ denied: true, reason: 'taken' })];
+			await nextTick();
+			expect(denied.activeAppId.value).toBeNull();
+
+			const hydrating = setup();
+			hydrating.thread.isHydratingThread = true;
+			registerApp(hydrating.thread, 'app-1');
+			hydrating.thread.messages = [appCreateMessage({ app: { id: 'app-1' } })];
+			await nextTick();
+			expect(hydrating.activeAppId.value).toBeNull();
+			expect(hydrating.isPreviewVisible.value).toBe(false);
 		});
 	});
 

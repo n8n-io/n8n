@@ -25,6 +25,8 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
 				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
 				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
+				'instanceAi.tools.apps': 'Working on app',
+				'instanceAi.tools.apps.bind': 'Connecting workflow to app',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -77,6 +79,10 @@ describe('getToolIcon', () => {
 
 	test('returns table for data-table tools', () => {
 		expect(getToolIcon('data-tables')).toBe('table');
+	});
+
+	test('returns the apps grid for the apps tool', () => {
+		expect(getToolIcon('apps')).toBe('app-window');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -201,6 +207,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('n8n-docs', { action: 'lookup' })).toBe('Reading n8n docs');
 		expect(getToolLabel('n8n-docs', { action: 'search' })).toBe('Searching n8n docs');
 		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
+	});
+
+	test('getToolLabel returns action-specific apps labels and the bare tool label otherwise', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('apps', { action: 'bind' })).toBe('Connecting workflow to app');
+		expect(getToolLabel('apps', { action: 'unknown-action' })).toBe('Working on app');
+		expect(getToolLabel('apps')).toBe('Working on app');
 	});
 
 	test('getToolLabel returns action-specific activity and conversation-history labels', () => {

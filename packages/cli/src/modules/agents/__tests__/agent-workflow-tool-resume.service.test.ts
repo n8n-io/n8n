@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
@@ -18,6 +19,7 @@ import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { APP_CHAT_INTEGRATION_TYPE } from '../integrations/platforms/app-chat-integration';
 
 const agentRun: RelatedAgentRun = {
 	agentId: 'agent-1',
@@ -32,6 +34,12 @@ const previewRun: RelatedAgentRun = {
 	...agentRun,
 	integrationType: N8N_CHAT_INTEGRATION_TYPE,
 	userId: 'user-1',
+};
+
+const appRun: RelatedAgentRun = {
+	...agentRun,
+	threadId: 'agent-1:app:app-1:session-1',
+	integrationType: APP_CHAT_INTEGRATION_TYPE,
 };
 
 function setup() {
@@ -53,6 +61,7 @@ function setup() {
 		checkpoint: { status: 'suspended' },
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -64,9 +73,11 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
+		orchestrator,
 	);
 	return {
 		service,
+		orchestrator,
 		logger,
 		bridge,
 		chatIntegrationService,
@@ -424,5 +435,46 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+	});
+});
+
+describe('AgentWorkflowToolResumeService — app runs', () => {
+	async function* chunks(...items: Array<{ type: string; error?: Error }>) {
+		for (const item of items) yield item as never;
+	}
+
+	it('drains the published resume headlessly on the app thread', async () => {
+		const { service, orchestrator, chatIntegrationService, agentTestRunService } = setup();
+		orchestrator.resumeForChat.mockReturnValue(chunks({ type: 'text-delta' }, { type: 'finish' }));
+
+		await service.resume(appRun, 'success');
+
+		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
+		expect(agentTestRunService.resumeDraftRun).not.toHaveBeenCalled();
+		expect(orchestrator.resumeForChat).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			resumeData: { type: 'workflow_finished', value: 'success' },
+			usePublishedVersion: true,
+			integrationType: APP_CHAT_INTEGRATION_TYPE,
+			expectedMemory: { threadId: 'agent-1:app:app-1:session-1' },
+			source: APP_CHAT_INTEGRATION_TYPE,
+		});
+	});
+
+	it('logs an error chunk of the app resume instead of throwing into the execution', async () => {
+		const { service, orchestrator, logger } = setup();
+		orchestrator.resumeForChat.mockReturnValue(chunks({ type: 'error', error: new Error('boom') }));
+
+		await expect(
+			service.handleResumeRelay({ agentRun: appRun, status: 'success' }),
+		).resolves.toBeUndefined();
+
+		expect(logger.error).toHaveBeenCalledWith(
+			'Failed to resume agent run after sub-workflow completed',
+			expect.objectContaining({ runId: 'run-1', error: 'boom' }),
+		);
 	});
 });

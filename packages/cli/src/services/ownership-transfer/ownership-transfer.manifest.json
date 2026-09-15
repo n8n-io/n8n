@@ -85,6 +85,11 @@
 			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows. WorkflowReviewActivity and WorkflowReviewActivityComment ride this entity's cascade and have no projectId of their own, so they never appear in this manifest."
 		},
 		{
+			"name": "App",
+			"path": "packages/cli/src/modules/apps/app.entity.ts",
+			"reason": "Apps are served at a namespace URL that carries no project, so moving one between projects has no user-visible meaning yet. Dropped via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
+		},
+		{
 			"name": "PromotionConnectionProject",
 			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-connection-project.entity.ts",
 			"reason": "Promotion configuration for the project (which connection it is linked to), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."

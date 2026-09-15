@@ -5,6 +5,7 @@ import {
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import type { z } from 'zod';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
@@ -242,6 +243,84 @@ describe('createLazyRuntimeWorkspace', () => {
 		await expect(writePromise).rejects.toMatchObject({
 			name: 'AbortError',
 			message: 'Agent run was aborted',
+		});
+	});
+
+	describe('with an app workspace', () => {
+		function createDualWorkspace(defaultSandbox?: () => 'thread' | 'app') {
+			const thread = createMockWorkspace();
+			const app = createMockWorkspace();
+			const ensureWorkspace = vi.fn(async () => await Promise.resolve(thread.workspace));
+			const ensureAppWorkspace = vi.fn(async () => await Promise.resolve(app.workspace));
+			const appWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace: ensureAppWorkspace });
+			const lazyWorkspace = createLazyRuntimeWorkspace({
+				ensureWorkspace,
+				appWorkspace,
+				defaultSandbox,
+			});
+			return { thread, app, ensureWorkspace, ensureAppWorkspace, lazyWorkspace };
+		}
+
+		it('adds a sandbox input to the core tools and keeps the tool set unchanged', () => {
+			const { lazyWorkspace } = createDualWorkspace();
+
+			const tools = lazyWorkspace.getTools();
+
+			expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
+			for (const tool of tools) {
+				const schema = tool.inputSchema as z.ZodObject<z.ZodRawShape>;
+				expect(schema.shape.sandbox.parse(undefined)).toBeUndefined();
+				expect(schema.shape.sandbox.parse('app')).toBe('app');
+			}
+		});
+
+		it('routes to the thread workspace by default and to the app workspace with sandbox app', async () => {
+			const { thread, app, ensureWorkspace, ensureAppWorkspace, lazyWorkspace } =
+				createDualWorkspace();
+			const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+			await readFile?.handler?.({ path: 'report.md' }, {});
+			expect(thread.filesystem.readFile).toHaveBeenCalledWith('report.md', expect.anything());
+			expect(ensureAppWorkspace).not.toHaveBeenCalled();
+
+			await readFile?.handler?.({ path: 'apps/greeter/src/App.vue', sandbox: 'app' }, {});
+			expect(app.filesystem.readFile).toHaveBeenCalledWith(
+				'apps/greeter/src/App.vue',
+				expect.anything(),
+			);
+			expect(app.filesystem.readFile).toHaveBeenCalledTimes(1);
+			expect(thread.filesystem.readFile).toHaveBeenCalledTimes(1);
+			expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+			expect(ensureAppWorkspace).toHaveBeenCalledTimes(1);
+		});
+
+		it('routes to the app workspace by default when the thread builds an app, and to the thread with sandbox thread', async () => {
+			const { thread, app, lazyWorkspace } = createDualWorkspace(() => 'app');
+			const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+			await readFile?.handler?.({ path: 'apps/greeter/src/App.vue' }, {});
+			expect(app.filesystem.readFile).toHaveBeenCalledTimes(1);
+			expect(thread.filesystem.readFile).not.toHaveBeenCalled();
+
+			await readFile?.handler?.({ path: 'report.md', sandbox: 'thread' }, {});
+			expect(thread.filesystem.readFile).toHaveBeenCalledWith('report.md', expect.anything());
+		});
+
+		it('runs commands in the app sandbox without passing the sandbox input through', async () => {
+			const { app, thread, lazyWorkspace } = createDualWorkspace();
+			const execute = lazyWorkspace
+				.getTools()
+				.find((tool) => tool.name === 'workspace_execute_command');
+
+			await execute?.handler?.({ command: 'npm test', cwd: '/w/apps/greeter', sandbox: 'app' }, {});
+
+			expect(app.executeCommand).toHaveBeenCalledWith(
+				'npm test',
+				[],
+				expect.objectContaining({ cwd: '/w/apps/greeter' }),
+			);
+			expect(app.executeCommand.mock.calls[0]?.[2]).not.toHaveProperty('sandbox');
+			expect(thread.executeCommand).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -2,6 +2,7 @@ import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
+import type { APP_CHAT_INTEGRATION_TYPE } from './platforms/app-chat-integration';
 
 export type IntegrationMessageTarget =
 	| {
@@ -62,13 +63,16 @@ export interface IntegrationSubjectPerson {
 }
 
 /**
- * Source of a tool connection: a persisted credential integration, or the
- * implicit credential-less in-app chat channel (injected per-run, never
- * stored on the agent).
+ * Source of a tool connection: a persisted credential integration, or an
+ * implicit credential-less internal channel (in-app chat, built app) that is
+ * injected per-run and never stored on the agent.
  */
 export type IntegrationToolConnectionSource =
 	| AgentIntegrationConfig
-	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
+	| {
+			type: typeof N8N_CHAT_INTEGRATION_TYPE | typeof APP_CHAT_INTEGRATION_TYPE;
+			credentialId?: undefined;
+	  };
 
 export type IntegrationContextQuery =
 	| 'get_current_message_context'

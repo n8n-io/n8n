@@ -43,6 +43,7 @@ import Webhook from './custom/webhook.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
+import IconLucideAppWindow from '~icons/lucide/app-window';
 import IconLucideArchive from '~icons/lucide/archive';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
@@ -189,6 +190,8 @@ import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMinus from '~icons/lucide/minus';
+import IconLucideMonitor from '~icons/lucide/monitor';
+import IconLucideMoon from '~icons/lucide/moon';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -231,6 +234,7 @@ import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
+import IconLucideSmartphone from '~icons/lucide/smartphone';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSplit from '~icons/lucide/split';
@@ -553,6 +557,7 @@ export const updatedIconSet = {
 
 	// lucide
 	'align-right': IconLucideAlignRight,
+	'app-window': IconLucideAppWindow,
 	archive: IconLucideArchive,
 	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': IconLucideArrowDown,
@@ -694,6 +699,8 @@ export const updatedIconSet = {
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
 	minus: IconLucideMinus,
+	monitor: IconLucideMonitor,
+	moon: IconLucideMoon,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,
@@ -736,6 +743,7 @@ export const updatedIconSet = {
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	smartphone: IconLucideSmartphone,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,

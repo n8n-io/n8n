@@ -6,7 +6,7 @@ import { computed, inject } from 'vue';
 const i18n = useI18n();
 
 const props = defineProps<{
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'app';
 	name: string;
 	resourceId: string;
 	projectId?: string;
@@ -23,18 +23,29 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openAppPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAppPreview',
+	undefined,
+);
 
 const iconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	app: 'app-window',
 };
 
 const icon = computed(() => iconMap[props.type] ?? 'file');
 
-function projectResourceUrl(projectId: string | undefined, resourceType: 'data-table' | 'agent') {
+function projectResourceUrl(
+	projectId: string | undefined,
+	resourceType: 'data-table' | 'agent' | 'app',
+) {
 	if (resourceType === 'agent') {
 		return projectId ? `/projects/${projectId}/agents/${props.resourceId}` : '/home/agents';
+	}
+	if (resourceType === 'app') {
+		return projectId ? `/projects/${projectId}/apps/${props.resourceId}` : '/home/apps';
 	}
 
 	return projectId ? `/projects/${projectId}/datatables/${props.resourceId}` : '/data-tables';
@@ -62,6 +73,14 @@ function handleClick(e: MouseEvent) {
 		}
 		if (props.projectId) {
 			openAgentPreview?.(props.resourceId, props.projectId);
+		}
+	} else if (props.type === 'app') {
+		if (e.metaKey || e.ctrlKey) {
+			window.open(projectResourceUrl(props.projectId, 'app'), '_blank');
+			return;
+		}
+		if (props.projectId) {
+			openAppPreview?.(props.resourceId, props.projectId);
 		}
 	}
 }

@@ -14,7 +14,7 @@ const mockApp = mock<express.Application>();
 vi.mock('express', async () => ({ __esModule: true, default: () => mockApp }));
 
 describe('WebhookServer', () => {
-	it('should mount the chat WebSocket server', () => {
+	it('should mount the chat WebSocket server', async () => {
 		mockInstance(Logger);
 		Container.set(DbConnection, mock<DbConnection>());
 		Container.set(
@@ -47,7 +47,7 @@ describe('WebhookServer', () => {
 		const httpServer = mock<http.Server>();
 		Object.assign(webhookServer, { server: httpServer });
 
-		webhookServer['setupPushServer']();
+		await webhookServer['setupPushServer']();
 
 		expect(chatServer.setup).toHaveBeenCalledWith(httpServer, mockApp);
 	});

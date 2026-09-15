@@ -264,6 +264,8 @@ import type { Mock, MockedFunction } from 'vitest';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AppPreviewService } from '../app-preview/app-preview.service';
+import { AppSourceSnapshotService } from '../app-preview/app-source-snapshot.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
@@ -503,6 +505,8 @@ type TerminalGuardOrderServiceInternals = {
 		registerTraceContext: Mock;
 	};
 	threadPushRef: Map<string, string>;
+	pendingAppSnapshots: Map<string, Promise<void>>;
+	appIdByThread: Map<string, string>;
 	pendingBrowserCredentialSetups: Map<
 		string,
 		{
@@ -625,6 +629,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		registerTraceContext: vi.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.pendingAppSnapshots = new Map();
+	service.appIdByThread = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
@@ -686,8 +692,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const snapshotModes = ['off', 'seeded', 'read failure'];
-	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+	const snapshotModes = ['off', 'seeded', 'read failure'] as const;
+	type SnapshotMode = (typeof snapshotModes)[number];
+
+	function createRuntimeWorkspaceService(snapshotMode: SnapshotMode = 'off') {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -727,6 +735,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
+			memoryService: { getThreadAppId: Mock };
+			appIdByThread: Map<string, string>;
 			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
@@ -794,6 +804,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.memoryService = { getThreadAppId: vi.fn(async () => undefined) };
+		service.appIdByThread = new Map();
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -856,6 +868,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createSandbox as Mock).mockResolvedValue(sandbox);
 		(createWorkspace as Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		return { service, sandbox, workspace, initialSnapshots };
+	}
+
+	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+		const { service, sandbox, workspace, initialSnapshots } =
+			createRuntimeWorkspaceService(snapshotMode);
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -875,9 +893,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			);
 		}
 
-		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(3);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
-			2,
+			1,
+			expect.objectContaining({ id: 'instance-ai-app-workspace' }),
+		);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			3,
 			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
 		);
 		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
@@ -997,6 +1019,64 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
+	it('gives the run a lazy app workspace that resolves the app sandbox once the thread is bound', async () => {
+		const { service, workspace } = createRuntimeWorkspaceService();
+
+		await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+		const context = service.adapterService.createContext.mock.results[0]?.value as {
+			appWorkspace: { ensureWorkspace: () => Promise<unknown> };
+			getAppId: () => string | undefined;
+		};
+		const appWorkspace = (createLazyRuntimeWorkspace as Mock).mock.results[0]?.value;
+		const threadWorkspaceArgs = (createLazyRuntimeWorkspace as Mock).mock.calls[1]?.[0] as {
+			appWorkspace: unknown;
+		};
+
+		expect(context.appWorkspace).toBe(appWorkspace);
+		expect(threadWorkspaceArgs.appWorkspace).toBe(appWorkspace);
+		expect(context.getAppId()).toBeUndefined();
+		await expect(context.appWorkspace.ensureWorkspace()).resolves.toBeUndefined();
+		expect(createSandbox).not.toHaveBeenCalled();
+
+		service.appIdByThread.set('thread-1', 'app-1');
+
+		expect(context.getAppId()).toBe('app-1');
+		await context.appWorkspace.ensureWorkspace();
+		expect(createSandbox).toHaveBeenCalledTimes(1);
+		expect(createSandbox).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'instance-ai-thread-app-app-1' }),
+			expect.anything(),
+		);
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenLastCalledWith(
+			expect.objectContaining({ workspace }),
+		);
+	});
+
+	it('loads skills into the app sandbox when the thread is bound at run start', async () => {
+		const { service } = createRuntimeWorkspaceService();
+		service.memoryService.getThreadAppId.mockResolvedValue('app-1');
+
+		await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			new AbortController().signal,
+		);
+
+		expect(service.appIdByThread.get('thread-1')).toBe('app-1');
+		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
+		const appWorkspace = (createLazyRuntimeWorkspace as Mock).mock.results[0]?.value;
+		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledWith(
+			expect.objectContaining({ workspace: appWorkspace }),
+		);
+	});
+
 	it.each([
 		[false, undefined, 'default', undefined],
 		[true, undefined, 'progressive', undefined],
@@ -1045,6 +1125,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
+			memoryService: { getThreadAppId: Mock };
+			appIdByThread: Map<string, string>;
 			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
@@ -1113,6 +1195,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.memoryService = { getThreadAppId: vi.fn(async () => undefined) };
+		service.appIdByThread = new Map();
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -5782,6 +5866,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 	type Internals = {
 		threadPushRef: Map<string, string>;
 		planRequestsByThread: Map<string, number>;
+		appIdByThread: Map<string, string>;
 		runState: { clearThread: Mock };
 		backgroundTasks: { cancelThread: Mock };
 		schedulerLocks: Map<string, unknown>;
@@ -5811,6 +5896,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 
 		service.threadPushRef = new Map();
 		service.planRequestsByThread = new Map();
+		service.appIdByThread = new Map();
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
@@ -5848,6 +5934,8 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -5864,6 +5952,8 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 

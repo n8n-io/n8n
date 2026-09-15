@@ -31,6 +31,7 @@
     "@codemirror/lang-javascript": "catalog:",
     "@codemirror/lang-json": "catalog:",
     "@codemirror/lang-python": "catalog:",
+    "@codemirror/lang-vue": "catalog:",
     "@codemirror/language": "catalog:",
     "@codemirror/lint": "catalog:",
     "@codemirror/search": "catalog:",

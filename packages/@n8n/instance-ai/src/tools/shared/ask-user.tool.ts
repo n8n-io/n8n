@@ -45,7 +45,8 @@ export function createAskUserTool() {
 				'Questions are single-select, multi-select, or free-text. ' +
 				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
-				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
+				'timezone) use placeholders or unresolved newCredential() calls instead. For a new app, the ' +
+				'app-builder skill decides the questions (look, features, data) before its blueprint. ' +
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
 				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
 				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +

@@ -55,6 +55,7 @@ type EndpointGroup =
 	| 'promotions'
 	| 'security-settings'
 	| 'data-table'
+	| 'apps'
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
@@ -64,10 +65,12 @@ type EndpointGroup =
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'agents'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'
+	| 'apps'
 	| 'mcp'
 	| 'oauth-server'
 	| 'dynamic-credentials'

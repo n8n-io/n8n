@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useSidebarState } from '../instanceAiLayout';
+import { useAppThreadScope, useSidebarState } from '../instanceAiLayout';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
+import { PROJECT_APPS } from '@/features/apps/apps.constants';
 
 const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const sidebar = useSidebarState();
+const appScope = useAppThreadScope();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 
@@ -32,7 +34,31 @@ const threadCreditsUsed = computed(() =>
 
 <template>
 	<div :class="$style.header">
-		<Transition name="sidebar-toggle-fade">
+		<!-- The app page owns its thread history through the actions slot; its left slot leads back to the apps list. -->
+		<RouterLink
+			v-if="appScope"
+			v-slot="{ href, navigate }"
+			:to="{ name: PROJECT_APPS, params: { projectId: appScope.projectId } }"
+			custom
+		>
+			<N8nTooltip
+				:content="i18n.baseText('apps.builder.backToApps')"
+				placement="bottom"
+				:show-after="TOOLTIP_DELAY_MS"
+			>
+				<N8nIconButton
+					:href="href"
+					icon="arrow-left"
+					variant="ghost"
+					size="small"
+					icon-size="large"
+					data-test-id="app-builder-back"
+					:aria-label="i18n.baseText('apps.builder.backToApps')"
+					@click="navigate"
+				/>
+			</N8nTooltip>
+		</RouterLink>
+		<Transition v-else name="sidebar-toggle-fade">
 			<span v-if="sidebar.collapsed.value" :class="$style.sidebarToggle">
 				<N8nTooltip
 					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"

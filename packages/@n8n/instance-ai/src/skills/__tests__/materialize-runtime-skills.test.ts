@@ -86,9 +86,13 @@ function emptyLinkedFiles(): RuntimeSkillLinkedFiles {
 	};
 }
 
-function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSource {
+function createRuntimeSkillSourceWithLinkedFile(
+	path: string,
+	options: { group?: 'references' | 'templates'; content?: string } = {},
+): RuntimeSkillSource {
+	const { group = 'references', content = 'linked' } = options;
 	const linkedFiles = emptyLinkedFiles();
-	linkedFiles.references.push({ path, bytes: 6, sha256: 'sha' });
+	linkedFiles[group].push({ path, bytes: content.length, sha256: 'sha' });
 
 	return {
 		registry: {
@@ -115,7 +119,7 @@ function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSourc
 			await Promise.resolve({
 				skillId,
 				filePath,
-				content: 'linked',
+				content,
 			}),
 	};
 }
@@ -401,6 +405,34 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(meta?.skill).toBe('large-skill');
 		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
 	});
+
+	it.each([
+		{ group: 'references' as const, path: 'references/big.md', warns: true },
+		{ group: 'templates' as const, path: 'templates/vue/package-lock.json', warns: false },
+	])(
+		'warns about a large $path only when load_skill can read it (warns: $warns)',
+		async ({ group, path, warns }) => {
+			const source = createRuntimeSkillSourceWithLinkedFile(path, {
+				group,
+				content: 'x'.repeat(64 * 1024 + 1),
+			});
+			const { workspace, writes } = createMockWorkspace();
+			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
+			await materializeRuntimeSkillsIntoWorkspace({
+				source,
+				workspace,
+				root: '/home/daytona/workspace',
+				logger,
+			});
+
+			const limitWarnings = logger.warn.mock.calls.filter(
+				(call) => call[0] === 'Runtime skill file exceeds load_skill output limit',
+			);
+			expect(limitWarnings).toHaveLength(warns ? 1 : 0);
+			expect(writes.has(`/home/daytona/workspace/skills/test-skill/${path}`)).toBe(true);
+		},
+	);
 });
 
 describe('grouping guidance injection', () => {

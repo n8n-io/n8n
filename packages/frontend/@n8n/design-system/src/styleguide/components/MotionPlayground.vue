@@ -31,6 +31,7 @@ const ANIMATIONS = [
 	'pulse-glow',
 	'pulse-glow-delayed',
 	'shimmer',
+	'shimmer-surface',
 	'skeleton-pulse',
 	'spin',
 	'typing-blink',
@@ -267,6 +268,10 @@ watch(selectedAnimation, () => {
 	-webkit-background-clip: border-box;
 	background-clip: border-box;
 	-webkit-text-fill-color: unset;
+}
+
+.shimmer-surface {
+	@include motion.shimmer-surface;
 }
 
 .skeleton-pulse {

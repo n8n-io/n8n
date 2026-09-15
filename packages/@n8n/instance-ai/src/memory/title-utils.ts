@@ -35,13 +35,14 @@ async function resolveBuiltTelemetry(
 export async function generateTitleForRun(
 	modelId: ModelConfig,
 	userMessage: string,
-	options?: { telemetry?: BuiltTelemetry | Telemetry },
+	options?: { telemetry?: BuiltTelemetry | Telemetry; instructions?: string },
 ): Promise<string | null> {
 	try {
 		const model = createModel(modelId);
 		const telemetry = await resolveBuiltTelemetry(options?.telemetry);
 		return await generateTitleFromMessage(model, userMessage, {
 			...(telemetry ? { telemetry } : {}),
+			...(options?.instructions ? { instructions: options.instructions } : {}),
 		});
 	} catch {
 		return null;

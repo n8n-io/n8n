@@ -469,6 +469,42 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
 	});
 
+	it('renders app artifacts and opens them in the side panel', async () => {
+		const openAppPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'app-1',
+				{
+					type: 'app',
+					id: 'app-1',
+					projectId: 'proj-1',
+					name: 'Greeter',
+					namespace: 'greeter',
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAppPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Greeter' });
+		expect(artifactLink).toHaveAttribute('href', '/projects/proj-1/apps/app-1');
+		await waitFor(() => {
+			expect(artifactLink.querySelector('[data-icon="app-window"]')).toBeInTheDocument();
+		});
+
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		const wasNotPrevented = artifactLink.dispatchEvent(event);
+
+		expect(wasNotPrevented).toBe(false);
+		expect(openAppPreview).toHaveBeenCalledExactlyOnceWith('app-1', 'proj-1');
+	});
+
 	it('shows a spinner on the artifact row while the AI is building it', () => {
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([
 			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],

@@ -24,6 +24,24 @@
 	}
 }
 
+// Shimmer surface - the same sweep across a whole box, for loading panes
+// whose content has not arrived yet. Keep the two colors close: the motion
+// carries the state, the contrast should not.
+@mixin shimmer-surface {
+	background: linear-gradient(
+		135deg,
+		var(--animation--shimmer-surface--background, var(--background--subtle)),
+		var(--animation--shimmer-surface--foreground, var(--background--surface)),
+		var(--animation--shimmer-surface--background, var(--background--subtle))
+	);
+	background-size: 200% 100%;
+	animation: shimmer var(--animation--shimmer-surface--duration, var(--duration--slow)) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
 // Spin - continuous 360° rotation for loading indicators
 @mixin spin {
 	animation: spin var(--animation--spin--duration, var(--duration--base)) linear infinite;

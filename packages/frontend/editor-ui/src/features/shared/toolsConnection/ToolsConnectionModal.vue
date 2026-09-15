@@ -8,7 +8,7 @@ import {
 	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { DialogSize, TabOptions } from '@n8n/design-system';
+import type { DialogSize, IconName, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -32,6 +32,8 @@ const props = withDefaults(
 		items: ToolConnectionItem[];
 		/** Tabs to render, in order. Declared categories show even while empty. */
 		categories: ToolCategoryKey[];
+		/** Icon shown before the tab label, per category. Tabs without an entry stay text-only. */
+		categoryIcons?: Partial<Record<ToolCategoryKey, IconName>>;
 		title?: string;
 		searchPlaceholder?: string;
 		detailItem?: ToolConnectionItem | null;
@@ -244,10 +246,14 @@ function categoryLabel(category: ToolCategoryKey): string {
  * tab — far louder than a muted number next to the name.
  */
 const tabOptions = computed<Array<TabOptions<ToolCategoryKey>>>(() =>
-	visibleCategories.value.map((category) => ({
-		value: category,
-		label: `${categoryLabel(category)} (${tabCount(category)})`,
-	})),
+	visibleCategories.value.map((category) => {
+		const icon = props.categoryIcons?.[category];
+		return {
+			value: category,
+			label: `${categoryLabel(category)} (${tabCount(category)})`,
+			...(icon ? { icon } : {}),
+		};
+	}),
 );
 
 // The active tab can still disappear — a consumer changing its declared set, or

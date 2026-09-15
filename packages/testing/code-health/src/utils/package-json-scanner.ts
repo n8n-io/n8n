@@ -21,7 +21,13 @@ export async function findPackageJsonFiles(rootDir: string): Promise<string[]> {
 	return await fg('packages/**/package.json', {
 		cwd: rootDir,
 		absolute: true,
-		ignore: ['**/node_modules/**', '**/dist/**', '**/src/template/**'],
+		ignore: [
+			'**/node_modules/**',
+			'**/dist/**',
+			'**/src/template/**',
+			// Skill app templates are standalone npm projects installed inside a sandbox, not workspace packages.
+			'**/skills/*/templates/**',
+		],
 	});
 }
 

@@ -1,17 +1,24 @@
 import { reactive, watch } from 'vue';
 import type {
+	DescribedBinding,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/** App artifacts: URL slug the app is served under (`/apps/<namespace>/`). */
+	namespace?: string;
+	/** App artifacts: id of the latest published version; absent until the first `apps publish`. */
+	versionId?: string;
+	/** App artifacts: absolute URL of the latest build. */
+	url?: string;
 	/**
 	 * Set to true when the run-finish reap archived this workflow — a
 	 * stepping-stone the agent created but never promoted to the main
@@ -30,13 +37,18 @@ export type ResourceEntry = {
 // Internal helpers (defined before use to satisfy no-use-before-define)
 // ---------------------------------------------------------------------------
 
+/**
+ * All three maps are keyed by resource id. A resource sits under the same key in
+ * every map it belongs to, so the in-place reconcile can never write one
+ * resource's fields into another's object.
+ */
 interface Collections {
-	/** Resources produced/mutated by the agent in this thread, keyed by resource ID. */
+	/** Resources produced/mutated by the agent in this thread. */
 	produced: Map<string, ResourceEntry>;
-	/** Every resource seen in any tool call, keyed by lowercased name. */
-	byName: Map<string, ResourceEntry>;
-	/** Produced resources keyed by lowercased name; safe for markdown auto-linking. */
-	linkableByName: Map<string, ResourceEntry>;
+	/** Every resource seen in any tool call, including list results. */
+	seen: Map<string, ResourceEntry>;
+	/** Produced resources whose names are safe for markdown auto-linking. */
+	linkable: Map<string, ResourceEntry>;
 }
 
 /**
@@ -66,6 +78,12 @@ type PendingAgentTargetMetadata = {
 	name: string;
 };
 
+type AppBuilderTargetMetadata = {
+	appId: string;
+	projectId: string;
+	name?: string;
+};
+
 /**
  * Upsert a produced artifact. When an entry for the same `id` already exists,
  * optional fields provided by the new call win; fields it omits are preserved
@@ -80,10 +98,7 @@ function recordProduced(
 	options: RecordProducedOptions = {},
 ): void {
 	const existing = col.produced.get(entry.id);
-	const existingLinkKey = existing?.name.toLowerCase();
-	const wasLinkable =
-		existingLinkKey !== undefined && col.linkableByName.get(existingLinkKey)?.id === entry.id;
-	const shouldLink = options.linkable !== false || wasLinkable;
+	const shouldLink = options.linkable !== false || col.linkable.has(entry.id);
 	const merged: ResourceEntry = existing
 		? {
 				type: entry.type,
@@ -92,19 +107,19 @@ function recordProduced(
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				namespace: entry.namespace ?? existing.namespace,
+				versionId: entry.versionId ?? existing.versionId,
+				url: entry.url ?? existing.url,
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
-	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
-		col.byName.delete(existing.name.toLowerCase());
-		if (wasLinkable) col.linkableByName.delete(existing.name.toLowerCase());
-	}
-	col.byName.set(merged.name.toLowerCase(), merged);
-	if (shouldLink) col.linkableByName.set(merged.name.toLowerCase(), merged);
+	col.seen.set(entry.id, merged);
+	if (shouldLink) col.linkable.set(entry.id, merged);
 }
 
-function indexByName(col: Collections, entry: ResourceEntry): void {
-	col.byName.set(entry.name.toLowerCase(), entry);
+/** Index a resource the agent only looked at; produced entries keep precedence. */
+function recordSeen(col: Collections, entry: ResourceEntry): void {
+	if (!col.produced.has(entry.id)) col.seen.set(entry.id, entry);
 }
 
 function entryFromListItem(
@@ -135,6 +150,7 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	'apps',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 function entryFromAgentBuilderTarget(
@@ -163,7 +179,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	if (Array.isArray(result.workflows)) {
 		for (const wf of result.workflows as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('workflow', wf);
-			if (entry) indexByName(col, entry);
+			if (entry) recordSeen(col, entry);
 		}
 	}
 
@@ -171,7 +187,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {
-		const existing = col.produced.get(result.workflowId);
+		const existing = col.seen.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args?.name) ??
@@ -188,7 +204,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		WORKFLOW_MUTATING_ACTIONS.has(tc.args.action)
 	) {
 		const workflowId = tc.args.workflowId;
-		const existing = col.produced.get(workflowId);
+		const existing = col.seen.get(workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args.name) ??
@@ -208,7 +224,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	if (result.workflow && typeof result.workflow === 'object') {
 		const obj = result.workflow as Record<string, unknown>;
 		if (typeof obj.id === 'string') {
-			const existing = col.produced.get(obj.id);
+			const existing = col.seen.get(obj.id);
 			const name = optionalString(obj.name) ?? existing?.name ?? 'Untitled';
 			const entry: ResourceEntry = { type: 'workflow', id: obj.id, name };
 			const createdAt = optionalString(obj.createdAt);
@@ -227,7 +243,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
 	if (tc.toolName === 'build-agent' && typeof result.agentId === 'string') {
-		const existing = col.produced.get(result.agentId);
+		const existing = col.seen.get(result.agentId);
 		recordProduced(col, {
 			type: 'agent',
 			id: result.agentId,
@@ -235,12 +251,45 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		});
 	}
 
+	// --- Apps ----------------------------------------------------------------
+	// apps action=create: { app: { id, name, namespace, projectId, createdAt } }.
+	// apps action=publish: { appId, name, namespace, projectId, versionId, url }.
+	// `{ error }` / `{ denied }` results carry neither shape and register nothing.
+	if (tc.toolName === 'apps') {
+		if (result.app && typeof result.app === 'object') {
+			const obj = result.app as Record<string, unknown>;
+			if (typeof obj.id === 'string') {
+				const existing = col.seen.get(obj.id);
+				recordProduced(col, {
+					type: 'app',
+					id: obj.id,
+					name: optionalString(obj.name) ?? existing?.name ?? 'Untitled',
+					projectId: optionalString(obj.projectId),
+					namespace: optionalString(obj.namespace),
+					createdAt: optionalString(obj.createdAt),
+				});
+			}
+		}
+		if (typeof result.appId === 'string' && typeof result.versionId === 'string') {
+			const existing = col.seen.get(result.appId);
+			recordProduced(col, {
+				type: 'app',
+				id: result.appId,
+				name: optionalString(result.name) ?? existing?.name ?? 'Untitled',
+				projectId: optionalString(result.projectId),
+				namespace: optionalString(result.namespace),
+				versionId: result.versionId,
+				url: optionalString(result.url),
+			});
+		}
+	}
+
 	// --- Credentials -----------------------------------------------------
 	// Credentials never show in the panel; only needed for name linking.
 	if (Array.isArray(result.credentials)) {
 		for (const cred of result.credentials as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('credential', cred);
-			if (entry) indexByName(col, entry);
+			if (entry) recordSeen(col, entry);
 		}
 	}
 
@@ -249,13 +298,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	if (Array.isArray(result.tables)) {
 		for (const table of result.tables as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('data-table', table);
-			if (entry) indexByName(col, entry);
+			if (entry) recordSeen(col, entry);
 		}
 	}
 	if (Array.isArray(result.dataTables)) {
 		for (const table of result.dataTables as Array<Record<string, unknown>>) {
 			const entry = entryFromListItem('data-table', table);
-			if (entry) indexByName(col, entry);
+			if (entry) recordSeen(col, entry);
 		}
 	}
 
@@ -263,7 +312,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	if (result.table && typeof result.table === 'object') {
 		const obj = result.table as Record<string, unknown>;
 		if (typeof obj.id === 'string') {
-			const existing = col.produced.get(obj.id);
+			const existing = col.seen.get(obj.id);
 			const name = optionalString(obj.name) ?? existing?.name ?? obj.id;
 			const entry: ResourceEntry = { type: 'data-table', id: obj.id, name };
 			const createdAt = optionalString(obj.createdAt);
@@ -280,7 +329,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// { dataTableId, projectId, tableName? | dataTableName? } — produced.
 	// Preserves an existing name if the result doesn't carry a name.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
-		const existing = col.produced.get(result.dataTableId);
+		const existing = col.seen.get(result.dataTableId);
 		const name =
 			optionalString(result.tableName) ??
 			optionalString(result.dataTableName) ??
@@ -315,7 +364,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	if (!target?.id) return;
 	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
 
-	const existing = col.produced.get(target.id);
+	const existing = col.seen.get(target.id);
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
@@ -360,7 +409,74 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'app') {
+			recordProduced(col, {
+				type: 'app',
+				id: attachment.appId,
+				name: attachment.name,
+				projectId: attachment.projectId,
+				namespace: attachment.namespace,
+			});
 		}
+	}
+}
+
+/**
+ * Surface the app a thread is bound to before any message mentions it, so the
+ * preview tab exists as soon as the user lands from the apps page.
+ */
+function enrichAppFromBuilderTarget(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.appId);
+	if (existing && existing.type !== 'app') return;
+	recordProduced(col, {
+		type: 'app',
+		id: target.appId,
+		name: existing?.name ?? target.name ?? 'Untitled',
+		projectId: target.projectId,
+	});
+}
+
+const BINDING_KIND_TO_TYPE = {
+	workflow: 'workflow',
+	dataTable: 'data-table',
+	agent: 'agent',
+} as const satisfies Record<DescribedBinding['kind'], ResourceEntry['type']>;
+
+/**
+ * Surface the resources the bound app can call as preview tabs next to the app.
+ * Entries the thread already produced keep their event-derived data. Bound
+ * resources live in the app's project, which the API enforces on write.
+ */
+function enrichBindingsFromApp(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+	bindings: DescribedBinding[] | undefined,
+): void {
+	if (!target || !bindings) return;
+	for (const binding of bindings) {
+		if (binding.missing) continue;
+		const id =
+			binding.kind === 'workflow'
+				? binding.workflowId
+				: binding.kind === 'dataTable'
+					? binding.dataTableId
+					: binding.agentId;
+		if (col.produced.has(id)) continue;
+		recordProduced(
+			col,
+			{
+				type: BINDING_KIND_TO_TYPE[binding.kind],
+				id,
+				name: binding.name,
+				projectId: target.projectId,
+			},
+			// The agent did not produce these in this thread, so prose must not auto-link them.
+			{ linkable: false },
+		);
 	}
 }
 
@@ -395,13 +511,7 @@ function enrichWorkflowNames(
 	for (const entry of col.produced.values()) {
 		if (entry.type !== 'workflow') continue;
 		const storeName = workflowNameLookup(entry.id);
-		if (storeName && storeName !== entry.name) {
-			col.byName.delete(entry.name.toLowerCase());
-			col.linkableByName.delete(entry.name.toLowerCase());
-			entry.name = storeName;
-			col.byName.set(storeName.toLowerCase(), entry);
-			col.linkableByName.set(storeName.toLowerCase(), entry);
-		}
+		if (storeName && storeName !== entry.name) entry.name = storeName;
 	}
 }
 
@@ -449,13 +559,13 @@ function enrichAgentFromPendingTarget(
  *   canvas preview tabs. Repeated writes to the same resource update the
  *   existing entry instead of creating a duplicate.
  *
- * - `resourceNameIndex` (keyed by lowercased name) — every named resource
- *   seen in any tool call, including list results. Used for resource metadata
- *   lookups after explicit links have rendered.
+ * - `resourceIndex` (keyed by resource id) — every named resource seen in
+ *   any tool call, including list results. Used for resource metadata lookups
+ *   after explicit links have rendered.
  *
- * - `linkableResourceNameIndex` (keyed by lowercased name) — only resources
- *   produced or mutated by the agent. Used for markdown name→link replacement
- *   so passive list/search results cannot rewrite ordinary prose.
+ * - `linkableResourceIndex` (keyed by resource id) — only resources produced
+ *   or mutated by the agent. Used for markdown name→link replacement so
+ *   passive list/search results cannot rewrite ordinary prose.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
@@ -463,12 +573,14 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	appBuilderTarget?: () => AppBuilderTargetMetadata | undefined,
+	appBindings?: (appId: string) => DescribedBinding[] | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
 	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
-	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
-	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
+	const resourceIndex = reactive(new Map<string, ResourceEntry>());
+	const linkableResourceIndex = reactive(new Map<string, ResourceEntry>());
 
 	// Derived from `messages` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
@@ -478,8 +590,8 @@ export function useResourceRegistry(
 		(): Collections => {
 			const col: Collections = {
 				produced: new Map<string, ResourceEntry>(),
-				byName: new Map<string, ResourceEntry>(),
-				linkableByName: new Map<string, ResourceEntry>(),
+				seen: new Map<string, ResourceEntry>(),
+				linkable: new Map<string, ResourceEntry>(),
 			};
 
 			for (const msg of messages()) {
@@ -489,6 +601,9 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			const appTarget = appBuilderTarget?.();
+			enrichAppFromBuilderTarget(col, appTarget);
+			enrichBindingsFromApp(col, appTarget, appTarget && appBindings?.(appTarget.appId));
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
@@ -507,13 +622,13 @@ export function useResourceRegistry(
 		},
 		(col) => {
 			reconcileMap(producedArtifacts, col.produced);
-			reconcileMap(resourceNameIndex, col.byName);
-			reconcileMap(linkableResourceNameIndex, col.linkableByName);
+			reconcileMap(resourceIndex, col.seen);
+			reconcileMap(linkableResourceIndex, col.linkable);
 		},
 		{ immediate: true },
 	);
 
-	return { producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
+	return { producedArtifacts, resourceIndex, linkableResourceIndex };
 }
 
 /** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */

@@ -36,6 +36,7 @@ import {
 } from '@n8n/instance-ai';
 
 import {
+	appSandboxKey,
 	InstanceAiSandboxService,
 	type InstanceAiSandboxBackgroundTasks,
 	type InstanceAiSandboxProxy,
@@ -565,6 +566,28 @@ describe('InstanceAiSandboxService', () => {
 			expect(ids[2]).not.toBe(ids[0]);
 		});
 
+		it('gives an app one sandbox, distinct from the sandboxes of its threads', async () => {
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+
+			await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+			await service.getOrCreateWorkspaceEntry(appSandboxKey('app-1'), fakeUser);
+			await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			const ids = (createSandbox as Mock).mock.calls.map((call) => (call[0] as { id?: string }).id);
+			expect(appSandboxKey('app-1')).toBe('app-app-1');
+			expect(ids).toHaveLength(2);
+			expect(ids[1]).not.toBe(ids[0]);
+		});
+
 		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
 			const { service } = createSandboxService({
 				config: {
@@ -829,6 +852,37 @@ describe('InstanceAiSandboxService', () => {
 
 			expect(workspace.destroy).toHaveBeenCalledTimes(1);
 			expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCachedWorkspaceEntry', () => {
+		it('returns the cached entry while it is fresh and never creates one', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service } = createSandboxService({
+					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
+				});
+				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).not.toHaveBeenCalled();
+
+				const entry = await service.getOrCreateWorkspace(
+					'thread-1',
+					fakeUser,
+					{} as InstanceAiContext,
+				);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBe(entry);
+
+				vi.advanceTimersByTime(1000);
+				expect(service.getCachedWorkspaceEntry('thread-1')).toBeUndefined();
+				expect(createSandbox).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
