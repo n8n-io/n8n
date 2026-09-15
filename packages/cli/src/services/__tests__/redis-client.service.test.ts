@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import Redis from 'ioredis';
+import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { RedisClientService } from '@/services/redis-client.service';
@@ -17,11 +18,19 @@ const enableExitOnRedisUnreachable = (service: RedisClientService) => {
 };
 
 vi.mock('ioredis', () => {
+	const RedisMock = vi.fn().mockImplementation(function () {
+		return {
+			on: vi.fn(),
+		};
+	});
+
 	return {
-		default: vi.fn().mockImplementation(function () {
-			return {
-				on: vi.fn(),
-			};
+		default: Object.assign(RedisMock, {
+			Cluster: vi.fn().mockImplementation(function () {
+				return {
+					on: vi.fn(),
+				};
+			}),
 		}),
 	};
 });
@@ -39,6 +48,10 @@ describe('RedisClientService', () => {
 					db: 0,
 					timeoutThreshold: 10000,
 					clusterNodes: '',
+					sentinelNodes: '',
+					sentinelMasterName: '',
+					sentinelPassword: '',
+					sentinelTls: false,
 					keepAlive: undefined,
 				},
 			},
@@ -141,6 +154,156 @@ describe('RedisClientService', () => {
 				reconnectOnError: expect.any(Function),
 			}),
 		);
+	});
+
+	describe('sentinel client', () => {
+		beforeEach(() => {
+			globalConfig.queue.bull.redis.sentinelNodes =
+				'sentinel-1:26379,sentinel-2:26379,sentinel-3:26379';
+			globalConfig.queue.bull.redis.sentinelMasterName = 'mymaster';
+			globalConfig.queue.bull.redis.sentinelPassword = '';
+		});
+
+		afterEach(() => {
+			globalConfig.queue.bull.redis.sentinelNodes = '';
+			globalConfig.queue.bull.redis.sentinelMasterName = '';
+			globalConfig.queue.bull.redis.sentinelPassword = '';
+			globalConfig.queue.bull.redis.sentinelTls = false;
+		});
+
+		it('should create a sentinel client when sentinel nodes are configured', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sentinels: [
+						{ host: 'sentinel-1', port: 26379 },
+						{ host: 'sentinel-2', port: 26379 },
+						{ host: 'sentinel-3', port: 26379 },
+					],
+					name: 'mymaster',
+					enableReadyCheck: false,
+					maxRetriesPerRequest: null,
+					retryStrategy: expect.any(Function),
+				}),
+			);
+		});
+
+		it('should parse sentinel nodes with surrounding whitespace and skip empty entries', () => {
+			globalConfig.queue.bull.redis.sentinelNodes =
+				' sentinel-1:26379 , sentinel-2:26380 ,, sentinel-3:26381 ,';
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sentinels: [
+						{ host: 'sentinel-1', port: 26379 },
+						{ host: 'sentinel-2', port: 26380 },
+						{ host: 'sentinel-3', port: 26381 },
+					],
+				}),
+			);
+		});
+
+		it('should pass sentinel password when configured', () => {
+			globalConfig.queue.bull.redis.sentinelPassword = 'sentinel-secret';
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis).toHaveBeenCalledWith(
+				expect.objectContaining({ sentinelPassword: 'sentinel-secret' }),
+			);
+		});
+
+		it('should omit sentinel password when not configured', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const callArgs = mockedRedis.mock.calls[0][0];
+			expect(callArgs).not.toHaveProperty('sentinelPassword');
+		});
+
+		it('should enable TLS for sentinel mode when sentinelTls is set', () => {
+			globalConfig.queue.bull.redis.sentinelTls = true;
+			globalConfig.queue.bull.redis.tlsConfig = {
+				serverName: 'sentinel.example.com',
+				rejectUnauthorized: true,
+			};
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis).toHaveBeenCalledWith(
+				expect.objectContaining({
+					enableTLSForSentinelMode: true,
+					sentinelTLS: { servername: 'sentinel.example.com', rejectUnauthorized: true },
+				}),
+			);
+		});
+
+		it('should pass sentinelTLS without servername when serverName is empty', () => {
+			globalConfig.queue.bull.redis.sentinelTls = true;
+			globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: false };
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const callArgs = mockedRedis.mock.calls[0][0] as {
+				sentinelTLS: { servername: unknown; rejectUnauthorized: boolean };
+			};
+			expect(callArgs.sentinelTLS.servername).toBeUndefined();
+			expect(callArgs.sentinelTLS.rejectUnauthorized).toBe(false);
+		});
+
+		it('should not enable TLS for sentinel mode by default', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const callArgs = mockedRedis.mock.calls[0][0];
+			expect(callArgs).not.toHaveProperty('enableTLSForSentinelMode');
+			expect(callArgs).not.toHaveProperty('sentinelTLS');
+		});
+
+		it('should throw when sentinel nodes are configured without a master name', () => {
+			globalConfig.queue.bull.redis.sentinelMasterName = '';
+
+			const service = new RedisClientService(logger, globalConfig);
+
+			expect(() => service.createClient({ type: 'client(bull)' })).toThrowError(UserError);
+			expect(Redis).not.toHaveBeenCalled();
+		});
+
+		it('should apply extra options to the sentinel client', () => {
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({
+				type: 'client(bull)',
+				extraOptions: { enableOfflineQueue: false },
+			});
+
+			expect(Redis).toHaveBeenCalledWith(expect.objectContaining({ enableOfflineQueue: false }));
+		});
+
+		it('should prefer cluster over sentinel when both are configured', () => {
+			globalConfig.queue.bull.redis.clusterNodes = 'redis-1:6379,redis-2:6379';
+
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			expect(Redis.Cluster).toHaveBeenCalledWith(
+				[
+					{ host: 'redis-1', port: 6379 },
+					{ host: 'redis-2', port: 6379 },
+				],
+				expect.objectContaining({ redisOptions: expect.anything() }),
+			);
+			expect(Redis).not.toHaveBeenCalled();
+
+			globalConfig.queue.bull.redis.clusterNodes = '';
+		});
 	});
 
 	describe('connection recovery', () => {
