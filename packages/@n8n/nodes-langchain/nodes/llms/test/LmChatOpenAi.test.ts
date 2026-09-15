@@ -303,6 +303,42 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
+		it('should pass normalized TLS options to the proxy agent when configured', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: true,
+				ca: 'ca\\ncert',
+				cert: 'client\\ncert',
+				key: 'client\\nkey',
+				passphrase: 'secret',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return { timeout: 30000 };
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+				'https://api.openai.com/v1',
+				{
+					headersTimeout: 30000,
+					bodyTimeout: 30000,
+				},
+				undefined,
+				{
+					ca: 'ca\ncert',
+					cert: 'client\ncert',
+					key: 'client\nkey',
+					passphrase: 'secret',
+				},
+			);
+		});
+
 		it('should handle all available options v1.2', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 			const options = {

@@ -78,4 +78,44 @@ describe('apiRequest', () => {
 		// Assert
 		expect(response.error).toBeUndefined();
 	});
+
+	it('should add TLS agent options when SSL certificates are configured', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({
+			sslCertificatesEnabled: true,
+			ca: 'ca\\ncert',
+			cert: 'client\\ncert',
+			key: 'client\\nkey',
+			passphrase: 'secret',
+		});
+
+		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test');
+
+		expect(mockedExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'openAiApi',
+			expect.objectContaining({
+				agentOptions: {
+					ca: 'ca\ncert',
+					cert: 'client\ncert',
+					key: 'client\nkey',
+					passphrase: 'secret',
+				},
+			}),
+		);
+	});
+
+	it('should not add TLS agent options when SSL certificates are disabled', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({
+			sslCertificatesEnabled: false,
+			ca: 'ca',
+			cert: 'client-cert',
+			key: 'client-key',
+		});
+
+		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test');
+
+		expect(mockedExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'openAiApi',
+			expect.not.objectContaining({ agentOptions: expect.anything() }),
+		);
+	});
 });

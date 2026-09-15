@@ -9,9 +9,29 @@ describe('OpenAiApi Credential', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAI');
 		expect(openAiApi.documentationUrl).toBe('openai');
-		expect(openAiApi.properties).toHaveLength(6);
+		expect(openAiApi.properties).toHaveLength(11);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
+	});
+
+	it('should expose hidden password fields for mTLS client certificates', () => {
+		expect(openAiApi.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'sslCertificatesEnabled',
+					type: 'boolean',
+					default: false,
+				}),
+				...['ca', 'cert', 'key', 'passphrase'].map((name) =>
+					expect.objectContaining({
+						name,
+						type: 'string',
+						typeOptions: expect.objectContaining({ password: true }),
+						displayOptions: { show: { sslCertificatesEnabled: [true] } },
+					}),
+				),
+			]),
+		);
 	});
 
 	it('should allow custom header expressions to be omitted during design-time resolution', () => {

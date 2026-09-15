@@ -9,6 +9,7 @@ import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
 	mergeCustomHeaders,
+	normalizePem,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
@@ -820,5 +821,43 @@ describe('mergeCustomHeaders', () => {
 		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
 		expect(result).toEqual({ Authorization: 'Bearer new-token' });
+	});
+});
+
+describe('normalizePem', () => {
+	it('should convert literal newline escapes to real newlines', () => {
+		expect(normalizePem('-----BEGIN CERTIFICATE-----\\nbody\\n-----END CERTIFICATE-----')).toBe(
+			'-----BEGIN CERTIFICATE-----\nbody\n-----END CERTIFICATE-----',
+		);
+	});
+
+	it('should leave strings with real newlines unchanged', () => {
+		const pem = '-----BEGIN CERTIFICATE-----\nbody\n-----END CERTIFICATE-----';
+
+		expect(normalizePem(pem)).toBe(pem);
+	});
+
+	it('should return an empty string unchanged', () => {
+		expect(normalizePem('')).toBe('');
+	});
+
+	it('should reconstruct space-separated certificate PEM data', () => {
+		const body = 'A'.repeat(128);
+
+		expect(normalizePem(`-----BEGIN CERTIFICATE----- ${body} -----END CERTIFICATE-----`)).toBe(
+			`-----BEGIN CERTIFICATE-----\n${'A'.repeat(64)}\n${'A'.repeat(64)}\n-----END CERTIFICATE-----`,
+		);
+	});
+
+	it('should reconstruct space-separated private key PEM data', () => {
+		const body = 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEA';
+
+		expect(normalizePem(`-----BEGIN PRIVATE KEY----- ${body} -----END PRIVATE KEY-----`)).toBe(
+			`-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----`,
+		);
+	});
+
+	it('should return input unchanged when it is not PEM data', () => {
+		expect(normalizePem('not a pem')).toBe('not a pem');
 	});
 });
