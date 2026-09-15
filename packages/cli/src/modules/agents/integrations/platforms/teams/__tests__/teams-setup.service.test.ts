@@ -7,7 +7,6 @@ import type { UrlService } from '@/services/url.service';
 import type { Agent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
-import type { TeamsDiscoveryService } from '../teams-discovery.service';
 import { TeamsManifestService } from '../teams-manifest.service';
 import { TeamsSetupService } from '../teams-setup.service';
 
@@ -24,7 +23,6 @@ describe('TeamsSetupService', () => {
 	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
 	let urlService: ReturnType<typeof mock<UrlService>>;
 	let armTemplateService: TeamsArmTemplateService;
-	let discoveryService: ReturnType<typeof mock<TeamsDiscoveryService>>;
 	let service: TeamsSetupService;
 
 	const agentWith = (integrations: Agent['integrations']) =>
@@ -60,14 +58,11 @@ describe('TeamsSetupService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
 
 		armTemplateService = new TeamsArmTemplateService(instanceSettings, urlService);
-		discoveryService = mock<TeamsDiscoveryService>();
-		discoveryService.getState.mockResolvedValue({ status: 'expired' });
 		service = new TeamsSetupService(
 			agentRepository,
 			credentialsService,
 			new TeamsManifestService(),
 			armTemplateService,
-			discoveryService,
 			urlService,
 		);
 	});
@@ -81,10 +76,29 @@ describe('TeamsSetupService', () => {
 			);
 		});
 
-		it('offers the deployment before any credential exists, since that is how one is got', async () => {
+		it('withholds the deployment until a credential supplies the Entra IDs', async () => {
 			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBeNull();
+			expect(state.deployToAzureUrl).toBeNull();
+		});
+
+		it('pre-fills the deployment from a credential that is picked but not yet connected', async () => {
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
+			]);
+			credentialsService.decrypt.mockResolvedValue({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				clientSecret: 'super-secret',
+			});
+
+			const state = await service.getSetupState(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+			);
+
+			expect(state.botId).toBe(CLIENT_ID);
 			expect(state.deployToAzureUrl).toContain('portal.azure.com');
 		});
 
@@ -114,22 +128,23 @@ describe('TeamsSetupService', () => {
 	});
 
 	describe('buildPackage', () => {
-		it('refuses to build a package before the bot is known at all', async () => {
+		it('refuses to build a package before a credential supplies the client ID', async () => {
 			await expect(
 				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
-			).rejects.toThrow(/Connect the bot/);
+			).rejects.toThrow(/Add the credential/);
 		});
 
-		it('builds a package from the discovered bot, before any credential is connected', async () => {
-			discoveryService.getState.mockResolvedValue({
-				status: 'found',
+		it('builds a package from a credential that is picked but not yet connected', async () => {
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
+			]);
+			credentialsService.decrypt.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
-				existingCredentialId: null,
 			});
 
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
 			).resolves.toBeInstanceOf(Buffer);
 		});
 
@@ -144,35 +159,31 @@ describe('TeamsSetupService', () => {
 
 	describe('buildArmTemplate', () => {
 		const validToken = () =>
-			new URL(armTemplateService.buildTemplateUrl(PROJECT_ID, AGENT_ID)).searchParams.get(
-				'token',
-			) ?? '';
+			new URL(
+				armTemplateService.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID),
+			).searchParams.get('token') ?? '';
 
 		it('rejects a request without a usable token', async () => {
 			connectTeamsCredential();
 
 			await expect(
-				service.buildArmTemplate({ projectId: PROJECT_ID, agentId: AGENT_ID, token: 'nope' }),
+				service.buildArmTemplate({
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+					credentialId: CREDENTIAL_ID,
+					token: 'nope',
+				}),
 			).rejects.toThrow(/expired/);
-		});
-
-		it('leaves the Entra IDs blank before a credential exists, rather than refusing', async () => {
-			const template = await service.buildArmTemplate({
-				projectId: PROJECT_ID,
-				agentId: AGENT_ID,
-				token: validToken(),
-			});
-
-			const parameters = template.parameters as Record<string, { defaultValue?: unknown }>;
-			expect(parameters.msaAppId).not.toHaveProperty('defaultValue');
-			expect(parameters.msaAppTenantId).not.toHaveProperty('defaultValue');
-			// The fiddly half is still filled in, which is the point of the button.
-			expect(parameters.messagingEndpoint.defaultValue).toContain('/webhooks/teams');
 		});
 
 		it('does not read the agent at all when the token is bad', async () => {
 			await expect(
-				service.buildArmTemplate({ projectId: PROJECT_ID, agentId: AGENT_ID, token: 'nope' }),
+				service.buildArmTemplate({
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+					credentialId: CREDENTIAL_ID,
+					token: 'nope',
+				}),
 			).rejects.toThrow();
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
@@ -184,6 +195,7 @@ describe('TeamsSetupService', () => {
 			const template = await service.buildArmTemplate({
 				projectId: PROJECT_ID,
 				agentId: AGENT_ID,
+				credentialId: CREDENTIAL_ID,
 				token: validToken(),
 			});
 
@@ -201,6 +213,7 @@ describe('TeamsSetupService', () => {
 			const template = await service.buildArmTemplate({
 				projectId: PROJECT_ID,
 				agentId: AGENT_ID,
+				credentialId: CREDENTIAL_ID,
 				token: validToken(),
 			});
 

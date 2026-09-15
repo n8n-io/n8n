@@ -77,7 +77,31 @@ describe('AgentChannelTeamsSetup', () => {
 
 	afterEach(() => vi.useRealTimers());
 
-	describe('step 1, create the bot', () => {
+	describe('step 1, the credential', () => {
+		it('leads with the Entra registration the rest is built from', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-entra-register-link')).toBeVisible());
+		});
+
+		it('says up front what account and permissions are needed', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-create-bot-prerequisites')).toBeVisible());
+		});
+
+		it('comes before the deployment, which cannot be filled in without it', async () => {
+			const { container } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(container.textContent).toContain('setup.createCredential.title'));
+			const text = container.textContent ?? '';
+			expect(text.indexOf('setup.createCredential.title')).toBeLessThan(
+				text.indexOf('setup.createBot.title'),
+			);
+		});
+	});
+
+	describe('step 2, deploy the bot', () => {
 		it('shows the messaging endpoint URL', async () => {
 			const { container } = renderComponent({ props: props() });
 
@@ -86,33 +110,48 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 		});
 
-		it('offers the deployment before any credential exists', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+		it('withholds the deployment until a credential supplies the Entra IDs', async () => {
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: null,
+				deployToAzureUrl: null,
+				suggestedBotName: 'support-bot-abc12345',
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-deploy-blocked')).toBeVisible());
+			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
+		});
+
+		it('offers the deployment once the credential is picked', async () => {
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
 			await waitFor(() => {
 				expect(getByTestId('teams-deploy-to-azure')).toHaveAttribute('href', DEPLOY_URL);
 			});
 		});
 
-		it('says up front what account and permissions the bot needs', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+		it('rebuilds the deployment when the credential changes, since it is baked in', async () => {
+			const { rerender } = renderComponent({ props: props() });
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			vi.mocked(getTeamsSetupState).mockClear();
 
-			await waitFor(() => expect(getByTestId('teams-create-bot-prerequisites')).toBeVisible());
-		});
+			await rerender(props({ modelValue: 'cred-2' }));
 
-		it('offers the Entra registration the deployment depends on', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
-
-			await waitFor(() => expect(getByTestId('teams-entra-register-link')).toBeVisible());
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-2'),
+			);
 		});
 	});
 
-	describe('step 2, connect the bot', () => {
+	describe('step 3, confirm the bot reaches n8n', () => {
 		it('listens as soon as the stepper opens, with nothing to click', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
-			expect(startTeamsDiscovery).toHaveBeenCalledWith(expect.anything(), 'p', 'a');
+			await waitFor(() => expect(startTeamsDiscovery).toHaveBeenCalled());
+			expect(vi.mocked(startTeamsDiscovery).mock.calls[0]?.slice(1, 3)).toEqual(['p', 'a']);
 		});
 
 		it('renews a lapsed window instead of surfacing it as an error', async () => {
@@ -137,7 +176,7 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(stopTeamsDiscovery).toHaveBeenCalledWith(expect.anything(), 'p', 'a');
 		});
 
-		it('shows the bot it found, and asks only for the secret', async () => {
+		it('confirms when the bot reaches n8n', async () => {
 			vi.mocked(getTeamsDiscovery).mockResolvedValue({
 				status: 'found',
 				clientId: CLIENT_ID,
@@ -152,45 +191,28 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await waitFor(() => expect(getByTestId('teams-discovery-found')).toBeVisible());
 			expect(container.textContent).toContain('connectBot.found');
-			expect(getByTestId('teams-discovered-client-id').querySelector('input')).toHaveValue(
-				CLIENT_ID,
-			);
-			expect(getByTestId('teams-discovered-tenant-id').querySelector('input')).toHaveValue(
-				TENANT_ID,
-			);
 		});
 
-		it('says so when the activity carried no tenant, rather than looking like a failure', async () => {
+		it('flags a bot that is not the one the credential describes', async () => {
 			vi.mocked(getTeamsDiscovery).mockResolvedValue({
 				status: 'found',
-				clientId: CLIENT_ID,
-				tenantId: null,
+				clientId: 'a-different-bot',
+				tenantId: TENANT_ID,
 				existingCredentialId: null,
 			});
-			vi.useFakeTimers({ shouldAdvanceTime: true });
-
-			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
-			await vi.advanceTimersByTimeAsync(2500);
-
-			await waitFor(() => expect(getByTestId('teams-discovery-no-tenant')).toBeVisible());
-			expect(queryByTestId('teams-discovered-tenant-id')).toBeNull();
-		});
-
-		it('points at an existing credential when one already holds the bot', async () => {
-			vi.mocked(getTeamsDiscovery).mockResolvedValue({
-				status: 'found',
-				clientId: CLIENT_ID,
-				tenantId: TENANT_ID,
-				existingCredentialId: 'cred-1',
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: CLIENT_ID,
+				deployToAzureUrl: DEPLOY_URL,
+				suggestedBotName: 'support-bot-abc12345',
 			});
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
-			const { getByTestId, container } = renderComponent({ props: props() });
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
 			await vi.advanceTimersByTimeAsync(2500);
 
-			await waitFor(() => expect(container.textContent).toContain('connectBot.foundExisting'));
+			await waitFor(() => expect(getByTestId('teams-discovery-mismatch')).toBeVisible());
 		});
 
 		it('points at the bot by name, since the resource blade cannot be deep-linked', async () => {
@@ -207,7 +229,7 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 	});
 
-	describe('step 3, availability', () => {
+	describe('step 4, availability', () => {
 		// N8nCheckbox is a Reka UI checkbox: a button with aria-checked, not an input.
 		const checked = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true';
 
@@ -256,28 +278,12 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 	});
 
-	describe('step 4, install', () => {
-		it('withholds the package until the bot is known', async () => {
+	describe('step 5, install', () => {
+		it('withholds the package until a credential is picked', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-package-blocked')).toBeVisible());
 			expect(queryByTestId('teams-download-package')).toBeNull();
-		});
-
-		it('offers the package from the discovered bot, before connecting', async () => {
-			vi.mocked(getTeamsDiscovery).mockResolvedValue({
-				status: 'found',
-				clientId: CLIENT_ID,
-				tenantId: TENANT_ID,
-				existingCredentialId: null,
-			});
-			vi.useFakeTimers({ shouldAdvanceTime: true });
-
-			const { getByTestId } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
-			await vi.advanceTimersByTimeAsync(2500);
-
-			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
 		});
 
 		it('fetches the package rather than linking to it, so the session survives', async () => {
@@ -294,9 +300,8 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await fireEvent.click(getByTestId('teams-download-package'));
 
-			await waitFor(() =>
-				expect(fetchTeamsAppPackage).toHaveBeenCalledWith(expect.anything(), 'p', 'a'),
-			);
+			await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+			expect(vi.mocked(fetchTeamsAppPackage).mock.calls[0]?.slice(1, 3)).toEqual(['p', 'a']);
 		});
 
 		it('reports a failed download instead of silently doing nothing', async () => {
@@ -363,23 +368,6 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-connect'));
 
 			expect(emitted().connect).toBeTruthy();
-		});
-
-		it('adopts the credential discovery found, so connecting is possible', async () => {
-			vi.mocked(getTeamsDiscovery).mockResolvedValue({
-				status: 'found',
-				clientId: CLIENT_ID,
-				tenantId: TENANT_ID,
-				existingCredentialId: 'cred-1',
-			});
-			vi.useFakeTimers({ shouldAdvanceTime: true });
-
-			const { getByTestId, emitted } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
-			await vi.advanceTimersByTimeAsync(2500);
-
-			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
-			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
 		});
 	});
 

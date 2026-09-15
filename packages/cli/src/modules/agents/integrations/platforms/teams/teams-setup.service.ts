@@ -7,7 +7,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 
 import { TeamsArmTemplateService } from './teams-arm-template.service';
-import { TeamsDiscoveryService } from './teams-discovery.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -32,39 +31,51 @@ export class TeamsSetupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly manifestService: TeamsManifestService,
 		private readonly armTemplateService: TeamsArmTemplateService,
-		private readonly discoveryService: TeamsDiscoveryService,
 		private readonly urlService: UrlService,
 	) {}
 
 	/**
-	 * The deployment comes first and needs no credential: creating the bot is how
-	 * the user gets one. The package comes last and does need it, because the
-	 * manifest carries the bot's client ID.
+	 * Everything downstream needs the Entra IDs, and those only exist once the
+	 * user has registered the app — so the credential comes first and the rest is
+	 * derived from it.
+	 *
+	 * `selectedCredentialId` is the one picked in the setup but not yet connected
+	 * to the agent. Without it the deployment could not be pre-filled, because
+	 * the agent has no credential attached until the very last step.
 	 */
-	async getSetupState(scope: AgentScope): Promise<TeamsAgentSetupState> {
+	async getSetupState(
+		scope: AgentScope,
+		selectedCredentialId?: string,
+	): Promise<TeamsAgentSetupState> {
 		const agent = await this.getAgent(scope);
-		const identity = await this.findBotIdentity(agent);
+		const identity = selectedCredentialId
+			? await this.readIdentity(agent.projectId, selectedCredentialId)
+			: await this.findBotIdentity(agent);
+		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
-			botId: identity?.clientId ?? (await this.discoveredClientId(scope)),
-			deployToAzureUrl: this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId),
+			botId: identity?.clientId ?? null,
+			deployToAzureUrl: credentialId
+				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
+				: null,
 			suggestedBotName: this.armTemplateService.suggestedBotName(agent.name, agent.id),
 		};
 	}
 
 	/**
-	 * The manifest needs the bot's client ID, not a working credential, so this
-	 * also accepts the one discovery found. Otherwise the package could only be
-	 * downloaded after connecting — and connecting closes the setup, putting the
-	 * download behind a round trip through the edit view.
+	 * Built from the selected credential, not only the connected one: connecting
+	 * closes the setup, so waiting for it would put the download behind a round
+	 * trip through the edit view.
 	 */
-	async buildPackage(scope: AgentScope): Promise<Buffer> {
+	async buildPackage(scope: AgentScope, selectedCredentialId?: string): Promise<Buffer> {
 		const agent = await this.getAgent(scope);
-		const botId =
-			(await this.findBotIdentity(agent))?.clientId ?? (await this.discoveredClientId(scope));
+		const identity = selectedCredentialId
+			? await this.readIdentity(agent.projectId, selectedCredentialId)
+			: await this.findBotIdentity(agent);
+		const botId = identity?.clientId;
 		if (!botId) {
-			throw new BadRequestError('Connect the bot before downloading the app package.');
+			throw new BadRequestError('Add the credential before downloading the app package.');
 		}
 
 		return await this.manifestService.buildPackage({
@@ -76,30 +87,35 @@ export class TeamsSetupService {
 		});
 	}
 
-	private async discoveredClientId(scope: AgentScope): Promise<string | null> {
-		const state = await this.discoveryService.getState(scope);
-		return state.status === 'found' ? state.clientId : null;
-	}
-
 	/**
 	 * Reached by the Azure portal, which carries no n8n session, so the signed
 	 * token is the whole authorisation check.
 	 */
-	async buildArmTemplate(scope: AgentScope & { token: string }): Promise<Record<string, unknown>> {
-		if (!this.armTemplateService.verifyToken(scope.projectId, scope.agentId, scope.token)) {
+	async buildArmTemplate(
+		scope: AgentScope & { token: string; credentialId: string },
+	): Promise<Record<string, unknown>> {
+		if (
+			!this.armTemplateService.verifyToken(
+				scope.projectId,
+				scope.agentId,
+				scope.credentialId,
+				scope.token,
+			)
+		) {
 			throw new NotFoundError('This deployment link has expired. Open the setup steps again.');
 		}
 
 		const agent = await this.getAgent(scope);
-		// Absent on a first run, present when repointing a bot that is already
-		// connected. Either way the blade opens; only these two fields differ.
-		const identity = await this.findBotIdentity(agent);
+		const identity = await this.readIdentity(agent.projectId, scope.credentialId);
+		if (!identity) {
+			throw new BadRequestError('This credential is missing its tenant or client ID.');
+		}
 
 		return this.armTemplateService.buildTemplate({
 			agentName: agent.name,
 			agentId: agent.id,
-			msaAppId: identity?.clientId ?? '',
-			msaAppTenantId: identity?.tenantId ?? '',
+			msaAppId: identity.clientId,
+			msaAppTenantId: identity.tenantId,
 			messagingEndpoint: this.messagingEndpointUrl(scope),
 		});
 	}
@@ -125,13 +141,18 @@ export class TeamsSetupService {
 	 * route has no user at all, and the client ID this returns is not a secret:
 	 * it ships inside the manifest the user downloads.
 	 */
-	private async findBotIdentity(agent: Agent): Promise<BotIdentity | null> {
-		const credentialId = agent.integrations?.find((item) => item.type === 'teams')?.credentialId;
-		if (!credentialId) return null;
+	private connectedCredentialId(agent: Agent): string | undefined {
+		return agent.integrations?.find((item) => item.type === 'teams')?.credentialId;
+	}
 
-		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
-			agent.projectId,
-		);
+	private async findBotIdentity(agent: Agent): Promise<BotIdentity | null> {
+		const credentialId = this.connectedCredentialId(agent);
+		return credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
+	}
+
+	private async readIdentity(projectId: string, credentialId: string): Promise<BotIdentity | null> {
+		const projectCredentials =
+			await this.credentialsService.findAllCredentialIdsForProject(projectId);
 		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
 		const credential =
 			projectCredentials.find((item) => item.id === credentialId) ??
