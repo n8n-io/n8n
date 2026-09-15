@@ -1248,7 +1248,12 @@ function onJsonPasswordFieldChange(value: string) {
 
 function onUpdateTextInput(value: string | number) {
 	valueChanged(value);
-	onTextInputChange(typeof value === 'string' ? value : String(value));
+	// `textInput` carries the raw text so consumers can react to a typed expression.
+	// Numbers must not be stringified here: the credential form treats `textInput` as a value
+	// update, which would persist a numeric field as a string (e.g. port "1433" instead of 1433).
+	if (typeof value === 'string') {
+		onTextInputChange(value);
+	}
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });

@@ -622,6 +622,36 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
+	test('should emit a number parameter as a number and not as text input', async () => {
+		const { container, emitted } = renderComponent({
+			props: {
+				path: 'port',
+				parameter: createTestNodeProperties({
+					displayName: 'Port',
+					name: 'port',
+					type: 'number',
+					default: 1433,
+				}),
+				modelValue: 1433,
+			},
+		});
+
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toBeInTheDocument();
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '1234');
+		await userEvent.tab();
+
+		await waitFor(() =>
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1234 })]),
+		);
+
+		// `textInput` would be forwarded as a value update by the credential form,
+		// turning the number into a string
+		expect(emitted('textInput')).toBeUndefined();
+	});
+
 	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {
 		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
 			{ name: 'ID', value: 'id' },
