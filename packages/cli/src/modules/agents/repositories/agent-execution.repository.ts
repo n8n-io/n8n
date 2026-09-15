@@ -83,11 +83,14 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 
 					const repository = entityManager.getRepository(AgentExecution);
 					if (values.runContext?.kind === 'resume') {
-						const queued = await repository.find({
+						const active = await repository.find({
 							select: ['runContext'],
-							where: { threadId: values.threadId, status: 'queued' },
+							where: [
+								{ threadId: values.threadId, status: 'queued' },
+								{ threadId: values.threadId, status: 'running' },
+							],
 						});
-						if (queued.some((row) => row.runContext?.kind === 'resume')) {
+						if (active.some((row) => row.runContext?.kind === 'resume')) {
 							throw new AgentActionAlreadyHandledError();
 						}
 					}

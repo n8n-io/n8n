@@ -46,7 +46,12 @@ export function useAgentExecutionUpdates(
 		if (disposed) return;
 		if (inFlight) {
 			queued = true;
-			if (event) queuedEvent = event;
+			if (
+				event?.data.executionStatus !== undefined ||
+				queuedEvent?.data.executionStatus === undefined
+			) {
+				queuedEvent = event;
+			}
 			return;
 		}
 		// Run the callback in a promise so synchronous errors do not escape push dispatch.

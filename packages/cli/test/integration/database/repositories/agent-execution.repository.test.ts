@@ -531,7 +531,20 @@ describe('AgentExecutionRepository', () => {
 			error: null,
 			failureSummary: null,
 		});
+		await expect(
+			repository.insertExecution({
+				...resumeValues('blocked-running'),
+				status: 'running',
+				startedAt: new Date(),
+				userMessage: 'blocked by queued turn',
+				resourceId: null,
+				runContext: { kind: 'message' },
+			}),
+		).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
 		expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(true);
+		await expect(repository.insertExecution(resumeValues('run-4'))).rejects.toBeInstanceOf(
+			AgentActionAlreadyHandledError,
+		);
 		expect(await repository.failQueued(other.id, 'resume unavailable', new Date(), null)).toBe(
 			true,
 		);
