@@ -3,6 +3,7 @@ import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutio
 import {
 	getExternalSecretPreview,
 	isExpression as isExpressionUtil,
+	isSingleResolvable,
 	referencesExecutionData,
 	stringifyExpressionResult,
 } from '@/app/utils/expressions';
@@ -125,12 +126,16 @@ export function useResolvedExpression({
 			// Redaction empties the item data, so an expression that reads it resolves
 			// to nothing even though the execution has a value. Show a reveal prompt
 			// instead of the empty result, matching the expression editor preview.
+			// A single `{{ }}` that still resolves to a value used a fallback, so show
+			// that value; a mixed expression resolves to its literal text and keeps
+			// the prompt.
 			isRedacted.value =
 				resolved.ok &&
 				!secretPreview &&
 				isRedactedExecution.value &&
 				typeof expressionString === 'string' &&
-				referencesExecutionData(expressionString);
+				referencesExecutionData(expressionString) &&
+				!(isSingleResolvable(expressionString) && resolved.result !== undefined);
 
 			resolvedExpressionString.value = isRedacted.value
 				? redactedHintText.value

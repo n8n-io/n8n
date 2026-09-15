@@ -175,6 +175,19 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('Reveal data first to see value');
 	});
 
+	it('shows the fallback value instead of the hint for a single resolvable with a fallback', async () => {
+		mockResolveExpression().mockResolvedValue('d');
+		mockActiveExecution = redactedExecution();
+
+		const { resolvedExpressionString, isRedacted } = await renderTestComponent({
+			expression: "={{ $json.code ?? 'd' }}",
+		});
+
+		await nextTick();
+		expect(toValue(isRedacted)).toBe(false);
+		expect(toValue(resolvedExpressionString)).toBe('d');
+	});
+
 	it('does not flag redaction when the expression does not read execution data', async () => {
 		mockResolveExpression().mockResolvedValue('resolved');
 		mockActiveExecution = redactedExecution();
