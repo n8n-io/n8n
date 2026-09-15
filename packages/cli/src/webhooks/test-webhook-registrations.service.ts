@@ -8,7 +8,11 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
@@ -28,6 +32,8 @@ export type TestWebhookRegistration = {
 	 * so the identity has to travel on the registration instead.
 	 */
 	encryptedRunnerIdentity?: string;
+	/** Epoch ms at which the registration's own timeout fires. Set by `register()`. */
+	expiresAt?: number;
 };
 
 // Type guard for TestWebhookRegistration.
@@ -42,6 +48,13 @@ function isTestWebhookRegistration(obj: unknown): obj is TestWebhookRegistration
 	return obj.version === TEST_WEBHOOK_REGISTRATION_VERSION;
 }
 
+/** A registration past its own `expiresAt` is gone, whatever the hash TTL says. */
+function isLiveRegistration(obj: unknown): obj is TestWebhookRegistration {
+	return (
+		isTestWebhookRegistration(obj) && (obj.expiresAt === undefined || obj.expiresAt > Date.now())
+	);
+}
+
 @Service()
 export class TestWebhookRegistrationsService {
 	constructor(
@@ -51,10 +64,15 @@ export class TestWebhookRegistrationsService {
 
 	private readonly cacheKey = 'test-webhooks';
 
-	async register(registration: TestWebhookRegistration) {
+	async register(
+		registration: TestWebhookRegistration,
+		ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+	) {
 		const hashKey = this.toKey(registration.webhook);
 
-		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+		await this.cacheService.setHash(this.cacheKey, {
+			[hashKey]: { ...registration, expiresAt: Date.now() + ttl },
+		});
 
 		const isCached = await this.cacheService.exists(this.cacheKey);
 
@@ -74,10 +92,16 @@ export class TestWebhookRegistrationsService {
 		 * We set a TTL on the key so that it is cleared even on creator process crash,
 		 * with an additional buffer to ensure this safeguard expiration will not delete
 		 * the key before the regular test webhook timeout fetches the key to delete it.
+		 *
+		 * The TTL covers the whole hash, so it is the longest window a registration can ask for
+		 * (`TEST_WEBHOOK_MAX_TIMEOUT`) plus the buffer. A constant keeps concurrent registrations on
+		 * different mains from shortening each other's TTL. Each new registration renews the TTL, so
+		 * `expiresAt` bounds each entry and a read deletes an expired one (see `prune`).
 		 */
-		const ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER;
-
-		await this.cacheService.expire(this.cacheKey, ttl);
+		await this.cacheService.expire(
+			this.cacheKey,
+			TEST_WEBHOOK_MAX_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+		);
 	}
 
 	async deregister(arg: IWebhookData | string) {
@@ -91,7 +115,8 @@ export class TestWebhookRegistrationsService {
 
 	async get(key: string): Promise<TestWebhookRegistration | undefined> {
 		const val = await this.cacheService.getHashValue(this.cacheKey, key);
-		return isTestWebhookRegistration(val) ? val : undefined;
+		await this.prune({ [key]: val });
+		return isLiveRegistration(val) ? val : undefined;
 	}
 
 	async getAllKeys() {
@@ -107,17 +132,33 @@ export class TestWebhookRegistrationsService {
 
 		if (!hash) return [];
 
-		return Object.values(hash).filter(isTestWebhookRegistration);
+		await this.prune(hash);
+
+		return Object.values(hash);
 	}
 
 	async getRegistrationsHash() {
 		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
-		for (const key in val) {
-			if (!isTestWebhookRegistration(val[key])) {
-				delete val[key];
-			}
-		}
+		if (val) await this.prune(val);
 		return val;
+	}
+
+	/**
+	 * Remove entries that are not live from `hash`. Also delete an expired entry from the store:
+	 * each registration renews the TTL of the whole hash, so the TTL never removes an entry that a
+	 * main left behind on exit. Keep entries of an unknown shape in the store; a main on another
+	 * version may own them.
+	 *
+	 * A registration that replaces an expired entry between the read and this delete is lost. The
+	 * window is one Redis round trip; a compare-and-delete script would close it.
+	 */
+	private async prune(hash: Record<string, unknown>) {
+		for (const key of Object.keys(hash)) {
+			const val = hash[key];
+			if (isLiveRegistration(val)) continue;
+			if (isTestWebhookRegistration(val)) await this.deregister(key);
+			delete hash[key];
+		}
 	}
 
 	toKey(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) {

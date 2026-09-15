@@ -34,7 +34,7 @@ outputs:
     description: 'Resolved base ref used for the diff (filter mode only)'
     value: ${{ steps.run.outputs.base-ref }}
   merge-base:
-    description: 'Merge-base SHA between FETCH_HEAD and HEAD (filter mode only)'
+    description: 'Merge-base SHA between the base ref and the PR head (filter mode only)'
     value: ${{ steps.run.outputs.merge-base }}
 
 runs:

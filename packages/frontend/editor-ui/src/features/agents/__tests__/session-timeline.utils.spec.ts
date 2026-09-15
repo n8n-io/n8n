@@ -229,6 +229,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		stoppedAt: null,
 		duration: 0,
 		userMessage: null,
+		author: null,
 		attachments: null,
 		model: null,
 		promptTokens: null,
@@ -599,6 +600,14 @@ describe('flattenExecutionsToTimelineItems', () => {
 			content: 'hello',
 			timestamp: new Date('2026-04-24T10:00:00Z').getTime(),
 		});
+		expect(items[0]).not.toHaveProperty('authorName');
+	});
+
+	it('carries the integration author name on the user item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({ userMessage: 'hello', author: { id: 'U1', name: 'alice' } }),
+		]);
+		expect(items[0]).toMatchObject({ kind: 'user', authorName: 'alice' });
 	});
 
 	it('maps a text timeline event to an agent item', () => {
@@ -967,5 +976,53 @@ describe('hitlRequestLabelKey', () => {
 
 	it('falls back to the interaction label for records with no request type', () => {
 		expect(hitlRequestLabelKey(undefined)).toBe('agentSessions.timeline.hitlRequested');
+	});
+});
+
+describe('background task signals', () => {
+	const signal = {
+		tasks: [
+			{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
+			{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
+		],
+	} as const;
+
+	it('keeps the signal before the reply with its execution and timestamp', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				timeline: [
+					{ type: 'background-task-signal', timestamp: 1000, signal: { tasks: [...signal.tasks] } },
+					{ type: 'text', timestamp: 2000, content: 'Done' },
+				],
+			}),
+		]);
+		expect(items).toEqual([
+			{
+				kind: 'background-task-signal',
+				executionId: 'e-1',
+				timestamp: 1000,
+				backgroundJobSignal: signal,
+			},
+			expect.objectContaining({ kind: 'agent', content: 'Done' }),
+		]);
+	});
+
+	it('filters signals and searches task titles and translated statuses', () => {
+		const event = item({
+			kind: 'background-task-signal',
+			backgroundJobSignal: { tasks: [...signal.tasks] },
+		});
+		const labels: Record<string, string> = {
+			'background-task-signal': 'Background task results received',
+			'background-task-completed': 'Completed',
+			'background-task-cancelled': 'Canceled',
+		};
+		const labelForKey = (key: string) => labels[key] ?? key;
+		expect(matchesTimelineFilters(event, new Set(['background-task-signal']))).toBe(true);
+		expect(matchesTimelineFilters(event, new Set(['agent']))).toBe(false);
+		for (const query of ['results received', 'invoices', 'canceled', 'completed']) {
+			expect(matchesSearch(event, query, labelForKey)).toBe(true);
+		}
+		expect(kindColorToken(event.kind)).toBeDefined();
 	});
 });

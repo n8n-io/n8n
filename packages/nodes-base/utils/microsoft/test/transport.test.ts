@@ -471,6 +471,13 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(() =>
 				validateMicrosoftGraphId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode),
 			).not.toThrow();
+			// base64 chat-membership id: the trailing `=` padding must not be rejected
+			expect(() =>
+				validateMicrosoftGraphId(
+					'MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+					mockNode,
+				),
+			).not.toThrow();
 		});
 
 		it('accepts a real colon-bearing channel id (`:` and `@` are allowed)', () => {
@@ -772,6 +779,20 @@ describe('Microsoft Graph transport kernel', () => {
 				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
 			// the off-host link is never requested
+			expect(requestOAuth2).toHaveBeenCalledTimes(1);
+		});
+
+		it('refuses to follow an unparseable @odata.nextLink', async () => {
+			const requestOAuth2 = vi.fn().mockResolvedValue({
+				value: [{ id: '1' }],
+				'@odata.nextLink': 'not-a-url',
+			});
+			const ctx = makeContext(requestOAuth2);
+
+			// A node error, not the bare TypeError `new URL` would throw.
+			await expect(
+				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
 			expect(requestOAuth2).toHaveBeenCalledTimes(1);
 		});
 	});
