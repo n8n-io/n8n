@@ -15,7 +15,7 @@ import { RoleService } from './role.service';
  * The scopes an admin can take away from the personal space role. Every other
  * scope of that role, and its name and description, stay fixed.
  */
-const REMOVABLE_SCOPES = ['credential:create'];
+const REMOVABLE_SCOPES = ['credential:create', 'dataTable:create', 'agent:create'];
 
 /** Holds the scopes an admin removed, as a JSON array of scope slugs. */
 const SETTINGS_KEY = 'canvasOnly.personalSpaceRoleRemovedScopes';
@@ -128,7 +128,7 @@ export class CanvasOnlyPersonalSpaceRoleService {
 		await this.settingsRepository.upsertByKey(
 			SETTINGS_KEY,
 			JSON.stringify(removedScopes),
-			/* loadOnStartup= */ false,
+			false,
 			{},
 		);
 	}
