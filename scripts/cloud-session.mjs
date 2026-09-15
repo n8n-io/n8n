@@ -6,7 +6,7 @@
 //   pnpm session                   attach Claude Code in the main checkout
 //   pnpm session <name>            attach Claude Code in a separate worktree
 //   pnpm session:shell [name]      attach a shell
-//   pnpm session:opencode [name]   attach OpenCode in auto mode
+//   pnpm session:opencode [name]   connect a local OpenCode client
 //   pnpm session ls                list Codespaces and tmux sessions
 //   pnpm session tunnel [port…]    forward ports to localhost
 //   pnpm session stop              stop the Codespace
@@ -124,6 +124,31 @@ let launcher = 'claude';
 if (args[0] === '--shell') launcher = 'shell';
 else if (args[0] === '--opencode') launcher = 'opencode';
 if (launcher !== 'claude') args.shift();
+
+// Keep the remote terminal interface available while local clients become the default.
+if (launcher === 'opencode' && !args.includes('--legacy')) {
+	if (args.includes('--help') || args.includes('-h')) {
+		console.log(`Usage: pnpm session:opencode [name] [--web] [--new] [--port PORT]
+       pnpm session:opencode [name] --legacy [OpenCode flags]
+
+The local TUI requires the same OpenCode version as the server.
+Web mode needs a browser only and uses local port 4096 by default.
+Use --port to override it. Use Ctrl-C to close the local connection.`);
+		process.exit();
+	}
+	try {
+		const { connectOpenCode, parseOpenCodeArgs } = await import('./cloud-session-opencode.mjs');
+		await connectOpenCode(parseOpenCodeArgs(args), ensureCodespace);
+	} catch (error) {
+		console.error(error.message);
+		process.exitCode = 1;
+	}
+	// Do not interpret OpenCode options as legacy session names.
+	process.exit();
+}
+if (launcher === 'opencode') args.splice(args.indexOf('--legacy'), 1);
+// Flags without a session name apply to the main checkout.
+if (args[0]?.startsWith('-')) args.unshift('agent');
 const [cmd = 'agent', ...rest] = args;
 
 switch (cmd) {
@@ -198,7 +223,7 @@ switch (cmd) {
 	}
 	default: {
 		// treat cmd as the session name; each name = an independent agent in its own worktree
-		if (!/^[\w-]+$/.test(cmd)) {
+		if (!/^\w[\w-]*$/.test(cmd)) {
 			console.error(`Invalid session name '${cmd}' — use letters, digits, - or _`);
 			process.exit(1);
 		}
