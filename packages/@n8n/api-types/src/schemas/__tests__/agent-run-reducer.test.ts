@@ -923,6 +923,25 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
 			expect(state.agentsById['sub-1'].setupItemsByWorkflowId).toBeUndefined();
+			expect(state.agentsById['root'].latestSetupAnnouncement?.agentId).toBe('sub-1');
+		});
+
+		it('preserves the emitting agent identity across an aliased follow-up run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, makeRunStart('run-2', 'follow-up-root'));
+			reduceEvent(state, makeToolCall('run-2', 'follow-up-root', 'build-2', 'build-workflow'));
+			reduceEvent(state, makeSetupItems('run-2', 'follow-up-root', 'wf-2', 'notionApi'));
+
+			const root = toAgentTree(state);
+			expect(root.latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-2',
+				agentId: root.agentId,
+			});
+			expect(root.toolCalls).toContainEqual(
+				expect.objectContaining({ toolCallId: 'build-2', isLoading: true }),
+			);
 		});
 
 		it('survives a tree snapshot round trip (history restore)', () => {

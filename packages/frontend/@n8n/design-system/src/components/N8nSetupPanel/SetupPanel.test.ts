@@ -160,10 +160,69 @@ describe('SetupPanel', () => {
 		expect(getByRole('button', { name: 'Details' })).toBeVisible();
 		await waitFor(() => expect(getByRole('button', { name: 'Details' })).toHaveFocus());
 		expect(emitted('update:activeItemId')).toContainEqual([undefined]);
-		expect(emitted('detailClosed')).toBeDefined();
 		await rerender({ items: [] });
 		expect(queryByText('Details')).toBeNull();
 	});
+
+	it.each(['removed', 'disabled', 'empty'])(
+		'emits one close event when the active item becomes %s',
+		async (change) => {
+			const items = [
+				{ id: 'slack', title: 'Slack', completed: false },
+				{ id: 'details', title: 'Details', completed: false },
+			];
+			const { getByTestId, rerender, emitted } = render(SetupPanel, {
+				props: { items, activeItemId: 'slack' },
+				global: { stubs: { transition: false } },
+			});
+			const overlay = getByTestId('setup-panel-overlay');
+			overlay.style.animationDuration = '0.05s';
+			overlay.style.animationDelay = '0s';
+			await rerender({
+				items:
+					change === 'empty'
+						? []
+						: change === 'removed'
+							? items.slice(1)
+							: items.map((item) => ({ ...item, disabled: item.id === 'slack' })),
+			});
+			const closeEventsBeforeLeave = emitted('detailClosed')?.length ?? 0;
+			await waitFor(() => expect(overlay).not.toBeInTheDocument());
+			expect(emitted('detailClosed')).toEqual([[]]);
+			if (change !== 'empty') expect(closeEventsBeforeLeave).toBe(0);
+		},
+	);
+
+	it.each(['missing', 'disabled', 'empty'])(
+		'clears the %s initial selection without opening it after the items change',
+		async (initialState) => {
+			const activeItemId = ref<string | undefined>('slack');
+			const items = ref(
+				initialState === 'empty'
+					? []
+					: [
+							{
+								id: initialState === 'missing' ? 'details' : 'slack',
+								title: 'Slack',
+								completed: false,
+								disabled: initialState === 'disabled',
+							},
+						],
+			);
+			const onDetailClosed = vi.fn();
+			const { queryByRole } = render({
+				components: { SetupPanel },
+				setup: () => ({ activeItemId, items, onDetailClosed }),
+				template:
+					'<SetupPanel :items="items" v-model:active-item-id="activeItemId" @detail-closed="onDetailClosed" />',
+			});
+			expect(activeItemId.value).toBeUndefined();
+			items.value = [{ id: 'slack', title: 'Slack', completed: false, disabled: false }];
+			await nextTick();
+			expect(queryByRole('dialog')).toBeNull();
+			expect(onDetailClosed).not.toHaveBeenCalled();
+		},
+	);
 
 	it('does not open a selected detail when mounted during execution', () => {
 		const { queryByRole, getByRole, emitted } = render(SetupPanel, {
@@ -175,6 +234,6 @@ describe('SetupPanel', () => {
 		});
 		expect(queryByRole('dialog')).toBeNull();
 		expect(getByRole('status')).toHaveTextContent('Executing');
-		expect(emitted('update:activeItemId')).toContainEqual([undefined]);
+		expect(emitted('update:activeItemId')).toEqual([[undefined]]);
 	});
 });

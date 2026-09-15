@@ -327,13 +327,7 @@ const setupPanelWorkflowId = computed(() => {
 	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow') latest = entry.id;
 	}
-	return (
-		latest ??
-		thread.latestSetupWorkflowId ??
-		Object.keys(thread.setupItemsByWorkflowId).findLast(
-			(id) => thread.setupItemsByWorkflowId[id].length > 0,
-		)
-	);
+	return latest ?? thread.latestSetupWorkflowId;
 });
 const setupPanelProjectId = computed(() =>
 	setupPanelWorkflowId.value

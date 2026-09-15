@@ -501,7 +501,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (root && isSafeObjectKey(event.payload.workflowId)) {
 				root.latestSetupAnnouncement = {
 					workflowId: event.payload.workflowId,
-					agentId: event.agentId,
+					agentId: ensureAgent(state, event.agentId)?.agentId ?? event.agentId,
 					timestamp: eventTimestamp(event),
 				};
 				root.setupItemsByWorkflowId = {

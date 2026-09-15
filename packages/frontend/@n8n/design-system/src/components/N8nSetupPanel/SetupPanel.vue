@@ -41,16 +41,18 @@ watch(
 	(status) => {
 		if (status !== 'complete' && status !== 'executing') return;
 		if (!activeItem.value || status === 'executing') expanded.value = false;
-		if (status === 'executing' && props.activeItemId) emit('update:activeItemId', undefined);
 	},
 	{ immediate: true },
 );
-watch([activeItem, () => props.activeItemId], ([item, id]) => {
-	if (id && !item) {
-		emit('update:activeItemId', undefined);
-		emit('detailClosed');
-	}
-});
+watch(
+	[activeItem, () => props.activeItemId],
+	([item, id], [previousItem]) => {
+		if (id && !item) emit('update:activeItemId', undefined);
+		// An empty panel unmounts the overlay without a leave transition.
+		if (previousItem && !props.items.length) emit('detailClosed');
+	},
+	{ immediate: true },
+);
 watch(
 	() => activeItem.value?.id,
 	async (id, previousId) => {

@@ -503,11 +503,10 @@ export function createThreadRuntime(
 				latest = announcement;
 		}
 		if (latest) return latest.workflowId;
-		// Older snapshots lack announcement metadata. Prefer the newest message's rows.
+		// Legacy snapshots lack update order. Only select an unambiguous workflow.
 		for (const message of messages.value.toReversed()) {
-			const snapshots = message.agentTree?.setupItemsByWorkflowId ?? {};
-			const id = Object.keys(snapshots).findLast((key) => snapshots[key].length > 0);
-			if (id) return id;
+			const workflowIds = Object.keys(message.agentTree?.setupItemsByWorkflowId ?? {});
+			if (workflowIds.length > 0) return workflowIds.length === 1 ? workflowIds[0] : undefined;
 		}
 		return undefined;
 	});
