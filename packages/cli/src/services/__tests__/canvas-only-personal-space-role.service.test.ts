@@ -7,6 +7,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import type { RoleService } from '@/services/role.service';
 import type { Telemetry } from '@/telemetry';
@@ -90,8 +91,28 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 	});
 
 	describe('updateRole', () => {
+		/** Calls the service as a caller with `role:manage`, unless a test says otherwise. */
+		const update = async (
+			newRole: Parameters<typeof service.updateRole>[0],
+			callerScopes: string[] = ['role:manage'],
+		) => await service.updateRole(newRole, callerScopes);
+
+		it('rejects a caller with role:manageProject but not role:manage', async () => {
+			await expect(
+				update(body(withoutCredentialCreate), ['role:read', 'role:manageProject']),
+			).rejects.toThrow(ForbiddenError);
+			expect(roleService.getRole).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
+		});
+
+		it('rejects a caller with no scopes', async () => {
+			await expect(update(body(withoutCredentialCreate), [])).rejects.toThrow(ForbiddenError);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
 		it('removes credential:create, stores the choice and reports it', async () => {
-			const result = await service.updateRole(body(withoutCredentialCreate));
+			const result = await update(body(withoutCredentialCreate));
 
 			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
 				'credential:create',
@@ -115,7 +136,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		});
 
 		it.each(['dataTable:create', 'agent:create'])('removes %s on its own', async (scope) => {
-			const result = await service.updateRole(body(without(scope)));
+			const result = await update(body(without(scope)));
 
 			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(PROJECT_OWNER_ROLE_SLUG, [
 				scope,
@@ -131,7 +152,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		});
 
 		it('removes all removable scopes at once', async () => {
-			const result = await service.updateRole(body(without(...removableScopes)));
+			const result = await update(body(without(...removableScopes)));
 
 			expect(roleService.removeScopesFromRole).toHaveBeenCalledWith(
 				PROJECT_OWNER_ROLE_SLUG,
@@ -150,7 +171,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		it('adds credential:create back and clears the stored choice', async () => {
 			storedScopes = [...withoutCredentialCreate];
 
-			const result = await service.updateRole(body(defaultScopes));
+			const result = await update(body(defaultScopes));
 
 			expect(roleService.addScopesToRole).toHaveBeenCalledWith(
 				PROJECT_OWNER_ROLE_SLUG,
@@ -167,7 +188,7 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 		});
 
 		it('rejects a scope that is not a default scope of the role', async () => {
-			await expect(service.updateRole(body([...defaultScopes, 'project:delete']))).rejects.toThrow(
+			await expect(update(body([...defaultScopes, 'project:delete']))).rejects.toThrow(
 				BadRequestError,
 			);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
@@ -176,28 +197,28 @@ describe('CanvasOnlyPersonalSpaceRoleService', () => {
 
 		it('rejects removing any other default scope', async () => {
 			await expect(
-				service.updateRole(body(defaultScopes.filter((s) => s !== 'workflow:create'))),
+				update(body(defaultScopes.filter((s) => s !== 'workflow:create'))),
 			).rejects.toThrow(BadRequestError);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect(roleService.removeScopesFromRole).not.toHaveBeenCalled();
 		});
 
 		it('rejects a changed display name', async () => {
-			await expect(
-				service.updateRole({ ...body(defaultScopes), displayName: 'Renamed' }),
-			).rejects.toThrow(BadRequestError);
+			await expect(update({ ...body(defaultScopes), displayName: 'Renamed' })).rejects.toThrow(
+				BadRequestError,
+			);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('rejects a changed description', async () => {
 			await expect(
-				service.updateRole({ ...body(defaultScopes), description: 'Something else' }),
+				update({ ...body(defaultScopes), description: 'Something else' }),
 			).rejects.toThrow(BadRequestError);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('leaves the role alone when the body carries no scopes', async () => {
-			const result = await service.updateRole({ displayName: 'Project Owner' });
+			const result = await update({ displayName: 'Project Owner' });
 
 			expect(result.scopes).toEqual(defaultScopes);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();

@@ -7,7 +7,13 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { RoleService } from '@/services/role.service';
 
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import {
+	addApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+} from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
 describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
@@ -139,6 +145,48 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 			.post('/credentials')
 			.send(credentialPayload());
 		expect(created.status).toBe(200);
+	});
+
+	it('rejects a role:manageProject key with 403 and leaves the role unchanged', async () => {
+		// A custom global role with role:manageProject may edit custom project roles,
+		// but the personal space role applies to every user, so it needs role:manage.
+		const role = await createCustomRoleWithScopeSlugs(['role:read', 'role:manageProject'], {
+			roleType: 'global',
+		});
+		const manager = await createUser({ role });
+		manager.apiKeys = [await addApiKey(manager)];
+		const body = await bodyFromCurrentRole((scopes) =>
+			scopes.filter((s) => s !== 'credential:create'),
+		);
+
+		const response = await testServer
+			.publicApiAgentFor(manager)
+			.put(`/roles/${PROJECT_OWNER_ROLE_SLUG}`)
+			.send(body);
+
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe('User is missing a scope required to perform this action');
+		expect(await storedScopes()).toContain('credential:create');
+		expect(
+			await Container.get(SettingsRepository).findByKey(
+				'canvasOnly.personalSpaceRoleRemovedScopes',
+			),
+		).toBeNull();
+	});
+
+	it('rejects an owner key scoped down to role:manageProject with 403', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['role:manageProject'] });
+		const body = await bodyFromCurrentRole((scopes) =>
+			scopes.filter((s) => s !== 'credential:create'),
+		);
+
+		const response = await testServer
+			.publicApiAgentFor(scopedOwner)
+			.put(`/roles/${PROJECT_OWNER_ROLE_SLUG}`)
+			.send(body);
+
+		expect(response.status).toBe(403);
+		expect(await storedScopes()).toContain('credential:create');
 	});
 
 	it('rejects the request with 400 when canvas-only mode is off', async () => {

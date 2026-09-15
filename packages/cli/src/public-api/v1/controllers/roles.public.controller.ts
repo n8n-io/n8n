@@ -174,14 +174,15 @@ export class RolesPublicController {
 			throw new NotFoundError('Role not found');
 		}
 
+		const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
 		assertCanManageRoleType({
-			apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
+			apiKeyScopes,
 			roleType: role.roleType,
 			user: req.user,
 		});
 
 		const result = this.canvasOnlyPersonalSpaceRole.isActiveFor(roleSlug)
-			? await this.canvasOnlyPersonalSpaceRole.updateRole(updateRole)
+			? await this.canvasOnlyPersonalSpaceRole.updateRole(updateRole, apiKeyScopes)
 			: await this.roleService.updateCustomRole({
 					slug: roleSlug,
 					newRole: updateRole,
