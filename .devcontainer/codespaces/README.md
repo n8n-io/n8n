@@ -48,6 +48,19 @@ create an 8-core Codespace by default.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
 
+## Configure the local OpenCode harness
+
+Install the pinned shared harness:
+
+```bash
+pnpm agent:harness
+```
+
+The command verifies the release checksum. It caches the bundle under
+`~/.cache/n8n-agent-harness`. It then links the bundle plugin into
+`~/.config/opencode/plugins`. Run the command again after the lock changes.
+Restart OpenCode after the command completes.
+
 ## PR previews (a running instance of someone else's PR)
 
 A preview is a codespace that serves one pull request, so a reviewer can use the
@@ -104,7 +117,12 @@ instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
 It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
-The worker starts on each container start (`postStartCommand`). It needs three
+The post-start command installs the pinned OpenCode harness before it starts the
+worker. It verifies a valid cached bundle before reuse. The worker does not start
+if the harness is unavailable. `/tmp/post-start-status.json` contains the harness
+and worker status.
+
+The worker needs three
 secrets and uses three optional secrets. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
@@ -124,8 +142,12 @@ worker posts one placeholder in that thread. It coalesces completed tool calls.
 It updates the message at most once every 1.5 seconds. It does not send reasoning
 text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
-The worker does not export its dequeue or Slack credentials to OpenCode.
+The worker does not export its dequeue or Slack credentials to OpenCode. It uses
+the harness `sandbox` runtime and `slack` profile. The profile supplies the
+atomic-turn instruction.
 Interactive sessions remove all worker-only credentials before they start.
+Interactive OpenCode uses the global harness plugin with the `sandbox` runtime.
+It does not set a profile. It keeps the dynamic OpenRouter configuration.
 
 An idle worker starts with a 3-second poll interval. After each empty dequeue,
 it doubles the interval and limits it to 30 seconds. Work resets the interval
@@ -139,16 +161,15 @@ A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
 generic timeout. Keep the worker limit below the n8n limit if you change either.
 
-**A turn is atomic, and the worker tells the session so.** The turn ends on the
+**A turn is atomic, and the harness tells the session so.** The turn ends on the
 session's final message, and its children end with it: a background `Bash` task
 is killed, `Monitor` events never arrive, `PushNotification` has nowhere to go,
 and `ScheduleWakeup` never fires. The session also gets no turn of its own to
 report back in — the turn's resume URL continues one waiting n8n execution and is
 then spent, so nothing on the box can post to the thread unprompted. A session
 that backgrounds a build and signs off with "I'll verify once it finishes" is
-therefore describing something that cannot happen. The worker states this in
-each OpenCode prompt (`turnContract`), together with a pointer to this file for
-the box-specific parts. This is only the n8n/Slack path: an
+therefore describing something that cannot happen. The harness `slack` profile
+states this contract. This is only the n8n/Slack path: an
 interactive session (`pnpm session`, tmux) is long-lived, so background work,
 monitors and notifications behave normally there.
 

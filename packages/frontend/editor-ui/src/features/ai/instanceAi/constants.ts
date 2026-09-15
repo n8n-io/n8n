@@ -2,6 +2,7 @@ import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/ap
 
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
+export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /**
@@ -57,6 +58,7 @@ export function isInstanceAiThreadSource(value: unknown): value is InstanceAiThr
 const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 ]);
 

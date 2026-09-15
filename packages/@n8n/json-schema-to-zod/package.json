@@ -1,6 +1,6 @@
 {
   "name": "@n8n/json-schema-to-zod",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "Converts JSON schema objects into Zod schemas",
   "types": "./dist/types/index.d.ts",
   "main": "./dist/cjs/index.js",
@@ -70,7 +70,6 @@
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest": "catalog:"
   }
 }

@@ -135,6 +135,8 @@ export type StreamChunk = ContentMetadata &
 				output: unknown;
 				isError?: boolean;
 				canceled?: boolean;
+				/** Configured name of the MCP server the tool belongs to; absent for non-MCP tools. */
+				mcpServerName?: string;
 		  }
 		| {
 				type: 'tool-call-suspended';
