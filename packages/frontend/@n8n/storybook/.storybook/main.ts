@@ -49,6 +49,23 @@ const config: StorybookConfig = {
 		developmentModeForBuild: true,
 	},
 	async viteFinal(config) {
+		// story.to.design matches nested Vue components via __file / DevTools
+		// metadata. `storybook build` is Vite production unless we force
+		// development compilation (the Storybook flag alone does not).
+		config.mode = 'development';
+		config.plugins = [
+			...(config.plugins ?? []),
+			{
+				name: 'storybook-s2d-vue-devtools',
+				config() {
+					return {
+						define: {
+							__VUE_PROD_DEVTOOLS__: true,
+						},
+					};
+				},
+			},
+		];
 		config.server = {
 			...config.server,
 			// Vite blocks unknown Host headers; tunnel URLs need this or the
