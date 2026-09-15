@@ -77,8 +77,8 @@ commands. Short overview of the commands:
   user can manually test the node. It mounts the project into n8n's custom nodes
   directory, so it's available within n8n, and pushes a reload after every
   successful compile. It needs Docker or Podman.
-  - `--n8n-version <tag>` picks the n8n version (`latest` by default)
-  - `--n8n-image <image>` runs a specific image instead
+  - `--n8n-image <image>` picks the image to run
+    (`docker.n8n.io/n8nio/n8n:latest` by default); tag it to pin a version
   - `--external-n8n` skips the container and uses an n8n the user runs
     themselves; that instance needs `N8N_DEV_RELOAD=true` and
     `N8N_USER_FOLDER` set to `--custom-user-folder` (`~/.n8n-node-cli` by

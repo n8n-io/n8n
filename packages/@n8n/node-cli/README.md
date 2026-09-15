@@ -83,7 +83,7 @@ n8n-node new n8n-nodes-my-app --template declarative/custom
 Run n8n with your node in development mode with hot reload.
 
 ```bash
-n8n-node dev [--n8n-version <value>] [--n8n-image <value>] [--n8n-url <value>] [--external-n8n] [--custom-user-folder <value>]
+n8n-node dev [--n8n-image <value>] [--n8n-url <value>] [--external-n8n] [--custom-user-folder <value>]
 ```
 
 Requires Docker or Podman — the same container engine n8n itself is installed
@@ -93,8 +93,7 @@ rather run n8n yourself.
 **Flags:**
 | Flag | Description |
 |------|-------------|
-| `--n8n-version <tag>` | Version tag of the n8n image to run (default: `latest`) |
-| `--n8n-image <image>` | Full image reference, overriding `--n8n-version`. Also settable via `N8N_NODE_DEV_IMAGE` |
+| `--n8n-image <image>` | Image reference to run (default: `docker.n8n.io/n8nio/n8n:latest`). Also settable via `N8N_NODE_DEV_IMAGE` |
 | `--n8n-url <url>` | URL n8n is reachable at (default: `http://localhost:5678`) |
 | `--external-n8n` | Do not start a container; use an n8n you run yourself |
 | `--custom-user-folder <path>` | Only with `--external-n8n`: the `N8N_USER_FOLDER` of that instance (default: `~/.n8n-node-cli`) |
@@ -114,7 +113,7 @@ Desktop, OrbStack and a remote `DOCKER_HOST` all work.
 n8n-node dev
 
 # Pin the n8n version
-n8n-node dev --n8n-version 2.20.7
+n8n-node dev --n8n-image docker.n8n.io/n8nio/n8n:2.20.7
 
 # Test against a locally built image
 n8n-node dev --n8n-image n8nio/n8n:local

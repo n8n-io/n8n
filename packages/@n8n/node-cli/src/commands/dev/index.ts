@@ -34,7 +34,7 @@ export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
-		'<%= config.bin %> <%= command.id %> --n8n-version 2.20.7',
+		'<%= config.bin %> <%= command.id %> --n8n-image docker.n8n.io/n8nio/n8n:2.20.7',
 		'<%= config.bin %> <%= command.id %> --n8n-image n8nio/n8n:local',
 		'<%= config.bin %> <%= command.id %> --external-n8n',
 	];
@@ -44,14 +44,11 @@ export default class Dev extends Command {
 			description:
 				'By default n8n-node dev runs n8n in a container. Enable this option if you would like to run n8n elsewhere. Make sure to set N8N_DEV_RELOAD=true there, and point --custom-user-folder at its N8N_USER_FOLDER.',
 		}),
-		'n8n-version': Flags.string({
-			default: 'latest',
-			description: 'Version tag of the n8n image to run.',
-		}),
 		'n8n-image': Flags.string({
+			default: 'docker.n8n.io/n8nio/n8n:latest',
 			env: 'N8N_NODE_DEV_IMAGE',
 			description:
-				'Full image reference to run, overriding --n8n-version. Use this to test a locally built image (e.g. n8nio/n8n:local).',
+				'Image reference to run. Pin a version by tagging it (e.g. docker.n8n.io/n8nio/n8n:2.20.7), or point at a locally built image (e.g. n8nio/n8n:local).',
 		}),
 		'n8n-url': Flags.string({
 			default: 'http://localhost:5678',
@@ -83,7 +80,7 @@ export default class Dev extends Command {
 		const notes: string[] = [];
 
 		if (runsN8n) {
-			const image = flags['n8n-image'] ?? `docker.n8n.io/n8nio/n8n:${flags['n8n-version']}`;
+			const image = flags['n8n-image'];
 
 			let engine;
 			try {

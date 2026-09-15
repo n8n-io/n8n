@@ -82,25 +82,14 @@ describe('dev command', () => {
 		expect(server?.args).toContain('N8N_DEV_RELOAD=true');
 	});
 
-	tmpdirTest('--n8n-version selects the image tag', async ({ tmpdir }) => {
+	tmpdirTest('--n8n-image replaces the default image', async ({ tmpdir }) => {
 		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
 
-		await new Dev(['--n8n-version', '2.20.7'], createMockConfig(tmpdir)).run();
-
-		expect(lastRunCommandsCall()?.commands[1]?.args).toContain('docker.n8n.io/n8nio/n8n:2.20.7');
-	});
-
-	tmpdirTest('--n8n-image overrides --n8n-version', async ({ tmpdir }) => {
-		await setupTestPackage(tmpdir, { packageJson: { name: 'n8n-nodes-test' } });
-
-		await new Dev(
-			['--n8n-image', 'n8nio/n8n:local', '--n8n-version', '2.20.7'],
-			createMockConfig(tmpdir),
-		).run();
+		await new Dev(['--n8n-image', 'n8nio/n8n:local'], createMockConfig(tmpdir)).run();
 
 		const args = lastRunCommandsCall()?.commands[1]?.args;
 		expect(args).toContain('n8nio/n8n:local');
-		expect(args).not.toContain('docker.n8n.io/n8nio/n8n:2.20.7');
+		expect(args).not.toContain('docker.n8n.io/n8nio/n8n:latest');
 	});
 
 	tmpdirTest('with --external-n8n only runs the watcher and symlinks', async ({ tmpdir }) => {
