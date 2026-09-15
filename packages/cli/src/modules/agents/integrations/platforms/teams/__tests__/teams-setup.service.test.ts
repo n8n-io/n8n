@@ -25,14 +25,21 @@ describe('TeamsSetupService', () => {
 	let armTemplateService: TeamsArmTemplateService;
 	let service: TeamsSetupService;
 
+	/**
+	 * `integrations` is assigned rather than passed to `mock`, which proxies
+	 * nested objects: the integration's `settings` would come back as mock
+	 * functions, so an absent `displayName` would read as present.
+	 */
 	const agentWith = (integrations: Agent['integrations']) =>
-		mock<Agent>({
-			id: AGENT_ID,
-			projectId: PROJECT_ID,
-			name: 'Support Bot',
-			integrations,
-			updatedAt: new Date('2026-09-15T10:00:00.000Z'),
-		});
+		Object.assign(
+			mock<Agent>({
+				id: AGENT_ID,
+				projectId: PROJECT_ID,
+				name: 'Support Bot',
+				updatedAt: new Date('2026-09-15T10:00:00.000Z'),
+			}),
+			{ integrations },
+		);
 
 	const connectTeamsCredential = (type = 'microsoftEntraServicePrincipalApi') => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

@@ -9018,5 +9018,10 @@
 	"agents.channels.teams.setup.install.openChat": "Open the chat in Teams",
 	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
 	"agents.channels.teams.setup.availability.readingSummaryNone": "Only messages addressed to it",
-	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app."
+	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app.",
+	"agents.channels.teams.settings.updateNotice": "Changes here update the app in Teams. Download the package again and upload it to apply them.",
+	"agents.channels.teams.settings.displayName": "Agent name in Teams",
+	"agents.channels.teams.settings.displayNamePlaceholder": "Uses the agent's name",
+	"agents.channels.teams.settings.description": "Description",
+	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with"
 }

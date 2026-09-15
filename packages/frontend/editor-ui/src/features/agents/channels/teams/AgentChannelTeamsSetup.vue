@@ -7,15 +7,8 @@
  * for up front. That inverts Discord's stepper, where connecting comes last.
  */
 import { computed, onMounted, ref, watch } from 'vue';
-import {
-	N8nButton,
-	N8nCollapsiblePanel,
-	N8nCopyInput,
-	N8nIcon,
-	N8nStepper,
-	N8nSwitch2,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
+import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
 import type {
 	AgentTeamsIntegrationSettings,
 	ChatIntegrationDescriptor,
@@ -27,6 +20,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
+import AgentChannelTeamsAvailability, {
+	type TeamsAvailability,
+} from './AgentChannelTeamsAvailability.vue';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
 const credentialId = defineModel<string>({ default: '' });
@@ -45,6 +41,8 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		projectId: string;
 		agentId: string;
+		/** Placeholder for the Teams name, which falls back to it server-side. */
+		agentName?: string;
 		forceNewCredential?: boolean;
 		savedSettings?: AgentTeamsIntegrationSettings;
 	}>(),
@@ -55,6 +53,7 @@ const props = withDefaults(
 		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
+		agentName: '',
 		forceNewCredential: false,
 		savedSettings: undefined,
 	},
@@ -75,27 +74,16 @@ const ENTRA_APP_REGISTRATION_URL =
 const setupState = ref<TeamsAgentSetupState | null>(null);
 const showEndpoint = ref(false);
 
-const availability = ref({
+const availability = ref<TeamsAvailability>({
 	teamChannels: props.savedSettings?.teamChannels ?? false,
 	groupChats: props.savedSettings?.groupChats ?? false,
 	readAllChannelMessages: props.savedSettings?.readAllChannelMessages ?? false,
 	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
 });
 
-// A read permission without its surface is rejected by the backend schema, so
-// the box cannot be left ticked when its scope is turned off.
-watch(
-	() => availability.value.teamChannels,
-	(on) => {
-		if (!on) availability.value.readAllChannelMessages = false;
-	},
-);
-watch(
-	() => availability.value.groupChats,
-	(on) => {
-		if (!on) availability.value.readAllGroupMessages = false;
-	},
-);
+/** Both fall back to the agent's own name, so an empty field is not a value. */
+const displayName = ref(props.savedSettings?.displayName ?? '');
+const description = ref(props.savedSettings?.description ?? '');
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -110,42 +98,13 @@ const downloadError = ref('');
 // before it is connected, so the step does not wait on connecting.
 const canDownloadPackage = computed(() => Boolean(setupState.value?.botId));
 
-const whereOpen = ref(true);
-const readingOpen = ref(true);
-
-/** Collapsed panels still have to say what they are set to. */
-const whereSummary = computed(() =>
-	[
-		i18n.baseText('agents.channels.teams.setup.availability.directChat'),
-		...(availability.value.teamChannels
-			? [i18n.baseText('agents.channels.teams.setup.availability.teamChannels')]
-			: []),
-		...(availability.value.groupChats
-			? [i18n.baseText('agents.channels.teams.setup.availability.groupChats')]
-			: []),
-	].join(', '),
-);
-
-const readingSummary = computed(() => {
-	const reads = [
-		...(availability.value.readAllChannelMessages
-			? [i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')]
-			: []),
-		...(availability.value.readAllGroupMessages
-			? [i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')]
-			: []),
-	];
-	return reads.length > 0
-		? reads.join(', ')
-		: i18n.baseText('agents.channels.teams.setup.availability.readingSummaryNone');
-});
 const credentialCheck = ref<TeamsCredentialCheck | null>(null);
 const checking = ref(false);
 
 /**
- * Connecting is gated on the credential actually reaching Microsoft. Without
- * this the channel connects on a wrong secret and fails on the first message,
- * long after the setup said it succeeded.
+ * Saving is gated on the credential actually reaching Microsoft. Without this
+ * the channel connects on a wrong secret and fails on the first message, long
+ * after the setup said it succeeded.
  */
 const credentialVerified = computed(() => credentialCheck.value?.status === 'ok');
 const credentialProblem = computed(() =>
@@ -172,18 +131,6 @@ async function runCredentialCheck() {
 		checking.value = false;
 	}
 }
-
-// Re-checks whenever the picked credential changes, so the gate never reflects
-// a previous selection.
-// The deployment and the package are both built from the picked credential, so
-// they have to be refetched whenever it changes.
-watch(
-	credentialId,
-	async () => {
-		await Promise.all([runCredentialCheck(), loadSetupState()]);
-	},
-	{ immediate: true },
-);
 
 async function downloadPackage() {
 	downloading.value = true;
@@ -230,9 +177,17 @@ async function loadSetupState() {
 }
 
 onMounted(loadSetupState);
-// The package is minted from the connected credential, so it appears only once
-// connecting has succeeded.
 watch(() => props.connected, loadSetupState);
+
+// The deployment and the package are both built from the picked credential, so
+// they have to be rebuilt whenever it changes.
+watch(
+	credentialId,
+	async () => {
+		await Promise.all([runCredentialCheck(), loadSetupState()]);
+	},
+	{ immediate: true },
+);
 
 const steps = computed(() => [
 	{
@@ -260,7 +215,13 @@ const steps = computed(() => [
 defineExpose({
 	credentialId,
 	validationError: null,
-	currentSettings: computed(() => ({ ...availability.value })),
+	// Empty strings are absent rather than values: the schema requires a
+	// non-empty string when the field is present, and both fall back server-side.
+	currentSettings: computed(() => ({
+		...availability.value,
+		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
+		...(description.value.trim() ? { description: description.value.trim() } : {}),
+	})),
 });
 </script>
 
@@ -362,146 +323,7 @@ defineExpose({
 
 					<!-- 3. Choose where it's available -->
 					<div v-else-if="step.id === 'availability'" :class="$style.stepStack">
-						<N8nCollapsiblePanel v-model="whereOpen" :class="$style.panel">
-							<template #title>
-								<span :class="$style.panelTitle">
-									<N8nText size="small" bold>
-										{{ i18n.baseText('agents.channels.teams.setup.availability.whereTitle') }}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint" data-testid="teams-where-summary">
-										{{ whereSummary }}
-									</N8nText>
-								</span>
-							</template>
-
-							<div :class="$style.panelBody">
-								<div :class="$style.row" data-testid="teams-scope-direct">
-									<div :class="$style.rowText">
-										<N8nText size="small">
-											{{ i18n.baseText('agents.channels.teams.setup.availability.directChat') }}
-										</N8nText>
-										<N8nText size="small" :class="$style.hint">
-											{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
-										</N8nText>
-									</div>
-									<!-- Fixed, so a tick rather than a control that cannot move. -->
-									<N8nIcon icon="check" size="small" :class="$style.fixed" />
-								</div>
-
-								<div :class="$style.row">
-									<div :class="$style.rowText">
-										<N8nText size="small">
-											{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannels') }}
-										</N8nText>
-										<N8nText size="small" :class="$style.hint">
-											{{
-												i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint')
-											}}
-										</N8nText>
-									</div>
-									<N8nSwitch2
-										v-model="availability.teamChannels"
-										:aria-label="
-											i18n.baseText('agents.channels.teams.setup.availability.teamChannels')
-										"
-										data-testid="teams-scope-channels"
-									/>
-								</div>
-
-								<div :class="$style.row">
-									<div :class="$style.rowText">
-										<N8nText size="small">
-											{{ i18n.baseText('agents.channels.teams.setup.availability.groupChats') }}
-										</N8nText>
-										<N8nText size="small" :class="$style.hint">
-											{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
-										</N8nText>
-									</div>
-									<N8nSwitch2
-										v-model="availability.groupChats"
-										:aria-label="
-											i18n.baseText('agents.channels.teams.setup.availability.groupChats')
-										"
-										data-testid="teams-scope-groups"
-									/>
-								</div>
-							</div>
-						</N8nCollapsiblePanel>
-
-						<N8nCollapsiblePanel v-model="readingOpen" :class="$style.panel">
-							<template #title>
-								<span :class="$style.panelTitle">
-									<N8nText size="small" bold>
-										{{ i18n.baseText('agents.channels.teams.setup.availability.readingTitle') }}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint" data-testid="teams-reading-summary">
-										{{ readingSummary }}
-									</N8nText>
-								</span>
-							</template>
-
-							<div :class="$style.panelBody">
-								<N8nText size="small" :class="$style.hint">
-									{{ i18n.baseText('agents.channels.teams.setup.availability.readingNote') }}
-								</N8nText>
-
-								<div :class="$style.row">
-									<div :class="$style.rowText">
-										<N8nText size="small" :class="{ [$style.hint]: !availability.teamChannels }">
-											{{
-												i18n.baseText(
-													'agents.channels.teams.setup.availability.readAllChannelMessages',
-												)
-											}}
-										</N8nText>
-										<N8nText size="small" :class="$style.hint">
-											{{
-												i18n.baseText(
-													'agents.channels.teams.setup.availability.readAllChannelMessagesHint',
-												)
-											}}
-										</N8nText>
-									</div>
-									<N8nSwitch2
-										v-model="availability.readAllChannelMessages"
-										:disabled="!availability.teamChannels"
-										:aria-label="
-											i18n.baseText(
-												'agents.channels.teams.setup.availability.readAllChannelMessages',
-											)
-										"
-										data-testid="teams-read-channels"
-									/>
-								</div>
-
-								<div :class="$style.row">
-									<div :class="$style.rowText">
-										<N8nText size="small" :class="{ [$style.hint]: !availability.groupChats }">
-											{{
-												i18n.baseText(
-													'agents.channels.teams.setup.availability.readAllGroupMessages',
-												)
-											}}
-										</N8nText>
-										<N8nText size="small" :class="$style.hint">
-											{{
-												i18n.baseText(
-													'agents.channels.teams.setup.availability.readAllGroupMessagesHint',
-												)
-											}}
-										</N8nText>
-									</div>
-									<N8nSwitch2
-										v-model="availability.readAllGroupMessages"
-										:disabled="!availability.groupChats"
-										:aria-label="
-											i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
-										"
-										data-testid="teams-read-groups"
-									/>
-								</div>
-							</div>
-						</N8nCollapsiblePanel>
+						<AgentChannelTeamsAvailability v-model="availability" />
 					</div>
 
 					<!-- 4. Install -->
@@ -598,7 +420,69 @@ defineExpose({
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
-			<div :class="$style.urlField">
+			<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
+				{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
+			</N8nText>
+
+			<div :class="$style.field" data-testid="teams-display-name">
+				<label for="teams-display-name">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
+					</N8nText>
+				</label>
+				<N8nInput
+					id="teams-display-name"
+					v-model="displayName"
+					size="large"
+					:maxlength="TEAMS_DISPLAY_NAME_MAX"
+					show-word-limit
+					:placeholder="agentName"
+				/>
+			</div>
+
+			<div :class="$style.field" data-testid="teams-description">
+				<label for="teams-description">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.settings.description') }}
+					</N8nText>
+				</label>
+				<N8nInput
+					id="teams-description"
+					v-model="description"
+					size="large"
+					:maxlength="TEAMS_DESCRIPTION_MAX"
+					show-word-limit
+					:placeholder="i18n.baseText('agents.channels.teams.settings.descriptionPlaceholder')"
+				/>
+			</div>
+
+			<AgentChannelTeamsAvailability v-model="availability" start-collapsed />
+
+			<N8nButton
+				v-if="canDownloadPackage"
+				variant="subtle"
+				size="small"
+				icon="download"
+				:loading="downloading"
+				data-testid="teams-download-package"
+				@click="downloadPackage"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+			</N8nButton>
+			<N8nText v-if="downloadError" size="small" :class="$style.error">
+				{{ downloadError }}
+			</N8nText>
+
+			<N8nButton
+				v-if="!showEndpoint"
+				variant="ghost"
+				size="small"
+				data-testid="teams-show-endpoint"
+				@click="showEndpoint = true"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
+			</N8nButton>
+			<div v-else :class="$style.field" data-testid="teams-endpoint-field">
 				<label for="teams-messaging-endpoint-url">
 					<N8nText size="small" bold>
 						{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
@@ -613,17 +497,6 @@ defineExpose({
 					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
 				/>
 			</div>
-			<N8nButton
-				v-if="canDownloadPackage"
-				variant="subtle"
-				size="small"
-				icon="download"
-				:loading="downloading"
-				data-testid="teams-download-package"
-				@click="downloadPackage"
-			>
-				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			</N8nButton>
 		</div>
 	</div>
 </template>
