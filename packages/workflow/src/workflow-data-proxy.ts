@@ -60,32 +60,12 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
-/**
- * Whether the runtime can compile expressions. The expression engine compiles
- * expressions via `new Function`, which throws when the process is started with
- * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
- * This is a process-wide invariant, so we probe once and cache the result.
- */
-let codeGenerationAllowed: boolean | undefined;
 // Reads a key from a placeholder source only when it is the source's own
 // property, so a lookup can never resolve to a value reached through the
 // prototype chain (e.g. `constructor` / `__proto__`).
 const readOwnKey = (source: unknown, key: string): unknown => {
 	if (source === null || typeof source !== 'object') return undefined;
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
-};
-
-const isCodeGenerationAllowed = (): boolean => {
-	if (codeGenerationAllowed === undefined) {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-			new Function('return 1');
-			codeGenerationAllowed = true;
-		} catch {
-			codeGenerationAllowed = false;
-		}
-	}
-	return codeGenerationAllowed;
 };
 
 export class WorkflowDataProxy {
@@ -1149,7 +1129,15 @@ export class WorkflowDataProxy {
 	 * Returns the data proxy object which allows to query data from current run
 	 *
 	 */
-	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
+	/**
+	 * @param opts.throwOnMissingExecutionData Throw when no execution data is available. Default true.
+	 * @param opts.throwOnEvaluateExpression Throw when `$evaluateExpression` is called.
+	 * Default false. Proxies returned by `$item()` inherit both options.
+	 */
+	getDataProxy(opts?: {
+		throwOnMissingExecutionData?: boolean;
+		throwOnEvaluateExpression?: boolean;
+	}): IWorkflowDataProxyData {
 		const that = this;
 
 		// replacing proxies with the actual data.
@@ -1662,12 +1650,12 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
-				if (!isCodeGenerationAllowed()) {
+				if (opts?.throwOnEvaluateExpression) {
 					throw new ExpressionError(
-						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						'The function "$evaluateExpression" is not available in this context',
 						{
 							description:
-								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+								'Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before this node, and read the result from the input item.',
 						},
 					);
 				}
@@ -1705,7 +1693,7 @@ export class WorkflowDataProxy {
 					{},
 					that.contextNodeName,
 				);
-				return dataProxy.getDataProxy();
+				return dataProxy.getDataProxy(opts);
 			},
 			$fromAI: handleFromAi,
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
