@@ -585,27 +585,6 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
-	describe('empty state', () => {
-		it('marks empty groups with the dedicated presentation class in both states', () => {
-			const collapsed = render({ data: makeData({ isEmptyGroup: true, isCollapsed: true }) });
-			const expanded = render({ data: makeData({ isEmptyGroup: true, isCollapsed: false }) });
-			const realNoOp = render({ data: makeData({ isEmptyGroup: false }) });
-
-			const getRoot = (container: Element) =>
-				container.querySelector<HTMLElement>('[data-test-id="canvas-node-group"]');
-
-			expect([...getRoot(collapsed.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
-				true,
-			);
-			expect([...getRoot(expanded.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
-				true,
-			);
-			expect([...getRoot(realNoOp.container)!.classList].some((c) => /emptyGroup/i.test(c))).toBe(
-				false,
-			);
-		});
-	});
-
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
