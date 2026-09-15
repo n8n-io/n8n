@@ -51,6 +51,7 @@ export class AgentsConfigController {
 			this.credentialsService,
 			projectId,
 			req.user,
+			agentId,
 		);
 		return await this.agentValidationService.validateLoadedAgentConfiguration(
 			agent,

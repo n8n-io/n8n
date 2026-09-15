@@ -177,6 +177,7 @@ export class AiGatewayService {
 		workflowId,
 		projectId,
 		executionId,
+		agentId,
 		node,
 	}: {
 		credentialType: string;
@@ -184,6 +185,7 @@ export class AiGatewayService {
 		workflowId?: string;
 		projectId?: string;
 		executionId?: string;
+		agentId?: string;
 		node?: Pick<INode, 'type' | 'typeVersion' | 'parameters'>;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
@@ -230,6 +232,7 @@ export class AiGatewayService {
 			executionId,
 			workflowId,
 			projectId: resolvedProjectId,
+			agentId,
 		});
 
 		return {
@@ -248,7 +251,7 @@ export class AiGatewayService {
 	private buildUrlFields(
 		baseUrl: string,
 		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
 	): Record<string, string> {
 		const routing = providerConfig.routing;
 		if (routing && Object.keys(routing).length > 0) {
@@ -339,25 +342,32 @@ export class AiGatewayService {
 	 * `|`-joined, encoded list (`:workflowId|:projectId`, the `|` percent-encoded), so the
 	 * gateway can group usage by project. Omitting it keeps the `:workflowId`-only form.
 	 *
+	 * Agents have no execution or workflow. When an `agentId` is present (and no
+	 * `workflowId`), the literal `agent` takes the execution segment and the agentId
+	 * takes the workflow segment, so the gateway attributes usage to the agent.
+	 *
 	 * Example (OpenAI):
 	 *   without context → `<base>/v1/gateway/openai/v1`
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
 	): string {
-		if (context.executionId && context.workflowId) {
+		const execId = context.workflowId ? context.executionId : context.agentId && 'agent';
+		const attributionId = context.workflowId ?? context.agentId;
+		if (execId && attributionId) {
 			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
 				return `${baseUrl}${gatewayPath}`;
 			}
 			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
 			const contextSegment = encodeURIComponent(
-				[context.workflowId, context.projectId].filter(Boolean).join('|'),
+				[attributionId, context.projectId].filter(Boolean).join('|'),
 			);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${contextSegment}${providerSuffix}`;
+			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(execId)}/${contextSegment}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
 	}

@@ -520,7 +520,7 @@ export class InstanceAiAdapterService {
 						builderDelegate: builderDelegateAdapter.createDelegate(
 							user,
 							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							new AgentsCredentialProvider(this.credentialsService, projectId, user, agentId),
 							credentialService,
 							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),

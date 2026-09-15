@@ -540,7 +540,12 @@ export class AgentWorkflowExecutionService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			undefined,
+			agentId,
+		);
 
 		let agentData: Agent = agentEntity;
 
