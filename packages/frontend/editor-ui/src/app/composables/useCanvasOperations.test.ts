@@ -28,7 +28,9 @@ import type {
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
+	AddNodeCommand,
 	AddNodeGroupCommand,
+	BulkCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
@@ -130,6 +132,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
+import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
@@ -1934,6 +1937,95 @@ describe('useCanvasOperations', () => {
 			expect(group.nodeIds).toEqual([anchor?.id]);
 			expect(nodesById.has(node.id)).toBe(false);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
+		it('does not leave an anchor add command when replacement is rejected', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			historyStore.currentBulkAction = new BulkCommand([]);
+			historyStore.pushCommandToUndo.mockImplementation((command) => {
+				historyStore.currentBulkAction?.commands.push(command);
+			});
+
+			const node = createTestNode({ id: 'b', name: 'B', position: [112, 208] });
+			const anchorType = mockNodeTypeDescription({
+				name: NO_OP_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			nodeTypesStore.nodeTypes = { [NO_OP_NODE_TYPE]: { 1: anchorType } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(anchorType);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
+				nodesById.set(addedNode.id, addedNode);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const replacementAllowedSpy = vi.fn().mockReturnValue(false);
+			vi.spyOn(nodeGroupOperationGuards, 'useCanvasNodeGroupOperationGuards').mockReturnValue({
+				isConnectionRemovalAllowedForNodeGroups: vi.fn().mockReturnValue(true),
+				isConnectionReplacementAllowedForNodeGroups: vi
+					.fn()
+					.mockReturnValue({ outcome: 'proceed' }),
+				isNodeReplacementAllowedForNodeGroups: replacementAllowedSpy,
+				applyNodeGroupAutoExtend: vi.fn(),
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id, { trackHistory: true });
+
+			expect(replacementAllowedSpy).toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
+			const commands = historyStore.currentBulkAction?.commands ?? [];
+			expect(commands.some((command) => command instanceof AddNodeCommand)).toBe(false);
+		});
+
+		it('deletes an existing empty-group anchor without restoring another anchor', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [anchor.id] };
+			const nodesById = new Map([[anchor.id, anchor]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(anchor.id, { trackHistory: true });
+
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.replaceNodeInGroup).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(anchor.id);
+			expect(
+				historyStore.pushCommandToUndo.mock.calls.some(
+					([command]) => command instanceof RemoveNodeGroupCommand,
+				),
+			).toBe(true);
 		});
 
 		it('does not record any group command when the deleted node is ungrouped', () => {

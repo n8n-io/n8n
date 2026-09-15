@@ -1685,6 +1685,40 @@ describe('Canvas', () => {
 			// The selection now folds into a single element — the box goes away
 			expect(nodesSelectionActive.value).toBe(false);
 		});
+
+		it('folds an already-selected single node into a newly created group', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([createTestNode({ id: 'a', name: 'Node A' })]);
+			const member = createCanvasNodeElement({ id: 'a', label: 'Node A' });
+			const rendered = renderComponent({
+				props: { nodes: [member] },
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			await waitFor(() =>
+				expect(rendered.container.querySelectorAll('.vue-flow__node')).toHaveLength(1),
+			);
+
+			const { addSelectedNodes, findNode, getSelectedNodes } = useVueFlow(canvasId);
+			addSelectedNodes([findNode('a')!]);
+			await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual(['a']));
+
+			const group = workflowDocumentStore.createGroup(['a'], 'My Group');
+			await rendered.rerender({
+				nodes: [
+					createCanvasGroupElement({ id: group.id, name: group.name, nodeIds: ['a'] }),
+					member,
+				],
+			});
+
+			await waitFor(() =>
+				expect([...getSelectedNodes.value.map(({ id }) => id)].sort()).toEqual([
+					'a',
+					`group:${group.id}`,
+				]),
+			);
+		});
 	});
 
 	describe('group context menu', () => {
