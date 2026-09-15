@@ -11,10 +11,11 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 /**
  * One task's in-memory cadence: a chained timeout firing `onFire` at every
- * occurrence of `schedule`.
+ * occurrence of `schedule`, handing it how late the fire is in milliseconds and
+ * how many occurrences it stands in for.
  *
- * Occurrences the process slept through are coalesced: the timer fires once and
- * resumes from now, rather than replaying the whole backlog.
+ * Occurrences the process slept through are coalesced: the timer fires once,
+ * counting them, and resumes from now, rather than replaying the whole backlog.
  *
  * The pending timeout is unref'd, so it never keeps the process alive on its own.
  *
@@ -25,7 +26,7 @@ export class SystemTaskTimer {
 
 	constructor(
 		private readonly schedule: Schedule,
-		private readonly onFire: () => void,
+		private readonly onFire: (lagMs: number, coalesced: number) => void,
 		private readonly onPlanError: (error: Error) => void,
 		private readonly now: () => number = Date.now,
 	) {}
@@ -40,7 +41,7 @@ export class SystemTaskTimer {
 		this.timer = undefined;
 	}
 
-	private arm(after: Date, isFirst: boolean): void {
+	private arm(after: Date, isFirst: boolean): number {
 		let next: Date | null;
 		try {
 			next = isFirst
@@ -49,12 +50,13 @@ export class SystemTaskTimer {
 		} catch (error) {
 			this.timer = undefined;
 			this.onPlanError(ensureError(error));
-			return;
+			return 0;
 		}
 
 		if (next === null) {
 			this.timer = undefined;
-			return;
+			this.onPlanError(new UnexpectedError('A system task schedule has no next occurrence'));
+			return 0;
 		}
 
 		const fireAtMs = next.getTime();
@@ -64,17 +66,33 @@ export class SystemTaskTimer {
 			this.onPlanError(
 				new UnexpectedError('A system task schedule plans past the representable date range'),
 			);
-			return;
+			return 0;
 		}
 
-		const delayMs = fireAtMs - this.now();
+		const nowMs = this.now();
+		const delayMs = fireAtMs - nowMs;
 
 		if (delayMs < 0) {
-			this.arm(new Date(this.now()), true);
-			return;
+			const coalesced = this.countOccurrencesUpTo(next, nowMs);
+			this.arm(new Date(nowMs), true);
+			return coalesced;
 		}
 
 		this.waitFor(next, delayMs);
+		return 0;
+	}
+
+	/** The occurrences from `first` up to and including `untilMs`, which a fire at `untilMs` stands in for. */
+	private countOccurrencesUpTo(first: Date, untilMs: number): number {
+		let count = 0;
+		for (
+			let next: Date | null = first;
+			next !== null && next.getTime() <= untilMs;
+			next = computeNextRunAt(this.schedule, next)
+		) {
+			count++;
+		}
+		return count;
 	}
 
 	private waitFor(fireAt: Date, delayMs: number): void {
@@ -86,8 +104,9 @@ export class SystemTaskTimer {
 		} else {
 			this.timer = setTimeout(
 				() => {
-					this.arm(fireAt, false);
-					this.onFire();
+					const lagMs = Math.max(0, this.now() - fireAt.getTime());
+					const coalesced = this.arm(fireAt, false);
+					this.onFire(lagMs, coalesced);
 				},
 				Math.max(0, delayMs),
 			);
