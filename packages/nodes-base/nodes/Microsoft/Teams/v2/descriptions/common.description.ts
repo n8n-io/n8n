@@ -67,9 +67,12 @@ export const channelMentionsField: INodeProperties = {
 					// parameter at once. This is an editor-side guard only, a lone `$fromAI()`
 					// expression survives by design, so `resolveMentions` checks the value too.
 					noDataExpression: true,
+					// Default first, not alphabetical: a mention is a person unless the user says
+					// otherwise, so User leads and the list matches `default` above.
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					options: [
-						{ name: 'Team Tag', value: 'tag' },
 						{ name: 'User', value: 'user' },
+						{ name: 'Team Tag', value: 'tag' },
 					],
 				},
 				{ ...userRLC, displayOptions: { show: { mentionType: ['user'] } } },

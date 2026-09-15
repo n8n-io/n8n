@@ -180,6 +180,18 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 		).toBe(true);
 	});
 
+	// Deliberately not alphabetical, so it carries an eslint-disable. Without this test the next
+	// person to see the lint rule fires would "fix" the order and bury the default.
+	it('lists the mention types with the default first', () => {
+		const type = mentionRow('channelMessage').find((value) => value.name === 'mentionType');
+
+		expect(type?.options?.map((option) => (option as { value: string }).value)).toEqual([
+			'user',
+			'tag',
+		]);
+		expect(type?.default).toBe('user');
+	});
+
 	it('shows each channel picker only for its own mention type', () => {
 		expect(mentionUserRlc('channelMessage')?.displayOptions?.show?.mentionType).toEqual(['user']);
 		expect(mentionTagRlc('channelMessage')?.displayOptions?.show?.mentionType).toEqual(['tag']);
