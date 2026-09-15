@@ -5,7 +5,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from './role.service';
 
 /**
  * Resolves folders by id for a user, enforcing access through the folder's home

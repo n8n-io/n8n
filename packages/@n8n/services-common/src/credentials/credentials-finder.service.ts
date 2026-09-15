@@ -11,7 +11,7 @@ import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '../services/role.service';
 
 @Service()
 export class CredentialsFinderService {
