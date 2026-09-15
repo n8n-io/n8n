@@ -42,6 +42,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.build-workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
 				'instanceAi.tools.data-tables.add-column.imperativeWithResource': 'add a column to',
+				'instanceAi.tools.nodes.execute.imperativeWithResource': 'execute the',
 			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
@@ -354,6 +355,24 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
 			expect(getByText('Allow n8n Assistant to edit workflow?')).toBeVisible();
+		});
+
+		it('names the node in the title when the assistant executes one', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'execute-node',
+					severity: 'warning',
+					message: 'Document > Create',
+					resourceName: 'Google Sheets node',
+				},
+				{ action: 'execute', type: 'n8n-nodes-base.googleSheets' },
+				'nodes',
+			);
+			const { getByText } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByText('Assistant wants to execute the Google Sheets node')).toBeVisible();
+			expect(getByText('Document > Create')).toBeVisible();
 		});
 
 		it('preserves the saved description after a question mark', () => {
