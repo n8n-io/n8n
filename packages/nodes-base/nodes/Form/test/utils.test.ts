@@ -821,11 +821,7 @@ describe('FormTrigger, formWebhook', () => {
 		expect(mockStatus).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		['application/json'],
-		['application/x-www-form-urlencoded'],
-		[undefined],
-	])(
+	it.each([['application/json'], ['application/x-www-form-urlencoded'], [undefined]])(
 		'returns 415 for a POST with content type %s and does not start a workflow',
 		async (contentType) => {
 			const mockStatus = vi.fn();
