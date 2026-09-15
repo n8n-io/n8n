@@ -356,7 +356,17 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
 
 		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
-		hook.refresh();
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: {
+					projectId: 'p1',
+					agentId: 'a1',
+					threadId: 'thread-1',
+					executionId: 'exec-queued-resume',
+				},
+			});
+		}
 		await flushPromises();
 		expect(getTestChatMessagesMock).toHaveBeenCalledOnce();
 	});

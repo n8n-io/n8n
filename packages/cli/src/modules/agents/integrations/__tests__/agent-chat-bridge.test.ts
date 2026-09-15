@@ -11,6 +11,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { AgentTurnQueueService, type AgentTurnClaim } from '../../agent-turn-queue.service';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -64,6 +65,8 @@ function makeBot() {
 			handlers.slashCommand = h;
 		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
+		getState: vi.fn().mockReturnValue({}),
+		getLogger: vi.fn().mockReturnValue(undefined),
 		thread: vi.fn(),
 	};
 	return { bot, handlers };
@@ -2628,6 +2631,85 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
+		});
+
+		it('reconstructs and settles a queued channel action before resuming', async () => {
+			const chatSdk = await import('chat');
+			const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+			const { bot } = makeBot();
+			const deleteMessage = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ deleteMessage });
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+			const actionMessage = new chatSdk.Message({
+				id: 'card-message-1',
+				threadId: 'thread-1',
+				text: 'Approve?',
+				formatted: chatSdk.parseMarkdown('Approve?'),
+				raw: {},
+				author: {
+					userId: 'u2',
+					userName: 'user2',
+					fullName: 'User Two',
+					isBot: false,
+					isMe: false,
+				},
+				metadata: { dateSent: new Date('2026-01-01T00:00:00.000Z'), edited: false },
+				attachments: [],
+			});
+			const claim = claimFor('agent-1:thread-1');
+			const row = {
+				id: 'execution-queued',
+				runContext: {
+					kind: 'resume',
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					resumeData: { approved: true },
+					channel: {
+						integrationType: 'test-streaming',
+						credentialId: 'cred-1',
+						thread: {
+							_type: 'chat:Thread',
+							adapterName: 'test-streaming',
+							channelId: 'channel-1',
+							currentMessage: actionMessage.toJSON(),
+							id: 'thread-1',
+							isDM: false,
+						},
+						action: { actionId: 'resume:run-1:tool-1:0' },
+					},
+				},
+			} as AgentExecution;
+
+			try {
+				await bridge.runQueuedResume(row, claim);
+			} finally {
+				loadChatSdkSpy.mockRestore();
+			}
+
+			expect(deleteMessage).toHaveBeenCalledWith('thread-1', 'card-message-1');
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u2',
+				expect.objectContaining({
+					messageId: 'card-message-1',
+					interactingUserId: 'u2',
+				}),
+			);
+			expect(agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-1', toolCallId: 'tool-1' }),
+				claim,
+			);
 		});
 	});
 

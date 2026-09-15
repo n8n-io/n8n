@@ -107,7 +107,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const pendingQueuedResumes = new Set<string>();
 	const executionTransitionsSeenDuringStream = new Map<
 		string,
-		NonNullable<AgentPersistedMessageDto['executionStatus']>
+		AgentPersistedMessageDto['executionStatus']
 	>();
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -222,14 +222,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let pendingResumeSettled = false;
 			if (event) {
 				const { executionId, executionStatus } = event.data;
-				if (
-					pendingQueuedResumes.has(executionId) &&
-					executionStatus !== undefined &&
-					executionStatus !== 'queued'
-				) {
+				if (pendingQueuedResumes.has(executionId) && executionStatus !== 'queued') {
 					pendingQueuedResumes.delete(executionId);
 					pendingResumeSettled = true;
-				} else if (isStreaming.value && executionStatus !== undefined) {
+				} else if (isStreaming.value) {
 					executionTransitionsSeenDuringStream.set(executionId, executionStatus);
 				}
 			}
@@ -755,9 +751,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					session.submittedUserMessage.executionId = event.executionId;
 				}
 				if (session.submittedResumeToolCallId) {
+					const transitionSeen = executionTransitionsSeenDuringStream.has(event.executionId);
 					const latestStatus = executionTransitionsSeenDuringStream.get(event.executionId);
 					executionTransitionsSeenDuringStream.delete(event.executionId);
-					if (latestStatus === undefined || latestStatus === 'queued') {
+					if (!transitionSeen || latestStatus === 'queued') {
 						pendingQueuedResumes.add(event.executionId);
 					}
 				}
