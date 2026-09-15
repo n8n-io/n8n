@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
-import type { IHttpRequestMethods, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { IHttpRequestMethods, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 
 import { Jira } from '../Jira.node';
 import type * as _importType0 from '../GenericFunctions';
@@ -79,6 +79,33 @@ describe('Jira Node, methods', () => {
 	beforeEach(() => {
 		jira = new Jira();
 		loadOptionsFunctions = mock<ILoadOptionsFunctions>();
+	});
+
+	describe('listSearch.getSites', () => {
+		it('should list the sites the service account can reach', async () => {
+			const ctx = mockDeep<ILoadOptionsFunctions>();
+			ctx.getNode.mockReturnValue(mock<INode>({ credentials: undefined }));
+			ctx.helpers.httpRequestWithAuthentication.mockResolvedValue([
+				{ id: 'cloud-2', url: 'https://zeta.atlassian.net', name: 'Zeta' },
+				{ id: 'cloud-1', url: 'https://alpha.atlassian.net', name: 'Alpha' },
+			]);
+
+			const { results } = await jira.methods.listSearch.getSites.call(ctx);
+
+			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'atlassianServiceAccountApi',
+				expect.objectContaining({
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+				}),
+			);
+			expect(results).toEqual([
+				{ name: 'Alpha', value: 'cloud-1', url: 'https://alpha.atlassian.net' },
+				{ name: 'Zeta', value: 'cloud-2', url: 'https://zeta.atlassian.net' },
+			]);
+
+			const filtered = await jira.methods.listSearch.getSites.call(ctx, 'zeta');
+			expect(filtered.results.map((site) => site.value)).toEqual(['cloud-2']);
+		});
 	});
 
 	describe('listSearch.getCustomFields', () => {

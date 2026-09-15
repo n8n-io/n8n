@@ -12,6 +12,46 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	it('scrubs titles in the initial signal', () => {
+		const recorder = new ExecutionRecorder(undefined, undefined, {
+			tasks: [
+				{
+					id: 'job-1',
+					title: 'Check api_key=example-value',
+					kind: 'subagent',
+					status: 'completed',
+				},
+			],
+		});
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			signal: { tasks: [{ title: 'Check [REDACTED]' }] },
+		});
+	});
+
+	it('keeps the initial background signal in snapshots and final storage', () => {
+		const onSnapshot = vi.fn();
+		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
+			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+		});
+		const initial = structuredClone(recorder.getMessageRecord().timeline);
+		expect(initial).toEqual([
+			{
+				type: 'background-task-signal',
+				timestamp: recorder.startedAt.getTime(),
+				signal: {
+					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+				},
+			},
+		]);
+		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Done' });
+		recorder.record({ type: 'finish', finishReason: 'stop' });
+		expect(onSnapshot.mock.lastCall?.[0][0]).toEqual(initial[0]);
+		expect(recorder.getMessageRecord().timeline).toEqual([
+			...initial,
+			expect.objectContaining({ type: 'text', content: 'Done' }),
+		]);
+	});
+
 	it('builds full node tool details when the model input is empty', () => {
 		const registry = buildToolRegistry([
 			{
@@ -183,6 +223,18 @@ describe('ExecutionRecorder', () => {
 					],
 				}),
 			);
+		});
+
+		it('keeps the first stream error when a later wrapper error arrives', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record({ type: 'error', error: new Error('Thinking blocks cannot be modified') });
+			recorder.record({
+				type: 'error',
+				error: new Error('No output generated. Check the stream for errors.'),
+			});
+
+			expect(recorder.getMessageRecord().error).toBe('Thinking blocks cannot be modified');
 		});
 
 		it('captures text → tool call → text in order', () => {

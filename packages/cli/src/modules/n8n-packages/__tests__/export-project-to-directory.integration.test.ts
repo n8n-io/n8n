@@ -59,9 +59,9 @@ describe('exportPackageToDirectory', () => {
 		const manifest = await readJson('manifest.json');
 		expect(manifest).toMatchObject({ packageFormatVersion: FORMAT_VERSION });
 		expect(manifest.projects).toEqual([
-			{ id: project.id, name: 'Alpha Project', target: 'projects/alpha-project' },
+			{ id: project.id, name: 'Alpha Project', target: `projects/alpha-project-${project.id}` },
 		]);
-		expect(await readJson('projects/alpha-project/project.json')).toEqual({
+		expect(await readJson(`projects/alpha-project-${project.id}/project.json`)).toEqual({
 			id: project.id,
 			name: 'Alpha Project',
 		});
@@ -81,8 +81,8 @@ describe('exportPackageToDirectory', () => {
 
 		const manifest = await readJson('manifest.json');
 		expect(manifest.projects).toEqual([
-			{ id: alpha.id, name: 'Alpha Project', target: 'projects/alpha-project' },
-			{ id: beta.id, name: 'Beta Project', target: 'projects/beta-project' },
+			{ id: alpha.id, name: 'Alpha Project', target: `projects/alpha-project-${alpha.id}` },
+			{ id: beta.id, name: 'Beta Project', target: `projects/beta-project-${beta.id}` },
 		]);
 		expect(await readdir(targetDir)).toEqual(expect.arrayContaining(['manifest.json', 'projects']));
 		expect(result.counts.workflows).toBe(2);

@@ -2,6 +2,8 @@ import type { Project } from '@n8n/db';
 import { WorkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
+type CallerType = 'workflow' | 'agent';
+
 type Options = {
 	/** ID of the subworkflow whose execution was denied. */
 	subworkflowId: string;
@@ -20,10 +22,29 @@ type Options = {
 
 	/** Node that triggered the execution of the subworkflow whose execution was denied. */
 	node?: INode;
+
+	callerType?: CallerType;
 };
 
 export const SUBWORKFLOW_DENIAL_BASE_DESCRIPTION =
 	'The sub-workflow you’re trying to execute limits which workflows it can be called by.';
+export const SUBWORKFLOW_AGENT_DENIAL_BASE_DESCRIPTION =
+	'The sub-workflow you’re trying to execute doesn’t allow this agent to call it.';
+
+function getCallerDescription(callerType: CallerType) {
+	return {
+		agent: {
+			caller: 'agent',
+			accessibleCaller: 'this agent',
+			baseDescription: SUBWORKFLOW_AGENT_DENIAL_BASE_DESCRIPTION,
+		},
+		workflow: {
+			caller: 'workflow',
+			accessibleCaller: 'other workflows',
+			baseDescription: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
+		},
+	}[callerType];
+}
 
 export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 	constructor({
@@ -33,20 +54,22 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 		hasReadAccess,
 		ownerName,
 		node,
+		callerType = 'workflow',
 	}: Options) {
+		const { caller, accessibleCaller, baseDescription } = getCallerDescription(callerType);
 		const descriptions = {
-			default: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
+			default: baseDescription,
 			accessible: [
-				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
-				`<a href="${instanceUrl}/workflow/${subworkflowId}" target="_blank">Update sub-workflow settings</a> to allow other workflows to call it.`,
+				baseDescription,
+				`<a href="${instanceUrl}/workflow/${subworkflowId}" target="_blank">Update sub-workflow settings</a> to allow ${accessibleCaller} to call it.`,
 			].join(' '),
 			inaccessiblePersonalProject: [
-				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
-				`You will need ${ownerName} to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+				baseDescription,
+				`You will need ${ownerName} to update the sub-workflow (${subworkflowId}) settings to allow this ${caller} to call it.`,
 			].join(' '),
 			inaccesibleTeamProject: [
-				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
-				`You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+				baseDescription,
+				`You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this ${caller} to call it.`,
 			].join(' '),
 		};
 
@@ -59,7 +82,7 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 		};
 
 		super(
-			`The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
+			`The sub-workflow (${subworkflowId}) cannot be called by this ${caller}`,
 			node,
 			description(),
 		);

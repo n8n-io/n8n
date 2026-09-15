@@ -194,7 +194,7 @@ const onViewSelected = (selected: string) => {
 			<N8nIconButton
 				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="panel-right"
 				:class="$style.focusButton"
@@ -207,7 +207,7 @@ const onViewSelected = (selected: string) => {
 				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
-					size="small"
+					size="xsmall"
 					theme="dark"
 					icon-size="large"
 					:actions="actions"
@@ -219,7 +219,7 @@ const onViewSelected = (selected: string) => {
 
 			<N8nSegmentControl
 				v-if="shouldShowExpressionSelector"
-				size="small"
+				size="mini"
 				:class="$style.expressionSwitch"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
@@ -233,7 +233,7 @@ const onViewSelected = (selected: string) => {
 			<N8nIconButton
 				variant="ghost"
 				v-if="showDelete && onDelete"
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="trash-2"
 				:class="$style.deleteButton"
@@ -248,8 +248,8 @@ const onViewSelected = (selected: string) => {
 <style lang="scss" module>
 .container {
 	display: flex;
-	min-height: var(--parameter-input-options--height, 22px);
-	max-height: var(--parameter-input-options--height, 22px);
+	min-height: var(--parameter-input-options--height, 24px);
+	max-height: var(--parameter-input-options--height, 24px);
 	overflow: hidden;
 }
 
@@ -267,6 +267,7 @@ const onViewSelected = (selected: string) => {
 }
 
 .expressionSwitch {
+	--n8n-segment-control--height: 24px;
 	margin-right: var(--spacing--4xs);
 }
 

@@ -7,11 +7,13 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { useToast } from '@n8n/composables/useToast';
 import {
+	INSTANCE_AI_CREATE_AGENT_MODE_MANUAL,
+	INSTANCE_AI_CREATE_AGENT_MODE_QUERY,
 	INSTANCE_AI_PENDING_AGENT_ID_STATE,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
@@ -23,7 +25,9 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
-const instanceAiAvailable = useInstanceAiAvailable();
+// `Ready`, not merely available: this mints a thread and lands the user in it,
+// so before setup is done the manual builder is the working path.
+const instanceAiReady = useInstanceAiReady();
 const instanceAiStore = useInstanceAiStore();
 
 /**
@@ -50,8 +54,12 @@ onMounted(async () => {
 		typeof clickedAgentId === 'string' && MINTED_AGENT_ID.test(clickedAgentId)
 			? clickedAgentId
 			: generateNanoId();
+	// The query flag is a mode switch only, never a data channel: the agent id
+	// above still comes exclusively from history state.
+	const manualRequested =
+		route.query[INSTANCE_AI_CREATE_AGENT_MODE_QUERY] === INSTANCE_AI_CREATE_AGENT_MODE_MANUAL;
 	try {
-		if (!instanceAiAvailable.value) {
+		if (manualRequested || !instanceAiReady.value) {
 			await router.replace({
 				name: AGENT_BUILDER_VIEW,
 				params: { projectId, agentId },

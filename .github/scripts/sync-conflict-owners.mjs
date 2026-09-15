@@ -180,7 +180,6 @@ export function buildOutputs({
 	masterCommits = new Map(),
 	preResolved = [],
 	lockfileDeferred = false,
-	abandoned = [],
 }) {
 	// `- \`path\`` plus a nested line per master commit that touched it.
 	const fileMd = (path, suffix = '') => {
@@ -207,9 +206,6 @@ export function buildOutputs({
 	const ownersMd = owners.length
 		? owners.map((o) => `- @${o}`).join('\n')
 		: '_Could not auto-attribute — review the conflicted files manually._';
-	const abandonedWarning = abandoned.length
-		? `A previous PR for this recurring conflict (${abandoned.map((pr) => `#${pr.number}`).join(', ')}) was closed without being merged. Closing resolves nothing — the conflict comes back on the next sync. **Merge, don't close.**`
-		: '';
 	const masterOwners = [
 		...new Set([...masterCommits.values()].flat().flatMap((c) => (c.login ? [c.login] : []))),
 	].sort();
@@ -218,15 +214,11 @@ export function buildOutputs({
 			? `Likely owners (GitHub): ${owners.map((o) => `@${o}`).join(' ')}`
 			: 'Could not auto-attribute owners.',
 		masterOwners.length ? `· master side: ${masterOwners.map((o) => `@${o}`).join(' ')}` : '',
-		abandoned.length
-			? `⚠️ ${abandoned.map((pr) => `<${pr.url}|#${pr.number}>`).join(', ')} was closed without merging and the conflict is back — merge this one, don't close it.`
-			: '',
 	]
 		.filter(Boolean)
 		.join(' ');
 	const body = [
 		`Automated \`master\`→\`${targetBranch}\` sync hit a conflict.`,
-		...(abandonedWarning ? ['', '> [!WARNING]', `> ${abandonedWarning}`] : []),
 		'',
 		files.length
 			? `**\`${targetBranch}\` was not touched.** This branch is \`master\` merged into \`${targetBranch}\` with the conflicts committed exactly as git left them — **conflict markers included** — so you can see what clashed. The required checks stay red until they are resolved, so this PR cannot be merged half-done.`

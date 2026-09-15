@@ -20,8 +20,11 @@ before(async () => {
 /** Violations only, for the cases that assert nothing about warnings. */
 const violationsOf = (...args) => checkConfig(...args).violations;
 
-/** @param {Array<object>} rules */
-const config = (rules) => ({ version: 1, reviews: { custom_rules: rules } });
+/** @param {Array<object>} rules @param {string} [customInstructions] */
+const config = (rules, customInstructions) => ({
+	version: 1,
+	reviews: { custom_rules: rules, ...(customInstructions && { custom_instructions: customInstructions }) },
+});
 
 /** @param {string} name */
 const rule = (name) => ({ name, description: 'x' });
@@ -128,6 +131,72 @@ describe('checkConfig', () => {
 		];
 		const { violations } = checkConfig(config(rules), emptyFiles, ['rules/a.md', 'rules/b.md']);
 
+		assert.deepEqual(violations, []);
+	});
+});
+
+describe('shared custom_instructions', () => {
+	it('charges the shared block against every agent, not once overall', () => {
+		const rules = [{ name: 'A', description: 'a'.repeat(100) }, { name: 'B', description: 'b'.repeat(200) }];
+		const { ruleLengths, sharedChars } = checkConfig(config(rules, 'i'.repeat(1_000)), emptyFiles);
+
+		assert.equal(sharedChars, 1_000);
+		assert.equal(ruleLengths['"A"'], 1_100);
+		assert.equal(ruleLengths['"B"'], 1_200);
+	});
+
+	it('fails an agent that only busts the ceiling once the shared block is added', () => {
+		const rules = [{ name: 'Security', description: 'a'.repeat(9_500) }];
+
+		assert.deepEqual(violationsOf(config(rules), emptyFiles), []);
+
+		const violations = violationsOf(config(rules, 'i'.repeat(1_000)), emptyFiles);
+		assert.equal(violations.length, 1);
+		assert.match(violations[0], /"Security" is 10,500 characters/);
+	});
+
+	it('splits own and shared characters so the fix is obvious', () => {
+		const rules = [{ name: 'Security', description: 'a'.repeat(9_500) }];
+		const [violation] = violationsOf(config(rules, 'i'.repeat(1_000)), emptyFiles);
+
+		assert.match(violation, /9,500 its own \+ 1,000 shared `custom_instructions`/);
+	});
+
+	it('splits own and shared characters in the warning too', () => {
+		const rules = [{ name: 'Security', description: 'a'.repeat(7_500) }];
+		const { violations, warnings } = checkConfig(config(rules, 'i'.repeat(1_000)), emptyFiles);
+
+		assert.deepEqual(violations, []);
+		assert.equal(warnings.length, 1);
+		assert.match(warnings[0], /at 85% of the 10,000-character ceiling/);
+		assert.match(warnings[0], /7,500 its own \+ 1,000 shared `custom_instructions`/);
+	});
+
+	it('omits the split when there is no shared block', () => {
+		const rules = [{ name: 'Security', description: 'a'.repeat(10_001) }];
+		const [violation] = violationsOf(config(rules), emptyFiles);
+
+		assert.doesNotMatch(violation, /its own/);
+	});
+
+	it('flags a shared block that fills the ceiling on its own', () => {
+		const rules = [{ name: 'A', description: 'x' }];
+		const violations = violationsOf(config(rules, 'i'.repeat(MAX_RULE_CHARS)), emptyFiles);
+
+		assert.match(violations[0], /`reviews\.custom_instructions` is 10,000 characters/);
+		assert.match(violations[0], /No agent's own rules would survive/);
+	});
+
+	it('reports sharedChars as 0 when the block is absent', () => {
+		assert.equal(checkConfig(config([rule('A')]), emptyFiles).sharedChars, 0);
+	});
+
+	it('measures the shared block in characters, not UTF-8 bytes', () => {
+		const rules = [{ name: 'A', description: '' , file_paths: ['doc.md'] }];
+		// 4,000 em dashes: 12,000 bytes, 4,000 characters. By bytes this would fail.
+		const { violations, sharedChars } = checkConfig(config(rules, '—'.repeat(4_000)), () => 5_000);
+
+		assert.equal(sharedChars, 4_000);
 		assert.deepEqual(violations, []);
 	});
 });

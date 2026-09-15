@@ -9,7 +9,7 @@ import N8nTag from '../N8nTag/Tag.vue';
 import N8nText from '../N8nText/Text.vue';
 
 export default {
-	title: 'Core/Hover Card',
+	title: 'Core/HoverCard',
 	component: N8nHoverCard,
 	argTypes: {
 		openDelay: { control: 'number' },
@@ -33,7 +33,7 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 	setup: () => ({ args }),
 	components: { N8nHoverCard, N8nButton, N8nIcon, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; justify-content: center;">
+		<div>
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
 					<N8nButton>Customer onboarding</N8nButton>
@@ -86,8 +86,8 @@ const WorkflowPreviewTemplate: StoryFn = (args) => ({
 	`,
 });
 
-export const WorkflowPreview = WorkflowPreviewTemplate.bind({});
-WorkflowPreview.args = {
+export const Default = WorkflowPreviewTemplate.bind({});
+Default.args = {
 	maxWidth: '380px',
 	side: 'right',
 	align: 'center',
@@ -100,7 +100,7 @@ const EnvironmentTemplate: StoryFn = (args) => ({
 	},
 	components: { N8nHoverCard, N8nTag, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; flex-direction: column; align-items: center; gap: var(--spacing--sm);">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm)">
 			<N8nText size="small" color="text-light">Open: {{ isOpen }}</N8nText>
 			<N8nHoverCard v-model:open="isOpen" v-bind="args">
 				<template #trigger>
@@ -219,7 +219,7 @@ const SharedReferenceTemplate: StoryFn = (args) => ({
 	},
 	components: { N8nHoverCard, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 112px;">
+		<div>
 			<N8nHoverCard
 				v-model:open="open"
 				hide-trigger
@@ -332,7 +332,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 	}),
 	components: { N8nHoverCard, N8nButton, N8nText, N8nBadge },
 	template: `
-		<div style="padding: 96px; display: flex; justify-content: center;">
+		<div>
 			<N8nHoverCard v-bind="args">
 				<template #trigger>
 					<N8nButton>Recent executions</N8nButton>

@@ -88,6 +88,16 @@ import {
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
 
+function parseHttpUrl(value: unknown): URL | undefined {
+	if (typeof value !== 'string') return undefined;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
@@ -1199,10 +1209,28 @@ export class CredentialsService {
 			return;
 		}
 
+		// Read before the delete cascades away the `shared_credentials` rows that name it. An
+		// instance-scoped credential has no such row and resolves to nothing, which is expected.
+		let owningProject: Project | undefined;
+
 		if (credential.isResolvable) {
-			const owningProject =
+			// The authorization check depends on the project, so a failed lookup has to fail the
+			// delete — and with its own error, rather than a misleading permission one.
+			owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		} else {
+			// Here it only attributes the activity entry, so recording must never be the reason a
+			// delete fails. Without a project the entry is dropped, which is the right outcome.
+			try {
+				owningProject =
+					await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			} catch (error) {
+				this.logger.warn('Failed to resolve the project owning a credential', {
+					credentialId,
+					error,
+				});
+			}
 		}
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
@@ -1216,20 +1244,26 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential);
+				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
 			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential);
+		this.emitCredentialDeleted(user, credential, owningProject?.id);
 	}
 
-	private emitCredentialDeleted(user: User, credential: CredentialsEntity) {
+	private emitCredentialDeleted(
+		user: User,
+		credential: CredentialsEntity,
+		projectId: string | undefined,
+	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			credentialName: credential.name,
+			projectId,
 		});
 
 		if (credential.isResolvable) {
@@ -1301,10 +1335,20 @@ export class CredentialsService {
 
 		const data = await this.decrypt(storedCredential, true);
 
-		// Expressions (leading '=') and non-http values are refused, not resolved.
-		const testUrl = data.testUrl;
-		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+		// Expressions and non-HTTP values are refused, not resolved.
+		const testTarget = parseHttpUrl(data.testUrl);
+		if (!testTarget) {
 			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		const storedOrigin = typeof data.serviceOrigin === 'string' ? data.serviceOrigin.trim() : '';
+		const serviceOrigin = parseHttpUrl(storedOrigin);
+		if (
+			!serviceOrigin ||
+			serviceOrigin.origin !== storedOrigin ||
+			serviceOrigin.origin !== testTarget.origin
+		) {
+			throw new BadRequestError('The credential test URL is not bound to its service origin');
 		}
 
 		return await this.credentialsTester.probeCredentialAuth(
@@ -1316,8 +1360,11 @@ export class CredentialsService {
 				type: storedCredential.type,
 				data,
 			},
-			testUrl,
-			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+			testTarget.href,
+			{
+				acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes),
+				allowedDomains: testTarget.hostname,
+			},
 		);
 	}
 
@@ -1741,14 +1788,21 @@ export class CredentialsService {
 	/**
 	 * Creates an empty credential placeholder for package import. Skips field
 	 * validation so every known type can be stubbed; {@link save} still enforces
-	 * `credential:create` on the target project.
+	 * `credential:create` on the target project. A supplied `id` preserves source identity.
 	 */
 	async createStubCredential(
-		opts: { name: string; type: string; projectId: string },
+		opts: { id?: string; name: string; type: string; projectId: string },
 		user: User,
 	): Promise<CredentialsEntity> {
+		// `save` upserts by id, so reject a taken id rather than overwriting that credential.
+		if (opts.id !== undefined && (await this.credentialsRepository.existsBy({ id: opts.id }))) {
+			throw new BadRequestError(
+				`Cannot create credential stub: a credential with id "${opts.id}" already exists`,
+			);
+		}
+
 		const encryptedCredential = await this.createEncryptedData({
-			id: null,
+			id: opts.id ?? null,
 			name: opts.name,
 			type: opts.type,
 			data: {},

@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 /**
- * How each AI Assistant setup component is configured. Source (who set it) and
+ * How each n8n Assistant setup component is configured. Source (who set it) and
  * type/provider (what it is) are separate properties on purpose: an env-var
  * Daytona sandbox reports sandbox_source 'env' and sandbox_type 'daytona',
  * so neither dimension shadows the other.
@@ -34,12 +34,14 @@ const setupSnapshotProps = {
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+// Experiment cleanup: remove with openWorkflowInAssistant.
+const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_AI_CREDIT_BALANCE: {
 		name: 'User clicked AI credit balance',
 		description:
-			'The user clicked the AI Assistant credit balance button to open or close the balance dropdown.',
+			'The user clicked the n8n Assistant credit balance button to open or close the balance dropdown.',
 		properties: z.object({}),
 	},
 	FREE_NUDGE_EXPOSED: {
@@ -61,21 +63,64 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
 		}),
 	},
+	// Experiment cleanup: remove with openWorkflowInAssistant.
+	OPEN_BY_DEFAULT_NOTIFICATION_SHOWN: {
+		name: 'Open in assistant notification shown',
+		description:
+			'The open-by-default experiment notification rendered after a workflow list card auto-opened in the n8n Assistant.',
+		properties: z.object({
+			workflow_id: z.string().nullable(),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	OPEN_BY_DEFAULT_NOTIFICATION_ACTION: {
+		name: 'Open in assistant notification actioned',
+		description: 'The user acted on the open-by-default experiment notification.',
+		properties: z.object({
+			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
+		name: 'Default editor preference changed',
+		description: 'The user saved the default-editor preference on the n8n Assistant settings page.',
+		properties: z.object({
+			value: z.enum(['assistant', 'manual']),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	MANUAL_EDITOR_OPENED: {
+		name: 'Manual editor opened from assistant',
+		description: 'The user clicked the Manual Editor button on a workflow artifact tab.',
+		properties: z.object({
+			workflow_id: z.string(),
+			thread_id: z.string().optional(),
+			variant: openWorkflowInAssistantVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
 	USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON: {
 		name: 'User clicked AI Assistant input plus button',
-		description: 'The user clicked the plus button in the AI Assistant input.',
+		description: 'The user clicked the plus button in the n8n Assistant input.',
 		properties: z.object({}),
 	},
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
-		description: 'The user opened the AI Assistant tools connection modal.',
+		description: 'The user opened the n8n Assistant tools connection modal.',
 		properties: z.object({
 			source: z.enum(['input_menu', 'mcp_connect_card']),
 		}),
 	},
 	MCP_SETTINGS_OPENED: {
 		name: 'Instance AI mcp settings opened',
-		description: 'The user opened settings for an MCP connection in the AI Assistant.',
+		description: 'The user opened settings for an MCP connection in the n8n Assistant.',
 		properties: z.object({
 			server_slug: z.string(),
 			source: z.enum(['input_menu', 'mcp_connect_card']),
@@ -130,7 +175,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BROWSER_USE_DIRECT_CONNECT_REQUESTED: {
 		name: 'Instance AI Browser Use direct connect requested',
 		description:
-			'The AI Assistant requested a direct connection through the Browser Use extension.',
+			'The n8n Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
 	},
 	COMPUTER_USE_MODAL_OPENED: {
@@ -181,7 +226,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_AI_ASSISTANT_SETUP_PAGE: {
 		name: 'User viewed AI Assistant setup page',
 		description:
-			'The user landed on a self-hosted AI Assistant setup surface: the onboarding takeover on /assistant, or the settings page on /settings/assistant. Carries the configuration snapshot at view time, so joined with "AI Assistant setup completed" it measures setup drop-off. Not emitted on cloud or proxy deployments, where setup is managed.',
+			'The user landed on a self-hosted n8n Assistant setup surface: the onboarding takeover on /assistant, or the settings page on /settings/assistant. Carries the configuration snapshot at view time, so joined with "AI Assistant setup completed" it measures setup drop-off. Not emitted on cloud or proxy deployments, where setup is managed.',
 		properties: z.object({
 			page: z
 				.enum(['onboarding', 'settings'])
@@ -192,7 +237,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an AI Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -210,7 +255,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an AI Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -224,7 +269,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an AI Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -269,7 +314,55 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_SETUP_COMPLETED: {
 		name: 'AI Assistant setup completed',
 		description:
-			'A self-hosted instance reached a complete AI Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
+			'A self-hosted instance reached a complete n8n Assistant setup for the first time: model configured, sandbox configured, and web search decided (configured or explicitly disabled) — the same predicate that unlocks the assistant UI. Fires at most once per instance, guarded by a persisted settings key, regardless of how the last piece was set: emitted from the settings save path, with a boot-time check so an env-var finish is also counted. No "User" prefix because the last piece can land via env vars with no acting user.',
 		properties: z.object({ ...setupSnapshotProps }),
+	},
+	USER_ADDED_NODES_TO_CHAT: {
+		name: 'User added nodes to chat',
+		description:
+			'The user attached one or more canvas nodes as context to the Instance AI chat. Fires once per add action, after the attachment is built — so node_count reflects the nodes actually attached (unresolved ids dropped, capped at the per-set maximum), not the raw selection.',
+		properties: z.object({
+			source: z
+				.enum(['node_toolbar', 'selection_toolbar', 'context_menu', 'group_title_bar', 'keyboard'])
+				.describe('Which affordance triggered the add'),
+			node_count: z.number().describe('Number of nodes actually attached in this add action'),
+		}),
+	},
+	USER_SENT_CHAT_MESSAGE_WITH_NODES: {
+		name: 'User sent chat message with nodes',
+		description:
+			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
+		properties: z.object({
+			node_count: z.number().describe('Total nodes attached across the sent message'),
+		}),
+	},
+	BUILDER_LISTED_WORKFLOWS: {
+		name: 'Builder listed workflows',
+		description:
+			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			folder_exploration_enabled: z
+				.boolean()
+				.describe('Whether the run had the folder-exploration flag on'),
+			folder_scope: z
+				.enum(['none', 'path', 'id'])
+				.describe('How the caller addressed a folder, if at all'),
+			recursive: z.boolean().optional().describe('Only when a folder was addressed'),
+			folder_resolution: z
+				.enum(['resolved', 'not_found', 'ambiguous', 'unsupported', 'scope_too_wide'])
+				.optional()
+				.describe('Only when a folder was addressed'),
+			candidate_count: z
+				.number()
+				.int()
+				.optional()
+				.describe('Folders offered back on an unresolved request'),
+			scope: z.enum(['project', 'instance']),
+			has_query: z.boolean().describe('Whether a name filter was also passed'),
+			result_count: z.number().int().describe('Rows returned on this page'),
+			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
+		}),
 	},
 });

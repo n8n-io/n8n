@@ -3,6 +3,16 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
+	MULTIPLE_NODES_SELECTED: {
+		name: 'User selected multiple nodes',
+		description:
+			'The user has two or more nodes selected on the workflow canvas. Fires once the selection settles (debounced), covering all selection paths — rubber-band drag, shift-click, and select-all — so intermediate states during a drag are not reported. Groups are excluded from the count.',
+		properties: z.object({
+			workflow_id: z.string(),
+			node_count: z.number().describe('Number of nodes selected once the selection settled'),
+			push_ref: z.string().describe('Editor session ref, to join with other canvas events'),
+		}),
+	},
 	NODE_IDS_HEALED: {
 		name: 'Workflow node ids healed',
 		description:

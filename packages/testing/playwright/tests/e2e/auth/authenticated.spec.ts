@@ -7,7 +7,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
-		// The root route lands users on the AI Assistant while the `instance-ai`
+		// The root route lands users on the n8n Assistant while the `instance-ai`
 		// module is active — but only if they may manage it, or setup is complete.
 		// Owner and admin hold `instanceAi:manage`; members only hold
 		// `instanceAi:message`, so they land there once Instance AI is set up.

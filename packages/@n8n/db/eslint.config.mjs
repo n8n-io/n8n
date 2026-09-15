@@ -1,5 +1,5 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -14,29 +14,17 @@ export default defineConfig(
 	{
 		ignores: ['scripts/**'],
 	},
-	baseConfig,
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			'n8n-local-rules/project-owned-entity-transfer': [
 				'error',
 				{ acknowledged: acknowledgedProjectOwnedEntities },
 			],
 
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
 			'@typescript-eslint/no-restricted-types': 'warn',
 			'no-useless-escape': 'warn',
-			'no-empty': 'warn',
 		},
 	},
 	{

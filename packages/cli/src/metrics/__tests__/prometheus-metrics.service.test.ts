@@ -10,10 +10,12 @@ import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.
 import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
+import type { PrometheusEncryptionMetricsService } from '../prometheus/encryption-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import type { PrometheusMcpPostSaveMetricsService } from '../prometheus/mcp-post-save-metrics.service';
 import type { PrometheusPollTriggerMetricsService } from '../prometheus/poll-trigger-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
@@ -50,9 +52,11 @@ describe('PrometheusMetricsService', () => {
 	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
 	let ssrf: Mocked<PrometheusSsrfMetricsService>;
 	let dnsCache: Mocked<PrometheusDnsCacheMetricsService>;
+	let encryption: Mocked<PrometheusEncryptionMetricsService>;
 	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let mcpPostSave: Mocked<PrometheusMcpPostSaveMetricsService>;
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
@@ -81,10 +85,12 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			mcpPostSave,
 			dbPool,
 			workflowPublication,
 			scheduler,
 			pollTrigger,
+			encryption,
 		);
 
 	beforeEach(() => {
@@ -116,10 +122,12 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		mcpPostSave = mock<PrometheusMcpPostSaveMetricsService>({ enabled: true });
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
+		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -150,10 +158,12 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(mcpPostSave.init).toHaveBeenCalledWith(app);
 			expect(dbPool.init).toHaveBeenCalledWith(app);
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 			expect(scheduler.init).toHaveBeenCalledWith(app);
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
+			expect(encryption.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

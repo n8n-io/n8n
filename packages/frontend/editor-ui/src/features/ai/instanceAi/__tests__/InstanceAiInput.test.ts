@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
+import type { ContextChip } from '../instanceAi.contextChip';
 import {
 	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions,
 	isPromptSuggestion,
@@ -29,7 +31,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
-	contextChip?: { label: string; testId?: string } | null;
+	contextChip?: ContextChip | null;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -225,6 +227,7 @@ const renderComponent = createComponentRenderer(InstanceAiInput, {
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
 	});
@@ -269,8 +272,43 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask a question – add context with +',
+			'Tell me what to build or ask a question',
 		);
+	});
+
+	it('uses the new agent placeholder for a pending agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: true,
+					label: 'New Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Describe the agent you want to build',
+		);
+	});
+
+	it('uses the default placeholder for a saved agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: false,
+					label: 'Support Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask anything...');
 	});
 
 	it('disables the composer when the workflow builder is unavailable', () => {
@@ -441,6 +479,7 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit?.[0]).toEqual([
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
+			expect.any(Function),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -607,6 +646,25 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	it('emits a draft recovery callback for a text-only message', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Build me an invoice workflow');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(textbox).toHaveValue('');
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => expect(textbox).toHaveValue('Build me an invoice workflow'));
+	});
+
 	it('opens the hidden file picker from the input menu', async () => {
 		const fileInputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
 		const { getByTestId, queryByTestId } = renderComponent({
@@ -767,7 +825,9 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(textbox, 'Make the first workflow simpler');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
-		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
+		expect(emitted().submit).toEqual([
+			['Make the first workflow simpler', undefined, expect.any(Function)],
+		]);
 	});
 
 	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
@@ -793,6 +853,9 @@ describe('InstanceAiInput', () => {
 		const { emitted, getByRole, getByTestId } = renderComponent({
 			props: {
 				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
 					label: 'SEO Auditor session',
 				},
 			},
@@ -816,6 +879,9 @@ describe('InstanceAiInput', () => {
 			props: {
 				isPlanEditMode: true,
 				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
 					label: 'SEO Auditor session',
 				},
 			},

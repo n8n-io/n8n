@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowReviewsFeature } from './useWorkflowReviewsFeature';

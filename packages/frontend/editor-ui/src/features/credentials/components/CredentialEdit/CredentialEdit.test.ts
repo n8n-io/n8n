@@ -45,6 +45,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 	}),
 }));
 
+const telemetryTrackMock = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackMock }),
+}));
+
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
 }));
@@ -1381,6 +1386,35 @@ describe('CredentialEdit', () => {
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
 			});
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('attributes the creation to the workflow the modal was opened for', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				workflowId: 'wf-artifact',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
+			expect(telemetryTrackMock).toHaveBeenCalledWith(
+				'User created credentials',
+				expect.objectContaining({ workflow_id: 'wf-artifact' }),
+			);
 		});
 
 		test('calls onCredentialCreated with the newly created credential', async function () {

@@ -1,3 +1,4 @@
+import { createPrivateKey, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { formatPemBlock } from './format-pem-block';
@@ -115,6 +116,47 @@ ${'X'.repeat(64)}
 -----END RSA PRIVATE KEY-----`;
 
 		expect(formatPemBlock(encrypted)).toBe(encrypted);
+	});
+
+	it('should restore RFC 1421 headers in legacy encrypted RSA PEM keys', () => {
+		// What the SSL Certificates credential stores after a multi-line legacy
+		// encrypted RSA key is pasted into the single-line "Private Key" input:
+		// newlines are collapsed to spaces, so the blank line separating the
+		// Proc-Type/DEK-Info headers from the body becomes two consecutive spaces.
+		const flattened =
+			'-----BEGIN RSA PRIVATE KEY----- ' +
+			'Proc-Type: 4,ENCRYPTED ' +
+			'DEK-Info: AES-256-CBC,A4F349D0CD99508CA625518C9D671B68  ' + // double space = blank line
+			'Pr9ZjzHxUr4HuhWspQ1vQHIgriYbTzbLdbXoWH/n6ABBRTocD3WO5/JFf83jZJzo ' +
+			'yGnbXk6DK1JScbTHPYT6IuBqfDpQGB8FfFCZuANLwYtBZTFqVKdrsEHwZzGb0hSK ' +
+			'-----END RSA PRIVATE KEY-----';
+
+		// OpenSSL 3 needs the blank line after the headers to pick a decoder for the
+		// block, and ssh2 needs the space after each header colon to read the cipher
+		// name; either one missing fails before the passphrase is ever consulted.
+		expect(formatPemBlock(flattened)).toBe(`-----BEGIN RSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-256-CBC,A4F349D0CD99508CA625518C9D671B68
+
+Pr9ZjzHxUr4HuhWspQ1vQHIgriYbTzbLdbXoWH/n6ABBRTocD3WO5/JFf83jZJzo
+yGnbXk6DK1JScbTHPYT6IuBqfDpQGB8FfFCZuANLwYtBZTFqVKdrsEHwZzGb0hSK
+-----END RSA PRIVATE KEY-----`);
+	});
+
+	it('should keep a flattened legacy encrypted RSA key loadable by OpenSSL', () => {
+		const passphrase = 'passphrase';
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+			privateKeyEncoding: { type: 'pkcs1', format: 'pem', cipher: 'aes-256-cbc', passphrase },
+		});
+		const flattened = privateKey.trim().replace(/\n/g, ' ');
+		const formatted = formatPemBlock(flattened);
+
+		expect(() => createPrivateKey({ key: formatted, passphrase })).not.toThrow();
+		// ssh2 is not a dependency here, so pin the header shape its parser relies on:
+		// it slices the DEK-Info value past a fixed ": " offset.
+		expect(formatted).toMatch(/\nProc-Type: 4,ENCRYPTED\nDEK-Info: AES-256-CBC,[0-9A-F]+\n\n/);
 	});
 
 	it('should collapse Proc-Type/DEK-Info headers on the fallback path', () => {

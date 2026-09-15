@@ -16,10 +16,8 @@ export class SubAgentCleanupService {
 
 	/**
 	 * Remove a sub-agent reference from every parent agent's draft config.
-	 * Called when the sub-agent is deleted or unpublished, so a parent never
-	 * keeps delegating to (or silently reactivates delegation to) an agent
-	 * that is no longer available as a sub-agent. Sub-agents are project-
-	 * scoped, so only the child's own project needs scanning.
+	 * Called when the sub-agent is deleted. Sub-agents are project-scoped, so
+	 * only the child's own project needs scanning.
 	 */
 	async removeSubAgentFromParents(childAgentId: string, projectId: string): Promise<void> {
 		const agents = await this.agentRepository.find({ where: { projectId } });

@@ -109,17 +109,12 @@ const resolveResource = async (path: string) =>
 	);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	webhookEndpoint = endpoints.webhook;
 	webhookTestEndpoint = endpoints.webhookTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -215,19 +210,6 @@ describe('protected resource metadata for test chat triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should not resolve when the feature flag is disabled', async () => {
-		const path = chatPath();
-		await registerTestWebhook(path, chatTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(path));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
-		}
-	});
-
 	test('should not resolve when public chat is disabled instance-wide', async () => {
 		const path = chatPath();
 		await registerTestWebhook(path, chatTriggerNode());
@@ -313,7 +295,14 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 			tokenEndpointAuthMethod: 'none',
 		});
 		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		await tokenService.saveTokenPair(
+			pair.accessToken,
+			pair.refreshToken,
+			clientId,
+			userId,
+			[],
+			pair.audience,
+		);
 		return pair.accessToken;
 	};
 
@@ -383,7 +372,14 @@ describe('test vs production chat resources', () => {
 
 		const mint = async (resourceUrl: string) => {
 			const pair = tokenService.generateTokenPair(owner.id, clientId, resourceUrl, []);
-			await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, owner.id, []);
+			await tokenService.saveTokenPair(
+				pair.accessToken,
+				pair.refreshToken,
+				clientId,
+				owner.id,
+				[],
+				pair.audience,
+			);
 			return pair.accessToken;
 		};
 

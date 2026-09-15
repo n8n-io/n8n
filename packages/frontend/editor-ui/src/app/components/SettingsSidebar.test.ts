@@ -10,7 +10,7 @@ vi.mock('../composables/useSettingsItems', () => ({
 		settingsItems: ref([
 			{
 				id: 'settings-n8n-connect',
-				label: 'n8n credits',
+				label: 'Gateway credits',
 			},
 		]),
 		handleSettingsItemSelect: handleSettingsItemSelectMock,
@@ -31,7 +31,7 @@ describe('SettingsSidebar', () => {
 		});
 
 		const { getByText } = renderComponent();
-		getByText('n8n credits').click();
+		getByText('Gateway credits').click();
 
 		expect(handleSettingsItemSelectMock).toHaveBeenCalledWith('settings-n8n-connect');
 	});

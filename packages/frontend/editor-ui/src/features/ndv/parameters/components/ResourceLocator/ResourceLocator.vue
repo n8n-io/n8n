@@ -91,7 +91,7 @@ const NODE_API_AUTH_ERROR_MESSAGES = [
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
-	nextPageToken: unknown;
+	nextPageToken: string | null;
 	error: boolean;
 	errorDetails?: {
 		message?: string;
@@ -858,7 +858,7 @@ async function loadResources() {
 
 	try {
 		if (cachedResponse) {
-			const nextPageToken = cachedResponse.nextPageToken as string;
+			const nextPageToken = cachedResponse.nextPageToken;
 			if (nextPageToken) {
 				paginationToken = nextPageToken;
 				setResponse(paramsKey, { loading: true });

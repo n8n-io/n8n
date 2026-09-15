@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
+import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
@@ -18,10 +19,28 @@ const sampleGraph: WorkflowGraph = {
 	edges: [],
 };
 
+/** Opaque to the engine: it is stored and reported, never read into. */
+const sampleWorkflow = {
+	id: 'wf-1',
+	name: 'Sample',
+	nodes: [{ name: 'Manual Trigger' }],
+	connections: {},
+};
+
 const secret = 'a'.repeat(32);
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
+
+/** The caller always mints the id, so every valid body carries one. */
+const startBody = (overrides: Record<string, unknown> = {}) => ({
+	workflowId: 'wf-1',
+	graph: sampleGraph,
+	workflow: sampleWorkflow,
+	executionId: generateId(),
+	callerContext: {},
+	...overrides,
 });
 
 let container: StartedPostgreSqlContainer;
@@ -59,19 +78,17 @@ afterAll(async () => {
 });
 
 describe('POST /api/workflow-executions (integration)', () => {
-	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
+	it('creates the row under the caller-minted id, publishes execution:enqueued, returns 201', async () => {
+		const body = startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] });
+
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(body);
 
 		expect(response.status).toBe(201);
 		const { executionId } = response.body as { executionId: string };
-		expect(executionId).toBeTruthy();
+		expect(executionId).toBe(body.executionId);
 
 		const repo = dataSource.getRepository(WorkflowExecution);
 		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
@@ -81,9 +98,64 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
 		expect(row.graph).toEqual(sampleGraph);
+		expect(row.workflow).toEqual(sampleWorkflow);
 		expect(row.triggerOutputs).toEqual([[{ json: { hello: 'world' } }]]);
 
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
+	});
+
+	// v4 included: the id has to be time-ordered. `undefined` covers the omitted
+	// case — the engine never mints a replacement.
+	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f', undefined])(
+		'rejects the execution id %p with 400',
+		async (executionId) => {
+			const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId,
+				callerContext: {},
+			});
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
+
+	it('stores the caller context with the row', async () => {
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+		const body = startBody({ callerContext });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.callerContext).toEqual(callerContext);
+	});
+
+	it('rejects a body without a caller context with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: undefined }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a caller context with a key it does not know with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: { user: 'user-1' } }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
 	it('rejects an invalid body with 400', async () => {
@@ -96,15 +168,29 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
+	it.each([
+		['absent', undefined],
+		['not an object', 'a workflow'],
+		['an array', []],
+	])('rejects a workflow that is %s with 400', async (_case, workflow) => {
+		const body = startBody();
+		if (workflow === undefined) delete (body as { workflow?: unknown }).workflow;
+		else (body as { workflow?: unknown }).workflow = workflow;
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
 	it('rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: { hello: 'world' },
-			});
+			.send(startBody({ triggerOutputs: { hello: 'world' } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -114,18 +200,17 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerOutputs });
+			.send(startBody({ triggerOutputs }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
 	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
-		const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
-			workflowId: 'wf-1',
-			graph: sampleGraph,
-			triggerOutputs: [],
-		});
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ triggerOutputs: [] }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -135,11 +220,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: Array.from({ length: 102 }, () => []),
-			});
+			.send(startBody({ triggerOutputs: Array.from({ length: 102 }, () => []) }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -149,10 +230,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
-			});
+			.send(startBody({ graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] } }));
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_graph');
@@ -165,7 +243,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send({
-				workflowId: 'wf-1',
+				...startBody(),
 				graph: {
 					nodes: [
 						{ id: 'trigger', name: 'T', type: 'trigger' },
@@ -189,7 +267,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send({
-				workflowId: 'wf-1',
+				...startBody(),
 				graph: {
 					nodes: [
 						{ id: 'trigger', name: 'T', type: 'trigger' },
@@ -222,15 +300,11 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] }));
 		return (response.body as { executionId: string }).executionId;
 	}
 
-	it('returns the persisted status, mode, workflow id, graph and ISO timestamps', async () => {
+	it('returns the persisted status, mode, workflow id, graph, workflow and ISO timestamps', async () => {
 		const executionId = await createExecution();
 
 		const response = await request(url)
@@ -244,8 +318,10 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			finishedAt: null,
 		});
+		expect(response.body).not.toHaveProperty('steps');
 		const body = response.body as { createdAt: string; updatedAt: string };
 		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
@@ -293,16 +369,13 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const postResponse = await request(runtime.app)
 			.post('/api/workflow-executions')
 			.set(authHeader())
-			.send({
-				workflowId: 'wf-1',
-				graph: sampleGraph,
-				triggerOutputs: [[{ json: { hello: 'world' } }]],
-			});
+			.send(startBody({ triggerOutputs: [[{ json: { hello: 'world' } }]] }));
 		const { executionId } = postResponse.body as { executionId: string };
 		await finished;
 
 		const response = await request(runtime.app)
-			.get(`/api/workflow-executions/${executionId}/steps`)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 		await runtime.stop();
 
@@ -318,18 +391,51 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		});
 	});
 
-	it('returns 200 with an empty list from /steps for an unknown execution id', async () => {
+	it('returns an empty step list for an execution that has run nothing yet', async () => {
+		const executionId = await createExecution();
+
 		const response = await request(url)
-			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps')
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 
 		expect(response.status).toBe(200);
-		expect(response.body).toEqual({ steps: [] });
+		expect((response.body as { steps: unknown[] }).steps).toEqual([]);
+		// The steps are aggregated into the execution row, so the execution's own
+		// columns still have to come back beside them.
+		expect(response.body).toMatchObject({ graph: sampleGraph, workflow: sampleWorkflow });
 	});
 
-	it('returns 400 invalid_request from /steps for a non-uuid id', async () => {
+	it('returns 404 not_found for an unknown execution id even when steps are asked for', async () => {
 		const response = await request(url)
-			.get('/api/workflow-executions/not-a-uuid/steps')
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000')
+			.query({ includeSteps: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+
+	it('returns 400 invalid_request for a misspelled query key', async () => {
+		const executionId = await createExecution();
+
+		// Stripping it would answer 200 with no steps, which reads the same as an
+		// execution that ran none.
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeStep: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('returns 400 invalid_request for an includeSteps value that is not a boolean', async () => {
+		const executionId = await createExecution();
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'yes' })
 			.set(authHeader());
 
 		expect(response.status).toBe(400);

@@ -23,6 +23,7 @@ import type * as AgentTargetBindingModule from '../agent-target-binding';
 import {
 	getSessionAgentByRef,
 	readPendingAgentTarget,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
@@ -39,6 +40,7 @@ vi.mock('../agent-target-binding', async () => {
 		saveAgentBuilderTarget: vi.fn(),
 		getSessionAgentByRef: vi.fn(async () => await Promise.resolve(undefined)),
 		readPendingAgentTarget: vi.fn(async () => await Promise.resolve(undefined)),
+		rereadAgentBuilderTarget: vi.fn(async () => await Promise.resolve(undefined)),
 	};
 });
 
@@ -287,6 +289,7 @@ describe('build-agent tool', () => {
 	beforeEach(() => {
 		vi.mocked(saveAgentBuilderTarget).mockClear();
 		vi.mocked(getSessionAgentByRef).mockReset().mockResolvedValue(undefined);
+		vi.mocked(rereadAgentBuilderTarget).mockReset().mockResolvedValue(undefined);
 	});
 
 	it('creates and binds a new agent when name is given, keying the session to the instance thread', async () => {
@@ -1206,7 +1209,51 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'Support Triage' });
 
-			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', 'aBcDeFgHiJkLmNoP');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', {
+				id: 'aBcDeFgHiJkLmNoP',
+				adoptOnCollision: true,
+			});
+		});
+
+		// The editor persisting the artifact deletes the pending marker and binds the
+		// agent. A turn that read its target before that must not create a second one.
+		it('continues an agent bound since the turn started instead of creating another', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue(undefined);
+			vi.mocked(rereadAgentBuilderTarget).mockResolvedValue({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'proj-1',
+				name: 'Support Triage',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Edited it.'));
+
+			const output = await runTool(context, { message: 'Build it', name: 'Support Triage' });
+
+			expect(delegate.createAgent).not.toHaveBeenCalled();
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'aBcDeFgHiJkLmNoP',
+				expect.any(String),
+				expect.anything(),
+			);
+			expect(output.agentId).toBe('aBcDeFgHiJkLmNoP');
+		});
+
+		it('still creates a second agent when createNew is explicit', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(readPendingAgentTarget).mockResolvedValue(undefined);
+			vi.mocked(rereadAgentBuilderTarget).mockResolvedValue({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-2',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build it', name: 'Second', createNew: true });
+
+			expect(delegate.createAgent).toHaveBeenCalledWith('Second', undefined);
 		});
 
 		it('ignores a pending artifact belonging to another project', async () => {

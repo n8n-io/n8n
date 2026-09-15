@@ -10,9 +10,11 @@
  * Azure variants), omit the entry so the tool falls through to suspending and
  * lets the user pick explicitly.
  *
- * Live model validation is available for providers supported by
- * `@n8n/ai-utilities/model-discovery` — `resolve_llm` checks user-requested
- * model strings against the provider's live model list for those.
+ * These are hints, not guarantees. For providers supported by
+ * `@n8n/ai-utilities/model-discovery`, `resolve_llm` verifies the model it is
+ * about to return — the default included — against the credential's live model
+ * list, so a default the provider stops serving degrades to a prompt to pick
+ * rather than shipping into an agent config.
  */
 export interface LlmProviderDefault {
 	provider: string;
@@ -30,8 +32,10 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	googlePalmApi: {
 		provider: 'google',
-		// The 3.x Pro line is still preview-only; 3.6 Flash is the stable GA pick.
-		defaultModel: 'gemini-3.6-flash',
+		// The 3.x Pro line is still preview-only; 3.7 Flash is the current stable
+		// GA pick. Not every key can reach it, so resolve_llm verifies it against
+		// the credential's live list rather than trusting it.
+		defaultModel: 'gemini-3.7-flash',
 	},
 	xAiApi: {
 		provider: 'xai',

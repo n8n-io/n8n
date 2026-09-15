@@ -43,6 +43,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nBadge,
 	N8nButton,
@@ -134,7 +135,7 @@ const projectAdminCalloutDismissed = useStorage(
 
 const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
-	!project.role || project.role === 'project:admin';
+	Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
 
 onBeforeMount(async () => {
 	// Load projects for file→project mapping display and for member search
@@ -356,8 +357,12 @@ const sortedWorkflows = useSourceControlFileList({
 			return true;
 		}
 
-		const workflowPath = (workflow.folderPath ?? []).join('/');
-		return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		// Match both the current and prior folder so a moved-out workflow stays visible.
+		const matchesFolder = (path: string[] | undefined) => {
+			const workflowPath = (path ?? []).join('/');
+			return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		};
+		return matchesFolder(workflow.folderPath) || matchesFolder(workflow.remoteFolderPath);
 	},
 });
 
@@ -525,6 +530,18 @@ function close() {
 
 function renderUpdatedAt(file: SourceControlledFile) {
 	return formatSourceControlUpdatedAt(file.updatedAt);
+}
+
+// Non-empty only when the workflow's folder changed vs. the remote, i.e. it was moved.
+function renderMovedTooltip(file: SourceControlledFile) {
+	const to = (file.folderPath ?? []).join('/');
+	const from = (file.remoteFolderPath ?? []).join('/');
+	if (file.remoteFolderPath === undefined || from === to) {
+		return '';
+	}
+	return i18n.baseText('settings.sourceControl.modals.push.movedWorkflow', {
+		interpolate: { from: from || '/', to: to || '/' },
+	});
 }
 
 async function onCommitKeyDownEnter() {
@@ -1221,12 +1238,18 @@ onMounted(async () => {
 																	:show-badge-border="false"
 																/>
 															</template>
-															<N8nBadge
-																:theme="getStatusTheme(row.file.status)"
-																style="height: 25px"
+															<N8nTooltip
+																:content="renderMovedTooltip(row.file)"
+																:disabled="!renderMovedTooltip(row.file)"
+																placement="top"
 															>
-																{{ getStatusText(row.file.status) }}
-															</N8nBadge>
+																<N8nBadge
+																	:theme="getStatusTheme(row.file.status)"
+																	style="height: 25px"
+																>
+																	{{ getStatusText(row.file.status) }}
+																</N8nBadge>
+															</N8nTooltip>
 															<template v-if="isWorkflowDiffsEnabled">
 																<N8nTooltip
 																	v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"

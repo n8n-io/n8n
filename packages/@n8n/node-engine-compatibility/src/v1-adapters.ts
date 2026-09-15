@@ -4,7 +4,7 @@
  */
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
-import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -17,7 +17,12 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	UnexpectedError,
+	Workflow,
+	WorkflowExecuteModeList,
+} from 'n8n-workflow';
 
 import {
 	MAIN_CONNECTION_TYPE,
@@ -25,9 +30,15 @@ import {
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
-import { isV1NodeStepConfig } from './guards';
+import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
-import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import type {
+	AdditionalDataContext,
+	CreateExecuteContextParams,
+	V1Execution,
+	V1NodeStepConfig,
+} from './types';
+import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
@@ -45,16 +56,7 @@ export function toV1Execution(
 function toV1Nodes(graph: WorkflowGraph): INode[] {
 	return graph.nodes.flatMap((graphNode): INode[] => {
 		if (graphNode.type === 'trigger') {
-			return [
-				{
-					id: graphNode.id,
-					name: graphNode.name,
-					type: MANUAL_TRIGGER_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			];
+			return [toV1TriggerNode(graphNode)];
 		}
 
 		if (graphNode.type === 'batch') {
@@ -68,7 +70,7 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 }
 
 function toV1Connections(graph: WorkflowGraph): IConnections {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const connections: IConnections = {};
 	for (const edge of graph.edges) {
@@ -97,7 +99,7 @@ function toV1RunData(
 	activeNodeId: string,
 	activeIteration: number,
 ): IRunData {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 	const sourcesByNodeId = toV1Sources(graph);
 	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
 
@@ -120,37 +122,31 @@ function toV1RunData(
 
 		const source = sourcesByNodeId.get(completedNodeId) ?? [];
 
-		// A pass the node was skipped on gets an empty run rather than a gap. v1
-		// reads whatever entry it finds, and a gap would crash it. The empty run
-		// holds one empty slot, since zero slots reads to v1 as no data at all.
-		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => ({
-			startTime: 0,
-			executionTime: 0,
-			executionIndex: iteration,
-			source,
-			data: {
-				[MAIN_CONNECTION_TYPE]: fromStepInputs(outputsByIteration[iteration] ?? [[]]),
-			},
-		}));
+		// A pass the node was skipped on gets an empty run rather than a gap.
+		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const outputs = outputsByIteration[iteration];
+			if (outputs === undefined) return emptyRun(iteration, source);
+
+			return {
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: iteration,
+				source,
+				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
+			};
+		});
 	}
 
 	return runData;
 }
 
+/** The execute path reports one pass, so no source names a `previousNodeRun`. */
 export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge === true) continue;
-		const fromName = namesById.get(edge.from);
-		if (fromName === undefined) continue;
-
-		const source = sourcesByNodeId.get(edge.to) ?? [];
-		const inputIndex = edge.inputIndex ?? 0;
-		while (source.length <= inputIndex) source.push(null);
-		source[inputIndex] ??= { previousNode: fromName, previousNodeOutput: edge.outputIndex };
-		sourcesByNodeId.set(edge.to, source);
+	for (const [nodeId, edges] of forwardEdgesByTarget(graph)) {
+		sourcesByNodeId.set(nodeId, toSourceSlots(edges, namesById));
 	}
 	return sourcesByNodeId;
 }
@@ -172,6 +168,20 @@ export function toV1Workflow(
 	});
 }
 
+/** An older graph carries no config, and graphs are immutable, so a stub stands in. */
+function toV1TriggerNode(graphNode: GraphNode): INode {
+	const config = isTriggerStepConfig(graphNode.config) ? graphNode.config : undefined;
+
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: config?.nodeType ?? MANUAL_TRIGGER_TYPE,
+		typeVersion: config?.typeVersion ?? 1,
+		position: [0, 0],
+		parameters: config?.parameters ?? {},
+	};
+}
+
 function toV1BatchNode(graphNode: GraphNode): INode {
 	const batchSize = isBatchStepConfig(graphNode.config) ? graphNode.config.batchSize : undefined;
 
@@ -185,8 +195,38 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 	};
 }
 
-export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+/**
+ * The v1 mode the host stored at start. This layer only runs v1 nodes, so a
+ * missing or unknown mode is a caller bug and the step fails.
+ */
+export function toV1ExecuteMode(context: StepExecutionContext): WorkflowExecuteMode {
+	const { hostMode } = context.callerContext;
+	if (hostMode === undefined) {
+		throw new UnexpectedError('The caller context has no v1 execution mode');
+	}
+	if (!isWorkflowExecuteMode(hostMode)) {
+		throw new UnexpectedError('The caller context has an unknown v1 execution mode', {
+			extra: { hostMode },
+		});
+	}
+	return hostMode;
+}
+
+const isWorkflowExecuteMode = (mode: string): mode is WorkflowExecuteMode =>
+	(WorkflowExecuteModeList as readonly string[]).includes(mode);
+
+export function toAdditionalDataContext(context: StepExecutionContext): AdditionalDataContext {
 	return {
+		executionId: context.executionId,
+		workflowId: context.workflowId,
+		mode: toV1ExecuteMode(context),
+		userId: context.callerContext.userId,
+		projectId: context.callerContext.projectId,
+	};
+}
+
+export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+	const node: INode = {
 		id: graphNode.id,
 		name: graphNode.name,
 		type: config.nodeType,
@@ -195,6 +235,8 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
 	};
+	if (config.credentials !== undefined) node.credentials = config.credentials;
+	return node;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { ConsentUiHints } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -23,6 +24,12 @@ export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
 
 /** Scopes advertised for per-workflow Chat trigger resources. Empty, like the other triggers. */
 export const CHAT_TRIGGER_SCOPES: string[] = [];
+
+/** Consent-screen presentation hints for per-workflow Chat trigger resources. */
+export const CHAT_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'node:chat-trigger',
+	consentType: 'chat',
+};
 
 /**
  * A chat trigger is an OAuth protected resource only in the shape the hosted page can actually
@@ -96,6 +103,19 @@ export function resourceUrlToWebhookPath(
 	}
 
 	return url.pathname.slice(basePath.length);
+}
+
+/** `resourceUrlToWebhookPath`, plus the debug log every resolver writes on a miss. */
+export function webhookPathFromResourceUrl(
+	resourceUrl: string,
+	webhookBaseUrl: string,
+	logger: Logger,
+): string | undefined {
+	const pathname = resourceUrlToWebhookPath(resourceUrl, webhookBaseUrl);
+	if (pathname === undefined) {
+		logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
+	}
+	return pathname;
 }
 
 /**

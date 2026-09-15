@@ -14,7 +14,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1.0.0-beta
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
 
       - name: Run zizmor 🌈
         uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6

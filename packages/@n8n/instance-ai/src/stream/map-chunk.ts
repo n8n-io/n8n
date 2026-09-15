@@ -1,5 +1,6 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -8,6 +9,7 @@ import {
 	webSearchMetaSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
+	credentialDestinationSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -339,8 +341,17 @@ function mapSuspendedChunk(
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const credentialDestination = parseSchemaRecord(
+		suspendPayload.credentialDestination,
+		credentialDestinationSchema,
+	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceName = presentString(suspendPayload.resourceName);
+	const approvalDetails = parseSchemaRecord(
+		suspendPayload.approvalDetails,
+		instanceAiApprovalDetailsSchema,
+	);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -384,8 +395,11 @@ function mapSuspendedChunk(
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
+			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
+			...(resourceName ? { resourceName } : {}),
+			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(tasks ? { tasks } : {}),

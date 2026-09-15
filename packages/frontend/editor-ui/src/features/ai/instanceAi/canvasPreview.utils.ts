@@ -8,7 +8,7 @@ export interface ExecutionResult {
 	finishedAt?: string;
 	/**
 	 * Nodes whose output in this execution was simulated (fabricated fixture
-	 * data) during AI Assistant verification. Used to label that data in the
+	 * data) during n8n Assistant verification. Used to label that data in the
 	 * editor and guard against pinning it as if it were real.
 	 */
 	simulatedNodeNames?: string[];
@@ -237,8 +237,8 @@ const WORKFLOW_LOCKING_TOOLS = new Set([
  *      whole build window: read file → edit → submit-workflow → verify).
  *   3. An in-flight workflow-affecting tool call targeting the workflow — the
  *      build/setup/verify tools, `executions.run`, or a `workflows` update /
- *      restore-version / setup action. Read-only `workflows` actions (get-json,
- *      get, list, …) don't lock.
+ *      restore-version / setup action. Read-only `workflows` actions (including
+ *      historical get-json events, get, list, …) don't lock.
  */
 export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
 	if (

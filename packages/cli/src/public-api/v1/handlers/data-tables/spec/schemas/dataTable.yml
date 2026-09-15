@@ -36,6 +36,9 @@ properties:
     type: string
     format: date-time
     description: Timestamp when the table was last updated
+  sizeBytes:
+    type: integer
+    description: Physical storage in bytes, including indexes and internal overhead. Not reduced immediately by row deletion, and may be a few seconds stale.
 required:
   - id
   - name
@@ -43,3 +46,4 @@ required:
   - projectId
   - createdAt
   - updatedAt
+  - sizeBytes

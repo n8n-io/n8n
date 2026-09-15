@@ -1,6 +1,8 @@
+import type { StepExecutionContext, WorkflowGraph } from '@n8n/engine';
 import { describe, expect, it } from 'vitest';
 
-import { toV1Execution, toV1Sources } from '../v1-adapters';
+import type { V1NodeStepConfig } from '../types';
+import { toV1ExecuteMode, toV1Execution, toV1Node, toV1Sources } from '../v1-adapters';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import { items, v1Workflow } from './fixtures';
 
@@ -33,7 +35,7 @@ const graph = converter.convert(
 );
 
 describe('toV1Execution', () => {
-	it('rebuilds v1 nodes, including a stub for the trigger', () => {
+	it('rebuilds v1 nodes, including the trigger', () => {
 		const execution = toV1Execution(graph, {}, 'a', 0);
 
 		expect(execution.nodes.map((node) => node.name).sort()).toEqual([
@@ -51,6 +53,60 @@ describe('toV1Execution', () => {
 			typeVersion: 1,
 			continueOnFail: false,
 		});
+	});
+
+	it('restores the credential references a node was converted with', () => {
+		const credentials = { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth account' } };
+		const [graphNode] = converter.convert(
+			v1Workflow([{ id: 'http', name: 'HTTP', type: 'test.echoParam', credentials }]),
+		).nodes;
+
+		expect(toV1Node(graphNode, graphNode.config as V1NodeStepConfig)).toMatchObject({
+			credentials,
+		});
+	});
+
+	it('rebuilds the trigger with its own v1 identity, so expressions can read it', () => {
+		const production = converter.convert(
+			v1Workflow([
+				{
+					id: 't',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: { path: 'abc' },
+				},
+			]),
+		);
+
+		const execution = toV1Execution(production, {}, 't', 0);
+
+		expect(execution.nodes).toEqual([
+			expect.objectContaining({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				parameters: { path: 'abc' },
+			}),
+		]);
+	});
+
+	it('falls back to a manual trigger stub for a graph converted before the config existed', () => {
+		const legacy: WorkflowGraph = {
+			nodes: [{ id: 't', name: 'Webhook', type: 'trigger' }],
+			edges: [],
+		};
+
+		const execution = toV1Execution(legacy, {}, 't', 0);
+
+		expect(execution.nodes).toEqual([
+			expect.objectContaining({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				parameters: {},
+			}),
+		]);
 	});
 
 	it('rebuilds name-keyed connections preserving slots', () => {
@@ -148,5 +204,31 @@ describe('toV1Execution', () => {
 
 			expect(execution.runData.B).toBeUndefined();
 		});
+	});
+});
+
+describe('toV1ExecuteMode', () => {
+	const context = (overrides: Partial<StepExecutionContext>): StepExecutionContext => ({
+		executionId: 'exec-1',
+		stepId: 'step-1',
+		workflowId: 'wf-1',
+		mode: 'production',
+		iteration: 0,
+		callerContext: {},
+		...overrides,
+	});
+
+	it('returns the host mode when v1 knows it', () => {
+		expect(toV1ExecuteMode(context({ callerContext: { hostMode: 'webhook' } }))).toBe('webhook');
+	});
+
+	it('throws when the caller context has no host mode', () => {
+		expect(() => toV1ExecuteMode(context({}))).toThrow('no v1 execution mode');
+	});
+
+	it('throws when the host mode is not one v1 knows', () => {
+		expect(() => toV1ExecuteMode(context({ callerContext: { hostMode: 'production' } }))).toThrow(
+			'unknown v1 execution mode',
+		);
 	});
 });

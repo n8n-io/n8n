@@ -38,9 +38,7 @@ on:
           - experimental
           - premajor
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   create-release-pr:
@@ -80,7 +78,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Bump package versions
@@ -137,6 +135,9 @@ jobs:
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''

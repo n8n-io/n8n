@@ -166,6 +166,67 @@ describe('createCasePipeline', () => {
 		expect(orchestrator.buildCache.size).toBe(0);
 	});
 
+	// A staged prior run that produced no execution record leaves the case grading
+	// against history the instance does not have. The biting case is a build that
+	// SUCCEEDED: `buildFailedOnInfra` returns false there, so without this branch the
+	// row would be scored as an agent failure on a premise that never existed.
+	it('routes a successful build with a failed prior run to framework_issue', async () => {
+		const lane = makeLane();
+		const cached: CachedBuild = {
+			build: { ...okBuild(), priorRunFailed: 'seedWf1: fetch failed' },
+			lane,
+			buildDurationMs: 42,
+		};
+		const orchestrator = makeOrchestrator(cached);
+		const pipeline = createCasePipeline(makeDeps(orchestrator));
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			buildSuccess: true,
+			passed: false,
+			// Not graded rather than failed — stays out of the builder's baseline.
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			attribution: 'framework_issue',
+		});
+		expect(String(output.reasoning)).toContain('premise is missing');
+		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	it('preserves agent metadata when a prior run failed', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			priorRunFailed: 'seedWf1: fetch failed',
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 42 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			agentId: 'agent-1',
+			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
 	it('keeps everything when --keep-workflows is set', async () => {
 		const lane = makeLane();
 		vi.mocked(lane.tracedExecute).mockResolvedValue({
@@ -336,9 +397,16 @@ describe('createCasePipeline', () => {
 			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
 		});
 		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
 		const pipeline = createCasePipeline(
 			makeDeps(orchestrator, {
-				agentContextByKey: new Map([['0:case-a', Promise.resolve('AGENT CONTEXT')]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
 			}),
 		);
 
@@ -349,6 +417,7 @@ describe('createCasePipeline', () => {
 			passed: true,
 			agentId: 'agent-1',
 			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
 			reasoning: 'agent did it',
 		});
 		expect(lane.tracedExecute).not.toHaveBeenCalled();

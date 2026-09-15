@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 import VueMarkdown from 'vue-markdown-render';
 import {
 	N8nButton,
@@ -12,6 +13,7 @@ import {
 	N8nCard,
 	N8nCodeBlock,
 	N8nIcon,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -22,6 +24,7 @@ import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
+import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import type { TimelineItem } from '../session-timeline.types';
 import {
 	executionErrorLabel,
@@ -34,6 +37,7 @@ import {
 	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -113,6 +117,13 @@ function stringifyJson(value: unknown): string {
 	return JSON.stringify(parsed, null, 2) ?? String(parsed);
 }
 
+function stringField(value: unknown, key: string): string {
+	const parsed = ensureParsed(value);
+	if (!isRecord(parsed)) return '';
+	const field = parsed[key];
+	return typeof field === 'string' ? field : '';
+}
+
 const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
@@ -122,7 +133,7 @@ const toolDisplayName = computed((): string => {
 	) {
 		return '';
 	}
-	return resolveToolNameForDisplay(props.item.toolName, i18n);
+	return resolveToolNameForDisplay(props.item.toolName, i18n, props.item.toolOutput);
 });
 
 const linkedToolName = computed((): string => {
@@ -148,6 +159,20 @@ const hitlRequestContent = computed((): unknown => {
 const isSubAgent = computed((): boolean =>
 	props.item ? isSubAgentTimelineItem(props.item) : false,
 );
+const subAgentSessionHref = computed((): string => {
+	if (!isSubAgent.value || !props.projectId || !props.agentId || !props.item) return '';
+	const threadId = stringField(props.item.toolOutput, 'threadId');
+	const requestedAgentId = stringField(props.item.toolInput, 'subAgentId');
+	if (!threadId || !requestedAgentId) return '';
+	return router.resolve({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: props.projectId,
+			agentId: requestedAgentId === 'inline' ? props.agentId : requestedAgentId,
+			threadId,
+		},
+	}).href;
+});
 const status = computed(() => (props.item ? timelineItemStatus(props.item) : undefined));
 
 /**
@@ -174,10 +199,12 @@ const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
+	if (item.kind === 'background-task-signal')
+		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
+	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	if (item.kind === 'execution-error') return executionErrorLabel(item, i18n);
 	if (item.kind === 'suspension') {
@@ -194,6 +221,7 @@ const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
+	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
@@ -240,7 +268,23 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			<div :class="$style.header">
 				<div :class="$style.headerTitle">
 					<N8nIcon :icon="headerIcon" :size="16" />
-					<N8nText bold>{{ headerTitle }}</N8nText>
+					<N8nText bold :class="$style.headerTitleText">{{ headerTitle }}</N8nText>
+					<N8nTooltip
+						v-if="subAgentSessionHref"
+						:content="i18n.baseText('agentSessions.subAgent.openSession')"
+						placement="top"
+					>
+						<N8nIconButton
+							icon="external-link"
+							variant="ghost"
+							size="small"
+							:href="subAgentSessionHref"
+							target="_blank"
+							rel="noopener noreferrer"
+							:aria-label="i18n.baseText('agentSessions.subAgent.openSession')"
+							data-test-id="open-sub-agent-session"
+						/>
+					</N8nTooltip>
 					<N8nBadge
 						v-if="status"
 						:theme="status.theme"
@@ -288,8 +332,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<template v-if="item.kind === 'execution-error'">
-						<N8nCallout theme="danger" data-testid="execution-error-callout">
+					<template v-if="item.kind === 'background-task-signal'">
+						<ul :class="$style.backgroundJobs" data-test-id="background-job-signal-details">
+							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
+								{{ backgroundJobResultLabel(job, i18n) }}
+							</li>
+						</ul>
+					</template>
+					<template v-else-if="item.kind === 'execution-error'">
+						<N8nCallout theme="danger" data-test-id="execution-error-callout">
 							{{ executionErrorMessage(item, i18n) }}
 						</N8nCallout>
 					</template>
@@ -420,7 +471,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
+
+.backgroundJobs {
+	padding-inline-start: var(--spacing--md);
+	overflow-wrap: anywhere;
+}
 
 .panel {
 	display: flex;
@@ -449,7 +505,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	color: var(--text-color);
 }
 
-.headerTitle > span:last-child {
+.headerTitleText {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -542,7 +598,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 }
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);

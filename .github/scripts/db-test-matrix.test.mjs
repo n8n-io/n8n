@@ -62,14 +62,27 @@ describe('buildMatrix', () => {
 		}
 	});
 
-	it('collects coverage and checks schema docs on the primary Postgres leg only', () => {
-		const legs = buildMatrix(versions());
+	it('collects coverage on the primary Postgres leg in pr scope only', () => {
+		const legs = buildMatrix(versions(), 'pr');
 
 		const collecting = legs.filter((leg) => leg.collectCoverage === 'true');
 		assert.deepEqual(
 			collecting.map((leg) => leg.name),
 			['Postgres 18'],
 		);
+	});
+
+	it('does not collect coverage in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.equal(
+			legs.some((leg) => leg.collectCoverage === 'true'),
+			false,
+		);
+	});
+
+	it('checks schema docs on the primary Postgres leg only', () => {
+		const legs = buildMatrix(versions());
 
 		const checkingPostgresSchema = legs.filter(
 			(leg) => leg['schema-check-cmd'] === 'pnpm --filter=@n8n/db schema:check:postgres',
@@ -124,5 +137,33 @@ describe('buildMatrix', () => {
 
 	it('rejects an empty matrix', () => {
 		assert.throws(() => buildMatrix({ primary: 'postgres:18.4-alpine', matrix: [] }), /non-empty/);
+	});
+
+	it('keeps only SQLite and the primary Postgres leg in pr scope', () => {
+		const legs = buildMatrix(versions(), 'pr');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 18'],
+		);
+	});
+
+	it('keeps every Postgres leg in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 16', 'Postgres 17', 'Postgres 18'],
+		);
+	});
+
+	it('validates the full version list even in pr scope', () => {
+		const stale = { ...versions(), primary: 'postgres:17.10-alpine' };
+
+		assert.throws(() => buildMatrix(stale, 'pr'), /"primary".*must be the newest/);
+	});
+
+	it('rejects an unknown scope', () => {
+		assert.throws(() => buildMatrix(versions(), 'nightly'), /Unknown scope/);
 	});
 });

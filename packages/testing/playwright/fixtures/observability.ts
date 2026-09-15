@@ -54,7 +54,26 @@ function formatReadinessPayloads(diagnostics: N8NStartupDiagnostics): string {
 async function attachStartupDiagnostics(
 	diagnostics: N8NStartupDiagnostics,
 	testInfo: TestInfo,
+	failurePhase?: string,
 ): Promise<void> {
+	if (diagnostics.attemptId) {
+		await testInfo.attach('startup-attempt.json', {
+			body: JSON.stringify(
+				{
+					attemptId: diagnostics.attemptId,
+					failurePhase: failurePhase ?? null,
+					testRetry: testInfo.retry,
+					workerIndex: testInfo.workerIndex,
+					parallelIndex: testInfo.parallelIndex,
+					status: testInfo.status,
+				},
+				null,
+				2,
+			),
+			contentType: 'application/json',
+		});
+	}
+
 	const startupLogs = formatStartupLogs(diagnostics);
 	if (startupLogs) {
 		await testInfo.attach('n8n-startup-logs.txt', {
@@ -165,7 +184,7 @@ export const observabilityFixtures: Fixtures<
 				const failure = consumeStartupFailure();
 				if (!failure) return;
 				try {
-					await attachStartupDiagnostics(failure.diagnostics, testInfo);
+					await attachStartupDiagnostics(failure.diagnostics, testInfo, failure.failurePhase);
 				} catch (error) {
 					console.warn('Failed to attach n8n startup diagnostics:', error);
 				}

@@ -159,6 +159,59 @@ describe('McpServerMiddlewareService', () => {
 		});
 	});
 
+	describe('getEnabledMiddleware', () => {
+		const runMiddleware = async (enabled: boolean, body?: unknown) => {
+			mcpProtectedResource.isAvailable.mockResolvedValue(enabled);
+			const res = mockDeep<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+			const next = vi.fn() as NextFunction;
+
+			await service.getEnabledMiddleware()(mockReqWith(undefined, body), res, next);
+
+			return { res, next };
+		};
+
+		it('should pass the request through when MCP access is enabled', async () => {
+			const { res, next } = await runMiddleware(true);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		it('should return 404 without an authentication challenge when MCP access is disabled', async () => {
+			const { res, next } = await runMiddleware(false);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+			expect(res.header).not.toHaveBeenCalledWith('WWW-Authenticate', expect.anything());
+			expect(next).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('should track a connection error when a handshake hits the disabled server', async () => {
+			await runMiddleware(false, {
+				jsonrpc: '2.0',
+				method: 'initialize',
+				params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+				mcp_connection_status: 'error',
+				error: 'MCP access is disabled',
+				http_status: 404,
+				client_name: 'Claude',
+				client_version: '1.0.0',
+			});
+		});
+
+		it('should not track non-handshake requests against the disabled server', async () => {
+			await runMiddleware(false, { jsonrpc: '2.0', method: 'tools/call', params: {} });
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getAuthMiddleware', () => {
 		it('should return 401 with WWW-Authenticate header when authorization header is missing', async () => {
 			const req = mockReqWith(undefined);
@@ -183,6 +236,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -213,6 +267,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -243,6 +298,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
@@ -451,6 +507,7 @@ describe('McpServerMiddlewareService', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'test-client',
 				client_version: '1.0.0',
@@ -491,6 +548,7 @@ describe('McpServerMiddlewareService', () => {
 			expect(next).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 				mcp_connection_status: 'error',
+				http_status: 401,
 				error: 'Unauthorized',
 				client_name: 'Claude',
 				client_version: '3.0.0',

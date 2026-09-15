@@ -1,3 +1,9 @@
+import { OTLP_PROTOCOLS, type OtlpProtocol } from './otel.constants';
+
+export function isOtlpProtocol(value: unknown): value is OtlpProtocol {
+	return OTLP_PROTOCOLS.some((protocol) => protocol === value);
+}
+
 /**
  * Locale-aware formatting and parsing for the traces sample rate (0..1).
  *

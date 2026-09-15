@@ -1,11 +1,16 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import {
+	buildAgentPreviewHref,
+	resolveAgentPreviewLink,
+	type AgentPreviewTarget,
+} from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
-import { useRouter } from 'vue-router';
 import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
+	agentPreviewTarget?: AgentPreviewTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -18,7 +23,6 @@ const props = defineProps<{
 }>();
 
 const thread = useThread();
-const router = useRouter();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
 
@@ -36,6 +40,10 @@ const openDataTablePreview = inject<((id: string, projectId: string) => boolean)
 );
 const openAgentPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
 	'openAgentPreview',
+	undefined,
+);
+const openAgentChatPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAgentChatPreview',
 	undefined,
 );
 
@@ -215,18 +223,16 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 ];
-const AGENT_PREVIEW_PATH = /^\/projects\/[^/]+\/agents\/[^/]+\/preview\/?$/;
-
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
-function getSameOriginPathname(href: string): string | undefined {
+function getSameOriginUrl(href: string): URL | undefined {
 	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
 	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
 	if (!isRootRelative && !isAbsolute) return undefined;
 
 	try {
 		const url = new URL(href, window.location.origin);
-		return url.origin === window.location.origin ? url.pathname : undefined;
+		return url.origin === window.location.origin ? url : undefined;
 	} catch {
 		return undefined;
 	}
@@ -270,6 +276,21 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 	return URL_BUILDERS[type]?.(id) ?? '#';
 }
 
+function resolveContextualAgentPreviewLink(href: string) {
+	const resolved = resolveAgentPreviewLink(href);
+	if (!resolved || !props.agentPreviewTarget) return resolved;
+	const resolvedUrl = new URL(resolved.href, window.location.origin);
+
+	return {
+		...props.agentPreviewTarget,
+		href: buildAgentPreviewHref(
+			props.agentPreviewTarget.projectId,
+			props.agentPreviewTarget.agentId,
+			resolvedUrl.searchParams,
+		),
+	};
+}
+
 /**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
@@ -287,7 +308,7 @@ function enhanceResourceLinks(): void {
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
-		if (link.dataset.resourceChip) continue;
+		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
 
@@ -317,16 +338,21 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
-		const internalPathname = getSameOriginPathname(href);
-		if (!internalPathname) continue;
-		if (AGENT_PREVIEW_PATH.test(internalPathname)) {
+		const agentPreviewTarget = resolveContextualAgentPreviewLink(href);
+		if (agentPreviewTarget) {
+			const { projectId, agentId } = agentPreviewTarget;
+			link.href = agentPreviewTarget.href;
 			link.removeAttribute('target');
 			link.removeAttribute('rel');
+			link.dataset.agentPreviewId = agentId;
+			link.dataset.agentPreviewProjectId = projectId;
 			continue;
 		}
+		const internalUrl = getSameOriginUrl(href);
+		if (!internalUrl) continue;
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(internalPathname)) {
+			if (pattern.test(internalUrl.pathname)) {
 				link.target = '_blank';
 				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
@@ -347,10 +373,8 @@ function enhanceResourceLinks(): void {
  * never re-attached), downgrading chips to plain new-tab links.
  *
  * Click behavior:
- * - Left-click on an agent Preview path (`/projects/.../agents/.../preview`)
- *   → same-tab SPA navigation via `router.push` (no `target="_blank"`).
- * - Cmd/Ctrl+click → leave to the browser (new tab); Preview links do not
- *   set `target="_blank"`.
+ * - An agent Preview link opens the embedded agent chat.
+ * - Cmd/Ctrl+click on other links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
  *   through to default `target="_blank"` and opens a new tab instead.
@@ -358,18 +382,19 @@ function enhanceResourceLinks(): void {
  *   → opens in a new tab.
  */
 function handleLinkClick(event: MouseEvent): void {
-	if (event.metaKey || event.ctrlKey) return; // Let browser handle new-tab
 	if (!(event.target instanceof Element)) return;
 
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
-	const internalPathname = getSameOriginPathname(clickedLink.getAttribute('href') ?? '');
-	if (internalPathname && AGENT_PREVIEW_PATH.test(internalPathname)) {
+	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
+	if (previewTarget && openAgentChatPreview) {
 		event.preventDefault();
-		void router.push(internalPathname);
+		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);
 		return;
 	}
+
+	if (event.metaKey || event.ctrlKey) return;
 
 	const type = clickedLink.dataset.resourceChip;
 	const id = clickedLink.dataset.resourceId;

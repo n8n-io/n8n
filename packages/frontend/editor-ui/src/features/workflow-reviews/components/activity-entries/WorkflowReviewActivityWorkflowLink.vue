@@ -27,9 +27,10 @@ const label = computed(() =>
 </template>
 
 <style lang="scss" module>
-/* Inline with the sentence; the offset optically centres the icon on the text. */
 .icon {
+	margin-left: var(--spacing--4xs);
 	margin-right: var(--spacing--4xs);
+	/* Inline with the sentence; the offset optically centres the icon on the text. */
 	vertical-align: -0.15em;
 }
 </style>

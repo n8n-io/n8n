@@ -25,31 +25,32 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
-	}
+	/**
+	 * SharedWorkflow maps workflows to projects, so user access is checked through
+	 * project relations with the supplied project roles.
+	 */
+	async findWorkflowIdsInUserProjects(
+		workflowIds: string[],
+		userId: string,
+		projectRoleSlugs: string[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0 || projectRoleSlugs.length === 0) return new Set();
 
-	async findByWorkflowIds(workflowIds: string[]) {
-		const rows = new Map<string, SharedWorkflow>();
-
+		const found = new Set<string>();
 		for (const chunk of chunkIds(workflowIds)) {
-			const found = await this.find({
+			const rows = await this.find({
+				select: { workflowId: true },
 				where: {
-					role: 'workflow:owner',
 					workflowId: In(chunk),
+					project: { projectRelations: { userId, role: { slug: In(projectRoleSlugs) } } },
 				},
-				relations: { project: { projectRelations: { user: true, role: true } } },
 			});
-			for (const row of found) rows.set(row.workflowId, row);
+			for (const row of rows) {
+				found.add(row.workflowId);
+			}
 		}
 
-		return [...rows.values()];
+		return found;
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */
@@ -143,6 +144,24 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	 */
 	async findProjectIds(workflowId: string) {
 		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
+	}
+
+	/**
+	 * Find the IDs of all the projects where a workflow is shared with one of
+	 * the given sharing roles.
+	 */
+	async findProjectIdsByRole(workflowId: string, roles: string[]) {
+		const rows = await this.find({
+			where: { workflowId, role: In(roles) },
+			select: ['projectId'],
+		});
 
 		const projectIds = rows.reduce<string[]>((acc, row) => {
 			if (row.projectId) acc.push(row.projectId);

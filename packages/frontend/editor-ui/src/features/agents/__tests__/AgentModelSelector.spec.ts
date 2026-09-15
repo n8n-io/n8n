@@ -61,15 +61,15 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.connectTo': 'Connect to {provider}',
 				'agents.modelSelector.models': 'Models',
 				'generic.freeCredits': 'Free credits',
-				'generic.n8nCredits': 'n8n credits',
+				'generic.n8nCredits': 'Gateway credits',
 				'agents.modelSelector.credentialsMissing': 'Credentials missing',
 				'agents.modelSelector.noMatch': 'No match',
 				'agents.modelSelector.noModels': 'No models',
 				'agents.modelSelector.moreModels': 'More models',
 				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
 				'agents.modelSelector.freeCredits.badge': 'free credits',
-				'aiGateway.credentialMode.n8nConnect.title': 'n8n Connect',
-				'aiGateway.wallet.balanceRemaining': '{balance} remaining',
+				'aiGateway.credentialMode.n8nConnect.title': 'Gateway credits',
+				'aiGateway.wallet.balanceRemaining': '{balance} left',
 				'aiGateway.wallet.noCredits': 'No credits',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
@@ -308,7 +308,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		expect(getProviderItem(wrapper, 'anthropic')?.data?.actionPill).toEqual({
-			text: 'n8n credits',
+			text: 'Gateway credits',
 			type: 'info',
 		});
 	});
@@ -502,8 +502,8 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		const item = getN8nCreditsItem(wrapper, 'anthropic');
-		// Green "remaining" action pill (N8nActionPill), matching the workflow node.
-		expect(item?.data?.actionPill).toEqual({ text: '$4.99 remaining', type: 'default' });
+		// Green balance action pill (N8nActionPill), matching the workflow node.
+		expect(item?.data?.actionPill).toEqual({ text: '$4.99 left', type: 'default' });
 	});
 
 	it('fetches the wallet balance on mount when the gateway is enabled', async () => {
@@ -531,7 +531,7 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		// Shown as plain text (like an own credential name), not a custom badge.
-		expect(dropdown.props('selectedCredentialName')).toBe('n8n Connect');
+		expect(dropdown.props('selectedCredentialName')).toBe('Gateway credits');
 	});
 
 	it('surfaces a stale selected credential as missing', async () => {

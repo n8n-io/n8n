@@ -1,0 +1,3 @@
+{
+	"//": "Anchor for the project service in typed rule tests (see no-legacy-cipher-methods.test.ts). Virtual RuleTester files resolve against this project instead of the package's own tsconfig."
+}

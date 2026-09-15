@@ -7,9 +7,9 @@ natural language interface to workflows, executions, credentials, and nodes — 
 the goal that most users never need to interact with workflows directly.
 
 The system follows the **deep agent architecture** — an orchestrator with explicit
-planning, orchestrator-led workflow building, a specialized eval-setup background
-agent, observational memory, and structured prompts. The LLM controls the
-execution loop; the architecture provides the primitives.
+planning, orchestrator-led workflow building, observational memory, and
+structured prompts. The LLM controls the execution loop; the architecture
+provides the primitives.
 
 The system is LLM-agnostic and designed to work with any capable language model.
 
@@ -38,18 +38,12 @@ graph TB
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
-        OrcAgent --> EvalSetupTool[eval-setup-with-agent]
-    end
-
-    subgraph BackgroundAgent ["Detached Domain-Task Agent"]
-        EvalSetupTool -->|spawns| EvalSetupAgent[Eval Setup Agent]
-        EvalSetupAgent --> EvalTools[Workflow + Node Tools]
     end
 
     subgraph EventSystem ["Event System"]
         OrcAgent -->|publishes| EventBus
-        EvalSetupAgent -->|publishes| EventBus
-        EventBus --> ThreadStorage[Thread Event Storage]
+        EventBus --> DurableLog[Durable Event Log]
+        DurableLog --> EventsTable[(instance_ai_events)]
     end
 
     subgraph Filesystem ["Filesystem Access"]
@@ -68,9 +62,8 @@ graph TB
     subgraph Storage ["Storage"]
         Memory --> PostgreSQL[PostgreSQL<br/>main n8n database]
         Memory --> SQLite[SQLite<br/>main n8n database]
-        ThreadStorage -->|durable log on| PostgreSQL
-        ThreadStorage -->|durable log on| SQLite
-        ThreadStorage -->|durable log off| InMemory[Per-thread memory buffer]
+        EventsTable --> PostgreSQL
+        EventsTable --> SQLite
     end
 
     subgraph Sandbox ["Sandbox (Optional)"]
@@ -106,16 +99,9 @@ Plans are stored in thread-scoped storage.
 
 ### 2. Orchestrator-Led Execution
 
-Most work runs in the orchestrator itself: workflow building via the
+Work runs in the orchestrator itself: workflow building via the
 `workflow-builder` skill and `build-workflow`, data-table operations, web
-research, credential setup with Computer Use, and MCP tools.
-
-The only detached domain-task agent launched by an orchestration tool is the
-**eval-setup agent**
-(`eval-setup-with-agent`). It patches workflows with EvaluationTrigger and
-Evaluation nodes after the user approves an eval proposal. It receives a
-focused tool subset, publishes events directly to the event bus, and cannot
-spawn further agents.
+research, credential setup with Computer Use, config-based evaluations, and MCP tools.
 
 ### 3. Observational Memory
 
@@ -126,8 +112,7 @@ that the orchestrator must send to the model during a long loop.
 ### 4. Structured System Prompt
 
 The orchestrator's system prompt covers planning discipline, loop behavior, and
-tool usage guidelines. The eval-setup background agent gets a focused, task-specific
-prompt.
+tool usage guidelines.
 
 ## Agent Hierarchy
 
@@ -139,7 +124,6 @@ graph TD
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
     O -->|direct| T5[data-tables]
-    O -->|eval-setup-with-agent| S5[Eval Setup Agent]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
@@ -147,12 +131,10 @@ graph TD
     S4 -->|tools| T8[nodes]
     S4 -->|tools| T9[workspace files]
     S4 -->|tools| T10
-    S5 -->|tools| T11[workflows + nodes]
 
     style O fill:#f9f,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
     style S6 fill:#bbf,stroke:#333
 ```
 
@@ -163,6 +145,7 @@ graph TD
 - Workflow building (`workflow-builder` skill + workspace files + `build-workflow`)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 - Data-table work (`data-table-manager` skill + `data-tables` / `parse-file`)
+- Config-based evaluations (`config-evals` skill + `eval-config`)
 
 **Planned tasks** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
@@ -172,10 +155,6 @@ graph TD
 - Workflow runtime verification is tracked separately as a workflow-loop
   obligation, so routine "verify workflow" checkpoints are not required
 
-**Eval setup** (`eval-setup-with-agent`):
-- Detached background agent that patches eval nodes into an existing workflow
-- Triggered after `evals(action="propose")` returns `shouldDelegateToEvalSetupAgent: true`
-
 ## Package Responsibilities
 
 ### `@n8n/instance-ai` (Core)
@@ -183,8 +162,8 @@ graph TD
 The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
-- **Sub-agent support** (`tools/orchestration/`, `agent/`) — creates the eval-setup background agent and its shared briefing and persistence protocol
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `task-control`, `complete-checkpoint`, `eval-setup-with-agent`, `eval-data`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `build-agent`, `get-session`
+- **Sub-agent support** (`agent/`) — shared protocol for embedded specialist agents
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `task-control`, `complete-checkpoint`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `build-agent`, `get-session`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -194,7 +173,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
+- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
 - **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
@@ -217,14 +196,14 @@ The n8n integration layer.
 - **Adapter** — bridges n8n services to agent interfaces, enforces RBAC permissions
 - **Memory service** — thread lifecycle, message persistence, expiration
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
-- **Event bus** — in-process EventEmitter (single instance) or Redis Pub/Sub
-  (queue mode). The durable log is the default replay store. With the durable
-  log disabled, replay uses a 500-event or 2 MB in-memory buffer per thread.
+- **Event bus** — live fan-out only: in-process EventEmitter (single instance)
+  plus a Redis Pub/Sub relay to sibling mains (queue mode). Persistence and
+  replay belong to the durable event log, not the bus
 - **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
   See `docs/filesystem-access.md`
-- **Persistence** — 13 TypeORM entity/repository pairs for threads, messages,
-  resources, observations, observation cursors and locks, checkpoints, run
-  snapshots, event-log entries, pending confirmations, iteration logs, thread
+- **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
+  resources, observations, observation cursors and locks, checkpoints,
+  event-log entries, pending confirmations, iteration logs, thread
   grants, and MCP registry connections
 
 ### `packages/@n8n/api-types` (Shared Types)
@@ -271,24 +250,19 @@ intentional:
 - MCP server configuration can change between requests
 - User context (permissions) is request-scoped
 - Memory is handled externally (storage-backed), not in-agent
-- Background agents (eval-setup) are created within the request lifecycle
 
 ### 3. Pub/Sub Streaming
 
 The event bus decouples agent execution from event delivery:
 
-- All agents (orchestrator + eval-setup background agent) publish to a per-thread channel
+- Agent runs publish to a per-thread channel
 - Frontend subscribes via SSE with `Last-Event-ID` for reconnect/replay
 - All events carry `runId` (correlates to triggering message) and `agentId`
 - Durable SSE facts use monotonically increasing per-thread `id` values for replay
 - SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
-- Event storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`: on (the default),
-  coalesced step-level facts are appended to the `instance_ai_events` table
-  (the durable replay source, ids survive restarts) while token deltas remain
-  live-only and are not retained; off (the rollback switch until Gate B), events
-  live only in a bounded in-memory buffer (500 events / 2 MB per thread,
-  FIFO-evicted, ids reset on restart)
-- No need to pipe sub-agent streams through orchestrator tool execution
+- Coalesced step-level facts are appended to the `instance_ai_events` table —
+  the only replay source, so ids survive restarts — while token deltas remain
+  live-only and are not retained
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)
 
@@ -317,15 +291,15 @@ streamAgentRun() → agent.stream() → executeResumableStream()
 
 The `executeResumableStream()` loop consumes agent chunks, translates them to
 canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
-suspension/resume cycles. Two control modes:
+suspension/resume cycles. It supports two control modes:
 
 - **Manual** — returns suspension to caller (used by the orchestrator's main run)
-- **Auto** — waits for confirmation and resumes automatically (used by the eval-setup background agent)
+- **Auto** — waits for confirmation and resumes automatically
 
 ### Background Task Manager
 
-Long-running eval-setup tasks run as background tasks with concurrency limits
-(default: 5 per thread). Features:
+The generic background task manager enforces concurrency limits (default: 5 per
+thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
   `task-control(action="correct-task")`
@@ -436,8 +410,7 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 
 The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
 registry as the orchestrator. Builder-native tool names remain reserved, so an
-MCP connector cannot shadow configuration or lifecycle tools. Specialized
-background agents such as eval setup remain isolated from MCP tools.
+MCP connector cannot shadow configuration or lifecycle tools.
 
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
@@ -473,9 +446,6 @@ allowing the user to approve or deny access to specific hosts.
 - **Domain access gating** — external URL fetches require per-domain user approval
 - **Memory isolation** — messages, observations, plans, and event history are
   thread-scoped. Cross-user isolation is enforced.
-- **Sub-agent containment** — the eval-setup background agent cannot spawn further
-  agents, receives only its wired tool subset (no MCP tools), and has a bounded
-  `maxIterations`. A mandatory protocol prevents cascading delegation.
 - **MCP tool isolation** — MCP tools are name-checked against reserved domain tool
   names to prevent shadowing. Schema sanitization converts unsupported shapes
   for provider compatibility.

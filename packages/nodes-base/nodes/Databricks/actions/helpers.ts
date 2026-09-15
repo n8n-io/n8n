@@ -1,7 +1,66 @@
-import { NodeApiError, UserError } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { retryabilityFromError } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
+
+import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
+
+const RATE_LIMIT_MAX_RETRIES = 3;
+const RATE_LIMIT_FALLBACK_DELAY_MS = 1_000;
+const RATE_LIMIT_MAX_DELAY_MS = 30_000;
+
+/**
+ * Single egress point for the Databricks API, so every request carries the
+ * partner User-Agent. Enforced by eslint-user-agent-restriction.mjs.
+ *
+ * Takes `context` explicitly rather than the house `this`-binding style because
+ * some callers (e.g. `fetchResourcesInSchema` in methods/listSearch.ts) are plain
+ * functions with no `this`.
+ *
+ * Setting a User-Agent deliberately opts these calls out of the instance-wide
+ * outbound UA, including `N8N_GLOBAL_USER_AGENT_VALUE` — partner attribution
+ * requires a single predictable token.
+ */
+export async function databricksApiRequest(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	options: IHttpRequestOptions,
+): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
+	const requestOptions: IHttpRequestOptions = {
+		...options,
+		headers: {
+			...options.headers,
+			// Last, so a caller cannot override it
+			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
+		},
+	};
+	const abortSignal =
+		'getExecutionCancelSignal' in context ? context.getExecutionCancelSignal() : undefined;
+
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await context.helpers.httpRequestWithAuthentication.call(
+				context,
+				credentialType,
+				requestOptions,
+			);
+		} catch (error) {
+			const { status, retryAfterMs } = retryabilityFromError(error);
+			if (status !== 429 || attempt >= RATE_LIMIT_MAX_RETRIES) throw error;
+			await sleep(
+				Math.min(retryAfterMs || RATE_LIMIT_FALLBACK_DELAY_MS, RATE_LIMIT_MAX_DELAY_MS),
+				abortSignal,
+			);
+		}
+	}
+}
 
 export function getActiveCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -30,8 +89,9 @@ export function sanitizeApiMessage(message: string): string {
 	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
 }
 
-// Must be called at every request entry point (router catch, listSearch wrapper) —
-// the node has no shared transport helper. Keyed on PERMISSION_DENIED only; widen
+// Must be called at every request entry point (router catch, listSearch wrapper):
+// databricksApiRequest() only attaches the User-Agent and deliberately does not
+// wrap errors, so callers still own their catch. Keyed on PERMISSION_DENIED only; widen
 // the key if other Databricks error_codes with legible messages show up. Keyed on
 // the error_code, not HTTP 403, so expired-token 403s (which core retries via
 // refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:
@@ -59,6 +119,31 @@ export function makePermissionErrorLegible(error: unknown): void {
 		error.description =
 			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
 	}
+}
+
+export function readIdParameter(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	parameterName: string,
+	noun: string,
+): number {
+	const label = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ID`;
+	const value = String(
+		context.getNodeParameter(parameterName, itemIndex, '', { extractValue: true }),
+	);
+	if (!/^[0-9]+$/.test(value)) {
+		throw new NodeOperationError(context.getNode(), `${label} must be a whole number`, {
+			itemIndex,
+			description: `Use the numeric ID shown in the ${noun} URL in Databricks.`,
+		});
+	}
+	if (!Number.isSafeInteger(Number(value))) {
+		throw new NodeOperationError(context.getNode(), `${label} is too large to send exactly`, {
+			itemIndex,
+			description: `IDs above ${Number.MAX_SAFE_INTEGER} lose precision in JavaScript, so the node cannot send this ${noun} ID.`,
+		});
+	}
+	return Number(value);
 }
 
 export function extractResourceLocatorValue(param: unknown): string {

@@ -14,6 +14,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	INode,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -36,6 +37,20 @@ import {
 import type { IMongoParametricCredentials } from './mongoDb.types';
 import { nodeProperties } from './MongoDbProperties';
 import { generatePairedItemData } from '../../utils/utilities';
+
+function resolveIndexDefinition(
+	ctx: IExecuteFunctions,
+	node: INode,
+	itemIndex: number,
+): Record<string, unknown> {
+	return parseAndResolveQueryParameters(
+		ctx.getNodeParameter('indexDefinition', itemIndex) as string,
+		ctx.getNodeParameter('indexDefinitionParameters', itemIndex, []),
+		node,
+		itemIndex,
+		'Index Definition',
+	) as Record<string, unknown>;
+}
 
 interface BulkUpdateEntry {
 	op: AnyBulkWriteOperation;
@@ -259,7 +274,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as IDataObject;
@@ -293,7 +308,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as Document;
@@ -323,7 +338,7 @@ export class MongoDb implements INodeType {
 					try {
 						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
-							this.getNodeParameter('queryParameters', i, '[]'),
+							this.getNodeParameter('queryParameters', i, []),
 							node,
 							i,
 						) as IDataObject;
@@ -340,8 +355,23 @@ export class MongoDb implements INodeType {
 						const limit = options.limit as number;
 						const skip = options.skip as number;
 						const projection =
-							options.projection && (JSON.parse(options.projection as string) as Document);
-						const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
+							options.projection &&
+							(parseAndResolveQueryParameters(
+								options.projection as string,
+								options.projectionParameters ?? [],
+								node,
+								i,
+								'Projection',
+							) as Document);
+						const sort =
+							options.sort &&
+							(parseAndResolveQueryParameters(
+								options.sort as string,
+								options.sortParameters ?? [],
+								node,
+								i,
+								'Sort',
+							) as Sort);
 
 						if (skip > 0) {
 							query = query.skip(skip);
@@ -914,9 +944,7 @@ export class MongoDb implements INodeType {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
 						const indexType = this.getNodeParameter('indexType', i) as string;
-						const definition = JSON.parse(
-							this.getNodeParameter('indexDefinition', i) as string,
-						) as Record<string, unknown>;
+						const definition = resolveIndexDefinition(this, node, i);
 
 						await mdb.collection(collection).createSearchIndex({
 							name: indexName,
@@ -946,9 +974,7 @@ export class MongoDb implements INodeType {
 					try {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
-						const definition = JSON.parse(
-							this.getNodeParameter('indexDefinition', i) as string,
-						) as Record<string, unknown>;
+						const definition = resolveIndexDefinition(this, node, i);
 
 						await mdb.collection(collection).updateSearchIndex(indexName, definition);
 

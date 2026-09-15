@@ -88,4 +88,37 @@ describe('shapeToStandardSchema', () => {
 			value: { executionId: null, status: 'error', error: 'workflow failed' },
 		});
 	});
+
+	// A Zod instance reused across two properties must be inlined at both use
+	// sites. The generator's default strategy dedupes the second occurrence into
+	// a `$ref` to a `#/properties/...` path, which strict clients (e.g. Zod v4's
+	// `fromJSONSchema`) refuse to resolve — they only follow refs into `$defs` —
+	// leaving the tool's arguments unvalidated client-side.
+	it('inlines a schema instance that is reused across the shape instead of emitting a $ref', () => {
+		const sharedPosition = z.array(z.number()).length(2).describe('Canvas [x, y].');
+		const reusing = shapeToStandardSchema({
+			node: z.object({ position: sharedPosition.optional() }).optional(),
+			position: sharedPosition.optional().describe('For setNodePosition.'),
+		});
+
+		const json = reusing['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
+
+		expect(JSON.stringify(json)).not.toContain('$ref');
+		expect(json.properties).toMatchObject({
+			node: {
+				type: 'object',
+				properties: {
+					position: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 },
+				},
+			},
+			// The second occurrence keeps its own description override.
+			position: {
+				type: 'array',
+				items: { type: 'number' },
+				minItems: 2,
+				maxItems: 2,
+				description: 'For setNodePosition.',
+			},
+		});
+	});
 });

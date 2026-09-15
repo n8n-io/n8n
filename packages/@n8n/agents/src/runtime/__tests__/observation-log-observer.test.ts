@@ -261,7 +261,7 @@ describe('renderObserverTranscript', () => {
 							toolName: 'lookup_workflow',
 							input: { workflow: 'daily-report-prod' },
 							state: 'resolved',
-							output: { rows: [{ id: 1 }], blob: 'x'.repeat(80) },
+							output: { rows: [{ id: 1 }], notes: 'x'.repeat(80), blob: 'x'.repeat(80) },
 						},
 					],
 				},
@@ -275,6 +275,7 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('"workflow":"daily-report-prod"');
 		expect(transcript).toContain('tool_result lookup_workflow');
 		expect(transcript).toContain('[truncated');
+		expect(transcript).toContain('"blob":"[omitted large blob]"');
 	});
 
 	it('redacts credential-looking tool inputs and outputs before serialization', () => {
@@ -436,31 +437,6 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
-	it('waits until the unobserved transcript reaches the token threshold', async () => {
-		const store = new InMemoryMemory();
-		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
-		await store.saveMessages({
-			threadId: 'thread-1',
-			resourceId: 'user-1',
-			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
-		});
-
-		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
-
-		const result = await runObservationLogObserver({
-			memory: store,
-			observationScopeId: 'thread-1',
-			observerThresholdTokens: 999,
-			observationLogTailLimit: 20,
-			tokenCounter: () => 1,
-			observe,
-		});
-
-		expect(result).toEqual({ status: 'skipped', reason: 'below-threshold', tokenCount: 1 });
-		expect(observe).not.toHaveBeenCalled();
-		expect(await store.getCursor('thread-1')).toBeNull();
-	});
-
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';
@@ -478,7 +454,6 @@ describe('runObservationLogObserver', () => {
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter,
 			now,
@@ -527,7 +502,6 @@ describe('runObservationLogObserver', () => {
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
 			now: new Date(2026, 4, 12, 14, 31),
@@ -546,6 +520,79 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 
+	it('never advances the cursor past a pending tool call and observes its later resolution', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		const pendingHost: AgentDbMessage = {
+			id: 'm2',
+			createdAt: new Date(2026, 4, 12, 14, 31),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'tc1',
+					toolName: 'send_email',
+					input: { to: 'a@b.c' },
+					state: 'pending',
+				},
+			],
+		};
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'Please send the email.', new Date(2026, 4, 12, 14, 30)),
+				pendingHost,
+				message('m3', 'user', 'An interim user message.', new Date(2026, 4, 12, 14, 32)),
+			],
+		});
+
+		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:40) Progress noted.');
+		const run = async () =>
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: () => 10,
+				now: new Date(2026, 4, 12, 14, 40),
+				observe,
+			});
+
+		// The pending call on m2 has no outcome yet: the delta clamps to m1, so
+		// the later in-place resolution cannot land behind the cursor.
+		expect(await run()).toMatchObject({ status: 'ran', cursorAdvanced: true });
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
+
+		// Still pending: nothing observable before the host.
+		expect(await run()).toEqual({ status: 'skipped', reason: 'pending-tool-call' });
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
+
+		// The approval settles the call in place; the next run observes it.
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				{
+					...pendingHost,
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'send_email',
+							input: { to: 'a@b.c' },
+							state: 'resolved',
+							output: 'email sent',
+						},
+					],
+				},
+			],
+		});
+		expect(await run()).toMatchObject({ status: 'ran', cursorAdvanced: true });
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm3' });
+		const lastObserveInput = observe.mock.calls.at(-1)?.[0] as { transcript: string };
+		expect(lastObserveInput.transcript).toContain('email sent');
+	});
+
 	it('does not persist secret values echoed by the observer into observation entries', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
@@ -560,7 +607,6 @@ describe('runObservationLogObserver', () => {
 		await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
-			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
 			tokenCounter: () => 10,
 			now: new Date(2026, 4, 12, 14, 31),

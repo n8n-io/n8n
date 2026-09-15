@@ -20,8 +20,10 @@ import {
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
+	type InstanceAiSetupItem,
 	type TaskList,
 	type AgentRunState,
+	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
@@ -230,6 +232,31 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
 	return null;
 }
 
+/**
+ * Latest setup-items snapshot per workflowId across all messages (newest wins
+ * per key). Bounded by the hydrated message page: snapshots older than the
+ * page are deliberately not resurrected — at rest the panel derives its state
+ * from the saved workflow itself, the event feed only covers live builds.
+ *
+ * Message position is the recency proxy for restored snapshots — if parallel
+ * emitters across message groups ever land, stamp the events with a sequence
+ * instead of trusting position.
+ */
+function findLatestSetupItemsFromMessages(
+	messages: InstanceAiMessage[],
+): Record<string, InstanceAiSetupItem[]> {
+	const result: Record<string, InstanceAiSetupItem[]> = {};
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const byWorkflowId = messages[i].agentTree?.setupItemsByWorkflowId;
+		if (!byWorkflowId) continue;
+		for (const [workflowId, items] of Object.entries(byWorkflowId)) {
+			if (!isSafeObjectKey(workflowId)) continue;
+			if (!Object.hasOwn(result, workflowId)) result[workflowId] = items;
+		}
+	}
+	return result;
+}
+
 interface DebugEventEntry {
 	timestamp: string;
 	event: InstanceAiEvent;
@@ -362,6 +389,7 @@ export function createThreadRuntime(
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
+	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -458,6 +486,15 @@ export function createThreadRuntime(
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
 	);
+
+	/**
+	 * Latest setup-items snapshot per workflowId — restored messages as the
+	 * base, live setup-items events (strictly newer) overriding per key.
+	 */
+	const setupItemsByWorkflowId = computed<Record<string, InstanceAiSetupItem[]>>(() => ({
+		...findLatestSetupItemsFromMessages(messages.value),
+		...latestSetupItems.value,
+	}));
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
 	// FE counterpart of the backend 'Builder created workflow' event, which carries
@@ -679,11 +716,13 @@ export function createThreadRuntime(
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
 		if (conf.targetApproval) return false;
+		if (conf.credentialDestination) return false;
 		if (conf.severity === 'destructive') return false;
 		if (conf.domainAccess) return false;
 		if (conf.inputType) return false;
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
+		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
 		return true;
@@ -814,6 +853,12 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
+			if (parsed.data.type === 'setup-items' && isSafeObjectKey(parsed.data.payload.workflowId)) {
+				latestSetupItems.value = {
+					...latestSetupItems.value,
+					[parsed.data.payload.workflowId]: parsed.data.payload.items,
+				};
+			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
@@ -900,6 +945,10 @@ export function createThreadRuntime(
 			msg.content = data.agentTree.textContent;
 			msg.reasoning = data.agentTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			// Wholesale recompute, not a per-key merge with the live ref: the synced
+			// fold carries reconnect catch-up the ref never saw, and live events this
+			// connection already delivered are also in the message trees scanned here.
+			latestSetupItems.value = findLatestSetupItemsFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.
 			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -994,6 +1043,7 @@ export function createThreadRuntime(
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
+		latestSetupItems.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -1032,6 +1082,7 @@ export function createThreadRuntime(
 				if (result.messages.length > 0) {
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
+					latestSetupItems.value = findLatestSetupItemsFromMessages(result.messages);
 
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into
@@ -1185,6 +1236,19 @@ export function createThreadRuntime(
 				toast.showError(
 					new Error('Agent is still working on your previous message'),
 					'Cannot send message',
+				);
+			} else if (status === 429) {
+				// A concurrency cap refused the run. The two reasons need opposite advice, so
+				// key the copy off `meta.reason` rather than the status alone: an instance
+				// limit is transient and worth retrying, a per-user limit is not.
+				const reason =
+					error instanceof ResponseError
+						? (error.meta?.reason as InstanceAiRunLimitReason | undefined)
+						: undefined;
+				const scope = reason === 'user_run_limit' ? 'userLimit' : 'instanceLimit';
+				toast.showError(
+					new Error(i18n.baseText(`instanceAi.send.${scope}.message`)),
+					i18n.baseText(`instanceAi.send.${scope}.title`),
 				);
 			} else if (status === 400) {
 				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
@@ -1382,6 +1446,7 @@ export function createThreadRuntime(
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
+		setupItemsByWorkflowId,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,

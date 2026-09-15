@@ -2,14 +2,31 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import { validateExecutableGraph, type WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import type { ExecutionMode, TriggerOutputs } from './execution.types';
+import type {
+	CallerContext,
+	ExecutionMode,
+	TriggerOutputs,
+	WorkflowDocument,
+} from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
+	/**
+	 * The workflow the graph came from, stored beside the execution and reported
+	 * on the read. The engine never reads a field out of it.
+	 */
+	workflow: WorkflowDocument;
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
+	/** Stored with the execution and handed to every step executor. */
+	callerContext: CallerContext;
+	/**
+	 * Caller-minted, so the caller can record state against the run before it
+	 * starts. The engine never mints one.
+	 */
+	executionId: string;
 }
 
 export interface StartExecutionResult {
@@ -34,13 +51,20 @@ export class StartExecutionService {
 			throw new AdmittanceRejectedError(decision.reason);
 		}
 
-		const { id } = await this.executionStore.createExecution({
+		// The caller's id is authoritative: it already has a session registered
+		// against it, so the store never gets to rename the run.
+		const { executionId } = request;
+
+		await this.executionStore.createExecution({
+			id: executionId,
 			workflowId: request.workflowId,
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',
 			mode: request.mode ?? 'production',
 			graph: request.graph,
+			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
+			callerContext: request.callerContext,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
@@ -48,9 +72,9 @@ export class StartExecutionService {
 		// reconciliation sweep (not yet built) re-dispatches it.
 		await this.workQueue.publish({
 			type: 'execution:enqueued',
-			executionId: id,
+			executionId,
 		});
 
-		return { executionId: id };
+		return { executionId };
 	}
 }

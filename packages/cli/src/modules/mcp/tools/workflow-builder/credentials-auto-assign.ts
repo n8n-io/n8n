@@ -20,7 +20,7 @@ import type { Telemetry } from '@/telemetry';
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */
-const AI_GATEWAY_CREDENTIAL_NAME = 'n8n credits';
+const AI_GATEWAY_CREDENTIAL_NAME = 'Gateway credits';
 
 /**
  * Attach the managed (n8n-credits) sentinel to `credentialType` and, unless it's
