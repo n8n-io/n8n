@@ -5,14 +5,8 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { deriveHitlSecretToken } from './tokens';
+import type { TelegramWebhookInfo } from '../GenericFunctions';
 import { apiRequest } from '../GenericFunctions';
-
-interface TelegramWebhookInfo {
-	result?: {
-		url?: string;
-		allowed_updates?: string[];
-	};
-}
 
 function isLoopbackHost(hostname: string): boolean {
 	// A URL's hostname getter always brackets an IPv6 address, so the loopback

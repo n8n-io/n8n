@@ -17,6 +17,9 @@ function createMockContext(
 		workflowService: {
 			get: vi.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
 			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
+			getWorkflowHead: vi
+				.fn()
+				.mockResolvedValue({ versionId: 'draft-1', activeVersionId: null, updatedAt: 0 }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
 			list: vi.fn(),
@@ -31,6 +34,7 @@ function createMockContext(
 		credentialService: {} as never,
 		nodeService: {} as never,
 		dataTableService: {} as never,
+		logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 		permissions: {},
 		...overrides,
 	} as unknown as InstanceAiContext;
@@ -95,6 +99,93 @@ describe('executions tool', () => {
 				status: 'error',
 				limit: 5,
 			});
+		});
+
+		it('should report the version each run used next to the published one', async () => {
+			const context = createMockContext();
+			(context.workflowService.getWorkflowHead as Mock).mockResolvedValue({
+				versionId: 'draft-2',
+				activeVersionId: 'published-1',
+				updatedAt: 0,
+			});
+			(context.executionService.list as Mock).mockResolvedValue([
+				{
+					id: 'exec-live',
+					workflowId: 'wf-1',
+					workflowName: 'Test WF',
+					status: 'success',
+					startedAt: '2024-01-01T00:00:00Z',
+					mode: 'trigger',
+					workflowVersionId: 'published-1',
+				},
+				{
+					id: 'exec-draft',
+					workflowId: 'wf-1',
+					workflowName: 'Test WF',
+					status: 'success',
+					startedAt: '2024-01-01T00:00:00Z',
+					mode: 'manual',
+					workflowVersionId: 'draft-2',
+				},
+			]);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool<{
+				executions: Array<{ id: string; workflowVersionId?: string | null }>;
+				workflow?: { activeVersionId: string | null; draftVersionId: string };
+			}>(tool, { action: 'list' as const, workflowId: 'wf-1' }, {} as never);
+
+			expect(result.workflow).toEqual({
+				activeVersionId: 'published-1',
+				draftVersionId: 'draft-2',
+			});
+			expect(result.executions[0]).toMatchObject({
+				id: 'exec-live',
+				workflowVersionId: 'published-1',
+			});
+			expect(result.executions[1]).toMatchObject({
+				id: 'exec-draft',
+				workflowVersionId: 'draft-2',
+			});
+		});
+
+		it('should report a null published version while the workflow is unpublished', async () => {
+			const context = createMockContext();
+			(context.executionService.list as Mock).mockResolvedValue([]);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool<{
+				workflow?: { activeVersionId: string | null; draftVersionId: string };
+			}>(tool, { action: 'list' as const, workflowId: 'wf-1' }, {} as never);
+
+			expect(result.workflow).toEqual({ activeVersionId: null, draftVersionId: 'draft-1' });
+		});
+
+		it('should skip the version lookup for an instance-wide list', async () => {
+			const context = createMockContext();
+			(context.executionService.list as Mock).mockResolvedValue([]);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(tool, { action: 'list' as const }, {} as never);
+
+			expect(context.workflowService.getWorkflowHead).not.toHaveBeenCalled();
+			expect(result).toEqual({ executions: [] });
+		});
+
+		it('should still return the executions when the version lookup fails', async () => {
+			const context = createMockContext();
+			(context.workflowService.getWorkflowHead as Mock).mockRejectedValue(new Error('no access'));
+			(context.executionService.list as Mock).mockResolvedValue([]);
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, workflowId: 'wf-1' },
+				{} as never,
+			);
+
+			expect(result).toEqual({ executions: [] });
+			expect(context.logger.warn).toHaveBeenCalled();
 		});
 	});
 
