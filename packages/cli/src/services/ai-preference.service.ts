@@ -80,12 +80,12 @@ type PreferenceTarget = {
 };
 
 /**
- * One saved preference plus where it came from. `personalProject` is the caller's own personal
- * project and `user` is what the caller saved for themselves everywhere — two different things
- * that both read as "personal", so they get separate names here.
+ * One saved preference plus where it came from. `user` covers both what the caller saved for
+ * themselves everywhere and what they saved on their own personal project: both are theirs
+ * alone, so the reader gains nothing from telling them apart.
  */
 export type AiPreferenceItem = {
-	scope: 'instance' | 'user' | 'personalProject' | 'project';
+	scope: 'instance' | 'user' | 'project';
 	/** The team project's name. Set only when `scope` is `project`. */
 	project?: string;
 	text: string;
@@ -134,9 +134,9 @@ export class AiPreferenceService {
 			}
 		}
 		// The lookups carry no ORDER BY, so sort here to keep the block stable across databases.
-		// The personal project comes first: the renderer names it rather than showing its name,
-		// so sorting it by that hidden name would put it between team projects for no reason a
-		// reader can see.
+		// The personal project comes first: `renderAiPreferencesBlock` names it rather than
+		// showing its name, so sorting it by that hidden name would put it between team projects
+		// for no reason a reader can see.
 		const sorted = [...projects.values()].sort(
 			(a, b) =>
 				Number(b.type === 'personal') - Number(a.type === 'personal') ||
@@ -446,19 +446,18 @@ const AI_PREFERENCES_INTRO =
  * colleague's preference at read time.
  */
 export function renderAiPreferences(preferences: ApplicableAiPreferences): string {
+	const { personal, team } = splitPersonalProject(preferences);
 	const groups = [
 		{
 			heading: 'Instance preferences (set by an admin for everyone):',
 			items: preferences.instance,
 		},
-		{ heading: 'Personal preferences:', items: preferences.user },
-		...preferences.projects.map((project) => ({
-			// Experiment 3 (CONTEXT-132): a project rule needs a subject the model can
-			// recognise. The raw personal-project name is an email string; say what it is.
-			heading:
-				project.type === 'personal'
-				? 'Preferences for your personal project (where a new workflow goes unless another project is chosen):'
-				: `Preferences for project "${singleLine(project.name)}":`,
+		// The caller's own personal project folds into their personal preferences: both are
+		// theirs alone, and its raw name is an email string that would only confuse the model.
+		{ heading: 'Personal preferences:', items: [...preferences.user, ...personal.items] },
+		...team.map((project) => ({
+			// Experiment 3 (CONTEXT-132): a project rule needs a subject the model can recognise.
+			heading: `Preferences for project "${singleLine(project.name)}":`,
 			items: project.items,
 		})),
 	].filter((group) => group.items.length > 0);
@@ -473,21 +472,37 @@ export function renderAiPreferences(preferences: ApplicableAiPreferences): strin
  * as a tool's structured output.
  *
  * Each item carries the scope it came from, so a caller can tell an admin's instance rule from
- * one the caller wrote themselves and can name the project a rule belongs to. The four scopes
- * are the four headings `renderAiPreferences` writes, so the two outputs never disagree.
+ * one the caller wrote themselves and can name the project a rule belongs to. The three scopes
+ * are the three kinds of heading `renderAiPreferences` writes, so the two outputs never disagree.
  */
 export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPreferenceItem[] {
+	const { personal, team } = splitPersonalProject(preferences);
 	return [
 		...preferences.instance.map((text) => ({ scope: 'instance' as const, text })),
-		...preferences.user.map((text) => ({ scope: 'user' as const, text })),
-		...preferences.projects.flatMap((project) =>
-			project.items.map((text) =>
-				project.type === 'personal'
-					? { scope: 'personalProject' as const, text }
-					: { scope: 'project' as const, project: singleLine(project.name), text },
-			),
+		...[...preferences.user, ...personal.items].map((text) => ({ scope: 'user' as const, text })),
+		...team.flatMap((project) =>
+			project.items.map((text) => ({
+				scope: 'project' as const,
+				project: singleLine(project.name),
+				text,
+			})),
 		),
 	];
+}
+
+/**
+ * Separates the caller's own personal project from the team projects. Only the caller's own
+ * personal project can be in the list (see `getApplicableAcrossProjects`), so `personal` here
+ * always means "yours".
+ */
+function splitPersonalProject(preferences: ApplicableAiPreferences) {
+	const personal: string[] = [];
+	const team: ApplicableAiPreferences['projects'] = [];
+	for (const project of preferences.projects) {
+		if (project.type === 'personal') personal.push(...project.items);
+		else team.push(project);
+	}
+	return { personal: { items: personal }, team };
 }
 
 function renderGroup({ heading, items }: { heading: string; items: string[] }): string {

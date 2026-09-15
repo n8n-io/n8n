@@ -47,9 +47,9 @@ const outputSchema = {
 		.array(
 			z.object({
 				scope: z
-					.enum(['instance', 'user', 'personalProject', 'project'])
+					.enum(['instance', 'user', 'project'])
 					.describe(
-						"Where the preference is saved: `instance` is set by an admin for everyone, `user` is what the caller saved for themselves, `personalProject` is the caller's own personal project, and `project` is a team project named in `project`.",
+						'Where the preference is saved: `instance` is set by an admin for everyone, `user` is what the caller saved for themselves (including on their own personal project), and `project` is a team project named in `project`.',
 					),
 				project: z
 					.string()
