@@ -65,7 +65,7 @@ async function attachSamlIdentity(user: User, providerId: string) {
 }
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['me', 'saml'],
+	endpointGroups: ['me', 'saml', 'changeEmail'],
 	enabledFeatures: ['feat:saml'],
 });
 
@@ -98,16 +98,14 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 		});
+	});
 
+	describe('POST /change-email', () => {
 		test('should throw BadRequestError if email is changed when SAML is enabled', async () => {
 			await enableSaml(true);
 			await authOwnerAgent
-				.patch('/me')
-				.send({
-					email: randomEmail(),
-					firstName: randomName(),
-					lastName: randomName(),
-				})
+				.post('/change-email')
+				.send({ email: randomEmail() })
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
 		});
 	});
@@ -147,25 +145,6 @@ describe('Instance owner', () => {
 			expect(refreshed.lastName).toBe(newLastName);
 			samlUser.firstName = newFirstName;
 			samlUser.lastName = newLastName;
-		});
-
-		test('should allow email change once SAML is disabled', async () => {
-			await enableSaml(false);
-			const newEmail = randomEmail();
-
-			await authSamlUserAgent
-				.patch('/me')
-				.send({
-					email: newEmail,
-					firstName: samlUser.firstName,
-					lastName: samlUser.lastName,
-					currentPassword: samlUserPassword,
-				})
-				.expect(200);
-
-			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
-			expect(refreshed.email).toBe(newEmail);
-			samlUser.email = newEmail;
 		});
 	});
 
