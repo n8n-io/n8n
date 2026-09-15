@@ -13,6 +13,7 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
+import { useMcpServerConnect } from './useMcpServerConnect';
 import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
@@ -28,6 +29,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const uiStore = useUIStore();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
+	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
@@ -188,6 +190,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						divided: true,
 						data: {
 							action: async () => {
+								ignorePendingConnectResult(connection.serverSlug);
 								await mcpStore.disconnect(connection.id);
 							},
 						},
