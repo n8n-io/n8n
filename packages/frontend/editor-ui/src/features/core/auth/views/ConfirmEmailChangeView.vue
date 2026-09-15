@@ -40,19 +40,26 @@ const onConfirm = async () => {
 	try {
 		loading.value = true;
 		await usersStore.confirmEmailChange({ token });
-
-		toast.showMessage({
-			type: 'success',
-			title: locale.baseText('auth.confirmEmailChange.success.title'),
-			message: locale.baseText('auth.confirmEmailChange.success.message'),
-		});
-
-		// Clear the session so the /signin guest guard passes and the user
-		// re-authenticates with the new email.
-		await usersStore.logout();
-		await router.push({ name: VIEWS.SIGNIN });
 	} catch (error) {
 		toast.showError(error, locale.baseText('auth.confirmEmailChange.error'));
+		loading.value = false;
+		return;
+	}
+
+	toast.showMessage({
+		type: 'success',
+		title: locale.baseText('auth.confirmEmailChange.success.title'),
+		message: locale.baseText('auth.confirmEmailChange.success.message'),
+	});
+
+	// The email changed, so end the session and send the user to sign in.
+	// A failed logout must not strand the confirmed user: fall back to a full
+	// reload, which resets local session state so the /signin guard passes.
+	try {
+		await usersStore.logout();
+		await router.push({ name: VIEWS.SIGNIN });
+	} catch {
+		window.location.href = router.resolve({ name: VIEWS.SIGNIN }).href;
 	}
 	loading.value = false;
 };
