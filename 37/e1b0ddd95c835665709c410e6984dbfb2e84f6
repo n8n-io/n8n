@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceContextStep.test.ts
+  s_583f31bceceb3e::t_8e3dbff2331fdc 103,106
+  s_583f31bceceb3e::t_4225cd184c2632 100-101,104,107
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_583f31bceceb3e::t_19533d281a393b 313-317,669
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_583f31bceceb3e::t_f2d1474184447f 376-381
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_583f31bceceb3e::t_1560521b8025a0 231-233
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceContextStep.vue
+  s_583f31bceceb3e::t_2604326326690a 9-11
+  ai_agent 26
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_583f31bceceb3e::t_f2d1474184447f 4105-4106,4112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "37e1b0ddd95c835665709c410e6984dbfb2e84f6",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
