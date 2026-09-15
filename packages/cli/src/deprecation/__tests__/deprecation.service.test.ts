@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,19 +8,16 @@ import { DeprecationService } from '../deprecation.service';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
-<<<<<<< HEAD
-=======
 	const globalConfig = mockInstance(GlobalConfig, {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
 		taskRunners: { mode: 'internal' },
 	});
->>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 	const instanceSettings = mockInstance(InstanceSettings, {
 		instanceType: 'main',
 		isDocker: true,
 	});
-	const deprecationService = new DeprecationService(logger, instanceSettings);
+	const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
 
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
@@ -66,11 +64,8 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
-<<<<<<< HEAD
 		['OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', 'true', true],
 		['OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', undefined, false],
-=======
->>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 		['N8N_DB_PING_TIMEOUT', '1', true],
 		['WEBHOOK_URL', 'https://example.com/', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
@@ -132,6 +127,7 @@ describe('DeprecationService', () => {
 		test('should warn when not running in a container', () => {
 			const service = new DeprecationService(
 				logger,
+				globalConfig,
 				mock<InstanceSettings>({ instanceType: 'main', isDocker: false }),
 			);
 			service.warn();
@@ -141,6 +137,7 @@ describe('DeprecationService', () => {
 		test('should not warn when running in a container', () => {
 			const service = new DeprecationService(
 				logger,
+				globalConfig,
 				mock<InstanceSettings>({ instanceType: 'main', isDocker: true }),
 			);
 			service.warn();
