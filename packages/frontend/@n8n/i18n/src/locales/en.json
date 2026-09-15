@@ -9012,5 +9012,7 @@
 	"agents.channels.teams.setup.createCredential.prerequisites": "The three values come from a Microsoft Entra app registration. If you do not have one, create it first — you need a work or school account with permission to register apps, and an Azure subscription for the next step.",
 	"agents.channels.teams.setup.createBot.needsCredential": "Add the credential first. The deployment needs its Application and Directory IDs.",
 	"agents.channels.teams.setup.connectBot.mismatch": "A bot reached n8n, but it is not the one this credential describes. Check the endpoint is on the right bot.",
-	"agents.channels.teams.setup.connectBot.skipped": "Check skipped. You can still finish, but nothing has confirmed the endpoint yet."
+	"agents.channels.teams.setup.connectBot.skipped": "Check skipped. You can still finish, but nothing has confirmed the endpoint yet.",
+	"agents.channels.teams.setup.createBot.existingBot": "Already have an Azure bot?",
+	"agents.channels.teams.setup.createBot.existingBotHint": "Paste this into your bot's Configuration page as the messaging endpoint, and turn on the Microsoft Teams channel."
 }

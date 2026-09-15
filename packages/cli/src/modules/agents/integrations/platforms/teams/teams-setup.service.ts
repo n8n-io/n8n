@@ -60,6 +60,7 @@ export class TeamsSetupService {
 				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 				: null,
 			suggestedBotName: this.armTemplateService.suggestedBotName(agent.name, agent.id),
+			teamsChatDeepLink: identity ? this.teamsChatDeepLink(agent.id, identity.tenantId) : null,
 		};
 	}
 
@@ -163,6 +164,15 @@ export class TeamsSetupService {
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
 		return clientId && tenantId ? { clientId, tenantId } : null;
+	}
+
+	/**
+	 * A sideloaded custom app is addressed by its manifest id, which is the one
+	 * we generate, so this resolves without asking Teams anything.
+	 */
+	private teamsChatDeepLink(agentId: string, tenantId: string): string {
+		const manifestId = this.manifestService.buildManifestId(agentId);
+		return `https://teams.microsoft.com/l/entity/${manifestId}/conversations?tenantId=${encodeURIComponent(tenantId)}`;
 	}
 
 	private messagingEndpointUrl(scope: AgentScope): string {

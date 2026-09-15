@@ -37,6 +37,7 @@ configure({ testIdAttribute: 'data-testid' });
 // N8nStepper renders every step's slot, so one render covers the whole stepper.
 const ENDPOINT = 'https://n8n.example.com/rest/projects/p/agents/v2/a/webhooks/teams';
 const DEPLOY_URL = 'https://portal.azure.com/#create/Microsoft.Template/uri/encoded';
+const TEAMS_CHAT_LINK = 'https://teams.microsoft.com/l/entity/manifest-id/conversations?tenantId=t';
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 const TENANT_ID = '99999999-8888-7777-6666-555555555555';
 
@@ -68,6 +69,7 @@ describe('AgentChannelTeamsSetup', () => {
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
 			suggestedBotName: 'support-bot-abc12345',
+			teamsChatDeepLink: TEAMS_CHAT_LINK,
 		});
 		vi.mocked(startTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
 		vi.mocked(getTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
@@ -102,8 +104,18 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('step 2, deploy the bot', () => {
-		it('shows the messaging endpoint URL', async () => {
-			const { container } = renderComponent({ props: props() });
+		it('keeps the endpoint URL out of the way, since the deployment sets it', async () => {
+			const { getByTestId, container } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-show-endpoint')).toBeVisible());
+			expect(container.querySelector('#teams-messaging-endpoint-url')).toBeNull();
+		});
+
+		it('reveals the endpoint URL for someone wiring up a bot they already have', async () => {
+			const { getByTestId, container } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-show-endpoint')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-show-endpoint'));
 
 			await waitFor(() => {
 				expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(ENDPOINT);
@@ -116,6 +128,7 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: null,
 				deployToAzureUrl: null,
 				suggestedBotName: 'support-bot-abc12345',
+				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
@@ -205,6 +218,7 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
@@ -215,11 +229,22 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-discovery-mismatch')).toBeVisible());
 		});
 
-		it('points at the bot by name, since the resource blade cannot be deep-linked', async () => {
+		it('opens the real chat in Teams, rather than hunting for Test in Web Chat', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-open-bot-link')).toBeVisible());
+			expect(getByTestId('teams-open-bot-link')).toHaveAttribute('href', TEAMS_CHAT_LINK);
 			expect(getByTestId('teams-open-bot-hint').textContent).toContain('support-bot-abc12345');
+		});
+
+		it('comes after installing, because the confirming message needs the app', async () => {
+			const { container } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(container.textContent).toContain('setup.install.title'));
+			const text = container.textContent ?? '';
+			expect(text.indexOf('setup.install.title')).toBeLessThan(
+				text.indexOf('setup.connectBot.title'),
+			);
 		});
 
 		it('offers a way out while listening', async () => {
@@ -292,6 +317,7 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 
 			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
@@ -310,6 +336,7 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
 
@@ -389,7 +416,10 @@ describe('AgentChannelTeamsSetup', () => {
 	it('still shows the endpoint URL when the setup state cannot be loaded', async () => {
 		vi.mocked(getTeamsSetupState).mockRejectedValue(new Error('offline'));
 
-		const { container } = renderComponent({ props: props() });
+		const { getByTestId, container } = renderComponent({ props: props() });
+
+		await waitFor(() => expect(getByTestId('teams-show-endpoint')).toBeVisible());
+		await fireEvent.click(getByTestId('teams-show-endpoint'));
 
 		await waitFor(() => {
 			expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(

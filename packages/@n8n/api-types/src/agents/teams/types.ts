@@ -66,6 +66,12 @@ export interface TeamsAgentSetupState {
 	 * because its subscription and resource group are chosen at deploy time.
 	 */
 	suggestedBotName: string;
+	/**
+	 * Opens the 1:1 chat with this agent's app in Teams. Null until a credential
+	 * supplies the tenant. Uses the manifest id, which is what a sideloaded
+	 * custom app is addressed by.
+	 */
+	teamsChatDeepLink: string | null;
 }
 
 /**
