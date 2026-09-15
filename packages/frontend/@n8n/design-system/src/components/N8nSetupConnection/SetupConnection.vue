@@ -52,15 +52,6 @@ const { t } = useI18n();
 					<slot name="action-leading" />
 				</div>
 				<div :class="$style.actions">
-					<N8nButton
-						size="small"
-						:variant="actionVariant"
-						:disabled="disabled || actionDisabled || loading"
-						:loading="loading"
-						@click="emit('action')"
-					>
-						{{ actionLabel }}
-					</N8nButton>
 					<N8nDropdownMenu
 						v-if="actions.length"
 						:items="actions"
@@ -81,6 +72,15 @@ const { t } = useI18n();
 							</N8nButton>
 						</template>
 					</N8nDropdownMenu>
+					<N8nButton
+						size="small"
+						:variant="actionVariant"
+						:disabled="disabled || actionDisabled || loading"
+						:loading="loading"
+						@click="emit('action')"
+					>
+						{{ actionLabel }}
+					</N8nButton>
 				</div>
 			</div>
 			<slot name="footer" />

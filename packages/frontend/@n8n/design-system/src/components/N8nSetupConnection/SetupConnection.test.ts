@@ -5,7 +5,7 @@ import SetupConnection from './SetupConnection.vue';
 
 describe('SetupConnection', () => {
 	it('keeps Advanced setup available while required fields disable the primary action', async () => {
-		const { getByRole, findByRole, emitted, rerender } = render(SetupConnection, {
+		const { getByRole, getAllByRole, findByRole, emitted, rerender } = render(SetupConnection, {
 			props: {
 				connected: false,
 				actionLabel: 'Connect',
@@ -14,6 +14,10 @@ describe('SetupConnection', () => {
 			},
 		});
 		expect(getByRole('button', { name: 'Connect' })).toBeDisabled();
+		expect(getAllByRole('button')).toEqual([
+			getByRole('button', { name: 'More options' }),
+			getByRole('button', { name: 'Connect' }),
+		]);
 		await userEvent.click(getByRole('button', { name: 'More options' }));
 		await userEvent.click(await findByRole('menuitem', { name: 'Advanced setup' }));
 		expect(emitted('select')).toEqual([['advanced']]);

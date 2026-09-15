@@ -5,16 +5,21 @@ import { nextTick, ref } from 'vue';
 import SetupPanel from './SetupPanel.vue';
 
 describe('SetupPanel', () => {
-	it('keeps progress visible and updates it while a detail is open', async () => {
+	it('replaces the service icon on completion without showing a progress count', async () => {
 		const items = [
 			{ id: 'slack', title: 'Slack', completed: false },
 			{ id: 'gmail', title: 'Gmail', completed: true },
 		];
-		const { getByRole, rerender } = render(SetupPanel, { props: { items, activeItemId: 'slack' } });
-		expect(getByRole('status')).toHaveTextContent('1 of 2 complete');
+		const { getByRole, queryByRole, rerender } = render(SetupPanel, {
+			props: { items, activeItemId: 'slack' },
+			slots: { icon: '<span data-test-id="service-icon" />' },
+		});
+		const detail = getByRole('dialog', { name: 'Slack' });
+		expect(detail.querySelector('[data-test-id="service-icon"]')).toBeVisible();
 		await rerender({ items: items.map((item) => ({ ...item, completed: true })) });
-		expect(getByRole('status')).toHaveTextContent('2 of 2 complete');
-		expect(getByRole('dialog', { name: 'Slack' })).toBeVisible();
+		expect(detail.querySelector('[data-test-id="service-icon"]')).toBeNull();
+		expect(detail.querySelector('[data-icon="status-completed"]')).toBeVisible();
+		expect(queryByRole('status')).toBeNull();
 	});
 
 	it('retains outgoing content while making the closing detail inaccessible', async () => {
@@ -131,6 +136,11 @@ describe('SetupPanel', () => {
 			},
 		});
 		expect(getByRole('button', { name: 'Slack Complete' })).toBeEnabled();
+		expect(
+			getByRole('button', { name: 'Slack Complete' }).querySelector(
+				'[data-icon="status-completed"]',
+			),
+		).toBeVisible();
 		const details = getByRole('button', { name: 'Details' });
 		expect(details).toBeDisabled();
 		await userEvent.click(details);

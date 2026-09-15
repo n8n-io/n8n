@@ -19,7 +19,6 @@ const { t } = useI18n();
 const activeItem = computed(() =>
 	props.items.find((item) => item.id === props.activeItemId && !item.disabled),
 );
-const completedCount = computed(() => props.items.filter((item) => item.completed).length);
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
 const overlayContent = useTemplateRef<HTMLElement>('overlayContent');
@@ -160,7 +159,13 @@ watch(
 									@click="!item.hasAction && emit('update:activeItemId', item.id)"
 								>
 									<span :class="$style.icon">
-										<slot name="icon" :item="item" />
+										<N8nIcon
+											v-if="item.completed"
+											icon="status-completed"
+											size="large"
+											color="success"
+										/>
+										<slot v-else name="icon" :item="item" />
 									</span>
 									<span :class="$style.title">{{ item.title }}</span>
 									<slot v-if="item.hasAction" name="action" :item="item" />
@@ -168,7 +173,6 @@ watch(
 										{{ item.subtitle }}
 									</span>
 									<span v-if="item.completed" :class="$style.complete">
-										<N8nIcon icon="circle-check" size="small" />
 										{{ t('setupPanel.complete') }}
 									</span>
 									<N8nIcon
@@ -215,11 +219,16 @@ watch(
 						>
 							<N8nIcon icon="chevron-left" size="small" />
 						</N8nButton>
-						<span :class="$style.icon"><slot name="icon" :item="activeItem" /></span>
-						<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
-						<span :class="$style.progress" role="status">
-							{{ t('setupPanel.progress', { completed: completedCount, total: items.length }) }}
+						<span :class="$style.icon">
+							<N8nIcon
+								v-if="activeItem.completed"
+								icon="status-completed"
+								size="large"
+								color="success"
+							/>
+							<slot v-else name="icon" :item="activeItem" />
 						</span>
+						<span :id="titleId" :class="$style.title">{{ activeItem.title }}</span>
 					</header>
 					<div :class="$style.detail">
 						<slot name="detail" :item="activeItem" />
@@ -235,10 +244,19 @@ watch(
 
 .panel {
 	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	min-width: 0;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
 	@include motion.fade-in-up;
+}
+
+.base,
+.overlay {
+	// Reserve the taller card's height so the chat can scroll above it.
+	grid-area: 1 / 1;
+	align-self: end;
 }
 
 .base {
@@ -301,8 +319,7 @@ watch(
 	--animation--popover-in--translate-y: var(--spacing--2xs);
 	--animation--popover-in--scale: 0.95;
 
-	position: absolute;
-	inset: auto 0 0;
+	position: relative;
 	z-index: 1;
 	box-sizing: content-box;
 	max-height: 60vh;
@@ -405,17 +422,7 @@ watch(
 }
 
 .complete {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
 	color: var(--text-color--success);
-}
-
-.progress {
-	flex-shrink: 0;
-	font-size: var(--font-size--2xs);
-	font-variant-numeric: tabular-nums;
-	color: var(--text-color--subtle);
 }
 
 .chevron {

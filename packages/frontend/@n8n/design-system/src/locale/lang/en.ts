@@ -5,7 +5,6 @@ export default {
 	'setupPanel.label': 'Workflow setup',
 	'setupPanel.back': 'Back to setup checklist',
 	'setupPanel.complete': 'Complete',
-	'setupPanel.progress': '{completed} of {total} complete',
 	'setupPanel.credentialSelected': 'Credential selected',
 	'setupPanel.setupComplete': 'Setup complete',
 	'setupPanel.execute': 'Execute',

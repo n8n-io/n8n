@@ -10,7 +10,6 @@ import {
 	N8nSegmentControl,
 	N8nSetupConnection,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { addCredentialTranslation, useI18n } from '@n8n/i18n';
@@ -605,17 +604,16 @@ onScopeDispose(() => {
 			</template>
 			<template #action-leading>
 				<N8nText v-if="useCredits && balanceLabel" step="xs">{{ balanceLabel }}</N8nText>
-				<N8nTooltip v-else-if="!useCredits" :content="helpLabel" placement="top">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:disabled="helpDisabled || busy"
-						@click="askForHelp"
-					>
-						<N8nIcon icon="sparkles" size="small" />
-						{{ i18n.baseText('instanceAi.askAiAssistant') }}
-					</N8nButton>
-				</N8nTooltip>
+				<N8nButton
+					v-else-if="!useCredits"
+					variant="ghost"
+					size="small"
+					:disabled="helpDisabled || busy"
+					@click="askForHelp"
+				>
+					<N8nIcon icon="sparkles" size="small" />
+					{{ helpLabel }}
+				</N8nButton>
 			</template>
 			<template v-if="initialized && !useCredits && !canQuickConnect">
 				<N8nText size="small" :class="$style.hint">

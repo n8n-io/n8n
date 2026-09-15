@@ -550,7 +550,7 @@ describe('InstanceAiSetupCredential', () => {
 		const rendered = renderComponent();
 		await flushPromises();
 		await fireEvent.update(rendered.getByLabelText('API key'), 'private-draft');
-		await userEvent.click(rendered.getByRole('button', { name: 'Ask n8n Assistant' }));
+		await userEvent.click(rendered.getByRole('button', { name: 'Help me find my API key' }));
 		expect(rendered.emitted('askForHelp')).toEqual([
 			[
 				expect.objectContaining({
@@ -564,7 +564,7 @@ describe('InstanceAiSetupCredential', () => {
 		expect(JSON.stringify(rendered.emitted('askForHelp'))).not.toContain('private-draft');
 		expect(rendered.getByLabelText('API key')).toHaveValue('private-draft');
 		await rendered.rerender({ helpDisabled: true });
-		expect(rendered.getByRole('button', { name: 'Ask n8n Assistant' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
 	});
 
 	it.each([false, true])(
