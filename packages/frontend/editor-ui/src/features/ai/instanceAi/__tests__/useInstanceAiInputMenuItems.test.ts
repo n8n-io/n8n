@@ -14,6 +14,7 @@ const {
 	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
+	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
 	settingsStore,
@@ -23,6 +24,7 @@ const {
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
 	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -100,6 +102,10 @@ vi.mock('../instanceAiSettings.store', () => ({
 
 vi.mock('../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStore,
+}));
+
+vi.mock('../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({ ignorePendingConnectResult }),
 }));
 
 vi.mock('../instanceAiMcp.telemetry', () => ({
@@ -292,6 +298,10 @@ describe('useInstanceAiInputMenuItems', () => {
 			data: { connectionId: '1' },
 		});
 		expect(mcpStore.disconnect).toHaveBeenCalledWith('1');
+		expect(ignorePendingConnectResult).toHaveBeenCalledWith('server-1');
+		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
+			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
 		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
 	});

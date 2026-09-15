@@ -67,7 +67,8 @@ function renderInlineConstraintLines(): string {
 const SAFE_METHODS_SENTENCE =
 	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
 	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
-	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
+	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available in builder code. ' +
+	'This restriction applies to builder code only: n8n expressions (`{{ ... }}`) run full JavaScript at runtime, so all of these methods work inside an expression.';
 
 /**
  * Node-groups documentation, shared by Instance AI and the MCP `get_sdk_reference` tool.
@@ -188,13 +189,26 @@ ${renderBlockedGlobalsLines()}
 
 ## Where to put runtime logic
 
-Builder code only describes the graph. For anything that needs to run at
-runtime (joining/aggregating values, transforming items, parsing, date math,
-regex), do it in one of these:
+Builder code only describes the graph. Anything that runs at runtime (shaping
+items, filtering, routing, sorting, de-duplicating, aggregating, splitting,
+parsing, date math, regex) belongs in a node. Pick the native node first:
 
-- Build strings with **template literals** or explicit lines.
-- Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
-- Use a **Code node** for multi-step aggregation or transformation.
+- Per-item shaping (rename, combine, compute, default, format fields): **Edit Fields (Set)** with expressions.
+- Filtering: **Filter**. Routing: **IF** / **Switch**. Sorting: **Sort**.
+- De-duplication: **Remove Duplicates**. Aggregation: **Aggregate** / **Summarize**.
+- Splitting an array into items: **Split Out**. Capping items: **Limit**. Joining branches: **Merge**.
+
+n8n expressions run full JavaScript at runtime, so \`.join()\`, \`.filter()\`,
+\`.map()\`, \`.split()\`, ternaries and \`||\` defaults all work inside a Set field
+value, for example \`{{ [$json.title, $json.category].filter(Boolean).join(' ') }}\`.
+The builder-code method restriction above does not apply to expressions. In
+builder code, pass an expression with \`expr('{{ ... }}')\` and build static
+strings with **template literals**.
+
+Use a **Code node** only for: multi-pass algorithms (loops over loops,
+recursion), \`$getWorkflowStaticData\` counters or state kept across runs,
+parsing model output that needs fence stripping, try/catch around upstream
+node access, or a step that would otherwise need three or more native nodes.
 `;
 }
 
