@@ -37,7 +37,8 @@ const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
 };
 
 describe('get-user-preferences MCP tool', () => {
-	const user = userWithScopes(['aiPreference:read']);
+	// A user's own preferences need no scope, so a role with none must be served.
+	const user = userWithScopes([]);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -207,22 +208,6 @@ describe('get-user-preferences MCP tool', () => {
 					).toEqual(expected);
 				},
 			);
-		});
-	});
-
-	describe('permissions', () => {
-		test('refuses a user without aiPreference:read and never reads', async () => {
-			const { aiPreferenceService, telemetry } = createMocks(empty);
-			const tool = createGetUserPreferencesTool(
-				userWithScopes(['workflow:read']),
-				aiPreferenceService,
-				telemetry,
-			);
-
-			await expect(tool.handler({})).rejects.toThrow(
-				'User does not have permission to read preferences',
-			);
-			expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
 		});
 	});
 

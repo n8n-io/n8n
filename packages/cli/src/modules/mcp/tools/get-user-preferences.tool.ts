@@ -1,5 +1,4 @@
 import type { User } from '@n8n/db';
-import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { AiPreferenceService } from '@/services/ai-preference.service';
@@ -99,12 +98,8 @@ export const createGetUserPreferencesTool = (
 		};
 
 		try {
-			// The OAuth grant decides whether this client may call the tool; this decides
-			// whether the user may read preferences at all.
-			if (!hasGlobalScope(user, 'aiPreference:read')) {
-				throw new Error('User does not have permission to read preferences');
-			}
-
+			// The OAuth grant decides whether this client may call the tool. No RBAC check: the
+			// service only returns rows the user may see, and their own rows need no scope.
 			// A failed read throws rather than answering "no preferences": that answer would
 			// send the assistant off to build against nothing.
 			const preferences = await aiPreferenceService.getApplicableAcrossProjects(user);

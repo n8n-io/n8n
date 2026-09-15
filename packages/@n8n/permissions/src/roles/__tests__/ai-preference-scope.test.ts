@@ -10,19 +10,22 @@ import { scopeInformation } from '@/scope-information';
 /**
  * `ai_preference` is a first-class resource — an entity, a repository, a service and a table —
  * so reading it is governed by a normal scope rather than by an MCP-only string. CONTEXT-132.
+ *
+ * The global scope covers instance rows and other users' rows. A user's own rows need no
+ * scope, which is why members do not hold it: granting it would let them see every user's rows.
  */
 describe('aiPreference scope', () => {
-	it('offers the read operation the MCP tool gates on', () => {
+	it('offers the read operation the MCP grant maps to', () => {
 		expect(RESOURCES.aiPreference).toContain('read');
 	});
 
-	it('is granted to the roles that build', () => {
+	it("is granted to the roles that may see other users' rows", () => {
 		expect(GLOBAL_OWNER_SCOPES).toContain('aiPreference:read');
 		expect(GLOBAL_ADMIN_SCOPES).toContain('aiPreference:read');
-		expect(GLOBAL_MEMBER_SCOPES).toContain('aiPreference:read');
 	});
 
-	it('is withheld from the chat-user role, which does not build', () => {
+	it('is withheld from members and chat users, whose own rows need no scope', () => {
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('aiPreference:read');
 		expect(GLOBAL_CHAT_USER_SCOPES).not.toContain('aiPreference:read');
 	});
 
