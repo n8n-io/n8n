@@ -1,4 +1,5 @@
 import type { TeamsAgentSetupState, TeamsDiscoveryState } from '@n8n/api-types';
+import { getBrowserId } from '@n8n/constants';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -35,11 +36,21 @@ export const stopTeamsDiscovery = async (
 	await makeRestApiRequest(context, 'DELETE', `${integrationPath(projectId, agentId)}/discovery`);
 
 /**
- * The package is a binary the browser saves rather than JSON the app parses, so
- * it is reached by navigation. The session cookie authenticates it.
+ * Fetched rather than linked to. The session cookie is bound to a `browser-id`
+ * header, which a plain navigation cannot send: the request comes back 401 and
+ * the app treats that as a dead session and signs the user out.
  */
-export const teamsAppPackageUrl = (
+export const fetchTeamsAppPackage = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): string => `${context.baseUrl}${integrationPath(projectId, agentId)}/package`;
+): Promise<Blob> => {
+	const response = await fetch(`${context.baseUrl}${integrationPath(projectId, agentId)}/package`, {
+		credentials: 'include',
+		headers: { 'browser-id': getBrowserId() },
+	});
+	if (!response.ok) {
+		throw new Error(`Could not download the Teams app package (${response.status})`);
+	}
+	return await response.blob();
+};

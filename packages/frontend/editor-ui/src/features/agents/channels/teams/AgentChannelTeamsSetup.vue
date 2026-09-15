@@ -22,9 +22,9 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import {
 	getTeamsDiscovery,
 	getTeamsSetupState,
+	fetchTeamsAppPackage,
 	startTeamsDiscovery,
 	stopTeamsDiscovery,
-	teamsAppPackageUrl,
 } from './api';
 
 const credentialId = defineModel<string>({ default: '' });
@@ -72,7 +72,7 @@ const DISCOVERY_POLL_MS = 2000;
 
 const setupState = ref<TeamsAgentSetupState | null>(null);
 const discovery = ref<TeamsDiscoveryState>({ status: 'idle' });
-const showManualCredential = ref(false);
+const manualEntry = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const availability = ref({
@@ -104,12 +104,43 @@ const messagingEndpointUrl = computed(() => {
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/teams`;
 });
 
-const packageUrl = computed(() =>
-	teamsAppPackageUrl(rootStore.restApiContext, props.projectId, props.agentId),
+const discovered = computed(() => (discovery.value.status === 'found' ? discovery.value : null));
+const downloading = ref(false);
+const downloadError = ref('');
+
+// The manifest needs the bot's client ID, which discovery supplies before the
+// credential is connected, so the step does not wait on connecting.
+const canDownloadPackage = computed(() =>
+	Boolean(setupState.value?.botId ?? discovered.value?.clientId),
 );
 
-const discovered = computed(() => (discovery.value.status === 'found' ? discovery.value : null));
-const canDownloadPackage = computed(() => Boolean(setupState.value?.botId));
+async function downloadPackage() {
+	downloading.value = true;
+	downloadError.value = '';
+	try {
+		const blob = await fetchTeamsAppPackage(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = 'n8n-agent-teams-app.zip';
+		link.style.display = 'none';
+		document.body.appendChild(link);
+		try {
+			link.click();
+		} finally {
+			link.remove();
+			URL.revokeObjectURL(url);
+		}
+	} catch {
+		downloadError.value = i18n.baseText('agents.channels.teams.setup.install.downloadFailed');
+	} finally {
+		downloading.value = false;
+	}
+}
 
 async function loadSetupState() {
 	if (!props.projectId || !props.agentId) return;
@@ -130,41 +161,61 @@ function stopPolling() {
 	pollTimer = undefined;
 }
 
+/**
+ * Listens for as long as the stepper is open, renewing the window as it lapses.
+ *
+ * A button to start it would be a button whose only job is to arm something the
+ * user already asked for by opening the setup. Opening on mount alone is not
+ * enough either: creating the Azure bot in step one takes longer than one
+ * window, so it has to renew rather than lapse into an error the user has to
+ * clear.
+ */
 async function pollDiscovery() {
 	try {
-		discovery.value = await getTeamsDiscovery(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
+		const state = await getTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
+		if (state.status === 'expired' && !manualEntry.value) {
+			await startTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
+			return;
+		}
+		discovery.value = state;
 	} catch {
-		discovery.value = { status: 'expired' };
+		// A blip should not end the wait; the next tick tries again.
+		return;
 	}
-	if (discovery.value.status !== 'waiting') stopPolling();
+	if (discovery.value.status === 'found') {
+		stopPolling();
+		// Saying we found a credential and then leaving the picker empty reads as
+		// a failure, so adopt it.
+		if (discovery.value.existingCredentialId) {
+			credentialId.value = discovery.value.existingCredentialId;
+		}
+	}
 }
 
-async function beginDiscovery() {
-	showManualCredential.value = false;
-	discovery.value = await startTeamsDiscovery(
-		rootStore.restApiContext,
-		props.projectId,
-		props.agentId,
-	);
+async function beginListening() {
+	await startTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
+	discovery.value = { status: 'waiting' };
 	stopPolling();
 	pollTimer = setInterval(pollDiscovery, DISCOVERY_POLL_MS);
 }
 
 function enterValuesManually() {
-	showManualCredential.value = true;
+	manualEntry.value = true;
 	stopPolling();
 	void stopTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
 }
 
-onMounted(loadSetupState);
+onMounted(async () => {
+	await loadSetupState();
+	if (props.mode === 'setup' && !props.connected) await beginListening();
+});
 // The package is minted from the connected credential, so it appears only once
 // connecting has succeeded.
 watch(() => props.connected, loadSetupState);
-onBeforeUnmount(stopPolling);
+onBeforeUnmount(() => {
+	stopPolling();
+	void stopTeamsDiscovery(rootStore.restApiContext, props.projectId, props.agentId);
+});
 
 const steps = computed(() => [
 	{
@@ -250,27 +301,7 @@ defineExpose({
 
 					<!-- 2. Connect the bot -->
 					<div v-else-if="step.id === 'connect-bot'" :class="$style.stepStack">
-						<N8nButton
-							v-if="discovery.status === 'idle' || discovery.status === 'expired'"
-							variant="subtle"
-							size="medium"
-							:disabled="loading"
-							data-testid="teams-start-discovery"
-							@click="beginDiscovery"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.connectBot.button') }}
-						</N8nButton>
-
-						<N8nText
-							v-if="discovery.status === 'expired'"
-							:class="$style.hint"
-							size="small"
-							data-testid="teams-discovery-expired"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.connectBot.expired') }}
-						</N8nText>
-
-						<template v-if="discovery.status === 'waiting'">
+						<template v-if="discovery.status === 'waiting' && !manualEntry">
 							<N8nText size="small" data-testid="teams-discovery-listening">
 								{{ i18n.baseText('agents.channels.teams.setup.connectBot.listening') }}
 							</N8nText>
@@ -301,7 +332,7 @@ defineExpose({
 								</N8nText>
 								<N8nCopyInput
 									:value="discovered.clientId"
-									size="small"
+									size="large"
 									:class="$style.urlInput"
 									:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 									:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
@@ -317,7 +348,7 @@ defineExpose({
 								</N8nText>
 								<N8nCopyInput
 									:value="discovered.tenantId"
-									size="small"
+									size="large"
 									:class="$style.urlInput"
 									:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 									:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
@@ -334,7 +365,7 @@ defineExpose({
 						</template>
 
 						<AgentIntegrationCredentialConnection
-							v-if="!connected && (discovered || showManualCredential)"
+							v-if="!connected && (discovered || manualEntry)"
 							v-model="credentialId"
 							:integration-type="integration.type"
 							:integration-label="integration.label"
@@ -346,10 +377,8 @@ defineExpose({
 							:error-message="errorMessage"
 							:error-is-conflict="errorIsConflict"
 							:force-new-credential="forceNewCredential"
-							show-connect-button
 							@create="emit('create')"
 							@edit="emit('edit')"
-							@connect="emit('connect')"
 						/>
 					</div>
 
@@ -436,11 +465,12 @@ defineExpose({
 					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
 						<N8nButton
 							v-if="canDownloadPackage"
-							:href="packageUrl"
 							variant="subtle"
 							size="medium"
 							icon="download"
+							:loading="downloading"
 							data-testid="teams-download-package"
+							@click="downloadPackage"
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
 						</N8nButton>
@@ -448,8 +478,41 @@ defineExpose({
 							{{ i18n.baseText('agents.channels.teams.setup.install.needsBot') }}
 						</N8nText>
 
+						<N8nText
+							v-if="downloadError"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-download-error"
+						>
+							{{ downloadError }}
+						</N8nText>
+
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+						</N8nText>
+
+						<!--
+							Connecting is the last thing that happens, because the modal closes
+							on it. Offered here so the package is already downloaded by then.
+						-->
+						<N8nButton
+							v-if="!connected"
+							variant="solid"
+							size="medium"
+							:disabled="!credentialId || loading"
+							:loading="loading"
+							data-testid="teams-connect"
+							@click="emit('connect')"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.connectButton') }}
+						</N8nButton>
+						<N8nText
+							v-if="!connected && !credentialId"
+							:class="$style.hint"
+							size="small"
+							data-testid="teams-connect-blocked"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.needsCredential') }}
 						</N8nText>
 						<N8nText
 							v-if="connected && !isPublished"
@@ -474,7 +537,7 @@ defineExpose({
 				<N8nCopyInput
 					id="teams-messaging-endpoint-url"
 					:value="messagingEndpointUrl"
-					size="small"
+					size="large"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
@@ -482,11 +545,12 @@ defineExpose({
 			</div>
 			<N8nButton
 				v-if="canDownloadPackage"
-				:href="packageUrl"
 				variant="subtle"
 				size="small"
 				icon="download"
+				:loading="downloading"
 				data-testid="teams-download-package"
+				@click="downloadPackage"
 			>
 				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
 			</N8nButton>
@@ -538,6 +602,10 @@ defineExpose({
 
 .hint {
 	color: var(--text-color--subtler);
+}
+
+.error {
+	color: var(--color--danger);
 }
 
 .urlInput {

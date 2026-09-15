@@ -4,7 +4,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
-import { getTeamsDiscovery, getTeamsSetupState, startTeamsDiscovery } from './api';
+import {
+	fetchTeamsAppPackage,
+	getTeamsDiscovery,
+	getTeamsSetupState,
+	startTeamsDiscovery,
+	stopTeamsDiscovery,
+} from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -16,7 +22,7 @@ vi.mock('./api', () => ({
 	getTeamsDiscovery: vi.fn(),
 	startTeamsDiscovery: vi.fn(),
 	stopTeamsDiscovery: vi.fn(),
-	teamsAppPackageUrl: () => 'https://n8n.example.com/rest/teams/package',
+	fetchTeamsAppPackage: vi.fn(),
 }));
 
 // The shared default is `data-test-id`; these components use `data-testid`.
@@ -58,6 +64,7 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 		vi.mocked(startTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
 		vi.mocked(getTeamsDiscovery).mockResolvedValue({ status: 'waiting' });
+		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -93,14 +100,33 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('step 2, connect the bot', () => {
-		it('listens after the user starts it', async () => {
+		it('listens as soon as the stepper opens, with nothing to click', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
-
-			await waitFor(() => expect(getByTestId('teams-start-discovery')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-start-discovery'));
 
 			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
 			expect(startTeamsDiscovery).toHaveBeenCalledWith(expect.anything(), 'p', 'a');
+		});
+
+		it('renews a lapsed window instead of surfacing it as an error', async () => {
+			vi.mocked(getTeamsDiscovery).mockResolvedValue({ status: 'expired' });
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+
+			const { getByTestId } = renderComponent({ props: props() });
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
+			await vi.advanceTimersByTimeAsync(2500);
+
+			// Once on mount, once to renew.
+			expect(vi.mocked(startTeamsDiscovery).mock.calls.length).toBeGreaterThan(1);
+			expect(getByTestId('teams-discovery-listening')).toBeVisible();
+		});
+
+		it('stops listening when the stepper closes', async () => {
+			const { unmount } = renderComponent({ props: props() });
+			await waitFor(() => expect(startTeamsDiscovery).toHaveBeenCalled());
+
+			unmount();
+
+			expect(stopTeamsDiscovery).toHaveBeenCalledWith(expect.anything(), 'p', 'a');
 		});
 
 		it('shows the bot it found, and asks only for the secret', async () => {
@@ -113,9 +139,7 @@ describe('AgentChannelTeamsSetup', () => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
 			const { getByTestId, container } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-start-discovery')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-start-discovery'));
-
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
 			await vi.advanceTimersByTimeAsync(2500);
 
 			await waitFor(() => expect(getByTestId('teams-discovery-found')).toBeVisible());
@@ -138,8 +162,7 @@ describe('AgentChannelTeamsSetup', () => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-start-discovery')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-start-discovery'));
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
 			await vi.advanceTimersByTimeAsync(2500);
 
 			await waitFor(() => expect(getByTestId('teams-discovery-no-tenant')).toBeVisible());
@@ -156,8 +179,7 @@ describe('AgentChannelTeamsSetup', () => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 
 			const { getByTestId, container } = renderComponent({ props: props() });
-			await waitFor(() => expect(getByTestId('teams-start-discovery')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-start-discovery'));
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
 			await vi.advanceTimersByTimeAsync(2500);
 
 			await waitFor(() => expect(container.textContent).toContain('connectBot.foundExisting'));
@@ -165,9 +187,6 @@ describe('AgentChannelTeamsSetup', () => {
 
 		it('offers a way out while listening', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
-
-			await waitFor(() => expect(getByTestId('teams-start-discovery')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-start-discovery'));
 
 			await waitFor(() => expect(getByTestId('teams-discovery-manual')).toBeVisible());
 		});
@@ -223,14 +242,30 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('step 4, install', () => {
-		it('withholds the package until the bot is connected', async () => {
+		it('withholds the package until the bot is known', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-package-blocked')).toBeVisible());
 			expect(queryByTestId('teams-download-package')).toBeNull();
 		});
 
-		it('offers the package once the bot is connected', async () => {
+		it('offers the package from the discovered bot, before connecting', async () => {
+			vi.mocked(getTeamsDiscovery).mockResolvedValue({
+				status: 'found',
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				existingCredentialId: null,
+			});
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+
+			const { getByTestId } = renderComponent({ props: props() });
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
+			await vi.advanceTimersByTimeAsync(2500);
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+		});
+
+		it('fetches the package rather than linking to it, so the session survives', async () => {
 			vi.mocked(getTeamsSetupState).mockResolvedValue({
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
@@ -238,8 +273,65 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 
 			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
-
 			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			expect(getByTestId('teams-download-package')).not.toHaveAttribute('href');
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() =>
+				expect(fetchTeamsAppPackage).toHaveBeenCalledWith(expect.anything(), 'p', 'a'),
+			);
+		});
+
+		it('reports a failed download instead of silently doing nothing', async () => {
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: CLIENT_ID,
+				deployToAzureUrl: DEPLOY_URL,
+			});
+			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
+
+			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() => expect(getByTestId('teams-download-error')).toBeVisible());
+		});
+
+		it('keeps connecting for last, because the modal closes on it', async () => {
+			vi.mocked(getTeamsDiscovery).mockResolvedValue({
+				status: 'found',
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				existingCredentialId: 'cred-1',
+			});
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+
+			const { getByTestId, emitted } = renderComponent({ props: props() });
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
+			await vi.advanceTimersByTimeAsync(2500);
+
+			await waitFor(() => expect(getByTestId('teams-connect')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-connect'));
+
+			expect(emitted().connect).toBeTruthy();
+		});
+
+		it('adopts the credential discovery found, so connecting is possible', async () => {
+			vi.mocked(getTeamsDiscovery).mockResolvedValue({
+				status: 'found',
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				existingCredentialId: 'cred-1',
+			});
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+
+			const { getByTestId, emitted } = renderComponent({ props: props() });
+			await waitFor(() => expect(getByTestId('teams-discovery-listening')).toBeVisible());
+			await vi.advanceTimersByTimeAsync(2500);
+
+			await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
+			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
 		});
 	});
 
@@ -253,7 +345,7 @@ describe('AgentChannelTeamsSetup', () => {
 				expect(container.querySelector('#teams-messaging-endpoint-url')).toHaveValue(ENDPOINT);
 			});
 			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
-			expect(queryByTestId('teams-start-discovery')).toBeNull();
+			expect(queryByTestId('teams-discovery-listening')).toBeNull();
 			expect(queryByTestId('teams-scope-channels')).toBeNull();
 		});
 	});

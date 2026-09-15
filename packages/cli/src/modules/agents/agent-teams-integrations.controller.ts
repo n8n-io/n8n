@@ -80,18 +80,25 @@ export class AgentTeamsIntegrationsController {
 	/**
 	 * Fetched by the Azure portal on the user's behalf, so it carries no n8n
 	 * session and authorises on the signed token in the query string instead.
+	 *
+	 * Written straight to the response rather than returned: the REST layer wraps
+	 * a returned value in `{ data: ... }`, and the portal rejects that with
+	 * "this is not a valid template" because the ARM schema has to be at the root.
 	 */
 	@Get('/:agentId/integrations/teams/arm-template', { skipAuth: true })
 	async getArmTemplate(
 		req: Request<{ projectId: string }>,
-		_res: Response,
+		res: Response,
 		@Param('agentId') agentId: string,
-	): Promise<Record<string, unknown>> {
+	): Promise<void> {
 		const token = req.query.token;
-		return await this.setupService.buildArmTemplate({
+		const template = await this.setupService.buildArmTemplate({
 			projectId: req.params.projectId,
 			agentId,
 			token: typeof token === 'string' ? token : '',
 		});
+
+		res.setHeader('Content-Type', 'application/json');
+		res.send(JSON.stringify(template));
 	}
 }
