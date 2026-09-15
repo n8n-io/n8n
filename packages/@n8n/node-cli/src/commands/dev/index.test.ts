@@ -28,7 +28,7 @@ vi.mock('./utils', async () => {
 
 vi.mock('../../utils/container-engine', () => ({
 	detectContainerEngine: vi.fn(async () => await Promise.resolve('docker')),
-	assertEngineRunning: vi.fn(async () => await Promise.resolve()),
+	assertEngineReady: vi.fn(async () => await Promise.resolve()),
 	removeContainer: vi.fn(),
 }));
 
