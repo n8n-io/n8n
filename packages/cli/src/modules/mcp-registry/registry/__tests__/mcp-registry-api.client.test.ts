@@ -173,6 +173,20 @@ describe('McpRegistryApiClient', () => {
 			});
 		});
 
+		it('should accept null remote headers and normalize them to undefined', async () => {
+			mockPaginatedRequest.mockResolvedValue([
+				{
+					...notionMockServer,
+					remotes: [{ ...notionMockServer.remotes[0], headers: null }],
+				},
+			]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].remotes[0].headers).toBeUndefined();
+		});
+
 		it.each([
 			['a bare array', ['docs'], ['docs']],
 			['a data envelope', { data: ['docs'] }, ['docs']],
