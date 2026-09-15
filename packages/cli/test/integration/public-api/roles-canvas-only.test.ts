@@ -2,9 +2,8 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, RoleRepository, SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
-import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -86,7 +85,7 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 			'credential:create',
 		]);
 		await Container.get(SettingsRepository).delete({
-			key: 'canvasOnly.personalSpaceRoleRemovedScopes',
+			key: CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key,
 		});
 	});
 
@@ -117,11 +116,9 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 			.send(workflowPayload());
 		expect(workflow.status).toBe(200);
 
-		// A restart re-syncs the system roles, then re-applies the stored choice.
+		// A restart re-syncs the system roles. The sync reads the stored choice, so
+		// the role never returns to its defaults, not even for a moment.
 		await Container.get(AuthRolesService).init();
-		expect(await storedScopes()).toContain('credential:create');
-
-		await Container.get(CanvasOnlyPersonalSpaceRoleService).run();
 		expect(await storedScopes()).not.toContain('credential:create');
 	});
 

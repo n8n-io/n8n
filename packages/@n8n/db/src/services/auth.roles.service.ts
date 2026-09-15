@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line import-x/order
 import {
@@ -9,8 +10,10 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
+	parseRemovedPersonalSpaceScopes,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -25,6 +28,7 @@ export class AuthRolesService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly dbLockService: DbLockService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private async syncScopes(tx: EntityManager) {
@@ -144,6 +148,15 @@ export class AuthRolesService {
 		return scopes;
 	}
 
+	/** Canvas-only mode lets an admin take some scopes away. The stored choice wins over the defaults. */
+	private async removeCanvasOnlyPersonalOwnerScopes(scopes: string[], tx: EntityManager) {
+		if (!this.globalConfig.canvasOnly) return scopes;
+
+		const row = await tx.findOneBy(Settings, { key: CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key });
+		const removed = parseRemovedPersonalSpaceScopes(row?.value);
+		return scopes.filter((slug) => !removed.includes(slug));
+	}
+
 	private async getExternalSecretsSystemRolesScopes(
 		roleSlug: string,
 		tx: EntityManager,
@@ -172,7 +185,8 @@ export class AuthRolesService {
 	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
-	 * and are added when the corresponding setting is enabled.
+	 * and are added when the corresponding setting is enabled. Canvas-only mode
+	 * can also remove scopes from the personal owner role.
 	 */
 	private async updateScopesBasedOnSettings(
 		roleSlug: string,
@@ -183,6 +197,7 @@ export class AuthRolesService {
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
+			return await this.removeCanvasOnlyPersonalOwnerScopes(scopes, tx);
 		}
 
 		// External secrets system roles scopes
