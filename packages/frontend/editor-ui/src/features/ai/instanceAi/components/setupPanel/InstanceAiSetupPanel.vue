@@ -25,7 +25,7 @@ import { deriveHomeProject } from '@/app/stores/workflowDocument.store';
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { getAppNameFromCredType, getAppNameFromNodeName } from '@/app/utils/nodeTypesUtils';
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
@@ -286,14 +286,16 @@ function groupName(group: SetupPanelGroup): string {
 	if (item)
 		return (
 			deriveServiceName(item.setupHint) ??
-			getAppNameFromCredType(
-				item.appDisplayName ??
-					credentialsStore.getCredentialTypeByName(item.credentialType)?.displayName ??
-					item.credentialType,
+			getAppNameFromNodeName(
+				getAppNameFromCredType(
+					item.appDisplayName ??
+						credentialsStore.getCredentialTypeByName(item.credentialType)?.displayName ??
+						item.credentialType,
+				),
 			)
 		);
 	return group.node
-		? (nodeType(group.node)?.displayName ?? group.node.name)
+		? getAppNameFromNodeName(nodeType(group.node)?.displayName ?? group.node.name)
 		: i18n.baseText('instanceAi.setupPanel.details');
 }
 

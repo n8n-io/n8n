@@ -40,7 +40,7 @@ import {
 	deriveServiceName,
 	listPlaceholderTitles,
 } from '@/features/credentials/templatedAuth.utils';
-import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { getAppNameFromCredType, getAppNameFromNodeName } from '@/app/utils/nodeTypesUtils';
 import type {
 	SetupCredentialItem,
 	SetupCredentialRef,
@@ -120,10 +120,12 @@ const canQuickConnect = computed(
 const serviceName = computed(
 	() =>
 		deriveServiceName(props.item.setupHint) ??
-		getAppNameFromCredType(
-			props.item.appDisplayName ??
-				form.credentialType.value?.displayName ??
-				props.item.credentialType,
+		getAppNameFromNodeName(
+			getAppNameFromCredType(
+				props.item.appDisplayName ??
+					form.credentialType.value?.displayName ??
+					props.item.credentialType,
+			),
 		),
 );
 const binding = computed(() => {
@@ -309,8 +311,6 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 				{ id: 'edit', label: i18n.baseText('instanceAi.setupPanel.editCredential') },
 			]
 		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
-	if (!connected.value && documentationUrl.value)
-		items.push({ id: 'docs', label: i18n.baseText('credentialEdit.credentialConfig.openDocs') });
 	return [...items, ...existing];
 });
 
@@ -450,10 +450,6 @@ async function connect() {
 }
 
 function onMenuAction(id: string) {
-	if (id === 'docs') {
-		window.open(documentationUrl.value, '_blank', 'noopener,noreferrer');
-		return;
-	}
 	if (id === 'existing') {
 		chooseExisting.value = true;
 		return;

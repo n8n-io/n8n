@@ -44,6 +44,7 @@ const parametersItem = computed(() => props.item);
 // --- Parameter edits (buffered locally, applied on Confirm) ---
 
 const parameterChanges = ref<SetupParameterChange[]>([...(props.pendingChanges ?? [])]);
+const touchedParameters = ref(new Set<string>());
 onScopeDispose(() => emit('update:hasChanges', false));
 const displayParameters = computed(() =>
 	applySetupParameterChanges(
@@ -97,6 +98,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 function onConfirm() {
 	const item = parametersItem.value;
 	if (!item || !parameterChanges.value.length) return;
+	for (const parameter of parameterDefinitions.value) touchedParameters.value.add(parameter.name);
 	// Pass the baseline so queued writes preserve later edits to sibling fields.
 	const values: INodeParameters = {};
 	for (const change of parameterChanges.value) {
@@ -120,6 +122,12 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	if (!item || !nodeType.value) return [];
 	return nodeType.value.properties.filter((property) => parameterRoots.value.has(property.name));
 });
+
+const hiddenIssuesInputs = computed(() =>
+	parameterDefinitions.value
+		.filter((parameter) => !touchedParameters.value.has(parameter.name))
+		.map((parameter) => parameter.name),
+);
 
 const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
 	const result: Record<string, number[]> = {};
@@ -206,8 +214,10 @@ useSetupPanelDocument({
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:hidden-issues-inputs="hiddenIssuesInputs"
 				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
+				@parameter-blur="touchedParameters.add($event)"
 			/>
 			<div :class="$style.footer">
 				<N8nButton
