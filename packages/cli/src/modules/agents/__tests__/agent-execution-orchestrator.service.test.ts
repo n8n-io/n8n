@@ -1113,7 +1113,10 @@ describe('AgentExecutionOrchestratorService', () => {
 					assistantResponse: 'Handled the background result.',
 					// The signal leads the recorded timeline so the preview shows the tasks.
 					timeline: [
-						expect.objectContaining({ type: 'background-task-signal', signal: backgroundJobSignal }),
+						expect.objectContaining({
+							type: 'background-task-signal',
+							signal: backgroundJobSignal,
+						}),
 						expect.objectContaining({ type: 'text', content: 'Handled the background result.' }),
 					],
 				}),
