@@ -23,9 +23,6 @@ import {
 	TEAMS_TENANT_ID,
 } from './synthetic-fixtures';
 
-/** Id the Bot Connector stub returns for the first outbound post. */
-export const FIRST_POSTED_MESSAGE_ID = 'message-1000';
-
 /**
  * Bot Framework constants the Teams SDK derives from its `PUBLIC` cloud config.
  * Pinned here so a stub drifting from the SDK fails loudly instead of silently
@@ -45,6 +42,8 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	/** Id the Bot Connector stub returned for the most recent outbound post. */
+	lastPostedMessageId: () => string | undefined;
 }
 
 /**
@@ -111,7 +110,8 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	// Outbound replies. Recorded as `sendActivity` so assertions read the same
 	// way as the other platforms' `lastPost()`.
-	let nextMessageId = Number(FIRST_POSTED_MESSAGE_ID.split('-')[1]);
+	let nextMessageId = 1000;
+	const postedMessageIds: string[] = [];
 	nock(serviceUrl.origin)
 		.persist()
 		.post(/\/v3\/conversations\/.+\/activities.*/)
@@ -120,7 +120,9 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 				method: 'sendActivity',
 				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
 			});
-			return [200, { id: `message-${nextMessageId++}` }];
+			const id = `message-${nextMessageId++}`;
+			postedMessageIds.push(id);
+			return [200, { id }];
 		});
 
 	nock(serviceUrl.origin)
@@ -134,7 +136,7 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 			return [200, { id: 'message-edited' }];
 		});
 
-	return { apiCalls, restore: () => nock.cleanAll() };
+	return { apiCalls, postedMessageIds, restore: () => nock.cleanAll() };
 }
 
 export async function createTeamsReplayContext(
@@ -198,6 +200,7 @@ export async function createTeamsReplayContext(
 		latestThreadId: () => setup.messageContextStore.latestThreadId(),
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();
 			await setup.shutdown();

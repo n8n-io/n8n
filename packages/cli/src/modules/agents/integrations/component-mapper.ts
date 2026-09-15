@@ -76,12 +76,6 @@ interface ComponentRenderContext {
 }
 
 /**
- * Converts agent SDK suspend payloads into Chat SDK Card elements.
- *
- * The `chat` package is ESM-only, so every method dynamically imports it
- * via the ESM loader to bypass TypeScript's CJS transform.
- */
-/**
  * Replace every select with one button per option.
  *
  * Shared by the platforms whose rich cards have no select control. Telegram
@@ -101,6 +95,12 @@ export function expandSelectsToButtons(components: SuspendComponent[]): SuspendC
 	return normalized;
 }
 
+/**
+ * Converts agent SDK suspend payloads into Chat SDK Card elements.
+ *
+ * The `chat` package is ESM-only, so every method dynamically imports it
+ * via the ESM loader to bypass TypeScript's CJS transform.
+ */
 export class ComponentMapper {
 	/**
 	 * Convert a suspend payload to a Chat SDK Card.

@@ -1,9 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	createTeamsReplayContext,
-	FIRST_POSTED_MESSAGE_ID,
-} from '../../../__tests__/helpers/teams/replay-test-context';
+import { createTeamsReplayContext } from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
 	dmFollowUp,
@@ -134,9 +131,7 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.sendWebhook(dmMessage);
 
 			const actions = cardActions(ctx.lastPost()?.body);
-			expect(actions.map((action) => action.title)).toEqual(
-				expect.arrayContaining(['Staging', 'Production']),
-			);
+			expect(actions.map((action) => action.title)).toEqual(['Staging', 'Production']);
 		} finally {
 			await ctx.shutdown();
 		}
@@ -164,6 +159,8 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.sendWebhook(dmMessage);
 
 			const cardPost = ctx.lastPost();
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
 			const actions = cardActions(cardPost?.body);
 			const approve = actions[0];
 			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
@@ -172,9 +169,7 @@ describe('Microsoft Teams integration scenarios', () => {
 				{ type: 'text-delta', id: 'resume-text', delta: 'Card handled' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
-			await ctx.sendWebhook(
-				cardAction(approve.data as Record<string, unknown>, FIRST_POSTED_MESSAGE_ID),
-			);
+			await ctx.sendWebhook(cardAction(approve.data as Record<string, unknown>, cardMessageId));
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({

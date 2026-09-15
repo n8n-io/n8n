@@ -52,4 +52,13 @@ describe('agent chat subscription integration types', () => {
 			await expect(repository.isSubscribed(scope, threadId)).resolves.toBe(true);
 		}
 	});
+
+	// Without this the suite would still pass if a migration dropped the check
+	// altogether, which would make the test above prove nothing.
+	it('rejects a type the constraint does not list', async () => {
+		const repository = Container.get(AgentChatSubscriptionRepository);
+		const scope = { agentId, integrationType: 'not-a-channel', credentialId: 'cred-x' };
+
+		await expect(repository.subscribe(scope, 'thread-x')).rejects.toThrow();
+	});
 });

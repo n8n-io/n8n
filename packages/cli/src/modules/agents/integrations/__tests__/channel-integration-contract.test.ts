@@ -119,7 +119,7 @@ runSharedChannelIntegrationContract({
 // Teams has no recorded session yet (no tenant in CI), so the contract runs
 // against hand-built activities driven through the real adapter.
 //
-// The adapter encodes its thread id as base64 conversation + service URL;
+// The adapter encodes its thread id as base64url conversation + service URL;
 // deriving it from the fixture constants keeps the two from drifting apart.
 const teamsThreadId = [
 	'teams',

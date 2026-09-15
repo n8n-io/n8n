@@ -4,9 +4,9 @@ import type { Logger as ChatLogger } from 'chat';
 /**
  * Bridge a Chat SDK adapter's logger onto n8n's.
  *
- * Adapter metadata arguments are dropped, not forwarded: adapters pass message
- * text, IDs, request signatures and public keys as metadata, none of which
- * belongs in instance logs.
+ * Only the message string is forwarded. Adapter metadata arguments are dropped:
+ * the Discord adapter was observed passing message text, IDs, request
+ * signatures and public keys that way, none of which belongs in instance logs.
  */
 export function createAdapterLogger(logger: Logger, prefix: string): ChatLogger {
 	const forward =

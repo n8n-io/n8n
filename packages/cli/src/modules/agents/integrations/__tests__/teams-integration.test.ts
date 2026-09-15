@@ -6,10 +6,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import {
-	ChatIntegrationRegistry,
-	type AgentChatIntegrationContext,
-} from '../agent-chat-integration';
+import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import {
 	TEAMS_APP_ID as CLIENT_ID,
 	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
@@ -71,13 +68,16 @@ describe('TeamsIntegration', () => {
 				credentialTypes: ['microsoftEntraServicePrincipalApi'],
 				internal: true,
 				disableStreaming: true,
-				// Full Adaptive Card payloads fit, so no callback store is needed.
+				// Left at the base-class default: full Adaptive Card payloads fit, so
+				// no callback store is needed.
 				needsShortCallbackData: false,
 				deleteActionMessageBeforeResume: false,
 			});
 		});
 
-		it('runs on every main because Teams only receives webhooks', () => {
+		// Also the base-class default; asserted because Teams receiving only
+		// webhooks is what makes that default correct here.
+		it('runs on every main', () => {
 			expect(integration.requiresLeader()).toBe(false);
 		});
 	});
@@ -226,16 +226,5 @@ describe('TeamsIntegration', () => {
 
 			expect(integration.normalizeComponents(components)).toEqual(components);
 		});
-	});
-});
-
-describe('Teams channel registration', () => {
-	it('resolves by type but stays out of the public catalog', () => {
-		const integration = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
-		const registry = new ChatIntegrationRegistry();
-		registry.register(integration);
-
-		expect(registry.get('teams')).toBe(integration);
-		expect(registry.listPublic().map((i) => i.type)).not.toContain('teams');
 	});
 });

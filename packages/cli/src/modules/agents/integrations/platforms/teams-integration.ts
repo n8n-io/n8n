@@ -101,8 +101,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 			appPassword,
 			appTenantId,
 			apiUrl: TEAMS_API_URL,
-			// The credential always carries a tenant ID, which is what single-tenant
-			// means here. A multi-tenant bot omits it and is not supported yet.
+			// The Entra credential always carries a tenant ID, so a bot registered as
+			// multi-tenant is still driven single-tenant here. Nothing detects that
+			// mismatch: it surfaces as a token-mint failure on the first message.
 			appType: 'SingleTenant',
 			logger: createAdapterLogger(this.logger, '[TeamsAdapter]'),
 		});
