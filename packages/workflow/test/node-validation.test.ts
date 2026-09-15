@@ -473,6 +473,29 @@ describe('node-validation', () => {
 			).toThrow('boom');
 		});
 
+		// The engine swallows a runtime error inside an expression and returns
+		// `null` rather than throwing, so `throwOnExpressionError` alone would
+		// not have caught it.
+		describe('when the expression resolves to no list at all', () => {
+			const unresolved = {
+				expression: { getSimpleParameterValue: () => null },
+				getNode: () => parser,
+				getParentNodes: () => [],
+			} as unknown as WorkflowForInputValidation;
+
+			it('surfaces it as unresolved when asked to', () => {
+				expect(() =>
+					getUnconnectedRequiredInputs(unresolved, parser, description, {
+						throwOnExpressionError: true,
+					}),
+				).toThrow('did not resolve to a list');
+			});
+
+			it('still reports nothing when swallowing suits the caller', () => {
+				expect(getUnconnectedRequiredInputs(unresolved, parser, description)).toEqual([]);
+			});
+		});
+
 		it('reports nothing when the parameters do not make the input required', () => {
 			const off = { ...parser, parameters: { autoFix: false } };
 			const result = getUnconnectedRequiredInputs(

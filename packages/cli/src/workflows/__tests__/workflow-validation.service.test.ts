@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	ICredentialType,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -1745,6 +1746,26 @@ describe('WorkflowValidationService', () => {
 			expect(result).toEqual({ isValid: true });
 		});
 
+		it('still checks a trigger that is wired to nothing', async () => {
+			// A trigger starts the run whether or not anything feeds it, so the
+			// floating-node exemption must not cover it.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'triggerParser') {
+					return { ...parserType, trigger: async () => undefined } as unknown as INodeType;
+				}
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'triggerParser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Trigger'");
+		});
+
 		it('does not rewrite the parameters of the nodes it was given', async () => {
 			// These are the nodes about to be persisted as the active version.
 			const parser = node('Parser', 'parser');
@@ -1821,6 +1842,101 @@ describe('WorkflowValidationService', () => {
 
 			expect(result.error).toContain("'Parser A'");
 			expect(result.error).toContain("'Parser B'");
+		});
+
+		describe('with a dynamic inputs expression', () => {
+			/** `inputs` is an expression, so it resolves against the node's parameters. */
+			const gatedParserType = {
+				description: {
+					displayName: 'Parser',
+					name: 'gatedParser',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Parser' },
+					inputs:
+						'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
+					outputs: ['ai_outputParser'],
+					properties: [
+						{ name: 'autoFix', displayName: 'Auto-fix', type: 'boolean', default: true },
+					],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			/** Same shape, but the expression cannot be evaluated. */
+			const brokenParserType = {
+				description: {
+					...gatedParserType.description,
+					name: 'brokenParser',
+					inputs: '={{ $parameter.nothing.here }}',
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'gatedParser') return gatedParserType;
+					if (type === 'brokenParser') return brokenParserType;
+					if (type === 'agent') return agentType;
+					return modelType;
+				});
+			});
+
+			it('resolves the expression against parameter defaults the caller never set', async () => {
+				// The node omits `autoFix`; only the type default makes the input
+				// required. The transient workflow fills defaults in, so the
+				// expression must see the filled-in value, not the caller's bare node.
+				const parser = node('Parser', 'gatedParser');
+				expect(parser.parameters).toEqual({});
+
+				const result = await service.validateRequiredInputsConnected(
+					[parser, node('Agent', 'agent')],
+					{
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Parser'");
+				// Filling defaults must not leak back onto the version being saved.
+				expect(parser.parameters).toEqual({});
+			});
+
+			it('reports an input it could not determine instead of treating it as absent', async () => {
+				// A swallowed expression error would read as "requires nothing" and
+				// let a broken workflow publish.
+				const result = await service.validateRequiredInputsConnected(
+					[node('Parser', 'brokenParser'), node('Agent', 'agent')],
+					{
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('could not be determined');
+			});
+		});
+
+		it('does not mutate the connections it was given', async () => {
+			const connections = {
+				Model: {
+					ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+				},
+			} as unknown as IConnections;
+			const snapshot = deepCopy(connections);
+
+			await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				connections,
+				nodeTypes,
+			);
+
+			expect(connections).toEqual(snapshot);
 		});
 	});
 });

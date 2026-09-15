@@ -1259,12 +1259,22 @@ export function getNodeInputs(
 
 	// Calculate the outputs dynamically
 	try {
-		return (workflow.expression.getSimpleParameterValue(
+		const resolved = workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as NodeConnectionType[];
+		);
+
+		// The engine swallows a runtime error inside an expression and yields
+		// `null`, which would otherwise read as "this node needs no inputs".
+		// Only syntax errors reach the catch below, so callers judging validity
+		// need anything that is not a list treated as unresolved.
+		if (options.throwOnExpressionError && !Array.isArray(resolved)) {
+			throw new UnexpectedError('the inputs expression did not resolve to a list');
+		}
+
+		return (resolved || []) as NodeConnectionType[];
 	} catch (e) {
 		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
