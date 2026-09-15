@@ -246,6 +246,7 @@ describe('viewsData', () => {
 			expect(triggerSection && isNodeViewSection(triggerSection)).toBe(true);
 			if (!triggerSection || !isNodeViewSection(triggerSection)) return;
 			expect(triggerSection.hideHeader).toBe(true);
+			expect(triggerSection.children[0].uuid).toBe('additional-workflow-elements-trigger');
 			expect(triggerSection.children[0].key).toBe('Trigger');
 			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
 			if (!groupItem || !isNodeViewItem(groupItem)) return;
