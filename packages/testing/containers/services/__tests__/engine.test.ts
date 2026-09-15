@@ -54,6 +54,14 @@ describe('applyEngineEnv', () => {
 		);
 	});
 
+	test('rejects an env that is missing Postgres connection values', () => {
+		const env: Record<string, string> = { DB_TYPE: 'postgresdb', DB_POSTGRESDB_HOST: 'postgres' };
+
+		expect(() => applyEngineEnv(env, { engine: 'in-process', isQueueMode: false })).toThrow(
+			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_PORT/,
+		);
+	});
+
 	test('rejects queue mode', () => {
 		const env = { ...postgresEnv };
 

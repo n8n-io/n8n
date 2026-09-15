@@ -12,6 +12,14 @@ export const ENGINE_MODULE = 'engine-v2';
 /** The data plane keeps its own database on the stack Postgres. */
 export const ENGINE_DATABASE = 'n8n_engine';
 
+/** The values the Postgres service contributes, and the URL is built from. */
+const CONNECTION_KEYS = [
+	'DB_POSTGRESDB_USER',
+	'DB_POSTGRESDB_PASSWORD',
+	'DB_POSTGRESDB_HOST',
+	'DB_POSTGRESDB_PORT',
+] as const;
+
 interface EngineEnvOptions {
 	engine: EngineMode | undefined;
 	isQueueMode: boolean;
@@ -35,6 +43,13 @@ export function applyEngineEnv(
 
 	if (env.DB_TYPE !== 'postgresdb') {
 		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
+	}
+
+	// `env` types every value as present, so a missing one would otherwise reach
+	// the URL as the literal `undefined` and fail at engine boot.
+	const missing = CONNECTION_KEYS.filter((key) => !env[key]);
+	if (missing.length > 0) {
+		throw new Error(`Engine 2.0 needs the Postgres connection env: missing ${missing.join(', ')}`);
 	}
 
 	const modules = (env.N8N_ENABLED_MODULES ?? '').split(',').filter(Boolean);
