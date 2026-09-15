@@ -5312,7 +5312,6 @@ describe('createExecutionAdapter runStep()', () => {
 		reuseExecutionId?: string;
 		mockInput?: Array<Record<string, unknown>>;
 		toolArguments?: Record<string, unknown> | string;
-		toolName?: string;
 		versionId?: string;
 		timeout?: number;
 	};
@@ -5708,6 +5707,26 @@ describe('createExecutionAdapter runStep()', () => {
 			},
 		};
 
+		/** The same graph with a node that holds several tools in place of the tool. */
+		const toolkitWorkflow = {
+			...agentWorkflow,
+			nodes: agentWorkflow.nodes.map((node) =>
+				node.name === 'Calculator'
+					? {
+							...node,
+							name: 'MCP Client',
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							parameters: {},
+						}
+					: node,
+			),
+			connections: {
+				Trigger: agentWorkflow.connections.Trigger,
+				'Create Ticket': agentWorkflow.connections['Create Ticket'],
+				'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			},
+		};
+
 		it('mocks the path above the Agent instead of running it', async () => {
 			const { runData, result } = await runStepOn(agentWorkflow, 'Calculator', {
 				mockInput: [{ text: 'hello' }],
@@ -5806,68 +5825,19 @@ describe('createExecutionAdapter runStep()', () => {
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		it('refuses a node that holds several tools when none is named', async () => {
-			const withToolkit = {
-				...agentWorkflow,
-				nodes: agentWorkflow.nodes.map((node) =>
-					node.name === 'Calculator'
-						? {
-								...node,
-								name: 'MCP Client',
-								type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-								parameters: {},
-							}
-						: node,
-				),
-				connections: {
-					Trigger: agentWorkflow.connections.Trigger,
-					'Create Ticket': agentWorkflow.connections['Create Ticket'],
-					'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
-				},
-			};
-			const harness = createRunAdapterForTests(withToolkit, {
+		it('refuses a node that holds several tools', async () => {
+			// The Tool Executor matches a member by a name built from the node name
+			// and the server's tool name (`buildMcpToolName`), so nothing here can
+			// name one. A miss reports success with no result and no error.
+			const harness = createRunAdapterForTests(toolkitWorkflow, {
 				execution: makeExecution({ status: 'success' }),
 			});
 			const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
-			// The Tool Executor matches no member, so the run would report success
-			// with no result and no error.
 			await expect(runStep('wf-1', 'MCP Client', { mockInput: [{}] })).rejects.toThrow(
-				'holds several tools, so a step run has to name the one to run',
+				'holds several tools, and a step run cannot pick one of them',
 			);
 			expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
-		});
-
-		it('runs a named member of a toolkit node', async () => {
-			const withToolkit = {
-				...agentWorkflow,
-				nodes: agentWorkflow.nodes.map((node) =>
-					node.name === 'Calculator'
-						? {
-								...node,
-								name: 'MCP Client',
-								type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-								parameters: {},
-							}
-						: node,
-				),
-				connections: {
-					Trigger: agentWorkflow.connections.Trigger,
-					'Create Ticket': agentWorkflow.connections['Create Ticket'],
-					'MCP Client': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
-				},
-			};
-
-			const { runData } = await runStepOn(withToolkit, 'MCP Client', {
-				mockInput: [{}],
-				toolName: 'list_issues',
-				toolArguments: { repo: 'n8n' },
-			});
-
-			expect(runData.agentRequest).toEqual({
-				query: { list_issues: { repo: 'n8n' } },
-				tool: { name: 'list_issues' },
-			});
 		});
 
 		it('refuses a sub-node that is not a tool', async () => {
@@ -5933,7 +5903,7 @@ describe('createExecutionAdapter runStep()', () => {
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
 		await expect(runStep('wf-1', 'Send', { toolArguments: { a: 1 } })).rejects.toThrow(
-			'apply only to a tool node',
+			'applies only to a tool node',
 		);
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 	});

@@ -152,7 +152,8 @@ that Agent:
 - `reuseExecutionId` replays the nodes above the **Agent**.
 - A chain run (neither option) runs every node above the Agent for real. Give
   one of the two options when a node up there writes.
-- The result names the node it ran through in `ranThroughNodeNames`.
+- The result names the nodes that can run it in `ranThroughNodeNames`. With
+  several agents on one tool, n8n picks one of them.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:
@@ -166,16 +167,16 @@ executions(action="run-step", workflowId, nodeName="Create Ticket Tool",
 Use the argument names from the node's `$fromAI` calls, which
 `workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
 that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
-tool). A node that holds several tools (MCP Client Tool) needs the one you want
-named in `toolName`.
+tool).
 
-Two of these are refused rather than run: a tool that declares `$fromAI`
-arguments without `toolArguments`, and a toolkit node without `toolName`. Both
-would otherwise fail, or return nothing, for a reason that has nothing to do
-with the user's problem — and you would report that as the defect.
+A tool that declares `$fromAI` arguments is refused without them: it would
+otherwise fail for a reason that has nothing to do with the user's problem, and
+you would report that as the defect. A node that holds several tools (MCP Client
+Tool) is refused outright, because nothing here can name one of its tools the
+way the agent does. Run the Agent for that one.
 
-Any other sub-node — a model, memory, embeddings — cannot be run this way at
-all. Run the Agent, and read the sub-node with
+A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
+way at all. Run the Agent, and read the sub-node with
 `executions(action="get-node-output")` on **that** execution: n8n records every
 call a sub-node made while the Agent ran.
 

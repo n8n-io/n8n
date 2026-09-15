@@ -149,14 +149,6 @@ const runStepAction = z.object({
 				'tool). Required when the node declares $fromAI arguments, because the ' +
 				'tool runs with empty arguments otherwise.',
 		),
-	toolName: z
-		.string()
-		.optional()
-		.describe(
-			'Only for a node that holds several tools (MCP Client Tool): which one to ' +
-				'run. Required for such a node, because the run matches no tool without ' +
-				"it. Any other tool defaults to the node's own.",
-		),
 	versionId: z
 		.string()
 		.optional()
@@ -530,7 +522,6 @@ async function handleRunStep(
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
 		toolArguments: input.toolArguments,
-		toolName: input.toolName,
 		versionId: input.versionId,
 		timeout: input.timeout,
 		abortSignal,

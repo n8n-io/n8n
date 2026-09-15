@@ -610,7 +610,6 @@ evaluation mode, so any other mode would drop the workflow's pins.
 | `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
 | `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
 | `toolArguments` | object \| string | no | — | Arguments for a tool target — what an agent would fill from `$fromAI` |
-| `toolName` | string | for a toolkit node | — | Which tool of a toolkit node (MCP Client Tool) to run |
 | `versionId` | string | no | current draft | Run a past version's graph |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
@@ -644,7 +643,8 @@ its own. It replaces the node that owns the tool (the Agent) with a virtual Tool
 Executor that inherits that node's main parents, then runs the tool from there.
 So a step on a tool is planned against the Agent: `mockInput` feeds the Agent's
 input, and `reuseExecutionId` replays the Agent's ancestors. The result names
-the node it ran through in `ranThroughNodeNames`. A chain run on a tool runs
+the nodes that can run it in `ranThroughNodeNames` — all of them when a tool
+hangs off several agents, since the engine picks one. A chain run on a tool runs
 every node above the Agent, so supply `reuseExecutionId` or `mockInput` when one
 of those nodes writes.
 
@@ -653,12 +653,12 @@ behind the tool's `$fromAI` calls, keyed by argument name, or a bare string for
 a tool that takes one free-text input (Wikipedia, Code Tool, a vector store used
 as a tool). It is **required** when the node declares `$fromAI` arguments: the
 action refuses the run rather than execute the tool on empty arguments and
-report a failure that says nothing about the user's problem. A toolkit node (MCP
-Client Tool, MCP Registry Client Tool) holds several tools and the Tool Executor
-runs only the one `toolName` matches, so a target of that kind is refused
-without it — unnamed, nothing matches and the run reports success with no result
-at all. For any other tool `toolName` is unnecessary: the node's own tool is the
-default.
+report a failure that says nothing about the user's problem. A node that holds several tools (MCP
+Client Tool, MCP Registry Client Tool) is refused: the Tool Executor runs the
+member whose name matches the request, that name is `buildMcpToolName` of the
+node name and the server's tool name, and a miss reports success with no result
+at all. Run the owning Agent instead and read the node's output from that
+execution.
 
 Every **other** sub-node kind — a model, memory, embeddings — is refused: n8n
 runs those only as part of the node that owns them, so the action points the
@@ -674,9 +674,9 @@ whose result would mislead:
   target — falling back to a chain run would execute those nodes for real, which
   is what asking for replayed input rules out;
 - a tool that declares `$fromAI` arguments with no `toolArguments`;
-- a toolkit node with no `toolName`;
+- a node that holds several tools;
 - a sub-node that is not a tool;
-- `toolArguments` or `toolName` on a node in the main graph.
+- `toolArguments` on a node in the main graph.
 
 **Pin data**: the target's own pin, and any pin on a node whose output the
 mocked mode replaced, come off this run's copy — a pinned node never

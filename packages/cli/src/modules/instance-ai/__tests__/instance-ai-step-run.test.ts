@@ -550,19 +550,6 @@ describe('tool arguments', () => {
 			).toEqual({ query: { Wikipedia: 'Napoleon' }, tool: { name: 'Wikipedia' } });
 		});
 
-		it('names a toolkit member instead of the node', () => {
-			expect(
-				buildToolAgentRequest({
-					target: node('MCP Client'),
-					toolName: 'list_issues',
-					toolArguments: { repo: 'n8n' },
-				}),
-			).toEqual({
-				query: { list_issues: { repo: 'n8n' } },
-				tool: { name: 'list_issues' },
-			});
-		});
-
 		it('sends an empty argument set when the caller supplies none', () => {
 			expect(buildToolAgentRequest({ target: node('Calculator') })).toEqual({
 				query: { Calculator: {} },

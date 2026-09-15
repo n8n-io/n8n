@@ -209,9 +209,12 @@ export interface StepExecutionResult extends ExecutionResult {
 	/** Execution the replayed run data came from. */
 	reusedFromExecutionId?: string;
 	/**
-	 * Nodes the step ran through, when the target is a sub-node (a tool, a model,
-	 * a memory). The engine runs a sub-node from the node that owns it, so the
+	 * Nodes that can run the target, when it is a sub-node (a tool, a model, a
+	 * memory). The engine runs a sub-node from the node that owns it, so the
 	 * input came from that node's input, and `mockInput` fed that node.
+	 *
+	 * A tool wired to several agents lists them all: n8n runs the step through
+	 * one of them, and which one is the engine's choice, not this caller's.
 	 */
 	ranThroughNodeNames?: string[];
 }
@@ -662,12 +665,6 @@ export interface InstanceAiExecutionService {
 			 * A tool with no such arguments needs nothing here.
 			 */
 			toolArguments?: Record<string, unknown> | string;
-			/**
-			 * Which tool of a toolkit node (MCP Client Tool) to run. Required for
-			 * one of those, because the run matches no tool without it. Any other
-			 * tool defaults to the node's own.
-			 */
-			toolName?: string;
 			/** Run a past version's graph instead of the current draft. */
 			versionId?: string;
 			timeout?: number;
