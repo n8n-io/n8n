@@ -68,6 +68,7 @@ export interface RecordMessageParams {
 
 export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'> & {
 	agentName: string;
+	initialTimeline?: TimelineEvent[];
 };
 
 /** Queue-managed fields stored before the runtime starts. */
@@ -269,7 +270,8 @@ export class AgentExecutionService {
 				completionTokens: null,
 				totalTokens: null,
 				cost: null,
-				timeline: null,
+				// Save the background job signal before notifying clients that the execution started.
+				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 				storedAt: 'db',
 				error: null,
 				failureSummary: null,

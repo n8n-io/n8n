@@ -14,6 +14,38 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it.each(['running', 'success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps a signal-only turn with status %s',
+		(status) => {
+			const signal = {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			} as const;
+			const result = executionsToMessagesDto([
+				execution({
+					userMessage: null,
+					status,
+					timeline: [
+						{
+							type: 'background-task-signal',
+							signal: { tasks: [...signal.tasks] },
+							timestamp: 100,
+						},
+					],
+				}),
+			]);
+			expect(result).toEqual([
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					executionId: 'execution-1',
+					content: [],
+					executionStatus: status,
+					backgroundTaskSignal: signal,
+				},
+			]);
+		},
+	);
+
 	it('carries the recorded run error on the assistant message of an errored turn', () => {
 		const result = executionToMessagesDto(
 			execution({

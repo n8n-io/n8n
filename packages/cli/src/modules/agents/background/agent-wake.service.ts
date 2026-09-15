@@ -16,6 +16,8 @@ import {
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
 import { AgentTurnQueueService } from '../agent-turn-queue.service';
+import { ExecutionRecorder } from '../execution-recorder';
+import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -60,6 +62,7 @@ export class AgentWakeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -187,6 +190,11 @@ export class AgentWakeService {
 		}
 
 		try {
+			const backgroundJobSignal: ExecuteForWakeConfig['backgroundJobSignal'] = {
+				tasks: jobs.flatMap(({ id, title, kind, status }) =>
+					status === 'running' ? [] : [{ id, title, kind, status }],
+				),
+			};
 			// A wake yields to user turns: nothing is written while the thread runs
 			// or has rows waiting, and the next finished turn requests it again.
 			const claim = await this.turnQueueService.tryRunNow(
@@ -198,6 +206,11 @@ export class AgentWakeService {
 					source: identity.type === 'draft' ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType,
 					resourceId: first.parentResourceId,
 					runContext: { kind: 'message' },
+					initialTimeline: new ExecutionRecorder(
+						undefined,
+						undefined,
+						backgroundJobSignal,
+					).getMessageRecord().timeline,
 				},
 				{ wake: true },
 			);
@@ -210,11 +223,12 @@ export class AgentWakeService {
 						agentId: agent.id,
 						projectId: agent.projectId,
 						message: formatWakeMessage(jobs),
+						backgroundJobSignal,
 						memory: { threadId, resourceId: first.parentResourceId },
 						identity,
 						abortSignal: signal,
 						markResultsConsumed: async () => {
-							await this.jobRepository.markMailConsumed(
+							await this.backgroundJobService.consumeMail(
 								threadId,
 								jobs.map((job) => job.id),
 							);

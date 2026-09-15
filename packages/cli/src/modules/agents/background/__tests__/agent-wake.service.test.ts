@@ -20,6 +20,7 @@ import {
 	MAX_CONSECUTIVE_FAILED_WAKES,
 	WAKE_DEBOUNCE_MS,
 } from '../agent-wake.service';
+import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -58,6 +59,10 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 
 function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
+	const backgroundJobService = mock<AgentBackgroundJobService>();
+	backgroundJobService.consumeMail.mockImplementation(
+		async (...args) => await jobRepository.markMailConsumed(...args),
+	);
 	const agentRepository = mock<AgentRepository>();
 	const userRepository = mock<UserRepository>();
 	const integrationRegistry = mock<ChatIntegrationRegistry>();
@@ -109,10 +114,12 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		instanceSettings,
 		agentsConfig,
 		logger,
+		backgroundJobService,
 	);
 
 	return {
 		service,
+		backgroundJobService,
 		jobRepository,
 		agentRepository,
 		userRepository,
@@ -126,6 +133,39 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('passes only the delivered jobs and their display fields to the signal', async () => {
+		const { service, jobRepository, orchestrator, turnQueueService } = setup();
+		jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([
+			makeJob(),
+			makeJob({ id: 'job-2', kind: 'workflow', status: 'failed', error: 'Private error' }),
+			makeJob({ id: 'job-3', status: 'cancelled' }),
+			makeJob({
+				id: 'other-author',
+				parentResourceId: 'draft-chat:user-2',
+				parentPrincipalHash: otherPrincipalHash,
+			}),
+		]);
+		await service.attemptWake('thread-1');
+		const tasks = [
+			{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+			{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
+			{ id: 'job-3', title: 'Research', kind: 'subagent', status: 'cancelled' },
+		];
+		// The row stores the signal at claim time, before the runtime loads.
+		expect(turnQueueService.tryRunNow).toHaveBeenCalledWith(
+			expect.objectContaining({
+				initialTimeline: [
+					expect.objectContaining({ type: 'background-task-signal', signal: { tasks } }),
+				],
+			}),
+			{ wake: true },
+		);
+		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+			expect.objectContaining({ backgroundJobSignal: { tasks } }),
+			expect.anything(),
+		);
+	});
+
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});
@@ -280,7 +320,13 @@ describe('AgentWakeService', () => {
 	});
 
 	it('delivers pending job results and marks them as delivered', async () => {
-		const { service, orchestrator, turnQueueService, jobRepository } = setup();
+		const { service, orchestrator, turnQueueService, jobRepository, backgroundJobService } =
+			setup();
+		// Consumption runs inside the claimed turn, so it must bypass the active-wake guard.
+		backgroundJobService.consumeMail.mockImplementation(async (...args) => {
+			expect(service.isWakeActive('thread-1')).toBe(true);
+			return await jobRepository.markMailConsumed(...args);
+		});
 
 		await service.attemptWake('thread-1');
 
