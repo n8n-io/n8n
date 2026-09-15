@@ -210,6 +210,12 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.exists({ where: { id, projectId } });
 	}
 
+	/** Scoped to the project so ownership is enforced by the query; `null` when the agent is not in it. */
+	async findNameByIdAndProjectId(id: string, projectId: string): Promise<string | null> {
+		const agent = await this.findOne({ select: ['id', 'name'], where: { id, projectId } });
+		return agent?.name ?? null;
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,

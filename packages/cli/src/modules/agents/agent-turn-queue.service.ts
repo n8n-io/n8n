@@ -337,11 +337,12 @@ export class AgentTurnQueueService {
 	private async withAgentName(
 		turn: AgentTurnSubmission,
 	): Promise<StartExecutionParams & TurnRowValues> {
-		const [agent] = await this.agentRepository.findSummariesByIds([turn.agentId]);
-		if (!agent || agent.projectId !== turn.projectId) {
-			throw new UserError(`Agent "${turn.agentId}" not found`);
-		}
-		return { ...turn, agentName: agent.name, resourceId: turn.resourceId ?? null };
+		const agentName = await this.agentRepository.findNameByIdAndProjectId(
+			turn.agentId,
+			turn.projectId,
+		);
+		if (agentName === null) throw new UserError(`Agent "${turn.agentId}" not found`);
+		return { ...turn, agentName, resourceId: turn.resourceId ?? null };
 	}
 
 	/** The sender must still be able to run the agent; the drain has no request that checked that. */
