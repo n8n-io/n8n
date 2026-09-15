@@ -13,10 +13,14 @@ import os from 'os';
 export async function waitForNetworkQuiet(
 	quietDurationMs = 1000,
 	maxWaitMs = 10000,
+	signal?: AbortSignal,
 ): Promise<void> {
 	// Only run in CI on Linux
 	if (!process.env.CI || os.platform() !== 'linux') {
 		return;
+	}
+	if (signal?.aborted) {
+		signal.throwIfAborted();
 	}
 
 	return await new Promise((resolve) => {
@@ -28,10 +32,16 @@ export async function waitForNetworkQuiet(
 		const cleanup = () => {
 			if (resolved) return;
 			resolved = true;
+			signal?.removeEventListener('abort', abort);
 			if (checkInterval) clearInterval(checkInterval);
 			if (maxTimeout) clearTimeout(maxTimeout);
 			monitor.kill();
 		};
+		const abort = () => {
+			cleanup();
+			resolve();
+		};
+		signal?.addEventListener('abort', abort, { once: true });
 
 		// Monitor network events using `ip monitor`
 		// Watches: link (interfaces), address (IP assignments), route (routing table)
