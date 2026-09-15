@@ -229,6 +229,9 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 .table {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 	padding: var(--spacing--lg) 0;
 	height: 100%;
 }
@@ -237,6 +240,8 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+	max-width: 75ch;
+	margin: 0 auto;
 }
 
 .empty {
