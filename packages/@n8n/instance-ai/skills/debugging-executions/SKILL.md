@@ -142,6 +142,39 @@ Mocked input does **not** make a write node safe. The node still runs for real
 against the user's systems; only its input is invented, which makes the effect
 less predictable, not more.
 
+### Running a tool
+
+A tool never runs on its own. n8n runs it through the node that owns it —
+usually the Agent. A step run on a tool therefore behaves like a step run on
+that Agent:
+
+- `mockInput` feeds the **Agent's** input, not the tool's arguments.
+- `reuseExecutionId` replays the nodes above the **Agent**.
+- A chain run (neither option) runs every node above the Agent for real. Give
+  one of the two options when a node up there writes.
+- The result names the node it ran through in `ranThroughNodeNames`.
+
+The tool's own arguments come from `toolArguments` — the values the agent would
+normally decide:
+
+```
+executions(action="run-step", workflowId, nodeName="Create Ticket Tool",
+           reuseExecutionId=<the failed execution>,
+           toolArguments={"title": "Login fails", "priority": "high"})
+```
+
+Use the argument names from the node's `$fromAI` calls, which
+`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
+tool). For a toolkit node such as the MCP Client Tool, name the tool you want
+with `toolName`.
+
+A tool that declares `$fromAI` arguments is refused without them, so you cannot
+accidentally read "the tool is broken" off a run that only lacked its input.
+
+Any other sub-node — a model, memory, embeddings — cannot be run this way at
+all. Run the Agent and read the sub-node's output from that execution.
+
 ## Successful execution with wrong or empty value
 
 When `debug` doesn't apply because nothing errored, call
