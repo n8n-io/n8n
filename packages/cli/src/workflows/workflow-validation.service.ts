@@ -14,6 +14,7 @@ import {
 	isTriggerLikeNode,
 	isTriggerNode,
 	classifyTriggerIdentity,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	INode,
@@ -52,6 +53,39 @@ export interface WorkflowStatus {
 /** Formats credential names as a quoted, comma-separated list for error messages. */
 function formatCredentialNames(credentials: Array<{ name: string }>): string {
 	return credentials.map((c) => `"${c.name}"`).join(', ');
+}
+
+/**
+ * Whether every node this one feeds is disabled, so nothing will ever ask it
+ * for its inputs. Only meaningful for supply-type nodes (LLM models, parsers,
+ * memory, tools): a node with a `main` output is part of the flow and runs
+ * regardless of what its consumers do.
+ */
+function onlySuppliesDisabledNodes(
+	nodeName: string,
+	connections: IConnections,
+	nodes: INode[],
+): boolean {
+	const outgoing = connections[nodeName];
+	if (!outgoing) return false;
+
+	const disabledByName = new Map(nodes.map((node) => [node.name, node.disabled === true]));
+	let consumers = 0;
+
+	for (const [type, outputs] of Object.entries(outgoing)) {
+		if (type === NodeConnectionTypes.Main) return false;
+
+		for (const targets of outputs ?? []) {
+			for (const target of targets ?? []) {
+				consumers++;
+				// An unknown target is treated as live, so a half-built graph does
+				// not silently opt out of the check.
+				if (!disabledByName.get(target.node)) return false;
+			}
+		}
+	}
+
+	return consumers > 0;
 }
 
 @Service()
@@ -379,6 +413,17 @@ export class WorkflowValidationService {
 				if (
 					!isNodeConnected(node.name, connections, connectionsByDestination) &&
 					!isTriggerLikeNode(nodeType)
+				) {
+					continue;
+				}
+
+				// Same reasoning one hop out: a subnode is only ever resolved by the
+				// node it supplies, so if every one of those is disabled it cannot
+				// break a run either. Scoped to nodes with no main output, since a
+				// node on the main path runs whatever its consumers do.
+				if (
+					!isTriggerLikeNode(nodeType) &&
+					onlySuppliesDisabledNodes(node.name, connections, nodes)
 				) {
 					continue;
 				}

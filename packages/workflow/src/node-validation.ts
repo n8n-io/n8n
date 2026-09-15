@@ -22,7 +22,7 @@ export interface NodeCredentialIssue {
 /** A `Pick` so both the editor's snapshot accessor and the engine's `Workflow` fit. */
 export type WorkflowForInputValidation = Pick<
 	Workflow,
-	'expression' | 'getNode' | 'getParentNodes'
+	'expression' | 'getNode' | 'connectionsByDestinationNode'
 >;
 
 /**
@@ -42,17 +42,29 @@ export function getUnconnectedRequiredInputs(
 	options: { throwOnExpressionError?: boolean } = {},
 ): INodeInputConfiguration[] {
 	const unconnected: INodeInputConfiguration[] = [];
+	const arrivals = workflow.connectionsByDestinationNode[node.name];
+
+	// A node can declare several inputs of one type — an agent's Chat Model and
+	// Fallback Model are both `ai_languageModel` — and each is satisfied on its
+	// own index. Counting position per type mirrors how the engine resolves them
+	// (`validateInputConfiguration` filters by type, then indexes into the
+	// type's connections), so one connected model cannot satisfy both.
+	const indexByType = new Map<string, number>();
 
 	for (const input of getNodeInputs(workflow, node, nodeTypeDescription, options)) {
+		const type = typeof input === 'string' ? input : input.type;
+		const inputIndex = indexByType.get(type) ?? 0;
+		indexByType.set(type, inputIndex + 1);
+
 		if (typeof input === 'string' || input.required !== true) continue;
 
-		const parents = workflow.getParentNodes(node.name, input.type, 1);
-		const hasEnabledParent = parents.some((name) => {
-			const parent = workflow.getNode(name);
+		const sources = arrivals?.[type]?.[inputIndex] ?? [];
+		const hasEnabledSource = sources.some((source) => {
+			const parent = workflow.getNode(source.node);
 			return parent ? !parent.disabled : false;
 		});
 
-		if (!hasEnabledParent) unconnected.push(input);
+		if (!hasEnabledSource) unconnected.push(input);
 	}
 
 	return unconnected;

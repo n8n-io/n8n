@@ -418,6 +418,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				connectionsByDestinationNode:
+					workflowDocumentConnections.connectionsByDestinationNode.value,
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				expression: workflowDocumentExpression.getExpressionHandler(),
 				getNode: workflowDocumentNodes.getNodeByName,

@@ -1746,6 +1746,162 @@ describe('WorkflowValidationService', () => {
 			expect(result).toEqual({ isValid: true });
 		});
 
+		it('ignores a subnode whose only consumer is disabled', async () => {
+			// A disabled agent never resolves its parser, so this workflow runs
+			// today and must stay publishable.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Agent', 'agent', true)],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a subnode whose consumer is enabled', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Parser'");
+		});
+
+		it('still checks a subnode that also supplies an enabled consumer', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Off', 'agent', true), node('On', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [
+							[
+								{ node: 'Off', type: 'ai_outputParser', index: 0 },
+								{ node: 'On', type: 'ai_outputParser', index: 0 },
+							],
+						],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('still checks a node on the main path when its consumer is disabled', async () => {
+			// Unlike a subnode, a node with a main output runs whatever happens
+			// downstream, so its own unmet input still blocks publishing.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'mainParser'), node('Next', 'agent', true)],
+				{
+					Parser: { main: [[{ node: 'Next', type: 'main', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		describe('with a fallback model declared on a second input of the same type', () => {
+			const agentWithFallbackType = {
+				description: {
+					displayName: 'Agent',
+					name: 'agentWithFallback',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Agent' },
+					inputs: [
+						'main',
+						{ displayName: 'Chat Model', type: 'ai_languageModel', required: true },
+						{ displayName: 'Fallback Model', type: 'ai_languageModel', required: true },
+					],
+					outputs: ['main'],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
+					type === 'agentWithFallback' ? agentWithFallbackType : modelType,
+				);
+			});
+
+			it('rejects activation when only the primary model is connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[node('Agent', 'agentWithFallback'), node('Model', 'model')],
+					{
+						Model: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+
+			it('allows activation once each model sits on its own input', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[node('Agent', 'agentWithFallback'), node('Primary', 'model'), node('Fallback', 'model')],
+					{
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result).toEqual({ isValid: true });
+			});
+
+			it('treats a disabled fallback as not connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[
+						node('Agent', 'agentWithFallback'),
+						node('Primary', 'model'),
+						node('Fallback', 'model', true),
+					],
+					{
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+		});
+
 		it('still checks a trigger that is wired to nothing', async () => {
 			// A trigger starts the run whether or not anything feeds it, so the
 			// floating-node exemption must not cover it.

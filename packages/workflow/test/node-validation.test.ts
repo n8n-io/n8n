@@ -395,8 +395,13 @@ describe('node-validation', () => {
 				'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
 		} as unknown as INodeTypeDescription;
 
+		/**
+		 * `sourcesByIndex` lists the nodes arriving at each `ai_languageModel`
+		 * input, by input index — the same shape the engine indexes into, so a
+		 * source on index 0 cannot stand in for the input on index 1.
+		 */
 		const makeWorkflow = (
-			parents: string[],
+			sourcesByIndex: string[][],
 			nodes: Record<string, INode>,
 		): WorkflowForInputValidation =>
 			({
@@ -407,7 +412,13 @@ describe('node-validation', () => {
 							: [],
 				},
 				getNode: (name: string) => nodes[name] ?? null,
-				getParentNodes: () => parents,
+				connectionsByDestinationNode: {
+					Parser: {
+						ai_languageModel: sourcesByIndex.map((names) =>
+							names.map((name) => ({ node: name, type: 'ai_languageModel', index: 0 })),
+						),
+					},
+				},
 			}) as unknown as WorkflowForInputValidation;
 
 		it('reports a required input with nothing connected', () => {
@@ -423,7 +434,7 @@ describe('node-validation', () => {
 
 		it('reports nothing once an enabled node is connected', () => {
 			const result = getUnconnectedRequiredInputs(
-				makeWorkflow(['Model'], { Parser: parser, Model: model }),
+				makeWorkflow([['Model']], { Parser: parser, Model: model }),
 				parser,
 				description,
 			);
@@ -433,7 +444,7 @@ describe('node-validation', () => {
 
 		it('treats a disabled source as not connected', () => {
 			const result = getUnconnectedRequiredInputs(
-				makeWorkflow(['Model'], { Parser: parser, Model: { ...model, disabled: true } }),
+				makeWorkflow([['Model']], { Parser: parser, Model: { ...model, disabled: true } }),
 				parser,
 				description,
 			);
@@ -449,7 +460,7 @@ describe('node-validation', () => {
 					},
 				},
 				getNode: () => parser,
-				getParentNodes: () => [],
+				connectionsByDestinationNode: {},
 			} as unknown as WorkflowForInputValidation;
 
 			expect(getUnconnectedRequiredInputs(throwing, parser, description)).toEqual([]);
@@ -463,7 +474,7 @@ describe('node-validation', () => {
 					},
 				},
 				getNode: () => parser,
-				getParentNodes: () => [],
+				connectionsByDestinationNode: {},
 			} as unknown as WorkflowForInputValidation;
 
 			expect(() =>
@@ -480,7 +491,7 @@ describe('node-validation', () => {
 			const unresolved = {
 				expression: { getSimpleParameterValue: () => null },
 				getNode: () => parser,
-				getParentNodes: () => [],
+				connectionsByDestinationNode: {},
 			} as unknown as WorkflowForInputValidation;
 
 			it('surfaces it as unresolved when asked to', () => {
@@ -493,6 +504,55 @@ describe('node-validation', () => {
 
 			it('still reports nothing when swallowing suits the caller', () => {
 				expect(getUnconnectedRequiredInputs(unresolved, parser, description)).toEqual([]);
+			});
+		});
+
+		// An agent with a fallback declares two required `ai_languageModel` inputs;
+		// the engine satisfies each on its own index.
+		describe('with two required inputs of the same type', () => {
+			const twoModels = {
+				inputs: [
+					{ displayName: 'Chat Model', type: 'ai_languageModel', required: true },
+					{ displayName: 'Fallback Model', type: 'ai_languageModel', required: true },
+				],
+			} as unknown as INodeTypeDescription;
+
+			it('does not let a source on the first index satisfy the second', () => {
+				const result = getUnconnectedRequiredInputs(
+					makeWorkflow([['Model']], { Parser: parser, Model: model }),
+					parser,
+					twoModels,
+				);
+
+				expect(result.map((input) => input.displayName)).toEqual(['Fallback Model']);
+			});
+
+			it('reports nothing once each index has its own source', () => {
+				const result = getUnconnectedRequiredInputs(
+					makeWorkflow([['Primary'], ['Fallback']], {
+						Parser: parser,
+						Primary: model,
+						Fallback: { ...model, name: 'Fallback' },
+					}),
+					parser,
+					twoModels,
+				);
+
+				expect(result).toEqual([]);
+			});
+
+			it('treats a disabled source on the second index as absent', () => {
+				const result = getUnconnectedRequiredInputs(
+					makeWorkflow([['Primary'], ['Fallback']], {
+						Parser: parser,
+						Primary: model,
+						Fallback: { ...model, name: 'Fallback', disabled: true },
+					}),
+					parser,
+					twoModels,
+				);
+
+				expect(result.map((input) => input.displayName)).toEqual(['Fallback Model']);
 			});
 		});
 
