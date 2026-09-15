@@ -34,7 +34,12 @@ const nodeName = (node: VersionNode): string => {
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<span v-n8n-html="i18n.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
-				<N8nBadge v-if="version.hasSecurityFix" variant="danger" size="xxsmall">
+				<N8nBadge
+					v-if="version.hasSecurityFix"
+					variant="danger"
+					size="xxsmall"
+					data-test-id="security-update-badge"
+				>
 					{{ i18n.baseText('versionCard.securityUpdate') }}
 				</N8nBadge>
 				<N8nBadge v-if="version.hasBreakingChange" variant="warning" size="xxsmall">
