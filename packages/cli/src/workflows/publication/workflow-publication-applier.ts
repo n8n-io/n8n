@@ -151,6 +151,17 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
+		// Here we handle the unusual case where we're attempting to publish a workflow
+		// version that includes unresolvable node types. This can happen when some node
+		// is added to NODES_EXCLUDE. When the server starts back up, we use reconciliation
+		// to publish the necessary active triggers through the outbox.
+		//
+		// We handle this as a special case: we mark all the triggers as failed, while setting
+		// the published version as requested. The alternative would be to refuse to publish
+		// this version - but in the case of restart, the previous version is the same version,
+		// so this doesn't address the problem. All paths into workflow publication should
+		// refuse to accept a version with unresolvable nodes, so this should never arise in
+		// normal operation.
 		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
 		if (unresolvable.length > 0) {
 			return await this.publishUnrunnableVersion(
