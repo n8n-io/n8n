@@ -43,6 +43,11 @@ const userOf = (entry: Mention) => {
 	return entry.mentioned.user;
 };
 
+const tagOf = (entry: Mention) => {
+	if (!('tag' in entry.mentioned)) throw new Error('expected a team tag mention');
+	return entry.mentioned.tag;
+};
+
 // Byte-identical to a live 403, captured 2026-09-08 against `/beta/teams/{id}/tags`. The node
 // calls `/v1.0`: same permission check, but the v1.0 wording is not separately confirmed (D7).
 const TAG_SCOPE_TEXT =
@@ -208,6 +213,21 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 			body: { contentType: 'html', content: '<at id="0">Engineering</at> hi' },
 			mentions: [{ id: 0, ...tag }],
 		});
+	});
+
+	// The escaping fix lives in `prepareMessage`, which treats both arms alike, so the tag arm
+	// inherits it. A tag name is set by a team owner, so it is the same untrusted input class as
+	// a guest display name.
+	it('escapes the marker text of a team tag mention too', () => {
+		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
+			tagMention('tag-1', 'R&D <core>'),
+		]);
+
+		const content = (body.body as { content: string }).content;
+		const emitted = body.mentions as Mention[];
+		expect(content).toBe('<at id="0">R&amp;D &lt;core&gt;</at> hi');
+		expect(emitted[0].mentionText).toBe('R&amp;D &lt;core&gt;');
+		expect(tagOf(emitted[0]).displayName).toBe('R&D <core>');
 	});
 });
 
