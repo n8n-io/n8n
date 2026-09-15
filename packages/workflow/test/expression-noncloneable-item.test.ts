@@ -36,8 +36,6 @@ const throwingGetter = () => {
 type Case = {
 	name: string;
 	extra: () => Record<string, unknown>;
-	// The key path the error must point at, per engine that rejects the value.
-	// `undefined` means the engine transfers the item without complaint.
 	rejectedAt: Partial<Record<'vm' | 'quickjs', string>>;
 };
 
