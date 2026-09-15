@@ -12,7 +12,7 @@ import {
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+import { UserError, type INode, type WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -28,7 +28,10 @@ import type {
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isTriggerLikeNodeType } from '@/workflows/triggers/enabled-trigger-nodes';
+import {
+	isTriggerLikeNodeType,
+	type WorkflowTriggerVersion,
+} from '@/workflows/triggers/enabled-trigger-nodes';
 import { WorkflowService } from '@/workflows/workflow.service';
 import {
 	WorkflowTriggerActivator,
@@ -38,6 +41,9 @@ import {
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+/** A node whose type this instance cannot load, with the loader's error. */
+type UnresolvableNode = { node: INode; error: Error };
 
 /**
  * The activation mode reported to trigger nodes for each enqueue reason, so
@@ -142,6 +148,18 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		if (unresolvable.length > 0) {
+			return await this.publishUnrunnableVersion(
+				workflow,
+				oldVersion,
+				runnable,
+				record,
+				unresolvable,
+				abort,
+			);
+		}
+
 		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
 		if (blocked !== null) return blocked;
 
@@ -211,10 +229,7 @@ export class WorkflowPublicationApplier {
 		// version advances below), so its abandoned external deregistrations must
 		// ride along for the reporter to surface.
 		const withTeardownFailures = (result: PublicationResult): PublicationResult =>
-			(result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
-			teardownFailures.length > 0
-				? { ...result, teardownFailures }
-				: result;
+			this.withTeardownFailures(result, teardownFailures);
 
 		// Inside the try: once teardown has run, any failure — advancing the
 		// version included — must return a `failed` result (not throw) so the
@@ -251,6 +266,126 @@ export class WorkflowPublicationApplier {
 				failures: [],
 			}),
 		});
+	}
+
+	/**
+	 * Splits a version's nodes by whether this instance can load their type.
+	 * Disabled nodes count too: execution resolves every node when it constructs
+	 * the workflow, so one unknown type anywhere makes the version unrunnable here.
+	 * `runnable` is the version without those nodes, so the activator can still
+	 * build a `Workflow` from it.
+	 */
+	private partitionByResolvability(version: WorkflowTriggerVersion): {
+		runnable: WorkflowTriggerVersion;
+		unresolvable: UnresolvableNode[];
+	} {
+		const unresolvable: UnresolvableNode[] = [];
+		const resolvable: INode[] = [];
+		for (const node of version.nodes) {
+			try {
+				this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				resolvable.push(node);
+			} catch (e) {
+				unresolvable.push({ node, error: ensureError(e) });
+			}
+		}
+		return { runnable: { nodes: resolvable, connections: version.connections }, unresolvable };
+	}
+
+	/**
+	 * Publishes a version this instance cannot run as a failed activation of
+	 * every trigger: the published triggers come down, the version advances,
+	 * nothing is activated. Publish-time validation refuses such a version, so
+	 * this is only reached when the environment changed after publication (an
+	 * excluded or uninstalled node type). The `failed` rows are what stops
+	 * reconciliation from re-enqueueing the workflow; the unresolvable nodes get
+	 * rows too, so a workflow whose only trigger is unknown is not left row-less.
+	 */
+	private async publishUnrunnableVersion(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		runnableNewVersion: WorkflowTriggerVersion,
+		record: WorkflowPublicationOutbox,
+		unresolvable: UnresolvableNode[],
+		abort: TriggerOperationAbort,
+	): Promise<PublicationResult> {
+		this.logger.warn('Published version holds node types this instance cannot load', {
+			workflowId: workflow.id,
+			versionId: record.publishedVersionId,
+			nodeTypes: unresolvable.map(({ node }) => node.type),
+		});
+
+		// The old version may hold the unknown node too; tear down what can be built.
+		const runnableOldVersion =
+			oldVersion === null ? null : this.partitionByResolvability(oldVersion).runnable;
+		const toRemove = new Set(
+			this.workflowTriggerActivator
+				.getEnabledTriggerNodes(runnableOldVersion)
+				.map((node) => node.id),
+		);
+
+		abort.signal.throwIfAborted();
+
+		let teardownFailures: TriggerTeardownFailure[] = [];
+		if (runnableOldVersion && toRemove.size > 0) {
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(
+					workflow,
+					runnableOldVersion,
+					toRemove,
+					abort,
+				));
+		}
+
+		try {
+			await this.advancePublishedVersion(record);
+		} catch (e) {
+			return this.withTeardownFailures({ type: 'failed', error: ensureError(e) }, teardownFailures);
+		}
+
+		const error = new UserError(
+			`Workflow cannot run on this instance: ${formatNodeFailures(
+				unresolvable.map(({ node, error }) => ({ nodeName: node.name, message: error.message })),
+			)}`,
+		);
+		const desiredTriggerNodes =
+			this.workflowTriggerActivator.getEnabledTriggerNodes(runnableNewVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		const triggerStatuses: TriggerPublicationStatus[] = [
+			...this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				activated: [],
+				failures: desiredTriggerNodes.map((node) => ({
+					nodeId: node.id,
+					nodeName: node.name,
+					error,
+				})),
+			}),
+			...unresolvable.map(
+				({ node, error }): TriggerPublicationStatus => ({
+					nodeId: node.id,
+					nodeName: node.name,
+					status: 'failed',
+					triggerKind: 'persisted',
+					errorMessage: error.message,
+				}),
+			),
+		];
+
+		return this.withTeardownFailures({ type: 'failed', error, triggerStatuses }, teardownFailures);
+	}
+
+	/**
+	 * Attaches abandoned external deregistrations from the remove phase to a
+	 * version-advancing result, so the reporter can surface them.
+	 */
+	private withTeardownFailures(
+		result: PublicationResult,
+		teardownFailures: TriggerTeardownFailure[],
+	): PublicationResult {
+		return (result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
+			teardownFailures.length > 0
+			? { ...result, teardownFailures }
+			: result;
 	}
 
 	/**
