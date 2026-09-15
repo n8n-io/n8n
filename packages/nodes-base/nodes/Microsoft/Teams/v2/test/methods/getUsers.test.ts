@@ -229,13 +229,17 @@ describe('Microsoft Teams v2, mention picker wiring', () => {
 	});
 
 	// The rows above are 16 characters, so on their own they would still pass if the regex grew a
-	// length bound. A GUID-shaped `{groupId}##{tagId}##{token}` plaintext is 112 bytes, so 152
-	// base64 characters ending in `==`; this pins that the regex has no bound between the two.
-	// Derived, not captured from a tenant, so it pins the length class rather than a real id.
+	// length bound. This one is a real tag ID captured from a tenant on 2026-09-15: 116 characters,
+	// a multiple of four, charset `[A-Za-z0-9=]`, no `+` and no `/`. Its plaintext is
+	// `{tenantId}##{groupId}##{token}`. The two GUIDs are replaced with same-length placeholders,
+	// so the length and charset this asserts are the observed ones while no internal identifier is
+	// published. Note the documented Microsoft sample is 117 characters, which is not a valid
+	// padded base64 length, so it could not have pinned this.
 	it('accepts a full-length tag ID in the By ID mode', () => {
-		const guid = '2433949a-3518-4640-97fe-87196e049492';
-		const tagId = Buffer.from([guid, guid, guid].join('##')).toString('base64');
+		const tagId =
+			'MTExMTExMTEtMjIyMi00MzMzLTg0NDQtNTU1NTU1NTU1NTU1IyM2NjY2NjY2Ni03Nzc3LTQ4ODgtODk5OS1hYWFhYWFhYWFhYWEjI3RLeVdTYVlKeg==';
 
+		expect(tagId).toHaveLength(116);
 		expect(tagByIdRegex().test(tagId)).toBe(true);
 	});
 
