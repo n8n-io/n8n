@@ -346,6 +346,39 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('appends no attribution when the reply is reasoning only, with no text', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				genieResult,
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the result.' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			genieAttribution,
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		expect(chunks.some((chunk) => chunk.type === 'text-delta')).toBe(false);
+	});
+
 	it('appends no attribution when no tool of that server returned a result', async () => {
 		const { service, executionService } = makeService();
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
