@@ -25,7 +25,8 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -44,6 +45,7 @@
     "undici": "catalog:undici-v7"
   },
   "devDependencies": {
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "vitest": "catalog:"
   }
 }

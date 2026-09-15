@@ -1,6 +1,6 @@
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
-import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
+import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 // Type for execution responses from the n8n API
@@ -27,8 +27,9 @@ export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
 	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const data = this.withDefaultSettings(workflow);
 		const response = await this.api.request.post('/rest/workflows', {
-			data: projectId ? { ...workflow, projectId } : workflow,
+			data: projectId ? { ...data, projectId } : data,
 		});
 
 		if (!response.ok()) {
@@ -49,7 +50,7 @@ export class WorkflowApiHelper {
 	): Promise<{ name: string; id: string; versionId: string }> {
 		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
 
-		const workflow = {
+		const workflow = this.withDefaultSettings({
 			name: workflowName,
 			nodes: [],
 			connections: {},
@@ -57,7 +58,7 @@ export class WorkflowApiHelper {
 			active: false,
 			projectId: project,
 			...(options?.folder && { parentFolderId: options.folder }),
-		};
+		});
 
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
@@ -73,6 +74,14 @@ export class WorkflowApiHelper {
 			id: workflowData.id,
 			versionId: workflowData.versionId,
 		};
+	}
+
+	/** The stack-wide defaults win, so a spec proves parity on whatever engine the stack runs. */
+	private withDefaultSettings<T extends Partial<IWorkflowBase>>(workflow: T): T {
+		const defaults = this.api.options.workflowSettings;
+		if (!defaults) return workflow;
+
+		return { ...workflow, settings: { ...workflow.settings, ...defaults } };
 	}
 
 	async activate(workflowId: string, versionId: string) {
@@ -404,6 +413,32 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/**
+	 * Polls one execution by id until it settles. Unlike {@link waitForExecution},
+	 * it never reads the executions list, so it also sees engine 2.0 runs, which
+	 * the list does not include yet.
+	 */
+	async waitForExecutionById(
+		executionId: string,
+		timeoutMs = 10000,
+		pollIntervalMs = 250,
+	): Promise<ExecutionListResponse> {
+		const deadline = Date.now() + timeoutMs;
+
+		let execution = await this.getExecution(executionId);
+		while (!isTerminalExecutionStatus(execution.status)) {
+			if (Date.now() >= deadline) {
+				throw new TestError(
+					`Execution ${executionId} did not settle within ${timeoutMs}ms (status: ${execution.status})`,
+				);
+			}
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			execution = await this.getExecution(executionId);
+		}
+
+		return execution;
 	}
 
 	/** Stops a running or waiting execution and returns the stopped execution summary. */

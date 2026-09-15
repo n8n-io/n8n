@@ -2,6 +2,7 @@ import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
 import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
+import { ENGINE_TAG_PREFIX } from './fixtures/engine-parity';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
@@ -234,6 +235,19 @@ export function getProjects(): Project[] {
 				},
 			);
 		}
+
+		// Engine 2.0 parity: the same e2e specs against a main that routes every
+		// workflow to the new engine. Opt-in by tag while the engine matures: any
+		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
+		// or expects failure by bucket. Drop the grep once the suite is triaged.
+		projects.push({
+			name: 'engine-v2:e2e',
+			testDir: './tests/e2e',
+			grep: new RegExp(ENGINE_TAG_PREFIX),
+			timeout: 180000,
+			fullyParallel: true,
+			use: { containerConfig: { postgres: true, engine: 'in-process' } },
+		});
 
 		projects.push({
 			name: 'coverage',
