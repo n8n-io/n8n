@@ -227,7 +227,12 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	];
 	const agentExecutor = {
 		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		resumeForChat: vi.fn((config: { beforeResume?: (abortSignal: AbortSignal) => Promise<void> }) =>
+			(async function* resume() {
+				await config.beforeResume?.(new AbortController().signal);
+				yield* toStream(stream);
+			})(),
+		),
 		resolveResumeThread: vi.fn().mockResolvedValue('agent-1:thread-1'),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
@@ -235,7 +240,10 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
-		agentExecutor,
+		{
+			...agentExecutor,
+			resumeForChat: (config) => agentExecutor.resumeForChat(config),
+		},
 		params.componentMapper ?? mock<ComponentMapper>(),
 		mock<Logger>(),
 		'project-1',
