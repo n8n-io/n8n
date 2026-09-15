@@ -22,7 +22,7 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import { untransferableItemError } from './transfer-diagnostics';
+import { diagnosticBudgetMs, untransferableItemError } from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -1120,7 +1120,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				const result = dispatchHostCall(rawMsg, data);
 				return this.hostValueToQuickJSHandle(result, (rejected) =>
-					serializeError(untransferableItemError(rejected, quickjsTransferProbe, rawMsg, data)),
+					serializeError(
+						untransferableItemError(
+							rejected,
+							quickjsTransferProbe,
+							rawMsg,
+							data,
+							this.diagnosticBudget(),
+						),
+					),
 				);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1174,6 +1182,10 @@ export class QuickJsBridge implements RuntimeBridge {
 			return this.transferFailureHandle(value, onTransferFailure);
 		}
 		return result.value;
+	}
+
+	private diagnosticBudget(): number {
+		return diagnosticBudgetMs(Math.min(...this.deadlines) - Date.now());
 	}
 
 	private transferFailureHandle(
