@@ -1,0 +1,57 @@
+{
+	"name": "APITemplate.io V2 image create on a regional endpoint",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "imagev2",
+				"operation": "create",
+				"region": "rest-au",
+				"imageTemplateId": "tpl-img",
+				"v2ImageOverrides": "[{\"name\": \"text_1\", \"text\": \"hello world\", \"textBackgroundColor\": \"rgba(246, 243, 243, 0)\"}]",
+				"expiration": 120,
+				"v2ImageOptions": {
+					"generation_delay": 1000
+				}
+			},
+			"id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/banner.jpeg",
+					"download_url_png": "https://cdn.apitemplate.io/files/banner.png"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
