@@ -170,6 +170,16 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
+/**
+ * A plan card acts only for the review the composer routes into. Once a newer
+ * turn strands it, `pendingPlanReview` drops it, and resuming its requestId
+ * would revive a run the thread has moved on from.
+ */
+function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+	if (isCardReadOnly(tc)) return true;
+	return thread.pendingPlanReview?.requestId !== tc.confirmation?.requestId;
+}
+
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
@@ -251,7 +261,7 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 				:planned-tasks="resolvePlanTasks(block.toolCall)"
 				:status="getPlanReviewStatus(block.toolCall)"
 				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isCardReadOnly(block.toolCall)"
+				:read-only="isPlanCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation?.expired"
 				@approve="handlePlanApprove(block.toolCall)"
 				@deny="handlePlanDeny(block.toolCall)"

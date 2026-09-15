@@ -344,16 +344,17 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 		return;
 	}
 
-	trackSelectedSuggestionSubmitted(message);
-
 	// Plan feedback is resumed as a plain string. Send the text alone and leave
 	// anything staged in place, so it stays visible for a later real message
-	// instead of being dropped on a send that could never carry it.
+	// instead of being dropped on a send that could never carry it. A suggestion
+	// draft can reach here, but feedback on a plan is not a suggestion submission.
 	if (props.isAwaitingPlanReview) {
 		emitSubmittedMessage(message, undefined, () => restorePlanFeedbackDraft(message));
 		resetDraftComposer({ keepAttachments: true });
 		return;
 	}
+
+	trackSelectedSuggestionSubmitted(message);
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];

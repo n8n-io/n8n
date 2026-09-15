@@ -164,6 +164,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isAwaitingPlanReview: { type: Boolean, required: false },
+		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
 	},
@@ -187,6 +188,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
 					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-busy' },
+					props.isSubmitting ? 'busy' : 'idle',
 				),
 				h(
 					'span',
@@ -2587,6 +2593,54 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
+	});
+
+	// A submission the run never saw is not feedback. It reports one revision per
+	// accepted request, so a dropped or failed submit must record nothing.
+	it('reports no plan feedback telemetry when the change request is not sent', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-input-submit').click();
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
+		});
+		expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ plan_feedback_type: 'changes_requested' }),
+		);
+	});
+
+	// `confirmAction` never touches the send counter, so without this the composer
+	// stays live through the round trip and a second Enter is silently dropped.
+	it('holds the composer busy while a plan change request is in flight', async () => {
+		seedPendingPlanReview();
+		thread.updatingPlanRequestIds = new Set(['req-plan']);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-busy')).toHaveTextContent('busy');
+		});
+	});
+
+	// The runtime refuses to route feedback into a card a newer turn stranded, so
+	// the card must not offer to approve that same abandoned run either.
+	it('renders a plan card stranded by a newer turn without its actions', async () => {
+		seedPendingPlanReview();
+		thread.pendingPlanReview = null;
+
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-plan-review')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
 	describe('runtime disposal on unmount', () => {

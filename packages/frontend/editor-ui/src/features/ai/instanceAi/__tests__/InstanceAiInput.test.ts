@@ -805,6 +805,30 @@ describe('InstanceAiInput', () => {
 		]);
 	});
 
+	// A suggestion draft survives into a plan review now that the transition no
+	// longer wipes the composer, and plan feedback is not a suggestion submission.
+	it('does not track an inserted suggestion as submitted when it is sent as plan feedback', async () => {
+		const { getByTestId, rerender } = renderComponent({
+			props: {
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		telemetryTrack.mockClear();
+
+		await rerender(inputProps({ isAwaitingPlanReview: true, isStreaming: true }));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.anything(),
+		);
+	});
+
 	it('submits plan feedback on Enter without any prior click', async () => {
 		const { emitted, getByRole } = renderComponent({
 			props: { isAwaitingPlanReview: true, isStreaming: true },

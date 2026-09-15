@@ -955,6 +955,16 @@ function restoreFailedSubmission(message: string, restoreDraft?: () => boolean) 
 	if (input && !input.isDirty()) input.setText(message);
 }
 
+/**
+ * A plan change request is in flight. `confirmAction` never touches the send
+ * counter, so without this the composer stays live for the round trip and a
+ * second Enter is dropped by the runtime's duplicate guard without a trace.
+ */
+const isPlanChangeInFlight = computed(() => {
+	const requestId = thread.pendingPlanReview?.requestId;
+	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
+});
+
 function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
@@ -971,25 +981,30 @@ function handleSubmit(
 	// the user does not have to click "Ask for edits" first.
 	const planReview = thread.pendingPlanReview;
 	if (planReview) {
-		telemetry.track('User finished providing input', {
-			thread_id: thread.id,
-			input_thread_id: planReview.inputThreadId ?? '',
-			instance_id: rootStore.instanceId,
-			type: 'plan-review',
-			provided_inputs: [
-				{
-					label: 'plan',
-					options: ['approve', 'ask-for-edits', 'deny'],
-					option_chosen: 'ask-for-edits',
-				},
-			],
-			skipped_inputs: [],
-			num_tasks: planReview.taskCount,
-			feedback: scrubSecretsInText(message),
-			plan_feedback_type: 'changes_requested',
-		});
 		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
-			if (!sent) restoreFailedSubmission(message, restoreDraft);
+			if (!sent) {
+				restoreFailedSubmission(message, restoreDraft);
+				return;
+			}
+			// Only an accepted request revises the plan. Tracking up front would
+			// also count a dropped or failed submit the run never saw.
+			telemetry.track('User finished providing input', {
+				thread_id: thread.id,
+				input_thread_id: planReview.inputThreadId ?? '',
+				instance_id: rootStore.instanceId,
+				type: 'plan-review',
+				provided_inputs: [
+					{
+						label: 'plan',
+						options: ['approve', 'ask-for-edits', 'deny'],
+						option_chosen: 'ask-for-edits',
+					},
+				],
+				skipped_inputs: [],
+				num_tasks: planReview.taskCount,
+				feedback: scrubSecretsInText(message),
+				plan_feedback_type: 'changes_requested',
+			});
 		});
 		return;
 	}
@@ -1408,7 +1423,7 @@ async function dismissComposerContextChip() {
 													ref="chatInputRef"
 													key="chat-input"
 													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
+													:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
 													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 													:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
