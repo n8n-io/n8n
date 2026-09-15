@@ -618,10 +618,7 @@ describe('Test Notion, simplifyObjects', () => {
 		});
 
 		it('keeps accented words as lowercase keys', () => {
-			// Lowercase İ carries a combining dot, which the caser reads as a separator.
-			const accentedWord = wordFrom('latin-accented')
-				.map((name) => name.toLowerCase())
-				.filter((name) => !/\p{M}/u.test(name));
+			const accentedWord = wordFrom('latin-accented').map((name) => name.toLowerCase());
 
 			fc.assert(
 				fc.property(accentedWord, (name) => {

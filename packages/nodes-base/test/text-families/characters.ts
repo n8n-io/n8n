@@ -26,7 +26,8 @@ export const isAscii = (text: string) => !/\P{ASCII}/u.test(text);
 export const joinCodePoints = (...parts: Array<string | number>) =>
 	parts.map((part) => (typeof part === 'number' ? String.fromCodePoint(part) : part)).join('');
 
-export const LATIN_ACCENTED = latin.filter((c) => !isAscii(c) && /^\p{L}$/u.test(c));
+// İ lowercases to two code points (i + combining dot); the case-mapping family covers it.
+export const LATIN_ACCENTED = latin.filter((c) => !isAscii(c) && /^\p{L}$/u.test(c) && c !== 'İ');
 export const GREEK = greek;
 export const CYRILLIC = cyrillic;
 export const HEBREW = hebrew;
