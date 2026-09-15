@@ -127,6 +127,32 @@ describe('InstanceAiThreadList', () => {
 		expect(getByTestId('instance-ai-new-thread-button').tagName).toBe('A');
 	});
 
+	it('marks the list and its rows disabled while the assistant is building', () => {
+		const { container, getAllByTestId } = renderList({ props: { disabled: true } });
+		expect(container.querySelector('[data-test-id="instance-ai-thread-list"]')).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+		for (const item of getAllByTestId('instance-ai-thread-item')) {
+			expect(item).toHaveClass('disabled');
+		}
+	});
+
+	it('disables the row button and the actions dropdown, ignoring select/delete while disabled', async () => {
+		const { getAllByText, getAllByTestId, emitted } = renderList({
+			props: { disabled: true, activeThreadId: 'thread-1' },
+		});
+
+		const rowButton = getAllByText('First thread')[0].closest('button');
+		expect(rowButton).toBeDisabled();
+
+		await fireEvent.click(rowButton as HTMLButtonElement);
+		expect(emitted('select')).toBeFalsy();
+
+		await fireEvent.click(getAllByTestId('action-delete')[0]);
+		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
 	it('emits collapse when the collapse button is clicked', async () => {
 		const { getByTestId, emitted } = renderList();
 		await fireEvent.click(getByTestId('instance-ai-sidebar-collapse'));

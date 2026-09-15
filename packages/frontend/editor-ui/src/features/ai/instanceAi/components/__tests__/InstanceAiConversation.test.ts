@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mockedStore } from '@/__tests__/utils';
@@ -142,6 +143,87 @@ describe('InstanceAiConversation', () => {
 		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
 			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
 		]);
+	});
+
+	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
+		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		// The stub only passes a `restoreDraft` callback with an attachment queued.
+		await fireEvent.click(getByTestId('instance-ai-input-add-attachment'));
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-draft').textContent).toBe('Normal message');
+		expect(getByTestId('instance-ai-input-attachments').textContent).toBe('attached');
+	});
+
+	it('sends the message once beforeSend resolves', async () => {
+		let resolveBeforeSend: () => void = () => {};
+		const beforeSend = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveBeforeSend = resolve;
+				}),
+		);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		resolveBeforeSend();
+		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalledTimes(1));
+		expect(thread.sendMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not send once beforeSend resolves if the panel disposed this runtime meanwhile', async () => {
+		let resolveBeforeSend: () => void = () => {};
+		const beforeSend = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveBeforeSend = resolve;
+				}),
+		);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() => expect(beforeSend).toHaveBeenCalled());
+
+		// Simulate the host disposing/replacing the runtime while `beforeSend` was pending.
+		const replacementThread = makeThread();
+		store.getRuntime.mockReturnValue(replacementThread);
+		resolveBeforeSend();
+
+		await vi.waitFor(() => expect(beforeSend).toHaveResolved());
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replacementThread.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it('exposes pendingComposerContext for panels beside the conversation', () => {

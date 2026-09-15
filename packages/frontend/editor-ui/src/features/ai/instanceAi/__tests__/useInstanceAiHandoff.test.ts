@@ -50,6 +50,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	provisionContextOnlyThread,
+	provisionSubjectThread,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
@@ -258,6 +259,59 @@ describe('useInstanceAiHandoff', () => {
 		expect(consumePendingFirstMessage('thread-1')).toEqual(payload);
 	});
 
+	it('mints a thread bound to a non-pending agent subject', async () => {
+		const threadId = await provisionSubjectThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Support agent' },
+			{ source: 'agent_builder_page', origin: 'internal' },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAgentBuilderTarget: {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Support agent',
+			},
+		});
+		expect(getPendingAgentAttachment('thread-1')).toEqual({
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'project-1',
+			name: 'Support agent',
+		});
+	});
+
+	it('mints a thread with a pending marker for a pending agent subject, merging extra metadata into the same write', async () => {
+		const threadId = await provisionSubjectThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			{ source: 'agent_builder_page', origin: 'internal' },
+			{ instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' } },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledExactlyOnceWith('thread-1', {
+			instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-1' },
+			instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' },
+		});
+	});
+
+	it('deletes the thread and rethrows when the target metadata write fails, without a second toast', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
+		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
 	it('opens an agent artifact thread without sending a message', async () => {
 		const { openAgentArtifactThread } = useInstanceAiHandoff();
 		const context = buildInstanceAiAgentPreviewHandoffContext({
@@ -287,7 +341,9 @@ describe('useInstanceAiHandoff', () => {
 			origin: 'internal',
 			sourceContext: { agentId: 'agent-1' },
 		});
-		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+		// One merged write from `provisionSubjectThread`: the target plus this
+		// handoff's own agent-preview context, in a single round trip.
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledExactlyOnceWith('thread-1', {
 			instanceAiAgentBuilderTarget: {
 				agentId: 'agent-1',
 				projectId: 'project-1',
@@ -346,7 +402,7 @@ describe('useInstanceAiHandoff', () => {
 		);
 
 		expect(opened).toBe(false);
-		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
 		expect(mocks.routerPush).not.toHaveBeenCalled();
 	});
 

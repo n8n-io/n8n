@@ -34,13 +34,14 @@ import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -179,18 +180,12 @@ const activeTestAgentOffer = computed(() => {
 // Returns the resolved title once we have one, or undefined while we're still
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
-const currentThreadTitle = computed<string | undefined>(() => {
-	const threadSummary = store.threads.find((t) => t.id === props.threadId);
-	if (threadSummary?.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
-		return threadSummary.title;
-	}
-	const firstUserMsg = thread.messages.find((m) => m.role === 'user');
-	if (firstUserMsg?.content) {
-		const text = firstUserMsg.content.trim();
-		return text.length > 60 ? text.slice(0, 60) + '…' : text;
-	}
-	return undefined;
-});
+const currentThreadTitle = computed<string | undefined>(() =>
+	getThreadDisplayTitle(
+		store.threads.find((t) => t.id === props.threadId),
+		thread.messages,
+	),
+);
 
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
