@@ -1,0 +1,220 @@
+// @vitest-environment jsdom
+
+import * as Helpers from './helpers';
+import { createRunExecutionData } from '../src';
+import { ExpressionError } from '../src/errors/expression.error';
+import type { IExecuteData, INodeExecutionData } from '../src/interfaces';
+import { Workflow } from '../src/workflow';
+
+const ENGINE = (process.env.N8N_EXPRESSION_ENGINE ?? 'vm') as 'legacy' | 'vm' | 'quickjs';
+
+class Widget {
+	constructor(public label: string) {}
+
+	describe() {
+		return this.label;
+	}
+}
+
+const circular = () => {
+	const o: Record<string, unknown> = { a: 1 };
+	o.self = o;
+	return o;
+};
+
+const throwingGetter = () => {
+	const o = {};
+	Object.defineProperty(o, 'boom', {
+		enumerable: true,
+		get() {
+			throw new Error('getter exploded');
+		},
+	});
+	return o;
+};
+
+type Case = {
+	name: string;
+	extra: () => Record<string, unknown>;
+	// The key path the error must point at, per engine that rejects the value.
+	// `undefined` means the engine transfers the item without complaint.
+	rejectedAt: Partial<Record<'vm' | 'quickjs', string>>;
+};
+
+const CASES: Case[] = [
+	{ name: 'a function', extra: () => ({ fn: () => 1 }), rejectedAt: { vm: 'json.fn' } },
+	{
+		name: 'a proxy',
+		extra: () => ({ px: new Proxy({ a: 1 }, {}) }),
+		rejectedAt: { vm: 'json.px' },
+	},
+	{
+		name: 'an enumerable getter that throws',
+		extra: () => ({ g: throwingGetter() }),
+		rejectedAt: { vm: 'json.g.boom', quickjs: 'json.g.boom' },
+	},
+	{
+		name: 'a circular reference',
+		extra: () => ({ circ: circular() }),
+		rejectedAt: { quickjs: 'json.circ.self' },
+	},
+	{ name: 'a class instance', extra: () => ({ inst: new Widget('w') }), rejectedAt: {} },
+	{
+		name: 'a symbol-keyed value',
+		extra: () => ({ sym: { [Symbol('s')]: 1, ok: 2 } }),
+		rejectedAt: {},
+	},
+	{ name: 'a Date', extra: () => ({ when: new Date(0) }), rejectedAt: {} },
+	{ name: 'a Buffer', extra: () => ({ buf: Buffer.from('hello') }), rejectedAt: {} },
+	{ name: 'a Map', extra: () => ({ m: new Map([['a', 1]]) }), rejectedAt: {} },
+	{ name: 'a 4MB string', extra: () => ({ blob: 'x'.repeat(4 * 1024 * 1024) }), rejectedAt: {} },
+];
+
+const EAGER_ACCESSORS: Array<[string, string]> = [
+	['$().item', "={{ $('Upstream').item.json.plain_key }}"],
+	['$().first()', "={{ $('Upstream').first().json.plain_key }}"],
+	['$().last()', "={{ $('Upstream').last().json.plain_key }}"],
+	['$().all()[0]', "={{ $('Upstream').all()[0].json.plain_key }}"],
+	['$().itemMatching(0)', "={{ $('Upstream').itemMatching(0).json.plain_key }}"],
+	['$input.first()', '={{ $input.first().json.plain_key }}'],
+	['$items()', '={{ $items("Upstream")[0].json.plain_key }}'],
+];
+
+const makeWorld = (extra: Record<string, unknown>) => {
+	const workflow = new Workflow({
+		id: '1',
+		nodes: [
+			{
+				name: 'Upstream',
+				typeVersion: 1,
+				type: 'test.set',
+				id: 'up-1',
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				name: 'Current',
+				typeVersion: 1,
+				type: 'test.set',
+				id: 'cur-1',
+				position: [100, 0],
+				parameters: {},
+			},
+		],
+		connections: { Upstream: { main: [[{ node: 'Current', type: 'main', index: 0 }]] } },
+		active: false,
+		nodeTypes: Helpers.NodeTypes(),
+	});
+
+	const item: INodeExecutionData = {
+		pairedItem: { item: 0 },
+		json: { plain_key: 'the-value', ...extra } as INodeExecutionData['json'],
+	};
+
+	const runExecutionData = createRunExecutionData({
+		executionData: {
+			contextData: {},
+			nodeExecutionStack: [],
+			metadata: {},
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		},
+		resultData: {
+			runData: {
+				Upstream: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+						data: { main: [[item]] },
+					},
+				],
+			},
+		},
+	});
+
+	const items = [item];
+	const executeData: IExecuteData = {
+		data: { main: [items] },
+		node: workflow.getNode('Current')!,
+		source: { main: [{ previousNode: 'Upstream', previousNodeOutput: 0, previousNodeRun: 0 }] },
+	};
+
+	const evaluate = (expr: string) =>
+		workflow.expression.getParameterValue(
+			expr,
+			runExecutionData,
+			0,
+			0,
+			'Current',
+			items,
+			'manual',
+			{},
+			executeData,
+		);
+
+	return { workflow, evaluate };
+};
+
+describe('an upstream item holding a value the engine cannot transfer', () => {
+	describe.each(CASES)('$name', ({ extra, rejectedAt }) => {
+		const path = ENGINE === 'legacy' ? undefined : rejectedAt[ENGINE];
+		let world: ReturnType<typeof makeWorld>;
+
+		beforeAll(async () => {
+			world = makeWorld(extra());
+			await world.workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await world.workflow.expression.releaseIsolate();
+		});
+
+		it('reads a sibling key through $json', () => {
+			expect(world.evaluate('={{ $json.plain_key }}')).toBe('the-value');
+		});
+
+		it.each(EAGER_ACCESSORS)('reads a sibling key through %s', (_accessor, expr) => {
+			if (path === undefined) {
+				expect(world.evaluate(expr)).toBe('the-value');
+				return;
+			}
+
+			let caught: unknown;
+			try {
+				world.evaluate(expr);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(ExpressionError);
+			expect((caught as ExpressionError).message).toContain("'Upstream'");
+			expect((caught as ExpressionError).message).toContain(path);
+		});
+	});
+});
+
+describe.skipIf(ENGINE !== 'vm')('the message a rejected item produces', () => {
+	let world: ReturnType<typeof makeWorld>;
+
+	beforeAll(async () => {
+		world = makeWorld({ fn: () => 1 });
+		await world.workflow.expression.acquireIsolate();
+	});
+	afterAll(async () => {
+		await world.workflow.expression.releaseIsolate();
+	});
+
+	it('names the node, the key path and what the value is', () => {
+		let caught: unknown;
+		try {
+			world.evaluate("={{ $('Upstream').item.json.plain_key }}");
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as ExpressionError).message).toBe(
+			"Can't read item from node 'Upstream': the value at json.fn cannot be used in an expression (a function)",
+		);
+	});
+});
