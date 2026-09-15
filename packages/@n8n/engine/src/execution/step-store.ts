@@ -13,7 +13,7 @@ import type {
  *
  * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
  * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`, or
- * `cancelQueuedSteps`, so it cannot bypass the checks and locking those
+ * `cancelPendingSteps`, so it cannot bypass the checks and locking those
  * transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
@@ -156,8 +156,20 @@ export interface StepStore {
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 
-	/** Cancel every step of the execution still `queued` (`queued -> cancelled`). */
-	cancelQueuedSteps(executionId: string): Promise<void>;
+	/**
+	 * Cancel every pending step of the execution (`-> cancelled`). A pending step
+	 * is `queued` or `waiting`. No worker runs either one, and nothing starts
+	 * either one again after the execution ends.
+	 *
+	 * A `waiting` step must be included. A request-only wait would otherwise stay
+	 * on the row for ever, and the sweep would resume a deadline wait inside an
+	 * execution that already failed. `resumeDueSteps` reads the status, so a
+	 * cancelled row is invisible to it.
+	 *
+	 * A `running` step keeps its status. Its worker still owns the outcome, and
+	 * `completeStep` and `failStep` compare-and-set on `running`.
+	 */
+	cancelPendingSteps(executionId: string): Promise<void>;
 
 	/**
 	 * Step rows of the given keys within an execution, keyed by `stepKeyId`. A

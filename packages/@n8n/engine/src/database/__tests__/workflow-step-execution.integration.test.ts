@@ -692,7 +692,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect([...seeded(leftIds), ...seeded(rightIds)].sort()).toEqual([...backlog].sort());
 	});
 
-	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
+	it('TypeOrmStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -713,6 +713,11 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'completed',
 			outputs: [{}],
 		});
+		const { id: waitingId } = await seedWaitingStep(
+			executionId,
+			'd',
+			new Date('2099-01-01T00:00:00.000Z'),
+		);
 		// scoped to the execution: a sibling execution's queued work is untouched
 		const { id: otherId } = await createStep(store, otherExecutionId, {
 			nodeId: 'a',
@@ -720,12 +725,29 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		await store.cancelQueuedSteps(executionId);
+		await store.cancelPendingSteps(executionId);
 
 		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		// a waiting step is pending too: nothing runs it, and nothing will resume it
+		// once the execution is over
+		expect((await store.loadStep(waitingId)).status).toBe('cancelled');
+		// a running step keeps its claim: its worker still owns the outcome
 		expect((await store.loadStep(runningId)).status).toBe('running');
 		expect((await store.loadStep(completedId)).status).toBe('completed');
 		expect((await store.loadStep(otherId)).status).toBe('queued');
+	});
+
+	it('TypeOrmStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		// due long ago, so only the status can keep the sweep away from it
+		const { id } = await seedWaitingStep(executionId, 'a', new Date('2019-02-01T00:00:00.000Z'));
+
+		await store.cancelPendingSteps(executionId);
+
+		const resumed = await store.resumeDueSteps(new Date('2019-06-01T00:00:00.000Z'), 10);
+		expect(resumed.map((step) => step.id)).not.toContain(id);
+		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
