@@ -340,42 +340,22 @@ interface IntlDispatchEntry {
  * plain object the guest copies onto its wrapper instance. weekInfo moved
  * from a getter to getWeekInfo() across V8 versions — read both shapes.
  */
-function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
-	const msg = bridgeMessageSchema.parse(rawMsg);
-	switch (msg.type) {
-		case 'getNodeFirst':
-			return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
-		case 'getNodeLast':
-			return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
-		case 'getNodeAll':
-			return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
-		case 'getInputFirst':
-			return data.$input?.first?.();
-		case 'getInputLast':
-			return data.$input?.last?.();
-		case 'getInputAll':
-			return data.$input?.all?.();
-		case 'getItems':
-			return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
-		case 'fromAi':
-			return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
-		case 'getNodePairedItem':
-			return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
-		case 'getNodeItemMatching':
-			return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
-		case 'getNodeItem':
-			// `.item` is a host getter — accessing it invokes the resolver.
-			return data.$?.(msg.nodeName)?.item;
-		case 'evaluateExpression':
-			return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-		default: {
-			// Unreachable at runtime — zod rejects unknown `type` values before
-			// the switch. The `never` assignment is the compile-time guard.
-			const exhaustive: never = msg;
-			void exhaustive;
-			throw new Error('Unhandled bridge message');
-		}
-	}
+function dumpLocale(loc: Intl.Locale): Record<string, unknown> {
+	const withWeekInfo = loc as Intl.Locale & { weekInfo?: unknown; getWeekInfo?: () => unknown };
+	return {
+		tag: loc.toString(),
+		baseName: loc.baseName,
+		language: loc.language,
+		script: loc.script,
+		region: loc.region,
+		calendar: loc.calendar,
+		caseFirst: loc.caseFirst,
+		collation: loc.collation,
+		hourCycle: loc.hourCycle,
+		numberingSystem: loc.numberingSystem,
+		numeric: loc.numeric,
+		weekInfo: withWeekInfo.getWeekInfo?.() ?? withWeekInfo.weekInfo,
+	};
 }
 
 const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
