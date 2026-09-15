@@ -1,15 +1,14 @@
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license';
-
 export function getWorkflowHistoryLicensePruneTime() {
-	return Container.get(License).getWorkflowHistoryPruneLimit();
+	return Container.get(LicenseState).getWorkflowHistoryPruneQuota();
 }
 
 // Time in hours
 export function getWorkflowHistoryPruneTime(): number {
-	const licenseTime = Container.get(License).getWorkflowHistoryPruneLimit();
+	const licenseTime = Container.get(LicenseState).getWorkflowHistoryPruneQuota();
 	const configTime = Container.get(GlobalConfig).workflowHistory.pruneTime;
 
 	// License is infinite and config time is infinite
