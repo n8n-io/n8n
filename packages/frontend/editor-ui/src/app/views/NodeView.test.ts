@@ -103,8 +103,16 @@ describe('NodeView', () => {
 					// flight when the environment tears down, which fails the whole run.
 					LazyNodeCreation: defineComponent({
 						emits: ['addEmptyGroup'],
-						template:
-							'<button data-test-id="node-creation-stub-add-empty-group" @click="$emit(\'addEmptyGroup\', [320, 240])" />',
+						template: `<>
+							<button
+								data-test-id="node-creation-stub-add-empty-group"
+								@click="$emit('addEmptyGroup', [320, 240])"
+							/>
+							<button
+								data-test-id="node-creation-stub-add-empty-groups"
+								@click="$emit('addEmptyGroup', [320, 240]); $emit('addEmptyGroup', [640, 480])"
+							/>
+						</>`,
 					}),
 					// Same for the setup-credentials button: its import chain pulls in the
 					// ready-to-run stores and their bundled workflow fixtures.
@@ -168,6 +176,35 @@ describe('NodeView', () => {
 			expect(undoable.commands).toHaveLength(2);
 			expect(undoable.commands[0]).toBeInstanceOf(AddNodeCommand);
 			expect(undoable.commands[1]).toBeInstanceOf(AddNodeGroupCommand);
+		});
+
+		it('ignores overlapping empty-group creation requests', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					properties: [
+						{
+							displayName: 'Empty Group Anchor',
+							name: 'emptyGroupAnchor',
+							type: 'hidden',
+							default: false,
+							validateType: undefined,
+						},
+					],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('node-creation-stub-add-empty-groups'));
+
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			expect(workflowDocumentStore.allNodes).toHaveLength(1);
+			expect(useHistoryStore().undoStack).toHaveLength(1);
 		});
 	});
 
