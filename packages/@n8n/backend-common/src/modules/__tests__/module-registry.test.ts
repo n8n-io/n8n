@@ -31,7 +31,16 @@ describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
 		expect(eligible).not.toContain('agents');
-		expect(eligible).not.toContain('policy-infrastructure');
+		expect(eligible).not.toContain('type-availability-policies');
+	});
+
+	it('should include policy-infrastructure by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
+	});
+
+	it('should allow opting out of policy-infrastructure via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
 	it('should include instance-ai by default', () => {
@@ -46,6 +55,7 @@ describe('eligibleModules', () => {
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -81,6 +91,7 @@ describe('eligibleModules', () => {
 	it('should consider a module eligible if it was enabled via env var', () => {
 		process.env.N8N_ENABLED_MODULES = 'agents';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'policy-infrastructure',
 			'insights',
 			'external-secrets',
 			'community-packages',

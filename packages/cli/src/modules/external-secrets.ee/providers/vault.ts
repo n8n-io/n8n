@@ -45,6 +45,7 @@ interface VaultSettings {
 	// Manual KV configuration (bypasses sys/mounts auto-discovery)
 	kvMountPath?: string;
 	kvVersion?: string;
+	kvSecretPath?: string;
 }
 
 interface VaultResponse<T> {
@@ -100,6 +101,12 @@ type VaultAppRoleResp = VaultUserPassLoginResp;
 
 interface VaultSecretList {
 	keys: string[];
+}
+
+interface KvMount {
+	path: string;
+	version: string;
+	subPath: string;
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -254,6 +261,16 @@ export class VaultProvider extends SecretsProvider {
 				{ name: 'v2', value: '2' },
 			],
 			hint: 'Only used when KV Mount Path is specified.',
+		},
+		{
+			displayName: 'KV Secret Path (optional)',
+			name: 'kvSecretPath',
+			type: 'string',
+			default: '',
+			required: false,
+			noDataExpression: true,
+			placeholder: 'e.g. my-app/',
+			hint: 'Folder inside the KV mount to read secrets from. Leave blank to read the whole mount. Only used when KV Mount Path is specified.',
 		},
 	];
 
@@ -462,34 +479,21 @@ export class VaultProvider extends SecretsProvider {
 		return [body.data, resp];
 	}
 
-	private async getKVSecrets(
-		mountPath: string,
-		kvVersion: string,
-		path: string,
-	): Promise<[string, IDataObject] | null> {
+	private async getKVSecrets(mount: KvMount, path: string): Promise<IDataObject | null> {
+		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
-		let listPath = mountPath;
-		if (kvVersion === '2') {
-			listPath += 'metadata/';
-		}
-		listPath += path;
+		const listRequest = this.kvListRequest(this.kvApiPath(mountPath, kvVersion, 'metadata', path));
 		let listBody: VaultResponse<VaultSecretList>;
 		try {
-			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
-			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
-			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
-			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
-			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
+			listBody = await this.#http.request<VaultResponse<VaultSecretList>>(listRequest);
 		} catch (error) {
-			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
-			const vaultApiPath = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
 			const errorContext = buildHttpProviderErrorContext(error);
 			this.logger.debug('Vault provider failed to list KV secrets', {
 				providerName: this.name,
 				operation: 'update',
 				mountPath,
 				kvVersion,
-				vaultApiPath,
+				vaultApiPath: listRequest.url,
 				...errorContext,
 			});
 			return null;
@@ -499,13 +503,11 @@ export class VaultProvider extends SecretsProvider {
 				await Promise.allSettled(
 					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							return await this.getKVSecrets(mountPath, kvVersion, path + key);
+							const folder = await this.getKVSecrets(mount, path + key);
+							const folderKey = (path + key).slice(subPath.length, -1);
+							return folder === null ? null : [folderKey, folder];
 						}
-						let secretPath = mountPath;
-						if (kvVersion === '2') {
-							secretPath += 'data/';
-						}
-						secretPath += path + key;
+						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
 						try {
 							const secretBody = await this.#http.request<VaultResponse<IDataObject>>({
 								url: secretPath,
@@ -534,20 +536,49 @@ export class VaultProvider extends SecretsProvider {
 				.map((i) => (i.status === 'rejected' ? null : i.value))
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
-		const name = path.substring(0, path.length - 1);
-		this.logger.debug(`Vault provider retrieved kv secrets from ${name}`);
-		return [name, data];
+		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);
+		return data;
 	}
 
-	private normalizeKvPath(mountPath: string): string {
-		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
+	private normalizeKvPath(path = ''): string {
+		const segments = path
+			.split('/')
+			.map((segment) => segment.trim())
+			.filter(Boolean);
+		return segments.length === 0 ? '' : `${segments.join('/')}/`;
 	}
 
-	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
-		const { kvMountPath, kvVersion } = this.settings;
+	private kvApiPath(
+		mountPath: string,
+		kvVersion: string,
+		segment: 'metadata' | 'data',
+		path: string,
+	): string {
+		return kvVersion === '2' ? `${mountPath}${segment}/${path}` : `${mountPath}${path}`;
+	}
 
-		if (kvMountPath) {
-			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+	private kvListRequest(listPath: string): { url: string; method: IHttpRequestMethods } {
+		const preferGet = Container.get(ExternalSecretsConfig).preferGet;
+		return {
+			url: `${listPath}${preferGet ? '?list=true' : ''}`,
+			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
+			method: (preferGet ? 'GET' : 'LIST') as IHttpRequestMethods,
+		};
+	}
+
+	private manualKvMount(): KvMount | null {
+		const { kvMountPath, kvVersion, kvSecretPath } = this.settings;
+		const path = this.normalizeKvPath(kvMountPath);
+		if (path === '') {
+			return null;
+		}
+		return { path, version: kvVersion ?? '2', subPath: this.normalizeKvPath(kvSecretPath) };
+	}
+
+	private async discoverKvMounts(): Promise<KvMount[]> {
+		const manualMount = this.manualKvMount();
+		if (manualMount) {
+			return [manualMount];
 		}
 
 		const mounts = await this.#http.request<VaultResponse<VaultMountsResp>>({
@@ -563,41 +594,55 @@ export class VaultProvider extends SecretsProvider {
 					this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
 					return null;
 				}
-				return { path: basePath, version };
+				return { path: basePath, version, subPath: '' };
 			})
-			.filter((entry): entry is { path: string; version: string } => entry !== null);
+			.filter((entry): entry is KvMount => entry !== null);
 	}
 
 	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
-		const { kvMountPath, kvVersion } = this.settings;
+		const manualMount = this.manualKvMount();
 
-		let listUrl: string;
+		let listRequest: IHttpRequestOptions;
 		let forbiddenMessage: string;
 		let failureMessage: (status: number) => string;
 
-		if (kvMountPath) {
-			const normalizedPath = this.normalizeKvPath(kvMountPath);
-			const version = kvVersion ?? '2';
-			listUrl =
-				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
-			forbiddenMessage = `Permission denied accessing ${kvMountPath}. Check your token policies.`;
+		if (manualMount) {
+			const listPath = this.kvApiPath(
+				manualMount.path,
+				manualMount.version,
+				'metadata',
+				manualMount.subPath,
+			);
+			listRequest = this.kvListRequest(listPath);
+			forbiddenMessage = `Permission denied accessing ${listPath}. Check your token policies.`;
 			failureMessage = (status) =>
-				`Could not access KV mount at ${kvMountPath} (status ${status}).`;
+				status === 404 && manualMount.subPath !== ''
+					? `No secrets found at ${listPath}. Check the KV Secret Path.`
+					: `Could not access ${listPath} (status ${status}).`;
 		} else {
-			listUrl = 'sys/mounts';
+			listRequest = { url: 'sys/mounts', method: 'GET' };
 			forbiddenMessage =
 				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.";
 			failureMessage = () =>
 				"Couldn't list mounts but it wasn't a permissions issue. Please consult your Vault admin.";
 		}
 
-		const resp = await this.requestFull({ url: listUrl, method: 'GET' });
+		const resp = await this.requestFull(listRequest);
 
 		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
-		if (resp.statusCode === 200 || (kvMountPath && resp.statusCode === 404)) {
+		const { body } = resp;
+		// Vault answers a list on an empty KV mount with 404 and an empty `errors` array. A 404 for an
+		// unknown mount path carries an error message instead.
+		const isEmptyMount =
+			resp.statusCode === 404 &&
+			typeof body === 'object' &&
+			body !== null &&
+			'errors' in body &&
+			Array.isArray(body.errors) &&
+			body.errors.length === 0;
+		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
 			return [true];
 		}
 		return [false, failureMessage(resp.statusCode)];
@@ -610,12 +655,16 @@ export class VaultProvider extends SecretsProvider {
 			const secrets = Object.fromEntries(
 				(
 					await Promise.all(
-						kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
-							const value = await this.getKVSecrets(path, version, '');
+						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
+							const value = await this.getKVSecrets(mount, mount.subPath);
 							if (value === null) {
 								return null;
 							}
-							return [path.substring(0, path.length - 1), value[1]];
+							const nested = mount.subPath
+								.split('/')
+								.filter(Boolean)
+								.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
+							return [mount.path.substring(0, mount.path.length - 1), nested];
 						}),
 					)
 				).filter((entry): entry is [string, IDataObject] => entry !== null),

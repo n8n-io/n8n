@@ -10,7 +10,9 @@ import {
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -68,6 +70,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
+import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -95,6 +98,7 @@ export class InstanceAiController {
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
@@ -132,7 +136,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
 			);
 		}
 	}
@@ -223,6 +227,8 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			payload.mode,
+			payload.promptVersion,
 		);
 		return { runId };
 	}
@@ -374,7 +380,7 @@ export class InstanceAiController {
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
 		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = (
+		const writeRunSyncFrame = async (
 			groupId: string,
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
@@ -382,6 +388,12 @@ export class InstanceAiController {
 			if (runEvents.length === 0) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// The fold records that a confirmation was requested, not that it was
+			// answered. Settle cards whose pending row is gone (same check as the
+			// history read); otherwise a client that reconnects mid-run re-arms a
+			// card the server already consumed, and every click on it fails.
+			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -436,7 +448,7 @@ export class InstanceAiController {
 			for (const [groupId, group] of liveGroups) {
 				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
 				if (closed) return;
-				writeRunSyncFrame(groupId, group, runEvents);
+				await writeRunSyncFrame(groupId, group, runEvents);
 				for (const event of runEvents) {
 					if (event.type === 'text-block' || event.type === 'reasoning-block') {
 						foldedBlockKeys.add(blockKey(event));
@@ -800,6 +812,25 @@ export class InstanceAiController {
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
+	@Get('/threads/history')
+	@GlobalScope('instanceAi:message')
+	async listThreadHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadHistoryQuery,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.memoryService.listThreadHistory(req.user.id, query);
+	}
+
+	@Get('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
+	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { thread: await this.memoryService.getThreadInfo(threadId) };
+	}
+
 	@Post('/threads')
 	@GlobalScope('instanceAi:message')
 	async ensureThread(
@@ -850,7 +881,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
@@ -870,6 +901,25 @@ export class InstanceAiController {
 			metadata: payload.metadata,
 		});
 		return { thread };
+	}
+
+	/**
+	 * Persist the pending new-agent artifact this thread has open, and bind it to
+	 * the thread in the same request. Idempotent under a concurrent writer on the
+	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * project-scoped agent create.
+	 */
+	@Post('/threads/:threadId/agent')
+	@GlobalScope('instanceAi:message')
+	async persistPendingAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiPersistPendingAgentRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
 	}
 
 	@Get('/threads/:threadId/messages')
@@ -1024,8 +1074,9 @@ export class InstanceAiController {
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
-	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
-	 * write the native message log verbatim. The thread then continues as if the
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1070,18 +1121,27 @@ export class InstanceAiController {
 		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1130,6 +1190,9 @@ export class InstanceAiController {
 				}
 			}
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;

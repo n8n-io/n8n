@@ -8,10 +8,11 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
-	type McpRegistryConnection,
+	type McpOAuth2CredentialType,
 	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
+	type ResolvedMcpRegistryConnection,
 	type SupplyData,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -23,7 +24,6 @@ import {
 	loadMcpToolOptions,
 	type ResolvedMcpConfig,
 } from '../shared/runtime';
-import type { McpAuthenticationOption } from '../shared/types';
 
 /**
  * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
@@ -37,9 +37,12 @@ export class McpRegistryClientTool implements INodeType {
 		McpRegistryClientTool.registryRuntime = runtime;
 	}
 
-	static getConnection(node: ReturnType<IExecuteFunctions['getNode']>): McpRegistryConnection {
-		const connection = this.registryRuntime?.resolveConnection(node.type);
-		if (connection) return connection;
+	static getConnection(
+		node: ReturnType<IExecuteFunctions['getNode']>,
+		selector?: string,
+	): ResolvedMcpRegistryConnection {
+		const resolved = this.registryRuntime?.resolveConnection(node.type, selector);
+		if (resolved) return resolved;
 		throw new NodeOperationError(node, 'MCP registry connection is not registered');
 	}
 
@@ -56,7 +59,6 @@ export class McpRegistryClientTool implements INodeType {
 			}
 		);
 	}
-
 	description: INodeTypeDescription = {
 		displayName: 'MCP Registry Client (internal)',
 		name: 'mcpRegistryClientTool',
@@ -180,14 +182,16 @@ export class McpRegistryClientTool implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const connection = McpRegistryClientTool.getConnection(this.getNode());
-				const authentication = getCredentialType(this, connection);
+				const selector = this.getNodeParameter('authentication', '') as string;
+				const resolved = McpRegistryClientTool.getConnection(this.getNode(), selector);
+				const authentication = getCredentialType(this, resolved);
 				return await loadMcpToolOptions(this, {
 					authentication,
-					transport: connection.transport,
-					endpointUrl: getConfiguredEndpointUrl(connection),
+					transport: resolved.connection.transport,
+					endpointUrl: getConfiguredEndpointUrl(resolved.connection),
 					registryCredential: {
-						connection,
+						connection: resolved.connection,
+						credentialType: authentication,
 						prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
 					},
 					timeout: this.getNodeParameter('options.timeout', 60000) as number,
@@ -212,14 +216,17 @@ function resolveConfig(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
 ): ResolvedMcpConfig {
-	const connection = McpRegistryClientTool.getConnection(ctx.getNode());
-	const authentication = getCredentialType(ctx, connection);
+	// credential type selector when nodes are generated on startup in serverToNodeDescription
+	const selector = ctx.getNodeParameter('authentication', itemIndex, '') as string;
+	const resolved = McpRegistryClientTool.getConnection(ctx.getNode(), selector);
+	const authentication = getCredentialType(ctx, resolved);
 	return {
 		authentication,
-		transport: connection.transport,
-		endpointUrl: getConfiguredEndpointUrl(connection),
+		transport: resolved.connection.transport,
+		endpointUrl: getConfiguredEndpointUrl(resolved.connection),
 		registryCredential: {
-			connection,
+			connection: resolved.connection,
+			credentialType: authentication,
 			prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
 		},
 		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
@@ -233,12 +240,12 @@ function resolveConfig(
 
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
-	connection: McpRegistryConnection,
-): McpAuthenticationOption {
+	resolved: ResolvedMcpRegistryConnection,
+): McpOAuth2CredentialType {
 	const node = ctx.getNode();
-	if (!Object.hasOwn(node.credentials ?? {}, connection.credentialType)) {
-		throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+	const { credentialType } = resolved.binding;
+	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {
+		throw new NodeOperationError(node, 'No MCP credential found');
 	}
-
-	return connection.credentialType;
+	return credentialType;
 }

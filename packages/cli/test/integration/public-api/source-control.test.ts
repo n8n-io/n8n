@@ -3,6 +3,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -53,7 +55,7 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().post(pullUrl).send(validBody);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toEqual({ message: 'Unauthorized' });
 		});
 
 		it('should return 401 when API key is invalid', async () => {
@@ -76,14 +78,12 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 
-		it('should return 401 when Source Control is not licensed', async () => {
+		it('should return 403 when Source Control is not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).post(pullUrl).send(validBody);
 
-			expect(response.status).toBe(401);
-			expect(response.body).toEqual({
-				status: 'Error',
-				message: 'Source Control feature is not licensed',
-			});
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message');
+			expect(response.body.message).toContain('feat:sourceControl');
 		});
 
 		it('should return 400 when licensed but Source Control is not connected', async () => {
@@ -157,7 +157,20 @@ describe('Source Control (Public API)', () => {
 			expect(response.text).toBe('Git operation failed');
 		});
 
-		it('should return 400 as plain text when body fails PullWorkFolderRequestDto validation', async () => {
+		it('should return HTTP 415 for a request with no body and no Content-Type', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const pullSpy = vi.spyOn(Container.get(SourceControlService), 'pullWorkfolder');
+
+			const response = await testServer.publicApiAgentFor(owner).post(pullUrl);
+
+			expect(response.status).toBe(415);
+			expect(response.body).toEqual({ message: 'unsupported media type undefined' });
+			expect(pullSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return HTTP 400 for an invalid body', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
@@ -167,7 +180,10 @@ describe('Source Control (Public API)', () => {
 				.send({ autoPublish: 'not-a-valid-mode' });
 
 			expect(response.status).toBe(400);
-			expect(response.text.length).toBeGreaterThan(0);
+			expect(response.body).toEqual({
+				message:
+					"request/body/autoPublish Invalid enum value. Expected 'none' | 'all' | 'published', received 'not-a-valid-mode'",
+			});
 		});
 	});
 
@@ -334,6 +350,254 @@ describe('Source Control (Public API)', () => {
 					origin: 'publicApi',
 				}),
 			);
+		});
+	});
+
+	describe('POST /source-control/push', () => {
+		const pushUrl = '/source-control/push';
+		const validBody = {
+			commitMessage: 'chore: sync',
+			fileNames: [{ id: 'wf-1', type: 'workflow' }],
+		};
+
+		it('should return 401 when API key is missing', async () => {
+			const response = await testServer.publicApiAgentWithoutApiKey().post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(401);
+			expect(response.body).toEqual({ message: 'Unauthorized' });
+		});
+
+		it('should return 401 when API key is invalid', async () => {
+			const response = await testServer
+				.publicApiAgentWithApiKey('not-a-real-api-key')
+				.post(pushUrl)
+				.send(validBody);
+
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message');
+		});
+
+		it('should return 403 when API key lacks sourceControl:push scope', async () => {
+			testServer.license.enable('feat:sourceControl');
+			const member = await createMemberWithApiKey({ scopes: ['tag:list'] });
+
+			const response = await testServer.publicApiAgentFor(member).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('should return 403 when API key has sourceControl:read but not sourceControl:push', async () => {
+			testServer.license.enable('feat:sourceControl');
+			const member = await createMemberWithApiKey({ scopes: ['sourceControl:read'] });
+
+			const response = await testServer.publicApiAgentFor(member).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
+		it('should return 403 when Source Control is not licensed', async () => {
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message');
+			expect(response.body.message).toContain('feat:sourceControl');
+		});
+
+		it('should return 403 for a member with a push-scoped key but no authorized project', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+			const member = await createMemberWithApiKey({ scopes: ['sourceControl:push'] });
+
+			const response = await testServer.publicApiAgentFor(member).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'You are not allowed to push changes' });
+		});
+
+		it('should authorize before revealing whether a repository is connected', async () => {
+			testServer.license.enable('feat:sourceControl');
+			// Source control deliberately left disconnected.
+			const member = await createMemberWithApiKey({ scopes: ['sourceControl:push'] });
+
+			const response = await testServer.publicApiAgentFor(member).post(pushUrl).send(validBody);
+
+			// 403 from RBAC, not the 400 that would disclose the connection state.
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'You are not allowed to push changes' });
+		});
+
+		it('should return 400 when licensed but Source Control is not connected', async () => {
+			testServer.license.enable('feat:sourceControl');
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: 'Source Control is not connected to a repository',
+			});
+		});
+
+		it('should return 400 when fileNames is empty', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(pushUrl)
+				.send({ commitMessage: 'chore: sync', fileNames: [] });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: 'request/body/fileNames Array must contain at least 1 element(s)',
+			});
+		});
+
+		it('should return 400 when fileNames is missing', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(pushUrl)
+				.send({ commitMessage: 'chore: sync' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: "request/body must have required property 'fileNames'",
+			});
+		});
+
+		it('should return 400 when commitMessage is missing', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(pushUrl)
+				.send({ fileNames: [{ id: 'wf-1', type: 'workflow' }] });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({
+				message: "request/body must have required property 'commitMessage'",
+			});
+		});
+
+		it('should return 200 with the push envelope and pass only (id, type) selectors through', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const statusResult = [sourceControlledFileFixture('wf-1', { pushed: true })];
+			const pushSpy = vi
+				.spyOn(Container.get(SourceControlService), 'pushWorkfolder')
+				.mockResolvedValue({ statusCode: 200, pushResult: undefined, statusResult });
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ data: statusResult });
+			expect(pushSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ id: owner.id }),
+				{
+					commitMessage: 'chore: sync',
+					fileNames: [{ id: 'wf-1', type: 'workflow' }],
+					force: undefined,
+				},
+				'publicApi',
+			);
+		});
+
+		it('should return 409 with the conflicting files when unforced conflicts exist', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const statusResult = [sourceControlledFileFixture('wf-1', { conflict: true })];
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockResolvedValue({
+				statusCode: 409,
+				pushResult: undefined,
+				statusResult,
+			});
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(409);
+			expect(response.body).toEqual({
+				message: expect.stringContaining('conflicting files'),
+				conflicts: statusResult,
+			});
+		});
+
+		it('should only list the conflicting files, not the whole selection, on 409', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const conflictingFile = sourceControlledFileFixture('wf-1', { conflict: true });
+			const cleanFile = sourceControlledFileFixture('wf-2', { conflict: false });
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockResolvedValue({
+				statusCode: 409,
+				pushResult: undefined,
+				statusResult: [conflictingFile, cleanFile],
+			});
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(409);
+			expect(response.body).toEqual({
+				message: expect.stringContaining('conflicting files'),
+				conflicts: [conflictingFile],
+			});
+		});
+
+		it('should return 200 when force is true even with conflicts', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const statusResult = [sourceControlledFileFixture('wf-1', { pushed: true })];
+			const pushSpy = vi
+				.spyOn(Container.get(SourceControlService), 'pushWorkfolder')
+				.mockResolvedValue({ statusCode: 200, pushResult: undefined, statusResult });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(pushUrl)
+				.send({ ...validBody, force: true });
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ data: statusResult });
+			expect(pushSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ id: owner.id }),
+				expect.objectContaining({ force: true }),
+				'publicApi',
+			);
+		});
+
+		it('should return 400 when pushing onto a read-only branch', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockRejectedValue(
+				new BadRequestError('Cannot push onto read-only branch.'),
+			);
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(400);
+			expect(response.body).toEqual({ message: 'Cannot push onto read-only branch.' });
+		});
+
+		it('should return 403 when pushing an unauthorized file', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			vi.spyOn(Container.get(SourceControlService), 'pushWorkfolder').mockRejectedValue(
+				new ForbiddenError('You are not allowed to push these changes'),
+			);
+
+			const response = await testServer.publicApiAgentFor(owner).post(pushUrl).send(validBody);
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'You are not allowed to push these changes' });
 		});
 	});
 });

@@ -21,6 +21,7 @@ const context = {
 	workflowId: 'wf-1',
 	mode: 'production',
 	iteration: 0,
+	callerContext: {},
 } as const;
 
 describe('createEngineStepDataLoader', () => {

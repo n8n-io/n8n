@@ -249,6 +249,8 @@ export class Expression {
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		lazyAcquire?: boolean;
+		compileCache?: boolean;
 	}): Promise<void> {
 		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
@@ -269,12 +271,14 @@ export class Expression {
 								timeout: options.bridgeTimeout,
 								memoryLimit: options.bridgeMemoryLimit,
 								logger: LoggerProxy,
+								compileCache: options.compileCache,
 							});
 			this.vmEvaluator = new runtime.ExpressionEvaluator({
 				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				idleTimeoutMs: options.idleTimeoutMs,
+				lazyAcquire: options.lazyAcquire,
 				hooks: expressionSandboxHooks,
 				logger: LoggerProxy,
 				observability: options.observability,

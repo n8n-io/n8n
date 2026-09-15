@@ -21,11 +21,43 @@ oneOf:
         type: string
   - type: object
     description: >
+      A package workflow whose source id matches multiple workflows in the target
+      project. The import cannot choose a workflow safely.
+    required:
+      - type
+      - sourceWorkflowId
+      - projectId
+      - existingWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-lineage-conflict
+      sourceWorkflowId:
+        type: string
+      projectId:
+        type: string
+      existingWorkflows:
+        type: array
+        items:
+          type: object
+          required:
+            - id
+            - name
+            - isArchived
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            isArchived:
+              type: boolean
+  - type: object
+    description: >
       A `source`-policy workflow whose id is already taken on the instance.
       Workflow ids are globally unique, so the id cannot be created in the
-      target project. The existing workflow may live in any project — including
-      the target project itself — and may be archived (archived workflows keep
-      their id but are never matched for updates).
+      target project. The existing workflow can be in another project, can lack
+      an owner share, or can use a different source id. It can also be archived.
     required:
       - type
       - sourceWorkflowId
@@ -170,6 +202,38 @@ oneOf:
       projectId:
         type: string
         description: Project the workflow was being reconciled against.
+  - type: object
+    description: >
+      A matched workflow whose archived state differs from the package, so the
+      import must archive or unarchive it, but the caller lacks `workflow:delete`
+      on it. Reported at plan time so nothing is written.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+      - projectId
+      - transition
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-archive-forbidden
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project that owns the matched workflow.
+      transition:
+        type: string
+        enum:
+          - archive
+          - unarchive
+        description: The step the import needs to bring the workflow to the package's state.
   - type: object
     description: >
       A folder that `folderConflictPolicy=overwrite` would delete — the package does not

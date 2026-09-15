@@ -340,12 +340,6 @@ describe('SourceControlService', () => {
 					{
 						id: 'authorized-wf',
 						type: 'workflow',
-						status: 'deleted',
-						file: 'workflows/other-project-wf.json',
-						name: 'anything',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
 					},
 				],
 				commitMessage: 'chore: tidy up',
@@ -382,18 +376,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'out-of-scope-wf',
-							type: 'workflow',
-							status: 'deleted',
-							file: 'workflows/out-of-scope-wf.json',
-							name: 'out-of-scope',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'out-of-scope-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('You are not allowed to push these changes');
 
@@ -424,18 +407,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'authorized-wf',
-							type: 'workflow',
-							status: 'modified',
-							file: 'workflows/authorized-wf.json',
-							name: 'authorized',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'authorized-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('File path /outside-git/authorized-wf.json is invalid');
 
@@ -476,18 +448,7 @@ describe('SourceControlService', () => {
 
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [
-					{
-						id: 'wf-1',
-						type: 'workflow',
-						status: 'modified',
-						file: 'workflows/wf-1.json',
-						name: 'Workflow 1',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
-					},
-				],
+				fileNames: [{ id: 'wf-1', type: 'workflow' }],
 			});
 
 			// ASSERT

@@ -6,26 +6,15 @@ import {
 	fetchTriggerExecutionIds,
 } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
+import { migratedPollTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
 const SKIP_CHECK_WINDOW_MS = 1_000;
 
-test.use({
-	capability: {
-		services: ['proxy'],
-		env: {
-			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
-			N8N_SCHEDULER_ENABLED: 'true',
-			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
-			N8N_SCHEDULER_POLL_TRIGGERS_ENABLED: 'true',
-			N8N_SCHEDULER_MATERIALIZATION_INTERVAL: '1',
-			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
-		},
-	},
-});
+test.use(migratedPollTestConfig);
 
 test.describe(
-	'Poll Trigger error backoff @capability:proxy',
+	'Poll Trigger error backoff',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

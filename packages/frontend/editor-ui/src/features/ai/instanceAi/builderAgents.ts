@@ -26,6 +26,26 @@ export function getBuilderRoleLabel(
 	return BUILDER_ROLE_LABELS[node.role];
 }
 
+/** First candidate that has content, trimmed. A blank one never wins over the next. */
+export function firstNonBlank(...candidates: Array<string | undefined>): string | undefined {
+	return candidates.map((candidate) => candidate?.trim()).find((candidate) => candidate);
+}
+
+/**
+ * Header label for a sub-agent section. Blank candidates are skipped: an empty
+ * title or subtitle — which older threads persisted — would otherwise leave a
+ * header with nothing in it but a chevron.
+ */
+export function getAgentSectionTitle(node: InstanceAiAgentNode): string | undefined {
+	return firstNonBlank(
+		node.title,
+		getBuilderRoleLabel(node),
+		node.targetResource?.name,
+		node.subtitle,
+		node.role,
+	);
+}
+
 /** True when the node is a builder sub-agent that is currently running. */
 export function isActiveBuilderAgent(node: InstanceAiAgentNode): boolean {
 	return isBuilderAgent(node) && node.status === 'active';

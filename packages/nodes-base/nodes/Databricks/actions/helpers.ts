@@ -6,7 +6,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { databricksUserAgent } from '../constants';
+import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
@@ -32,7 +32,7 @@ export async function databricksApiRequest(
 		headers: {
 			...options.headers,
 			// Last, so a caller cannot override it
-			'User-Agent': databricksUserAgent(),
+			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
 		},
 	});
 }

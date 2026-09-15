@@ -4,6 +4,12 @@ export { assertDir, exists } from '@n8n/backend-common';
 
 const STORED_MODES = ['filesystem', 'filesystem-v2', 's3', 'azure', 'database'] as const;
 
+/**
+ * Stands in for the execution id when a binary is written before the execution
+ * row exists, e.g. by a trigger or a webhook node.
+ */
+export const TEMP_EXECUTION_ID = 'temp';
+
 export function isStoredMode(mode: string): mode is BinaryData.StoredMode {
 	return STORED_MODES.includes(mode as BinaryData.StoredMode);
 }

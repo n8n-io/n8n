@@ -23,7 +23,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
-import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),

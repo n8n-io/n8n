@@ -426,8 +426,12 @@
 					function barText(count) {
 						var remaining = Math.max(total - count, 0);
 						if (remaining === 0) {
-							return TEST_MODE
-								? "You're testing with your own connected accounts. Visitors will need to connect their own."
+							if (TEST_MODE) {
+								return "You're testing with your own connected accounts. Visitors will need to connect their own.";
+							}
+							// "All" only reads correctly once there's more than one account to be "all" of.
+							return total === 1
+								? 'Account connected · ready to chat'
 								: 'All ' + total + ' ' + accountsLabel(total) + ' connected · ready to chat';
 						}
 						if (hasFailed()) return 'Connection failed · try again';

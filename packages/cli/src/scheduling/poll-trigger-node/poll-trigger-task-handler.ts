@@ -11,13 +11,14 @@ import {
 	runPollInStagingScope,
 	TriggersAndPollers,
 } from 'n8n-core';
-import type { Failure, INode, IWorkflowBase } from 'n8n-workflow';
+import type { Failure, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
+import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
 import {
 	isPollTriggerTaskPayload,
 	POLL_TRIGGER_TASK_TYPE,
@@ -117,7 +118,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			return report.notDispatched();
 		}
 
-		const node = this.resolveTriggerNode(workflowData, nodeId, task);
+		const node = resolveTaskTriggerNode(
+			workflowData,
+			nodeId,
+			task,
+			'Poll-trigger task points to a node that is missing or disabled in the published workflow',
+		);
 
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(
@@ -282,20 +288,5 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			});
 		}
 		return task.payload;
-	}
-
-	private resolveTriggerNode(
-		workflowData: IWorkflowBase,
-		nodeId: string,
-		task: ClaimedTask,
-	): INode {
-		const node = workflowData.nodes.find((candidate) => candidate.id === nodeId);
-		if (!node || node.disabled) {
-			throw new UnexpectedError(
-				'Poll-trigger task points to a node that is missing or disabled in the published workflow',
-				{ extra: { taskId: task.id, jobId: task.jobId, workflowId: workflowData.id, nodeId } },
-			);
-		}
-		return node;
 	}
 }

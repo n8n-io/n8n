@@ -93,6 +93,7 @@ interface IAgentSessionMetrics {
 interface IAgentSessionMetricsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
+		user_id?: string;
 		agent_type: IAgentTurnFinishedTrackProperties['agent_type'];
 		run_type: IAgentTurnFinishedTrackProperties['run_type'];
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
@@ -325,6 +326,7 @@ export class Telemetry {
 	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
 		return [
 			properties.agent_id,
+			properties.user_id,
 			properties.run_type,
 			properties.turn_status,
 			JSON.stringify(properties.configuration),
@@ -349,6 +351,7 @@ export class Telemetry {
 			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
 				agent_id: bucket.agent_id,
+				...(bucket.user_id ? { user_id: bucket.user_id } : {}),
 				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
 				...bucket.configuration,
 				run_type: bucket.run_type,
@@ -460,6 +463,7 @@ export class Telemetry {
 		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
 		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
 			agent_id: properties.agent_id,
+			user_id: properties.user_id,
 			agent_type: properties.agent_type,
 			run_type: properties.run_type,
 			turn_status: properties.turn_status,

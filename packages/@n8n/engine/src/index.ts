@@ -29,6 +29,7 @@ export type {
 	LifecycleEventBatch,
 } from './lifecycle-events';
 
+export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
 export { deriveLoops, isBatchStepConfig } from './graph';
@@ -68,6 +69,7 @@ export type {
 
 export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
@@ -87,6 +89,7 @@ export type {
 	StepStore,
 	StepView,
 	TriggerOutputs,
+	WorkflowDocument,
 } from './execution';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';

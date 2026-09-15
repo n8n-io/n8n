@@ -4,6 +4,7 @@
  * script works for any package. Run it as `pnpm mutate` from the repo root.
  *
  *   pnpm mutate <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
+ *                                     [--test-files <path>[,<path>…]]
  *   pnpm mutate --diff [--base <ref>] [--config <path>]
  *
  * Use `--diff` before you merge. It reads the changed line ranges from
@@ -12,10 +13,18 @@
  * per package. This makes the gate apply to the patch: it scores the lines you
  * changed, not the debt you inherited.
  *
+ * Use `--test-files` to name the test files that must kill the mutants. The
+ * value goes to Stryker's `testFiles` config field, thus Stryker runs those
+ * files instead of the whole related-test graph. The flag repeats and it also
+ * takes a comma-separated list. `packages/cli` requires it — see
+ * `cliScopeError` below.
+ *
  * Stryker config resolution (first match wins):
  *   1. --config <path>                         explicit override
  *   2. <package-dir>/stryker.config.mjs        package-local (e.g. workflow's vm carve-out)
- *   3. scripts/mutation-health/stryker.default.mjs   shared default (points at the
+ *   3. scripts/mutation-health/stryker.cli.mjs       packages/cli only (related-test
+ *                                              discovery off — see stryker.cli.mjs)
+ *   4. scripts/mutation-health/stryker.default.mjs   shared default (points at the
  *                                              package's own vitest.config.* — no
  *                                              bespoke vitest config required)
  *
@@ -337,6 +346,87 @@ export function splitRange(target) {
 	return m ? { file: m[1], range: `${m[2]}-${m[3]}` } : { file: target, range: null };
 }
 
+// --- explicit test-file scoping (pure helpers exported for the unit tests) ---
+
+// `packages/cli` forks a process per test file and runs a global setup, thus
+// Stryker's related-test discovery pulls in hundreds of files and no run
+// finishes inside the timeout. An explicit `--test-files` list is required
+// there, and the shared default config is swapped for the cli one.
+export const CLI_PACKAGE_DIR = 'packages/cli';
+
+// Path comparisons in this file are posix-shaped. `path.relative` gives
+// backslashes on Windows, so normalise before matching a package dir.
+function toPosix(p) {
+	return p.split(path.sep).join('/');
+}
+
+/**
+ * Flatten the raw `--test-files` values into one list. The flag repeats and
+ * each value also takes a comma-separated list, thus `--test-files a,b` and
+ * `--test-files a --test-files b` mean the same thing. Blanks are dropped and
+ * duplicates collapse, so a repeated path never runs its file twice.
+ */
+export function parseTestFiles(values) {
+	const out = [];
+	for (const value of values) {
+		for (const part of String(value).split(',')) {
+			const file = part.trim();
+			if (file && !out.includes(file)) out.push(file);
+		}
+	}
+	return out;
+}
+
+/**
+ * Stryker matches `testFiles` patterns against the files under its run cwd,
+ * which is the package dir. A repo-relative path (what the user types, and
+ * what `--diff` prints) therefore has to lose its package prefix. A path that
+ * is already package-relative, and a glob, both pass through untouched.
+ */
+export function toPackageRelative(file, packageDir) {
+	const normalised = toPosix(file).replace(/^\.\//, '');
+	const prefix = `${toPosix(packageDir)}/`;
+	return normalised.startsWith(prefix) ? normalised.slice(prefix.length) : normalised;
+}
+
+/**
+ * The Stryker config fields this run overrides on top of the resolved config
+ * file. Stryker merges its CLI options into the config object it runs with,
+ * thus every field here lands in that object.
+ */
+export function buildStrykerConfig({ targets, testFiles = [] }) {
+	const config = { mutate: [...targets] };
+	if (testFiles.length > 0) config.testFiles = [...testFiles];
+	return config;
+}
+
+// Turn the config overrides into Stryker CLI flags. Stryker keeps only the last
+// occurrence of a repeated flag, thus every list field goes over comma-joined.
+export function strykerCliArgs(config) {
+	return Object.entries(config).flatMap(([field, value]) => [
+		`--${field}`,
+		Array.isArray(value) ? value.join(',') : String(value),
+	]);
+}
+
+// Why a cli target may not run, or null when it may. Named so the message says
+// what to do, not only what went wrong.
+export function cliScopeError(packageDir, testFiles) {
+	if (toPosix(packageDir) !== CLI_PACKAGE_DIR) return null;
+	if (testFiles.length > 0) return null;
+	return (
+		`Mutating ${CLI_PACKAGE_DIR} needs --test-files.\n` +
+		'Without it Stryker discovers every related test file in the package, forks a ' +
+		'process for each one and never finishes. Name the test files that cover the target:\n' +
+		'  pnpm mutate packages/cli/src/foo.ts:10-40 --test-files packages/cli/src/__tests__/foo.test.ts'
+	);
+}
+
+// Which shared config a package gets when it ships none of its own.
+export function defaultConfigNameFor(packageDir) {
+	return toPosix(packageDir) === CLI_PACKAGE_DIR ? 'stryker.cli.mjs' : 'stryker.default.mjs';
+}
+
 function git(args) {
 	const res = spawnSync('git', args, {
 		cwd: repoRoot,
@@ -430,7 +520,8 @@ function planFromDiff(base) {
 function resolveConfig(pkgRoot, configArg) {
 	if (configArg) return path.resolve(repoRoot, configArg);
 	const local = path.join(pkgRoot, 'stryker.config.mjs');
-	return existsSync(local) ? local : path.join(__dirname, 'stryker.default.mjs');
+	if (existsSync(local)) return local;
+	return path.join(__dirname, defaultConfigNameFor(path.relative(repoRoot, pkgRoot)));
 }
 
 // Try the package's own copy first, then the root devDep. A package that pins
@@ -674,10 +765,14 @@ function restoreWorkingTree({ bytes, dirtyBefore }) {
 	return [...restored];
 }
 
-async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
+async function runJob({ pkgRoot, packageDir, targets }, { configArg, testFiles = [] }) {
 	const configPath = resolveConfig(pkgRoot, configArg);
 	const strykerBin = resolveStrykerBin(pkgRoot, packageDir);
 	const mutateArg = formatMutateArg(targets);
+	const strykerConfig = buildStrykerConfig({
+		targets,
+		testFiles: testFiles.map((f) => toPackageRelative(f, packageDir)),
+	});
 
 	const reportDir = path.join(pkgRoot, 'reports/mutation');
 	const rawJsonPath = path.join(reportDir, 'raw.json');
@@ -694,6 +789,9 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		`\nRunning Stryker on ${packageDir} — ${targets.length} target(s) ` +
 			`(config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 	);
+	if (strykerConfig.testFiles) {
+		process.stderr.write(`  testFiles: ${strykerConfig.testFiles.join(', ')}\n`);
+	}
 
 	const snapshot = snapshotWorkingTree([
 		...new Set(targets.map((t) => path.join(pkgRoot, splitRange(t).file))),
@@ -736,7 +834,7 @@ async function runJob({ pkgRoot, packageDir, targets }, { configArg }) {
 		strykerExitCode = await new Promise((resolve) => {
 			child = spawn(
 				process.execPath,
-				[strykerBin, 'run', configPath, '--inPlace', '--mutate', mutateArg],
+				[strykerBin, 'run', configPath, '--inPlace', ...strykerCliArgs(strykerConfig)],
 				{ cwd: pkgRoot, stdio: ['inherit', 'pipe', 'pipe'] },
 			);
 			child.stdout.on('data', (chunk) => {
@@ -840,7 +938,18 @@ function reportJob({ packageDir, summaryJsonPath, summary, noTests, failed }) {
 
 const USAGE = `Usage:
   node scripts/mutation-health/mutate.mjs <file>[:<start>-<end>] [--package-dir <dir>] [--config <path>]
+                                          [--test-files <path>[,<path>...]]
   node scripts/mutation-health/mutate.mjs --diff [--base <ref>] [--config <path>]
+
+Options:
+  --package-dir <dir>   Package the target belongs to. Inferred when omitted.
+  --config <path>       Stryker config file. Overrides the resolution order.
+  --base <ref>          Branch point --diff measures against. Default origin/master.
+  --diff                Mutate every line this branch changed, one run per package.
+  --test-files <paths>  Test files Stryker runs, instead of the whole related-test
+                        graph. Goes to Stryker's testFiles config field. Comma-
+                        separated, and the flag repeats. Paths may be repo-relative
+                        or package-relative. Required for ${CLI_PACKAGE_DIR} targets.
 
   # one file, whole
   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts
@@ -848,6 +957,9 @@ const USAGE = `Usage:
   node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts:40-75
   # package-relative target
   node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow
+  # a cli target, scoped to the tests that must kill its mutants
+  node scripts/mutation-health/mutate.mjs packages/cli/src/credentials/external-secrets.utils.ts:32-68 \\
+    --test-files packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
   # every line this branch changed, batched one Stryker run per package
   node scripts/mutation-health/mutate.mjs --diff --base origin/master`;
 
@@ -889,24 +1001,51 @@ function planFromTarget(targetArg, packageDirArg) {
 	};
 }
 
-async function main() {
-	const argv = process.argv.slice(2);
-	let packageDirArg;
-	let configArg;
-	let targetArg;
-	let baseArg = 'origin/master';
-	let diffMode = false;
+/**
+ * Read the command line. Pure, so the unit tests can assert what each flag
+ * parses to. Validation stays in `main`, which owns the exit codes.
+ */
+export function parseArgs(argv) {
+	const parsed = {
+		packageDirArg: undefined,
+		configArg: undefined,
+		targetArg: undefined,
+		baseArg: 'origin/master',
+		diffMode: false,
+		helpMode: false,
+		testFiles: [],
+	};
+	const rawTestFiles = [];
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i];
-		if (a === '--package-dir') packageDirArg = argv[++i];
-		else if (a === '--config') configArg = argv[++i];
-		else if (a === '--base') baseArg = argv[++i];
-		else if (a === '--diff') diffMode = true;
-		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
+		if (a === '--package-dir') parsed.packageDirArg = argv[++i];
+		else if (a === '--config') parsed.configArg = argv[++i];
+		else if (a === '--base') parsed.baseArg = argv[++i];
+		else if (a === '--test-files') rawTestFiles.push(argv[++i] ?? '');
+		else if (a === '--diff') parsed.diffMode = true;
+		else if (a === '--help' || a === '-h') parsed.helpMode = true;
+		else if (!a.startsWith('--') && parsed.targetArg === undefined) parsed.targetArg = a;
 	}
+	parsed.testFiles = parseTestFiles(rawTestFiles);
+	return parsed;
+}
 
+async function main() {
+	const { packageDirArg, configArg, targetArg, baseArg, diffMode, helpMode, testFiles } = parseArgs(
+		process.argv.slice(2),
+	);
+
+	if (helpMode) {
+		process.stdout.write(`${USAGE}\n`);
+		process.exit(0);
+	}
 	if (diffMode && targetArg) die(2, `--diff takes no positional target.\n${USAGE}`);
 	if (!diffMode && !targetArg) die(2, `Missing mutate target.\n${USAGE}`);
+	// --diff plans a run per package, so one test-file list cannot say which
+	// package it belongs to. Refuse rather than apply it to all of them.
+	if (diffMode && testFiles.length > 0) {
+		die(2, `--test-files needs a single target; it does not work with --diff.\n${USAGE}`);
+	}
 
 	let jobs;
 	let skipped = [];
@@ -923,11 +1062,13 @@ async function main() {
 		);
 	} else {
 		jobs = [planFromTarget(targetArg, packageDirArg)];
+		const scopeError = cliScopeError(jobs[0].packageDir, testFiles);
+		if (scopeError) die(2, scopeError);
 	}
 
 	const results = [];
 	for (const job of jobs) {
-		results.push(await runJob(job, { configArg }));
+		results.push(await runJob(job, { configArg, testFiles }));
 	}
 
 	process.stderr.write('\n=== Mutation summary ===\n');

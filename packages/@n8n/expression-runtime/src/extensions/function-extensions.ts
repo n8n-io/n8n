@@ -1,15 +1,6 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
+import { defineField } from './utils';
 
 const min = Math.min;
 const max = Math.max;

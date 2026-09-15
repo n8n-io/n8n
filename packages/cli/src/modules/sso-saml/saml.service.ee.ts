@@ -312,7 +312,7 @@ export class SamlService {
 		const loginRequest = sp.createLoginRequest(idp, binding);
 		return {
 			binding,
-			context: binding === 'post' ? (loginRequest as PostBindingContext) : loginRequest,
+			context: binding === 'post' ? loginRequest : loginRequest,
 		};
 	}
 

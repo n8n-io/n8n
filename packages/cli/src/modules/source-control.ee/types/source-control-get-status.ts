@@ -7,6 +7,7 @@ import type { ExportableFolder } from './exportable-folders';
 import type { ExportableProjectWithFileName } from './exportable-project';
 import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags';
 import type { ExportableVariable } from './exportable-variable';
+import type { SourceControlActionOrigin } from './source-control-action-origin';
 import type { SourceControlWorkflowVersionId } from './source-control-workflow-version-id';
 
 export interface SourceControlGetStatusVerboseResult {
@@ -60,7 +61,7 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
-	origin?: 'ui' | 'publicApi';
+	origin?: SourceControlActionOrigin;
 
 	constructor(values: {
 		direction: 'push' | 'pull';

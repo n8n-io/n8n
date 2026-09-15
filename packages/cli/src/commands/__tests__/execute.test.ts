@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -65,6 +66,10 @@ mockInstance(BinaryDataRepository);
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+
+// BaseCommand.init() wires the encryption key provider; this command-init test
+// does not exercise encryption, so keep the bootstrap a no-op.
+mockInstance(EncryptionBootstrapService);
 
 // minimal command for exercising BaseCommand.init():
 // Execute.init() chains singletons that cannot init twice per process
@@ -194,6 +199,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 				bridgeTimeout: 5000,
 				bridgeMemoryLimit: 128,
 				idleTimeout: 30,
+				lazyAcquire: false,
+				compileCache: false,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
@@ -218,6 +225,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 		bridgeTimeout: 5000,
 		bridgeMemoryLimit: 128,
 		idleTimeoutMs: 30_000, // the config value is in seconds
+		lazyAcquire: false,
+		compileCache: false,
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));

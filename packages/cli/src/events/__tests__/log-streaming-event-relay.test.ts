@@ -199,6 +199,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: false,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -3355,6 +3356,24 @@ describe('LogStreamingEventRelay', () => {
 					enabled: false,
 				},
 			});
+		});
+	});
+
+	describe('instance reporting events', () => {
+		it('should log on instance-report-delivered event', () => {
+			eventService.emit('instance-report-delivered');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.success' }),
+			);
+		});
+
+		it('should log on instance-report-failed event', () => {
+			eventService.emit('instance-report-failed');
+
+			expect(eventBus.send).toHaveBeenCalledWith(
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
+			);
 		});
 	});
 });

@@ -49,7 +49,7 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 	deserialize(data: JsonObject): this {
 		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload as EventPayloadWorkflow);
+			if (data.payload) this.setPayload(data.payload);
 		}
 		return this;
 	}

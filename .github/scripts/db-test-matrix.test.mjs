@@ -125,4 +125,32 @@ describe('buildMatrix', () => {
 	it('rejects an empty matrix', () => {
 		assert.throws(() => buildMatrix({ primary: 'postgres:18.4-alpine', matrix: [] }), /non-empty/);
 	});
+
+	it('keeps only SQLite and the primary Postgres leg in pr scope', () => {
+		const legs = buildMatrix(versions(), 'pr');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 18'],
+		);
+	});
+
+	it('keeps every Postgres leg in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 16', 'Postgres 17', 'Postgres 18'],
+		);
+	});
+
+	it('validates the full version list even in pr scope', () => {
+		const stale = { ...versions(), primary: 'postgres:17.10-alpine' };
+
+		assert.throws(() => buildMatrix(stale, 'pr'), /"primary".*must be the newest/);
+	});
+
+	it('rejects an unknown scope', () => {
+		assert.throws(() => buildMatrix(versions(), 'nightly'), /Unknown scope/);
+	});
 });

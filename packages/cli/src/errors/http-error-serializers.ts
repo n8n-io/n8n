@@ -31,6 +31,11 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			if (descriptor.meta?.violations !== undefined) {
 				body.violations = descriptor.meta.violations;
 			}
+			// Same reasoning for a blocked push: the caller needs to see every conflicting
+			// file to decide whether to force the push, not just the message.
+			if (descriptor.meta?.conflicts !== undefined) {
+				body.conflicts = descriptor.meta.conflicts;
+			}
 			const workflowPublishBlockedDetails = {
 				reason: descriptor.meta?.reason,
 				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,

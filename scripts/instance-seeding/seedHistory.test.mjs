@@ -192,6 +192,40 @@ describe('seedHistory cleanup', () => {
 		assert.ok(c.seededActivity > 0, 'activity written');
 	});
 
+	// The assistant page lists threads by `resourceId = user id` and drops any message
+	// whose `content` is not an agent-message JSON object, so both must match the runtime.
+	it('writes threads and messages the assistant page can read', () => {
+		const dbFile = fixture();
+		run(dbFile);
+		const db = new DatabaseSync(dbFile, { readOnly: true });
+		const threads = db
+			.prepare(
+				`SELECT resourceId FROM instance_ai_threads WHERE metadata LIKE '%"seeded":true%' AND projectId = 'p-seed'`,
+			)
+			.all();
+		assert.ok(threads.length > 0);
+		assert.ok(
+			threads.every((t) => t.resourceId === 'u1'),
+			'threads owned by the first user',
+		);
+		const messages = db
+			.prepare(
+				`SELECT m.content, m.resourceId, m.type FROM instance_ai_messages m
+				 JOIN instance_ai_threads t ON t.id = m.threadId
+				 WHERE t.metadata LIKE '%"seeded":true%' AND t.projectId = 'p-seed'`,
+			)
+			.all();
+		assert.ok(messages.length > 0);
+		for (const m of messages) {
+			assert.equal(m.resourceId, 'u1');
+			assert.equal(m.type, null);
+			const parsed = JSON.parse(m.content);
+			assert.ok(['user', 'assistant'].includes(parsed.role));
+			assert.equal(parsed.content[0].type, 'text');
+		}
+		db.close();
+	});
+
 	it('leaves rows it did not create alone', () => {
 		const dbFile = fixture();
 		run(dbFile);
