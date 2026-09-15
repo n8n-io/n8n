@@ -50,6 +50,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
+	/**
+	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
+	 * Observer runs only after the turn, which keeps the prompt prefix stable
+	 * within a turn and improves provider prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
+	midRunObservation: boolean = false;
+
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;
