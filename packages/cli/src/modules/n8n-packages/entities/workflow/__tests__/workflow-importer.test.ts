@@ -25,6 +25,7 @@ const makeWorkflow = (id: string): WorkflowEntity =>
 		nodes: [],
 		connections: {},
 		isArchived: false,
+		versionId: `${id}-version`,
 	});
 
 const bindings: PackageImportBindings = {
@@ -94,6 +95,7 @@ describe('WorkflowImporter.apply', () => {
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items,
 			conflicts: [],
 			lineageConflicts: [],
@@ -117,13 +119,18 @@ describe('WorkflowImporter.apply', () => {
 		expect(createWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
-			expect.objectContaining({ batchContext }),
+			expect.objectContaining({ batchContext, versionId: 'source-create-version' }),
 		);
 		expect(updateWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
+			{
+				publicApi: true,
+				source: 'import',
+				allowArchivedUpdate: false,
+				versionId: 'source-update-version',
+			},
 		);
 	});
 
@@ -140,6 +147,7 @@ describe('WorkflowImporter.apply', () => {
 		);
 		const existing = makeWorkflow('existing');
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items: [
 				{
 					action: 'update',
@@ -163,6 +171,66 @@ describe('WorkflowImporter.apply', () => {
 		await importer.apply(context, plan, bindings);
 
 		expect(prepareBatchContext).not.toHaveBeenCalled();
+	});
+
+	it('leaves the version to the service under the new-id policy', async () => {
+		const createWorkflow = vi.fn<WorkflowCreationService['createWorkflow']>();
+		const update = vi.fn<WorkflowService['update']>();
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>({
+				prepareBatchContext: vi.fn<WorkflowCreationService['prepareBatchContext']>(),
+				createWorkflow,
+			}),
+			mock<WorkflowService>({ update }),
+			mock<WorkflowFinderService>(),
+		);
+		const existing = makeWorkflow('existing');
+		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'new',
+			items: [
+				{
+					action: 'create',
+					sourceWorkflowId: 'source-create',
+					entity: makeWorkflow('source-create'),
+					decidedId: 'created',
+					parentFolderId: null,
+					sourcePublished: false,
+					sourceArchived: false,
+				},
+				{
+					action: 'update',
+					sourceWorkflowId: 'source-update',
+					entity: makeWorkflow('source-update'),
+					existing,
+					archiveTransition: null,
+					parentFolderId: null,
+					sourcePublished: false,
+					sourceArchived: false,
+				},
+			],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		createWorkflow.mockResolvedValue(makeWorkflow('created'));
+		update.mockResolvedValue(existing);
+
+		await importer.apply(context, plan, bindings);
+
+		expect(createWorkflow).toHaveBeenCalledWith(
+			user,
+			expect.any(WorkflowEntity),
+			expect.not.objectContaining({ versionId: expect.anything() }),
+		);
+		expect(update).toHaveBeenCalledWith(
+			user,
+			expect.any(WorkflowEntity),
+			'existing',
+			expect.not.objectContaining({ versionId: expect.anything() }),
+		);
 	});
 
 	it('applies credential bindings recursively to inline workflows', async () => {
@@ -211,6 +279,7 @@ describe('WorkflowImporter.apply', () => {
 			},
 		];
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items: [
 				{
 					action: 'create',
@@ -265,6 +334,7 @@ describe('WorkflowImporter.apply', () => {
 			name: 'New name',
 		});
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items: [
 				{
 					action: 'update',
@@ -291,6 +361,7 @@ describe('WorkflowImporter.apply', () => {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: true,
+			versionId: 'source-version',
 		});
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();
@@ -310,6 +381,7 @@ describe('WorkflowImporter.apply', () => {
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
 		const archived = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items: [
 				{
 					action: 'update',
@@ -334,7 +406,58 @@ describe('WorkflowImporter.apply', () => {
 		const result = await importer.apply(context, plan, bindings);
 
 		expect(update.mock.invocationCallOrder[0]).toBeLessThan(archive.mock.invocationCallOrder[0]);
+		// A version minted here would drift from the package.
+		expect(archive).toHaveBeenCalledWith(user, 'existing', {
+			skipArchived: true,
+			publicApi: true,
+			versionId: 'source-version',
+		});
 		expect(result.outcomes[0]?.workflow).toBe(archived);
+	});
+
+	it('unarchives only after the content update succeeds', async () => {
+		const update = vi.fn<WorkflowService['update']>();
+		const unarchive = vi.fn<WorkflowService['unarchive']>();
+		const workflowService = mock<WorkflowService>({ update, unarchive });
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>(),
+			workflowService,
+			mock<WorkflowFinderService>(),
+		);
+		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
+		const unarchived = Object.assign(makeWorkflow('existing'), { isArchived: false });
+		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
+			items: [
+				{
+					action: 'update',
+					archiveTransition: 'unarchive',
+					sourceWorkflowId: 'source',
+					entity: Object.assign(makeWorkflow('source'), { isArchived: false }),
+					existing,
+					parentFolderId: null,
+					sourcePublished: false,
+					sourceArchived: false,
+				},
+			],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		update.mockResolvedValue(existing);
+		unarchive.mockResolvedValue(unarchived);
+
+		const result = await importer.apply(context, plan, bindings);
+
+		expect(update.mock.invocationCallOrder[0]).toBeLessThan(unarchive.mock.invocationCallOrder[0]);
+		expect(unarchive).toHaveBeenCalledWith(user, 'existing', {
+			publicApi: true,
+			versionId: 'source-version',
+		});
+		expect(result.outcomes[0]?.workflow).toBe(unarchived);
 	});
 
 	it('does not unarchive when the content update fails', async () => {
@@ -349,6 +472,7 @@ describe('WorkflowImporter.apply', () => {
 		);
 		const existing = Object.assign(makeWorkflow('existing'), { isArchived: true });
 		const plan: WorkflowImportPlan = {
+			workflowIdPolicy: 'source',
 			items: [
 				{
 					action: 'update',

@@ -15,7 +15,7 @@ import {
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
+import { decideWorkflowId, decideWorkflowVersionId } from './workflow-id-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -65,6 +65,7 @@ export class WorkflowImporter {
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {
+		const { workflowIdPolicy } = options;
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
 				context.projectId,
@@ -94,10 +95,10 @@ export class WorkflowImporter {
 				existing,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			const item = toPlanItem(workflow, existing, action, workflowIdPolicy);
 			items.push(item);
 
-			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+			if (item.action === 'create' && workflowIdPolicy === 'source' && !blocked) {
 				sourceCreateIds.push(item.decidedId);
 			}
 
@@ -135,6 +136,7 @@ export class WorkflowImporter {
 		]);
 
 		return {
+			workflowIdPolicy,
 			items,
 			conflicts,
 			lineageConflicts,
@@ -230,7 +232,9 @@ export class WorkflowImporter {
 
 		const outcomes: PersistedWorkflowOutcome[] = [];
 		for (const item of plan.items) {
-			outcomes.push(await this.applyItem(context, item, resolvedBindings, batchContext));
+			outcomes.push(
+				await this.applyItem(context, item, plan.workflowIdPolicy, resolvedBindings, batchContext),
+			);
 		}
 
 		return { outcomes, bindings: resolvedBindings };
@@ -239,6 +243,7 @@ export class WorkflowImporter {
 	private async applyItem(
 		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
+		idPolicy: WorkflowIdPolicy,
 		bindings: PackageImportBindings,
 		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<PersistedWorkflowOutcome> {
@@ -252,7 +257,7 @@ export class WorkflowImporter {
 
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
+			workflow: await this.persistWorkflow(context, item, idPolicy, bindings, batchContext),
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
 		};
@@ -261,11 +266,14 @@ export class WorkflowImporter {
 	private async persistWorkflow(
 		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
+		idPolicy: WorkflowIdPolicy,
 		bindings: PackageImportBindings,
 		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<WorkflowEntity> {
 		const tagIds =
 			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
+		const decided = decideWorkflowVersionId(idPolicy, item.entity.versionId);
+		const version = decided ? { versionId: decided } : {};
 
 		if (item.action === 'create') {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
@@ -275,6 +283,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...version,
 				...(batchContext ? { batchContext } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
@@ -286,11 +295,12 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			...version,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 
 		if (item.archiveTransition !== null) {
-			return await this.transitionArchive(context, item, item.archiveTransition);
+			return await this.transitionArchive(context, item, item.archiveTransition, version);
 		}
 
 		return updated;
@@ -300,15 +310,18 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: UpdatePlanItem,
 		transition: WorkflowArchiveTransition,
+		version: { versionId?: string },
 	): Promise<WorkflowEntity> {
 		const workflow =
 			transition === 'archive'
 				? await this.workflowService.archive(context.user, item.existing.id, {
 						skipArchived: true,
 						publicApi: true,
+						...version,
 					})
 				: await this.workflowService.unarchive(context.user, item.existing.id, {
 						publicApi: true,
+						...version,
 					});
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.

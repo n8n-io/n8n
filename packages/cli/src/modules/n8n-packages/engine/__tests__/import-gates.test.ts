@@ -8,6 +8,7 @@ import { assertArchiveTransitionsAllowed } from '../import-gates';
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
 	return {
+		workflowIdPolicy: 'source',
 		items: [
 			{
 				action: 'update',

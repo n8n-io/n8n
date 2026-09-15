@@ -18,10 +18,15 @@ import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
-/** `versionId` every workflow fixture carries, so a test can name it as published. */
-export const WIRE_VERSION_ID = 'wire-version-id';
+/**
+ * Distinct for each workflow: the target persists it, and it keys the history table. Sized like a
+ * uuid, because the column is fixed width and reads back anything shorter padded with spaces.
+ */
+export const wireVersionId = (workflowId: string) => `${workflowId}-wire-version`.padEnd(36, '-');
 
 export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowMetadata>;
+
+type WorkflowOverrides = Partial<PackageWorkflow> & { published?: boolean };
 
 function workflowFiles(workflow: PackageWorkflow): {
 	content: SerializedWorkflow;
@@ -44,9 +49,13 @@ export function githubCredentialPayload(
 	};
 }
 
-export function serializedWorkflow(overrides: Partial<PackageWorkflow> = {}): PackageWorkflow {
+export function serializedWorkflow(overrides: WorkflowOverrides = {}): PackageWorkflow {
+	const { published, ...rest } = overrides;
+	const id = rest.id ?? 'wf-id';
+	const versionId = rest.versionId ?? wireVersionId(id);
+
 	return {
-		id: 'wf-id',
+		id,
 		name: 'Workflow',
 		nodes: [
 			{
@@ -59,11 +68,11 @@ export function serializedWorkflow(overrides: Partial<PackageWorkflow> = {}): Pa
 			},
 		],
 		connections: {},
-		versionId: WIRE_VERSION_ID,
+		versionId,
 		parentFolderId: null,
-		publishedVersionId: null,
+		publishedVersionId: published ? versionId : null,
 		isArchived: false,
-		...overrides,
+		...rest,
 	};
 }
 
@@ -73,12 +82,14 @@ export function serializedWorkflowWithCredential(options: {
 	credentialId: string;
 	credentialName: string;
 	credentialType?: string;
+	published?: boolean;
 }): PackageWorkflow {
 	const credentialType = options.credentialType ?? PACKAGE_GITHUB_CREDENTIAL_TYPE;
 
 	return serializedWorkflow({
 		id: options.id,
 		name: options.name,
+		...(options.published ? { published: true } : {}),
 		nodes: [
 			{
 				id: 'http-node',

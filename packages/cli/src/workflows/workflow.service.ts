@@ -412,6 +412,7 @@ export class WorkflowService {
 			versionDescription?: string;
 			/** Allows a package import to update archived content. */
 			allowArchivedUpdate?: boolean;
+			versionId?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
 		const {
@@ -428,6 +429,7 @@ export class WorkflowService {
 			versionName,
 			versionDescription,
 			allowArchivedUpdate = false,
+			versionId: importedVersionId,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -485,10 +487,12 @@ export class WorkflowService {
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
 		const nodeGroupsChanged =
 			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
-		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const contentChanged = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const nextVersionId = importedVersionId ?? (contentChanged ? uuid() : workflow.versionId);
+		const saveNewVersion = nextVersionId !== workflow.versionId;
+		workflowUpdateData.versionId = nextVersionId;
 
 		if (saveNewVersion) {
-			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
@@ -502,9 +506,6 @@ export class WorkflowService {
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
-		} else {
-			// Do not let users change versionId directly
-			workflowUpdateData.versionId = workflow.versionId;
 		}
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
@@ -1542,7 +1543,13 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
+		options?: {
+			skipArchived?: boolean;
+			expectedChecksum?: string;
+			publicApi?: boolean;
+			/** Version to write instead of minting one. The caller must have written its history row. */
+			versionId?: string;
+		},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1580,7 +1587,8 @@ export class WorkflowService {
 			}
 		}
 
-		const versionId = uuid();
+		const suppliedVersionId = options?.versionId;
+		const versionId = suppliedVersionId ?? uuid();
 		workflow.versionId = versionId;
 		workflow.isArchived = true;
 		workflow.active = false;
@@ -1594,7 +1602,9 @@ export class WorkflowService {
 			versionId,
 		});
 
-		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		if (suppliedVersionId === undefined) {
+			await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		}
 
 		await this.workflowMutationHooks.afterWorkflowArchived(workflowId, user.id);
 
@@ -1614,7 +1624,11 @@ export class WorkflowService {
 	async unarchive(
 		user: User,
 		workflowId: string,
-		options?: { publicApi?: boolean },
+		options?: {
+			publicApi?: boolean;
+			/** Version to write instead of minting one. The caller must have written its history row. */
+			versionId?: string;
+		},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1628,13 +1642,16 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow is not archived.');
 		}
 
-		const versionId = uuid();
+		const suppliedVersionId = options?.versionId;
+		const versionId = suppliedVersionId ?? uuid();
 		workflow.versionId = versionId;
 		workflow.isArchived = false;
 
 		await this.workflowRepository.update(workflowId, { isArchived: false, versionId });
 
-		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		if (suppliedVersionId === undefined) {
+			await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		}
 
 		this.eventService.emit('workflow-unarchived', {
 			user,
