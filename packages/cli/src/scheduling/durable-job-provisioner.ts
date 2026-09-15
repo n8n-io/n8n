@@ -26,6 +26,7 @@ import type {
 	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { isDeepStrictEqual } from 'node:util';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
@@ -63,15 +64,23 @@ export interface ProvisionRequest {
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
 type ProvisionScope = Omit<ProvisionRequest, 'desired'>;
 
+/** One job as a caller read it, identified by id and pinned to the payload it saw. */
+export interface ObservedJob {
+	id: number;
+	payload: Record<string, unknown>;
+}
+
 /**
- * Which jobs to delete: one member's, all of an owner's, or an owner's of one
- * task type. Tagged rather than told apart by the shape of `owner`, since a full
- * {@link ScheduledJobOwner} is assignable to a {@link ScheduledJobOwnerRef}.
+ * Which jobs to delete: one member's, all of an owner's, an owner's of one task
+ * type, or one job as it was read. Tagged rather than told apart by the shape of
+ * `owner`, since a full {@link ScheduledJobOwner} is assignable to a
+ * {@link ScheduledJobOwnerRef}.
  */
 type DeprovisionScope =
 	| { scope: 'member'; owner: ScheduledJobOwner }
 	| { scope: 'owner'; owner: ScheduledJobOwnerRef }
-	| { scope: 'task-type'; owner: ScheduledJobOwnerRef; taskType: string };
+	| { scope: 'task-type'; owner: ScheduledJobOwnerRef; taskType: string }
+	| { scope: 'job'; job: ObservedJob };
 
 /**
  * The write side of the durable scheduler: persists an owner's scheduled jobs.
@@ -189,6 +198,15 @@ export class DurableJobProvisioner {
 	}
 
 	/**
+	 * Delete one job while its payload is still what the caller read, so a delete
+	 * decided on a listing cannot remove a row another instance rewrote in between.
+	 * Its queued tasks cascade away.
+	 */
+	async deprovisionUnchangedJob(job: ObservedJob): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ scope: 'job', job });
+	}
+
+	/**
 	 * Delete every job an owner holds within a caller-owned transaction; their
 	 * queued tasks cascade away. The main teardown path: it commits with the
 	 * caller's own delete, so a crash cannot leave jobs behind.
@@ -242,6 +260,7 @@ export class DurableJobProvisioner {
 				const seededJobIds = new Set<number>();
 				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
+				const outdatedPayloadJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByOwner(manager, owner);
@@ -256,6 +275,9 @@ export class DurableJobProvisioner {
 								row.maxAttempts !== maxAttempts
 							) {
 								outdatedRunOptionJobIds.push(row.id);
+							}
+							if (!isDeepStrictEqual(row.payload, payload)) {
+								outdatedPayloadJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -306,6 +328,8 @@ export class DurableJobProvisioner {
 					misfirePolicy,
 					misfireGraceSeconds,
 				});
+				// Only `insert` writes the payload, so an existing row picks up a change to it here.
+				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
@@ -443,6 +467,8 @@ export class DurableJobProvisioner {
 				return await this.jobs.deleteByOwnerRef(manager, target.owner);
 			case 'task-type':
 				return await this.jobs.deleteByOwnerTaskType(manager, target.owner, target.taskType);
+			case 'job':
+				return await this.jobs.deleteIfPayloadUnchanged(manager, target.job.id, target.job.payload);
 		}
 	}
 }
