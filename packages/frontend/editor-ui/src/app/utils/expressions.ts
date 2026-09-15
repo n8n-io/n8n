@@ -9,6 +9,16 @@ export { isExpression };
 type ExternalSecretReferenceState = 'none' | 'known' | 'missing' | 'unknown';
 
 const SECRET_REFERENCE = /\$secrets\b/;
+
+// ponytail: regex heuristic — flags an expression that reads execution item
+// data. Ceiling: also matches "$json" inside a string literal, and flags a
+// fallback like {{ $json.x ?? 'd' }} as redacted under redaction. Upgrade path:
+// have the resolver report whether redacted data was actually read.
+const DATA_ACCESSOR = /\$json|\$binary|\$input\b|\$items\b|\$node\b|\$\(/;
+
+/** Whether an expression reads execution item data (and so is emptied by redaction). */
+export const referencesExecutionData = (expression: string): boolean =>
+	DATA_ACCESSOR.test(expression);
 /** The only key forms we can read at edit time: `.key`, `['key']`, `["key"]`. */
 const LITERAL_KEY_ACCESS =
 	/^\s*(?:\.\s*(?<dotKey>[a-zA-Z_$][\w$]*)|\[\s*(?<quote>['"])(?<quotedKey>[^\\]*?)\k<quote>\s*\])/;

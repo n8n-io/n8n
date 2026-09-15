@@ -328,7 +328,7 @@ describe('useExpressionEditor', () => {
 				}),
 			});
 
-		test('shows a pending reveal prompt instead of [undefined] when data is redacted', async () => {
+		test('shows a redacted reveal prompt instead of [undefined] when data is redacted', async () => {
 			mockResolveExpression().mockReturnValueOnce(undefined);
 			mockActiveExecution = createRedactedExecution();
 
@@ -347,7 +347,33 @@ describe('useExpressionEditor', () => {
 						kind: 'resolvable',
 						resolvable: '{{ $json.test }}',
 						resolved: 'Reveal data first to see value',
-						state: 'pending',
+						state: 'redacted',
+						to: 16,
+					},
+				]);
+			});
+		});
+
+		test('shows [undefined] for a redacted execution when the expression does not read item data', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+			mockActiveExecution = createRedactedExecution();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $vars.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $vars.test }}',
+						resolved: '[undefined]',
+						state: 'invalid',
 						to: 16,
 					},
 				]);

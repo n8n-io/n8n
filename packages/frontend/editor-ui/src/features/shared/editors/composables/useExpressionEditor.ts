@@ -42,7 +42,9 @@ import {
 	getExpressionErrorMessage,
 	getExternalSecretPreview,
 	getResolvableState,
+	referencesExecutionData,
 } from '@/app/utils/expressions';
+import { useRedactionHint } from './useRedactionHint';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
 import { usesDeprecatedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -99,6 +101,7 @@ export const useExpressionEditor = ({
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
+	const { isRedacted: isRedactedExecution, redactedHintText } = useRedactionHint();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const segments = ref<Segment[]>([]);
@@ -465,11 +468,11 @@ export const useExpressionEditor = ({
 			} else if (isUncalledExpressionExtension(resolvable)) {
 				result.resolved = i18n.baseText('expressionEditor.uncalledFunction');
 				result.error = true;
-			} else if (isRedactedExecution.value) {
+			} else if (isRedactedExecution.value && referencesExecutionData(resolvable)) {
 				// Redaction empties the item data, so the expression reads nothing even
 				// though the execution has a value. Prompt for a reveal instead of an error.
-				result.resolved = i18n.baseText('expressionModalInput.redacted');
-				result.state = 'pending';
+				result.resolved = redactedHintText.value;
+				result.state = 'redacted';
 			} else {
 				result.resolved = i18n.baseText('expressionModalInput.undefined');
 				result.error = true;
@@ -478,11 +481,6 @@ export const useExpressionEditor = ({
 
 		return result;
 	}
-
-	const isRedactedExecution = computed(
-		() =>
-			workflowExecutionStateStore.value.activeExecution?.data?.redactionInfo?.isRedacted === true,
-	);
 
 	const targetItem = computed<TargetItem | null>(() => ndvStore.value.expressionTargetItem);
 

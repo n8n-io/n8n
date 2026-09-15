@@ -3,6 +3,7 @@ import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutio
 import {
 	getExternalSecretPreview,
 	isExpression as isExpressionUtil,
+	referencesExecutionData,
 	stringifyExpressionResult,
 } from '@/app/utils/expressions';
 
@@ -23,6 +24,7 @@ import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowH
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import { useRedactionHint } from '@/features/shared/editors/composables/useRedactionHint';
 
 export function useResolvedExpression({
 	expression,
@@ -40,6 +42,7 @@ export function useResolvedExpression({
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const { isRedacted: isRedactedExecution, redactedHintText } = useRedactionHint();
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -50,6 +53,7 @@ export function useResolvedExpression({
 
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
+	const isRedacted = ref(false);
 
 	const targetItem = computed(() => ndvStore.value.expressionTargetItem ?? undefined);
 	const activeNode = computed(() => ndvStore.value.activeNode);
@@ -118,16 +122,28 @@ export function useResolvedExpression({
 					? getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets)
 					: undefined;
 
-			resolvedExpressionString.value =
-				secretPreview?.text ??
-				stringifyExpressionResult(
-					resolved,
-					workflowDocumentStore.value.getPinDataSnapshot(),
-					hasRunData.value,
-				);
+			// Redaction empties the item data, so an expression that reads it resolves
+			// to nothing even though the execution has a value. Show a reveal prompt
+			// instead of the empty result, matching the expression editor preview.
+			isRedacted.value =
+				resolved.ok &&
+				!secretPreview &&
+				isRedactedExecution.value &&
+				typeof expressionString === 'string' &&
+				referencesExecutionData(expressionString);
+
+			resolvedExpressionString.value = isRedacted.value
+				? redactedHintText.value
+				: (secretPreview?.text ??
+					stringifyExpressionResult(
+						resolved,
+						workflowDocumentStore.value.getPinDataSnapshot(),
+						hasRunData.value,
+					));
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
+			isRedacted.value = false;
 		}
 	}
 
@@ -146,5 +162,5 @@ export function useResolvedExpression({
 
 	onMounted(updateExpression);
 
-	return { resolvedExpression, resolvedExpressionString, isExpression };
+	return { resolvedExpression, resolvedExpressionString, isExpression, isRedacted };
 }
