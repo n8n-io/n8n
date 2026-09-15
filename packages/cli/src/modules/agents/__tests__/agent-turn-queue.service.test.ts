@@ -184,6 +184,16 @@ describe('AgentTurnQueueService', () => {
 		await settled(() => expect(ran).toEqual(['resume:run-1']));
 	});
 
+	it('fails a persisted turn when its initial promotion errors', async () => {
+		const { service, rows, executionService } = makeService();
+		const claimError = new Error('claim failed');
+		executionService.claimQueuedExecution.mockRejectedValue(claimError);
+
+		await expect(service.submit(resumeTurn())).rejects.toBe(claimError);
+
+		expect(rows).toEqual([expect.objectContaining({ status: 'error', error: 'claim failed' })]);
+	});
+
 	it('ends a claimed turn that never started and runs the blocked resume', async () => {
 		const { service, rows, ran } = makeService();
 		const first = await service.tryRunNow(messageTurn('first'));

@@ -110,16 +110,22 @@ export class AgentTurnQueueService {
 		const executionId = await this.executionService.recordQueuedExecution(
 			await this.withAgentName(turn),
 		);
-		onPersisted?.(executionId);
-		if (await this.mustWait(turn, waiting)) return { status: 'queued', executionId };
-		const rows = await this.executionRepository.findQueuedByThread(turn.threadId);
-		const next =
-			turn.runContext.kind === 'resume'
-				? rows.find((row) => row.runContext?.kind === 'resume')
-				: rows[0];
-		const claim =
-			next?.id === executionId ? await this.claimQueuedRow(scopeOf(turn, executionId)) : null;
-		return claim ? { status: 'claimed', claim } : { status: 'queued', executionId };
+		const scope = scopeOf(turn, executionId);
+		try {
+			onPersisted?.(executionId);
+			if (await this.mustWait(turn, waiting)) return { status: 'queued', executionId };
+			const rows = await this.executionRepository.findQueuedByThread(turn.threadId);
+			const next =
+				turn.runContext.kind === 'resume'
+					? rows.find((row) => row.runContext?.kind === 'resume')
+					: rows[0];
+			const claim = next?.id === executionId ? await this.claimQueuedRow(scope) : null;
+			return claim ? { status: 'claimed', claim } : { status: 'queued', executionId };
+		} catch (error) {
+			await this.executionService.failQueuedExecution(scope, errorMessage(error));
+			this.requestDrain(turn.threadId);
+			throw error;
+		}
 	}
 
 	/**
