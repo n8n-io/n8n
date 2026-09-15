@@ -90,6 +90,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+/** Per-output counts when the adapter grouped a multi-output node's items per output. */
+function countOutputBranchItems(nodeOutput: unknown): VerificationNodePreview['outputs'] {
+	const output = outputForInspection(nodeOutput);
+	if (!isRecord(output) || !Array.isArray(output.outputs)) return undefined;
+	return output.outputs.filter(isRecord).map((branch, position) => ({
+		index: typeof branch.index === 'number' ? branch.index : position,
+		...(typeof branch.name === 'string' ? { name: branch.name } : {}),
+		itemCount: countOutputItems(branch.items),
+	}));
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -111,9 +122,11 @@ export function buildNodePreviews(
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
 		const preview = previewValue(nodeOutput, maxChars);
+		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
 			itemCount: countOutputItems(nodeOutput),
+			...(outputs ? { outputs } : {}),
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,

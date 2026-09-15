@@ -934,6 +934,26 @@ describe('InstanceAiThreadView', () => {
 		expect(localStorageState.store.has('n8n-instance-ai-composer-draft:thread-1')).toBe(false);
 	});
 
+	// Leaving it open puts the agent chat beside the Assistant composer that now
+	// holds the same request — two places to ask the same thing.
+	it('closes the preview dock once the request is staged in the composer', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-open',
+			'true',
+		);
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+
+		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+			'data-preview-open',
+			'false',
+		);
+	});
+
 	it('keeps the in-place handoff when preview view metadata cannot be saved', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const error = new Error('Save failed');
@@ -958,6 +978,7 @@ describe('InstanceAiThreadView', () => {
 			inputState.hasAttachments = hasAttachments;
 			const { getByTestId, user } = await renderAgentArtifact();
 
+			await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 			await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
 
 			expect(showMessageSpy).toHaveBeenCalledWith({
@@ -967,6 +988,10 @@ describe('InstanceAiThreadView', () => {
 			});
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent(initialDraft);
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
+				'data-preview-open',
+				'true',
+			);
 		},
 	);
 
@@ -1136,13 +1161,13 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('prefills pending composer state before the thread list finishes loading', async () => {
+	it('prefills pending composer state before the thread finishes loading', async () => {
 		store.threads = [];
-		let resolveThreadList!: (loaded: boolean) => void;
-		store.loadThreads.mockImplementation(
+		let resolveThread!: () => void;
+		store.loadThread.mockImplementation(
 			() =>
 				new Promise((resolve) => {
-					resolveThreadList = resolve;
+					resolveThread = resolve;
 				}),
 		);
 		localStorageState.store.set(
@@ -1158,7 +1183,7 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
@@ -1171,7 +1196,7 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		resolveThreadList(true);
+		resolveThread();
 		await flushPromises();
 	});
 
@@ -1662,6 +1687,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
+		mockRouteState.params.threadId = 'thread-2';
 		thread.sseState = 'disconnected';
 		store.threads = [
 			...store.threads,

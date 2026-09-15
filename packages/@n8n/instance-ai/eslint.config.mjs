@@ -1,5 +1,5 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 const LAZY_RUNTIME_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the idle-memory guardrail.';
@@ -18,7 +18,7 @@ const restrictedLazyRuntimeImports = [
 }));
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{
 		ignores: [
 			'scripts/**/*.cjs',
@@ -91,6 +91,21 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-member-access': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',
+		},
+	},
+	{
+		// Debt: the base layer enforces kebab-case filenames and this package has
+		// 6 files that predate it. Rename them, then delete this block.
+		rules: {
+			'unicorn/filename-case': 'off',
+		},
+	},
+	{
+		files: ['evaluations/clients/n8n-client.ts'],
+		// An evaluation harness that talks to a local instance it started
+		// itself, so the guarded client buys nothing here.
+		rules: {
+			'n8n-local-rules/no-uncentralized-http': 'off',
 		},
 	},
 );

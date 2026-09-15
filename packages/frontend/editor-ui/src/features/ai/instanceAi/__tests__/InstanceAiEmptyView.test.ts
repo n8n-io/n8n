@@ -45,6 +45,8 @@ const {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
 		splitBelowInputVariant: { value: false },
+		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
+		inspirationFromTaxonomyTreatmentEnabled: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
 		personalizedPromptTreatmentEnabled: { value: false },
@@ -219,6 +221,14 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 		},
 	],
 	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
+}));
+
+vi.mock('@/experiments/instanceAiInspirationFromTaxonomy', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useInstanceAiInspirationFromTaxonomyExperiment: () => ({
+		currentVariant: experimentMocks.inspirationFromTaxonomyVariant,
+		isTreatmentVariant: experimentMocks.inspirationFromTaxonomyTreatmentEnabled,
+	}),
 }));
 
 vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
@@ -469,6 +479,8 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
+		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
 		experimentMocks.personalizedPromptTreatmentEnabled.value = false;
@@ -635,6 +647,111 @@ describe('InstanceAiEmptyView', () => {
 		);
 
 		vi.useRealTimers();
+	});
+
+	it('shows taxonomy list suggestions and exposes the treatment for a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v5-taxonomy',
+		);
+		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+			'"format":"list"',
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
+			variant: 'variant',
+			'$feature/112_aia_inspiration_from_taxonomy': 'variant',
+		});
+	});
+
+	it('treats an unmapped taxonomy role as control and does not expose the treatment', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
+	});
+
+	it('waits for taxonomy metadata before falling back to the control catalog', async () => {
+		vi.useFakeTimers();
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = false;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+
+		vi.useRealTimers();
+	});
+
+	it('lets the taxonomy treatment win the empty state over the 093 treatment', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v5-taxonomy',
+		);
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).not.toHaveBeenCalled();
+	});
+
+	it('lets the 093 treatment win when the taxonomy treatment falls back to control', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
+		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
+		experimentMocks.personalizedPromptVariant.value = 'variant-cards';
+		experimentMocks.personalizedPromptFormat.value = 'cards';
+		experimentMocks.personalizedPromptTreatmentEnabled.value = true;
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v4-personalized',
+		);
+		expect(experimentMocks.resolvePersonalizedPromptSuggestions).toHaveBeenCalled();
 	});
 
 	it('passes workflow preview suggestions, component, and catalog version', () => {
@@ -843,6 +960,74 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+
+	it('tracks inspiration from taxonomy exposure for a control user with a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+
+		renderView();
+
+		expect(telemetryTrack).toHaveBeenCalledWith('Instance AI inspiration from taxonomy exposed', {
+			variant: 'control',
+			'$feature/112_aia_inspiration_from_taxonomy': 'control',
+		});
+	});
+
+	it('does not track inspiration from taxonomy exposure for a control user without a mapped role', () => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Engineering' },
+		};
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		{
+			name: 'split empty state',
+			setup: () => {
+				experimentMocks.splitBelowInputVariant.value = true;
+			},
+		},
+		{
+			name: 'the proactive starter',
+			setup: () => {
+				experimentMocks.proactiveAgentEnabled.value = true;
+			},
+		},
+		{
+			name: 'template examples',
+			setup: () => {
+				templateExamplesEnabled.value = true;
+			},
+		},
+	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
+		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
+		appSettingsStoreMock.isCloudDeployment = true;
+		cloudPlanStoreMock.state.initialized = true;
+		cloudPlanStoreMock.currentUserCloudInfo = {
+			information: { what_team_are_you_on: 'Sales' },
+		};
+		setup();
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI inspiration from taxonomy exposed',
 			expect.anything(),
 		);
 	});
@@ -1072,6 +1257,23 @@ describe('InstanceAiEmptyView', () => {
 			expect(replaceMock).not.toHaveBeenCalled();
 		},
 	);
+
+	it('restores the submitted draft when no project is selected', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = null;
+		const { getByRole, getByTestId } = renderView({
+			global: { stubs: { InstanceAiInput: false } },
+		});
+		const textbox = getByRole('textbox');
+
+		await fireEvent.update(textbox, 'Build me an invoice automation');
+		await fireEvent.click(getByTestId('instance-ai-send-button'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(textbox).toHaveValue('Build me an invoice automation');
+		expect(showErrorMock).toHaveBeenCalled();
+	});
 
 	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
 		useSettingsStore().moduleSettings = {

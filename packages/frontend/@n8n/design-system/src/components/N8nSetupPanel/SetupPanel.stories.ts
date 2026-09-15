@@ -82,7 +82,6 @@ type Example = {
 function example(state: Example): Story {
 	return {
 		args: { items: [] },
-		// @ts-expect-error Storybook cannot type generic Select components.
 		render: () => ({
 			components: {
 				N8nSetupPanel,

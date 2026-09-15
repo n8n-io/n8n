@@ -20,7 +20,7 @@ Commands:
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
   discover           Discover test specs and capabilities (for orchestration)
-  distribute        Distribute specs across shards using capability-aware bin-packing
+  distribute        Distribute specs across shards using fixture-pool-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -150,20 +150,19 @@ Example:
 
 export function showDiscoverHelp(): void {
 	console.log(`
-Discover - Find test specs and their capabilities via AST analysis
+Discover - Find test specs and worker requirements via AST analysis
 
-Statically discovers spec files and extracts capability tags.
+Statically discovers spec files and resolves capability options from test.use().
 Outputs JSON to stdout. Pipe to jq for human-readable output.
 
 Usage:
   playwright-janitor discover
 
 Output:
-  { specs: [{ path, capabilities }], skipTags }
+  { specs: [{ path, capabilities, services }], skipTags }
 
 Config:
-  skipTags: string[]       Tags that exclude specs (default: [])
-  capabilityPrefix: string Prefix for capability extraction (default: '@capability:')
+  skipTags: string[] Tags that exclude specs (default: [])
 
 Skip detection:
   - test.fixme() and test.skip() are always detected via AST
@@ -177,9 +176,9 @@ Example:
 
 export function showOrchestrateHelp(): void {
 	console.log(`
-Orchestrate - Distribute specs across shards using capability-aware bin-packing
+Orchestrate - Distribute specs across shards using fixture-pool-aware bin-packing
 
-Groups tests by capability to minimize fixture overhead, then uses greedy
+Groups tests by fixture pool to minimize fixture overhead, then uses greedy
 bin-packing to balance test time across shards. Outputs JSON to stdout.
 
 Usage:
@@ -198,7 +197,7 @@ Config:
   orchestration.maxGroupDuration Max group size before splitting (default: 5min)
 
 Output:
-  { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
+  { shards: [{ shard, specs, testTime, capabilities, services, fixtureCount }], totalTestTime }
 
 Examples:
   playwright-janitor distribute --shards=14 | jq '.shards[0].specs'

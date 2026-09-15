@@ -6,7 +6,11 @@ import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import { CAPABILITIES, type Capability } from './capabilities';
+import {
+	CAPABILITIES,
+	shouldSkipContainerRequirement,
+	type CapabilityOption,
+} from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
@@ -46,6 +50,7 @@ type TestFixtures = {
 	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
+	containerRequirement: undefined;
 };
 
 type WorkerFixtures = {
@@ -59,7 +64,6 @@ type WorkerFixtures = {
 	capability?: CapabilityOption;
 };
 
-type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
 function parseGlobalTestEnv(): Record<string, string> {
@@ -100,6 +104,18 @@ export const test = base.extend<
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
+
+	// Service requirements now come from test.use(), so local projects cannot filter them by title.
+	containerRequirement: [
+		async ({ capability }, use, testInfo) => {
+			testInfo.skip(
+				shouldSkipContainerRequirement(capability, !!getBackendUrl()),
+				'This test requires container services',
+			);
+			await use(undefined);
+		},
+		{ auto: true },
+	],
 
 	// Resolves the effective N8NConfig from project.containerConfig (base) +
 	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it

@@ -103,9 +103,12 @@ function trailingBlockRegex(tag: string): RegExp {
  * conversation-history tool's text extraction — so injected context never
  * pollutes a later history search.
  */
-const TRAILING_CONTEXT_BLOCKS = ['current-date-time', 'project-context', 'past-conversations'].map(
-	trailingBlockRegex,
-);
+const TRAILING_CONTEXT_BLOCKS = [
+	'current-date-time',
+	'project-context',
+	'past-conversations',
+	'ai-preferences',
+].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
 function stripTrailingContextBlocks(message: string): string {
@@ -150,6 +153,16 @@ export function withProjectContext(message: string, projectSection: string): str
  */
 export function withPastConversations(message: string, section: string): string {
 	return `${message}\n\n${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+/**
+ * Carry the user's saved AI preferences. First turn of a thread only, so the text
+ * is paid for once per conversation. The block arrives already tagged and escaped
+ * from `AiPreferenceService`, so the same block serves every AI surface.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function withAiPreferences(message: string, block: string): string {
+	return `${message}\n\n${block}`;
 }
 
 /** Neutralize delimiter tags in title-derived text placed inside the block. */
