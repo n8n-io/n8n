@@ -3,8 +3,8 @@ import type {
 	PromotionBindingPreflightResult,
 	PromotionBindingProject,
 	PromotionCredentialBindingReview,
-	PromotionDestinationProjectStatus,
 	PromotionSourceFile,
+	PromotionTargetProjectStatus,
 	PromotionVariableBindingReview,
 } from '@n8n/api-types';
 import { CredentialsRepository, ProjectRepository, VariablesRepository, type User } from '@n8n/db';
@@ -43,14 +43,14 @@ interface VariableRequirement {
 	workflows: InventoryWorkflow[];
 }
 
-/** Destination facts for the projects named in the package. */
-interface DestinationContext {
+/** Target facts for the projects named in the package. */
+interface TargetContext {
 	projectOf: (id: string) => PromotionBindingProject;
-	destinationProjectStatusOf: (id: string) => PromotionDestinationProjectStatus;
+	targetProjectStatusOf: (id: string) => PromotionTargetProjectStatus;
 }
 
 type CredentialConsumer = PromotionCredentialBindingReview['consumers'][number];
-type CredentialDestinationMatch = PromotionCredentialBindingReview['destinationMatch'];
+type CredentialTargetMatch = PromotionCredentialBindingReview['targetMatch'];
 
 /** Everything known about one required credential before its record is built. */
 interface CredentialFacts {
@@ -62,16 +62,16 @@ interface CredentialFacts {
 	typeKnown: boolean;
 	file: InventoryCredential | undefined;
 	sourceFile: PromotionSourceFile;
-	destinationMatch: CredentialDestinationMatch;
+	targetMatch: CredentialTargetMatch;
 	consumers: Array<Omit<CredentialConsumer, 'accessStatus'>>;
 }
 
-/** A credential the matcher can check: it has an id, a known type, and exists on the destination. */
+/** A credential the matcher can check: it has an id, a known type, and exists on the target. */
 interface CheckableCredential extends CredentialFacts {
 	sourceId: string;
 	type: string;
 	typeKnown: true;
-	destinationMatch: 'matched';
+	targetMatch: 'matched';
 }
 
 /**
@@ -79,7 +79,7 @@ interface CheckableCredential extends CredentialFacts {
  * Includes variables that resolve through a global fallback. Reads the package
  * files and the database. Never writes to either. Credentials match by source
  * id. Variables match by name inside the consuming project. Each result records
- * the source file location and destination status for later creation decisions.
+ * the source file location and target status for later creation decisions.
  */
 @Service()
 export class PromotionBindingPreflightService {
@@ -94,7 +94,7 @@ export class PromotionBindingPreflightService {
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
-	/** `sourceDir` is the package directory inside a checkout the caller controls. Destination state is read fresh on every call. */
+	/** `sourceDir` is the package directory inside a checkout the caller controls. Target state is read fresh on every call. */
 	async checkDirectory({
 		sourceDir,
 		user,
@@ -105,7 +105,7 @@ export class PromotionBindingPreflightService {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 
-		const context = await this.readDestinationProjects(inventory);
+		const context = await this.readTargetProjects(inventory);
 		const [credentials, variables] = await Promise.all([
 			this.checkCredentials(inventory, context, user),
 			this.checkVariables(inventory, context),
@@ -114,9 +114,7 @@ export class PromotionBindingPreflightService {
 		return { bindingsNeedingReview: [...credentials, ...variables] };
 	}
 
-	private async readDestinationProjects(
-		inventory: PackageDirectoryInventory,
-	): Promise<DestinationContext> {
+	private async readTargetProjects(inventory: PackageDirectoryInventory): Promise<TargetContext> {
 		const projectsById = new Map(inventory.projects.map((p) => [p.id, { id: p.id, name: p.name }]));
 		const typeById = new Map(
 			(await this.projectRepository.findTypesByIds([...projectsById.keys()])).map((row) => [
@@ -132,20 +130,20 @@ export class PromotionBindingPreflightService {
 				if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
 				return project;
 			},
-			destinationProjectStatusOf: (id) => typeById.get(id) ?? 'missing',
+			targetProjectStatusOf: (id) => typeById.get(id) ?? 'missing',
 		};
 	}
 
 	private async checkCredentials(
 		inventory: PackageDirectoryInventory,
-		context: DestinationContext,
+		context: TargetContext,
 		user: User,
 	): Promise<PromotionCredentialBindingReview[]> {
 		const groups = collectCredentialUses(inventory);
 		const filesById = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
 
 		const sourceIds = groups.flatMap((group) => group.sourceId ?? []);
-		const destinationTypes = new Map(
+		const targetTypes = new Map(
 			(await this.credentialsRepository.findTypesByIds(sourceIds)).map((row) => [row.id, row.type]),
 		);
 
@@ -168,10 +166,8 @@ export class PromotionBindingPreflightService {
 				typeKnown: type !== undefined && this.credentialTypes.recognizes(type),
 				file,
 				sourceFile: sourceFileOf(file, context),
-				destinationMatch:
-					sourceId === null
-						? 'unchecked'
-						: destinationMatchOf(type, destinationTypes.get(sourceId)),
+				targetMatch:
+					sourceId === null ? 'unchecked' : targetMatchOf(type, targetTypes.get(sourceId)),
 				consumers: consumersOf(uses, context),
 			};
 		});
@@ -204,7 +200,7 @@ export class PromotionBindingPreflightService {
 				usedByWorkflows: fact.consumers.flatMap((consumer) => consumer.workflows.map((w) => w.id)),
 			};
 			for (const consumer of fact.consumers) {
-				if (consumer.destinationProjectStatus === 'team') {
+				if (consumer.targetProjectStatus === 'team') {
 					pushTo(byProject, consumer.project.id, requirement);
 				}
 			}
@@ -223,7 +219,7 @@ export class PromotionBindingPreflightService {
 
 	private async checkVariables(
 		inventory: PackageDirectoryInventory,
-		context: DestinationContext,
+		context: TargetContext,
 	): Promise<PromotionVariableBindingReview[]> {
 		const requirements = this.collectVariableRequirements(inventory);
 		if (requirements.length === 0) return [];
@@ -240,17 +236,20 @@ export class PromotionBindingPreflightService {
 		return requirements
 			.filter(({ name, projectId }) => !existingKeys.has(variableKey(name, projectId)))
 			.map(({ name, projectId, workflows }) => {
-				const destinationMatch: PromotionVariableBindingReview['destinationMatch'] =
-					existingKeys.has(variableKey(name, null)) ? 'global-fallback' : 'missing';
+				const targetMatch: PromotionVariableBindingReview['targetMatch'] = existingKeys.has(
+					variableKey(name, null),
+				)
+					? 'global-fallback'
+					: 'missing';
 				const consumer = {
 					project: context.projectOf(projectId),
-					destinationProjectStatus: context.destinationProjectStatusOf(projectId),
+					targetProjectStatus: context.targetProjectStatusOf(projectId),
 					workflows: workflowRefs(workflows),
 				};
 				const sourceFile = sourceFileOf(variableFile(filesByName, name, projectId), context);
 				const issues: PromotionBindingIssue[] = [
-					destinationMatch === 'global-fallback' ? 'global-only' : 'missing-variable',
-					...projectIssues([consumer.destinationProjectStatus], 'consuming-project'),
+					targetMatch === 'global-fallback' ? 'global-only' : 'missing-variable',
+					...projectIssues([consumer.targetProjectStatus], 'consuming-project'),
 					...(sourceFile.location === 'project' ? [] : (['unknown-owner'] as const)),
 				];
 				return {
@@ -258,7 +257,7 @@ export class PromotionBindingPreflightService {
 					name,
 					sourceFile,
 					consumer,
-					destinationMatch,
+					targetMatch,
 					issues,
 				};
 			})
@@ -311,14 +310,14 @@ function collectCredentialUses(inventory: PackageDirectoryInventory): Credential
 	return [...groups.values()];
 }
 
-/** Without one agreed type there is nothing to compare the destination credential against. */
-function destinationMatchOf(
+/** Without one agreed type there is nothing to compare the target credential against. */
+function targetMatchOf(
 	expectedType: string | undefined,
-	destinationType: string | undefined,
-): CredentialDestinationMatch {
+	targetType: string | undefined,
+): CredentialTargetMatch {
 	if (expectedType === undefined) return 'unchecked';
-	if (destinationType === undefined) return 'missing';
-	return destinationType === expectedType ? 'matched' : 'type-mismatch';
+	if (targetType === undefined) return 'missing';
+	return targetType === expectedType ? 'matched' : 'type-mismatch';
 }
 
 function buildCredentialRecord(
@@ -337,7 +336,7 @@ function buildCredentialRecord(
 		expectedTypes: fact.expectedTypes,
 		...(fact.file?.credential.data ? { expressionData: fact.file.credential.data } : {}),
 		sourceFile: fact.sourceFile,
-		destinationMatch: fact.destinationMatch,
+		targetMatch: fact.targetMatch,
 		consumers,
 		issues: credentialIssues(fact, consumers),
 	};
@@ -348,7 +347,7 @@ function isCheckable(fact: CredentialFacts): fact is CheckableCredential {
 		fact.sourceId !== null &&
 		fact.type !== undefined &&
 		fact.typeKnown &&
-		fact.destinationMatch === 'matched'
+		fact.targetMatch === 'matched'
 	);
 }
 
@@ -358,7 +357,7 @@ function accessStatusOf(
 	consumer: Omit<CredentialConsumer, 'accessStatus'>,
 	unavailable: Set<string>,
 ): CredentialConsumer['accessStatus'] {
-	if (!isCheckable(fact) || consumer.destinationProjectStatus !== 'team') return 'unchecked';
+	if (!isCheckable(fact) || consumer.targetProjectStatus !== 'team') return 'unchecked';
 	return unavailable.has(accessKey(fact.sourceId, consumer.project.id)) ? 'unavailable' : 'usable';
 }
 
@@ -368,7 +367,7 @@ function accessKey(sourceId: string, projectId: string): string {
 
 /**
  * Only a missing credential needs an owner, so ownership issues apply only when
- * the destination has no credential with this id.
+ * the target has no credential with this id.
  */
 function credentialIssues(
 	fact: CredentialFacts,
@@ -379,24 +378,24 @@ function credentialIssues(
 
 	const issues: PromotionBindingIssue[] = [];
 	if (!fact.typeKnown) issues.push('unknown-type');
-	if (fact.destinationMatch === 'missing') issues.push('missing-credential');
-	if (fact.destinationMatch === 'type-mismatch') issues.push('type-mismatch');
+	if (fact.targetMatch === 'missing') issues.push('missing-credential');
+	if (fact.targetMatch === 'type-mismatch') issues.push('type-mismatch');
 	if (consumers.some((consumer) => consumer.accessStatus === 'unavailable')) {
 		issues.push('unavailable');
 	}
 	issues.push(
 		...projectIssues(
-			consumers.map((consumer) => consumer.destinationProjectStatus),
+			consumers.map((consumer) => consumer.targetProjectStatus),
 			'consuming-project',
 		),
 	);
 
-	if (fact.destinationMatch === 'missing') {
+	if (fact.targetMatch === 'missing') {
 		const sourceFile = fact.sourceFile;
 		if (sourceFile.location !== 'project') {
 			issues.push('unknown-owner');
 		} else {
-			issues.push(...projectIssues([sourceFile.destinationProjectStatus], 'owner-project'));
+			issues.push(...projectIssues([sourceFile.targetProjectStatus], 'owner-project'));
 			if (consumers.some((consumer) => consumer.project.id !== sourceFile.project.id)) {
 				issues.push('sharing-required');
 			}
@@ -407,7 +406,7 @@ function credentialIssues(
 }
 
 function projectIssues(
-	projectStatuses: PromotionDestinationProjectStatus[],
+	projectStatuses: PromotionTargetProjectStatus[],
 	role: 'owner-project' | 'consuming-project',
 ): PromotionBindingIssue[] {
 	const issues: PromotionBindingIssue[] = [];
@@ -418,14 +417,14 @@ function projectIssues(
 
 function sourceFileOf(
 	file: InventoryCredential | InventoryVariable | undefined,
-	context: DestinationContext,
+	context: TargetContext,
 ): PromotionSourceFile {
 	if (!file) return { location: 'missing' };
 	if (file.projectId === null) return { location: 'outside-project', filePath: file.path };
 	return {
 		location: 'project',
 		project: context.projectOf(file.projectId),
-		destinationProjectStatus: context.destinationProjectStatusOf(file.projectId),
+		targetProjectStatus: context.targetProjectStatusOf(file.projectId),
 		filePath: file.path,
 	};
 }
@@ -451,7 +450,7 @@ function variableFile(
 
 function consumersOf(
 	uses: CredentialUse[],
-	context: DestinationContext,
+	context: TargetContext,
 ): Array<Omit<CredentialConsumer, 'accessStatus'>> {
 	const byProject = new Map<string, InventoryWorkflow[]>();
 	for (const use of uses) pushTo(byProject, use.workflow.projectId, use.workflow);
@@ -460,7 +459,7 @@ function consumersOf(
 		.sort(([a], [b]) => compare(a, b))
 		.map(([projectId, workflows]) => ({
 			project: context.projectOf(projectId),
-			destinationProjectStatus: context.destinationProjectStatusOf(projectId),
+			targetProjectStatus: context.targetProjectStatusOf(projectId),
 			workflows: workflowRefs(workflows),
 		}));
 }

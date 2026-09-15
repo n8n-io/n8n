@@ -6,7 +6,7 @@ import { Z } from '../../zod-class';
  * Result of the read-only binding check before Apply imports a package.
  * Lists credential and variable bindings that need review. Includes variables
  * that resolve through a global fallback. Each record contains facts from the
- * package and destination. The check never chooses where to create an item.
+ * package and target. The check never chooses where to create an item.
  * All ids and names are source values from the package files.
  */
 
@@ -22,8 +22,8 @@ const workflowSchema = z.object({
 	name: z.string(),
 });
 
-/** What the destination has for a source project id. */
-export const promotionDestinationProjectStatusSchema = z.enum(['team', 'personal', 'missing']);
+/** What the target has for a source project id. */
+export const promotionTargetProjectStatusSchema = z.enum(['team', 'personal', 'missing']);
 
 /**
  * What the package files say about who owns the item. A file inside an exported
@@ -34,7 +34,7 @@ export const promotionSourceFileSchema = z.discriminatedUnion('location', [
 	z.object({
 		location: z.literal('project'),
 		project: promotionBindingProjectSchema,
-		destinationProjectStatus: promotionDestinationProjectStatusSchema,
+		targetProjectStatus: promotionTargetProjectStatusSchema,
 		filePath: z.string(),
 	}),
 	z.object({ location: z.literal('outside-project'), filePath: z.string() }),
@@ -69,27 +69,27 @@ export const promotionBindingIssueSchema = z.enum([
 	'missing-id',
 	/** Workflows use one credential id with different credential types. */
 	'conflicting-types',
-	/** The destination does not know the credential type. */
+	/** The target does not know the credential type. */
 	'unknown-type',
-	/** The destination has no credential with this id. */
+	/** The target has no credential with this id. */
 	'missing-credential',
-	/** The destination has no variable with this name in the project or globally. */
+	/** The target has no variable with this name in the project or globally. */
 	'missing-variable',
 	/** Only a global variable with this name exists. The workflow runs with it unless a project variable is created. */
 	'global-only',
-	/** The destination credential with this id has another type. */
+	/** The target credential with this id has another type. */
 	'type-mismatch',
-	/** The destination credential exists but a consuming project cannot use it. */
+	/** The target credential exists but a consuming project cannot use it. */
 	'unavailable',
 	/** The files do not say which project owns the item. */
 	'unknown-owner',
-	/** The project that owns the item does not exist on the destination yet. */
+	/** The project that owns the item does not exist on the target yet. */
 	'owner-project-missing',
-	/** The project id that owns the item belongs to a personal project on the destination. */
+	/** The project id that owns the item belongs to a personal project on the target. */
 	'owner-project-not-team',
-	/** A project that uses the item does not exist on the destination yet. */
+	/** A project that uses the item does not exist on the target yet. */
 	'consuming-project-missing',
-	/** A project id that uses the item belongs to a personal project on the destination. */
+	/** A project id that uses the item belongs to a personal project on the target. */
 	'consuming-project-not-team',
 	/** The item is owned by one project and used in others. Creation alone does not grant access there. */
 	'sharing-required',
@@ -97,7 +97,7 @@ export const promotionBindingIssueSchema = z.enum([
 
 const consumingProjectSchema = z.object({
 	project: promotionBindingProjectSchema,
-	destinationProjectStatus: promotionDestinationProjectStatusSchema,
+	targetProjectStatus: promotionTargetProjectStatusSchema,
 	workflows: z.array(workflowSchema).min(1),
 });
 
@@ -111,7 +111,7 @@ export const promotionCredentialBindingReviewSchema = z.object({
 	expressionData: promotionCredentialExpressionDataSchema.optional(),
 	sourceFile: promotionSourceFileSchema,
 	/** `unchecked` when the reference has no usable id or type. */
-	destinationMatch: z.enum(['missing', 'matched', 'type-mismatch', 'unchecked']),
+	targetMatch: z.enum(['missing', 'matched', 'type-mismatch', 'unchecked']),
 	consumers: z
 		.array(
 			consumingProjectSchema.extend({
@@ -130,7 +130,7 @@ export const promotionVariableBindingReviewSchema = z.object({
 	sourceFile: promotionSourceFileSchema,
 	consumer: consumingProjectSchema,
 	/** A project variable resolves the requirement, so a listed variable is at most matched globally. */
-	destinationMatch: z.enum(['missing', 'global-fallback']),
+	targetMatch: z.enum(['missing', 'global-fallback']),
 	issues: z.array(promotionBindingIssueSchema).min(1),
 });
 
@@ -148,9 +148,7 @@ export class PromotionBindingPreflightResultDto extends Z.class(
 ) {}
 
 export type PromotionBindingProject = z.infer<typeof promotionBindingProjectSchema>;
-export type PromotionDestinationProjectStatus = z.infer<
-	typeof promotionDestinationProjectStatusSchema
->;
+export type PromotionTargetProjectStatus = z.infer<typeof promotionTargetProjectStatusSchema>;
 export type PromotionSourceFile = z.infer<typeof promotionSourceFileSchema>;
 export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema

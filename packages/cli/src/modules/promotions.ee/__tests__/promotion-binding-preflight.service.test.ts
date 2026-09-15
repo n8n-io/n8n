@@ -167,14 +167,14 @@ describe('PromotionBindingPreflightService', () => {
 				sourceFile: {
 					location: 'project',
 					project: PROJECT_A,
-					destinationProjectStatus: 'team',
+					targetProjectStatus: 'team',
 					filePath: 'projects/proj-a/credentials/cred-1/credential.json',
 				},
-				destinationMatch: 'missing',
+				targetMatch: 'missing',
 				consumers: [
 					{
 						project: PROJECT_A,
-						destinationProjectStatus: 'team',
+						targetProjectStatus: 'team',
 						workflows: [workflowRef('wf-1'), workflowRef('wf-2')],
 						accessStatus: 'unchecked',
 					},
@@ -187,15 +187,15 @@ describe('PromotionBindingPreflightService', () => {
 				sourceFile: {
 					location: 'project',
 					project: PROJECT_A,
-					destinationProjectStatus: 'team',
+					targetProjectStatus: 'team',
 					filePath: 'projects/proj-a/variables/REGION/variable.json',
 				},
 				consumer: {
 					project: PROJECT_A,
-					destinationProjectStatus: 'team',
+					targetProjectStatus: 'team',
 					workflows: [workflowRef('wf-1')],
 				},
-				destinationMatch: 'missing',
+				targetMatch: 'missing',
 				issues: ['missing-variable'],
 			},
 		]);
@@ -262,7 +262,7 @@ describe('PromotionBindingPreflightService', () => {
 		expect(await check()).toEqual([
 			expect.objectContaining({
 				sourceId: 'cred-private',
-				destinationMatch: 'matched',
+				targetMatch: 'matched',
 				sourceFile: { location: 'missing' },
 				consumers: [
 					expect.objectContaining({ project: PROJECT_A, accessStatus: 'usable' }),
@@ -273,7 +273,7 @@ describe('PromotionBindingPreflightService', () => {
 			expect.objectContaining({
 				sourceId: 'cred-wrong-type',
 				expectedTypes: ['githubApi'],
-				destinationMatch: 'type-mismatch',
+				targetMatch: 'type-mismatch',
 				consumers: [expect.objectContaining({ accessStatus: 'unchecked' })],
 				issues: ['type-mismatch'],
 			}),
@@ -293,7 +293,7 @@ describe('PromotionBindingPreflightService', () => {
 		expect(await check()).toEqual([
 			expect.objectContaining({
 				sourceId: 'cred-1',
-				destinationMatch: 'matched',
+				targetMatch: 'matched',
 				consumers: [expect.objectContaining({ accessStatus: 'unchecked' })],
 				issues: ['unknown-type'],
 			}),
@@ -301,7 +301,7 @@ describe('PromotionBindingPreflightService', () => {
 		expect(credentialMatcher.match).not.toHaveBeenCalled();
 	});
 
-	it('keeps a reference without an id and an id used with two types, without checking the destination', async () => {
+	it('keeps a reference without an id and an id used with two types, without checking the target', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
@@ -319,14 +319,14 @@ describe('PromotionBindingPreflightService', () => {
 				sourceId: null,
 				name: 'githubApi credential',
 				expectedTypes: ['githubApi'],
-				destinationMatch: 'unchecked',
+				targetMatch: 'unchecked',
 				consumers: [expect.objectContaining({ workflows: [workflowRef('wf-1')] })],
 				issues: ['missing-id'],
 			}),
 			expect.objectContaining({
 				sourceId: 'cred-1',
 				expectedTypes: ['githubApi', 'gitlabApi'],
-				destinationMatch: 'unchecked',
+				targetMatch: 'unchecked',
 				consumers: [
 					expect.objectContaining({ workflows: [workflowRef('wf-1'), workflowRef('wf-2')] }),
 				],
@@ -401,7 +401,7 @@ describe('PromotionBindingPreflightService', () => {
 		]);
 	});
 
-	it('surfaces missing and non-team destination projects on the bindings that depend on them', async () => {
+	it('surfaces missing and non-team target projects on the bindings that depend on them', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
@@ -422,11 +422,11 @@ describe('PromotionBindingPreflightService', () => {
 		expect(await check()).toEqual([
 			expect.objectContaining({
 				sourceId: 'cred-existing',
-				destinationMatch: 'matched',
+				targetMatch: 'matched',
 				consumers: [
 					expect.objectContaining({
 						project: PROJECT_C,
-						destinationProjectStatus: 'missing',
+						targetProjectStatus: 'missing',
 						accessStatus: 'unchecked',
 					}),
 				],
@@ -434,13 +434,13 @@ describe('PromotionBindingPreflightService', () => {
 			}),
 			expect.objectContaining({
 				sourceId: 'cred-new',
-				destinationMatch: 'missing',
+				targetMatch: 'missing',
 				sourceFile: expect.objectContaining({
 					project: PROJECT_B,
-					destinationProjectStatus: 'personal',
+					targetProjectStatus: 'personal',
 				}),
 				consumers: [
-					expect.objectContaining({ project: PROJECT_B, destinationProjectStatus: 'personal' }),
+					expect.objectContaining({ project: PROJECT_B, targetProjectStatus: 'personal' }),
 				],
 				issues: ['missing-credential', 'consuming-project-not-team', 'owner-project-not-team'],
 			}),
@@ -449,7 +449,7 @@ describe('PromotionBindingPreflightService', () => {
 				name: 'REGION',
 				consumer: expect.objectContaining({
 					project: PROJECT_A,
-					destinationProjectStatus: 'missing',
+					targetProjectStatus: 'missing',
 				}),
 				issues: ['missing-variable', 'consuming-project-missing', 'unknown-owner'],
 			}),
@@ -512,7 +512,7 @@ describe('PromotionBindingPreflightService', () => {
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'REGION',
-				destinationMatch: 'global-fallback',
+				targetMatch: 'global-fallback',
 				issues: ['global-only'],
 			}),
 		]);

@@ -573,8 +573,8 @@ export {
 	promotionBindingReviewSchema,
 	promotionCredentialBindingReviewSchema,
 	promotionCredentialExpressionDataSchema,
-	promotionDestinationProjectStatusSchema,
 	promotionSourceFileSchema,
+	promotionTargetProjectStatusSchema,
 	promotionVariableBindingReviewSchema,
 	type PromotionBindingIssue,
 	type PromotionBindingPreflightResult,
@@ -583,8 +583,8 @@ export {
 	type PromotionCredentialBindingReview,
 	type PromotionCredentialExpressionData,
 	type PromotionCredentialExpressionValue,
-	type PromotionDestinationProjectStatus,
 	type PromotionSourceFile,
+	type PromotionTargetProjectStatus,
 	type PromotionVariableBindingReview,
 } from './promotions/promotion-binding-preflight.dto';
 export {

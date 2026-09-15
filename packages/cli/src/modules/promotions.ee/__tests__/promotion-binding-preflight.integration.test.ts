@@ -174,7 +174,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const alpha = { id: projectA.id, name: 'Alpha' };
 		const consumerAlpha = {
 			project: alpha,
-			destinationProjectStatus: 'team',
+			targetProjectStatus: 'team',
 			workflows: [{ id: 'w1', name: 'Workflow w1' }],
 		};
 		const credentials = result.bindingsNeedingReview.filter((b) => b.kind === 'credential');
@@ -182,7 +182,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		expect(credentials).toEqual([
 			expect.objectContaining({
 				sourceId: 'cred-in-b',
-				destinationMatch: 'matched',
+				targetMatch: 'matched',
 				consumers: [{ ...consumerAlpha, accessStatus: 'unavailable' }],
 				issues: ['unavailable'],
 			}),
@@ -195,16 +195,16 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				sourceFile: {
 					location: 'project',
 					project: alpha,
-					destinationProjectStatus: 'team',
+					targetProjectStatus: 'team',
 					filePath: 'projects/alpha/credentials/new/credential.json',
 				},
-				destinationMatch: 'missing',
+				targetMatch: 'missing',
 				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
 				issues: ['missing-credential'],
 			},
 			expect.objectContaining({
 				sourceId: 'cred-slack',
-				destinationMatch: 'type-mismatch',
+				targetMatch: 'type-mismatch',
 				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
 				issues: ['type-mismatch'],
 			}),
@@ -218,14 +218,14 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 					name: 'REGION',
 					sourceFile: { location: 'missing' },
 					consumer: consumerAlpha,
-					destinationMatch: 'missing',
+					targetMatch: 'missing',
 					issues: ['missing-variable', 'unknown-owner'],
 				},
 				expect.objectContaining({
 					name: 'REGION',
 					consumer: expect.objectContaining({
 						project: projectFile(personalProject),
-						destinationProjectStatus: 'personal',
+						targetProjectStatus: 'personal',
 					}),
 					issues: ['missing-variable', 'consuming-project-not-team', 'unknown-owner'],
 				}),
@@ -233,7 +233,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 					name: 'REGION',
 					consumer: expect.objectContaining({
 						project: { id: 'proj-gone', name: 'Gone' },
-						destinationProjectStatus: 'missing',
+						targetProjectStatus: 'missing',
 					}),
 					issues: ['missing-variable', 'consuming-project-missing', 'unknown-owner'],
 				}),
@@ -243,7 +243,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		expect(await snapshot()).toEqual(before);
 	});
 
-	it('reads fresh destination state on every call and marks a global-only variable match', async () => {
+	it('reads fresh target state on every call and marks a global-only variable match', async () => {
 		const projectA = await createTeamProject('Alpha', owner);
 		await writePackage({
 			'projects/alpha/project.json': projectFile(projectA),
@@ -275,7 +275,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'REGION',
-				destinationMatch: 'global-fallback',
+				targetMatch: 'global-fallback',
 				issues: ['global-only', 'unknown-owner'],
 			}),
 		]);
