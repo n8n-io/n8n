@@ -24,11 +24,15 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
  * which interpolates it into a token URL path, so the shape is checked before
- * it gets there. `MicrosoftEntraServicePrincipalApi` is the source of truth for
- * these; it applies the same two on its own request path.
+ * it gets there.
+ *
+ * The domain form is matched per label rather than by alphabet: a value of `.`
+ * or `..` passes an alphabet check, and URL normalization then drops the tenant
+ * segment entirely. Two labels minimum, each starting and ending alphanumeric.
  */
 const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const TENANT_ID_DOMAIN = /^[A-Za-z0-9.-]+$/;
+const TENANT_ID_DOMAIN =
+	/^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
 
 /**
  * Teams sits with Discord rather than Telegram on registration: the messaging
