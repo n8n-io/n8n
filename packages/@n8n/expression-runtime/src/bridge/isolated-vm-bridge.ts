@@ -14,7 +14,7 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import { untransferableItemError } from './transfer-diagnostics';
+import { MAX_DIAGNOSTIC_MS, untransferableItemError } from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -44,6 +44,19 @@ const vmTransferProbe: TransferProbe = (value) => {
 	copy.release();
 	return true;
 };
+
+function copySentinel(sentinel: ErrorSentinel): ivm.ExternalCopy<unknown> {
+	try {
+		return new (getIvm().ExternalCopy)(sentinel);
+	} catch {
+		return new (getIvm().ExternalCopy)({
+			__isError: true,
+			name: typeof sentinel.name === 'string' ? sentinel.name : 'Error',
+			message: typeof sentinel.message === 'string' ? sentinel.message : 'Error',
+			extra: {},
+		} satisfies ErrorSentinel);
+	}
+}
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -372,12 +385,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				result = dispatchHostCall(rawMsg, data);
 			} catch (err) {
-				return serializeError(err);
+				return copySentinel(serializeError(err));
 			}
 			try {
 				return new (getIvm().ExternalCopy)(result);
 			} catch {
-				return serializeError(untransferableItemError(result, vmTransferProbe, rawMsg, data));
+				return copySentinel(
+					serializeError(
+						untransferableItemError(result, vmTransferProbe, rawMsg, data, MAX_DIAGNOSTIC_MS),
+					),
+				);
 			}
 		});
 	}

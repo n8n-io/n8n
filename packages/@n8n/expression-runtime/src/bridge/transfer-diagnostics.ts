@@ -5,8 +5,9 @@ import { ExpressionError } from '../types';
 
 export type TransferProbe = (value: unknown) => boolean;
 
-const MAX_DEPTH = 128;
-const MAX_PROBES = 10_000;
+const MAX_RECURSION_DEPTH = 128;
+
+export const MAX_DIAGNOSTIC_MS = 250;
 
 interface TransferRejection {
 	path: string;
@@ -22,11 +23,16 @@ interface Member {
 interface WalkState {
 	probe: TransferProbe;
 	seen: Set<object>;
-	probesLeft: number;
+	deadline: number;
 	exhausted: boolean;
 }
 
 const ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
+
+export function diagnosticBudgetMs(msLeft: number): number {
+	if (!Number.isFinite(msLeft)) return MAX_DIAGNOSTIC_MS;
+	return Math.max(0, Math.min(MAX_DIAGNOSTIC_MS, msLeft / 2));
+}
 
 function childPath(path: string, key: string): string {
 	return path === '' ? key : `${path}.${key}`;
@@ -61,18 +67,16 @@ function describe(value: unknown): string | undefined {
 	if (types.isPromise(value)) return 'a promise';
 	if (types.isWeakMap(value)) return 'a WeakMap';
 	if (types.isWeakSet(value)) return 'a WeakSet';
-	if (types.isMap(value)) return 'a Map';
-	if (types.isSet(value)) return 'a Set';
+	if (types.isMap(value)) return 'a value inside a Map';
+	if (types.isSet(value)) return 'a value inside a Set';
 	return undefined;
 }
 
-function accepts(state: WalkState, value: unknown): boolean {
-	if (alwaysTransferable(value)) return true;
-	if (state.probesLeft <= 0) {
+function probe(state: WalkState, value: unknown): boolean {
+	if (Date.now() > state.deadline) {
 		state.exhausted = true;
 		return true;
 	}
-	state.probesLeft -= 1;
 	try {
 		return state.probe(value);
 	} catch {
@@ -80,14 +84,53 @@ function accepts(state: WalkState, value: unknown): boolean {
 	}
 }
 
-function acceptsAccessor(state: WalkState, key: string, descriptor: PropertyDescriptor): boolean {
-	let holder: object;
-	try {
-		holder = Object.defineProperty({}, key, descriptor);
-	} catch {
-		return false;
+function defineMember(holder: object, key: string, value: unknown): void {
+	Object.defineProperty(holder, key, {
+		value,
+		enumerable: true,
+		writable: true,
+		configurable: true,
+	});
+}
+
+function dataReceiver(members: Member[]): object {
+	const receiver = {};
+	for (const member of members) {
+		if (!('value' in member.descriptor)) continue;
+		try {
+			defineMember(receiver, member.key, member.descriptor.value);
+		} catch {}
 	}
-	return accepts(state, holder);
+	return receiver;
+}
+
+function memberHolder(member: Member, receiverFor: () => object): object | undefined {
+	const holder = {};
+	try {
+		if ('value' in member.descriptor) {
+			defineMember(holder, member.key, member.descriptor.value);
+			return holder;
+		}
+		const getter = member.descriptor.get;
+		if (getter === undefined) {
+			return Object.defineProperty(holder, member.key, member.descriptor);
+		}
+		const receiver = receiverFor();
+		return Object.defineProperty(holder, member.key, {
+			enumerable: true,
+			configurable: true,
+			get: () => getter.call(receiver),
+		});
+	} catch {
+		return undefined;
+	}
+}
+
+function acceptsMember(state: WalkState, member: Member, receiverFor: () => object): boolean {
+	if ('value' in member.descriptor && alwaysTransferable(member.descriptor.value)) return true;
+	const holder = memberHolder(member, receiverFor);
+	if (holder === undefined) return false;
+	return probe(state, holder);
 }
 
 function ownMembers(value: object, path: string): Member[] | undefined {
@@ -126,7 +169,7 @@ function walk(
 	if (value === null || typeof value !== 'object') return { path, descriptor: describe(value) };
 	if (types.isProxy(value)) return { path, descriptor: 'a proxy' };
 	if (state.seen.has(value)) return { path, descriptor: 'a circular reference' };
-	if (depth >= MAX_DEPTH) {
+	if (depth >= MAX_RECURSION_DEPTH) {
 		state.exhausted = true;
 		return undefined;
 	}
@@ -135,20 +178,17 @@ function walk(
 	const members = ownMembers(value, path);
 	if (members === undefined) return { path, descriptor: describe(value) };
 
+	let receiver: object | undefined;
+	const receiverFor = () => (receiver ??= dataReceiver(members));
+
 	for (const member of members) {
-		if (!('value' in member.descriptor)) {
-			const accepted = acceptsAccessor(state, member.key, member.descriptor);
-			if (state.exhausted) return undefined;
-			if (!accepted) return { path: member.path, descriptor: 'a getter' };
-			continue;
-		}
-		const child: unknown = member.descriptor.value;
-		const accepted = accepts(state, child);
+		const accepted = acceptsMember(state, member, receiverFor);
 		if (state.exhausted) return undefined;
 		if (accepted) continue;
-		const deeper = walk(child, member.path, depth + 1, state);
+		if (!('value' in member.descriptor)) return { path: member.path, descriptor: 'a getter' };
+		const deeper = walk(member.descriptor.value, member.path, depth + 1, state);
 		if (state.exhausted) return undefined;
-		return deeper ?? { path: member.path, descriptor: describe(child) };
+		return deeper;
 	}
 	return { path, descriptor: describe(value) };
 }
@@ -156,11 +196,18 @@ function walk(
 function buildError(
 	nodeName: string | undefined,
 	found: TransferRejection | undefined,
+	stopped: boolean,
 ): ExpressionError {
 	const source = nodeName === undefined ? 'an upstream node' : `node '${nodeName}'`;
-	const where =
-		found === undefined || found.path === '' ? 'the item' : `the value at ${found.path}`;
-	const cause = found?.descriptor === undefined ? '' : ` (${found.descriptor})`;
+	let where: string;
+	let cause: string;
+	if (found === undefined) {
+		where = stopped ? 'a value inside the item' : 'the item';
+		cause = stopped ? ' (the search for it stopped early)' : '';
+	} else {
+		where = found.path === '' ? 'the item' : `the value at ${found.path}`;
+		cause = found.descriptor === undefined ? '' : ` (${found.descriptor})`;
+	}
 	return new ExpressionError(
 		`Can't read item from ${source}: ${where} cannot be used in an expression${cause}`,
 		nodeName === undefined ? {} : { nodeCause: nodeName },
@@ -192,19 +239,25 @@ function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefine
 
 export function untransferableItemError(
 	value: unknown,
-	probe: TransferProbe,
+	transferProbe: TransferProbe,
 	rawMsg: unknown,
 	data: WorkflowData,
+	budgetMs: number,
 ): ExpressionError {
+	let nodeName: string | undefined;
+	try {
+		nodeName = nodeNameForCall(rawMsg, data);
+	} catch {}
 	try {
 		const state: WalkState = {
-			probe,
+			probe: transferProbe,
 			seen: new Set<object>(),
-			probesLeft: MAX_PROBES,
+			deadline: Date.now() + budgetMs,
 			exhausted: false,
 		};
-		return buildError(nodeNameForCall(rawMsg, data), walk(value, '', 0, state));
+		const found = walk(value, '', 0, state);
+		return buildError(nodeName, found, state.exhausted);
 	} catch {
-		return buildError(undefined, undefined);
+		return buildError(nodeName, undefined, false);
 	}
 }

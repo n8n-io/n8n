@@ -33,6 +33,30 @@ const throwingGetter = () => {
 	return o;
 };
 
+const siblingReadingGetter = () => {
+	const o: Record<string, unknown> = {
+		safe: 'x',
+		get a() {
+			return String(this.safe).toUpperCase();
+		},
+	};
+	o.c = circular();
+	return o;
+};
+
+const guardedGetter = () => {
+	const o: Record<string, unknown> = { enabled: true };
+	Object.defineProperty(o, 'bad', {
+		enumerable: true,
+		get() {
+			if (this.enabled) throw new Error('guard tripped');
+			return 1;
+		},
+	});
+	o.other = 2;
+	return o;
+};
+
 type Case = {
 	name: string;
 	extra: () => Record<string, unknown>;
@@ -94,6 +118,21 @@ const CASES: Case[] = [
 			},
 		}),
 		rejectedAt: { vm: 'json.tj.toJSON', quickjs: 'json.tj.toJSON' },
+	},
+	{
+		name: 'a function beside a circular reference',
+		extra: () => ({ fn2: () => 1, circ2: circular() }),
+		rejectedAt: { vm: 'json.fn2', quickjs: 'json.circ2.self' },
+	},
+	{
+		name: 'a getter that reads a sibling, beside a circular reference',
+		extra: () => ({ gt: siblingReadingGetter() }),
+		rejectedAt: { vm: 'json.gt.a', quickjs: 'json.gt.c.self' },
+	},
+	{
+		name: 'a getter that throws only when its sibling is set',
+		extra: () => ({ gd: guardedGetter() }),
+		rejectedAt: { vm: 'json.gd.bad', quickjs: 'json.gd.bad' },
 	},
 ];
 
