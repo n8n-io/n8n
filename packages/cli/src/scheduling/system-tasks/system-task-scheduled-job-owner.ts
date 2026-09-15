@@ -48,9 +48,4 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 	isAlive(ownerId: string, payload: Record<string, unknown>): boolean {
 		return this.durableTaskNames.has(ownerId) || stampedByNewerVersion(payload);
 	}
-
-	/** Whether any instance stored a durable job for the task that the sweep has not quarantined. */
-	async isProvisioned(taskName: string): Promise<boolean> {
-		return await this.jobs.existsUnquarantinedByOwner(this.owner(taskName));
-	}
 }
