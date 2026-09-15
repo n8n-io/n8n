@@ -332,6 +332,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
+			...(role === 'assistant' && msg.backgroundTaskSignal
+				? { backgroundJobSignal: msg.backgroundTaskSignal }
+				: {}),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);

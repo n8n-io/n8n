@@ -108,6 +108,9 @@ export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
 export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
+export { ChangeEmailRequestDto } from './user/change-email-request.dto';
+export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
+export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -128,9 +131,19 @@ export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
+	CreateCredentialPublicDto,
+	UpdateCredentialPublicDto,
+	DeleteCredentialPublicDto,
+	TransferCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
+export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
+export {
+	AiPreferenceListQueryDto,
+	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_PAGE_SIZE,
+} from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
@@ -218,7 +231,12 @@ export {
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
-export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
+export {
+	CreateTagPublicDto,
+	TagPublicDto,
+	TagListPublicDto,
+	tagPublicSchema,
+} from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -494,6 +512,7 @@ export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
 
 export {
+	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,

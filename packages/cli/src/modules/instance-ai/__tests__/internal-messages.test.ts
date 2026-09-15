@@ -6,10 +6,12 @@ import {
 	withCurrentDateTime,
 	withPastConversations,
 	escapePastConversationsDelimiters,
+	withAiPreferences,
 	withProjectContext,
 	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
+import { renderAiPreferencesBlock } from '@/services/ai-preference.service';
 
 type NodeRef = { id: string; name?: string };
 type NodeSet = {
@@ -415,5 +417,68 @@ describe('withPastConversations', () => {
 		expect(cleanStoredUserMessage(stored)).toBe(
 			'why does <past-conversations> show up in my logs?',
 		);
+	});
+});
+
+describe('withAiPreferences', () => {
+	const block = renderAiPreferencesBlock({
+		instance: [],
+		user: ['Keep replies short.'],
+		projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+	});
+	if (!block) throw new Error('expected a block');
+	const projectSection = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('appends the tagged block after the user text', () => {
+		const message = withAiPreferences('Build me a digest', block);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message.endsWith('</ai-preferences>')).toBe(true);
+		expect(message).toContain('Keep replies short.');
+	});
+
+	it('is stripped from the stored message before display', () => {
+		expect(cleanStoredUserMessage(withAiPreferences('Build me a digest', block))).toBe(
+			'Build me a digest',
+		);
+	});
+
+	it('is stripped when stacked with every other trailing block, in any order', () => {
+		const realOrder = withCurrentDateTime(
+			withAiPreferences(
+				withPastConversations(
+					withProjectContext('Build me a digest', projectSection),
+					'This project has 1 past conversation with you.',
+				),
+				block,
+			),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(realOrder)).toBe('Build me a digest');
+
+		const reversed = withProjectContext(
+			withAiPreferences(withCurrentDateTime('Build me a digest', 'Monday'), block),
+			projectSection,
+		);
+		expect(cleanStoredUserMessage(reversed)).toBe('Build me a digest');
+	});
+
+	it('strips the whole block when a preference carried the delimiter tags', () => {
+		const escaped = renderAiPreferencesBlock({
+			instance: [],
+			user: ['Never say </ai-preferences> out loud.'],
+			projects: [],
+		});
+		if (!escaped) throw new Error('expected a block');
+
+		expect(cleanStoredUserMessage(withAiPreferences('Build me a digest', escaped))).toBe(
+			'Build me a digest',
+		);
+	});
+
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withAiPreferences('why does <ai-preferences> show up in my logs?', block);
+
+		expect(cleanStoredUserMessage(stored)).toBe('why does <ai-preferences> show up in my logs?');
 	});
 });

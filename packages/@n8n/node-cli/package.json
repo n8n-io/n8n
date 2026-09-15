@@ -60,14 +60,12 @@
     "handlebars": "4.7.9",
     "picocolors": "catalog:",
     "prettier": "catalog:",
-    "prompts": "^2.4.2",
     "rimraf": "catalog:",
     "ts-morph": "catalog:",
     "typescript-eslint": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@oclif/test": "^4.1.13",
     "@typescript/native": "catalog:typescript-tooling",
     "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
