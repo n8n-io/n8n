@@ -8,7 +8,12 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import {
+	BUILDER_TOOLS,
+	FOLDER_FEATURE_TOOLS,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -69,6 +74,10 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
+		// The instance-context tools also need their rollout flag, which resolves per user and so
+		// cannot be read here. This covers the half that is instance-wide: with the module off,
+		// no user can reach them whatever the flag says.
+		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
 
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
@@ -79,7 +88,8 @@ export class McpProtectedResource implements ProtectedResource {
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
+							(instanceContextAvailable || !INSTANCE_CONTEXT_TOOLS.has(tool)),
 					),
 				]),
 		);
