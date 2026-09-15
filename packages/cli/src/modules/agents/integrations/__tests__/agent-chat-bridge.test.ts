@@ -1268,11 +1268,15 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it('does not rotate an idle-expired thread that still has an open suspension', async () => {
+		it('queues a message on an idle-expired thread that still has an open suspension', async () => {
 			mockCache([
 				sessionGenerationKey('agent-1:thread-1'),
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
+			const submit = vi
+				.fn()
+				.mockResolvedValue({ status: 'queued', executionId: 'queued-execution' });
+			Container.set(AgentTurnQueueService, { submit } as never);
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('thread-1');
 			const agentExecutor = {
@@ -1291,14 +1295,19 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
-			// Checked against the ORIGINAL (unrotated) thread id — had idle-timeout
-			// rotated first, this exact-match lookup would have missed the open
-			// suspension and silently started a second run instead of parking here.
 			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
 				agentId: 'agent-1',
 				threadId: 'agent-1:thread-1',
 			});
-			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('still waiting'));
+			expect(submit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'agent-1:thread-1',
+					userMessage: 'hi',
+					runContext: expect.objectContaining({ kind: 'message' }),
+				}),
+				expect.any(Function),
+			);
+			expect(thread.post).not.toHaveBeenCalled();
 			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 		});
 
@@ -1973,21 +1982,12 @@ describe('AgentChatBridge — consumeStream', () => {
 			}
 		});
 
-		it.each([
-			{
-				name: 'the thread is busy',
-				admit: async () => null,
-				message: expect.stringContaining('still working'),
-			},
-			{
-				name: 'admission fails',
-				admit: async () => {
+		it('removes stored attachments when admission fails', async () => {
+			Container.set(AgentTurnQueueService, {
+				submit: vi.fn(async () => {
 					throw new Error('database unavailable');
-				},
-				message: GENERIC_ERROR_MESSAGE,
-			},
-		])('removes stored attachments when $name', async ({ admit, message: expectedMessage }) => {
-			Container.set(AgentTurnQueueService, { tryRunNow: vi.fn(admit) } as never);
+				}),
+			} as never);
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
 			const handlers = makeBridge(agentExecutor, attachmentService);
@@ -2008,7 +2008,7 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenCalledWith(expectedMessage);
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
 		it('truncates a platform file name to the fileName column width', async () => {
@@ -3401,102 +3401,6 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
-		});
-	});
-
-	describe('while the run is parked on a suspension', () => {
-		function bridgeWithOpenSuspension(suspendPayload: unknown | null) {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = {
-				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() => toStream([])),
-				findOpenSuspension: vi
-					.fn()
-					.mockResolvedValue(suspendPayload === null ? null : { suspendPayload }),
-			};
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-
-			return { handlers, thread, agentExecutor };
-		}
-
-		// Starting a second run strips the pending tool call from the model's
-		// context, so it calls the same tool again — a duplicate side effect.
-		it('answers instead of starting a second run', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				type: 'workflow_wait',
-				title: 'Waiting on "Approval workflow"',
-				components: [{ type: 'section', text: 'paused' }],
-			});
-
-			await handlers.subscribed!(thread, {
-				text: 'any news?',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
-				agentId: 'agent-1',
-				threadId: 'agent-1:thread-1',
-			});
-			expect(thread.post).toHaveBeenCalledWith(
-				expect.stringContaining('Waiting on "Approval workflow"'),
-			);
-		});
-
-		// A fresh @mention lands in the same thread as the parked run, so it has
-		// to be gated on the same grounds as a follow-up message.
-		it('answers a new mention in the parked thread too', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				title: 'Approval required',
-				components: [{ type: 'section', text: 'approve?' }],
-			});
-
-			await handlers.mention!(thread, {
-				text: '@bot hello',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('Approval required'));
-		});
-
-		// The gate must not swallow the message: nothing ran, so the handler's error
-		// reply is all that can tell the user their message went nowhere.
-		it('surfaces a failure to post the notice instead of dropping the message', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension({
-				title: 'Approval required',
-				components: [{ type: 'section', text: 'approve?' }],
-			});
-			thread.post.mockRejectedValueOnce(new Error('platform unavailable'));
-
-			await handlers.subscribed!(thread, {
-				text: 'any news?',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenLastCalledWith(GENERIC_ERROR_MESSAGE);
-		});
-
-		it('runs normally when nothing is parked', async () => {
-			const { handlers, thread, agentExecutor } = bridgeWithOpenSuspension(null);
-
-			await handlers.subscribed!(thread, {
-				text: 'hello',
-				author: { userId: 'u1', userName: 'user1' },
-			});
-
-			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 		});
 	});
 

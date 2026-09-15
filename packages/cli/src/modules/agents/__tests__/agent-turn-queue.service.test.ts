@@ -64,6 +64,23 @@ function channelResumeTurn(): AgentTurnSubmission {
 	};
 }
 
+function channelMessageTurn(): AgentTurnSubmission {
+	return {
+		...messageTurn('channel message', 'integration:slack:user-1'),
+		source: 'slack',
+		runContext: {
+			kind: 'message',
+			channel: {
+				integrationType: 'slack',
+				credentialId: 'credential-1',
+				thread: { id: 'thread-1', channelId: 'channel-1', isDM: false } as never,
+				isNewMention: true,
+				conversationThreadId: threadId,
+			},
+		},
+	};
+}
+
 /** The queue over its in-memory table, with an orchestrator that ends each row and releases the claim. */
 function makeService() {
 	const queue = createTestTurnQueue(user);
@@ -243,15 +260,23 @@ describe('AgentTurnQueueService', () => {
 		});
 	});
 
-	it('runs a blocked channel resume through its reconstructed bridge', async () => {
+	it('runs blocked channel turns through their reconstructed bridge', async () => {
 		const { service, finish, chatIntegrationService } = makeService();
 		const runQueuedResume = vi.fn(async (_row, claim: AgentTurnClaim) => {
 			finish(claim);
 			await claim.release();
 		});
-		chatIntegrationService.getBridge.mockReturnValue({ runQueuedResume } as never);
+		const runQueuedMessage = vi.fn(async (_row, claim: AgentTurnClaim) => {
+			finish(claim);
+			await claim.release();
+		});
+		chatIntegrationService.getBridge.mockReturnValue({
+			runQueuedResume,
+			runQueuedMessage,
+		} as never);
 		const first = await service.tryRunNow(messageTurn('first'));
 		if (!first) throw new Error('Expected the first turn to be claimed');
+		await service.submit(channelMessageTurn());
 		await service.submit(channelResumeTurn());
 
 		finish(first);
@@ -262,6 +287,18 @@ describe('AgentTurnQueueService', () => {
 				expect.objectContaining({
 					runContext: expect.objectContaining({
 						kind: 'resume',
+						channel: expect.objectContaining({ integrationType: 'slack' }),
+					}),
+				}),
+				expect.objectContaining({ threadId }),
+			),
+		);
+		await settled(() =>
+			expect(runQueuedMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					userMessage: 'channel message',
+					runContext: expect.objectContaining({
+						kind: 'message',
 						channel: expect.objectContaining({ integrationType: 'slack' }),
 					}),
 				}),

@@ -83,24 +83,6 @@ interface SessionGenerationState {
 	lastActivityAt: number;
 }
 
-/**
- * Reply sent when a message arrives while the run is parked. Leads with the
- * suspension card's own title (e.g. `Waiting on "Approval workflow"`) so the
- * user knows what is holding things up, and falls back to a generic line for
- * payloads that carry no title.
- */
-function stillWaitingNotice(suspendPayload: unknown): string {
-	const title =
-		typeof suspendPayload === 'object' &&
-		suspendPayload !== null &&
-		'title' in suspendPayload &&
-		typeof suspendPayload.title === 'string' &&
-		suspendPayload.title.length > 0
-			? suspendPayload.title
-			: "I'm still waiting on the previous step";
-	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
-}
-
 interface AgentExecutor {
 	executeForChatPublished(config: {
 		agentId: string;
@@ -123,17 +105,12 @@ interface AgentExecutor {
 	/**
 	 * The thread's still-open suspension, if the run is parked on one right now.
 	 * Optional so a caller that cannot look checkpoints up (tests) simply skips
-	 * the inbound gate.
+	 * the session-rotation gate.
 	 */
 	findOpenSuspension?(config: {
 		agentId: string;
 		threadId: string;
-	}): Promise<OpenSuspension | null>;
-}
-
-/** Enough of a parked run to tell the user what the agent is still waiting on. */
-interface OpenSuspension {
-	suspendPayload?: unknown;
+	}): Promise<unknown | null>;
 }
 
 /** A channel message as its turn runs it, built at arrival or rebuilt from its queued row. */
@@ -703,12 +680,6 @@ export class AgentChatBridge {
 		admissionSignal.throwIfAborted();
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
-		// The run parks against the session it executes in, which for a bound reply
-		// is the task's thread rather than the platform one — so this has to come
-		// after the binding is resolved, and before anything is stored for a turn
-		// that is not going to run.
-		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return null;
-		admissionSignal.throwIfAborted();
 
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
@@ -987,38 +958,6 @@ export class AgentChatBridge {
 			// no-op await of the consumer's clear when that already ran.
 			await statusHandle?.clearBeforeResponse();
 		}
-	}
-
-	/**
-	 * A run parked on a suspension owns the conversation until it is resolved.
-	 * Starting a second run here would hand the model a history with the pending
-	 * tool call stripped out, so it would call the same tool again — a duplicate
-	 * side effect and a second parked run. Tell the user instead of executing,
-	 * and let them resolve the open card.
-	 *
-	 * Returns true when the message was answered with the notice and must not
-	 * start a run. A failure to post propagates: the gate has already decided not
-	 * to run, and the handler's error reply is the only thing left that can tell
-	 * the user their message went nowhere.
-	 */
-	private async postStillWaitingReply(thread: Thread, threadId: string): Promise<boolean> {
-		const open = await this.agentService.findOpenSuspension?.({
-			agentId: this.agentId,
-			threadId,
-		});
-		if (!open) return false;
-
-		try {
-			await thread.post(stillWaitingNotice(open.suspendPayload));
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to post the still-waiting notice', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
-		return true;
 	}
 
 	/**
