@@ -63,6 +63,9 @@ export interface UnauthenticatedWebhookResponse {
 export interface WebhookRequestContext {
 	headers: Readonly<Record<string, string | string[] | undefined>>;
 	body: unknown;
+	/** The agent this webhook route belongs to. Both hooks are per-agent. */
+	agentId: string;
+	projectId: string;
 }
 
 export type WebhookRequestResolution =

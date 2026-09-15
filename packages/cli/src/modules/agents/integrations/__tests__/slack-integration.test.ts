@@ -309,6 +309,8 @@ describe('SlackIntegration', () => {
 			const result = integration.handleUnauthenticatedWebhook({
 				headers: {},
 				body: { type: 'url_verification', challenge: 'abc123' },
+				agentId: 'agent-1',
+				projectId: 'project-1',
 			});
 
 			expect(result).toEqual({ status: 200, body: { challenge: 'abc123' } });
@@ -318,6 +320,8 @@ describe('SlackIntegration', () => {
 			const result = integration.handleUnauthenticatedWebhook({
 				headers: {},
 				body: { type: 'event_callback', event: { type: 'message', text: 'hi' } },
+				agentId: 'agent-1',
+				projectId: 'project-1',
 			});
 
 			expect(result).toBeUndefined();
@@ -327,7 +331,14 @@ describe('SlackIntegration', () => {
 			['missing challenge', { type: 'url_verification' }],
 			['non-string challenge', { type: 'url_verification', challenge: 42 }],
 		])('returns undefined for malformed url_verification body (%s)', (_label, body) => {
-			expect(integration.handleUnauthenticatedWebhook({ headers: {}, body })).toBeUndefined();
+			expect(
+				integration.handleUnauthenticatedWebhook({
+					headers: {},
+					body,
+					agentId: 'agent-1',
+					projectId: 'project-1',
+				}),
+			).toBeUndefined();
 		});
 
 		it.each([
@@ -336,7 +347,14 @@ describe('SlackIntegration', () => {
 			['string', 'hello'],
 			['number', 42],
 		])('returns undefined for non-object body (%s)', (_label, body) => {
-			expect(integration.handleUnauthenticatedWebhook({ headers: {}, body })).toBeUndefined();
+			expect(
+				integration.handleUnauthenticatedWebhook({
+					headers: {},
+					body,
+					agentId: 'agent-1',
+					projectId: 'project-1',
+				}),
+			).toBeUndefined();
 		});
 	});
 });

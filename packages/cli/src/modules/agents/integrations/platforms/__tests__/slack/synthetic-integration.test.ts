@@ -28,6 +28,8 @@ describe('Slack channel integration scenarios', () => {
 			integration.handleUnauthenticatedWebhook({
 				headers: {},
 				body: { type: 'url_verification', challenge: 'url-verification-challenge' },
+				agentId: 'agent-1',
+				projectId: 'project-1',
 			}),
 		).toEqual({ status: 200, body: { challenge: 'url-verification-challenge' } });
 	});

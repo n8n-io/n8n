@@ -48,3 +48,24 @@ export interface TeamsAgentSetupState {
 	/** Null until a credential is connected, because the template needs the client ID. */
 	deployToAzureUrl: string | null;
 }
+
+/**
+ * Progress of the "connect the bot" step, which picks a bot up from the first
+ * activity that reaches the messaging endpoint.
+ */
+export type TeamsDiscoveryState =
+	| { status: 'idle' }
+	| { status: 'waiting' }
+	| { status: 'expired' }
+	| {
+			status: 'found';
+			/** Application (client) ID, read from the verified Bot Framework token. */
+			clientId: string;
+			/** Absent when the activity carried no tenant, e.g. from Web Chat. */
+			tenantId: string | null;
+			/**
+			 * An existing credential in this project already holding these values,
+			 * so the step can offer reuse instead of asking for a secret.
+			 */
+			existingCredentialId: string | null;
+	  };
