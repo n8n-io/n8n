@@ -5,7 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,6 +18,7 @@ import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 
 import {
@@ -25,7 +26,6 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
-	N8nIcon,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -76,7 +76,7 @@ const isPrivateUnconnected = computed(
 		isPrivateCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
 		props.data.connectedByMe === false &&
-		credentialPermissions.value.update === true,
+		credentialPermissions.value.connect === true,
 );
 
 const actions = computed(() => {
@@ -87,7 +87,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	// Deleting an end-user credential removes every user's own connection,
+	// so it additionally requires the createEndUser permission.
+	if (
+		credentialPermissions.value.delete &&
+		(!props.data.isResolvable || credentialPermissions.value.createEndUser)
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
@@ -119,7 +124,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -238,24 +243,6 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
-				<N8nTooltip v-if="isPrivateCredentialsEnabled && data.isResolvable" placement="top">
-					<template #content>
-						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('credentials.private.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('credentials.private.tooltip') }}</span>
-						</div>
-					</template>
-					<N8nBadge
-						theme="tertiary"
-						class="ml-3xs pl-3xs pr-3xs"
-						data-test-id="credential-card-dynamic"
-					>
-						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="small" />
-							{{ locale.baseText('credentials.private.badge') }}
-						</span>
-					</N8nBadge>
-				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -268,6 +255,17 @@ function moveResource() {
 					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</N8nText>
+			<span
+				v-if="isPrivateCredentialsEnabled && data.isResolvable"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="credential-card-dynamic"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+					:tooltip-text="locale.baseText('credentials.private.tooltip')"
+					size="small"
+				/>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -292,7 +290,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect.tooltip') }}
 					</template>
 					<N8nButton
-						type="primary"
 						size="mini"
 						:loading="isConnecting"
 						data-test-id="credential-card-connect"
@@ -313,6 +310,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -339,6 +338,12 @@ function moveResource() {
 	padding: 0 0 var(--spacing--sm);
 }
 
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
 .cardActions {
 	display: flex;
 	gap: var(--spacing--2xs);
@@ -350,22 +355,7 @@ function moveResource() {
 	cursor: default;
 }
 
-.dynamicBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	vertical-align: middle;
-}
-
-.tooltipContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

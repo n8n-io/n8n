@@ -49,4 +49,16 @@ describe('SDK reserved built-in tool names', () => {
 		]);
 		expect(agent.declaredTools.every((tool) => isSdkOwnedBuiltInTool(tool))).toBe(true);
 	});
+
+	it('allows a delegate tool renamed to a non-reserved name', () => {
+		const agent = makeAgent().tool(createDelegateSubAgentTool({ name: 'agent' }));
+
+		expect(agent.declaredTools.map((tool) => tool.name)).toEqual(['agent']);
+	});
+
+	it('rejects a delegate tool renamed to another reserved built-in name', () => {
+		expect(() =>
+			makeAgent().tool(createDelegateSubAgentTool({ name: WRITE_TODOS_TOOL_NAME })),
+		).toThrow(`Tool name "${WRITE_TODOS_TOOL_NAME}" is reserved for SDK built-in tools`);
+	});
 });

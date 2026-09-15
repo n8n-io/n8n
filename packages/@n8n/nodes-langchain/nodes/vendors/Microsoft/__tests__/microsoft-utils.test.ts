@@ -1,4 +1,4 @@
-import type { IWebhookFunctions } from 'n8n-workflow';
+import type { IWebhookFunctions, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -74,6 +74,9 @@ vi.mock('@microsoft/agents-a365-observability', () => ({
 }));
 
 vi.mock('@microsoft/agents-a365-runtime', () => ({
+	AgenticAuthenticationService: {
+		GetAgenticUserToken: vi.fn().mockResolvedValue('per-audience-token'),
+	},
 	getMcpPlatformAuthenticationScope: vi.fn().mockReturnValue('mcp-scope'),
 	getObservabilityAuthenticationScope: vi.fn().mockReturnValue('observability-scope'),
 	Utility: {
@@ -81,16 +84,23 @@ vi.mock('@microsoft/agents-a365-runtime', () => ({
 	},
 }));
 
+vi.mock('@n8n/ai-utilities', () => ({
+	proxyFetch: vi.fn(),
+}));
+
 vi.mock('@microsoft/agents-a365-tooling', () => ({
 	McpToolServerConfigurationService: vi.fn().mockImplementation(function () {
 		return { listToolServers: vi.fn().mockResolvedValue([]) };
 	}),
+	resolveTokenScopeForServer: vi.fn().mockReturnValue('mcp-scope'),
 	Utility: {
 		ValidateAuthToken: vi.fn(),
+		GetToolRequestHeaders: vi.fn().mockReturnValue({}),
 	},
 	defaultToolingConfigurationProvider: {
 		getConfiguration: vi.fn().mockReturnValue({
 			mcpPlatformAuthenticationScope: 'mcp-scope',
+			mcpPlatformEndpoint: 'https://agent365.svc.cloud.microsoft',
 		}),
 	},
 }));
@@ -109,12 +119,19 @@ vi.mock('uuid', () => ({
 }));
 
 import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
-import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
+import {
+	McpToolServerConfigurationService,
+	Utility as MicrosoftToolingUtility,
+} from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { proxyFetch } from '@n8n/ai-utilities';
+
+const testEgressFilter = mock<NodeEgressFilter>();
 
 describe('microsoft-utils', () => {
 	beforeAll(async () => {
 		const actualMcpUtils = await vi.hoisted(
-			async () => await import('../../../mcp/McpClientTool/utils'),
+			async () => await import('../../../mcp/McpClientTool/utils.js'),
 		);
 
 		vi.mock('../../../mcp/McpClientTool/utils', async () => ({
@@ -196,6 +213,9 @@ describe('microsoft-utils', () => {
 			nodeContext = mock<IWebhookFunctions>({
 				getNodeParameter: vi.fn(),
 				getNode: vi.fn().mockReturnValue({ name: 'Test Node' }),
+				helpers: {
+					getSecureEgressFilter: () => testEgressFilter,
+				} as unknown as IWebhookFunctions['helpers'],
 			});
 
 			agent = {
@@ -629,6 +649,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			expect(result).toBeUndefined();
@@ -665,6 +686,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				selectedTools,
+				testEgressFilter,
 			);
 
 			expect(result).toBeDefined();
@@ -684,7 +706,13 @@ describe('microsoft-utils', () => {
 
 			(getAllTools as Mock).mockResolvedValue([]);
 
-			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+			);
 
 			expect(connectMcpClient).toHaveBeenCalledWith({
 				serverTransport: 'httpStreamable',
@@ -695,7 +723,151 @@ describe('microsoft-utils', () => {
 				},
 				name: 'Microsoft-Agent-365',
 				version: 1,
+				secureEgressFilter: testEgressFilter,
 			});
+		});
+
+		test('should prefer per-server authorization headers for tool calls', async () => {
+			const mockServers = [
+				{
+					mcpServerName: 'mcp_CalendarTools',
+					url: 'http://calendar-server',
+					headers: {
+						authorization: 'Bearer per-server-token',
+						'x-ms-custom-header': 'custom-value',
+					},
+				},
+			];
+
+			(MicrosoftToolingUtility.GetToolRequestHeaders as Mock).mockReturnValueOnce({
+				Authorization: 'Bearer shared-token',
+				'x-ms-channel-id': 'msteams',
+			});
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+
+			const mockClient = { close: vi.fn() };
+			(connectMcpClient as Mock).mockResolvedValue({
+				ok: true,
+				result: mockClient,
+			});
+
+			(getAllTools as Mock).mockResolvedValue([]);
+
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+			);
+
+			expect(connectMcpClient).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						Authorization: 'Bearer per-server-token',
+						'x-ms-channel-id': 'msteams',
+						'x-ms-custom-header': 'custom-value',
+						'x-ms-tenant-id': 'test-tenant-id',
+					},
+				}),
+			);
+		});
+
+		test('should fallback to filtered server discovery before per-server token exchange', async () => {
+			mockConfigService.listToolServers.mockRejectedValue(new Error('insufficient permissions'));
+			(proxyFetch as Mock).mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					mcpServers: [
+						{
+							mcpServerName: 'mcp_CalendarTools',
+							url: 'http://calendar-server',
+							scope: 'McpServers.DataverseCustom.All',
+						},
+						{
+							mcpServerName: 'mcp_MailTools',
+							url: 'http://mail-server',
+							audience: 'mail-audience',
+						},
+					],
+				}),
+			});
+			(AgenticAuthenticationService.GetAgenticUserToken as Mock).mockResolvedValueOnce(
+				'calendar-audience-token',
+			);
+
+			const mockClient = { close: vi.fn() };
+			(connectMcpClient as Mock).mockResolvedValue({
+				ok: true,
+				result: mockClient,
+			});
+			(getAllTools as Mock).mockResolvedValue([]);
+
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				['mcp_CalendarTools'],
+				testEgressFilter,
+			);
+
+			expect(proxyFetch).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: 'https://agent365.svc.cloud.microsoft/agents/v2/agent-identity/mcpServers',
+					init: expect.any(Object),
+				}),
+			);
+			// mcp_CalendarTools has no audience → V1 server → uses shared token directly,
+			// no OBO exchange needed
+			expect(AgenticAuthenticationService.GetAgenticUserToken).not.toHaveBeenCalled();
+			expect(connectMcpClient).toHaveBeenCalledTimes(1);
+			expect(connectMcpClient).toHaveBeenCalledWith(
+				expect.objectContaining({
+					endpointUrl: 'http://calendar-server',
+					headers: expect.objectContaining({
+						Authorization: 'Bearer test-token',
+					}),
+				}),
+			);
+		});
+
+		test('should log only the payload type, not the raw body, when discovery returns an unexpected shape', async () => {
+			mockConfigService.listToolServers.mockRejectedValue(new Error('insufficient permissions'));
+			// Untrusted discovery response with an unrecognized shape carrying a token-like value
+			(proxyFetch as Mock).mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					error: 'unauthorized',
+					accessToken: 'tok_secret_123',
+				}),
+			});
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			try {
+				await expect(
+					getMicrosoftMcpTools(
+						mockTurnContext,
+						mockAuthorization,
+						'test-token',
+						undefined,
+						testEgressFilter,
+					),
+				).rejects.toThrow(
+					'Failed to read MCP servers from endpoint: response is not a server list',
+				);
+
+				expect(consoleErrorSpy).toHaveBeenCalledWith(
+					'Microsoft MCP server discovery returned an unsupported payload shape',
+					{ payloadType: 'object' },
+				);
+				// The untrusted response body must never reach the logs
+				expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain('tok_secret_123');
+			} finally {
+				consoleErrorSpy.mockRestore();
+				consoleWarnSpy.mockRestore();
+			}
 		});
 
 		test('should handle connection errors gracefully', async () => {
@@ -718,13 +890,19 @@ describe('microsoft-utils', () => {
 
 			(getAllTools as Mock).mockResolvedValue([]);
 
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			try {
-				await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+				await getMicrosoftMcpTools(
+					mockTurnContext,
+					mockAuthorization,
+					'test-token',
+					undefined,
+					testEgressFilter,
+				);
 
 				expect(consoleSpy).toHaveBeenCalledWith(
-					'Failed to connect to MCP server mcp_CalendarTools:',
+					'Skipping MCP server mcp_CalendarTools: failed to connect',
 					'Connection failed',
 				);
 			} finally {
@@ -758,6 +936,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			expect(result).toBeDefined();
@@ -794,6 +973,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			expect(result).toBeUndefined();
@@ -827,6 +1007,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			await result?.client.close();
@@ -860,6 +1041,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			expect(connectMcpClient).toHaveBeenCalledWith(
@@ -900,6 +1082,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			expect(result?.toolkits).toHaveLength(2);
@@ -929,6 +1112,7 @@ describe('microsoft-utils', () => {
 				mockAuthorization,
 				'test-token',
 				undefined,
+				testEgressFilter,
 			);
 
 			// mcpToolToDynamicTool gets server-prefixed names, avoiding collision
@@ -962,7 +1146,13 @@ describe('microsoft-utils', () => {
 				name: 'mcp_Calendar_Tools__v2__create_event',
 			});
 
-			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+			);
 
 			// Special chars (dash, dot, space, parens) all replaced with underscores
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
@@ -985,7 +1175,13 @@ describe('microsoft-utils', () => {
 			(createCallTool as Mock).mockReturnValue(mockCallTool);
 			(mcpToolToDynamicTool as Mock).mockReturnValue({ name: 'trimmed' });
 
-			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+			);
 
 			const calledWith = (mcpToolToDynamicTool as Mock).mock.calls[0][0];
 			// Tool name is always preserved; only the prefix is trimmed
@@ -1005,7 +1201,13 @@ describe('microsoft-utils', () => {
 
 			(mcpToolToDynamicTool as Mock).mockReturnValue({ name: toolName });
 
-			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
+			await getMicrosoftMcpTools(
+				mockTurnContext,
+				mockAuthorization,
+				'test-token',
+				undefined,
+				testEgressFilter,
+			);
 
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: toolName }),
@@ -1060,6 +1262,7 @@ describe('microsoft-utils', () => {
 					mockAuthorizationLogging,
 					'test-token',
 					undefined,
+					testEgressFilter,
 				);
 
 				expect(result).toBeDefined();
@@ -1085,6 +1288,7 @@ describe('microsoft-utils', () => {
 					mockAuthorizationLogging,
 					'test-token',
 					undefined,
+					testEgressFilter,
 				);
 
 				await capturedToolFunc!({ maxResults: 5 });
@@ -1123,6 +1327,7 @@ describe('microsoft-utils', () => {
 					mockAuthorizationLogging,
 					'test-token',
 					undefined,
+					testEgressFilter,
 				);
 
 				await capturedToolFunc!({ maxResults: 5 });
@@ -1149,6 +1354,7 @@ describe('microsoft-utils', () => {
 					mockAuthorizationLogging,
 					'test-token',
 					undefined,
+					testEgressFilter,
 				);
 
 				// createCallTool is not called at setup — only when the tool is actually invoked
@@ -1184,6 +1390,7 @@ describe('microsoft-utils', () => {
 					mockAuthorizationLogging,
 					'test-token',
 					undefined,
+					testEgressFilter,
 				);
 
 				await capturedFuncs[0]({ query: 'today' });
@@ -1209,6 +1416,9 @@ describe('microsoft-utils', () => {
 			nodeContext = mock<IWebhookFunctions>({
 				getNodeParameter: vi.fn(),
 				getNode: vi.fn().mockReturnValue({ name: 'Test Node' }),
+				helpers: {
+					getSecureEgressFilter: () => testEgressFilter,
+				} as unknown as IWebhookFunctions['helpers'],
 			});
 
 			credentials = {

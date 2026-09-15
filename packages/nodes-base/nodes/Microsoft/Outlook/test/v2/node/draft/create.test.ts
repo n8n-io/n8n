@@ -190,6 +190,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				0,
 				expect.objectContaining({
 					subject: 'Test Draft with Attachment',
 					body: expect.objectContaining({
@@ -243,11 +244,14 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 
-			await execute.call(mockExecuteFunctions, 0, [{ json: {} }]);
+			// Non-zero index: pins that the operation forwards the PASSED index (not a
+			// hardcoded 0). The getNodeParameter mock is index-insensitive.
+			await execute.call(mockExecuteFunctions, 2, [{ json: {} }]);
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				2,
 				expect.objectContaining({
 					attachments: [
 						{
@@ -296,6 +300,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
 				'/messages',
+				0,
 				expect.objectContaining({
 					attachments: expect.arrayContaining([
 						expect.objectContaining({

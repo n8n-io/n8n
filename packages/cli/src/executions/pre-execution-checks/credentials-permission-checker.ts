@@ -1,10 +1,11 @@
 import type { Project } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { INode } from 'n8n-workflow';
-import { displayParameter, UserError } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -14,6 +15,15 @@ class InvalidCredentialError extends UserError {
 
 	constructor(readonly node: INode) {
 		super(`Node "${node.name}" uses invalid credential`);
+	}
+}
+
+class InaccessibleCredentialForUserError extends UserError {
+	override description =
+		'This node uses a credential you do not have access to. Ask its owner to share it with you.';
+
+	constructor(readonly node: INode) {
+		super(`Node "${node.name}" uses a credential you do not have access to`);
 	}
 }
 
@@ -39,13 +49,91 @@ export class CredentialsPermissionChecker {
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly userRepository: UserRepository,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
+
+	/**
+	 * Check that a specific user can use every credential referenced by the given
+	 * nodes. Used for sub-workflows whose source is not a stored database workflow
+	 * (inline/parameter, file, url): these carry no project of their own, so their
+	 * credentials must be evaluated against the user triggering the run rather than
+	 * against the parent workflow's project.
+	 */
+	async checkForUser(userId: string, nodes: INode[]) {
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return;
+
+		// Load the role relation (scopes are eager) so hasGlobalScope can resolve.
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role'],
+		});
+		if (!user) {
+			// Cannot resolve the triggering user - fail closed.
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[workflowCredIds[0]][0]);
+		}
+		const unavailableCredentials =
+			await this.credentialsRepository.findNonProjectCredentialsByIds(workflowCredIds);
+		if (unavailableCredentials.length > 0) {
+			throw new InaccessibleCredentialForUserError(credIdsToNodes[unavailableCredentials[0].id][0]);
+		}
+
+		// A user with instance-wide credential listing can use any credential.
+		if (hasGlobalScope(user, 'credential:list')) return;
+
+		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
+
+		for (const credentialsId of workflowCredIds) {
+			if (!accessibleSet.has(credentialsId)) {
+				throw new InaccessibleCredentialForUserError(credIdsToNodes[credentialsId][0]);
+			}
+		}
+	}
 
 	/**
 	 * Check if a workflow has the ability to execute based on the projects it's apart of.
 	 */
 	async check(workflowId: string, nodes: INode[]) {
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return;
+
+		const { homeProject, inaccessibleIds } = await this.findInaccessible(
+			workflowId,
+			workflowCredIds,
+		);
+
+		if (inaccessibleIds.length > 0) {
+			const nodeToFlag = credIdsToNodes[inaccessibleIds[0]][0];
+			throw new InaccessibleCredentialError(nodeToFlag, homeProject);
+		}
+	}
+
+	/**
+	 * The credentials among `credentialIds` that the workflow's projects cannot
+	 * use, in the order the check finds them. The same rule as `check`, for a
+	 * caller that has credential ids but no nodes.
+	 */
+	async findInaccessible(
+		workflowId: string,
+		credentialIds: string[],
+	): Promise<{ homeProject: Project; inaccessibleIds: string[] }> {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+		const unavailableCredentials =
+			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
+		if (unavailableCredentials.length > 0) {
+			return { homeProject, inaccessibleIds: unavailableCredentials.map((c) => c.id) };
+		}
+
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
 			homeProject.id,
 		);
@@ -56,45 +144,23 @@ export class CredentialsPermissionChecker {
 		) {
 			// Workflow belongs to a project by a user with privileges
 			// so all credentials are usable. Skip credential checks.
-			return;
+			return { homeProject, inaccessibleIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
-		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
-
-		const workflowCredIds = Object.keys(credIdsToNodes);
-
-		if (workflowCredIds.length === 0) return;
 
 		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,
-			workflowCredIds,
+			credentialIds,
 		);
 
-		const accessibleSet = await this.addGlobalCredentialsToAccessibleSet(accessible);
+		// Global credentials are usable by every project.
+		const global = await this.credentialsRepository.findGlobalProjectCredentialIds(credentialIds);
+		const accessibleSet = new Set([...accessible, ...global]);
 
-		for (const credentialsId of workflowCredIds) {
-			if (!accessibleSet.has(credentialsId)) {
-				const nodeToFlag = credIdsToNodes[credentialsId][0];
-				throw new InaccessibleCredentialError(nodeToFlag, homeProject);
-			}
-		}
-	}
-
-	/**
-	 * Adds global credentials (isGlobal: true) to the set of accessible credentials.
-	 */
-	private async addGlobalCredentialsToAccessibleSet(
-		accessibleCredentialIds: string[],
-	): Promise<Set<string>> {
-		const accessibleSet = new Set(accessibleCredentialIds);
-		const globalCredentials = await this.credentialsRepository.find({
-			where: { isGlobal: true },
-			select: ['id'],
-		});
-		for (const globalCred of globalCredentials) {
-			accessibleSet.add(globalCred.id);
-		}
-		return accessibleSet;
+		return {
+			homeProject,
+			inaccessibleIds: credentialIds.filter((id) => !accessibleSet.has(id)),
+		};
 	}
 
 	private mapCredIdsToNodes(nodes: INode[]) {
@@ -104,7 +170,11 @@ export class CredentialsPermissionChecker {
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
 			for (const [credType, cred] of Object.entries(node.credentials)) {
-				if (!cred.id) throw new InvalidCredentialError(node);
+				if (!cred.id) {
+					// AI Gateway managed credentials have no real DB id — skip permission check
+					if (cred.__aiGatewayManaged === true) continue;
+					throw new InvalidCredentialError(node);
+				}
 
 				// Skip credentials that are not actively used by the node's current configuration
 				if (activeCredTypes !== null && !activeCredTypes.has(credType)) continue;
@@ -122,36 +192,15 @@ export class CredentialsPermissionChecker {
 	 * in which case all credentials should be checked as a safe fallback.
 	 */
 	private getActiveCredentialTypes(node: INode): Set<string> | null {
+		let nodeTypeDescription: INodeTypeDescription | null = null;
 		try {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const activeTypes = new Set<string>();
-
-			// Check credentials defined in the node type description with display options
-			for (const credDef of nodeType.description.credentials ?? []) {
-				if (displayParameter(node.parameters, credDef, node, nodeType.description)) {
-					activeTypes.add(credDef.name);
-				}
-			}
-
-			// For nodes using predefined credential type (e.g., HTTP Request node),
-			// the active credential is specified by the nodeCredentialType parameter
-			const { nodeCredentialType } = node.parameters;
-			if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
-				activeTypes.add(nodeCredentialType);
-			}
-
-			// For nodes using generic credential types (e.g., HTTP Request with
-			// authentication=genericCredentialType), the active credential type is
-			// specified by the genericAuthType parameter
-			const { genericAuthType } = node.parameters;
-			if (typeof genericAuthType === 'string' && genericAuthType) {
-				activeTypes.add(genericAuthType);
-			}
-
-			return activeTypes;
+			nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+				node.type,
+				node.typeVersion,
+			).description;
 		} catch {
 			// If we can't resolve the node type, fall back to checking all credentials
-			return null;
 		}
+		return getActiveCredentialTypes(node, nodeTypeDescription);
 	}
 }

@@ -1,7 +1,9 @@
 import type { Project } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 
+import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
 import { test as base, expect as baseExpect } from '../../../fixtures/base';
+import { PROXY_WITHOUT_COMMUNITY_PACKAGES } from '../../../fixtures/capabilities';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
@@ -14,17 +16,13 @@ type ChatHubFixtures = {
 	jinaCredential: CredentialResponse;
 	jinaApiKey: string;
 	chatHubProxySetup: undefined;
+	chatHubEnabled: undefined;
 	agentWorkflow: IWorkflowBase;
 };
 
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
-	capability: {
-		services: ['proxy'],
-		env: {
-			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
-		},
-	},
+	capability: PROXY_WITHOUT_COMMUNITY_PACKAGES,
 } as const;
 
 export const test = base.extend<ChatHubFixtures>({
@@ -41,6 +39,14 @@ export const test = base.extend<ChatHubFixtures>({
 			// Setup
 			await services.proxy.clearAllExpectations();
 			await services.proxy.loadExpectations('chat-hub', { strictBodyMatching: true });
+
+			// In replay (CI), make unmatched LLM calls fail loud with a clear
+			// message instead of silently forwarding to the real Anthropic API
+			// (which surfaces as a cryptic "invalid x-api-key"). Skip when
+			// recording (!CI), which needs fall-through to capture live responses.
+			if (process.env.CI) {
+				await services.proxy.failOnUnmatched(['/v1/messages']);
+			}
 
 			await use(undefined);
 
@@ -61,6 +67,33 @@ export const test = base.extend<ChatHubFixtures>({
 					},
 				});
 			}
+		},
+		{ auto: true },
+	],
+
+	chatHubEnabled: [
+		async ({ n8n }, use) => {
+			// Toggling chat hub requires the chatHub:manage scope, which only owners
+			// and admins have. The test user may be a member/chat user, so drive this
+			// through a dedicated owner context instead of n8n.api.
+			const ownerApi = await n8n.api.createApiForUser(INSTANCE_OWNER_CREDENTIALS);
+			const setEnabled = async (enabled: boolean) => {
+				const response = await ownerApi.request.put('/rest/chat/enabled', { data: { enabled } });
+				if (!response.ok()) {
+					throw new Error(
+						`Failed to set Chat Hub enabled=${enabled}: ${response.status()} ${await response.text()}`,
+					);
+				}
+			};
+
+			// Chat Hub is disabled by default; turn it on for these tests.
+			await setEnabled(true);
+
+			await use(undefined);
+
+			// Restore the default (disabled) state so a shared instance isn't left enabled.
+			await setEnabled(false);
+			await ownerApi.request.dispose();
 		},
 		{ auto: true },
 	],

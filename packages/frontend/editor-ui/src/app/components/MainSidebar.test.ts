@@ -2,18 +2,19 @@ import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import MainSidebar from '@/app/components/MainSidebar.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
+
+const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -21,6 +22,10 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: openTopUpMock }),
 }));
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -31,7 +36,6 @@ let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
-let recommendedTemplatesStore: MockedStore<typeof useRecommendedTemplatesStore>;
 
 const mockVersion: Version = {
 	name: '1.2.0',
@@ -47,6 +51,7 @@ const mockVersion: Version = {
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
+		openTopUpMock.mockReset();
 		renderComponent = createComponentRenderer(MainSidebar, {
 			pinia: createTestingPinia(),
 		});
@@ -57,7 +62,6 @@ describe('MainSidebar', () => {
 		templatesStore = mockedStore(useTemplatesStore);
 		personalizedTemplatesV2Store = mockedStore(usePersonalizedTemplatesV2Store);
 		personalizedTemplatesV3Store = mockedStore(usePersonalizedTemplatesV3Store);
-		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
 
 		settingsStore.settings = defaultSettings;
 
@@ -73,7 +77,6 @@ describe('MainSidebar', () => {
 		// Default experiment store values
 		personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 		personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-		recommendedTemplatesStore.isFeatureEnabled = false;
 	});
 
 	it('renders the sidebar without error', () => {
@@ -123,7 +126,6 @@ describe('MainSidebar', () => {
 			templatesStore.hasCustomTemplatesHost = false;
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 
@@ -136,7 +138,6 @@ describe('MainSidebar', () => {
 			settingsStore.isTemplatesEnabled = true;
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => true);
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
-			recommendedTemplatesStore.isFeatureEnabled = false;
 
 			const { getAllByTestId } = renderComponent();
 
@@ -165,6 +166,28 @@ describe('MainSidebar', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('main-sidebar-settings')).toBeInTheDocument();
+		});
+
+		it('should show contact support item in help menu when on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = true;
+
+			const { getByText, findByText } = renderComponent();
+
+			getByText('Help').click();
+
+			expect(await findByText('Contact Support')).toBeInTheDocument();
+		});
+
+		it('should not show contact support item in help menu when not on cloud deployment', async () => {
+			settingsStore.isCloudDeployment = false;
+
+			const { getByText, findByRole, queryByText } = renderComponent();
+
+			getByText('Help').click();
+			// Wait for the popover to mount before checking
+			await findByRole('dialog');
+
+			expect(queryByText('Contact Support')).not.toBeInTheDocument();
 		});
 	});
 
@@ -210,6 +233,25 @@ describe('MainSidebar', () => {
 					articleId: 123,
 				},
 			});
+		});
+
+		it('should open the top-up flow when n8n credits is selected', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByText } = renderComponent();
+
+			getByText('Settings').click();
+			const creditsItem = await findByText('Gateway credits');
+			creditsItem.click();
+
+			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
 		});
 	});
 });

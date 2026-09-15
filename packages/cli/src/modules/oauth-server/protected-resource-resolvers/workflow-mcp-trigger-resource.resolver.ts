@@ -2,16 +2,18 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
 	WORKFLOW_MCP_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 @Service()
@@ -22,17 +24,19 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	readonly id = 'workflow-mcp-trigger';
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
@@ -94,12 +98,18 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcp}/${path}`;
+			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp:' + workflow.id,
 				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 			};
 		}
 

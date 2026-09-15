@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { WorkflowNodeResponse } from '../../clients/n8n-client';
 import type { BinaryCheck, BinaryCheckContext } from '../types';

@@ -45,6 +45,7 @@ type Props = {
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
 	hideLabel?: boolean;
+	externalIssues?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -199,6 +200,7 @@ defineExpose({
 				:data-test-id="`parameter-input-${parsedParameterName}`"
 				:event-bus="eventBus"
 				:can-be-overridden="canBeOverridden"
+				:external-issues="externalIssues"
 				@focus="onFocus"
 				@blur="onBlur"
 				@drop="onDrop"

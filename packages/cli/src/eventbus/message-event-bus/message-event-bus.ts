@@ -2,13 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
 
+import { ExecutionCrashService } from '../../executions/execution-crash.service';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
 import {
@@ -20,6 +20,8 @@ import { EventMessageAudit } from '../event-message-classes/event-message-audit'
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
 import { EventMessageExecution } from '../event-message-classes/event-message-execution';
+import type { EventMessageMcpOptions } from '../event-message-classes/event-message-mcp';
+import { EventMessageMcp } from '../event-message-classes/event-message-mcp';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
@@ -61,6 +63,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly recoveryService: ExecutionRecoveryService,
+		private readonly executionCrashService: ExecutionCrashService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {
@@ -275,6 +278,10 @@ export class MessageEventBus extends EventEmitter {
 		await this.send(new EventMessageQueue(options));
 	}
 
+	async sendMcpEvent(options: EventMessageMcpOptions) {
+		await this.send(new EventMessageMcp(options));
+	}
+
 	/**
 	 * Does the following at startup:
 	 * - checks for unsent messages in the log files and tries to resend them
@@ -302,7 +309,7 @@ export class MessageEventBus extends EventEmitter {
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
 		if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
-			await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
+			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds);
 			// if we end up here, it means that the previous recovery process did not finish
 			// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 			// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed

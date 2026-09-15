@@ -91,7 +91,9 @@ pnpm stack:helm --image ghcr.io/n8n-io/n8n:ci-12345
 ### CLI Options
 
 ```
---mode <mode>         standalone (SQLite, default) or queue (PostgreSQL + Redis + workers)
+--mode <mode>         standalone (SQLite, default) or queue (PostgreSQL + Redis + workers).
+                      Queue mode's Postgres chart and image are pinned in
+                      postgres-versions.json.
 --image <image>       n8n Docker image (default: n8nio/n8n:local)
 --chart-ref <ref>     Git branch/tag for n8n-hosting (default: main)
 --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)

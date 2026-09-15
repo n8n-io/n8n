@@ -2,11 +2,11 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import z from 'zod';
 
+import type { Telemetry } from '@/telemetry';
+
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
-
-import type { Telemetry } from '@/telemetry';
 
 const MAX_RESULTS = 100;
 
@@ -68,7 +68,7 @@ export const createSearchProjectsTool = (
 	name: 'search_projects',
 	config: {
 		description:
-			"Search for projects accessible to the current user. Call this whenever the user names a project — pass the name as the query, then use the resolved ID with create_workflow_from_code or update_workflow. Results are ranked with exact case-insensitive name matches first. If no exact match is found but multiple partials are returned, the response includes a `hint` field telling you to clarify with the user before acting; follow it instead of guessing. The response also includes `teamProjectsEnabled` — when false, team projects are not licensed on this instance, so default to creating workflows in the caller's personal project unless the user explicitly picks one of the returned accessible projects.",
+			"Search for projects accessible to the current user. Call this whenever the user names a project — pass the name as the query, then use the resolved ID with tools that take a projectId. Results are ranked with exact case-insensitive name matches first. If no exact match is found but multiple partials are returned, the response includes a `hint` field telling you to clarify with the user before acting; follow it instead of guessing. The response also includes `teamProjectsEnabled` — when false, team projects are not licensed on this instance, so default to creating in the caller's personal project unless the user explicitly picks one of the returned accessible projects.",
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -35,23 +35,24 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { ProjectService } from '@/services/project.service.ee';
 
+import { assertRowReadAccessIfReturningRows } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
-import { FileUploadError } from './errors/data-table-file-upload.error';
-import { ProjectService } from '@/services/project.service.ee';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 
 @RestController('/projects/:projectId/data-tables')
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly projectService: ProjectService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -75,8 +76,7 @@ export class DataTableController {
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
@@ -112,7 +112,10 @@ export class DataTableController {
 		} catch (e: unknown) {
 			if (!(e instanceof Error)) {
 				throw e;
-			} else if (e instanceof DataTableNameConflictError) {
+			} else if (
+				e instanceof DataTableNameConflictError ||
+				e instanceof DataTableSystemColumnNameConflictError
+			) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
@@ -305,7 +308,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/download-csv')
-	@ProjectScope('dataTable:read')
+	@ProjectScope('dataTable:readRow')
 	async downloadDataTableCsv(
 		req: AuthenticatedRequest<{ projectId: string; dataTableId: string }>,
 		_res: Response,
@@ -413,36 +416,14 @@ export class DataTableController {
 		@Body dto: UpsertDataTableRowDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
-			// because of strict overloads, we need separate paths
-			const dryRun = dto.dryRun;
-			if (dryRun) {
-				return await this.dataTableService.upsertRow(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					true, // we want to always return data for dry runs
-					dryRun,
-				);
-			}
-
-			const returnData = dto.returnData;
-			if (returnData) {
-				return await this.dataTableService.upsertRow(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					returnData,
-					dryRun,
-				);
-			}
-
 			return await this.dataTableService.upsertRow(
 				dataTableId,
 				req.params.projectId,
 				dto,
-				returnData,
-				dryRun,
+				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
@@ -466,36 +447,14 @@ export class DataTableController {
 		@Body dto: UpdateDataTableRowDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
-			// because of strict overloads, we need separate paths
-			const dryRun = dto.dryRun;
-			if (dryRun) {
-				return await this.dataTableService.updateRows(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					true, // we want to always return data for dry runs
-					dryRun,
-				);
-			}
-
-			const returnData = dto.returnData;
-			if (returnData) {
-				return await this.dataTableService.updateRows(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					returnData,
-					dryRun,
-				);
-			}
-
 			return await this.dataTableService.updateRows(
 				dataTableId,
 				req.params.projectId,
 				dto,
-				returnData,
-				dryRun,
+				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
@@ -519,12 +478,14 @@ export class DataTableController {
 		@Query dto: DeleteDataTableRowsDto,
 	) {
 		this.checkInstanceWriteAccess();
+		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,
 				req.params.projectId,
 				dto,
 				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {

@@ -1,18 +1,21 @@
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
-import { AgentResourceRepository } from '../repositories/agent-resource.repository';
-import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageSubject,
 	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
+	SessionBinding,
 } from './integration-tools';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
+const CONTINUE_AS_METADATA_KEY = 'continueAs';
+const BOUND_THREADS_METADATA_KEY = 'boundThreads';
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -32,10 +35,103 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void> {
+		await this.writeMetadata(threadId, resourceId, {
+			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+		});
+	}
+
+	async bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void> {
+		if (derivedThreadId === origin.threadId) return;
+		if (await this.resolveSession(derivedThreadId)) return;
+
+		await this.appendBoundThread(origin.threadId, derivedThreadId);
+		await this.writeContinueAsIfAbsent(derivedThreadId, origin);
+	}
+
+	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
+		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const value = this.parseMetadata(thread?.metadata)[CONTINUE_AS_METADATA_KEY];
+		return isSessionBinding(value) ? value : null;
+	}
+
+	async unbindSession(derivedThreadId: string): Promise<void> {
+		await this.writeMetadata(derivedThreadId, undefined, {
+			[CONTINUE_AS_METADATA_KEY]: undefined,
+		});
+	}
+
+	async clearSessionBindings(originThreadId: string): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
+		const metadata = this.parseMetadata(existing?.metadata);
+		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
+			? (metadata[BOUND_THREADS_METADATA_KEY] as string[])
+			: [];
+		if (bound.length === 0) return;
+		for (const id of bound) await this.unbindSession(id);
+		metadata[BOUND_THREADS_METADATA_KEY] = [];
+		if (existing) {
+			existing.metadata = JSON.stringify(metadata);
+			await this.threadRepository.save(existing);
+		}
+	}
+
+	private async writeContinueAsIfAbsent(
+		derivedThreadId: string,
+		origin: SessionBinding,
+	): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const metadata = this.parseMetadata(existing?.metadata);
+		if (isSessionBinding(metadata[CONTINUE_AS_METADATA_KEY])) return;
+		metadata[CONTINUE_AS_METADATA_KEY] = origin;
+		if (existing) {
+			existing.metadata = JSON.stringify(metadata);
+			await this.threadRepository.save(existing);
+			return;
+		}
+		await this.ensureResource(origin.resourceId);
+		await this.threadRepository.save(
+			this.threadRepository.create({
+				id: derivedThreadId,
+				resourceId: origin.resourceId,
+				title: null,
+				metadata: JSON.stringify(metadata),
+			}),
+		);
+	}
+
+	private async appendBoundThread(originThreadId: string, derivedThreadId: string): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
+		const metadata = this.parseMetadata(existing?.metadata);
+		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
+			? (metadata[BOUND_THREADS_METADATA_KEY] as string[]).filter((id) => id !== derivedThreadId)
+			: [];
+		bound.push(derivedThreadId);
+		metadata[BOUND_THREADS_METADATA_KEY] = bound;
+		if (existing) {
+			existing.metadata = JSON.stringify(metadata);
+			await this.threadRepository.save(existing);
+			return;
+		}
+		await this.ensureResource(originThreadId);
+		await this.threadRepository.save(
+			this.threadRepository.create({
+				id: originThreadId,
+				resourceId: originThreadId,
+				title: null,
+				metadata: JSON.stringify(metadata),
+			}),
+		);
+	}
+
+	private async writeMetadata(
+		threadId: string,
+		resourceId: string | undefined,
+		patch: Record<string, unknown>,
+	): Promise<void> {
 		const existing = await this.threadRepository.findOneBy({ id: threadId });
 		const metadata = {
 			...this.parseMetadata(existing?.metadata),
-			[MESSAGE_CONTEXT_METADATA_KEY]: context,
+			...patch,
 		};
 
 		if (existing) {
@@ -44,11 +140,11 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			return;
 		}
 
-		await this.ensureResource(resourceId);
+		await this.ensureResource(resourceId ?? threadId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
-				resourceId,
+				resourceId: resourceId ?? threadId,
 				title: null,
 				metadata: JSON.stringify(metadata),
 			}),
@@ -87,6 +183,12 @@ export function isIntegrationMessageContext(value: unknown): value is Integratio
 		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
 		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
 		typeof context.updatedAt === 'string'
+	);
+}
+
+function isSessionBinding(value: unknown): value is SessionBinding {
+	return (
+		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'
 	);
 }
 

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import type { Mock } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as image from './image';
@@ -8,29 +8,35 @@ import * as text from './text';
 
 describe('Moonshot router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockImage = vi.spyOn(image.analyze, 'execute');
-	const mockText = vi.spyOn(text.message, 'execute');
-	const operationMocks = [
-		[mockImage, 'image', 'analyze'],
-		[mockText, 'text', 'message'],
+	let mockImage: MockInstance;
+	let mockText: MockInstance;
+	const operationMocks: Array<[() => MockInstance, string, string]> = [
+		[() => mockImage, 'image', 'analyze'],
+		[() => mockText, 'text', 'message'],
 	];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		mockImage = vi.spyOn(image.analyze, 'execute');
+		mockText = vi.spyOn(text.message, 'execute');
 	});
 
-	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
-		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>
-			parameter === 'resource' ? resource : operation,
-		);
-		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		(mock as Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
+	it.each(operationMocks)(
+		'should call the correct method',
+		async (getMock, resource, operation) => {
+			const mock = getMock();
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>
+				parameter === 'resource' ? resource : operation,
+			);
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			(mock as Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
 
-		const result = await router.call(mockExecuteFunctions);
+			const result = await router.call(mockExecuteFunctions);
 
-		expect(mock).toHaveBeenCalledWith(0);
-		expect(result).toEqual([[{ json: { foo: 'bar' } }]]);
-	});
+			expect(mock).toHaveBeenCalledWith(0);
+			expect(result).toEqual([[{ json: { foo: 'bar' } }]]);
+		},
+	);
 
 	it('should return an error if the resource is not supported', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>

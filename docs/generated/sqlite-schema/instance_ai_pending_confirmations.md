@@ -75,6 +75,7 @@ erDiagram
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
   datetime_3_ expiredAt
+  VARCHAR_64_ hostRunId
   varchar_255_ key PK
   varchar_255_ resourceId
   varchar_255_ runId

@@ -13,7 +13,9 @@ import { DEFAULTS } from '../support/constants';
  */
 export async function getTracingCallbacks(): Promise<Callbacks | undefined> {
 	try {
-		return await getLangchainCallbacks();
+		// langsmith resolves the `import`-condition @langchain/core `Callbacks`;
+		// bridge it to the `require`-condition type used by the langchain consumers.
+		return (await getLangchainCallbacks()) as unknown as Callbacks | undefined;
 	} catch {
 		return undefined;
 	}

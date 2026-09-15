@@ -1,5 +1,6 @@
-import type { AgentExecutionCounter } from './agent';
+import type { AgentExecutionCounter, TokenUsage } from './agent';
 import type { AgentDbMessage } from './message';
+import type { BuiltTelemetry } from '../telemetry';
 
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
 
@@ -67,9 +68,12 @@ export interface ObservationLogReflectionResult {
 	inserted: ObservationLogEntry[];
 }
 
-export type TokenCounter = (text: string) => number;
-
-export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
+export function getStoredObservationTokenCount(
+	entry: Pick<ObservationLogEntry, 'text' | 'tokenCount'>,
+): number {
+	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
+	return Buffer.byteLength(entry.text, 'utf8');
+}
 
 export interface ObservationLogObserverInput {
 	observationScopeId: string;
@@ -80,6 +84,7 @@ export interface ObservationLogObserverInput {
 	observationLogTail: ObservationLogEntry[];
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
@@ -92,9 +97,20 @@ export interface ObservationLogReflectorInput {
 	tokenCount: number;
 	tokenBudget: number;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
+
+/** Reported after an observation-log observer/reflector LLM call completes, for hosts that meter usage. */
+export interface MemoryTaskUsageReport {
+	task: ObservationLogTaskKind;
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	model: string;
+	usage: TokenUsage;
+	/** Stable per-LLM-call id, generated once at the call site so hosts can build idempotent billing dedupe keys. */
+	reportId: string;
+}
 
 export interface BuiltObservationLogStore {
 	appendObservationLogEntries(rows: NewObservationLogEntry[]): Promise<ObservationLogEntry[]>;

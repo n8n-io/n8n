@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { defineComponent, h, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
+import type { ContextChip } from '../instanceAi.contextChip';
 import {
 	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions,
 	isPromptSuggestion,
@@ -29,6 +31,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	contextChip?: ContextChip | null;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -40,6 +43,7 @@ const defaultProps = (): InputTestProps => ({
 	amendContext: null,
 	contextualSuggestion: null,
 	isWorkflowBuilderAvailable: true,
+	contextChip: null,
 });
 
 function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
@@ -49,7 +53,11 @@ function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
 	};
 }
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+function emittedArgument(args: unknown, index: number): unknown {
+	return Array.isArray(args) ? args[index] : undefined;
+}
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
 
@@ -192,12 +200,34 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 	},
 });
 
+const InputMenuStub = defineComponent({
+	emits: ['attach-files'],
+	setup(_props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					type: 'button',
+					'data-test-id': 'instance-ai-input-menu-attach',
+					onClick: () => emit('attach-files'),
+				},
+				'Attach file',
+			);
+	},
+});
+
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
+	global: {
+		stubs: {
+			InstanceAiInputMenu: true,
+		},
+	},
 });
 
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
+		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		telemetryTrack.mockReset();
 	});
@@ -242,8 +272,43 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask me a question',
+			'Tell me what to build or ask a question',
 		);
+	});
+
+	it('uses the new agent placeholder for a pending agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: true,
+					label: 'New Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Describe the agent you want to build',
+		);
+	});
+
+	it('uses the default placeholder for a saved agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					isNewAgent: false,
+					label: 'Support Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask anything...');
 	});
 
 	it('disables the composer when the workflow builder is unavailable', () => {
@@ -414,6 +479,7 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit?.[0]).toEqual([
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
+			expect.any(Function),
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -533,7 +599,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
-		const { container, emitted, getByRole, getByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -564,9 +630,78 @@ describe('InstanceAiInput', () => {
 						fileName: 'note.txt',
 					}),
 				],
+				expect.any(Function),
 			],
 		]);
 		expect(textbox).toHaveValue('');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => {
+			expect(textbox).toHaveValue('Please send this with context');
+			expect(getByTestId('chat-file')).toBeInTheDocument();
+		});
+	});
+
+	it('emits a draft recovery callback for a text-only message', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Build me an invoice workflow');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(textbox).toHaveValue('');
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => expect(textbox).toHaveValue('Build me an invoice workflow'));
+	});
+
+	it('opens the hidden file picker from the input menu', async () => {
+		const fileInputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: { stubs: { InstanceAiInputMenu: InputMenuStub } },
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-input-menu-attach'));
+
+		expect(fileInputClick).toHaveBeenCalledOnce();
+		fileInputClick.mockRestore();
+	});
+
+	it('does not restore a submitted draft over newer composer content', async () => {
+		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Original message');
+		const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+		Object.defineProperty(fileInput, 'files', {
+			value: [new File(['old context'], 'old-context.txt', { type: 'text/plain' })],
+			configurable: true,
+		});
+		await fireEvent.change(fileInput);
+		await waitFor(() => expect(getByTestId('chat-file')).toBeInTheDocument());
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		await userEvent.type(textbox, 'New message');
+
+		expect(restoreDraft()).toBe(false);
+		expect(textbox).toHaveValue('New message');
+		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
 	});
 
 	it('opens quick examples and inserts an example without submitting', async () => {
@@ -690,7 +825,9 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(textbox, 'Make the first workflow simpler');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
-		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
+		expect(emitted().submit).toEqual([
+			['Make the first workflow simpler', undefined, expect.any(Function)],
+		]);
 	});
 
 	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
@@ -710,6 +847,48 @@ describe('InstanceAiInput', () => {
 		await rerender(inputProps({ isPlanEditMode: false }));
 
 		expect(textbox).toHaveValue('');
+	});
+
+	it('renders a dismissible handoff context chip inside the input', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		const chip = getByTestId('instance-ai-handoff-context-chip');
+
+		expect(chip).toHaveTextContent('SEO Auditor session');
+		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
+		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
+		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
+
+		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+
+		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
+	});
+
+	it('keeps plan edit mode as the only visible chip when both plan edit and handoff context are present', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				isPlanEditMode: true,
+				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		expect(queryByTestId('instance-ai-plan-edit-context')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-handoff-context-chip')).not.toBeInTheDocument();
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {
@@ -891,7 +1070,7 @@ describe('InstanceAiInput', () => {
 					profile_role: 'sales',
 					metadata_load_state: 'loaded',
 					variant: 'variant-cards',
-					'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+					'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 				},
 			},
 		});
@@ -912,7 +1091,7 @@ describe('InstanceAiInput', () => {
 			profile_role: 'sales',
 			metadata_load_state: 'loaded',
 			variant: 'variant-cards',
-			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			suggestion_id: 'custom-raw-prompt',
 			suggestion_kind: 'prompt',
 			position: 1,
@@ -1062,5 +1241,11 @@ describe('InstanceAiInput', () => {
 		});
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+	});
+
+	it('raises the character limit for long, externally-drafted prompts', () => {
+		const { getByRole } = renderComponent();
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '25000');
 	});
 });

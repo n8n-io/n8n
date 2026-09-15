@@ -26,6 +26,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -52,6 +53,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
+	getAgentNodeHeight,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
@@ -59,35 +61,23 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
+	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
 
-	// `executionIssuesByNodeName` is keyed by name; groups address nodes by id.
-	const nodeNameById = computed(() => {
-		const map = new Map<string, string>();
-		for (const node of nodes.value) map.set(node.id, node.name);
-		return map;
-	});
-
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
-		if (!tasks) return 0;
-		let count = 0;
-		for (const task of tasks) {
-			if (task.executionStatus !== 'canceled') count++;
-		}
-		return count;
+		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
-		const name = nodeNameById.value.get(id);
 		const status = rd.executionStatusByNodeId.get(id)?.value;
 		const tasks = rd.executionRunDataByNodeId.get(id)?.value;
 
 		// Mirror the single-node `computeHasIssues`
-		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
+		const executionIssues = rd.executionIssuesByNodeId.get(id)?.value;
 		const hasExecutionError =
 			status === 'error' ||
 			status === 'crashed' ||
@@ -123,17 +113,30 @@ export function useCanvasMapping({
 		for (const node of nodes.value) {
 			const render = rd.renderTypeByNodeId.get(node.id)?.value;
 
-			if (render?.type !== CanvasNodeRenderType.Default) continue;
-
-			dimensionsById[node.id] = computeNodeDisplaySize(
-				node.id,
-				render.options,
-				rd,
-				isExperimentalNdvActive.value,
-			);
+			if (render?.type === CanvasNodeRenderType.Default) {
+				dimensionsById[node.id] = computeNodeDisplaySize(
+					node.id,
+					render.options,
+					rd,
+					isExperimentalNdvActive.value,
+				);
+			} else if (render?.type === CanvasNodeRenderType.Agent) {
+				dimensionsById[node.id] = {
+					width: AGENT_NODE_SIZE[0],
+					height: getAgentNodeHeight?.(node.id) ?? AGENT_NODE_SIZE[1],
+				};
+			}
 		}
 		return dimensionsById;
 	});
+
+	function getVisiblePinDataByNodeId(id: string) {
+		const rd = renderData.value;
+		if (rd.isExecutionDataDisplayed) {
+			return rd.executionPinDataByNodeId.get(id)?.value;
+		}
+		return rd.pinnedDataByNodeId.get(id)?.value;
+	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
@@ -209,10 +212,7 @@ export function useCanvasMapping({
 	function getConnectionStatus(connection: Connection): CanvasConnectionData['status'] {
 		const rd = renderData.value;
 		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-		const sourceName = nodeNameById.value.get(connection.source);
-		const hasSimulatedSourceOutput = Boolean(
-			sourceName && rd.executionSimulationByNodeName[sourceName],
-		);
+		const hasPinnedSourceOutput = Boolean(getVisiblePinDataByNodeId(connection.source));
 
 		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
@@ -232,10 +232,7 @@ export function useCanvasMapping({
 		const matches: Record<(typeof CONNECTION_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
-			pinned: Boolean(
-				(rd.pinnedDataByNodeId.get(connection.source)?.value || hasSimulatedSourceOutput) &&
-					sourceTasks,
-			),
+			pinned: Boolean(hasPinnedSourceOutput && sourceTasks),
 			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};
@@ -287,7 +284,7 @@ export function useCanvasMapping({
 			sourceHandle,
 		} = connection.data?.canonicals?.[0] ?? connection;
 
-		const pinned = rd.pinnedDataByNodeId.get(sourceId)?.value;
+		const pinned = getVisiblePinDataByNodeId(sourceId);
 		if (pinned) {
 			const pinnedDataCount = pinned.length;
 			return pinnedDataCount > 0

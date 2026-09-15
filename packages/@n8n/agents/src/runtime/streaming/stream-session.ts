@@ -24,10 +24,15 @@ export interface StreamSessionDeps {
 	updateState: (status: 'failed' | 'cancelled') => void;
 	emitError: (error: unknown) => void;
 	/**
-	 * Usage + model to stamp on the terminal finish chunk of an aborted run, so a
-	 * cancelled run still bills the tokens consumed before the stop.
+	 * Durably persist the turn-so-far when the run is aborted, so a cancelled stream still
+	 * leaves its assistant work in memory. Best-effort — must not throw out of the catch.
 	 */
-	getAbortFinish?: () => { usage?: TokenUsage; model?: string };
+	persistTurnOnAbort?: () => Promise<void>;
+	/**
+	 * Usage + model to stamp on the terminal finish chunk of an aborted or failed
+	 * run, so a run cut short still bills the tokens consumed before the stop.
+	 */
+	getTerminalFinish?: () => { usage?: TokenUsage; model?: string };
 }
 
 /**
@@ -73,26 +78,43 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 		const { type: _type, ...payload } = data;
 		void guard.write({ type: 'subagent-completed', ...payload });
 	};
+	const onSubAgentChunk = (data: AgentEventData): void => {
+		if (data.type !== AgentEvent.SubAgentChunk) return;
+		const { type: _type, ...payload } = data;
+		void guard.write({ type: 'subagent-chunk', ...payload });
+	};
 
 	deps.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 	deps.eventBus.on(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 	deps.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
 	deps.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
+	deps.eventBus.on(AgentEvent.SubAgentChunk, onSubAgentChunk);
 
 	deps
 		.withRootSpan('stream', deps.options, deps.runId, async () => await deps.runLoop(guard))
 		.catch(async (error: unknown) => {
 			const isAbort = deps.abortScope.isAborted;
 			deps.updateState(isAbort ? 'cancelled' : 'failed');
-			if (!isAbort) {
+			if (isAbort) {
+				// Best-effort: a persistence failure must never skip the shutdown steps
+				// below (cleanup, telemetry flush, terminal failure signal).
+				try {
+					await deps.persistTurnOnAbort?.();
+				} catch {
+					// swallowed — persistTurnDelta already logs; shutdown must proceed
+				}
+			} else {
 				deps.emitError(error);
 			}
 			await deps.cleanupRun();
 			await deps.flushTelemetry(deps.options);
+			// Attach usage on both abort and error shutdowns: turns completed before
+			// a mid-run failure were already reported to the sink and must still be
+			// billed on the terminal chunk.
 			await guard.fail(
 				isAbort ? new Error('Agent run was aborted') : error,
 				'error',
-				isAbort ? deps.getAbortFinish?.() : undefined,
+				deps.getTerminalFinish?.(),
 			);
 		})
 		.finally(() => {
@@ -100,6 +122,7 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			deps.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 			deps.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
 			deps.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
+			deps.eventBus.off(AgentEvent.SubAgentChunk, onSubAgentChunk);
 			void guard.close();
 			deps.abortScope.dispose();
 		});

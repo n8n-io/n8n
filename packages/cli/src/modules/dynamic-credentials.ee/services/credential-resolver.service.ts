@@ -13,6 +13,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { collectSecretFieldNames, restoreSecretConfig } from '../config-redaction';
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -155,8 +156,9 @@ export class DynamicCredentialResolverService {
 		}
 
 		if (params.config !== undefined) {
-			await this.validateConfig(existing.type, params.config, canUseExternalSecrets);
-			existing.config = await this.encryptConfig(params.config);
+			const config = await this.restoreRedactedSecrets(existing, params.config);
+			await this.validateConfig(existing.type, config, canUseExternalSecrets);
+			existing.config = await this.encryptConfig(config);
 		}
 
 		if (params.name !== undefined) {
@@ -234,6 +236,17 @@ export class DynamicCredentialResolverService {
 					`Failed to reactivate workflow "${workflowId}" after resolver deletion, deactivating it`,
 					{ error },
 				);
+				// Reactivation may have failed partway with triggers already registered,
+				// in memory and as durable schedule jobs. Tear them down before flipping
+				// the flag below, or they keep firing a workflow marked inactive.
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
+				} catch (cleanupError) {
+					this.logger.error(
+						`Failed to roll back partial reactivation of workflow "${workflowId}"`,
+						{ workflowId, error: cleanupError },
+					);
+				}
 				// Deactivate the workflow so UI state reflects reality
 				await this.workflowRepository.update(workflowId, {
 					active: false,
@@ -271,6 +284,27 @@ export class DynamicCredentialResolverService {
 
 		// Validate the resolved config against the resolver's schema
 		await resolverImplementation.validateOptions(resolvedConfig);
+	}
+
+	/**
+	 * A redacted config GET returns the blanking sentinel for secret fields. When the
+	 * editor round-trips that config back on save, restore each sentinel secret (including
+	 * fields nested in collections) from the stored config so it is not overwritten with
+	 * the placeholder.
+	 */
+	private async restoreRedactedSecrets(
+		existing: DynamicCredentialResolver,
+		incoming: CredentialResolverConfiguration,
+	): Promise<CredentialResolverConfiguration> {
+		const secretFields = collectSecretFieldNames(
+			this.registry.getResolverByTypename(existing.type)?.metadata.options,
+		);
+		if (secretFields.size === 0) {
+			return incoming;
+		}
+
+		const stored = await this.decryptConfig(existing.config);
+		return restoreSecretConfig(incoming, stored, secretFields);
 	}
 
 	/**

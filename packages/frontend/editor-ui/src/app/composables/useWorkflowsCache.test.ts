@@ -1,9 +1,5 @@
 import { vi } from 'vitest';
-import {
-	useWorkflowSettingsCache,
-	type ActionType,
-	type WorkflowSettings,
-} from './useWorkflowsCache';
+import { useWorkflowSettingsCache, type WorkflowSettings } from './useWorkflowsCache';
 
 // Mock the cache plugin
 const mockCache = {
@@ -44,9 +40,6 @@ describe('useWorkflowSettingsCache', () => {
 		it('should get existing workflow settings from cache', async () => {
 			const existingSettings: WorkflowSettings = {
 				firstActivatedAt: 123456789,
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
 			};
 			mockCache.getItem.mockReturnValue(JSON.stringify(existingSettings));
 
@@ -66,73 +59,6 @@ describe('useWorkflowSettingsCache', () => {
 		});
 	});
 
-	describe('getMergedWorkflowSettings', () => {
-		it('should return workflow settings when no global preferences exist', async () => {
-			const workflowSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
-			};
-			mockCache.getItem
-				.mockReturnValueOnce(JSON.stringify(workflowSettings)) // workflow settings
-				.mockReturnValueOnce(null); // global settings
-
-			const { getMergedWorkflowSettings } = useWorkflowSettingsCache();
-			const merged = await getMergedWorkflowSettings('workflow-1');
-
-			expect(merged).toEqual(workflowSettings);
-			expect(mockCache.getItem).toHaveBeenCalledWith('workflow-1');
-			expect(mockCache.getItem).toHaveBeenCalledWith('*');
-		});
-
-		it('should merge workflow and global suggested actions', async () => {
-			const workflowSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
-			};
-			const globalSettings: WorkflowSettings = {
-				suggestedActions: {
-					errorWorkflow: { ignored: true },
-					timeSaved: { ignored: true },
-				},
-			};
-			mockCache.getItem
-				.mockReturnValueOnce(JSON.stringify(workflowSettings))
-				.mockReturnValueOnce(JSON.stringify(globalSettings));
-
-			const { getMergedWorkflowSettings } = useWorkflowSettingsCache();
-			const merged = await getMergedWorkflowSettings('workflow-1');
-
-			expect(merged.suggestedActions).toEqual({
-				evaluations: { ignored: true },
-				errorWorkflow: { ignored: true },
-				timeSaved: { ignored: true },
-			});
-		});
-
-		it('should prioritize global settings over workflow settings', async () => {
-			const workflowSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: false },
-				},
-			};
-			const globalSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
-			};
-			mockCache.getItem
-				.mockReturnValueOnce(JSON.stringify(workflowSettings))
-				.mockReturnValueOnce(JSON.stringify(globalSettings));
-
-			const { getMergedWorkflowSettings } = useWorkflowSettingsCache();
-			const merged = await getMergedWorkflowSettings('workflow-1');
-
-			expect(merged.suggestedActions?.evaluations?.ignored).toBe(true);
-		});
-	});
-
 	describe('upsertWorkflowSettings', () => {
 		it('should create new workflow settings', async () => {
 			const updates: Partial<WorkflowSettings> = {
@@ -148,9 +74,6 @@ describe('useWorkflowSettingsCache', () => {
 		it('should update existing workflow settings', async () => {
 			const existingSettings: WorkflowSettings = {
 				firstActivatedAt: 123456789,
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
 			};
 			mockCache.getItem.mockReturnValue(JSON.stringify(existingSettings));
 
@@ -167,38 +90,6 @@ describe('useWorkflowSettingsCache', () => {
 			const expectedSettings = {
 				...existingSettings,
 				...updates,
-			};
-			expect(mockCache.setItem).toHaveBeenCalledWith(
-				'workflow-1',
-				JSON.stringify(expectedSettings),
-			);
-		});
-
-		it('should deep merge suggested actions', async () => {
-			const existingSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: true },
-					errorWorkflow: { ignored: false },
-				},
-			};
-			mockCache.getItem.mockReturnValue(JSON.stringify(existingSettings));
-
-			const updates: Partial<WorkflowSettings> = {
-				suggestedActions: {
-					errorWorkflow: { ignored: true },
-					timeSaved: { ignored: true },
-				},
-			};
-
-			const { upsertWorkflowSettings } = useWorkflowSettingsCache();
-			await upsertWorkflowSettings('workflow-1', updates);
-
-			const expectedSettings: WorkflowSettings = {
-				suggestedActions: {
-					evaluations: { ignored: true },
-					errorWorkflow: { ignored: true },
-					timeSaved: { ignored: true },
-				},
 			};
 			expect(mockCache.setItem).toHaveBeenCalledWith(
 				'workflow-1',
@@ -231,40 +122,6 @@ describe('useWorkflowSettingsCache', () => {
 			await updateFirstActivatedAt('workflow-1');
 
 			expect(mockCache.setItem).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('suggested actions', () => {
-		it('should ignore suggested action for specific workflow', async () => {
-			const { ignoreSuggestedAction } = useWorkflowSettingsCache();
-			await ignoreSuggestedAction('workflow-1', 'evaluations');
-
-			expect(mockCache.setItem).toHaveBeenCalledWith(
-				'workflow-1',
-				JSON.stringify({
-					suggestedActions: {
-						evaluations: { ignored: true },
-					},
-				}),
-			);
-		});
-
-		it('should ignore all suggested actions globally', async () => {
-			const actionsToIgnore: ActionType[] = ['evaluations', 'errorWorkflow', 'timeSaved'];
-
-			const { ignoreAllSuggestedActionsForAllWorkflows } = useWorkflowSettingsCache();
-			await ignoreAllSuggestedActionsForAllWorkflows(actionsToIgnore);
-
-			expect(mockCache.setItem).toHaveBeenCalledWith(
-				'*',
-				JSON.stringify({
-					suggestedActions: {
-						evaluations: { ignored: true },
-						errorWorkflow: { ignored: true },
-						timeSaved: { ignored: true },
-					},
-				}),
-			);
 		});
 	});
 
@@ -334,32 +191,6 @@ describe('useWorkflowSettingsCache', () => {
 			const settings = await getWorkflowSettings('workflow-1');
 
 			expect(settings).toEqual({});
-		});
-
-		it('should handle undefined suggestedActions in updates', async () => {
-			const existingSettings: WorkflowSettings = {
-				firstActivatedAt: 123456789,
-				suggestedActions: {
-					evaluations: { ignored: true },
-				},
-			};
-			mockCache.getItem.mockReturnValue(JSON.stringify(existingSettings));
-
-			const updates: Partial<WorkflowSettings> = {
-				suggestedActions: undefined,
-			};
-
-			const { upsertWorkflowSettings } = useWorkflowSettingsCache();
-			await upsertWorkflowSettings('workflow-1', updates);
-
-			// suggestedActions will be overwritten with undefined due to spread operator
-			expect(mockCache.setItem).toHaveBeenCalledWith(
-				'workflow-1',
-				JSON.stringify({
-					firstActivatedAt: 123456789,
-					suggestedActions: undefined,
-				}),
-			);
 		});
 	});
 });

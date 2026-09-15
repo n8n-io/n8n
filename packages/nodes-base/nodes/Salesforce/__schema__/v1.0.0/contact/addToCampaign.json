@@ -3,7 +3,13 @@
     "properties": {
         "error": {
             "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "success": {
+            "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

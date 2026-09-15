@@ -68,6 +68,19 @@ export class ParseValidateHandler {
 	}
 
 	/**
+	 * Options for the graph validation pass.
+	 *
+	 * The provider unlocks the plugin validators that need node-type metadata, in
+	 * the same way it does for `validateWorkflow`. One example is the expression
+	 * prefix validator, which reads the parameter's editor type to leave
+	 * SQL-editor fields alone. Passed to every graph pass, so the pre-update and
+	 * post-update passes stay comparable for `[pre-existing]` annotation.
+	 */
+	private graphValidationOptions() {
+		return this.nodeTypesProvider ? { nodeTypesProvider: this.nodeTypesProvider } : {};
+	}
+
+	/**
 	 * Collect validation issues (errors or warnings) into the warnings array.
 	 * Used to normalize all validation feedback for agent self-correction.
 	 */
@@ -117,7 +130,7 @@ export class ParseValidateHandler {
 
 		const builder = workflow.fromJSON(json);
 		const allWarnings: ValidationWarning[] = [];
-		const graphValidation = builder.validate();
+		const graphValidation = builder.validate(this.graphValidationOptions());
 		this.collectValidationIssues(
 			graphValidation.errors,
 			allWarnings,
@@ -149,7 +162,7 @@ export class ParseValidateHandler {
 		const allWarnings: ValidationWarning[] = [];
 
 		const builder = workflow.fromJSON(json);
-		const graphValidation = builder.validate();
+		const graphValidation = builder.validate(this.graphValidationOptions());
 		this.collectValidationIssues(
 			graphValidation.errors,
 			allWarnings,
@@ -165,6 +178,11 @@ export class ParseValidateHandler {
 
 		const jsonValidation = validateWorkflow(json, {
 			nodeTypesProvider: this.nodeTypesProvider,
+			// The graph pass above already reports these via its default plugin
+			// validators; re-checking them here duplicates the same warning with
+			// different wording.
+			allowDisconnectedNodes: true,
+			allowNoTrigger: true,
 		});
 		this.collectValidationIssues(
 			jsonValidation.errors,
@@ -214,7 +232,7 @@ export class ParseValidateHandler {
 			const allWarnings: ValidationWarning[] = [];
 
 			// Validate the graph structure BEFORE converting to JSON
-			const graphValidation = builder.validate();
+			const graphValidation = builder.validate(this.graphValidationOptions());
 
 			// Collect graph validation errors as warnings for agent self-correction
 			this.collectValidationIssues(
@@ -238,6 +256,11 @@ export class ParseValidateHandler {
 			// Run JSON-based validation for additional checks
 			const validationResult = validateWorkflow(json, {
 				nodeTypesProvider: this.nodeTypesProvider,
+				// The graph pass above already reports these via its default plugin
+				// validators; re-checking them here duplicates the same warning with
+				// different wording.
+				allowDisconnectedNodes: true,
+				allowNoTrigger: true,
 			});
 
 			// Collect JSON validation errors as warnings for agent self-correction

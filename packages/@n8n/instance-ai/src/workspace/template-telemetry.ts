@@ -15,7 +15,8 @@
  * calls `observe()` after each command — no caller-side threading required.
  */
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { isRecord, scrubSecretsInText } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import type { OrchestrationContext } from '../types';
 

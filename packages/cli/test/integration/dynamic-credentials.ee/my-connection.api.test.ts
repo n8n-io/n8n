@@ -8,6 +8,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
 import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
@@ -17,8 +18,8 @@ import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { EventService } from '@/events/event.service';
 import { Telemetry } from '@/telemetry';
+
 import { saveCredential } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
@@ -124,10 +125,29 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 	test('returns 404 when no entry exists for the running user', async () => {
 		const credential = await saveResolvableCredential();
 
-		await testServer
+		const response = await testServer
 			.authAgentFor(memberA)
 			.delete(`/credentials/${credential.id}/my-connection`)
 			.expect(404);
+
+		expect(response.body.message).toBe('No connection to disconnect');
+	});
+
+	test('returns the same 404 body when the credential id is unknown', async () => {
+		const credential = await saveResolvableCredential();
+
+		const missingConnection = await testServer
+			.authAgentFor(memberA)
+			.delete(`/credentials/${credential.id}/my-connection`)
+			.expect(404);
+
+		const unknownCredential = await testServer
+			.authAgentFor(memberA)
+			.delete('/credentials/00000000-0000-4000-8000-000000000000/my-connection')
+			.expect(404);
+
+		expect(unknownCredential.body.message).toBe(missingConnection.body.message);
+		expect(unknownCredential.body.code).toBe(missingConnection.body.code);
 	});
 
 	test('returns 404 on repeat call (entry already deleted)', async () => {
@@ -177,7 +197,7 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 		const credential = await saveResolvableCredential();
 		await seedUserEntry(credential.id, memberA.id);
 
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		try {
 			await testServer
@@ -201,7 +221,7 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 	test('does not emit the event when nothing was deleted', async () => {
 		const credential = await saveResolvableCredential();
 
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		try {
 			await testServer

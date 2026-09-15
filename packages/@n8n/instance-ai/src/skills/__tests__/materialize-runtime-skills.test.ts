@@ -6,7 +6,10 @@ import {
 	type Workspace,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
-import { jsonParse } from 'n8n-workflow';
+import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { jsonParse, TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { Mock } from 'vitest';
 
 import {
@@ -20,7 +23,16 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	materializeRuntimeSkillsIntoWorkspace,
 } from '../materialize-runtime-skills';
-import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+
+/** Extract the text body from the content-block form of a load_skill success result. */
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
 
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
@@ -221,21 +233,10 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(materialized.source);
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			name: 'data-table-manager',
-			skillDir: `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`,
-		});
-		if (
-			!result ||
-			typeof result !== 'object' ||
-			!('content' in result) ||
-			typeof result.content !== 'string'
-		) {
-			throw new Error('Expected load_skill to return materialized skill content');
-		}
-		expect(result.content).toContain('references/data-table-playbook.md');
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`);
+		expect(text).toContain('references/data-table-playbook.md');
 	});
 
 	it('materializes skills into the workspace before load_skill reads them', async () => {
@@ -255,12 +256,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writes.get(skillPath)).toContain('data-tables');
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
@@ -290,12 +288,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(writes.get(skillPath)).toContain('data-tables');
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 	});
 
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {
@@ -405,5 +400,82 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(message).toBe('Runtime skill file exceeds load_skill output limit');
 		expect(meta?.skill).toBe('large-skill');
 		expect(meta?.maxBytes).toBe(runtimeSkillMaxOutputBytes);
+	});
+});
+
+describe('grouping guidance injection', () => {
+	const root = '/home/daytona/workspace';
+	const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder/SKILL.md`;
+
+	it('injects the shared grouping guidance into the builder skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		expect(bundle?.files.get(skillPath)).toContain(GROUPING_GUIDANCE);
+	});
+
+	it('leaves no unresolved placeholder in any materialized skill', async () => {
+		const bundle = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root,
+			logger: mockLogger,
+		});
+
+		if (!bundle) {
+			throw new Error('Expected runtime skill bundle');
+		}
+
+		for (const [path, content] of bundle.files) {
+			expect(content, path).not.toMatch(/\{\{[A-Z_]+\}\}/);
+		}
+	});
+
+	it('serves the guidance through load_skill, not just the materialized file', async () => {
+		// The tool returns `instructions` directly, so substituting only at render time
+		// ships the literal placeholder to the agent.
+		const loadTool = createSkillLoadTool(loadInstanceAiRuntimeSkillSource());
+		const result = await loadTool.handler?.({ skillId: 'workflow-builder' }, {});
+
+		const text = skillLoadText(result);
+
+		expect(text).toContain(GROUPING_GUIDANCE);
+		expect(text).not.toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+	});
+
+	it('resolves placeholders before the skill is hashed', async () => {
+		// The skill hash covers `instructions`, so substituting later leaves caches keyed
+		// on skillsHash unable to notice a guidance change.
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain(GROUPING_GUIDANCE);
+		expect(skill.instructions).not.toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+	});
+
+	it('resolves the top-level item ceiling from the shared constant', async () => {
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain(`still above\n${TOP_LEVEL_ITEM_CEILING} items`);
+		expect(skill.instructions).not.toContain('{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}}');
+	});
+
+	it('keeps the builder skill file free of its own grouping criteria', async () => {
+		// Guards the single source of truth: a hand-written copy drifts from the shared
+		// constant, and this skill is what an agent reads first.
+		const skillFile = join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md');
+		const raw = await readFile(skillFile, 'utf-8');
+
+		expect(raw).toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+		expect(raw).not.toMatch(/3 to 5|at most 7 items|one-sentence/i);
 	});
 });

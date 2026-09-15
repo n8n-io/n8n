@@ -11,6 +11,7 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -25,6 +26,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -34,8 +36,7 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	createDeferredPromise,
+	UnexpectedError,
 	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
@@ -57,6 +58,7 @@ import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
+import { modifyNode, nodeTypeArguments, passThroughNode, types } from './mock-node-types';
 
 vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
@@ -145,7 +147,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -218,7 +220,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -616,6 +618,77 @@ describe('WorkflowExecute', () => {
 			expect(runNodeFilter).toContain(trigger.name);
 			expect(runNodeFilter).toContain(agent.name);
 			expect(runNodeFilter).toContain(tool.name);
+		});
+
+		test('runs the tool nodes of an agent upstream of the destination node', async () => {
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'tool',
+							input: { query: 'test input' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return((response) => [
+					[
+						{
+							json: {
+								toolResult:
+									response?.actionResponses[0]?.data.data?.ai_tool?.[0]?.[0]?.json ?? null,
+							},
+						},
+					],
+				])
+				.done();
+
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const agent = createNodeData({ name: 'agent', type: 'agent' });
+			const merge = createNodeData({ name: 'merge', type: types.passThrough });
+			const tool = createNodeData({ name: 'tool', type: types.passThrough });
+			const customNodeTypes = Helpers.NodeTypes({
+				...nodeTypeArguments,
+				agent: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, merge, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: agent, to: merge, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder },
+				});
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
+
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: merge.name, mode: 'inclusive' },
+			});
+
+			const runData = result.data.resultData.runData;
+			expect(runData[tool.name][0].executionStatus).toBe('success');
+
+			const agentRuns = runData[agent.name];
+			expect(agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json.toolResult).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
+			});
 		});
 	});
 
@@ -1561,8 +1634,9 @@ describe('WorkflowExecute', () => {
 	describe('runNode', () => {
 		const nodeTypes = mock<INodeTypes>();
 		const triggerNode = mock<INode>();
+		const closeFunctionSpy = vi.fn();
 		const triggerResponse = mock<ITriggerResponse>({
-			closeFunction: vi.fn(),
+			closeFunction: closeFunctionSpy,
 			// This node should never trigger, or return
 			manualTriggerFunction: async () => await new Promise(() => {}),
 		});
@@ -1617,10 +1691,11 @@ describe('WorkflowExecute', () => {
 			});
 			expect(isSettled).toBe(false);
 			expect(abortController.signal.aborted).toBe(false);
-			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+			expect(closeFunctionSpy).not.toHaveBeenCalled();
 
 			abortController.abort();
-			expect(triggerResponse.closeFunction).toHaveBeenCalled();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(closeFunctionSpy).toHaveBeenCalled();
 		});
 	});
 
@@ -1781,6 +1856,43 @@ describe('WorkflowExecute', () => {
 					json: {
 						error: 'Error occurred',
 						message: 'Error details',
+						someData: 'test',
+					},
+					pairedItem: { item: 0, input: 0 },
+				},
+			]);
+		});
+
+		test.each([
+			{
+				name: 'details',
+				json: { error: 'Error occurred', details: { httpCode: '500' } },
+			},
+			{
+				name: 'message and details',
+				json: {
+					error: 'Error occurred',
+					message: 'Error details',
+					details: { httpCode: '500' },
+				},
+			},
+		])('should handle error in json with $name properties', ({ json }) => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json,
+						pairedItem: { item: 0, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: {
+						...json,
 						someData: 'test',
 					},
 					pairedItem: { item: 0, input: 0 },
@@ -2007,6 +2119,7 @@ describe('WorkflowExecute', () => {
 
 		async function runResumedSubError(
 			nodeOverrides: Partial<INode> = {},
+			metadataExtras: ITaskMetadata = {},
 		): Promise<{ result: IRun; runNodeCalls: number }> {
 			const subNode: INode = {
 				...createNodeData({ name: SUB_NODE, type: 'sub' }),
@@ -2044,6 +2157,7 @@ describe('WorkflowExecute', () => {
 							metadata: {
 								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
 								subExecution: SUB_EXECUTION,
+								...metadataExtras,
 							},
 						} as unknown as IExecuteData,
 					],
@@ -2114,6 +2228,18 @@ describe('WorkflowExecute', () => {
 				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
 			},
 		);
+
+		it('should restore a dynamic-credential stash also when the resume carries a sub-workflow error', async () => {
+			const { result } = await runResumedSubError(
+				{ onError: 'continueRegularOutput' },
+				{ dynamicCredentialsUsage: { attemptedDynamicCredentials: true } },
+			);
+
+			expect(result.status).toBe('success');
+			const run = lastRun(result);
+			expect(run.attemptedDynamicCredentials).toBe(true);
+			expect(run.usedDynamicCredentials).toBeUndefined();
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -2191,6 +2317,62 @@ describe('WorkflowExecute', () => {
 			expect(nodeWaiting[1].main).toHaveLength(2);
 			expect(nodeWaitingSource[0].main).toHaveLength(2);
 			expect(nodeWaitingSource[1].main).toHaveLength(2);
+		});
+	});
+
+	describe('prepareConnectionInputData', () => {
+		// Legacy (v0) order with the first input dead-padded: data delivered
+		// through a loop-back edge is used, data from upstream keeps the drop.
+		const workflow = new Workflow({
+			id: 'test',
+			nodes: [
+				{
+					parameters: {},
+					id: 'uuid-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{
+					parameters: {},
+					id: 'uuid-2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 2.1,
+					position: [200, 0],
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Loop: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 1 }]] },
+			},
+			active: false,
+			nodeTypes: Helpers.NodeTypes(),
+			settings: { executionOrder: 'v0' },
+		});
+		const node = workflow.getNode('Loop')!;
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const workflowExecute = new WorkflowExecute(mock<IWorkflowExecuteAdditionalData>(), 'manual');
+		const loopBackItems = [{ json: { attempt: 1 } }];
+
+		const prepare = (previousNode: string) =>
+			// @ts-expect-error private method
+			workflowExecute.prepareConnectionInputData(
+				workflow,
+				nodeType,
+				undefined,
+				node,
+				{ main: [[], loopBackItems] },
+				{ main: [null, { previousNode }] },
+			);
+
+		test('should use data a node sent to a later input of itself', () => {
+			expect(prepare('Loop')).toEqual(loopBackItems);
+		});
+
+		test('should skip the run when the data came from an upstream node', () => {
+			expect(prepare('Start')).toBeNull();
 		});
 	});
 
@@ -3355,7 +3537,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Spy on convertBinaryData
-			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
+			const convertBinaryDataModule = await import('../../utils/convert-binary-data.js');
 			const convertBinaryDataSpy = vi.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT

@@ -38,8 +38,7 @@
 						"required": ["product"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -49,34 +48,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd566d6fda3010fede5f81ee73904880bee45bd74e43a595b68e6adac6641dc9153c8cedda0e1b45f9ef93a1290468192a5b9b6fbe17dff3dc3db18ec6245d5c1991b5d827661d1a7790a2c3b8320537d10431949c10146788a73052290988211198a5541d201f66d546b5598d6a5133acd5420880a7fe0edb67b5f0aaa5d58d360d7e7f7b7e4df5d3538bed4f1710ac5482008c12de80d672eb50fab289928ea483f8fb8f00ac539a1942ab24c43213e2c164e92e239950c99892432e6c61cb0af45ceacc31a786242dc487f59300124c06c41243e8b892ac1c512bfc86307dca57e4fa02a407342283823547ebf10b6f3858f5e601a8cc2d9b8e1a015832639e10739c0cc4e03b93a2497d93e52d194f9cf549410c52398663e4027b8220cf2b8b2f3f38a0f9d41f3aca7a4225c3cdb3df1032ab96d2ef39e765bfa7fc90e794122cb354ccdf9f33560b5b8d48b64f8edaa34be3fa37835eab73761ef6200089239f27941a669a69c39359aeef0ac4d3dc775708cffab144ca0d256ec16dc14b73d95f2152016f84a7b8a7241c3ecf7d1652e23eb72c00cd47f8d32af918acd1388e62668418207f7602ff09c5b40bdaa8344b5c17e24a17506baf91b700ad0b39e44f0b54e96dfa547a09c1bef51eeeaef7fad9d9b76b997ebd1bff72f5eccb65e72eb4edce3ef4bebf49852f90f26bc358d5720f254a7c23e0666adefeeceea6ea70efcf78b4bbac1b57f7c7d1c4b53e1ebe6b1fdf7fee9c7f78cfc7177b79c6b7f56bf7d9452fd1f79b00b3aaf26440c64c3cc457065652f83e551ead5f58aca11ba9959cb044a5b4282eebf92fd7c5fcdfed8b2b0b5e181de61bfab8d8bed73bb8ec83f5ffe70ffc519544dd0b0000"
+			"1f8b0800000000000013cd57db4ee330107de72baa794ea5264bb9e411108b50d527d8ddb25d59ae33b426ae6d7c618baafc3b72dbd0f4c2bd50f2969971e69c3339b18377285d5a1ba2b5b48fc43a6adc4e461d4d6b6370f71a2185852444e53da46318aa0c05a4c004f519d60794e7bebe5b6fd69346d28c1b8d1822e0597886ed9346dc3961ec6cd43aba60fcd7a9ddcf8eff9fdf9eb5205aea0411182542805acbada332b4654a3a940ed2bfff22b04e6962905a2521955e8859c8e2ad47c9702198a1a35cd832e64bf45c6aef8853394a0be9de8fc30818650324cc20755c49b258d128f30669f654ae5c1b1aa01ee0100d15a4395cad9f67e3c172b6884079570dedef4660d1dc7186c4713490425026a3260b22cb6b348138e9a38214a47284de512e684f2014452d5cc5ce0e4ee73dd392f48462f9faa9af2999f4c97034655bcd07b2b3754e2941bcc572f2e1de93467c7cd43948a8e6f7a313ffe7ba7979d96b1f1c4a8840d261582794cabd26da7036591bf480745c045d85087c1f5b64dc2073abac3497fd251a350841788a7986c2d1e7994f4a16984f237338d3d1dd58251f8b35358e533109420a503ca9fd17211877411b95f9205badbcb68ca90b69ad0bb404b465345a0bec425191e719bf28fd925d94aee0d9a8f7e2b77baf75633b2ddfde6fe7e6fa77fbfc34cffdc904e0e6bcf7d199c5eff4d5cbd3fa222c33877d8abdde05c8333775588f4a2a1f716d19159d7b6c53f68a5ff112bcdd66c9db6d76318a75e72c699fabab03bc5096fe4473d5db80cd363cb8e4c35efb0678d6ee68df02d9d4756c80c604685b4673ff499b5a527d54f98bb096d342122a1c160ef15557bdf2285f7cde597ee9f01d277bcbdfacf95fd1aa6ed51cacbe9c0f024b8eec750d0000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:42Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:42Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:42Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:03Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:42Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10371d23b05cb7b-VIE",
+			"cf-ray": "a154f865fb485b0f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:04 GMT",
-			"request-id": "req_011CcLBRjxX374dXeCUfXWMa",
+			"date": "Fri, 03 Jul 2026 09:47:43 GMT",
+			"request-id": "req_011Cceuu52hMUcqxfdtrzeGU",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=xFLAOAtYFOGIbohDeeMzPUYYgXk1ca4mcT7IuRDVVSg-1782217203.560436-1.0.1.1-IKIxYmMwm5aozd9J0xIpsCEUylsYySvDa0Rh4jGBGdg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-a7d2818ac97c5687b58b55cac3a91812-8f6d5a2b259bd3f7-01",
+			"traceresponse": "00-17c642738b7ce2a7efbe6264e37e5b8d-ee45185744b882aa-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -111,7 +109,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01H42nK97KmLrtgUhbHTCD1b",
+							"id": "toolu_01CBY82apiyxDuXf5UUbN89n",
 							"name": "lookup_price",
 							"input": {
 								"product": "apple"
@@ -122,7 +120,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_013CCZRndYqvwt3uWLTq1sKT",
+							"id": "toolu_01LjsYLuN7NkrfWNJFkkuDop",
 							"name": "lookup_price",
 							"input": {
 								"product": "banana"
@@ -133,7 +131,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_014Mz82ytHP6BK8zSTDGEivJ",
+							"id": "toolu_01Tx1pYH2NJoZ8eTosaGerZb",
 							"name": "lookup_price",
 							"input": {
 								"product": "cherry"
@@ -149,17 +147,17 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01H42nK97KmLrtgUhbHTCD1b",
+							"tool_use_id": "toolu_01CBY82apiyxDuXf5UUbN89n",
 							"content": "{\"product\":\"apple\",\"price\":1.5}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_013CCZRndYqvwt3uWLTq1sKT",
+							"tool_use_id": "toolu_01LjsYLuN7NkrfWNJFkkuDop",
 							"content": "{\"product\":\"banana\",\"price\":0.75}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_014Mz82ytHP6BK8zSTDGEivJ",
+							"tool_use_id": "toolu_01Tx1pYH2NJoZ8eTosaGerZb",
 							"content": "{\"product\":\"cherry\",\"price\":3}"
 						}
 					]
@@ -180,8 +178,7 @@
 						"required": ["product"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -191,34 +188,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013b554c16edb300cbde72b0462a7c009eca66e0bddd605dbb0f3d6cb3a08accdc54214c993e8a041e17f1f14c7ad9d26dd2ee545f07b94de23099ab664598a0d85802b5281d1f3a44446299e8077358184110949ff0df20936ae2403120a834d49b30af5ba995dcef2d9457a9167699a4102ba8c6f84954ab3bb6fcbe5eec7d562c9b797579fbfdb2fd7bcbcd3901c294102de990860083a30da285b38cb6419e4cf5f090476b5f284c15990b631e60005fad3902d680496c4a84de8b1a677af6dddb062b7261b40dedc6409145854a40a4fc8da5935ce487bde1396e7b8fe6e14a0baa20d79342adfbcce7f61b3ea986d13700d0fa13c81407eab0b52acc98384d898127d197b6c7f938f75ab153990601d2bdca236f86008da5674d14e26d40dfcd04cf5605cb13e3df613297ba5921ebb72877cacf6708fe93126ee0f09d00e546b6d574732022208e79c956418df76b64f1939eb90b1a3e7b483afafe449a027c11589daeb828284f6cd2ebd9b977b7b6f67623afd58d786a653293e64f33cedb05bb468710fa6f3ebbc033f55e4fd6e0f2ee669daf93e3f5c57ff6bb6ae1e9816cff1f264ff0f38d9831109839a475b0a644bc58db7f0dfbbdabedfb21e6dd7e2aa15c3785df9a9360e398877fe02293368274f050000"
+			"1f8b0800000000000013bd54c16e9b4010bdfb2bd0a8270b5b908426da5b93aaeab1bdb487a65a8dd9a95979bd4b7607cb56c4bf57806980903697940be2bdd97d6fde68a0035916d19e42c02dc9c0e879a19051448fc0a79240c08884b8ff06f1087ba7c88080dc60a56855a0de55abab55b6ba482eb23449528841abe68eb09549faf1cbc66dd4f7f4f4704cef3eddd2357ffd76e5209e28410cde9906c0107460b48d6cee2c9365103f7ec610d895d213066741d8ca983314e8a1229bd30854c4a84de8b1aa77af6d59b164b7231b40dcdca431e4981724734fc8da5939ae487ade13aa97b8fe6c234065417bf26864b67f5effc4a6c594ad6370150fa12c8640fea07392acc983802618855e3519db5fe49bbee5961c08b08e251e501bdc1882baae170bea267d4e516e8ccb77f3f39e296925141dbb3e877cd3e6f91cd3b1296c5f02a08efae749bdd4763b918ba001e125878a0ce3df1db62523871d3276f6a7ececef33798ad053c40545a5d7390531f03cb2fd9f2cdddb7bbb8a96cb0f656968b914d1bb749d251d768b162db660b2bece3af0ae20ef4f2d78b94e92d9c8a7d374e5bfe6edca81f367f7f57f83d91446240cba1eed2b9055922b6fe1d55b5bbfddda4ef6ecf27d3dd3ed5c6e430efa947e0336edf57351050000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:43Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:43Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:43Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:05Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:43Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10371db3d46cb7b-VIE",
+			"cf-ray": "a154f86e09a15b0f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:05 GMT",
-			"request-id": "req_011CcLBRr771JSp4fd9qoPXg",
+			"date": "Fri, 03 Jul 2026 09:47:44 GMT",
+			"request-id": "req_011CceuuADF6GouYZRHqHKXR",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=yXwH0iXfRAXvD.xMoDGg7nTRu_qv2vgzVjyzFvjKSgo-1782217204.9948168-1.0.1.1-YD3EYyea.wlw3Z1ggYoke4g_14bOoQ1a0rOwr8DQi5A; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-e3b4f548557a0adfa4ce9006d7407f3f-c967c126c789f3be-01",
+			"traceresponse": "00-6ec83b614ee9605efa82019c52716fd4-c9b923bf5fbf9b7e-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

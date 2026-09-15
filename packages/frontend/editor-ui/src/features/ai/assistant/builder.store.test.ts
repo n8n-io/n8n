@@ -15,15 +15,15 @@ import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
-import * as telemetryModule from '@/app/composables/useTelemetry';
+import * as telemetryModule from '@n8n/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
@@ -68,7 +68,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
 });
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 	}),
@@ -120,16 +120,11 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let getNodeTypeSpy: Mock;
 let getCredentialsByTypeSpy: Mock;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
@@ -177,6 +172,11 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+
+		apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -1307,10 +1307,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('fetchBuilderCredits', () => {
-		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+		// `restoreMocks` restores this spy before each test, so re-create it here.
+		let mockGetBuilderCredits: MockInstance;
 
 		beforeEach(() => {
-			mockGetBuilderCredits.mockClear();
+			mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 		});
 
 		it('should fetch and update credits when AI builder is enabled', async () => {

@@ -6,17 +6,17 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import type { InstanceAiContext } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	BuilderTemplatesService: class {},
-	builderTemplatesOptionsFromEnv: jest.fn(),
-	wrapUntrustedData: jest.fn((value: unknown) => value),
+	builderTemplatesOptionsFromEnv: vi.fn(),
+	wrapUntrustedData: vi.fn((value: unknown) => value),
 }));
 
 import type { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -37,10 +37,19 @@ function createService() {
 	const userRepository = mock<UserRepository>();
 	const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
-	const archiveIfAiTemporary = jest.fn(async (_workflowId: string) => true);
+	const archiveIfAiTemporary = vi.fn(async (_workflowId: string) => true);
 	const context = mock<InstanceAiContext>();
 	context.workflowService.archiveIfAiTemporary = archiveIfAiTemporary;
 	adapterService.createContext.mockReturnValue(context);
+	adapterService.resolveExperimentGates.mockResolvedValue({
+		configEvalsEnabled: false,
+		mcpConnectionsEnabled: false,
+		conversationHistoryEnabled: false,
+		progressiveBuildingEnabled: false,
+		nodeUsageEnabled: false,
+		folderExplorationEnabled: false,
+		aiPreferencesEnabled: false,
+	});
 
 	const service = new InstanceAiTemporaryWorkflowService(
 		logger,
@@ -93,7 +102,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			).resolves.toEqual(['wf-marked', 'wf-created']);
 
 			expect(aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith('thread-a');
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 		});
@@ -173,7 +185,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			await service.reapForThreadCleanup('thread-a');
 
 			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-a');
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-b');
 		});

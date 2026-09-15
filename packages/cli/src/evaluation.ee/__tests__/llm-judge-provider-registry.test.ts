@@ -67,6 +67,40 @@ describe('LlmJudgeProviderRegistry (fixed-list)', () => {
 		});
 	});
 
+	describe('getByCredentialType(credentialType)', () => {
+		it('resolves the provider selected by a credential type', () => {
+			expect(registry.getByCredentialType('openAiApi')?.nodeType).toBe(
+				'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(registry.getByCredentialType('anthropicApi')?.nodeType).toBe(
+				'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+			);
+		});
+
+		it('resolves both Azure credential variants to the Azure provider', () => {
+			expect(registry.getByCredentialType('azureOpenAiApi')?.nodeType).toBe(
+				'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+			);
+			expect(registry.getByCredentialType('azureEntraCognitiveServicesOAuth2Api')?.nodeType).toBe(
+				'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+			);
+		});
+
+		it('returns undefined for an unknown credential type', () => {
+			expect(registry.getByCredentialType('notARealCredential')).toBeUndefined();
+		});
+
+		it('maps every credential type to exactly one provider (unique keys)', () => {
+			const seen = new Set<string>();
+			for (const p of registry.listProviders()) {
+				for (const c of p.credentialTypes) {
+					expect(seen.has(c.name)).toBe(false);
+					seen.add(c.name);
+				}
+			}
+		});
+	});
+
 	describe('listProviders() referential stability', () => {
 		it('returns the same array reference across calls (cheap snapshot)', () => {
 			expect(registry.listProviders()).toBe(registry.listProviders());

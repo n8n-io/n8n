@@ -1,4 +1,4 @@
-import { CreateAgentSkillDto, type AgentSkill, UpdateAgentSkillDto } from '@n8n/api-types';
+import { CreateAgentSkillDto, UpdateAgentSkillDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -46,13 +46,11 @@ export class AgentsSkillsController {
 		@Body payload: CreateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		const skill: AgentSkill = {
-			name: payload.name,
-			description: payload.description,
-			instructions: payload.instructions,
-		};
-
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, skill);
+		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -65,7 +63,19 @@ export class AgentsSkillsController {
 		@Body payload: UpdateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.updateSkill(agentId, projectId, skillId, payload);
+		const { baseSkillHash, ...updates } = payload;
+		return await this.agentSkillsService.updateSkill(
+			agentId,
+			projectId,
+			skillId,
+			updates,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+			baseSkillHash,
+		);
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -77,7 +87,11 @@ export class AgentsSkillsController {
 		@Param('skillId') skillId: string,
 	) {
 		const { projectId } = req.params;
-		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
 		return { ok: true };
 	}
 }

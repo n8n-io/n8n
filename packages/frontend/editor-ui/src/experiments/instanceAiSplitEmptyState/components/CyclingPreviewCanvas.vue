@@ -45,6 +45,7 @@ const activeWorkflow = computed(() =>
 				v-else-if="activeWorkflow"
 				:key="props.activeIndex"
 				:workflow="activeWorkflow"
+				:suggestion-id="props.examples[props.activeIndex].id"
 			/>
 		</div>
 	</div>

@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { IWebhookResponseData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
 
@@ -7,7 +7,7 @@ describe('extractWebhookOnReceivedResponse', () => {
 	const webhookResultData = mock<IWebhookResponseData>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	test('should return response with no data when responseData is "noData"', () => {

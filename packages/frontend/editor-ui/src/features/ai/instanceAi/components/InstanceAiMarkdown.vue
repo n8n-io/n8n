@@ -1,10 +1,16 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import {
+	buildAgentPreviewHref,
+	resolveAgentPreviewLink,
+	type AgentPreviewTarget,
+} from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
+	agentPreviewTarget?: AgentPreviewTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -32,6 +38,14 @@ const openDataTablePreview = inject<((id: string, projectId: string) => boolean)
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
+const openAgentChatPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAgentChatPreview',
+	undefined,
+);
 
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
@@ -41,6 +55,8 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>',
 	'data-table':
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+	agent:
+		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
 };
 
 /** URL builders for each resource type — fallbacks when the registry has no projectId. */
@@ -48,6 +64,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 	workflow: (id) => `/workflow/${id}`,
 	credential: (id) => `/home/credentials/${id}`,
 	'data-table': () => '/home/datatables',
+	agent: () => '/home/agents',
 };
 
 /**
@@ -150,7 +167,7 @@ function replaceUnprotectedMarkdownText(
 }
 
 function decorateResourceNames(content: string): string {
-	const registry = thread.resourceNameIndex;
+	const registry = thread.linkableResourceNameIndex;
 	if (registry.size === 0) return content;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
@@ -201,20 +218,21 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
 	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/home\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 ];
-
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
-function getSameOriginPathname(href: string): string | undefined {
+function getSameOriginUrl(href: string): URL | undefined {
 	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
 	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
 	if (!isRootRelative && !isAbsolute) return undefined;
 
 	try {
 		const url = new URL(href, window.location.origin);
-		return url.origin === window.location.origin ? url.pathname : undefined;
+		return url.origin === window.location.origin ? url : undefined;
 	} catch {
 		return undefined;
 	}
@@ -253,8 +271,24 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 	if (projectId) {
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
+		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
 	}
 	return URL_BUILDERS[type]?.(id) ?? '#';
+}
+
+function resolveContextualAgentPreviewLink(href: string) {
+	const resolved = resolveAgentPreviewLink(href);
+	if (!resolved || !props.agentPreviewTarget) return resolved;
+	const resolvedUrl = new URL(resolved.href, window.location.origin);
+
+	return {
+		...props.agentPreviewTarget,
+		href: buildAgentPreviewHref(
+			props.agentPreviewTarget.projectId,
+			props.agentPreviewTarget.agentId,
+			resolvedUrl.searchParams,
+		),
+	};
 }
 
 /**
@@ -264,7 +298,7 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
  * - Standard links pointing to internal n8n routes (generated by the AI)
  *
  * Pure DOM decoration — clicks are handled by the delegated listener on the
- * wrapper (see `handleResourceLinkClick`), so there is nothing to clean up
+ * wrapper (see `handleLinkClick`), so there is nothing to clean up
  * when the markdown re-renders and replaces these elements.
  */
 function enhanceResourceLinks(): void {
@@ -274,12 +308,14 @@ function enhanceResourceLinks(): void {
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
-		if (link.dataset.resourceChip) continue;
+		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
 
 		// 1. Handle n8n-resource:// custom scheme links
-		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table)\/(.+)$/.exec(href);
+		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
+			href,
+		);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
@@ -302,11 +338,21 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
-		const internalPathname = getSameOriginPathname(href);
-		if (!internalPathname) continue;
+		const agentPreviewTarget = resolveContextualAgentPreviewLink(href);
+		if (agentPreviewTarget) {
+			const { projectId, agentId } = agentPreviewTarget;
+			link.href = agentPreviewTarget.href;
+			link.removeAttribute('target');
+			link.removeAttribute('rel');
+			link.dataset.agentPreviewId = agentId;
+			link.dataset.agentPreviewProjectId = projectId;
+			continue;
+		}
+		const internalUrl = getSameOriginUrl(href);
+		if (!internalUrl) continue;
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(internalPathname)) {
+			if (pattern.test(internalUrl.pathname)) {
 				link.target = '_blank';
 				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
@@ -327,22 +373,31 @@ function enhanceResourceLinks(): void {
  * never re-attached), downgrading chips to plain new-tab links.
  *
  * Click behavior:
- * - Cmd/Ctrl+click → browser handles new-tab via target="_blank"
+ * - An agent Preview link opens the embedded agent chat.
+ * - Cmd/Ctrl+click on other links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
  *   through to default `target="_blank"` and opens a new tab instead.
  * - Left-click on credential (or any chip without an available preview)
  *   → opens in a new tab.
  */
-function handleResourceLinkClick(event: MouseEvent): void {
-	if (event.metaKey || event.ctrlKey) return; // Let browser handle new-tab
+function handleLinkClick(event: MouseEvent): void {
 	if (!(event.target instanceof Element)) return;
 
-	const link = event.target.closest('a[data-resource-id]');
-	if (!(link instanceof HTMLAnchorElement)) return;
+	const clickedLink = event.target.closest('a');
+	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
-	const type = link.dataset.resourceChip;
-	const id = link.dataset.resourceId;
+	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
+	if (previewTarget && openAgentChatPreview) {
+		event.preventDefault();
+		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);
+		return;
+	}
+
+	if (event.metaKey || event.ctrlKey) return;
+
+	const type = clickedLink.dataset.resourceChip;
+	const id = clickedLink.dataset.resourceId;
 	if (!type || !id) return;
 
 	let switched: boolean | undefined;
@@ -354,6 +409,13 @@ function handleResourceLinkClick(event: MouseEvent): void {
 		);
 		if (registryEntry?.projectId) {
 			switched = openDataTablePreview?.(id, registryEntry.projectId);
+		}
+	} else if (type === 'agent') {
+		const registryEntry = [...thread.resourceNameIndex.values()].find(
+			(r) => r.type === type && r.id === id,
+		);
+		if (registryEntry?.projectId) {
+			switched = openAgentPreview?.(id, registryEntry.projectId);
 		}
 	}
 
@@ -375,7 +437,7 @@ onUpdated(() => {
 </script>
 
 <template>
-	<div ref="wrapperRef" @click="handleResourceLinkClick">
+	<div ref="wrapperRef" @click="handleLinkClick">
 		<ChatMarkdownChunk :source="source" />
 	</div>
 </template>

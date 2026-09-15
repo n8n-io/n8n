@@ -43,7 +43,27 @@ export function compareNodes<T extends DiffableNode>(
 	base: T | undefined,
 	target: T | undefined,
 ): boolean {
-	const propsToCompare = ['name', 'type', 'typeVersion', 'webhookId', 'credentials', 'parameters'];
+	// All persisted node fields except `position` — moving a node on the canvas
+	// is not a content change. Kept as an allowlist because callers pass UI node
+	// objects that carry ephemeral fields (e.g. `issues`).
+	const propsToCompare = [
+		'name',
+		'type',
+		'typeVersion',
+		'webhookId',
+		'credentials',
+		'parameters',
+		'disabled',
+		'notes',
+		'notesInFlow',
+		'onError',
+		'continueOnFail',
+		'retryOnFail',
+		'maxTries',
+		'waitBetweenTries',
+		'alwaysOutputData',
+		'executeOnce',
+	];
 
 	const baseNode = pick(base, propsToCompare);
 	const targetNode = pick(target, propsToCompare);
@@ -185,7 +205,11 @@ function nodeGroupChangesAreAdditive<N extends DiffableNode>(
 
 	for (const prevGroup of prev.nodeGroups ?? []) {
 		const nextGroup = nextGroupsById.get(prevGroup.id);
-		if (!nextGroup || nextGroup.name !== prevGroup.name) {
+		if (
+			!nextGroup ||
+			nextGroup.name !== prevGroup.name ||
+			nextGroup.description !== prevGroup.description
+		) {
 			return false;
 		}
 
@@ -303,7 +327,7 @@ export function determineNodeSize(parameters: INodeParameters | NodeParameterVal
 	} else if (typeof parameters !== 'object' || parameters instanceof Date) {
 		return 1;
 	} else if (Array.isArray(parameters)) {
-		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 1);
+		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v), 1);
 	} else {
 		// Record case
 		return Object.values(parameters).reduce<number>(

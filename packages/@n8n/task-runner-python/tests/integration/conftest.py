@@ -68,6 +68,39 @@ async def manager_with_env_access_allowed(broker):
     await manager.stop()
 
 
+@pytest_asyncio.fixture
+async def manager_pandas_strict(broker):
+    # Only pandas allowlisted; transitive imports NOT trusted (default).
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "*",
+            "N8N_RUNNERS_EXTERNAL_ALLOW": "pandas",
+            "N8N_RUNNERS_TASK_TIMEOUT": "30",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
+@pytest_asyncio.fixture
+async def manager_pandas_transitive(broker):
+    # Only pandas allowlisted; transitive imports trusted via the opt-in.
+    manager = TaskRunnerManager(
+        task_broker_url=broker.get_url(),
+        custom_env={
+            "N8N_RUNNERS_STDLIB_ALLOW": "*",
+            "N8N_RUNNERS_EXTERNAL_ALLOW": "pandas",
+            "N8N_RUNNERS_TASK_TIMEOUT": "30",
+            "N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS": "true",
+        },
+    )
+    await manager.start()
+    yield manager
+    await manager.stop()
+
+
 def create_task_settings(
     code: str,
     node_mode: str,

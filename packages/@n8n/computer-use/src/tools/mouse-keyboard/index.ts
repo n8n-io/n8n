@@ -1,5 +1,4 @@
-import { logger } from '../../logger';
-import type { ToolModule } from '../types';
+import { ModuleActivation, type ToolModule } from '../types';
 import {
 	mouseMoveTool,
 	mouseClickTool,
@@ -12,33 +11,28 @@ import {
 } from './mouse-keyboard';
 
 export const MouseKeyboardModule: ToolModule = {
-	async isSupported() {
-		// Linux Wayland: no X display available for robotjs
+	name: 'MouseKeyboard',
+	category: 'mouse-keyboard',
+	permissionGroup: 'computer',
+	async activate() {
 		if (process.env.WAYLAND_DISPLAY && !process.env.DISPLAY) {
-			logger.info('Mouse/keyboard module not supported', {
-				reason: 'Wayland without X11 compatibility layer',
-			});
-			return false;
+			return ModuleActivation.unsupported('Wayland without X11 compatibility layer');
 		}
 		try {
 			const robot = await import('@jitsi/robotjs');
 			robot.default.getMousePos();
-			return true;
+			return ModuleActivation.supported([
+				mouseMoveTool,
+				mouseClickTool,
+				mouseDoubleClickTool,
+				mouseDragTool,
+				mouseScrollTool,
+				keyboardTypeTool,
+				keyboardKeyTapTool,
+				keyboardShortcutTool,
+			]);
 		} catch (error) {
-			logger.info('Mouse/keyboard module not supported', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return false;
+			return ModuleActivation.unsupported(error instanceof Error ? error.message : String(error));
 		}
 	},
-	definitions: [
-		mouseMoveTool,
-		mouseClickTool,
-		mouseDoubleClickTool,
-		mouseDragTool,
-		mouseScrollTool,
-		keyboardTypeTool,
-		keyboardKeyTapTool,
-		keyboardShortcutTool,
-	],
 };

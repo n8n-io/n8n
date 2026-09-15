@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
@@ -15,6 +15,10 @@ export function integrationError(
 	message: string,
 ): IntegrationErrorResponse {
 	return { ok: false, error: { code, message } };
+}
+
+export function rateLimitExceeded(message: string): IntegrationErrorResponse {
+	return integrationError(INTEGRATION_ERROR_CODES.RATE_LIMIT_EXCEEDED, message);
 }
 
 export function connectionUnavailable(): IntegrationErrorResponse {

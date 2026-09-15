@@ -1,14 +1,9 @@
 import { type StoryFn } from '@storybook/vue3-vite';
-import { type ActionOptions, action } from 'storybook/actions';
-import { ref } from 'vue';
+import { action } from 'storybook/actions';
+import { computed, ref } from 'vue';
 
 import N8nResizeWrapper from './ResizeWrapper.vue';
-
-// TODO: remove this after converting ResizeWrapper to composition API
-interface ResizeData extends ActionOptions {
-	height: number;
-	width: number;
-}
+import type { ResizeData } from '../../types';
 
 export default {
 	title: 'Core/ResizeWrapper',
@@ -21,63 +16,59 @@ export default {
 	},
 };
 
-const methods = {
-	onInput: action('input'),
-	onResizeEnd: action('resizeend'),
-	onResizeStart: action('resizestart'),
-};
-
-const Template: StoryFn = (args, { argTypes }) => ({
+const Template: StoryFn = (args) => ({
 	setup: () => {
 		const newWidth = ref(args.width);
 		const newHeight = ref(args.height);
 
 		function onResize(resizeData: ResizeData) {
-			action('resize', resizeData);
+			action('resize')(resizeData);
 			newHeight.value = resizeData.height;
 			newWidth.value = resizeData.width;
 		}
 
+		const panelStyles = computed(() => ({
+			width: `${newWidth.value}px`,
+			height: `${newHeight.value}px`,
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'center',
+			background: 'var(--background--surface)',
+			border: 'var(--border)',
+			color: 'var(--color--text--tint-1)',
+			fontFamily: 'var(--font-family)',
+			fontSize: 'var(--font-size--sm)',
+		}));
+
 		return {
-			onResize,
+			args,
 			newWidth,
 			newHeight,
-			background:
-				'linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,154,0,1) 10%, rgba(208,222,33,1) 20%, rgba(79,220,74,1) 30%, rgba(63,218,216,1) 40%, rgba(47,201,226,1) 50%, rgba(28,127,238,1) 60%, rgba(95,21,242,1) 70%, rgba(186,12,248,1) 80%, rgba(251,7,217,1) 90%, rgba(255,0,0,1) 100%)',
-			args,
+			onResize,
+			onResizeEnd: action('resizeend'),
+			onResizeStart: action('resizestart'),
+			panelStyles,
 		};
 	},
-	props: Object.keys(argTypes),
 	components: {
 		N8nResizeWrapper,
 	},
-	computed: {
-		containerStyles() {
-			return {
-				width: `${this.newWidth}px`,
-				height: `${this.newHeight}px`,
-				background: this.background,
-			};
-		},
-	},
-	template: `<div style="width: fit-content; height: fit-content">
+	template: `<div style="width: fit-content; padding: var(--spacing--xl)">
 			<n8n-resize-wrapper
 				v-bind="args"
+				:width="newWidth"
+				:height="newHeight"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 				@resizestart="onResizeStart"
-				@input="onInput"
-				:width="newWidth"
-				:height="newHeight"
 			>
-				<div :style="containerStyles" />
+				<div :style="panelStyles">Hover or drag an edge</div>
 			</n8n-resize-wrapper>
 		</div>`,
-	methods,
 });
 
-export const Resize = Template.bind({});
-Resize.args = {
+export const Default = Template.bind({});
+Default.args = {
 	width: 200,
 	height: 200,
 	minWidth: 200,

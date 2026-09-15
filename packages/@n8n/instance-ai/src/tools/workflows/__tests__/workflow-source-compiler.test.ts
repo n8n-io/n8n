@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { validateWorkflow, workflow as workflowBuilder } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
@@ -9,7 +9,9 @@ vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 }));
 
-vi.mock('@n8n/workflow-sdk', () => ({
+// Keep the real builder: the JSON path borrows its layout to fill missing node positions.
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
@@ -72,6 +74,95 @@ describe('compileWorkflowSource', () => {
 		);
 	});
 
+	it('strips null top-level node keys and coerces parameters to an object', async () => {
+		const workflow = {
+			name: 'JSON workflow',
+			nodes: [
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: null,
+					credentials: null,
+					webhookId: null,
+					notes: null,
+				},
+				{
+					id: 'slack-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [200, 0] as [number, number],
+					parameters: {},
+					credentials: {
+						slackApi: { id: null, name: 'Slack account' },
+					},
+				},
+			],
+			connections: {},
+		};
+		const context = makeContext();
+
+		const result = await compileWorkflowSource(
+			context,
+			'src/workflows/json.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+
+		const httpNode = result.workflow.nodes[0];
+		expect(httpNode).not.toHaveProperty('credentials');
+		expect(httpNode).not.toHaveProperty('webhookId');
+		expect(httpNode).not.toHaveProperty('notes');
+		expect(httpNode?.parameters).toEqual({});
+
+		const slackNode = result.workflow.nodes[1];
+		expect(slackNode?.credentials).toEqual({
+			slackApi: { id: null, name: 'Slack account' },
+		});
+	});
+
+	it('strips null top-level node keys from sandbox build output', async () => {
+		const workflow = {
+			name: 'TS workflow',
+			nodes: [
+				{
+					id: 'manual-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials: null,
+					webhookId: null,
+				},
+			],
+			connections: {},
+		};
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({ success: true, workflow, warnings: [] }),
+			stderr: '',
+		});
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+
+		const node = result.workflow.nodes[0];
+		expect(node).not.toHaveProperty('credentials');
+		expect(node).not.toHaveProperty('webhookId');
+	});
+
 	it('runs TypeScript workflow sources through the sandbox tsx build runner', async () => {
 		const workflow = {
 			name: 'TS workflow',
@@ -98,7 +189,14 @@ describe('compileWorkflowSource', () => {
 		});
 		vi.mocked(validateWorkflow).mockReturnValue({
 			valid: false,
-			errors: [{ code: 'INVALID_PARAMETER', message: 'Bad parameter', nodeName: 'Manual Trigger' }],
+			errors: [
+				{
+					code: 'INVALID_PARAMETER',
+					message: 'Bad parameter',
+					nodeName: 'Manual Trigger',
+					severity: 'error',
+				},
+			],
 			warnings: [],
 		});
 		const context = makeContext();
@@ -113,7 +211,7 @@ describe('compileWorkflowSource', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			context.workspace,
 			"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
-			'/home/daytona/workspace',
+			{ cwd: '/home/daytona/workspace', abortSignal: undefined },
 		);
 		expect(result).toMatchObject({
 			success: true,
@@ -164,5 +262,369 @@ describe('compileWorkflowSource', () => {
 			editable: false,
 		});
 		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('rethrows AbortError from sandbox execution instead of converting to a build failure', async () => {
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		vi.mocked(runInSandbox).mockRejectedValue(abortError);
+
+		await expect(
+			compileWorkflowSource(makeContext(), 'src/workflows/main.workflow.ts', 'workflow source'),
+		).rejects.toMatchObject({ name: 'AbortError' });
+	});
+
+	it('forwards abortSignal into the sandbox runner', async () => {
+		const controller = new AbortController();
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: { name: 'TS workflow', nodes: [], connections: {} },
+				warnings: [],
+			}),
+			stderr: '',
+		});
+
+		await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+			controller.signal,
+		);
+
+		expect(runInSandbox).toHaveBeenCalledWith(expect.anything(), expect.any(String), {
+			cwd: '/home/daytona/workspace',
+			abortSignal: controller.signal,
+		});
+	});
+});
+
+describe('compileWorkflowSource > node positions in JSON sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// INS-1314 defect 3: the agent fell back to a hand-written .json file, whose nodes had no
+	// position. The SDK source path lays nodes out on serialize; the JSON path did not, so the
+	// save rejected every node with `nodes[N].position (invalid_type): Required`.
+	it('gives every node a position when the JSON declares none', async () => {
+		const workflow = {
+			name: 'CRM Motor',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+				{
+					id: 'code-1',
+					name: 'Compute',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					parameters: {},
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+				Fetch: { main: [[{ node: 'Compute', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/crm-motor.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
+	it('replaces a malformed position instead of padding it', async () => {
+		// The builder treats any present position as explicit, so `[100]` survives its layout.
+		// Left alone it reaches the save as `[100, undefined]`.
+		const workflow = {
+			name: 'Malformed',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [100],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: ['200', 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/malformed.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
+	it('leaves positions the JSON already declares untouched', async () => {
+		const workflow = {
+			name: 'Positioned',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [-420, 96] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/positioned.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const [trigger, fetch] = result.workflow.nodes;
+		expect(trigger.position).toEqual([-420, 96]);
+		expect(fetch.position).toEqual([expect.any(Number), expect.any(Number)]);
+	});
+
+	it('still gives every node a position when the builder cannot lay the workflow out', async () => {
+		// The builder can reject a workflow the save would accept. Without a fallback the
+		// node reached the save positionless and failed there for the wrong reason.
+		const layout = vi.spyOn(workflowBuilder, 'fromJSON').mockImplementation(() => {
+			throw new Error('cannot import this workflow');
+		});
+		const workflow = {
+			name: 'Unlayoutable',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		try {
+			const result = await compileWorkflowSource(
+				makeContext(),
+				'src/workflows/unlayoutable.workflow.json',
+				JSON.stringify(workflow),
+			);
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[0].position).toEqual([expect.any(Number), expect.any(Number)]);
+		} finally {
+			layout.mockRestore();
+		}
+	});
+});
+
+describe('compileWorkflowSource credential resolution', () => {
+	const hosts = [
+		{ type: 'stripeApi', hosts: ['api.stripe.com'] },
+		{ type: 'facebookGraphApi', hosts: ['graph.facebook.com'] },
+		{ type: 'whatsAppApi', hosts: ['graph.facebook.com'] },
+	];
+
+	function contextWithHosts(overrides = {}) {
+		return makeContext({
+			credentialService: { listHttpCredentialHosts: async () => await Promise.resolve(hosts) },
+			...overrides,
+		} as unknown as Partial<InstanceAiContext>);
+	}
+
+	function httpWorkflow(parameters: Record<string, unknown>) {
+		return {
+			name: 'HTTP workflow',
+			nodes: [
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters,
+				},
+			],
+			connections: {},
+		};
+	}
+
+	async function compileHttp(parameters: Record<string, unknown>, context = contextWithHosts()) {
+		const result = await compileWorkflowSource(
+			context,
+			'src/workflows/http.workflow.json',
+			JSON.stringify(httpWorkflow(parameters)),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings.filter((w) => w.code === 'PREFER_PREDEFINED_CREDENTIAL');
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	it('warns when generic auth targets a host with a single predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://api.stripe.com/v1/charges',
+		});
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatchObject({ nodeName: 'HTTP Request' });
+		expect(warnings[0].message).toContain('stripeApi');
+		expect(warnings[0].message).toContain('predefinedCredentialType');
+	});
+
+	it('lists candidates when the host maps to multiple predefined credentials', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://graph.facebook.com/v19.0/me',
+		});
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].message).toContain('facebookGraphApi');
+		expect(warnings[0].message).toContain('whatsAppApi');
+	});
+
+	it('does not warn for a host with no predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://queue.fal.run/fal-ai/flux',
+		});
+
+		expect(warnings).toHaveLength(0);
+	});
+
+	it('does not warn when the node already uses a predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'predefinedCredentialType',
+			nodeCredentialType: 'stripeApi',
+			url: 'https://api.stripe.com/v1/charges',
+		});
+
+		expect(warnings).toHaveLength(0);
+	});
+
+	it('is a no-op when the credential service cannot list hosts', async () => {
+		const warnings = await compileHttp(
+			{
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+				url: 'https://api.stripe.com/v1/charges',
+			},
+			makeContext(),
+		);
+
+		expect(warnings).toHaveLength(0);
+	});
+});
+
+describe('compileWorkflowSource > Slack Block Kit shape', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	async function compileSlack(blocksUi: unknown) {
+		const workflow = {
+			name: 'Slack workflow',
+			nodes: [
+				{
+					id: 'slack-1',
+					name: 'Post Lunch Train',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.3,
+					position: [0, 0] as [number, number],
+					parameters: { resource: 'message', operation: 'post', messageType: 'block', blocksUi },
+				},
+			],
+			connections: {},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/slack.workflow.json',
+			JSON.stringify(workflow),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings;
+	}
+
+	it('surfaces a warning for a bare Block Kit array', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify([{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }]),
+		);
+
+		expect(warnings).toEqual([
+			expect.objectContaining({
+				code: 'SLACK_BLOCKS_SHAPE_INVALID',
+				nodeName: 'Post Lunch Train',
+			}),
+		]);
+	});
+
+	it('stays quiet for a wrapped Block Kit payload', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify({
+				blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }],
+			}),
+		);
+
+		expect(warnings).toEqual([]);
 	});
 });

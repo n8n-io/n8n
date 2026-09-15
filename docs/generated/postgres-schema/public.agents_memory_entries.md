@@ -74,12 +74,15 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer revision
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt
@@ -87,6 +90,7 @@ erDiagram
 }
 "public.agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   timestamp_3__with_time_zone createdAt
   varchar_64_ evidenceHash
   text evidenceText

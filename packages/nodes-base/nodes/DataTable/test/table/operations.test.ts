@@ -6,6 +6,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import * as clearOperation from '../../actions/table/clear.operation';
 import * as createOperation from '../../actions/table/create.operation';
 import * as deleteOperation from '../../actions/table/delete.operation';
 import * as listOperation from '../../actions/table/list.operation';
@@ -511,6 +512,52 @@ describe('Table Operations', () => {
 			const result = await listOperation.execute.call(mockExecuteFunctions, 0);
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('Clear Operation', () => {
+		it('should clear all rows from a data table and return deleted count', async () => {
+			const mockExecuteFunctions = mock<IExecuteFunctions>();
+			const mockDataTableProxy = mock<IDataTableProjectService>();
+
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataTableId') return 'table-123';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers = {
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
+			} as any;
+
+			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 42 });
+
+			const result = await clearOperation.execute.call(mockExecuteFunctions, 0);
+
+			expect(mockDataTableProxy.clearRows).toHaveBeenCalled();
+			expect(result).toEqual([{ json: { success: true, deletedCount: 42 } }]);
+		});
+
+		it('should return deletedCount of 0 when table is already empty', async () => {
+			const mockExecuteFunctions = mock<IExecuteFunctions>();
+			const mockDataTableProxy = mock<IDataTableProjectService>();
+
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataTableId') return 'table-456';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers = {
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
+			} as any;
+
+			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 0 });
+
+			const result = await clearOperation.execute.call(mockExecuteFunctions, 0);
+
+			expect(mockDataTableProxy.clearRows).toHaveBeenCalled();
+			expect(result).toEqual([{ json: { success: true, deletedCount: 0 } }]);
 		});
 	});
 

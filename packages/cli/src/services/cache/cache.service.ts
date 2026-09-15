@@ -23,6 +23,8 @@ type CacheEvents = {
 
 @Service()
 export class CacheService extends TypedEmitter<CacheEvents> {
+	private readonly takingKeys = new Set<string>();
+
 	constructor(private readonly globalConfig: GlobalConfig) {
 		super();
 	}
@@ -36,7 +38,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
 		if (useRedis) {
-			const { RedisClientService } = await import('../redis-client.service');
+			const { RedisClientService } = await import('../redis-client.service.js');
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
@@ -52,7 +54,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
+			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});
@@ -208,6 +210,26 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		return fallbackValue;
+	}
+
+	/** Atomically retrieve and delete a primitive value. */
+	async take<T = unknown>(key: string): Promise<T | undefined> {
+		if (!this.cache) await this.init();
+		if (!key) return undefined;
+
+		if (this.cache.kind === 'redis') {
+			return await this.cache.store.getdel<T>(key);
+		}
+
+		if (this.takingKeys.has(key)) return undefined;
+		this.takingKeys.add(key);
+		try {
+			const value = await this.cache.store.get<T>(key);
+			await this.cache.store.del(key);
+			return value;
+		} finally {
+			this.takingKeys.delete(key);
+		}
 	}
 
 	/**

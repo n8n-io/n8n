@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
 	CDPRelayServer,
@@ -24,11 +25,14 @@ import { join } from 'node:path';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
 import {
 	BROWSER_USE_WS_NAMESPACE,
 	CDP_TOKEN_HEADER,
+	EXTENSION_VERSION_QUERY_PARAM,
+	parseExtensionVersion,
 	type BrowserUseUpgradeRequest,
 } from './browser-use-ws.constants';
 
@@ -46,6 +50,7 @@ interface BrowserSession {
 	hasConnectedOnce: boolean;
 	connected: boolean;
 	connectedAt: Date | null;
+	extensionVersion: string | null;
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
 }
@@ -65,6 +70,7 @@ export class InstanceAiBrowserSessionService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -114,6 +120,15 @@ export class InstanceAiBrowserSessionService {
 		return this.sessions.get(userId)?.connected ?? false;
 	}
 
+	getExtensionTraceContext(userId: string): BrowserExtensionTraceContext {
+		const session = this.sessions.get(userId);
+		if (!session?.connected) return { connectionState: 'disconnected' };
+		return {
+			connectionState: 'connected',
+			...(session.extensionVersion !== null ? { version: session.extensionVersion } : {}),
+		};
+	}
+
 	handleExtensionUpgrade(req: BrowserUseUpgradeRequest): void {
 		const session = this.sessionsBySessionId.get(req.params.sessionId);
 		const token = typeof req.query.token === 'string' ? req.query.token : null;
@@ -121,6 +136,7 @@ export class InstanceAiBrowserSessionService {
 			req.ws.close(4003, 'Invalid auth token');
 			return;
 		}
+		session.extensionVersion = parseExtensionVersion(req.query[EXTENSION_VERSION_QUERY_PARAM]);
 		session.relay.attachExtension(req.ws);
 	}
 
@@ -185,6 +201,7 @@ export class InstanceAiBrowserSessionService {
 			hasConnectedOnce: false,
 			connected: false,
 			connectedAt: null,
+			extensionVersion: null,
 			connection: toolkit.connection,
 			mcpServer: new BrowserLocalMcpServer(toolkit, toolContext, this.logger),
 		};
@@ -219,7 +236,14 @@ export class InstanceAiBrowserSessionService {
 			name: 'browser_connect',
 			arguments: {},
 		});
-		this.logger.info('Browser Use extension connected', { userId });
+		this.telemetry.track('Instance AI Browser connected', {
+			user_id: userId,
+			browser_extension_version: session.extensionVersion,
+		});
+		this.logger.info('Browser Use extension connected', {
+			userId,
+			extensionVersion: session.extensionVersion,
+		});
 		this.pushState(userId);
 	}
 

@@ -1,0 +1,6 @@
+name: runId
+in: path
+description: The ID of the test run.
+required: true
+schema:
+  type: string

@@ -1,10 +1,10 @@
-import { NODES_BASE_DIR } from '@/constants';
 import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
 import type { Request } from 'express';
 import { access } from 'fs/promises';
 
+import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

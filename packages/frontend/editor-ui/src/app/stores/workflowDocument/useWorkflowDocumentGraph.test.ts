@@ -21,7 +21,11 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
@@ -287,6 +291,59 @@ describe('useWorkflowDocumentGraph', () => {
 			);
 
 			expect(graph.checkIfNodeHasChatParent('Agent')).toBe(false);
+		});
+	});
+
+	describe('checkIfNodeHasChatOrManualChatParent', () => {
+		it('returns true when node has a Chat Trigger in its main-connection ancestry', () => {
+			const graph = seedAndCreateGraph(
+				[
+					createNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+					createNode({ name: 'Agent' }),
+				],
+				{
+					'Chat Trigger': {
+						main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			);
+
+			expect(graph.checkIfNodeHasChatOrManualChatParent('Agent')).toBe(true);
+		});
+
+		it('returns true when node has a Manual Chat Trigger in its main-connection ancestry', () => {
+			const graph = seedAndCreateGraph(
+				[
+					createNode({
+						name: 'Manual Chat Trigger',
+						type: MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+					}),
+					createNode({ name: 'Agent' }),
+				],
+				{
+					'Manual Chat Trigger': {
+						main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			);
+
+			expect(graph.checkIfNodeHasChatOrManualChatParent('Agent')).toBe(true);
+		});
+
+		it('returns false when node has no chat or manual chat trigger parent', () => {
+			const graph = seedAndCreateGraph(
+				[
+					createNode({ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+					createNode({ name: 'Agent' }),
+				],
+				{
+					'Manual Trigger': {
+						main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			);
+
+			expect(graph.checkIfNodeHasChatOrManualChatParent('Agent')).toBe(false);
 		});
 	});
 

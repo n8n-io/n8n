@@ -1,6 +1,4 @@
-import { isRecord } from '@n8n/utils';
-
-const APPROVAL_INPUT_MAX_LENGTH = 1500;
+import { isRecord } from '@n8n/utils/is-record';
 
 type SuspendCardPayload = {
 	title?: string;
@@ -11,7 +9,6 @@ interface ApprovalSuspendPayload {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
-	args?: unknown;
 }
 
 export function isIntegrationActionSuspendPayload(value: unknown): boolean {
@@ -23,7 +20,7 @@ export function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	);
 }
 
-function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
+export function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
 	return (
 		isRecord(value) &&
 		value.type === 'approval' &&
@@ -44,26 +41,6 @@ function isSuspendCardPayload(value: unknown): value is SuspendCardPayload {
 	return value.components.every(isSuspendCardComponent);
 }
 
-function truncateApprovalInput(value: string): string {
-	if (value.length <= APPROVAL_INPUT_MAX_LENGTH) return value;
-	return `${value.slice(0, APPROVAL_INPUT_MAX_LENGTH)}...`;
-}
-
-function stringifyApprovalInput(value: unknown): string | undefined {
-	if (value === undefined) return undefined;
-
-	if (typeof value === 'string') {
-		return truncateApprovalInput(value);
-	}
-
-	try {
-		const serialized = JSON.stringify(value, null, 2);
-		return truncateApprovalInput(serialized ?? String(value));
-	} catch {
-		return truncateApprovalInput(String(value));
-	}
-}
-
 function getApprovalToolLabel(payload: ApprovalSuspendPayload): string {
 	return typeof payload.displayName === 'string' && payload.displayName.length > 0
 		? payload.displayName
@@ -76,11 +53,6 @@ function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 } {
 	const toolLabel = getApprovalToolLabel(payload);
 	const fields: Array<{ label: string; value: string }> = [{ label: 'Tool', value: toolLabel }];
-	const input = stringifyApprovalInput(payload.args);
-
-	if (input) {
-		fields.push({ label: 'Input', value: input });
-	}
 
 	return {
 		title: 'Approval required',

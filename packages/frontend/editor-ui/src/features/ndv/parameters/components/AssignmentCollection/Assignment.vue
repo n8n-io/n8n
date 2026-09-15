@@ -18,6 +18,7 @@ import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { typeFromExpression } from '../../utils/assignmentCollection.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 
 interface Props {
 	path: string;
@@ -27,6 +28,8 @@ interface Props {
 	disableType?: boolean;
 	isReadOnly?: boolean;
 	index?: number;
+	valueOnly?: boolean;
+	optionsOverrides?: ParameterOptionsOverrides;
 }
 
 const props = defineProps<Props>();
@@ -91,7 +94,7 @@ const valueParameter = computed<INodeProperties>(() => {
 			: 'value';
 	return {
 		name: 'value',
-		displayName: 'Value',
+		displayName: props.valueOnly && assignment.value.name ? assignment.value.name : 'Value',
 		default: '',
 		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
@@ -165,14 +168,14 @@ const onValueDrop = async (droppedExpression: string) => {
 	>
 		<N8nIconButton
 			variant="ghost"
-			v-if="!isReadOnly"
+			v-if="!isReadOnly && !valueOnly"
 			size="small"
 			icon="grip-vertical"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
 			variant="ghost"
-			v-if="!isReadOnly"
+			v-if="!isReadOnly && !valueOnly"
 			size="small"
 			icon="trash-2"
 			data-test-id="assignment-remove"
@@ -181,7 +184,32 @@ const onValueDrop = async (droppedExpression: string) => {
 		/>
 
 		<div :class="$style.inputs">
-			<InputTriple middle-width="100px">
+			<div v-if="valueOnly" :class="$style.value">
+				<ParameterInputFull
+					display-options
+					hide-issues
+					hide-hint
+					is-assignment
+					:is-read-only="isReadOnly"
+					:options-overrides="optionsOverrides"
+					:parameter="valueParameter"
+					:value="assignment.value"
+					:path="`${path}.value`"
+					data-test-id="assignment-value"
+					@update="onAssignmentValueChange"
+					@blur="onBlur"
+					@drop="onValueDrop"
+				/>
+				<ParameterInputHint
+					v-if="resolvedExpressionString"
+					data-test-id="parameter-expression-preview-value"
+					:class="[$style.hint]"
+					:highlight="highlightHint"
+					:hint="hint"
+					single-line
+				/>
+			</div>
+			<InputTriple v-else middle-width="100px">
 				<template #left>
 					<ParameterInputFull
 						display-options

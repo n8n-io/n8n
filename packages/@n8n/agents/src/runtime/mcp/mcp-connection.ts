@@ -1,26 +1,53 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /** Don't remove the .js extensions. That's how the @modelcontextprotocol/sdk is packaged. */
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import type { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import type { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
-import type { McpServerConfig } from '../../types/sdk/mcp';
+import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 /** The raw result returned by an MCP tool call. */
 export type McpCallToolResult = CallToolResult;
 
-interface McpSdkModule {
-	Client: typeof import('@modelcontextprotocol/sdk/client/index.js').Client;
-	SSEClientTransport: typeof import('@modelcontextprotocol/sdk/client/sse.js').SSEClientTransport;
-	StdioClientTransport: typeof import('@modelcontextprotocol/sdk/client/stdio.js').StdioClientTransport;
-	StreamableHTTPClientTransport: typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js').StreamableHTTPClientTransport;
-	CallToolResultSchema: typeof import('@modelcontextprotocol/sdk/types.js').CallToolResultSchema;
+/**
+ * Import the @modelcontextprotocol/sdk client subpaths. Every SDK type used in
+ * this file is derived from this function's inferred return type. That keeps a
+ * single source of truth for module resolution: under NodeNext these value-space
+ * dynamic imports resolve to the SDK's ESM declarations, whereas static `import
+ * type` / `typeof import(...)` in this CommonJS-context file would resolve to the
+ * CJS declarations — and the two are nominally incompatible (the Client/transport
+ * classes carry private members). Deriving from here sidesteps that mismatch.
+ */
+async function importMcpSdk() {
+	const [
+		{ Client },
+		{ SSEClientTransport },
+		{ StdioClientTransport },
+		{ StreamableHTTPClientTransport },
+		{ CallToolResultSchema },
+	] = await Promise.all([
+		import('@modelcontextprotocol/sdk/client/index.js'),
+		import('@modelcontextprotocol/sdk/client/sse.js'),
+		import('@modelcontextprotocol/sdk/client/stdio.js'),
+		import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
+		import('@modelcontextprotocol/sdk/types.js'),
+	]);
+	return {
+		Client,
+		SSEClientTransport,
+		StdioClientTransport,
+		StreamableHTTPClientTransport,
+		CallToolResultSchema,
+	};
 }
+
+type McpSdkModule = Awaited<ReturnType<typeof importMcpSdk>>;
+type McpClient = InstanceType<McpSdkModule['Client']>;
+type McpTransport =
+	| InstanceType<McpSdkModule['SSEClientTransport']>
+	| InstanceType<McpSdkModule['StreamableHTTPClientTransport']>
+	| InstanceType<McpSdkModule['StdioClientTransport']>;
 
 let mcpSdkPromise: Promise<McpSdkModule> | undefined;
 
@@ -30,27 +57,7 @@ let mcpSdkPromise: Promise<McpSdkModule> | undefined;
  * that is only needed once a user actually configures an MCP server.
  */
 async function loadMcpSdk(): Promise<McpSdkModule> {
-	mcpSdkPromise ??= Promise.all([
-		import('@modelcontextprotocol/sdk/client/index.js'),
-		import('@modelcontextprotocol/sdk/client/sse.js'),
-		import('@modelcontextprotocol/sdk/client/stdio.js'),
-		import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
-		import('@modelcontextprotocol/sdk/types.js'),
-	]).then(
-		([
-			{ Client },
-			{ SSEClientTransport },
-			{ StdioClientTransport },
-			{ StreamableHTTPClientTransport },
-			{ CallToolResultSchema },
-		]) => ({
-			Client,
-			SSEClientTransport,
-			StdioClientTransport,
-			StreamableHTTPClientTransport,
-			CallToolResultSchema,
-		}),
-	);
+	mcpSdkPromise ??= importMcpSdk();
 	return await mcpSdkPromise;
 }
 
@@ -75,7 +82,7 @@ function applyToolFilter<T extends { name: string }>(
 
 /** Wraps a single MCP SDK Client instance for one server. Not publicly exported. */
 export class McpConnection {
-	private client: Client | undefined;
+	private client: McpClient | undefined;
 
 	private config: McpServerConfig;
 
@@ -91,6 +98,13 @@ export class McpConnection {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
+		// Starting a fresh connection (the initial connect, or a retry after a
+		// prior disconnect cleared `connectionPromise`). Reset the closed
+		// flag so a subsequent disconnect() can tear down the new client —
+		// otherwise a reconnect after disconnect would leave the new transport
+		// open (doDisconnect() no-ops while `closed` is true).
+		this.closed = false;
+		this.disconnectPromise = undefined;
 		const sdk = await loadMcpSdk();
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
@@ -102,9 +116,7 @@ export class McpConnection {
 		}
 	}
 
-	private async connectWithTransport(
-		transport: SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport,
-	): Promise<void> {
+	private async connectWithTransport(transport: McpTransport): Promise<void> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const client = this.client;
 		const timeoutMs = this.config.connectionTimeoutMs;
@@ -165,21 +177,50 @@ export class McpConnection {
 		if (requireApproval === true) return true;
 
 		if (Array.isArray(requireApproval) && requireApproval.length > 0) {
-			const prefix = `${this.config.name}_`;
-			const originalName = tool.name.startsWith(prefix)
-				? tool.name.slice(prefix.length)
-				: tool.name;
+			const originalName = tool.mcpToolName ?? tool.name;
 			return requireApproval.includes(originalName);
 		}
 
 		return false;
 	}
 
-	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
+	async callTool(
+		name: string,
+		args: Record<string, unknown>,
+		options?: { abortSignal?: AbortSignal; modelToolName?: string },
+	): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
-		const result = await this.client.callTool({ name, arguments: args }, CallToolResultSchema);
-		return result as McpCallToolResult;
+		try {
+			const result = (await this.client.callTool({ name, arguments: args }, CallToolResultSchema, {
+				...(options?.abortSignal ? { signal: options.abortSignal } : {}),
+				// Reset the SDK's 60s idle timeout on progress notifications so a
+				// long-running MCP call that streams progress stays alive, while
+				// a stalled call (no progress) dies at the idle deadline.
+				resetTimeoutOnProgress: true,
+			})) as McpCallToolResult;
+			await this.notifyToolCallSettled({
+				toolName: name,
+				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),
+				success: result.isError !== true,
+			});
+			return result;
+		} catch (error) {
+			await this.notifyToolCallSettled({
+				toolName: name,
+				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),
+				success: false,
+			});
+			throw error;
+		}
+	}
+
+	private async notifyToolCallSettled(event: McpToolCallSettledEvent): Promise<void> {
+		try {
+			await this.config.onToolCallSettled?.(event);
+		} catch (error) {
+			console.error(`MCP tool call observer error for server "${this.config.name}":`, error);
+		}
 	}
 
 	async disconnect(): Promise<void> {
@@ -213,10 +254,7 @@ export class McpConnection {
 		);
 	}
 
-	private createTransport(
-		config: McpServerConfig,
-		sdk: McpSdkModule,
-	): SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport {
+	private createTransport(config: McpServerConfig, sdk: McpSdkModule): McpTransport {
 		if (config.command) {
 			return new sdk.StdioClientTransport({
 				command: config.command,

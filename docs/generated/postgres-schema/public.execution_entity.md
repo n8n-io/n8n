@@ -19,6 +19,7 @@
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | tracingContext | json |  | true |  |  |  |
+| usedPrivateCredentials | boolean | false | false |  |  | Whether this execution ran with at least one dynamically-resolved private credential. |
 | waitTill | timestamp(3) with time zone |  | true |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 | workflowVersionId | varchar(36) | NULL::character varying | true |  |  | Version id of the workflow run by this execution; denormalized from the data bundle. |
@@ -36,6 +37,7 @@
 | execution_entity_mode_not_null | n | NOT NULL mode |
 | execution_entity_status_not_null | n | NOT NULL status |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
+| execution_entity_usedPrivateCredentials_not_null | n | NOT NULL "usedPrivateCredentials" |
 | execution_entity_workflowId_not_null | n | NOT NULL "workflowId" |
 | fk_execution_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | pk_e3e63bbf986767844bbe1166d4e | PRIMARY KEY | PRIMARY KEY (id) |
@@ -80,6 +82,7 @@ erDiagram
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   json tracingContext
+  boolean usedPrivateCredentials
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId

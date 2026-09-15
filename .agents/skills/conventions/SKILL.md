@@ -13,6 +13,10 @@ Use this skill when you need quick reminders on critical patterns.
 
 ## Critical Rules (Must Follow)
 
+**Technical writing (comments, PRs, issues, docs):**
+- Write in ASD-STE100 Simplified Technical English: short sentences, the
+  active voice, one instruction for each sentence
+
 **TypeScript:**
 - Never `any` → use `unknown`
 - Prefer `satisfies` over `as` (except tests)
@@ -36,6 +40,7 @@ throw new UnexpectedError('message', { extra: { context } });
 - Dependency injection via `@n8n/di`
 - Config via `@n8n/config`
 - Zod schemas for validation
+- Pagination args: use `offset` + `limit` in controllers and services; translate to TypeORM `skip`/`take` only inside repositories
 
 **Testing:**
 - Vitest (unit), Playwright (E2E)
@@ -46,19 +51,26 @@ throw new UnexpectedError('message', { extra: { context } });
 - SQLite/PostgreSQL only (app DB)
 - Exception: DB nodes (MySQL Node, etc.) can use DB-specific features
 
+**GitHub Workflows:**
+- Every workflow declares a least-privilege top-level `permissions:` block
+  (usually `contents: read`); jobs needing more override at job level
+
 **Commands:**
 ```bash
 pnpm build > build.log 2>&1  # Always redirect
 pnpm typecheck               # Before commit
 pnpm lint                    # Before commit
 ```
+> Secrets: pnpm command lines may be recorded verbatim (opt-in dev metrics) —
+> pass sensitive values via env vars, never inline on the command line.
 
 ## Key Packages
 
 | Package | Purpose |
 |---------|---------|
 | `packages/cli` | Backend API |
-| `packages/frontend/editor-ui` | Vue 3 frontend |
+| `packages/frontend/editor-ui` | Vue 3 frontend shell |
+| `packages/modules/<name>/frontend` | Frontend feature modules. Guide: `packages/@n8n/module-cli/frontend-module-guide.md` |
 | `packages/@n8n/api-types` | Shared types |
 | `packages/@n8n/db` | TypeORM entities |
 | `packages/workflow` | Core interfaces |

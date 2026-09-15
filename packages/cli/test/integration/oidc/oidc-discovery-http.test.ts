@@ -1,16 +1,21 @@
 import type { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type SsrfProtectionService } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
-import { mock } from 'jest-mock-extended';
+import type { SsrfProtectionConfig } from '@n8n/config';
+import { mock } from 'vitest-mock-extended';
 import * as client from 'openid-client';
 
 describe('OIDC discovery (real HTTP round-trip through the factory)', () => {
 	let idpServer: LocalServer;
 
 	const buildCustomFetch = () => {
-		const outboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>());
+		const outboundHttp = new OutboundHttp(
+			mock<SsrfProtectionService>(),
+			mock<SsrfProtectionConfig>({ enabled: true }),
+			mock<Logger>(),
+		);
 		return outboundHttp
-			.transport({ ssrf: 'disabled' })
+			.transport({ useDefaultSsrfPolicy: 'unsafe' })
 			.asCustomFetch() as unknown as client.CustomFetch;
 	};
 

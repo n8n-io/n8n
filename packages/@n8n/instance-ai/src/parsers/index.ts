@@ -3,7 +3,7 @@
  *
  * This entry point intentionally avoids importing anything from `../agent`
  * or other native agent-tainted modules so it remains safe to consume from
- * Jest CJS test environments.
+ * downstream test environments.
  */
 
 export {
@@ -26,6 +26,15 @@ export {
 	getSupportedAttachmentMimeTypes,
 	isSupportedAttachmentMimeType,
 	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
 	UnsupportedAttachmentError,
+	OversizedAttachmentError,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from './validate-attachments';
-export type { UnsupportedAttachmentDetail } from './validate-attachments';
+export type {
+	UnsupportedAttachmentDetail,
+	OversizedAttachmentDetail,
+	OversizedAttachmentReason,
+} from './validate-attachments';

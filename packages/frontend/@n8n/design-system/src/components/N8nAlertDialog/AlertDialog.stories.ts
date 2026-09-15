@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import { N8nAlertDialog } from '@n8n/design-system/components/N8nAlertDialog';
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import { N8nAlertDialog } from './index';
+import N8nButton from '../N8nButton/Button.vue';
 
 const meta = {
 	title: 'Core/AlertDialog',
@@ -28,7 +28,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Basic = {
+export const Default = {
 	render: () => ({
 		components: {
 			N8nAlertDialog,
@@ -43,7 +43,7 @@ export const Basic = {
 			return { isOpen, handleConfirm };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Save" @click="isOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isOpen"
@@ -75,7 +75,7 @@ export const Destructive = {
 			return { isOpen, handleDelete };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Delete" variant="danger" @click="isOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isOpen"
@@ -113,7 +113,7 @@ export const WithLoading = {
 			return { loading, isOpen, handleAction };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
+		<div>
 			<N8nButton label="Start Process" @click="isOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isOpen"
@@ -143,7 +143,7 @@ export const Sizes = {
 			return { isSmallOpen, isMediumOpen };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; justify-content: center; padding: 40px;">
+		<div style="display: flex; gap: 16px;">
 			<N8nButton label="Small" variant="outline" @click="isSmallOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isSmallOpen"
@@ -164,5 +164,43 @@ export const Sizes = {
 	}),
 	args: {
 		title: 'Small Dialog',
+	},
+} satisfies Story;
+
+export const Variants = {
+	render: () => ({
+		components: {
+			N8nAlertDialog,
+			N8nButton,
+		},
+		setup() {
+			const isSolidOpen = ref(false);
+			const isDestructiveOpen = ref(false);
+			return { isSolidOpen, isDestructiveOpen };
+		},
+		template: `
+		<div style="display: flex; gap: 16px;">
+			<N8nButton label="Solid" @click="isSolidOpen = true" />
+			<N8nAlertDialog
+				v-model:open="isSolidOpen"
+				title="Save changes?"
+				description="Your changes will be saved to the server."
+				action-label="Save"
+				action-variant="solid"
+			/>
+
+			<N8nButton label="Destructive" variant="danger" @click="isDestructiveOpen = true" />
+			<N8nAlertDialog
+				v-model:open="isDestructiveOpen"
+				title="Delete item?"
+				description="This action cannot be undone."
+				action-label="Delete"
+				action-variant="destructive"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		title: 'Save changes?',
 	},
 } satisfies Story;

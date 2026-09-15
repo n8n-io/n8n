@@ -1,24 +1,27 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
+import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
-import { Logger } from '@n8n/backend-common';
+import { PublicApiControllerRegistry } from './public-api-controller.registry';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
-
-import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+import './v1/controllers';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:
@@ -121,6 +124,117 @@ function createLazySwaggerMiddleware(
 	};
 }
 
+// Minimal shapes of the express-openapi-validator resolver arguments we depend on.
+interface EovRoute {
+	basePath: string;
+	expressRoute: string;
+	openApiRoute: string;
+	method: string;
+}
+interface EovOperation {
+	operationId?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
+	'x-eov-operation-id'?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
+	'x-eov-operation-handler'?: string;
+}
+interface EovApiDoc {
+	paths?: Record<string, Record<string, EovOperation>>;
+}
+
+/**
+ * Test-only express-openapi-validator operation-handler resolver. It is wired in **only** under
+ * Vitest (see `operationHandlers` below); production and e2e keep a sync `require()` resolver
+ * so runtime behaviour stays on Node's CJS loader.
+ *
+ * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
+ * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
+ * Node's `require` — so `require()` throws and every route 500s.
+ *
+ * Both resolvers return a no-op when `x-eov-operation-handler` is absent — those routes are
+ * owned by `@PublicApiController` (mounted before eov).
+ */
+async function importOperationHandlerResolver(
+	handlersPath: string,
+	routeArg: unknown,
+	apiDocArg: unknown,
+): Promise<unknown> {
+	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'import');
+}
+
+function requireOperationHandlerResolver(
+	handlersPath: string,
+	routeArg: unknown,
+	apiDocArg: unknown,
+): unknown {
+	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'require');
+}
+
+function controllerOwnedNoopHandler() {
+	return [
+		(_req: unknown, _res: unknown, next: (error?: unknown) => void) => {
+			next();
+		},
+	];
+}
+
+function resolveOperationHandler(
+	handlersPath: string,
+	routeArg: unknown,
+	apiDocArg: unknown,
+	loader: 'import' | 'require',
+): unknown | Promise<unknown> {
+	const route = routeArg as EovRoute;
+	const apiDoc = apiDocArg as EovApiDoc;
+	const pathKey = route.openApiRoute.substring(route.basePath.length);
+	const operation = apiDoc.paths?.[pathKey]?.[route.method.toLowerCase()];
+	const operationId = operation?.['x-eov-operation-id'] ?? operation?.operationId;
+	const handlerModule = operation?.['x-eov-operation-handler'];
+
+	if (!handlerModule) {
+		return controllerOwnedNoopHandler();
+	}
+
+	if (!operationId) {
+		throw new UnexpectedError(`Missing operation id for [${route.method}] ${route.expressRoute}`);
+	}
+
+	const modulePath = path.join(handlersPath, handlerModule);
+
+	if (loader === 'require') {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const imported = require(modulePath) as Record<string, unknown> & {
+			default?: Record<string, unknown>;
+		};
+		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
+		if (!handler) {
+			throw new UnexpectedError(
+				`Could not find handler '${operationId}' in module '${modulePath}'`,
+			);
+		}
+		return handler;
+	}
+
+	return (async () => {
+		const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
+			default?: Record<string, unknown>;
+		};
+		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
+		if (!handler) {
+			throw new UnexpectedError(
+				`Could not find handler '${operationId}' in module '${modulePath}'`,
+			);
+		}
+		return handler;
+	})();
+}
+
+function createPublicControllerMiddleware(version: string): RequestHandler {
+	const router = express.Router({ mergeParams: true });
+	Container.get(PublicApiControllerRegistry).activate(router, version);
+	return router;
+}
+
 function createLazyValidatorMiddleware(
 	openApiSpecPath: string,
 	handlersDirectory: string,
@@ -165,7 +279,15 @@ function createLazyValidatorMiddleware(
 				router.use(
 					openApiValidatorMiddleware({
 						apiSpec: openApiSpecPath,
-						operationHandlers: handlersDirectory,
+						// Production/e2e use eov's default resolver (synchronous `require`). Under Vitest,
+						// where handler modules are `.ts` served by Vite, swap in an `import()`-based
+						// resolver so route handlers can load. See `importOperationHandlerResolver`.
+						operationHandlers: {
+							basePath: handlersDirectory,
+							resolver: process.env.VITEST
+								? importOperationHandlerResolver
+								: requireOperationHandlerResolver,
+						},
 						validateRequests: true,
 						validateApiSpec: true,
 						fileUploader: createN8nPackageMulterOptions(globalConfig),
@@ -200,6 +322,7 @@ function createLazyValidatorMiddleware(
 							handlers: {
 								ApiKeyAuth: authenticate,
 								BearerAuth: authenticate,
+								CookieAuth: authenticate,
 							},
 						},
 					}),
@@ -231,6 +354,9 @@ function createApiRouter(
 	}
 
 	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+		// Public, read-only spec with no auth or sensitive data - safe to expose
+		// cross-origin for documentation playgrounds
+		res.header('Access-Control-Allow-Origin', '*');
 		res.sendFile(openApiSpecPath);
 	});
 
@@ -249,16 +375,19 @@ function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
+		createPublicControllerMiddleware(version),
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
 	const publicApiErrorHandler: ErrorRequestHandler = (
 		error: Error,
-		_req: express.Request,
+		req: express.Request,
 		res: express.Response,
 		_next: express.NextFunction,
 	) => {
-		sendPublicApiErrorResponse(res, error);
+		sendPublicApiErrorResponse(res, error, {
+			hasSessionCookie: Boolean(req.cookies?.[AUTH_COOKIE_NAME]),
+		});
 	};
 
 	apiController.use(publicApiErrorHandler);
@@ -285,6 +414,12 @@ export const loadPublicApiVersions = async (
 	};
 };
 
-export function isApiEnabled(): boolean {
+/**
+ * Whether API-key (token) based authentication is accepted on the public API.
+ * Public API routes are always registered regardless of this flag — the UI
+ * authenticates against them with the user's session cookie instead, which
+ * must keep working even when token-based access is disabled.
+ */
+export function isApiKeyAuthEnabled(): boolean {
 	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
 }

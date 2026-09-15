@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ActiveWorkflowTriggers,
 	SpanStatus,
@@ -18,6 +19,9 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
+import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-execution-context.factory';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -35,6 +39,8 @@ export interface PreparedNonWebhookTriggerRegistration {
 	additionalData: IWorkflowExecuteAdditionalData;
 	getTriggerFunctions: IGetExecuteTriggerFunctions;
 	getPollFunctions: IGetExecutePollFunctions;
+	/** This activation attempt's rule collection, committed or discarded per node by {@link NonWebhookTriggerRegistrar.register}. */
+	scheduleCollectionSession: ScheduleTriggerCollectionSession;
 }
 
 /**
@@ -46,6 +52,8 @@ export class NonWebhookTriggerRegistrar {
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
+		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -79,6 +87,8 @@ export class NonWebhookTriggerRegistrar {
 			onTriggerFailure,
 		}: NonWebhookTriggerRegistrationContext,
 	) {
+		const scheduleCollectionSession = this.scheduleTriggerJobRegistrar.createSession();
+
 		const getTriggerFunctions = this.triggerExecutionContextFactory.getExecuteTriggerFunctions(
 			dbWorkflow,
 			additionalData,
@@ -86,6 +96,7 @@ export class NonWebhookTriggerRegistrar {
 			activationMode,
 			resolveWorkflowData,
 			onTriggerFailure,
+			scheduleCollectionSession,
 		);
 
 		const getPollFunctions = this.triggerExecutionContextFactory.getExecutePollFunctions(
@@ -102,6 +113,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		};
 	}
 
@@ -116,6 +128,7 @@ export class NonWebhookTriggerRegistrar {
 			additionalData,
 			getTriggerFunctions,
 			getPollFunctions,
+			scheduleCollectionSession,
 		}: PreparedNonWebhookTriggerRegistration,
 		nodeId: INode['id'],
 	) {
@@ -131,16 +144,21 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.addTriggers(
-					workflow.id,
-					workflow,
-					[nodeId],
-					additionalData,
-					executionMode,
-					activationMode,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
+				try {
+					await this.activeWorkflowTriggers.addTriggers(
+						workflow.id,
+						workflow,
+						[nodeId],
+						additionalData,
+						executionMode,
+						activationMode,
+						getTriggerFunctions,
+						getPollFunctions,
+					);
+					await scheduleCollectionSession.commit(workflow.id, nodeId);
+				} finally {
+					scheduleCollectionSession.discard(workflow.id, nodeId);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -148,9 +166,17 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	/**
-	 * Deregister one active, poll, or schedule trigger node from memory.
+	 * Deregister one active, poll, or schedule trigger node from memory, and drop
+	 * the durable jobs it provisioned. When a durable removal failure propagates
+	 * while the in-memory teardown is still pending, that teardown is handed to
+	 * `onDetached`: it may still mutate the registry when it settles, so the
+	 * caller must not release the workflow's lifecycle lock until it does.
 	 */
-	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
+	async deregister(
+		workflowId: WorkflowId,
+		nodeId: INode['id'],
+		onDetached?: (work: Promise<unknown>) => void,
+	) {
 		await this.tracing.startSpan(
 			{
 				name: 'Non-webhook trigger deregister',
@@ -161,10 +187,51 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				// Start the in-memory teardown now, but await it only after the durable
+				// removal below. The durable rows are database state the node no longer
+				// owns, so a durable failure must reach the caller for a retry even when
+				// the in-memory teardown never settles.
+				const inMemory = this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
+				// Logs an in-memory failure a durable failure would otherwise swallow, and
+				// keeps its rejection handled while the durable removal is awaited first.
+				void inMemory.catch((error: unknown) => {
+					this.logger.error('Failed to deregister a trigger node from memory', {
+						workflowId,
+						nodeId,
+						error: ensureError(error),
+					});
+				});
+
+				try {
+					await this.removeDurableJobs(workflowId, nodeId);
+				} catch (error) {
+					// The in-memory teardown may still be pending, so hand it back before
+					// this failure lets the caller release the lifecycle lock.
+					onDetached?.(inMemory);
+					throw ensureError(error);
+				}
+
+				try {
+					await inMemory;
+				} catch (error) {
+					throw ensureError(error);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private async removeDurableJobs(workflowId: WorkflowId, nodeId: INode['id']) {
+		const results = await Promise.allSettled([
+			this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId),
+			this.pollTriggerJobRegistrar.remove(workflowId, nodeId),
+		]);
+		const failure = results.find(
+			(result): result is PromiseRejectedResult => result.status === 'rejected',
+		);
+		if (failure) {
+			throw ensureError(failure.reason);
+		}
 	}
 }

@@ -1,64 +1,84 @@
-import * as fflate from 'fflate';
-import { ensureError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
+import { promisify } from 'node:util';
+import { inflateRaw } from 'node:zlib';
 
 import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
+import { DEFLATED, readCentralDirectory, STORED, type ZipEntry } from './ZipCentralDirectory';
+
+const inflateRawAsync = promisify(inflateRaw);
+
+async function extractEntry(
+	data: Buffer,
+	entry: ZipEntry,
+	budget: number,
+	maxOutputSize: number,
+): Promise<Buffer> {
+	const compressed = data.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
+
+	if (entry.compression === STORED) {
+		if (compressed.length > budget) throw new DecompressedSizeExceededError(maxOutputSize);
+		return Buffer.from(compressed);
+	}
+
+	if (entry.compression !== DEFLATED) {
+		throw new UserError(`unknown compression type ${entry.compression}`);
+	}
+
+	try {
+		// zlib rejects maxOutputLength: 0, so a zero budget is raised to 1 and
+		// enforced by the length check below instead
+		const bytes = await inflateRawAsync(compressed, { maxOutputLength: Math.max(budget, 1) });
+		if (bytes.length > budget) throw new DecompressedSizeExceededError(maxOutputSize);
+		return bytes;
+	} catch (error) {
+		if (error instanceof RangeError && 'code' in error && error.code === 'ERR_BUFFER_TOO_LARGE') {
+			throw new DecompressedSizeExceededError(maxOutputSize);
+		}
+		throw error;
+	}
+}
 
 /**
  * Decompress a zip archive with upper bounds on total output size and number of
- * entries.
+ * entries. Entries are inflated on the libuv thread pool via `zlib.inflateRaw`,
+ * so the main thread is never blocked, whatever the compression ratio.
  *
- * Extraction is driven by the archive's central directory, the authoritative
- * list of members, so only the archive's own files are returned. Entries that
- * happen to live inside a stored member (office documents such as xlsx/docx are
- * themselves zip archives) are never surfaced. The size and entry-count limits
- * are enforced from the central directory metadata, before any entry is
- * inflated.
+ * The bound is enforced against the bytes actually produced (`maxOutputLength`),
+ * not against the sizes the archive declares for itself. A declared size is
+ * still consulted first, so an entry that admits to being oversized costs
+ * nothing to reject, but it is never the last word: archives that overstate a
+ * size (an unresolved ZIP64 sentinel, say) must not fail, and archives that
+ * understate one must not yield a silently truncated member.
  */
 export async function boundedUnzip(
 	data: Buffer,
 	maxOutputSize: number,
 	maxEntries: number,
 ): Promise<Record<string, Buffer>> {
-	return await new Promise<Record<string, Buffer>>((resolve, reject) => {
-		let entryCount = 0;
-		let totalSize = 0;
-		let limitError: UserError | undefined;
+	const entries: ZipEntry[] = [];
+	for (const entry of readCentralDirectory(data)) {
+		// ZIP spec mandates '/' as path separator; a trailing slash marks a directory
+		if (entry.name.endsWith('/')) continue;
+		if (entries.length === maxEntries) {
+			throw new UserError(`The archive contains more than ${maxEntries} entries`);
+		}
+		entries.push(entry);
+	}
 
-		const filter = (file: fflate.UnzipFileInfo): boolean => {
-			if (limitError) return false;
-			// ZIP spec mandates '/' as path separator; a trailing slash marks a directory
-			if (file.name.endsWith('/')) return false;
+	// Entry names come from the archive, so the result must not carry a prototype
+	const result: Record<string, Buffer> = Object.create(null);
+	let totalSize = 0;
 
-			entryCount++;
-			if (entryCount > maxEntries) {
-				limitError = new UserError(`The archive contains more than ${maxEntries} entries`);
-				return false;
-			}
+	for (const entry of entries) {
+		const budget = maxOutputSize - totalSize;
+		if (entry.declaredSize !== undefined && entry.declaredSize > budget) {
+			throw new DecompressedSizeExceededError(maxOutputSize);
+		}
 
-			totalSize += file.originalSize;
-			if (totalSize > maxOutputSize) {
-				limitError = new DecompressedSizeExceededError(maxOutputSize);
-				return false;
-			}
+		const bytes = await extractEntry(data, entry, budget, maxOutputSize);
+		totalSize += bytes.length;
+		result[entry.name] = bytes;
+	}
 
-			return true;
-		};
-
-		fflate.unzip(data, { filter }, (error, unzipped) => {
-			if (limitError) {
-				reject(limitError);
-				return;
-			}
-			if (error) {
-				reject(ensureError(error));
-				return;
-			}
-
-			const result: Record<string, Buffer> = {};
-			for (const [name, bytes] of Object.entries(unzipped)) {
-				result[name] = Buffer.from(bytes);
-			}
-			resolve(result);
-		});
-	});
+	return result;
 }

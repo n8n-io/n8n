@@ -1,7 +1,5 @@
 import type { PubSub } from './pubsub/pubsub.types';
 
-export const QUEUE_NAME = 'jobs';
-
 export const JOB_TYPE_NAME = 'job';
 
 /** Pubsub channel for commands sent by a main process to workers or to other main processes. */
@@ -12,6 +10,12 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 
 /** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
 export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
+
+/**
+ * Max allowed size in bytes of a message relayed over the pubsub channel. Events
+ * exceeding this are skipped (or trimmed) rather than bloating the channel.
+ */
+export const MAX_PUBSUB_PAYLOAD_BYTES = 5 * 1024 * 1024; // 5 MiB
 
 /**
  * Commands that should be sent to the sender as well, e.g. during workflow activation and
@@ -32,11 +36,24 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
+	'relay-agent-execution-update',
+	'relay-agent-update',
+	'resume-agent-workflow-tool',
+	'cancel-agent-background-job',
+	'wake-agent-background-job',
+	'relay-instance-ai-event',
+	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',
+	'agent-chat-integration-changed',
+	// Correlated request/response pairs: the subscriber debounces by command name,
+	// so debouncing would collapse concurrent requests (or their acks) into one.
+	'agent-chat-leader-channel-request',
+	'agent-chat-leader-channel-result',
 	'cancel-test-run',
 	'stop-execution',
 	'display-workflow-activation',
 	'display-workflow-deactivation',
 	'display-workflow-activation-error',
+	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
 ]);

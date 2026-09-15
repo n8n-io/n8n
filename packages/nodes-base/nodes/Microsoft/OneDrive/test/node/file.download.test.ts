@@ -1,7 +1,7 @@
 import type { IncomingMessage } from 'http';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { type IHttpRequestMethods, type IExecuteFunctions, ApplicationError } from 'n8n-workflow';
+import { type IHttpRequestMethods, type IExecuteFunctions, UnexpectedError } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -20,7 +20,7 @@ vi.mock('../../GenericFunctions', async () => ({
 			};
 		}
 		if (resource === '/drive/items/fileID/content') {
-			throw new ApplicationError('Error');
+			throw new UnexpectedError('Error');
 		}
 	}),
 }));

@@ -60,6 +60,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -120,6 +123,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -178,6 +184,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('from@example.com')
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
@@ -240,6 +249,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('from@example.com')
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
@@ -325,6 +337,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -392,6 +407,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -456,6 +474,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -492,6 +513,9 @@ describe('Test Mailgun node', () => {
 				.mockReturnValueOnce('to@example.com')
 				.mockReturnValueOnce('')
 				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('')
 				.mockReturnValueOnce('Test Subject')
 				.mockReturnValueOnce('Test text')
 				.mockReturnValueOnce('<p>Test HTML</p>')
@@ -508,6 +532,55 @@ describe('Test Mailgun node', () => {
 				expect.objectContaining({
 					formData: expect.not.objectContaining({
 						attachment: expect.anything(),
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('Reply-To, custom headers, and tags', () => {
+		it('should send Reply-To, custom headers (h:), and tags (o:tag) in formData', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ type: 'n8n-nodes-base.mailgun' } as any);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				apiDomain: 'api.mailgun.net',
+				emailDomain: 'example.com',
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('reply@example.com')
+				.mockReturnValueOnce({
+					headers: [
+						{ name: 'X-Custom-Header', value: 'custom-value' },
+						{ name: 'X-Another', value: 'another-value' },
+					],
+				})
+				.mockReturnValueOnce('tag1, tag2, tag3')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('Test text')
+				.mockReturnValueOnce('<p>Test HTML</p>')
+				.mockReturnValueOnce('');
+
+			mockRequestWithAuthentication.mockResolvedValue({ id: 'test-message-id' });
+			mockReturnJsonArray.mockImplementation((data: any) => [{ json: data }]);
+			mockConstructExecutionMetaData.mockImplementation((data: any) => data);
+
+			await mailgunNode.execute.call(mockExecuteFunctions);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'mailgunApi',
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						'h:Reply-To': 'reply@example.com',
+						'h:X-Custom-Header': 'custom-value',
+						'h:X-Another': 'another-value',
+						'o:tag': ['tag1', 'tag2', 'tag3'],
 					}),
 				}),
 			);

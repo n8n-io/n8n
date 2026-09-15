@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -12,7 +13,7 @@ import type {
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {

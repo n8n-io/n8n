@@ -220,7 +220,7 @@ describe('pluginRegistry singleton', () => {
 
 	it('returns the same instance on multiple imports', async () => {
 		// Import again to verify the module-level singleton is shared across imports
-		const { pluginRegistry: anotherRegistry } = await import('./registry');
+		const { pluginRegistry: anotherRegistry } = await import('./registry.js');
 		expect(anotherRegistry).toBe(pluginRegistry);
 	});
 });

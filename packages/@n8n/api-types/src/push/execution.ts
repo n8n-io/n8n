@@ -54,11 +54,45 @@ export type ExecutionRecovered = {
 	};
 };
 
+export type AgentNodeCapability =
+	| { kind: 'tool'; name: string }
+	| { kind: 'skill'; id: string; name?: string }
+	| { kind: 'skill'; id?: never; name: string };
+
+export type AgentNodeProgress = {
+	type: 'agentNodeProgress';
+	data: {
+		executionId: string;
+		nodeId: string;
+		nodeName: string;
+		runIndex: number;
+		itemIndex: number;
+		sequenceNumber: number;
+		toolCallId: string;
+		capability: AgentNodeCapability;
+		status: 'running' | 'succeeded' | 'failed';
+	};
+};
+
 export type NodeExecuteBefore = {
 	type: 'nodeExecuteBefore';
 	data: {
 		executionId: string;
 		nodeName: string;
+		/**
+		 * Monotonic counter over this execution *segment*'s `nodeExecuteBefore` and
+		 * `nodeExecuteAfter` events, assigned in engine order by the instance
+		 * running the workflow. Lets the UI order node events that arrive late or
+		 * out of order (e.g. after a suspended background tab resumes) and render
+		 * only the latest node as executing.
+		 *
+		 * Scoped to a segment, not the whole execution: the counter restarts at 0
+		 * for each run, including when a waiting execution (Wait/Form node) resumes
+		 * — resuming rebuilds the push hooks with a fresh counter. Only compare
+		 * sequence numbers within a segment; ordering does not carry across a resume
+		 * boundary. Unique per event within a segment; starts at 0.
+		 */
+		sequenceNumber: number;
 		data: ITaskStartedData;
 	};
 };
@@ -72,6 +106,8 @@ export type NodeExecuteAfter = {
 	data: {
 		executionId: string;
 		nodeName: string;
+		/** Per-segment monotonic counter — see {@link NodeExecuteBefore}. */
+		sequenceNumber: number;
 		/**
 		 * The data field for task data in `NodeExecuteAfter` is always trimmed (undefined).
 		 */
@@ -108,6 +144,7 @@ export type ExecutionPushMessage =
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
+	| AgentNodeProgress
 	| NodeExecuteBefore
 	| NodeExecuteAfter
 	| NodeExecuteAfterData;

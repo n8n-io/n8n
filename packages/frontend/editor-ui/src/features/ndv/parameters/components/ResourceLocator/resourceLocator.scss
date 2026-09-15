@@ -112,6 +112,7 @@ $--mode-selector-width: 92px;
 .selectInput input {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	min-height: 30px;
 }
 
 .selectIcon {

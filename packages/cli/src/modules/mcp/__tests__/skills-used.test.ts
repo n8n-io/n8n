@@ -48,13 +48,47 @@ describe('sanitizeSkillsUsed', () => {
 				'workflow-builder',
 				'has spaces',
 				'has/slash',
-				'has:colon',
 				'unicode-‑hyphen',
 				'contains "quote"',
 				'-starts-with-dash',
 				'.starts-with-dot',
 			]),
 		).toEqual(['workflow-builder']);
+	});
+
+	test('keeps plugin-prefixed identifiers', () => {
+		expect(
+			sanitizeSkillsUsed(['n8n-skills:workflow-builder', 'community-plugin:node-selection']),
+		).toEqual(['n8n-skills:workflow-builder', 'community-plugin:node-selection']);
+	});
+
+	test('trims and lowercases plugin-prefixed identifiers', () => {
+		expect(sanitizeSkillsUsed(['  N8N-Skills:Workflow-Builder  '])).toEqual([
+			'n8n-skills:workflow-builder',
+		]);
+	});
+
+	test('keeps prefixed and unprefixed variants of the same skill as distinct entries', () => {
+		expect(sanitizeSkillsUsed(['workflow-builder', 'n8n-skills:workflow-builder'])).toEqual([
+			'workflow-builder',
+			'n8n-skills:workflow-builder',
+		]);
+	});
+
+	test('drops malformed plugin-prefixed identifiers', () => {
+		expect(
+			sanitizeSkillsUsed([
+				'n8n-skills:workflow-builder',
+				':missing-prefix',
+				'missing-name:',
+				'double::colon',
+				'too:many:colons',
+				'n8n-skills:has spaces',
+				'-bad-prefix:workflow-builder',
+				`${'a'.repeat(65)}:workflow-builder`,
+				`n8n-skills:${'a'.repeat(65)}`,
+			]),
+		).toEqual(['n8n-skills:workflow-builder']);
 	});
 
 	test('drops non-string entries', () => {

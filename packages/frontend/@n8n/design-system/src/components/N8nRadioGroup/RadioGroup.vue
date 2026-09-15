@@ -1,91 +1,66 @@
-<script lang="ts">
-export interface RadioGroupOption<Value extends string = string> {
-	value: Value;
-	label: string;
-	/** Optional helper text rendered under the label. */
-	description?: string;
-	disabled?: boolean;
-	/** Forwarded to the radio item element as `data-test-id`. */
-	testId?: string;
-}
-</script>
+<script setup lang="ts">
+import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { computed, provide, ref, useAttrs } from 'vue';
 
-<script lang="ts" setup generic="Value extends string">
-import { RadioGroupIndicator, RadioGroupItem, RadioGroupRoot } from 'reka-ui';
+import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
+import type { RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
+import { RadioGroupRoot, useForwardProps } from './reka-ui';
 
-const props = withDefaults(
-	defineProps<{
-		modelValue?: Value;
-		options: Array<RadioGroupOption<Value>>;
-		/** @default vertical */
-		orientation?: 'vertical' | 'horizontal';
-		disabled?: boolean;
-		name?: string;
-		/** Accessible name for the radio group. */
-		ariaLabel?: string;
-	}>(),
-	{
-		orientation: 'vertical',
-		disabled: false,
-	},
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const rootClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+
+const props = withDefaults(defineProps<Omit<RadioGroupProps, 'modelValue'>>(), {
+	orientation: 'vertical',
+	disabled: false,
+});
+
+defineSlots<RadioGroupSlots>();
+
+const modelValue = defineModel<RadioGroupProps['modelValue']>();
+
+const rootProps = useForwardProps(
+	reactivePick(props, 'disabled', 'orientation', 'name', 'required', 'loop', 'dir', 'defaultValue'),
 );
 
-const emit = defineEmits<{
-	'update:modelValue': [value: Value];
-}>();
+// reka-ui selects on arrow keys by listening on window (bubble phase): when roving focus
+// moves to the next radio it programmatically clicks it. Parent containers that call
+// stopPropagation on keydown (e.g. Modal.vue's @keydown.stop) prevent the event reaching
+// window, so focus moves but the value does not update. We track arrow keys in capture
+// phase here (before stopPropagation runs) and share the flag with RadioGroupItem, which
+// clicks the focused radio on focusin when navigation came from an arrow key.
+const arrowKeyPressed = ref(false);
+provide(radioGroupArrowKeyPressedKey, arrowKeyPressed);
 
-defineSlots<{
-	/** Override the rendered content of a single option (label + description by default). */
-	option?: (props: RadioGroupOption<Value>) => unknown;
-}>();
-
-function onValueChange(value: string) {
-	const option = props.options.find((o) => o.value === value);
-	if (option && !option.disabled) {
-		emit('update:modelValue', option.value);
+function onKeyDownCapture(event: KeyboardEvent) {
+	if (RADIO_GROUP_ARROW_KEYS.includes(event.key as (typeof RADIO_GROUP_ARROW_KEYS)[number])) {
+		arrowKeyPressed.value = true;
 	}
+}
+
+function onKeyUp() {
+	arrowKeyPressed.value = false;
 }
 </script>
 
 <template>
 	<RadioGroupRoot
-		:model-value="modelValue"
-		:disabled="disabled"
-		:orientation="orientation"
-		:name="name"
-		:aria-label="ariaLabel"
-		:class="[$style.root, $style[orientation]]"
-		@update:model-value="onValueChange"
+		v-bind="{ ...rootProps, ...rootAttrs }"
+		v-model="modelValue"
+		:class="[$style.root, $style[orientation], rootClass]"
+		@keydown.capture="onKeyDownCapture"
+		@keyup="onKeyUp"
 	>
-		<RadioGroupItem
-			v-for="option in options"
-			:key="option.value"
-			:value="option.value"
-			:disabled="disabled || option.disabled"
-			:class="$style.item"
-			:data-test-id="option.testId"
-		>
-			<span :class="$style.circle">
-				<RadioGroupIndicator :class="$style.dot" />
-			</span>
-			<span :class="$style.content">
-				<slot name="option" v-bind="option">
-					<span :class="$style.label">{{ option.label }}</span>
-					<span v-if="option.description" :class="$style.description">{{
-						option.description
-					}}</span>
-				</slot>
-			</span>
-		</RadioGroupItem>
+		<slot />
 	</RadioGroupRoot>
 </template>
 
-<style lang="scss" module>
-@use '../../css/mixins/focus';
-
+<style module>
 .root {
 	display: flex;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 }
 
 .vertical {
@@ -95,78 +70,7 @@ function onValueChange(value: string) {
 
 .horizontal {
 	flex-direction: row;
+	flex-wrap: wrap;
 	align-items: center;
-}
-
-.item {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	margin: 0;
-	padding: var(--spacing--4xs) 0;
-	background: transparent;
-	border: none;
-	text-align: left;
-	color: var(--color--text);
-	font: inherit;
-	line-height: 1.3;
-	cursor: pointer;
-	border-radius: var(--radius--sm);
-
-	&:focus-visible {
-		@include focus.focus-ring;
-		outline-offset: 2px;
-	}
-
-	&[data-disabled] {
-		cursor: not-allowed;
-		opacity: 0.5;
-	}
-}
-
-.circle {
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 16px;
-	height: 16px;
-	border: 1px solid var(--color--foreground--shade-1);
-	border-radius: var(--radius--full);
-	transition: border-color 0.15s ease;
-
-	.item:hover:not([data-disabled]) & {
-		border-color: var(--color--primary);
-	}
-
-	.item[data-state='checked'] & {
-		border-color: var(--color--primary);
-	}
-}
-
-.dot {
-	width: 8px;
-	height: 8px;
-	border-radius: var(--radius--full);
-	background-color: var(--color--primary);
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.label {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-}
-
-.description {
-	font-size: var(--font-size--2xs);
-	// Use the base text color (not a lighter tint) so the description keeps
-	// WCAG AA contrast; the smaller font size provides the visual hierarchy.
-	color: var(--color--text);
 }
 </style>

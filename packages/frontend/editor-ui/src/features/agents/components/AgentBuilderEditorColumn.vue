@@ -1,22 +1,32 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import { N8nCard, N8nIcon, N8nTabs, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
-import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import type {
+	AgentJsonConfig,
+	AgentJsonVectorStoreConfig,
+	AgentResource,
+	AgentSkill,
+} from '../types';
+import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentTriggersSection from './AgentTriggersSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
-import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
+import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
+import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentPanel from './AgentPanel.vue';
+import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -32,30 +42,50 @@ const props = defineProps<{
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
-	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
+	/** `agent:execute`, which a project viewer holds without holding update. */
+	canExecuteAgent?: boolean;
+	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
+	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
+	artifactMode?: boolean;
+	/** No agent row exists yet, so agent-scoped endpoints would 404. */
+	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
+	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
-const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
+const childrenDisabled = computed(() => !props.canEditAgent);
+const isKnowledgeAdvancedExpanded = ref(false);
+
+const settingsStore = useSettingsStore();
+const isMcpAvailable = computed(
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'add-tool': [];
+	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
+	'add-vector-store': [];
+	'edit-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
+	'remove-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'generate-eval-cases': [];
+	'open-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -68,26 +98,17 @@ const i18n = useI18n();
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="$style.panelArea">
-			<div :class="$style.panelAreaContainer">
-				<div :class="$style.panelHeaderRow">
-					<AgentIdentityHeader
-						v-if="activeMainTab === 'agent'"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentPanelHeader
-						v-else-if="activeMainTab === 'executions'"
-						:title="i18n.baseText('agents.builder.header.tab.executions')"
-						:description="executionsDescription"
-					/>
-					<AgentPanelHeader
-						v-else-if="activeMainTab === 'raw'"
-						:title="i18n.baseText('agents.builder.header.tab.raw')"
-						:description="i18n.baseText('agents.builder.raw.description')"
-					/>
-					<div v-else />
-					<N8nRadioButtons
+			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
+				<AgentIdentityHeader
+					:config="localConfig"
+					:disabled="childrenDisabled"
+					:class="$style.identityHeader"
+					@update:config="emit('update:config', $event)"
+				/>
+			</div>
+			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
+				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
+					<N8nTabs
 						:model-value="activeMainTab"
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
@@ -95,46 +116,162 @@ const i18n = useI18n();
 						@update:model-value="emit('update:activeMainTab', $event)"
 					/>
 				</div>
+			</div>
+			<div :class="$style.panelAreaContainer">
+				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						@update:config="emit('update:config', $event)"
+					/>
 
-				<div v-if="activeMainTab === 'agent'" :class="$style.agentCards">
-					<N8nCard variant="outlined" :class="$style.card">
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.triggers.title')"
+						:description="i18n.baseText('agents.builder.triggers.description')"
+					>
+						<template #header-actions>
+							<N8nButton
+								variant="subtle"
+								icon="play"
+								size="medium"
+								:disabled="childrenDisabled"
+								:label="i18n.baseText('agents.builder.preview.button')"
+								data-testid="agent-triggers-preview-chat-button"
+								@click="emit('open-preview')"
+							/>
+						</template>
+						<AgentTriggersSection
+							:key="`${projectId}:${agentId}`"
+							:connected-triggers="connectedTriggers"
+							:disabled="childrenDisabled"
+							:agent-id="agentId"
+							:project-id="projectId"
+							:is-published="Boolean(agent?.activeVersionId)"
+							:validation-issues="configValidationIssues ?? []"
+							:simple-channel-setup="artifactMode"
+							:agent-unsaved="agentUnsaved"
+							:ensure-agent-persisted="ensureAgentPersisted"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
+							@update:connected-triggers="emit('update:connected-triggers', $event)"
+							@trigger-added="emit('trigger-added', $event)"
+							@agent-changed="emit('agent-changed')"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.capabilities.title')"
+						:description="i18n.baseText('agents.builder.capabilities.description')"
+					>
 						<AgentCapabilitiesSection
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
-							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
-							:task-refs="localConfig?.tasks ?? []"
-							:reload-key="tasksReloadKey"
+							:validation-issues="configValidationIssues ?? []"
+							:agent-unsaved="agentUnsaved"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
-							@add-tool="emit('add-tool')"
+							@add-tool="emit('add-tool', $event)"
 							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
-							@update:connected-triggers="emit('update:connected-triggers', $event)"
-							@trigger-added="emit('trigger-added', $event)"
-							@toggle-task="emit('toggle-task', $event)"
-							@tasks-changed="emit('tasks-changed')"
-							@agent-changed="emit('agent-changed')"
 						/>
-					</N8nCard>
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentInfoPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							embedded
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
+					</AgentPanel>
 
-					<N8nCard variant="outlined" :class="$style.card">
+					<AgentMemoryPanel
+						v-if="canEditAgent"
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						data-testid="agent-memory-panel"
+						@update:config="emit('update:config', $event)"
+					/>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'knowledge'"
+					data-testid="agent-knowledge-tab-content"
+				>
+					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
+						:files="agentFiles"
+						:disabled="childrenDisabled"
+						:loading="agentFilesLoading"
+						:uploading="agentFilesUploading"
+						:deleting-file-id="deletingAgentFileId"
+						data-testid="agent-files-card"
+						@upload-files="emit('upload-files', $event)"
+						@delete-file="emit('delete-file', $event)"
+					/>
+					<div
+						:class="$style.advancedSection"
+						:data-state="isKnowledgeAdvancedExpanded ? 'open' : 'closed'"
+					>
+						<button
+							type="button"
+							:class="$style.advancedTrigger"
+							:aria-expanded="isKnowledgeAdvancedExpanded"
+							data-testid="agent-knowledge-advanced-trigger"
+							@click="isKnowledgeAdvancedExpanded = !isKnowledgeAdvancedExpanded"
+						>
+							<N8nText
+								tag="h3"
+								bold
+								:class="$style.title"
+								data-testid="agent-knowledge-tab-content-advanced"
+							>
+								{{ i18n.baseText('agents.builder.knowledge.advanced.title') }}
+							</N8nText>
+							<N8nIcon
+								icon="chevron-down"
+								size="small"
+								:class="$style.chevron"
+								data-testid="agent-knowledge-advanced-chevron"
+							/>
+						</button>
+						<div
+							v-if="isKnowledgeAdvancedExpanded"
+							:class="$style.advancedContent"
+							data-testid="agent-knowledge-advanced-content"
+						>
+							<AgentVectorStoresPanel
+								:vector-stores="localConfig?.vectorStores ?? []"
+								:disabled="childrenDisabled"
+								data-testid="agent-vector-stores-card"
+								@connect="emit('add-vector-store')"
+								@edit="emit('edit-vector-store', $event)"
+								@remove="emit('remove-vector-store', $event)"
+							/>
+						</div>
+					</div>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'sessions'"
+					data-testid="agent-sessions-tab-content"
+				>
+					<AgentSessionsListView
+						:embedded="true"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:manage-store-lifecycle="false"
+						data-testid="agent-executions-panel"
+					/>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'settings'"
+					data-testid="agent-settings-tab-content"
+				>
+					<div :class="$style.settingsCards">
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
@@ -142,137 +279,186 @@ const i18n = useI18n();
 							:agent-id="agentId"
 							@update:config="emit('update:config', $event)"
 						/>
-					</N8nCard>
-
-					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
-						<AgentFilesPanel
-							:files="agentFiles"
-							:disabled="childrenDisabled"
-							:loading="agentFilesLoading"
-							:uploading="agentFilesUploading"
-							:deleting-file-id="deletingAgentFileId"
-							data-testid="agent-files-card"
-							@upload-files="emit('upload-files', $event)"
-							@delete-file="emit('delete-file', $event)"
-						/>
-					</N8nCard>
-
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentMemoryPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							embedded
-							data-testid="agent-memory-panel"
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
-
-					<N8nCard variant="outlined" :class="$style.card">
+						<N8nCard
+							v-if="isMcpAvailable"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
+							<AgentMcpPanel
+								:available-in-mcp="agentAvailableInMcp ?? false"
+								:disabled="childrenDisabled"
+								data-testid="agent-mcp-panel"
+								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
+							/>
+						</N8nCard>
 						<AgentAdvancedPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
-							collapsible
+							:project-id="projectId"
 							@update:config="emit('update:config', $event)"
 						/>
-					</N8nCard>
-				</div>
+					</div>
+				</AgentBuilderTabPanel>
 
-				<AgentSessionsListView
-					v-else-if="activeMainTab === 'executions'"
-					data-testid="agent-executions-panel"
-				/>
-
-				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
-					<AgentJsonEditor
-						:value="localConfig"
-						:read-only="childrenDisabled"
-						copy-button-test-id="agent-config-json-copy"
-						@update:value="emit('update:config', $event)"
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'evals'"
+					data-testid="agent-evals-tab-content"
+				>
+					<AgentEvalsSection
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-unsaved="agentUnsaved"
+						:disabled="childrenDisabled"
+						:can-run="canExecuteAgent"
+						:generating="generatingEvalCases"
+						@generate="emit('generate-eval-cases')"
 					/>
-				</div>
+				</AgentBuilderTabPanel>
 			</div>
 		</div>
 	</section>
 </template>
 
 <style lang="scss" module>
+.advancedSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.advancedTrigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	width: 100%;
+	padding: var(--spacing--xs) 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius--sm);
+	}
+}
+
+.title {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	font-weight: var(--font-weight--medium);
+}
+
+.advancedTrigger h3 {
+	margin: 0;
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	transform: rotate(0deg);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.advancedSection[data-state='open'] .chevron {
+	transform: rotate(180deg);
+}
+
+.advancedContent {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--background--surface);
+	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
 	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
 
 .panelArea {
+	--agent-builder-content-max-width: 56rem;
+	--agent-builder-content-padding-inline: var(--spacing--2xl);
+
 	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	scrollbar-gutter: stable;
 }
 
 .panelAreaContainer {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	max-width: 72rem;
+	flex: 1;
+	min-height: 0;
+	box-sizing: border-box;
+	max-width: var(--agent-builder-content-max-width);
 	width: 100%;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--lg) var(--agent-builder-content-padding-inline);
 	margin: 0 auto;
-	height: 100%;
 }
 
-.panelHeaderRow {
+.settingsCards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	width: 100%;
+}
+
+.settingsCard.settingsCard {
+	--card--padding: var(--spacing--sm);
+
+	align-items: stretch;
+	background-color: var(--background--surface);
+}
+
+.identityHeaderRow {
+	flex-shrink: 0;
+	display: flex;
+	width: 100%;
+}
+
+.identityHeader {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: var(--agent-builder-content-max-width);
+	margin: 0 auto;
+	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.tabsRow {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--lg);
-	padding: var(--spacing--lg) var(--spacing--lg) 0;
-
-	> *:first-child {
-		width: 100%;
-	}
-
-	> .mainTabs {
-		margin-left: auto;
-	}
+	width: 100%;
 }
 
-.rawPanel {
-	display: flex;
-	flex: 1;
-	min-height: 0;
+.tabsRule {
+	box-sizing: border-box;
 	width: 100%;
-	padding: var(--spacing--lg);
-}
-
-.agentCards {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	padding: var(--spacing--lg);
-	width: 100%;
+	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
+	padding: 0 var(--agent-builder-content-padding-inline);
 }
 
-.panel {
-	display: flex;
-	flex-direction: column;
+.mainTabs {
 	width: 100%;
-}
+	border-bottom: var(--border);
 
-.card {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
+	:global([data-test-id='tab-agent'] > *) {
+		padding-left: 0;
+	}
 }
 </style>

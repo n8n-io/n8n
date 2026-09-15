@@ -10,7 +10,7 @@ describe('TaskRunnerProcess', () => {
 	// Restarting the runner spawns a fresh `node` child process and waits for the
 	// full WebSocket handshake. Under CI load this can take longer than the default
 	// per-test timeout, so give this spawn-heavy suite extra headroom.
-	jest.setTimeout(30_000);
+	vi.setConfig({ testTimeout: 30_000 });
 
 	// Every `start()` spawns a `node` child process and waits for the WebSocket
 	// handshake to complete. Under CI load that can comfortably exceed the default

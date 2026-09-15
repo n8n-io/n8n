@@ -68,12 +68,16 @@ test.describe(
 		});
 
 		// Direct DB access (services.postgres) is only available on the postgres
-		// infra modes, so this test is skipped under sqlite.
+		// infra modes, so this test is skipped under sqlite. We probe
+		// `n8nContainer.serviceResults.postgres` rather than `services.postgres`
+		// because the latter is a lazy helper that throws when postgres is absent,
+		// which would error the test on sqlite instead of skipping it.
 		test('reconciles a webhook that went missing from storage on re-publish', async ({
 			api,
 			services,
+			n8nContainer,
 		}) => {
-			test.skip(!services.postgres, 'requires direct postgres access');
+			test.skip(!n8nContainer.serviceResults.postgres, 'requires direct postgres access');
 
 			const { workflowId, webhookPath } = await api.workflows.importWorkflowFromFile(
 				'simple-webhook-test.json',

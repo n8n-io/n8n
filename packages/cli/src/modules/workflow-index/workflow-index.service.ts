@@ -4,13 +4,8 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import {
-	DATA_TABLE_NODE_TYPES,
-	ensureError,
-	INode,
-	IWorkflowBase,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { DATA_TABLE_NODE_TYPES, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -330,7 +325,7 @@ export class WorkflowIndexService {
 		if (node.type !== 'n8n-nodes-base.webhook') {
 			return;
 		}
-		const webhookPath = node.parameters.path as string;
+		const webhookPath = node.parameters?.path as string;
 		if (webhookPath) {
 			dependencyUpdates.add({
 				dependencyType: 'webhookPath',

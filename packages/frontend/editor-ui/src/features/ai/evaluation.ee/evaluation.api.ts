@@ -2,6 +2,7 @@ import type {
 	AddDatasetRowDto,
 	DatasetCandidateResponse,
 	EvaluationConfigDto,
+	MetricScale,
 	StartTestRunPayload,
 	UpsertEvaluationConfigDto,
 } from '@n8n/api-types';
@@ -14,6 +15,10 @@ export interface TestRunRecord {
 	workflowId: string;
 	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number> | null;
+	// Per-metric scale, resolved server-side from the run's frozen config
+	// snapshot, so the runs page normalizes scores the same way the compare view
+	// does. Absent for runs with no snapshot (→ FE name-based fallback).
+	metricScales?: Record<string, MetricScale>;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;
@@ -22,6 +27,9 @@ export interface TestRunRecord {
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
 	evaluationConfigId?: string;
+	// Set when the run belongs to an eval collection; null for standalone
+	// runs. Drives the "Ungrouped runs" split in the collections list view.
+	collectionId?: string | null;
 }
 
 interface GetTestRunParams {
@@ -94,6 +102,7 @@ export const startTestRun = async (
 	if (options?.compileFromConfig !== undefined) {
 		body.compileFromConfig = options.compileFromConfig;
 	}
+	if (options?.rowIndices !== undefined) body.rowIndices = options.rowIndices;
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,

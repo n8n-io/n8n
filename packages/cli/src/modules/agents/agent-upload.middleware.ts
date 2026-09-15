@@ -20,6 +20,24 @@ export function isAllowedAgentFile(file: Pick<Express.Multer.File, 'originalname
 }
 
 /**
+ * Multer's `array(field, maxCount)` reuses the field-name check to also
+ * enforce maxCount: exceeding it throws the same 'LIMIT_UNEXPECTED_FILE'
+ * error (message "Unexpected field") as sending an actually-mismatched field
+ * name, which is meaningless to users. Map known codes to messages that
+ * describe what to actually do.
+ */
+export function describeMulterError(error: multer.MulterError): string {
+	switch (error.code) {
+		case 'LIMIT_UNEXPECTED_FILE':
+			return `You can upload at most ${MAX_AGENT_FILES_PER_UPLOAD} files at a time`;
+		case 'LIMIT_FILE_SIZE':
+			return `Files must be ${MAX_AGENT_FILE_SIZE_BYTES / (1024 * 1024)} MB or smaller`;
+		default:
+			return error.message;
+	}
+}
+
+/**
  * Best-effort removal of multer's on-disk temp files. The upload handler hands
  * successful uploads to AgentKnowledgeService (which cleans up its own temp
  * files), but early bail-outs (knowledge base disabled, upload error, no files)

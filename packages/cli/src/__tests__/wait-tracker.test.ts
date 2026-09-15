@@ -3,15 +3,12 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock, captor } from 'jest-mock-extended';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	createRunExecutionData,
-	UnexpectedError,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import { createRunExecutionData, UnexpectedError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { Mock, MockInstance } from 'vitest';
+import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -20,7 +17,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
-jest.useFakeTimers({ advanceTimers: true });
+vi.useFakeTimers({ shouldAdvanceTime: true });
 
 describe('WaitTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();
@@ -56,7 +53,7 @@ describe('WaitTracker', () => {
 		// so the tracker logs through the *return value* of `scoped()`, not the injected mock.
 		// Make `scoped()` return the same mock so `logger.error` assertions observe those calls.
 		logger = mock<Logger>();
-		(logger.scoped as jest.Mock).mockReturnValue(logger);
+		(logger.scoped as Mock).mockReturnValue(logger);
 		Container.set(ExecutionPersistence, executionPersistence);
 		waitTracker = new WaitTracker(
 			logger,
@@ -71,7 +68,7 @@ describe('WaitTracker', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('init()', () => {
@@ -100,7 +97,7 @@ describe('WaitTracker', () => {
 		});
 
 		describe('if execution to start', () => {
-			let startExecutionSpy: jest.SpyInstance<Promise<void>, [executionId: string]>;
+			let startExecutionSpy: MockInstance<(...args: [executionId: string]) => Promise<void>>;
 
 			beforeEach(() => {
 				executionPersistence.findSingleExecution
@@ -109,7 +106,7 @@ describe('WaitTracker', () => {
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
-				startExecutionSpy = jest
+				startExecutionSpy = vi
 					.spyOn(waitTracker, 'startExecution')
 					.mockImplementation(async () => {});
 
@@ -119,7 +116,7 @@ describe('WaitTracker', () => {
 			it('if not enough time passed, should not start execution', async () => {
 				await waitTracker.getWaitingExecutions();
 
-				jest.advanceTimersByTime(100);
+				vi.advanceTimersByTime(100);
 
 				expect(startExecutionSpy).not.toHaveBeenCalled();
 			});
@@ -127,7 +124,7 @@ describe('WaitTracker', () => {
 			it('if enough time passed, should start execution', async () => {
 				await waitTracker.getWaitingExecutions();
 
-				jest.advanceTimersByTime(2_000);
+				vi.advanceTimersByTime(2_000);
 
 				expect(startExecutionSpy).toHaveBeenCalledWith(execution.id);
 			});
@@ -165,7 +162,7 @@ describe('WaitTracker', () => {
 				},
 				false,
 				false,
-				execution.id,
+				{ executionId: execution.id, expectedStatus: 'waiting' },
 			);
 		});
 
@@ -188,7 +185,7 @@ describe('WaitTracker', () => {
 				}),
 				false,
 				false,
-				execution.id,
+				{ executionId: execution.id, expectedStatus: 'waiting' },
 			);
 		});
 
@@ -267,12 +264,12 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					execution.id,
+					{ executionId: execution.id, expectedStatus: 'waiting' },
 				);
 
 				// ACT 1
 				postExecutePromise.resolve(subworkflowResults);
-				await jest.advanceTimersToNextTimerAsync();
+				await vi.advanceTimersToNextTimerAsync();
 
 				// ASSERT 1
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
@@ -288,7 +285,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					parentExecution.id,
+					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -304,7 +301,7 @@ describe('WaitTracker', () => {
 
 				// ACT 2
 				postExecutePromise.resolve(subworkflowResults);
-				await jest.advanceTimersToNextTimerAsync();
+				await vi.advanceTimersToNextTimerAsync();
 
 				// ASSERT 2
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
@@ -323,7 +320,7 @@ describe('WaitTracker', () => {
 
 				// ACT 2
 				postExecutePromise.resolve(subworkflowResults);
-				await jest.advanceTimersByTimeAsync(100);
+				await vi.advanceTimersByTimeAsync(100);
 
 				// ASSERT 2
 
@@ -337,7 +334,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					parentExecution.id,
+					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -414,17 +411,14 @@ describe('WaitTracker', () => {
 
 				// ASSERT 1
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(
-					1,
-					expect.any(Object),
-					false,
-					false,
-					execution.id,
-				);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(1, expect.any(Object), false, false, {
+					executionId: execution.id,
+					expectedStatus: 'waiting',
+				});
 
 				// ACT 2
 				subExecutionPromise.resolve(subworkflowResults);
-				await jest.advanceTimersToNextTimerAsync();
+				await vi.advanceTimersToNextTimerAsync();
 
 				// ASSERT 2
 
@@ -457,13 +451,10 @@ describe('WaitTracker', () => {
 
 				// Verify parent was resumed
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(
-					2,
-					expect.any(Object),
-					false,
-					false,
-					parentExecution.id,
-				);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
+					executionId: parentExecution.id,
+					expectedStatus: 'waiting',
+				});
 			});
 
 			it('should not resume parent execution if it has already finished', async () => {
@@ -520,7 +511,7 @@ describe('WaitTracker', () => {
 
 				// Child completes
 				postExecutePromise.resolve(undefined);
-				await jest.advanceTimersToNextTimerAsync();
+				await vi.advanceTimersToNextTimerAsync();
 
 				// ASSERT
 
@@ -534,7 +525,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					childExecution.id,
+					{ executionId: childExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -561,12 +552,12 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					execution.id,
+					{ executionId: execution.id, expectedStatus: 'waiting' },
 				);
 
 				// ACT 2 - Child execution goes into waiting state
 				postExecutePromise.resolve(waitingSubworkflowResults);
-				await jest.advanceTimersToNextTimerAsync();
+				await vi.advanceTimersToNextTimerAsync();
 
 				// ASSERT 2 - Parent execution should NOT be resumed
 				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
@@ -642,7 +633,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
 
 					expect(logger.error).toHaveBeenCalled();
 					expect(workflowRunner.run).toHaveBeenCalledTimes(1);
@@ -662,18 +653,15 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// run() is called once for the sub-workflow, then once per parent resume attempt.
 					// The second call is the first parent attempt; all attempts fail, so run() is called 4 times total
 					// (sub-workflow + the 3 exhausted retries) and the final failure is logged rather than lost
-					expect(workflowRunner.run).toHaveBeenNthCalledWith(
-						2,
-						expect.any(Object),
-						false,
-						false,
-						parentExecution.id,
-					);
+					expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 					expect(logger.error).toHaveBeenCalled();
 				});
@@ -693,17 +681,15 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// Parent ultimately resumed (subworkflow + failed parent resume attempt + successful retry = 3 runs),
 					// and because it recovered, nothing is logged as an error
 					expect(workflowRunner.run).toHaveBeenCalledTimes(3);
-					expect(workflowRunner.run).toHaveBeenLastCalledWith(
-						expect.any(Object),
-						false,
-						false,
-						parentExecution.id,
-					);
+					expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(logger.error).not.toHaveBeenCalled();
 				});
 
@@ -718,7 +704,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// `workflowRunner.run` is called once for the sub-workflow and once for the (single) parent attempt
 					// the non-retryable error is not retried, and gets logged

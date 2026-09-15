@@ -51,6 +51,11 @@ function groupLabelInfo(t: string): string | undefined {
 	if (infoText === labelInfo || infoText === '') return;
 	return infoText;
 }
+
+function eventLabelName(event: { name: string; label: string }): string {
+	const key = `settings.log-streaming.eventName.${event.name}`;
+	return i18n.exists(key) ? i18n.baseText(key as BaseTextKey) : event.label;
+}
 </script>
 
 <template>
@@ -123,7 +128,7 @@ function groupLabelInfo(t: string): string | undefined {
 						"
 					>
 						<template #label>
-							{{ event.label }}
+							{{ eventLabelName(event) }}
 							<N8nTooltip placement="top" :content-class="$style.tooltipPopper">
 								<template #content>
 									{{ event.name }}

@@ -1,5 +1,10 @@
 import crypto from 'crypto';
-import { NodeOperationError, type INodeProperties, type INodePropertyOptions } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeOperationError,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
 
 type VersionCnd = { lte?: number; gte?: number };
 type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
@@ -70,6 +75,48 @@ describe('FormTrigger', () => {
 
 		expect(legacyValues).toEqual(['basicAuth', 'none']);
 		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
+	});
+
+	describe('requireExecuteAccess', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const requireExecuteAccess = formTriggerV2.description.properties.find(
+			(property) => property.name === 'requireExecuteAccess',
+		);
+
+		it('should not require workflow execute permission by default', () => {
+			expect(requireExecuteAccess).toMatchObject({
+				type: 'boolean',
+				default: false,
+			});
+		});
+
+		it.each<[string, number, boolean]>([
+			['n8nUserAuth', 2.6, true],
+			['none', 2.6, false],
+			['basicAuth', 2.6, false],
+			// The parameter did not exist below 2.6, so it stays hidden there.
+			['n8nUserAuth', 2.5, false],
+		])(
+			'should be shown for authentication %s on typeVersion %s: %s',
+			(authentication, typeVersion, shown) => {
+				expect(requireExecuteAccess).toBeDefined();
+				expect(
+					NodeHelpers.displayParameter(
+						{ [FORM_TRIGGER_AUTHENTICATION_PROPERTY]: authentication },
+						requireExecuteAccess as INodeProperties,
+						{ typeVersion },
+						formTriggerV2.description,
+					),
+				).toBe(shown);
+			},
+		);
 	});
 
 	it('should render a form template with correct fields', async () => {
@@ -475,5 +522,112 @@ describe('FormTrigger', () => {
 				}),
 			],
 		]);
+	});
+
+	describe('showHeaders', () => {
+		it('should include headers in output when showHeaders is enabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: true,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'user-agent': 'Mozilla/5.0',
+			});
+		});
+
+		it('should not include headers in output when showHeaders is disabled', async () => {
+			const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+			const bodyData = {
+				data: {
+					'field-0': 'John Doe',
+				},
+			};
+
+			const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				mode: 'manual',
+				node: {
+					parameters: {
+						formTitle: 'Test Form',
+						formDescription: 'Test Description',
+						responseMode: 'onReceived',
+						authentication: 'none',
+						formFields: { values: formFields },
+						options: {
+							showHeaders: false,
+						},
+					},
+				},
+				request: {
+					method: 'POST',
+					headers: { 'content-type': 'multipart/form-data' },
+					contentType: 'multipart/form-data',
+				},
+				bodyData,
+				headerData: {
+					'content-type': 'multipart/form-data',
+					'user-agent': 'Mozilla/5.0',
+				},
+			});
+
+			expect(responseData?.workflowData?.[0]?.[0]?.json.headers).toBeUndefined();
+		});
+	});
+
+	describe('sensitiveOutputFields', () => {
+		it('declares authorization and cookie headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.authorization');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.cookie');
+			expect(formTriggerV2.description.sensitiveOutputFields).toContain('headers.x-auth-token');
+		});
+
+		it('does not mark other headers as sensitive', () => {
+			const formTriggerV2 = new FormTriggerV2({
+				displayName: 'n8n Form Trigger',
+				name: 'formTrigger',
+				group: ['trigger'],
+				description: 'Generate webforms in n8n and pass their responses to the workflow',
+				defaultVersion: 2.5,
+			});
+			expect(formTriggerV2.description.sensitiveOutputFields).not.toContain('headers.content-type');
+		});
 	});
 });

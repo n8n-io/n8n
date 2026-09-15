@@ -463,4 +463,50 @@ describe('ExecutionContextHookRegistry', () => {
 			expect(registry.getGlobalHooks()).toEqual([]);
 		});
 	});
+
+	describe('sub-execution hooks', () => {
+		it('exposes hooks decorated with runForSubExecution: true via getSubExecutionHooks()', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true, runForSubExecution: true })
+			class SubExecutionHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.sub-execution' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			const subHooks = registry.getSubExecutionHooks();
+			expect(subHooks).toHaveLength(1);
+			expect(subHooks[0]).toBeInstanceOf(SubExecutionHook);
+		});
+
+		it('does not expose a global hook that did not opt into sub-execution', async () => {
+			@ContextEstablishmentHook({ alwaysExecute: true })
+			// @ts-expect-error - Class is used via decorator side-effect
+			class GlobalOnlyHook implements IContextEstablishmentHook {
+				hookDescription = { name: 'test.global-only' };
+				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
+					return {};
+				}
+				isApplicableToTriggerNode(_nodeType: string): boolean {
+					return false;
+				}
+			}
+
+			await registry.init();
+
+			expect(registry.getGlobalHooks()).toHaveLength(1);
+			expect(registry.getSubExecutionHooks()).toEqual([]);
+		});
+
+		it('returns an empty array when no hooks are registered at all', async () => {
+			await registry.init();
+
+			expect(registry.getSubExecutionHooks()).toEqual([]);
+		});
+	});
 });

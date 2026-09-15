@@ -14,31 +14,38 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import {
-	computed,
-	toValue,
-	unref,
-	type ComputedRef,
-	type MaybeRef,
-	type MaybeRefOrGetter,
-} from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
 export function useNodeCredentialOptions(
-	node: ComputedRef<INodeUi | null>,
-	nodeType: ComputedRef<INodeTypeDescription | null>,
-	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
+	node: MaybeRefOrGetter<INodeUi | null>,
+	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
+	overrideCredType: MaybeRefOrGetter<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
+	/** When provided, build dropdown options from this list instead of the
+	 *  shared usable-credentials slice. Hosts that already hold the exact,
+	 *  project-scoped, type-matched credential list (e.g. the Instance AI
+	 *  setup card, which receives it in the suspend payload) pass it here so
+	 *  the dropdown does not depend on a slice that may be empty or cleared
+	 *  by a competing scoped fetch. */
+	overrideCredentials: MaybeRefOrGetter<ICredentialsResponse[] | undefined> = undefined,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
-	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+	const mainNodeAuthField = computed(() => getMainAuthField(toValue(nodeType)));
+	const hasOverride = computed(() => {
+		const override = toValue(overrideCredType);
+		return typeof override === 'string' && override !== '';
+	});
 
 	const credentialTypesNodeDescriptions = computed(() =>
-		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
+		credentialsStore.getCredentialTypesNodeDescriptions(
+			toValue(overrideCredType),
+			toValue(nodeType),
+		),
 	);
 
 	const credentialTypesNodeDescriptionDisplayed = computed(() =>
@@ -53,19 +60,27 @@ export function useNodeCredentialOptions(
 	);
 
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
+		const override = toValue(overrideCredentials);
 		let options: CredentialDropdownOption[] = [];
 		types.forEach((type) => {
+			// The override is a host-supplied, already-scoped list; fall back to the
+			// shared usable-credentials slice when no override is given. An unfetched
+			// slice reads as empty, never as a fallback to the flat map — falling
+			// back is the bug this override exists to avoid.
+			const source = override
+				? override.filter((credential) => credential.type === type)
+				: credentialsStore.allUsableCredentialsByType[type];
 			options = options.concat(
-				credentialsStore.allUsableCredentialsByType[type]?.map<CredentialDropdownOption>(
-					(option: ICredentialsResponse) => ({
-						...option,
-						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
-					}),
-				) ?? [],
+				source?.map<CredentialDropdownOption>((option: ICredentialsResponse) => ({
+					...option,
+					typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
+				})) ?? [],
 			);
 		});
 
-		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
+		options = options.filter((option) => (option.usageScope ?? 'project') === 'project');
+
+		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);
 		}
 
@@ -73,7 +88,8 @@ export function useNodeCredentialOptions(
 	}
 
 	function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue) {
 			return false;
 		}
 
@@ -82,46 +98,70 @@ export function useNodeCredentialOptions(
 			return true;
 		}
 		return nodeHelpers.displayParameter(
-			node.value.parameters,
+			nodeValue.parameters,
 			credentialTypeDescription,
 			'',
-			node.value,
+			nodeValue,
 		);
 	}
 
 	function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue || hasOverride.value) {
 			return false;
 		}
 
-		const isRequired = isRequiredCredential(nodeType.value, credentialType);
+		const isRequired = isRequiredCredential(toValue(nodeType), credentialType);
 
-		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value.type) && isRequired;
+		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeValue.type) && isRequired;
+	}
+
+	function isMainAuthCredential(credentialType: INodeCredentialDescription): boolean {
+		const authFieldName = mainNodeAuthField.value?.name;
+		return (
+			authFieldName !== undefined &&
+			credentialType.displayOptions?.show?.[authFieldName] !== undefined
+		);
+	}
+
+	function shouldShowRelatedCredentials(credentialType: INodeCredentialDescription): boolean {
+		/**
+		 * Show related credentials if:
+		 * - the credential type is mixed - one selector combines multiple credential types
+		 * - the credential type is the main auth credential - the main auth field is shown in the node UI
+		 * - the display all options is enabled
+		 */
+		return (
+			showMixedCredentials(credentialType) ||
+			(toValue(displayAllOptions) && isMainAuthCredential(credentialType))
+		);
 	}
 
 	function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
-		const credentialIsRequired = showMixedCredentials(credentialType);
-		if (credentialIsRequired) {
-			if (mainNodeAuthField.value) {
-				if (toValue(displayAllOptions)) {
-					return nodeType.value?.credentials?.map((cred) => cred.name) ?? [];
-				}
-
-				const credentials = getAllNodeCredentialForAuthType(
-					nodeType.value,
-					mainNodeAuthField.value.name,
-				);
-				return credentials.map((cred) => cred.name);
-			}
+		if (hasOverride.value || !shouldShowRelatedCredentials(credentialType)) {
+			return [credentialType.name];
 		}
-		return [credentialType.name];
+
+		const authFieldName = mainNodeAuthField.value?.name;
+		// if no main auth field exists, return the credential type itself
+		if (!authFieldName) {
+			return [credentialType.name];
+		}
+
+		// otherwise, return all related credential types
+		return getAllNodeCredentialForAuthType(toValue(nodeType), authFieldName).map(
+			(cred) => cred.name,
+		);
 	}
 
 	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
-		const credential = node.value?.credentials?.[credentialType.name];
+		const credential = toValue(node)?.credentials?.[credentialType.name];
 		// Gateway-managed credentials have no real DB record but are properly configured
 		if (credential?.__aiGatewayManaged) return true;
 		if (!credential?.id) return false;
+		// Until the scoped fetch lands there is nothing to match against, and reporting
+		// a configured credential as missing raises a credential issue that isn't one.
+		if (!credentialsStore.hasFetchedUsableCredentials) return true;
 		const options = getCredentialOptions([credentialType.name]);
 		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
 	}

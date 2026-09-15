@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { IterationEntry, IterationLog } from '@n8n/instance-ai';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { jsonParse } from 'n8n-workflow';
 
 import { InstanceAiIterationLogRepository } from '../repositories/instance-ai-iteration-log.repository';

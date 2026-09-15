@@ -8,17 +8,17 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { extractSharedFields } from './shared-fields';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { CredentialStorageError } from '../errors/credential-storage.error';
-
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
 } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { extractSharedFields } from './shared-fields';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { CredentialStorageError } from '../errors/credential-storage.error';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -37,6 +37,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		try {
 			if (!credentialStoreMetadata.isResolvable) {
@@ -92,11 +93,17 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				}
 			}
 
-			await resolver.setSecret(credentialStoreMetadata.id, credentialContext, mergedDynamicData, {
-				configuration: resolverConfig,
-				resolverName: resolverEntity.name,
-				resolverId: resolverEntity.id,
-			});
+			await resolver.setSecret(
+				credentialStoreMetadata.id,
+				credentialContext,
+				mergedDynamicData,
+				{
+					configuration: resolverConfig,
+					resolverName: resolverEntity.name,
+					resolverId: resolverEntity.id,
+				},
+				executionId,
+			);
 
 			this.logger.debug('Successfully stored dynamic credentials', {
 				credentialId: credentialStoreMetadata.id,
@@ -104,8 +111,13 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				resolverSource: credentialStoreMetadata.resolverId ? 'credential' : 'workflow',
 			});
 		} catch (error) {
+			this.logger.error('Failed to store dynamic credentials data', {
+				credentialId: credentialStoreMetadata.id,
+				credentialType: credentialStoreMetadata.type,
+				error,
+			});
 			throw new CredentialStorageError(
-				`Failed to store dynamic credentials data for "${credentialStoreMetadata.name}"`,
+				`Failed to store end-user credential data for "${credentialStoreMetadata.name}"`,
 				{ cause: error },
 			);
 		}

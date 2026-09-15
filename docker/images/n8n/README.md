@@ -146,6 +146,10 @@ docker pull docker.n8n.io/n8nio/n8n:0.220.1
 docker pull docker.n8n.io/n8nio/n8n:next
 ```
 
+### About `-pc` tags
+
+Tags with a `-pc` suffix (for example `n8nio/n8n:2.36.0-pc`) are a pointer-compressed variant, internal to n8n Cloud. They carry no support or stability guarantees and can change or disappear without notice. Use the regular tags instead.
+
 Stop the container and start it again:
 
 1. Get the container ID:

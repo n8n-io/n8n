@@ -56,7 +56,7 @@ CREATE TABLE "agents_observations" ("id" varchar(36) PRIMARY KEY NOT NULL, "agen
 erDiagram
 
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_sources" }o--|| "agents_observations" : "FOREIGN KEY (observationId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_sources" }o--o| "agents_observations" : "FOREIGN KEY (observationId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--o| "agents_observations" : "FOREIGN KEY (supersededBy) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_observations" }o--o| "agents_observations" : "FOREIGN KEY (parentId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_observations" }o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -76,12 +76,15 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
+  datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools
   datetime_3_ updatedAt
@@ -89,6 +92,7 @@ erDiagram
 }
 "agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   datetime_3_ createdAt
   varchar_64_ evidenceHash
   TEXT evidenceText

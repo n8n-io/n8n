@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -40,8 +41,8 @@ function suspendCtx(suspendFn: Mock) {
 	return { resumeData: undefined, suspend: suspendFn } as never;
 }
 
-function resumeCtx(approved: boolean) {
-	return { resumeData: { approved } } as never;
+function resumeCtx(approved: boolean, scope?: 'once' | 'session') {
+	return { resumeData: { approved, ...(scope ? { scope } : {}) } } as never;
 }
 
 function noSuspendCtx() {
@@ -54,11 +55,29 @@ describe('data-tables tool', () => {
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {
-		it('should have a concise description', () => {
+		it('should require loading data-table-manager before use', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
 			expect(tool.description).toContain('data tables');
+			expect(tool.description).toContain('data-table-manager');
+			expect(tool.description).toContain('load_skill');
+			expect(tool.description).toContain('what data tables do I have?');
+		});
+
+		// The SDK validates resume payloads against this schema (converted to JSON
+		// schema with additionalProperties: false) and replaces resume data with the
+		// parse result — an undeclared `scope` is rejected or silently stripped, so
+		// the "Always allow" grant would never reach the handler.
+		it('resume schema declares scope so the SDK preserves it on resume', () => {
+			const context = createMockContext();
+			const tool = createDataTablesTool(context);
+
+			const parsed: unknown = (tool.resumeSchema as z.ZodTypeAny).parse({
+				approved: true,
+				scope: 'session',
+			});
+			expect(parsed).toEqual({ approved: true, scope: 'session' });
 		});
 	});
 
@@ -183,6 +202,30 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 		});
 
+		it('should accept ilike filters and pass them through to the service', async () => {
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue({ count: 0, data: [] });
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'ilike' as const, value: '%Vivo%' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, limit: 5 },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 5,
+				offset: undefined,
+				projectId: undefined,
+			});
+		});
+
 		it('should include hint when more rows are available', async () => {
 			const queryResult = { count: 100, data: Array.from({ length: 50 }, (_, i) => ({ id: i })) };
 			const context = createMockContext();
@@ -235,6 +278,124 @@ describe('data-tables tool', () => {
 
 			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 			expect(result).not.toHaveProperty('hint');
+		});
+
+		it('should truncate oversized cell values and hint how to fetch full values', async () => {
+			const blob = 'x'.repeat(5000);
+			const queryResult = {
+				count: 1,
+				data: [{ name: 'vivo y17', image_url: blob, stock: 3 }],
+			};
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool<{ data: Array<Record<string, unknown>>; hint?: string }>(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1' },
+				noSuspendCtx(),
+			);
+
+			expect(result.data[0].name).toBe('vivo y17');
+			expect(result.data[0].stock).toBe(3);
+			expect(result.data[0].image_url).toBe(`${'x'.repeat(1024)}… [truncated, 5000 chars total]`);
+			expect(result.hint).toContain('image_url');
+			expect(result.hint).toContain('fullCellValues: true');
+		});
+
+		it('should return full cell values for a filtered query, defaulting the limit to 1', async () => {
+			const blob = 'x'.repeat(5000);
+			const queryResult = { count: 1, data: [{ image_url: blob }] };
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'eq' as const, value: 'vivo y17' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 1,
+				offset: undefined,
+				projectId: undefined,
+			});
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
+			expect(result).not.toHaveProperty('hint');
+		});
+
+		it('should cap the limit when full cell values are requested', async () => {
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue({ count: 0, data: [] });
+
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: 'name', condition: 'like' as const, value: '%vivo%' }],
+			};
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true, limit: 20 },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter,
+				limit: 5,
+				offset: undefined,
+				projectId: undefined,
+			});
+		});
+
+		it('should ignore fullCellValues and keep truncating when the query has no filter', async () => {
+			const blob = 'x'.repeat(5000);
+			const queryResult = { count: 1, data: [{ image_url: blob }] };
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool<{ data: Array<Record<string, unknown>>; hint?: string }>(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', fullCellValues: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.queryRows).toHaveBeenCalledWith('dt-1', {
+				filter: undefined,
+				limit: undefined,
+				offset: undefined,
+				projectId: undefined,
+			});
+			expect(result.data[0].image_url).toBe(`${'x'.repeat(1024)}… [truncated, 5000 chars total]`);
+			expect(result.hint).toContain('fullCellValues was ignored');
+		});
+
+		it('should combine truncation and pagination hints', async () => {
+			const blob = 'x'.repeat(2000);
+			const queryResult = {
+				count: 10,
+				data: Array.from({ length: 5 }, (_, i) => ({ id: i, payload: blob })),
+			};
+			const context = createMockContext();
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool<{ hint?: string }>(
+				tool,
+				{ action: 'query' as const, dataTableId: 'dt-1', limit: 5 },
+				noSuspendCtx(),
+			);
+
+			expect(result.hint).toContain('payload');
+			expect(result.hint).toContain('5 more rows available.');
 		});
 
 		it('should include resolved table metadata when available', async () => {
@@ -365,6 +526,48 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(true));
 
+			expect(context.dataTableService.create).toHaveBeenCalled();
+			expect(result).toEqual({ table });
+		});
+
+		it('should accept scope=session on resume and persist a session grant', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(tool, createInput as never, resumeCtx(true, 'session'));
+
+			expect(result).toEqual({ table });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('data-tables:create');
+		});
+
+		it('should not persist a session grant when resume has no scope', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+
+			const tool = createDataTablesTool(context);
+			await executeTool(tool, createInput as never, resumeCtx(true));
+
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+
+		it('should skip HITL when a session grant already exists', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const context = createMockContext({
+				permissions: {},
+				sessionApprovedToolKeys: new Set(['data-tables:create']),
+			});
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+			const suspendFn = vi.fn();
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(tool, createInput as never, suspendCtx(suspendFn));
+
+			expect(suspendFn).not.toHaveBeenCalled();
 			expect(context.dataTableService.create).toHaveBeenCalled();
 			expect(result).toEqual({ table });
 		});

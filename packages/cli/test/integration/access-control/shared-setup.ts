@@ -74,8 +74,8 @@ export function createTestServer() {
 export async function setupTestContext(): Promise<TestContext> {
 	// Mock required services
 	mockInstance(UserManagementMailer, {
-		invite: jest.fn(),
-		passwordReset: jest.fn(),
+		invite: vi.fn(),
+		passwordReset: vi.fn(),
 	});
 
 	// Create the test server

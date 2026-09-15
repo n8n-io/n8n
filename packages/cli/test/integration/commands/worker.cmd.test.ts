@@ -50,9 +50,9 @@ beforeEach(() => {
 	// initialized before, so the second boot in this file would throw
 	// "Instance already initialized. Multiple initializations are not allowed."
 	// Stub it to a no-op so every test can boot independently. This lives in
-	// `beforeEach` (not at module scope) because the jest config restores mocks
+	// `beforeEach` (not at module scope) because the vi config restores mocks
 	// between tests, which would otherwise revert the stub before the next boot.
-	jest.spyOn(DataDeduplicationService, 'init').mockResolvedValue(undefined);
+	vi.spyOn(DataDeduplicationService, 'init').mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -90,7 +90,7 @@ test('does not start processing queued jobs before module execution contexts are
 	// then fails with "module is disabled". The processor must therefore not be
 	// registered until modules have initialized.
 	const moduleRegistry = Container.get(ModuleRegistry);
-	jest.spyOn(moduleRegistry, 'initModules').mockImplementation(async () => {
+	vi.spyOn(moduleRegistry, 'initModules').mockImplementation(async () => {
 		moduleRegistry.context.set('data-table', { dataTableProxyProvider: {} } as never);
 	});
 

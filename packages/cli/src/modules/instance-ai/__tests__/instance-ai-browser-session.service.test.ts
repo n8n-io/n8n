@@ -1,11 +1,13 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 
 import {
 	CDP_TOKEN_HEADER,
@@ -13,14 +15,16 @@ import {
 } from '../browser/browser-use-ws.constants';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 
-jest.mock('@n8n/mcp-browser', () => {
+import * as mcpBrowser from '@n8n/mcp-browser';
+
+vi.mock('@n8n/mcp-browser', () => {
 	const createdRelays: unknown[] = [];
 	class MockRelay {
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
-		attachExtension = jest.fn();
-		attachController = jest.fn();
-		stop = jest.fn();
+		attachExtension = vi.fn();
+		attachController = vi.fn();
+		stop = vi.fn();
 		constructor() {
 			createdRelays.push(this);
 		}
@@ -28,9 +32,9 @@ jest.mock('@n8n/mcp-browser', () => {
 	return {
 		__createdRelays: createdRelays,
 		CDPRelayServer: MockRelay,
-		createBrowserTools: jest.fn(() => ({
+		createBrowserTools: vi.fn(() => ({
 			tools: [],
-			connection: { shutdown: jest.fn(async () => undefined) },
+			connection: { shutdown: vi.fn(async () => undefined) },
 		})),
 		buildExtensionConnectUrl: (endpoint: string) =>
 			`chrome-extension://ext-id/connect.html?mcpRelayUrl=${encodeURIComponent(endpoint)}`,
@@ -40,20 +44,33 @@ jest.mock('@n8n/mcp-browser', () => {
 const mcpBrowserMock: {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
-		attachExtension: jest.Mock;
-		attachController: jest.Mock;
-		stop: jest.Mock;
+		onExtensionDisconnect?: () => void;
+		attachExtension: Mock;
+		attachController: Mock;
+		stop: Mock;
 	}>;
-	createBrowserTools: jest.Mock;
-} = jest.requireMock('@n8n/mcp-browser');
+	createBrowserTools: Mock;
+} = mcpBrowser as unknown as {
+	__createdRelays: Array<{
+		onExtensionConnect?: () => void;
+		onExtensionDisconnect?: () => void;
+		attachExtension: Mock;
+		attachController: Mock;
+		stop: Mock;
+	}>;
+	createBrowserTools: Mock;
+};
 
 const USER_ID = 'user-1';
 
-function extensionRequest(sessionId: string, token: string | null) {
-	const ws = { close: jest.fn() };
+function extensionRequest(sessionId: string, token: string | null, extensionVersion?: unknown) {
+	const ws = { close: vi.fn() };
 	const req = {
 		params: { sessionId },
-		query: token === null ? {} : { token },
+		query: {
+			...(token === null ? {} : { token }),
+			...(extensionVersion === undefined ? {} : { extensionVersion }),
+		},
 		headers: {},
 		socket: { remoteAddress: '127.0.0.1' },
 		ws,
@@ -62,7 +79,7 @@ function extensionRequest(sessionId: string, token: string | null) {
 }
 
 function cdpRequest(sessionId: string, token: string | null, remoteAddress = '127.0.0.1') {
-	const ws = { close: jest.fn() };
+	const ws = { close: vi.fn() };
 	const req = {
 		params: { sessionId },
 		query: {},
@@ -95,10 +112,11 @@ describe('InstanceAiBrowserSessionService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const globalConfig = mock<GlobalConfig>({ port: 5678 });
+	const telemetry = mock<Telemetry>();
 	let service: InstanceAiBrowserSessionService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mcpBrowserMock.__createdRelays.length = 0;
 		logger.scoped.mockReturnValue(logger);
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -109,6 +127,7 @@ describe('InstanceAiBrowserSessionService', () => {
 			userRepository,
 			credentialsService,
 			globalConfig,
+			telemetry,
 		);
 	});
 
@@ -169,7 +188,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('rejects a still-valid token once it is past the connect TTL (before first connect)', async () => {
-			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 			const { sessionId, extToken, relay } = await createSession(service);
 
 			nowSpy.mockReturnValue(1_000_000 + 6 * 60 * 1000);
@@ -182,7 +201,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('accepts the token past the TTL once the extension has connected at least once', async () => {
-			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 			const { sessionId, extToken, relay } = await createSession(service);
 
 			relay.onExtensionConnect?.(); // marks hasConnectedOnce
@@ -258,6 +277,98 @@ describe('InstanceAiBrowserSessionService', () => {
 			const status = service.getStatus(USER_ID);
 			expect(status.connected).toBe(true);
 			expect(status.toolCategories).toEqual([{ name: 'browser', enabled: true }]);
+		});
+
+		it('tracks a connect event when the extension connects', async () => {
+			const { relay } = await createSession(service);
+
+			relay.onExtensionConnect?.();
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI Browser connected', {
+				user_id: USER_ID,
+				browser_extension_version: null,
+			});
+		});
+	});
+
+	describe('extension version', () => {
+		it('tracks the version reported on the upgrade', async () => {
+			const { sessionId, extToken, relay } = await createSession(service);
+
+			service.handleExtensionUpgrade(extensionRequest(sessionId, extToken, '0.0.7').req);
+			relay.onExtensionConnect?.();
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI Browser connected', {
+				user_id: USER_ID,
+				browser_extension_version: '0.0.7',
+			});
+			expect(service.getExtensionTraceContext(USER_ID)).toEqual({
+				connectionState: 'connected',
+				version: '0.0.7',
+			});
+		});
+
+		it.each([
+			['omitted, as pre-instrumentation extensions do', undefined],
+			['not version-shaped', 'v0.0.7-beta'],
+			['not a string', ['0.0.7']],
+			['too long to be a Chrome version', '1.2.3.4.5'],
+		])('records null when the version is %s', async (_case, reported) => {
+			const { sessionId, extToken, relay } = await createSession(service);
+			const { req, ws } = extensionRequest(sessionId, extToken, reported);
+
+			service.handleExtensionUpgrade(req);
+			relay.onExtensionConnect?.();
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI Browser connected', {
+				user_id: USER_ID,
+				browser_extension_version: null,
+			});
+			// An unusable version must not cost the user their connection.
+			expect(relay.attachExtension).toHaveBeenCalledWith(ws);
+			expect(ws.close).not.toHaveBeenCalled();
+		});
+
+		it('re-reads the version on reconnect, so a silent auto-update is picked up', async () => {
+			const { sessionId, extToken, relay } = await createSession(service);
+
+			service.handleExtensionUpgrade(extensionRequest(sessionId, extToken, '0.0.6').req);
+			relay.onExtensionConnect?.();
+			relay.onExtensionDisconnect?.();
+			service.handleExtensionUpgrade(extensionRequest(sessionId, extToken, '0.0.7').req);
+			relay.onExtensionConnect?.();
+
+			expect(service.getExtensionTraceContext(USER_ID)).toEqual({
+				connectionState: 'connected',
+				version: '0.0.7',
+			});
+		});
+
+		it('reports connected with no version for a pre-instrumentation extension', async () => {
+			const { sessionId, extToken, relay } = await createSession(service);
+
+			service.handleExtensionUpgrade(extensionRequest(sessionId, extToken).req);
+			relay.onExtensionConnect?.();
+
+			expect(service.getExtensionTraceContext(USER_ID)).toEqual({ connectionState: 'connected' });
+		});
+
+		it('reports disconnected for a user with no session', () => {
+			expect(service.getExtensionTraceContext('nobody')).toEqual({
+				connectionState: 'disconnected',
+			});
+		});
+
+		it('reports no version while disconnected', async () => {
+			const { sessionId, extToken, relay } = await createSession(service);
+
+			service.handleExtensionUpgrade(extensionRequest(sessionId, extToken, '0.0.7').req);
+			relay.onExtensionConnect?.();
+			relay.onExtensionDisconnect?.();
+
+			expect(service.getExtensionTraceContext(USER_ID)).toEqual({
+				connectionState: 'disconnected',
+			});
 		});
 	});
 });

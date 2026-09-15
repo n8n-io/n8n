@@ -19,7 +19,7 @@
 
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client as LangSmithClient } from 'langsmith';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -33,8 +33,9 @@ import {
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
 import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
+import { buildWorkflow } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import { createLogger, type EvalLogger } from '../harness/logger';
-import { buildWorkflow, cleanupBuild } from '../harness/runner';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, CapturedToolCall } from '../types';
 

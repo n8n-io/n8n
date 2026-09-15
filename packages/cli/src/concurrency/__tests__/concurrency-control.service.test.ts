@@ -1,8 +1,8 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import {
@@ -38,9 +38,9 @@ describe('ConcurrencyControlService', () => {
 	// `getValue` returns `undefined` for the license-issued concurrency
 	// quota by default; the license-quota test overrides this to return a
 	// number so the resolver's middle branch fires.
-	const licenseGetValue = jest.fn().mockReturnValue(undefined);
+	const licenseGetValue = vi.fn().mockReturnValue(undefined);
 	const license = mock<License>({
-		getPlanName: jest.fn().mockReturnValue('Community'),
+		getPlanName: vi.fn().mockReturnValue('Community'),
 		getValue: licenseGetValue as never,
 	});
 
@@ -64,7 +64,7 @@ describe('ConcurrencyControlService', () => {
 		license.getPlanName.mockReturnValue('Community');
 		licenseGetValue.mockReturnValue(undefined);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -369,7 +369,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 					/**
 					 * Act
@@ -399,7 +399,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 					/**
 					 * Act
@@ -427,7 +427,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
 				 * Act
@@ -458,7 +458,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 					/**
 					 * Act
@@ -488,7 +488,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 					/**
 					 * Act
@@ -516,7 +516,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
 				 * Act
@@ -547,7 +547,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
 					 * Act
@@ -577,7 +577,7 @@ describe('ConcurrencyControlService', () => {
 						globalConfig,
 						license,
 					);
-					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
 					 * Act
@@ -605,7 +605,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
 				 * Act
@@ -638,11 +638,11 @@ describe('ConcurrencyControlService', () => {
 						license,
 					);
 
-					jest
-						.spyOn(ConcurrencyQueue.prototype, 'getAll')
-						.mockReturnValueOnce(new Set(['1', '2', '3']));
+					vi.spyOn(ConcurrencyQueue.prototype, 'getAll').mockReturnValueOnce(
+						new Set(['1', '2', '3']),
+					);
 
-					const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 					/**
 					 * Act
@@ -738,7 +738,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
 				 * Act
@@ -767,7 +767,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
 				/**
 				 * Act
@@ -797,7 +797,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
 				 * Act
@@ -824,7 +824,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
 				/**
 				 * Act
@@ -853,7 +853,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
 				 * Act
@@ -880,7 +880,7 @@ describe('ConcurrencyControlService', () => {
 					globalConfig,
 					license,
 				);
-				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
 				/**
 				 * Act

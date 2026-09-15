@@ -1,3 +1,4 @@
+import type * as AwsCredentialsModule from 'n8n-nodes-base/aws-credentials';
 import { UserError, type ISupplyDataFunctions, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,7 +15,8 @@ vi.mock('@aws-sdk/credential-providers', () => ({
 	}),
 }));
 
-vi.mock('n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils', () => ({
+vi.mock('n8n-nodes-base/aws-credentials', async (importOriginal) => ({
+	...(await importOriginal<typeof AwsCredentialsModule>()),
 	getSystemCredentials: vi.fn(),
 }));
 
@@ -23,7 +25,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
-import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
+import { getSystemCredentials } from 'n8n-nodes-base/aws-credentials';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 
 import { resolveAwsCredentials } from '../resolveAwsCredentials';
@@ -124,6 +126,48 @@ describe('resolveAwsCredentials — IAM path', () => {
 		});
 		await resolveAwsCredentials(context, 3);
 		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 3, 'iam');
+	});
+
+	it('throws when region is not a supported AWS region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'not-a-region',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		await expect(resolveAwsCredentials(context)).rejects.toThrow(UserError);
+		await expect(resolveAwsCredentials(context)).rejects.toThrow('Unsupported AWS region');
+	});
+
+	it('accepts the China partition region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'cn-north-1',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		const result = await resolveAwsCredentials(context);
+		expect(result.region).toBe('cn-north-1');
+	});
+
+	it('accepts the GovCloud partition region', async () => {
+		const context = makeContext({
+			authentication: 'iam',
+			awsCredential: {
+				region: 'us-gov-west-1',
+				accessKeyId: 'AKIATEST',
+				secretAccessKey: 'SECRET',
+				temporaryCredentials: false,
+			},
+		});
+		const result = await resolveAwsCredentials(context);
+		expect(result.region).toBe('us-gov-west-1');
 	});
 });
 

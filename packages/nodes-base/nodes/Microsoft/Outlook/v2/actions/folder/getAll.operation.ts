@@ -93,15 +93,23 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	}
 
 	if (returnAll) {
-		responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {}, qs);
+		responseData = await microsoftApiRequestAllItems.call(
+			this,
+			'value',
+			'GET',
+			endpoint,
+			index,
+			{},
+			qs,
+		);
 	} else {
 		qs.$top = this.getNodeParameter('limit', index);
-		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, {}, qs);
+		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, index, {}, qs);
 		responseData = responseData.value;
 	}
 
 	if (options.includeChildFolders) {
-		responseData = await getSubfolders.call(this, responseData as IDataObject[]);
+		responseData = await getSubfolders.call(this, responseData as IDataObject[], index);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

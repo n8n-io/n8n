@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -58,7 +58,7 @@ describe('InstanceAiMcpConnectionController', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('list', () => {
@@ -165,6 +165,27 @@ describe('InstanceAiMcpConnectionController', () => {
 				serverTitle: 'Linear',
 				serverIcons: linearServer.icons,
 			});
+		});
+	});
+
+	describe('listAllTools', () => {
+		it('returns tool statuses for the authenticated user’s connections', async () => {
+			const { controller, service } = createController();
+			const tools = [
+				{ id: 'conn-1', status: 'connected' as const, tools: [{ name: 'search' }] },
+				{
+					id: 'conn-2',
+					status: 'disconnected' as const,
+					tools: [],
+					failureReason: 'unknown' as const,
+				},
+			];
+			service.listAllConnectionTools.mockResolvedValue(tools);
+
+			const result = await controller.listAllTools(authedRequest());
+
+			expect(service.listAllConnectionTools).toHaveBeenCalledWith(user);
+			expect(result).toEqual(tools);
 		});
 	});
 

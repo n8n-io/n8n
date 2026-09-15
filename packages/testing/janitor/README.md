@@ -172,7 +172,7 @@ The JSON output is useful for AI agents that need to understand the rules before
 Discover test specs via AST analysis and distribute them across CI shards:
 
 ```bash
-# Discover specs and capabilities (JSON output)
+# Discover specs and worker requirements (JSON output)
 janitor discover
 
 # Distribute specs across shards (JSON output)
@@ -185,7 +185,7 @@ janitor orchestrate --shards=14 --shard-index=0
 janitor orchestrate --shards=14 --impact
 ```
 
-Discovery detects `test.fixme()` and `test.skip()` via AST and excludes them automatically. Capability tags (`@capability:proxy`) are extracted for grouping.
+Discovery detects `test.fixme()` and `test.skip()` via AST. It excludes fully skipped specs. It resolves worker requirements from `test.use()`.
 
 ### Workspace-Wide CI Test Scoping
 
@@ -211,11 +211,11 @@ ci-filter (in install-and-build)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
-              └─→ janitor test-scoped --runner=jest|vitest  (per-package)
+              └─→ janitor test-scoped  (per-package)
                     │
                     ├─→ SKIP        → exit 0 (no in-package changes)
                     ├─→ RUN_FULL    → spawn runner with no scope flags
-                    └─→ scoped      → jest --findRelatedTests / vitest related
+                    └─→ scoped      → vitest related
 ```
 
 **Usage:**
@@ -225,10 +225,10 @@ ci-filter (in install-and-build)
 CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
 
 # Compute scope for the cwd package. Output: SKIP | RUN_FULL | <files>
-janitor scope --runner=vitest
+janitor scope
 
 # Compute scope AND spawn the runner. Unrecognised flags forward to runner.
-janitor test-scoped --runner=vitest --shard=1/2 --coverage
+janitor test-scoped --shard=1/2 --coverage
 ```
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
@@ -242,15 +242,30 @@ joined paths would otherwise overflow the kernel's argv/env size limit and the
 test job's shell couldn't even start. Such a change set affects nearly every
 package anyway, so the full-suite fallback is both safe and correct.
 
-**Per-package bailout (force full suite):** `jest.config.*`, `vitest.config.*`,
+**Per-package bailout (force full suite):** `vitest.config.*`,
 `vite.config.*` (vitest reads vite config), `package.json`, `tsconfig.*`,
-plus setup files at `<pkg>/jest.setup.*`, `<pkg>/vitest.setup.*`, and
+plus setup files at `<pkg>/vitest.setup.*` and
 `<pkg>/src/__tests__/setup.*`. The scope analyzer detects these and emits
 `RUN_FULL`; `test-scoped` then spawns the runner without scope flags.
 
 **Turbo extra inputs:** `n8n-nodes-base#test`'s declared input
 `../cli/src/public-api/v1/**/*.yml` is honoured — a change to that yml
 marks nodes-base as affected.
+
+**Ignoring a dependency edge.** A package can declare workspace dependencies
+that never affect its tests, in its `package.json`:
+
+```json
+"janitor": { "ignoreDepsForScoping": ["n8n-editor-ui"] }
+```
+
+`affectedPackages()` drops those edges from the graph, so a change in the
+ignored package no longer marks the declaring package as affected. Use it only
+for dependencies the package does not import, such as a prebuilt asset bundle
+it serves as static files. `n8n` (cli) declares `n8n-editor-ui` this way: cli
+resolves the editor's `dist` directory at runtime and never imports its code.
+The field must be an array of names that the package declares as workspace
+dependencies. Anything else throws, so a typo cannot silently re-widen CI.
 
 **Global triggers force a full workspace run.** Some changes are invisible to
 a per-package import-graph walk: a lockfile / root-manifest change, or an edit
@@ -647,10 +662,7 @@ interface JanitorConfig {
   /** Tags that exclude specs from discovery (e.g., ['@wip', '@local-only']) */
   skipTags: string[];
 
-  /** Prefix for extracting capabilities from tags (default: '@capability:') */
-  capabilityPrefix: string;
-
-  /** Orchestration configuration for distributing specs across shards */
+	/** Orchestration configuration for distributing specs across shards */
   orchestration: {
     /** Path to metrics JSON file (relative to rootDir) */
     metricsPath?: string;

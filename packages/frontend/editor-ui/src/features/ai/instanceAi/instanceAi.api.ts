@@ -7,8 +7,18 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiConfirmResponse,
+	InstanceAiCredits,
 	InstanceAiHandoffContext,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSource,
 } from '@n8n/api-types';
+
+export interface InstanceAiThreadLaunchInput {
+	source: InstanceAiThreadSource;
+	origin?: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
 
 /**
  * POST /instance-ai/chat/:threadId -> { runId }
@@ -41,12 +51,13 @@ export async function ensureThread(
 	context: IRestApiContext,
 	threadId: string,
 	projectId: string,
+	launch: InstanceAiThreadLaunchInput,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
 		'POST',
 		'/instance-ai/threads',
-		{ threadId, projectId },
+		{ threadId, projectId, ...launch },
 	);
 }
 
@@ -98,22 +109,22 @@ export async function postConfirmation(
 	context: IRestApiContext,
 	requestId: string,
 	payload: InstanceAiConfirmRequest,
-): Promise<void> {
-	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
+): Promise<InstanceAiConfirmResponse> {
+	return await makeRestApiRequest<InstanceAiConfirmResponse>(
+		context,
+		'POST',
+		`/instance-ai/confirm/${requestId}`,
+		payload,
+	);
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
- * Returns -1 quota when proxy is disabled.
+ * GET /instance-ai/credits -> { creditsQuota, creditsClaimed, quotaLocked }
+ * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
+ * whose balance is never shown — for them `quotaLocked` is the only usage signal.
  */
-export async function getInstanceAiCredits(
-	context: IRestApiContext,
-): Promise<{ creditsQuota: number; creditsClaimed: number }> {
-	return await makeRestApiRequest<{ creditsQuota: number; creditsClaimed: number }>(
-		context,
-		'GET',
-		'/instance-ai/credits',
-	);
+export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
+	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
 }
 
 /**

@@ -1,5 +1,5 @@
 import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
-import type { SerializableAgentState } from '@n8n/instance-ai';
+import type { SerializableAgentState } from '@n8n/agents';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { InstanceAiThread } from './instance-ai-thread.entity';
@@ -12,6 +12,15 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@Index()
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	runId: string | null;
+
+	/**
+	 * The Instance AI (host) run id, distinct from `runId` above (the agent-SDK
+	 * id derived from the key). Lets the interrupted-run sweeper match a
+	 * crashed run's step checkpoint exactly. Nullable: rows written before the
+	 * column existed, and sub-agent checkpoints, don't carry it.
+	 */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	hostRunId: string | null;
 
 	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })

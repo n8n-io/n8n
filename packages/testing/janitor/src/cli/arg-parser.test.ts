@@ -198,21 +198,10 @@ describe('arg-parser', () => {
 			expect(result.testCommand).toBe('pnpm test');
 		});
 
-		it('parses --jest-variant=unit', () => {
-			setArgs(['--jest-variant=unit']);
+		it('parses --groups-file=path', () => {
+			setArgs(['distribute', '--groups-file=/tmp/groups.json']);
 			const result = parseArgs();
-			expect(result.jestVariant).toBe('unit');
-		});
-
-		it('parses --jest-variant=integration', () => {
-			setArgs(['--jest-variant=integration']);
-			const result = parseArgs();
-			expect(result.jestVariant).toBe('integration');
-		});
-
-		it('throws on unknown --jest-variant value', () => {
-			setArgs(['--jest-variant=e2e']);
-			expect(() => parseArgs()).toThrow(/Unknown --jest-variant=e2e/);
+			expect(result.groupsFile).toBe('/tmp/groups.json');
 		});
 	});
 

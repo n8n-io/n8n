@@ -2,10 +2,12 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { formatBytes } from '@n8n/utils/number/bytes';
 import type { Request, RequestHandler } from 'express';
 import { mkdir, readdir, stat, unlink } from 'fs/promises';
 import multer from 'multer';
 import { nanoid } from 'nanoid';
+import { extname } from 'path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -17,9 +19,8 @@ import {
 	type MulterFilenameCallback,
 	type UploadMiddleware,
 } from './types';
-import { formatBytes } from './utils/size-utils';
 
-const ALLOWED_MIME_TYPES = ['text/csv'];
+const ALLOWED_EXTENSIONS = ['.csv'];
 
 @Service()
 export class MulterUploadMiddleware implements UploadMiddleware {
@@ -56,10 +57,10 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 					this.globalConfig.dataTable.uploadMaxFileSize ?? this.globalConfig.dataTable.maxSize,
 			},
 			fileFilter: (_req, file, cb: multer.FileFilterCallback) => {
-				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+				if (!ALLOWED_EXTENSIONS.includes(extname(file.originalname).toLowerCase())) {
 					cb(
 						new BadRequestError(
-							`Only the following file types are allowed: ${ALLOWED_MIME_TYPES.join(', ')}`,
+							`Only the following file types are allowed: ${ALLOWED_EXTENSIONS.join(', ')}`,
 						),
 					);
 					return;

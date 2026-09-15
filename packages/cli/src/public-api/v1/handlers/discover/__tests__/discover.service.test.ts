@@ -1,37 +1,48 @@
 import type { ApiKeyScope } from '@n8n/permissions';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
 const createMockMiddleware = (_req: unknown, _res: unknown, next: unknown) => (next as Function)();
-jest.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
+vi.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
 	return Object.assign(
 		(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
 		{ __apiKeyScope: scope },
 	) as middlewares.ScopeTaggedMiddleware;
 });
-jest
-	.spyOn(middlewares, 'apiKeyHasScopeWithGlobalScopeFallback')
-	.mockImplementation(
-		(config: { scope: ApiKeyScope } | { apiKeyScope: ApiKeyScope; globalScope: unknown }) => {
-			const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-			return Object.assign(
-				(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
-				{ __apiKeyScope: scope },
-			) as middlewares.ScopeTaggedMiddleware;
-		},
-	);
+vi.spyOn(middlewares, 'apiKeyHasScopeWithGlobalScopeFallback').mockImplementation(
+	(config: { scope: ApiKeyScope } | { apiKeyScope: ApiKeyScope; globalScope: unknown }) => {
+		const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+		return Object.assign(
+			(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
+			{ __apiKeyScope: scope },
+		) as middlewares.ScopeTaggedMiddleware;
+	},
+);
 
 // Also mock other middleware that handlers import
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'validCursor').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'projectScope').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'validCursor').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
 
-import { buildDiscoverResponse, _resetCache } from '../discover.service';
+// `discover.service` builds its endpoint registry at module-evaluation time by
+// reading middleware metadata, so it must be imported *after* the spies above
+// are installed. A static import is hoisted above them, so load it dynamically.
+let buildDiscoverResponse: typeof import('../discover.service.js').buildDiscoverResponse;
+let _resetCache: typeof import('../discover.service.js')._resetCache;
+
+beforeAll(async () => {
+	({ buildDiscoverResponse, _resetCache } = await import('../discover.service.js'));
+	// Warm the registry once. The first call cold-loads and transforms all
+	// handler modules (and their transitive graph) through Vite, which can
+	// approach the default 5s test timeout. Paying it here in the hook keeps
+	// the individual tests fast and non-flaky.
+	await buildDiscoverResponse([] as ApiKeyScope[]);
+}, 30_000);
 
 beforeEach(() => {
 	_resetCache();
@@ -119,6 +130,41 @@ describe('buildDiscoverResponse', () => {
 		});
 	});
 
+	describe('composite scope requirements', () => {
+		it('should include a composite-scope endpoint for a caller holding one of its scopes', async () => {
+			const result = await buildDiscoverResponse(['workflow:export'] as ApiKeyScope[]);
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(true);
+		});
+
+		it('should exclude a composite-scope endpoint for a caller holding none of its scopes', async () => {
+			const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[]);
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(false);
+		});
+
+		it('should list one operation per scope in a composite requirement, not a joined pseudo-operation', async () => {
+			const result = await buildDiscoverResponse([
+				'project:export',
+				'workflow:export',
+			] as ApiKeyScope[]);
+
+			expect(result.filters.operation.values).toContain('export');
+			expect(result.filters.operation.values).not.toContain('export,workflow');
+		});
+
+		it('should match a composite-scope endpoint under an operation filter', async () => {
+			const result = await buildDiscoverResponse(['workflow:export'] as ApiKeyScope[], {
+				operation: 'export',
+			});
+
+			const allEndpoints = Object.values(result.resources).flatMap((r) => r.endpoints);
+			expect(allEndpoints.some((e) => e.operationId === 'exportPackage')).toBe(true);
+		});
+	});
+
 	it('should not include workflow endpoints when caller has no workflow scopes', async () => {
 		const result = await buildDiscoverResponse([] as ApiKeyScope[]);
 
@@ -146,6 +192,19 @@ describe('buildDiscoverResponse', () => {
 		expect(createEndpoint).toBeDefined();
 		expect(createEndpoint?.requestSchema).toBeDefined();
 		expect(createEndpoint?.requestSchema).toHaveProperty('type');
+	});
+
+	it('should include requestSchema for a decorator route when includeSchemas is true', async () => {
+		const result = await buildDiscoverResponse(['role:manage'] as ApiKeyScope[], {
+			includeSchemas: true,
+		});
+
+		const createEndpoint = result.resources.role?.endpoints.find(
+			(e) => e.operationId === 'createRole',
+		);
+		expect(createEndpoint).toBeDefined();
+		expect(createEndpoint?.requestSchema).toBeDefined();
+		expect(createEndpoint?.requestSchema).toHaveProperty('properties');
 	});
 
 	it('should not include requestSchema on GET endpoints even with includeSchemas', async () => {

@@ -5,7 +5,7 @@
  * credential-like field names.
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import { parseVersion } from '../../string-utils';

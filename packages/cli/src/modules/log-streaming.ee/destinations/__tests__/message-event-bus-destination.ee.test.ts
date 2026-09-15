@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type {
@@ -19,7 +19,9 @@ class TestDestination extends MessageEventBusDestination {
 }
 
 describe('MessageEventBusDestination', () => {
-	mockInstance(Logger);
+	const logger = mockInstance(Logger);
+	// CircuitBreaker resolves its logger via Container.get(Logger).scoped(...)
+	logger.scoped.mockReturnValue(logger);
 
 	const eventBus = {} as MessageEventBus;
 
@@ -198,6 +200,32 @@ describe('MessageEventBusDestination', () => {
 			expect(serialized.enabled).toBe(false);
 			expect(serialized.subscribedEvents).toEqual([]);
 			expect(serialized.anonymizeAuditMessages).toBe(false);
+		});
+
+		it('should serialize configured circuit breaker options verbatim', () => {
+			const circuitBreaker = { maxFailures: 7, failureWindow: 30000 };
+			const options: MessageEventBusDestinationOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				credentials: {},
+				circuitBreaker,
+			};
+
+			const destination = new TestDestination(eventBus, options);
+			const serialized = destination.serialize();
+
+			// No defaults injected (maxDuration/halfOpenRequests/...) and no `timeout` key
+			expect(serialized.circuitBreaker).toEqual(circuitBreaker);
+		});
+
+		it('should serialize circuit breaker as undefined when omitted', () => {
+			const options: MessageEventBusDestinationOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				credentials: {},
+			};
+
+			const destination = new TestDestination(eventBus, options);
+
+			expect(destination.serialize().circuitBreaker).toBeUndefined();
 		});
 	});
 

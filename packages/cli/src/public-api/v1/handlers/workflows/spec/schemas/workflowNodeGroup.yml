@@ -13,6 +13,11 @@ properties:
     type: string
     description: Display name of the node group
     example: Data processing
+  description:
+    type: string
+    maxLength: 155
+    description: Optional plain-text description of the node group
+    example: Cleans and normalizes incoming records
   nodeIds:
     type: array
     description: IDs of the nodes that belong to this group

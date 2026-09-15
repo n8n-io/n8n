@@ -259,6 +259,43 @@ export class ProxyServer {
 		}
 	}
 
+	/**
+	 * Install a catch-all so unmatched requests to the given paths return a clear
+	 * error instead of being silently forwarded to the real upstream API.
+	 *
+	 * MockServer runs as a forward proxy, so a request with no matching
+	 * expectation is proxied to the real host — turning a drifted recording into a
+	 * cryptic upstream error (e.g. Anthropic's "invalid x-api-key"). This guard
+	 * matches at a very low priority, so it only fires when no recorded
+	 * expectation matched, and returns an error whose message names the real
+	 * problem. A 4xx status avoids SDK retries and is surfaced to the caller.
+	 *
+	 * Only meaningful in replay mode. Do NOT install when recording: capturing
+	 * live responses relies on the unmatched request reaching the real API.
+	 */
+	async failOnUnmatched(paths: string[] = ['/v1/messages']): Promise<void> {
+		const expectations: Expectation[] = paths.map((path) => ({
+			priority: -1000,
+			httpRequest: { path },
+			httpResponse: {
+				statusCode: 400,
+				headers: { 'content-type': ['application/json'] },
+				body: JSON.stringify({
+					type: 'error',
+					error: {
+						type: 'invalid_request_error',
+						message:
+							`MockServer: no recorded expectation matched a request to "${path}". ` +
+							'The live request body has drifted from the recordings (e.g. model, ' +
+							'max_tokens, or tool changes). Re-record the expectations instead of ' +
+							'forwarding to the real API.',
+					},
+				}),
+			},
+		}));
+		await this.withRetry(async () => await this.client.mockAnyResponse(expectations));
+	}
+
 	async createExpectation(expectation: ProxyServerExpectation): Promise<RequestResponse> {
 		try {
 			return await this.client.mockAnyResponse({

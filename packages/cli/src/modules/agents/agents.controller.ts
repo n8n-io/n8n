@@ -1,4 +1,4 @@
-import { CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { AgentsService } from './agents.service';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -22,6 +23,7 @@ export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
+		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 	) {}
 
 	@Post('/')
@@ -32,8 +34,33 @@ export class AgentsController {
 		@Body payload: CreateAgentDto,
 	) {
 		const { projectId } = req.params;
+		const isDuplicate = Boolean(payload.schema);
 
-		const agent = await this.agentsService.create(projectId, payload.name);
+		const defaultModel = isDuplicate
+			? undefined
+			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
+
+		const agent = await this.agentsService.create(projectId, payload.name, {
+			id: payload.id,
+			...(defaultModel ? { defaultModel } : {}),
+			// Keep the config name in sync with the entity name so the list and
+			// builder never disagree on a directly-seeded create. Narrowing
+			// payload.schema here keeps the spread over a defined config, so its
+			// required fields (model, instructions) stay required for the service.
+			...(isDuplicate && payload.schema
+				? {
+						schema: { ...payload.schema, name: payload.name },
+						skills: payload.skills,
+						tools: payload.tools,
+						// A REST duplicate is a user-driven write: the service sanitizes the
+						// config, blanks inaccessible credentials, copies channels as
+						// drafts, and emits `agent-saved` so the dependency index
+						// refreshes. The duplicate itself is reported by the frontend
+						// "User duplicated agent" event (carrying the source agent id).
+						user: req.user,
+					}
+				: {}),
+		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}
 
@@ -72,6 +99,16 @@ export class AgentsController {
 		);
 	}
 
+	/** Capability metadata for the canvas node card (model + chip labels). */
+	@Get('/:agentId/summary')
+	@ProjectScope('agent:read')
+	async getSummary(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentCapabilitySummary> {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.getCapabilitySummary(agentId, projectId);
+	}
+
 	@Delete('/:agentId')
 	@ProjectScope('agent:delete')
 	async delete(
@@ -79,7 +116,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

@@ -1,0 +1,126 @@
+operationId: createProject
+tags:
+  - Projects
+summary: Create a project
+description: Create a project on your instance.
+x-required-scope: project:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 255
+            example: Marketing
+          id:
+            type: string
+            readOnly: true
+          type:
+            type: string
+            readOnly: true
+        required:
+          - name
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              readOnly: true
+              example: VmwOO9HeTEj20kxM
+            name:
+              type: string
+              example: Marketing
+            type:
+              type: string
+              enum:
+                - personal
+                - team
+              readOnly: true
+              example: team
+            icon:
+              type: object
+              description: Icon of the project, or null when the project has none
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - emoji
+                    - icon
+                value:
+                  type: string
+                color:
+                  type: string
+              required:
+                - type
+                - value
+              nullable: true
+            description:
+              type: string
+              nullable: true
+              example: Workflows the marketing team owns.
+            customTelemetryTags:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - key
+                  - value
+            creatorId:
+              type: string
+              nullable: true
+              example: f9a2cbb8-0b1e-4b64-9c1c-0d5f5f1f2a3b
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+            role:
+              type: string
+              description: The caller's role in the new project.
+              example: project:admin
+            scopes:
+              type: array
+              items:
+                type: string
+              description: Scopes the caller holds in the new project.
+          required:
+            - id
+            - name
+            - type
+            - icon
+            - description
+            - customTelemetryTags
+            - creatorId
+            - createdAt
+            - updatedAt
+            - role
+            - scopes
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

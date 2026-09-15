@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { z } from 'zod';
 
@@ -11,11 +12,13 @@ import * as transport from './transport';
 
 describe('Ollama Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
 	});
 
 	describe('Text -> Message', () => {
@@ -140,7 +143,6 @@ describe('Ollama Node', () => {
 				}
 			});
 			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
-			// @ts-expect-error: Mocking a tool, we do not implement the full interface
 			getConnectedToolsMock.mockResolvedValue([mockTool]);
 
 			apiRequestMock.mockResolvedValueOnce({
@@ -203,7 +205,6 @@ describe('Ollama Node', () => {
 				}
 			});
 			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }, { type: 'ai_tool' }]);
-			// @ts-expect-error: Mocking a tool, we do not implement the full interface
 			getConnectedToolsMock.mockResolvedValue([mockTool]);
 
 			apiRequestMock.mockResolvedValueOnce({

@@ -31,6 +31,16 @@ const isPrimaryActionDisabled = computed(
 	() => ctx.activeStep.value !== undefined && !isActiveStepHandled.value,
 );
 
+const primaryActionTooltip = computed(() => {
+	if (isPrimaryActionBlockedByCredentialTest.value) {
+		return i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip');
+	}
+	if (isPrimaryActionDisabled.value) {
+		return i18n.baseText('instanceAi.workflowSetup.stepIncompleteTooltip');
+	}
+	return undefined;
+});
+
 const isFinalize = computed(() => ctx.credentialFlow.value?.stage === 'finalize');
 
 const showSkipButton = computed(
@@ -112,10 +122,7 @@ function onPrimaryAction() {
 				data-test-id="instance-ai-workflow-setup-later"
 				@click="ctx.skipCurrentStep"
 			/>
-			<N8nTooltip
-				:disabled="!isPrimaryActionBlockedByCredentialTest"
-				:content="i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip')"
-			>
+			<N8nTooltip :disabled="!primaryActionTooltip" :content="primaryActionTooltip">
 				<N8nButton
 					size="medium"
 					:label="primaryActionLabel"

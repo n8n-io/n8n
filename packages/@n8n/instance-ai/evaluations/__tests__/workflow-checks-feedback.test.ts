@@ -10,7 +10,7 @@ function extractCheckFeedback(outcomes: CheckOutcome[] | undefined): Feedback[] 
 	const out: Feedback[] = [];
 	if (!outcomes) return out;
 	for (const outcome of outcomes) {
-		if (outcome.status === 'n_a') continue;
+		if (outcome.status === 'n_a' || outcome.status === 'error') continue;
 		out.push({
 			key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
 			score: outcome.status === 'pass' ? 1 : 0,
@@ -79,12 +79,26 @@ describe('CheckOutcome → LangSmith Feedback projection', () => {
 	it('drops N/A even when comment is present', () => {
 		const single: CheckOutcome[] = [
 			{
-				name: 'response_matches_workflow_changes',
+				name: 'response_describes_changes_accurately',
 				description: 'LLM check',
 				kind: 'llm',
-				dimension: 'nodes_craftsmanship',
+				dimension: 'communication',
 				status: 'n_a',
-				comment: 'Skipped: no agent text response',
+				comment: 'Skipped: no agent narration available',
+			},
+		];
+		expect(extractCheckFeedback(single)).toEqual([]);
+	});
+
+	it('drops errored checks so infra flakiness never scores as 0', () => {
+		const single: CheckOutcome[] = [
+			{
+				name: 'fulfills_user_request',
+				description: 'LLM check',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'error',
+				comment: 'LLM check "fulfills_user_request" timed out after 30000ms',
 			},
 		];
 		expect(extractCheckFeedback(single)).toEqual([]);

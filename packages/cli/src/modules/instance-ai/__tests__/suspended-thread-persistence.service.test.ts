@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock, type MockProxy } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import {

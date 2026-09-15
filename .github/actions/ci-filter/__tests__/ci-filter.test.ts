@@ -11,6 +11,7 @@ import {
 	formatChangedFilesOutput,
 	runValidate,
 	getChangedFiles,
+	getAddedFiles,
 	getMergeBase,
 } from '../ci-filter.mjs';
 
@@ -377,6 +378,20 @@ describe('getChangedFiles', () => {
 	it('rejects unsafe base refs', () => {
 		assert.throws(() => getChangedFiles('main; rm -rf /'), /Unsafe/);
 		assert.throws(() => getChangedFiles('main$evil'), /Unsafe/);
+	});
+
+	it('getAddedFiles returns only added files, not modified ones', () => {
+		// Modify shared.ts on the PR branch alongside the existing add, then
+		// confirm getAddedFiles excludes the modification (--diff-filter=A).
+		writeFileSync(join(repoDir, 'shared.ts'), 'shared\npr-edit\n');
+		git(['commit', '-am', 'PR modifies shared']);
+		getChangedFiles('main'); // ensure FETCH_HEAD is populated
+		assert.deepEqual(getAddedFiles('main').sort(), ['pr-only.ts']);
+		assert.deepEqual(getChangedFiles('main').sort(), ['pr-only.ts', 'shared.ts']);
+	});
+
+	it('getAddedFiles rejects unsafe base refs', () => {
+		assert.throws(() => getAddedFiles('main; rm -rf /'), /Unsafe/);
 	});
 });
 

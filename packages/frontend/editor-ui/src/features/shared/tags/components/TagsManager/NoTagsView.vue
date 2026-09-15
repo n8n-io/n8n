@@ -8,12 +8,14 @@ type Props = {
 	titleLocaleKey: BaseTextKey;
 	descriptionLocaleKey: BaseTextKey;
 	createLocaleKey: BaseTextKey;
+	canCreate?: boolean;
 };
 
 withDefaults(defineProps<Props>(), {
 	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
 	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
 	createLocaleKey: 'noTagsView.createTag',
+	canCreate: true,
 });
 
 const i18n = useI18n();
@@ -33,6 +35,7 @@ const i18n = useI18n();
 					{{ i18n.baseText(descriptionLocaleKey) }}
 				</div>
 				<N8nButton
+					v-if="canCreate"
 					:label="i18n.baseText(`${createLocaleKey}`)"
 					size="large"
 					@click="$emit('enableCreate')"

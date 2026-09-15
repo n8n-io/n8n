@@ -37,11 +37,15 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'credential:move',
 	'credential:share',
 	'credential:unshare',
+	'credential:connect',
+	'credential:createEndUser',
 	'execution:reveal',
 	'project:list',
 	'project:read',
 	'project:update',
 	'project:delete',
+	'project:export',
+	'project:manageMembers',
 	'folder:create',
 	'folder:read',
 	'folder:update',
@@ -49,6 +53,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
+	'nodeTypePolicy:manage',
 	'dataTable:create',
 	'dataTable:delete',
 	'dataTable:read',
@@ -63,6 +68,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -94,9 +104,12 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'credential:list',
 	'credential:move',
 	'credential:unshare',
+	'credential:connect',
+	'credential:createEndUser',
 	'execution:reveal',
 	'project:list',
 	'project:read',
+	'project:export',
 	'folder:create',
 	'folder:read',
 	'folder:update',
@@ -112,6 +125,11 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:writeRow',
 	'dataTable:readColumn',
 	'dataTable:writeColumn',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -139,8 +157,10 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:connect',
 	'project:list',
 	'project:read',
+	'project:export',
 	'folder:create',
 	'folder:read',
 	'folder:update',
@@ -160,6 +180,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -170,6 +195,7 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'credential:read',
 	'project:list',
 	'project:read',
+	'project:export',
 	'workflow:list',
 	'workflow:read',
 	'workflow:export',
@@ -182,6 +208,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

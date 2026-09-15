@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import { UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType, LoadedClass } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -21,7 +21,7 @@ describe('CredentialTypes', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getByName', () => {
@@ -40,7 +40,7 @@ describe('CredentialTypes', () => {
 				mock<LoadNodesAndCredentials>({
 					loadedCredentials: {},
 					knownCredentials: { testCredential: mock({ supportedNodes: [] }) },
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			expect(credentialTypes.recognizes('testCredential')).toBe(true);
@@ -51,7 +51,7 @@ describe('CredentialTypes', () => {
 				mock<LoadNodesAndCredentials>({
 					loadedCredentials: { testCredential },
 					knownCredentials: {},
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			expect(credentialTypes.recognizes('testCredential')).toBe(true);
@@ -68,7 +68,7 @@ describe('CredentialTypes', () => {
 			const credentialTypes = new CredentialTypes(
 				mock<LoadNodesAndCredentials>({
 					knownCredentials: { testCredential: mock({ supportedNodes }) },
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			expect(credentialTypes.getSupportedNodes('testCredential')).toEqual(supportedNodes);
@@ -89,7 +89,7 @@ describe('CredentialTypes', () => {
 						parentType2: { extends: [] },
 						grandparentType: { extends: [] },
 					},
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			const parentTypes = credentialTypes.getParentTypes('childType');
@@ -102,7 +102,7 @@ describe('CredentialTypes', () => {
 			const credentialTypes = new CredentialTypes(
 				mock<LoadNodesAndCredentials>({
 					knownCredentials: { testCredential: { extends: [] } },
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			expect(credentialTypes.getParentTypes('testCredential')).toBeEmptyArray();
@@ -112,7 +112,7 @@ describe('CredentialTypes', () => {
 			const credentialTypes = new CredentialTypes(
 				mock<LoadNodesAndCredentials>({
 					knownCredentials: {},
-				}),
+				} as never) as LoadNodesAndCredentials,
 			);
 
 			expect(credentialTypes.getParentTypes('unknownCredential')).toBeEmptyArray();
@@ -126,7 +126,7 @@ describe('CredentialTypes', () => {
 			};
 
 			const credentialTypes = new CredentialTypes(
-				mock<LoadNodesAndCredentials>({ knownCredentials }),
+				mock<LoadNodesAndCredentials>({ knownCredentials } as never) as LoadNodesAndCredentials,
 			);
 
 			const originalExtends = knownCredentials.childType.extends;

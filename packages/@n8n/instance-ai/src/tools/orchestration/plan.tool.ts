@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents';
-import { taskListSchema } from '@n8n/api-types';
+import { instanceAiApprovalResumeSchema, taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -8,7 +8,11 @@ import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from 
 
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
-	title: z.string().describe('Short user-facing task title'),
+	title: z
+		.string()
+		.trim()
+		.min(1, 'Task title must not be empty — it is the label the user sees')
+		.describe('Short user-facing task title'),
 	kind: z.enum(PLANNED_TASK_KINDS),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
@@ -17,7 +21,6 @@ const plannedTaskSchema = z.object({
 			'Task IDs that must succeed before this task can start. ' +
 				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
-	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
 		.string()
 		.optional()
@@ -60,9 +63,7 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
-export const planResumeSchema = z.object({
-	approved: z.boolean(),
-	userInput: z.string().optional(),
+export const planResumeSchema = instanceAiApprovalResumeSchema.extend({
 	denied: z.boolean().optional(),
 });
 
@@ -103,41 +104,44 @@ function validatePlanningContext(
 ): string | undefined {
 	const { planningContext } = input;
 	if (!planningContext) {
-		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+		trackPlanningRoute(context, input.tasks, {
 			route: 'contract_violation',
 			source: 'missing',
 		});
 		return (
 			'Error: `create-tasks` requires `planningContext`. For initial plan-worthy work, load the ' +
-			'`planning` skill first, perform discovery with normal tools, then call `create-tasks` with ' +
-			'`planningContext.source: "planning-skill"`. For planned-task replan follow-ups, use ' +
+			'`planning` skill first, perform discovery with normal tools, load `create-tasks` via ' +
+			'`load_tool`, then call `create-tasks` with `planningContext.source: "planning-skill"`. ' +
+			'For planned-task replan follow-ups, load `create-tasks` if needed, then use ' +
 			'`planningContext.source: "replan"`.'
 		);
 	}
 
 	if (isReplanContext(context)) {
 		if (planningContext.source !== 'replan') {
-			trackPlanningRoute(context, input.tasks as PlannedTask[], {
+			trackPlanningRoute(context, input.tasks, {
 				route: 'contract_violation',
 				source: planningContext.source,
 			});
 			return (
-				'Error: `<planned-task-follow-up type="replan">` turns must call `create-tasks` with ' +
-				'`planningContext.source: "replan"` when scheduling multiple dependent tasks.'
+				'Error: `<planned-task-follow-up type="replan">` turns must load `create-tasks` via ' +
+				'`load_tool` if needed, then call `create-tasks` with `planningContext.source: "replan"` ' +
+				'when scheduling multiple dependent tasks.'
 			);
 		}
 		return undefined;
 	}
 
 	if (planningContext.source !== 'planning-skill') {
-		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+		trackPlanningRoute(context, input.tasks, {
 			route: 'contract_violation',
 			source: planningContext.source,
 		});
 		return (
 			'Error: `planningContext.source: "replan"` is only valid in planned-task replan follow-up turns. ' +
 			'For initial plan-worthy work, load the `planning` skill, perform discovery with normal tools, ' +
-			'then call `create-tasks` with `planningContext.source: "planning-skill"`.'
+			'load `create-tasks` via `load_tool`, then call `create-tasks` with ' +
+			'`planningContext.source: "planning-skill"`.'
 		);
 	}
 
@@ -148,6 +152,7 @@ export function createPlanTool(context: OrchestrationContext) {
 	return new Tool('create-tasks')
 		.description(
 			'Submit a dependency-aware task graph for detached multi-step execution. ' +
+				'Load via `load_tool` before calling (search "create tasks" if not visible). ' +
 				'Use after loading the `planning` skill for initial plan-worthy work, or during ' +
 				'`<planned-task-follow-up type="replan">` when multiple dependent tasks still need scheduling. ' +
 				'Requires `planningContext.source` to be `planning-skill` or `replan` as appropriate. ' +
@@ -217,19 +222,15 @@ export function createPlanTool(context: OrchestrationContext) {
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
 				try {
-					trackPlanningRoute(context, input.tasks as PlannedTask[], {
+					trackPlanningRoute(context, input.tasks, {
 						route: input.planningContext.source === 'planning-skill' ? 'skill' : 'replan',
 						source: input.planningContext.source,
 					});
-					await context.plannedTaskService.createPlan(
-						context.threadId,
-						input.tasks as PlannedTask[],
-						{
-							planRunId: context.runId,
-							messageGroupId: context.messageGroupId,
-							postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
-						},
-					);
+					await context.plannedTaskService.createPlan(context.threadId, input.tasks, {
+						planRunId: context.runId,
+						messageGroupId: context.messageGroupId,
+						postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
+					});
 				} catch (error) {
 					// Surface only validator rejections back to the LLM as a tool result
 					// so it can re-call with a corrected graph. Storage failures, abort
@@ -276,7 +277,8 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (resumeData.approved) {
 				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
-				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+				context.requestRunHandoff?.('planned-tasks-scheduled');
+				trackPlanningRoute(context, input.tasks, {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,
 					approvalOutcome: 'approved',
@@ -307,7 +309,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			// being treated as a revision, and tell the LLM to stop.
 			if (resumeData.denied) {
 				await context.plannedTaskService.denyPlan(context.threadId);
-				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+				trackPlanningRoute(context, input.tasks, {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,
 					approvalOutcome: 'denied',
@@ -324,7 +326,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			// graph cannot dispatch, and the next `create-tasks` call overwrites
 			// it with the revised graph.
 			return {
-				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks, load create-tasks via load_tool if needed, and call create-tasks again.`,
 				taskCount: 0,
 			};
 		})

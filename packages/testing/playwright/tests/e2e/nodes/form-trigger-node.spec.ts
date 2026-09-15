@@ -62,7 +62,7 @@ test.describe(
 			await n8n.ndv.fillParameterInputByName('fieldName', 'testField4', 3);
 
 			// Configure dropdown field options
-			await n8n.page.getByRole('button', { name: 'Add Field Option' }).click();
+			await n8n.ndv.clickNodeParameterButton('Add Field Option');
 			await n8n.ndv.fillParameterInputByName('option', 'Option 1');
 			await n8n.ndv.fillParameterInputByName('option', 'Option 2', 1);
 

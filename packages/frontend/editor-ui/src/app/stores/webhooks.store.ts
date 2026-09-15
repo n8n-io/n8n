@@ -8,9 +8,9 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from './ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from './settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 
 export const useWebhooksStore = defineStore(STORES.WEBHOOKS, () => {

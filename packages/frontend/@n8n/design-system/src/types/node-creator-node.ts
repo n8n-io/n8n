@@ -5,6 +5,6 @@ export type NodeCreatorTag = {
 	type?: (typeof ElTag)['type'];
 	/** When true, renders as N8nActionPill instead of ElTag. */
 	pill?: boolean;
-	/** When true, renders as PreviewTag instead of ElTag. */
+	/** When true, renders as PreviewTag instead of ElTag; `text` overrides the tag's default "Preview" label. */
 	preview?: boolean;
 };

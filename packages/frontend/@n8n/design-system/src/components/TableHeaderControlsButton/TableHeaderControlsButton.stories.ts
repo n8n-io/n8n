@@ -14,7 +14,7 @@ interface StoryArgs {
 }
 
 export default {
-	title: 'Tables/TableHeaderControlsButton',
+	title: 'Core/TableHeaderControlsButton',
 	component: TableHeaderControlsButton,
 };
 
@@ -55,8 +55,8 @@ const Template: StoryFn<StoryArgs> = (args) => ({
 	`,
 });
 
-export const AllColumnsShown = Template.bind({});
-AllColumnsShown.args = {
+export const Default = Template.bind({});
+Default.args = {
 	columns: [
 		{ key: 'name', label: 'Name', visible: true },
 		{ key: 'email', label: 'Email', visible: true },

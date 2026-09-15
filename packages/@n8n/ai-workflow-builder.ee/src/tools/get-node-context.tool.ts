@@ -1,6 +1,6 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IConnections, NodeConnectionType } from 'n8n-workflow';
 import { isNodeConnectionType, mapConnectionsByDestination } from 'n8n-workflow';
 import { z } from 'zod';

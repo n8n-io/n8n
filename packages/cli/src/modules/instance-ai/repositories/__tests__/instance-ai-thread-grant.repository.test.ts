@@ -1,5 +1,5 @@
 import type { InsertQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiThreadGrant } from '../../entities/instance-ai-thread-grant.entity';
 import { InstanceAiThreadGrantRepository } from '../instance-ai-thread-grant.repository';
@@ -18,7 +18,7 @@ describe('InstanceAiThreadGrantRepository', () => {
 			qb.insert.mockReturnThis();
 			qb.values.mockReturnThis();
 			qb.orIgnore.mockReturnThis();
-			repo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+			repo.createQueryBuilder = vi.fn().mockReturnValue(qb);
 
 			await repo.grant('thread-1', 'user-1', 'executions:run');
 
@@ -32,10 +32,25 @@ describe('InstanceAiThreadGrantRepository', () => {
 		});
 	});
 
+	describe('revoke', () => {
+		it('deletes the exact grant row', async () => {
+			const repo = buildRepo();
+			repo.delete = vi.fn().mockResolvedValue({ affected: 1 });
+
+			await repo.revoke('thread-1', 'user-1', 'workflows:setup-skip:slackApi');
+
+			expect(repo.delete).toHaveBeenCalledWith({
+				threadId: 'thread-1',
+				userId: 'user-1',
+				grantKey: 'workflows:setup-skip:slackApi',
+			});
+		});
+	});
+
 	describe('findKeys', () => {
 		it('returns the grant keys for the thread/user as a set', async () => {
 			const repo = buildRepo();
-			repo.find = jest
+			repo.find = vi
 				.fn()
 				.mockResolvedValue([{ grantKey: 'executions:run' }, { grantKey: 'domain:example.com' }]);
 

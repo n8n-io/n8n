@@ -8,7 +8,7 @@ import WorkerJobAccordion from './WorkerJobAccordion.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
 import WorkerMemoryMonitorAccordion from './WorkerMemoryMonitorAccordion.vue';
-import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
@@ -69,7 +69,11 @@ onBeforeUnmount(() => {
 				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
 				data-test-id="worker-card-name"
 			>
-				Name: {{ worker.senderId }} ({{ worker.hostname }}) <br />
+				Name: {{ worker.senderId }} ({{ worker.hostname }}) |
+				{{ i18n.baseText('workerList.item.pool') }}:
+				{{ worker.poolName || i18n.baseText('workerList.item.pool.default') }} |
+				{{ i18n.baseText('workerList.item.queue') }}: {{ worker.queueName }}
+				<br />
 				Average Load: {{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free memory:
 				{{ memAsGb(worker.process.memory.available) }}GB /
 				{{

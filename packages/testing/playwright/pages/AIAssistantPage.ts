@@ -106,7 +106,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getCredentialEditAssistantButton() {
-		return this.page.getByTestId('credential-edit-ask-assistant-button');
+		return this.page.getByTestId('credential-edit-ask-assistant-button').locator('button');
 	}
 
 	getCodeSnippet() {

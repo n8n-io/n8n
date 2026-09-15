@@ -154,3 +154,19 @@ export async function useVmEngine(): Promise<void> {
 		bridgeMemoryLimit: 128,
 	});
 }
+
+export async function useQuickJsEngine(): Promise<void> {
+	// Dispose any previously initialized engine so initExpressionEngine
+	// creates a fresh evaluator with the QuickJS bridge.
+	await Expression.disposeExpressionEngine();
+	await Expression.initExpressionEngine({
+		engine: 'quickjs',
+		poolSize: 1,
+		maxCodeCacheSize: 1024,
+		// QuickJS (WASM) is several times slower than isolated-vm; under CodSpeed
+		// instrumentation the remaining pattern benchmarks need extra headroom
+		// beyond the vm engine's 60s.
+		bridgeTimeout: 120_000,
+		bridgeMemoryLimit: 128,
+	});
+}

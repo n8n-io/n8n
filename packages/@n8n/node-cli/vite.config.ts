@@ -13,7 +13,6 @@ export default defineConfig({
 						enabled: true,
 						provider: 'v8',
 						reporter: process.env.CI === 'true' ? ['cobertura'] : ['text-summary'],
-						all: true,
 					},
 				}
 			: {}),

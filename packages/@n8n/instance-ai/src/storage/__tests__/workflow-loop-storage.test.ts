@@ -83,6 +83,81 @@ describe('WorkflowLoopStorage', () => {
 		storage = new WorkflowLoopStorage(memory);
 	});
 
+	it('updates the latest outcome without replacing other work items', async () => {
+		const current = {
+			...baseThread,
+			metadata: {
+				otherMetadata: true,
+				instanceAiWorkflowLoop: {
+					'wi-1': {
+						state: makeState(),
+						attempts: [],
+						lastBuildOutcome: makeOutcome({ verifyAttempts: 3 }),
+					},
+					'wi-2': { state: makeState({ workItemId: 'wi-2' }), attempts: [] },
+				},
+			},
+		};
+		mockedPatchThread.mockImplementationOnce(
+			async (_memory, { update }) =>
+				await Promise.resolve({
+					...current,
+					...update(current),
+				}),
+		);
+		await storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => {
+			expect(outcome.verifyAttempts).toBe(3);
+			return { ...outcome, verifyAttempts: 4 };
+		});
+		const saved: unknown = await mockedPatchThread.mock.results[0].value;
+		expect(saved).toMatchObject({
+			metadata: {
+				otherMetadata: true,
+				instanceAiWorkflowLoop: {
+					'wi-1': { lastBuildOutcome: { verifyAttempts: 4 } },
+					'wi-2': { state: { workItemId: 'wi-2' } },
+				},
+			},
+		});
+	});
+
+	it('rejects a verification update when the thread disappeared', async () => {
+		mockedPatchThread.mockResolvedValueOnce(null);
+		await expect(
+			storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => outcome),
+		).rejects.toThrow('could not be saved');
+	});
+
+	it('rejects a verification update when the build outcome disappeared', async () => {
+		mockedPatchThread.mockImplementationOnce(
+			async (_memory, { update }) =>
+				await Promise.resolve({
+					...baseThread,
+					...update(baseThread),
+				}),
+		);
+		await expect(
+			storage.updateBuildOutcome('thread-1', 'wi-1', (outcome) => outcome),
+		).rejects.toThrow('state is unavailable');
+	});
+
+	it('rejects an update when saving its patch fails', async () => {
+		const state = makeState();
+		mockedPatchThread.mockImplementation((_memory, { update }) => {
+			update({
+				...baseThread,
+				metadata: { instanceAiWorkflowLoop: { 'wi-1': { state, attempts: [] } } },
+			});
+			throw new Error('Save failed');
+		});
+		await expect(
+			storage.updateWorkItem('thread-1', 'wi-1', (record) => ({
+				...record,
+				state: { ...record.state, phase: 'verifying' },
+			})),
+		).rejects.toThrow('Save failed');
+	});
+
 	describe('getWorkItem', () => {
 		it('returns work item from thread metadata', async () => {
 			const state = makeState();

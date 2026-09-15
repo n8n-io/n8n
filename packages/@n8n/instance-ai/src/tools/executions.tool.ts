@@ -5,6 +5,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	buildRunWorkflowSessionGrantKey,
+	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
@@ -20,7 +21,19 @@ const MAX_TIMEOUT_MS = 600_000;
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List recent workflow executions'),
+	action: z
+		.literal('list')
+		.describe(
+			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
+				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
+				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
+				'whether the LIVE workflow works: a row ran the published code only when its ' +
+				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
+				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
+				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
+				'unknown version, which is not the same as a draft. A draft version different from the ' +
+				'published one means the latest changes are not live yet.',
+		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
 		.string()
@@ -36,7 +49,13 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get execution status without blocking (poll running ones)'),
+	action: z
+		.literal('get')
+		.describe(
+			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
+				'version this run executed; it only tells you whether the run was live when compared ' +
+				"with the workflow's `activeVersionId`.",
+		),
 	executionId: z.string().describe('Execution ID'),
 });
 
@@ -49,9 +68,22 @@ const runAction = z.object({
 		.describe(
 			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
 				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
+				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
+				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
+				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
+		),
+	triggerNodeName: z
+		.string()
+		.optional()
+		.describe(
+			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
+				'more than one trigger: without it a single trigger is auto-detected and the other ' +
+				"triggers' branches never run. To run each branch, call run once per trigger. " +
+				"Trigger names come from build-workflow's `triggerNodes` or " +
+				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
+				'workflow to reach a branch — use this instead.',
 		),
 	timeout: z
 		.number()
@@ -76,7 +108,9 @@ const debugAction = z.object({
 const getNodeOutputAction = z.object({
 	action: z
 		.literal('get-node-output')
-		.describe('Retrieve raw output of a specific node from an execution'),
+		.describe(
+			"Retrieve raw output of a specific node from an execution, grouped per output (e.g. a Filter's Kept and Discarded). All outputs are listed, including outputs with no downstream connection; only items on a connected output continue through the workflow.",
+		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
@@ -94,12 +128,10 @@ const getResolvedNodeParametersAction = z.object({
 		.literal('get-resolved-node-parameters')
 		.describe(
 			"Replay expression resolution for a node's parameters against a past execution. " +
-				'Returns the raw `parameters` (with expressions intact), the `resolved` tree (same ' +
-				'shape, expressions substituted), `failedExpressions` (those that threw), and ' +
-				'`emptyResolutions` (those that resolved to `null`/`undefined`/`""` — the common ' +
-				'silent cause of empty downstream fields). Use this when debugging why a node ' +
-				'received an unexpected value or failed because of a parameter — far more precise ' +
-				'than guessing from raw expression strings or input data.',
+				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
+				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
+				'cause of empty downstream fields). Use when debugging why a node received an ' +
+				'unexpected value — more precise than guessing from raw expressions or input data.',
 		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
@@ -144,22 +176,45 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+/** Includes `scope` for "always allow" session grants (see handler). */
+const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const executions = await context.executionService.list({
-		workflowId: input.workflowId,
-		status: input.status,
-		limit: input.limit,
-	});
-	return { executions };
+	const [executions, workflow] = await Promise.all([
+		context.executionService.list({
+			workflowId: input.workflowId,
+			status: input.status,
+			limit: input.limit,
+		}),
+		resolveListedWorkflowVersions(context, input.workflowId),
+	]);
+
+	return workflow === undefined ? { executions } : { executions, workflow };
+}
+
+/**
+ * Published and draft version of the listed workflow. Only for a list scoped to
+ * one workflow: without it, "did the live version run?" is unanswerable from
+ * the rows alone. A failed read drops the block rather than the whole list.
+ */
+async function resolveListedWorkflowVersions(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+): Promise<{ activeVersionId: string | null; draftVersionId: string } | undefined> {
+	if (workflowId === undefined) return undefined;
+
+	try {
+		const head = await context.workflowService.getWorkflowHead(workflowId);
+		return { activeVersionId: head.activeVersionId, draftVersionId: head.versionId };
+	} catch (error) {
+		context.logger.warn('Failed to read workflow versions for the execution list', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -191,7 +246,7 @@ async function findAllowedWorkflowByName(
 	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
 
 	for (const allowedName of allowList) {
-		const workflows = await context.workflowService.list({ query: allowedName, limit: 10 });
+		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
 		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
 		if (match) return { id: match.id, name: match.name };
 	}
@@ -204,6 +259,7 @@ async function handleRun(
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -214,10 +270,13 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized
-	// (e.g. checkpoint follow-ups scope the override to the workflows the checkpoint
-	// is verifying). When the allow-list is unset, `always_allow` applies broadly,
-	// matching the legacy behavior.
+	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
+	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
+	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
+	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
+	// agent created during the active plan cycle. Running any other pre-existing workflow
+	// still requires HITL approval, so a prompt injection can't silently run arbitrary
+	// workflows under the user's authority.
 	const allowList = context.allowedRunWorkflowIds;
 	const workflowNameAllowList = context.allowedRunWorkflowNames;
 	let workflowName: string | undefined;
@@ -246,10 +305,14 @@ async function handleRun(
 			allowedByName = true;
 		}
 	}
+	const allowedByList =
+		allowList !== undefined
+			? allowList.has(workflowId)
+			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
 	const allowedByScope =
 		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowList === undefined || allowList.has(workflowId) || allowedByName);
+		(allowedByList || allowedByName);
 
 	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
 	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
@@ -287,6 +350,8 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		triggerNodeName: input.triggerNodeName,
+		abortSignal,
 	});
 }
 
@@ -329,7 +394,11 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
-				'Use action="run" for verification when the current turn is responsible for verification; prefer verify-built-workflow for standard post-build verification.',
+				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+				'do not treat such a request as a request to build something. ' +
+				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -341,7 +410,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);

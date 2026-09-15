@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -114,23 +114,30 @@ onBeforeUnmount(() => {
 	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
 });
 
-onMounted(async () => {
-	// Wait for all reactive updates to settle before checking conditions
-	// This ensures meta.templateId is available after initialization
-	await nextTick();
-
+const shouldAutoOpenSetup = computed(() => {
 	const templateId = workflowDocumentStore?.value?.meta?.templateId;
-	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
-
-	if (
+	return (
 		isNewTemplatesSetupEnabled.value &&
+		!readyToRunStore.isReadyToRunTemplateId(templateId) &&
 		showButton.value &&
-		!isReadyToRunWorkflow &&
 		isTemplateImportRoute.value
-	) {
-		handleTemplateSetup();
-	}
+	);
 });
+
+// Auto-open the setup the first time all conditions hold. They may only become
+// true after nodes and node types finish loading (an unloaded node type reports
+// its credentials as filled), so react to the change rather than sampling once
+// on mount. The guard ensures we never re-open once the user closes it.
+let hasAutoOpened = false;
+watch(
+	shouldAutoOpenSetup,
+	(shouldOpen) => {
+		if (hasAutoOpened || !shouldOpen) return;
+		hasAutoOpened = true;
+		handleTemplateSetup();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>

@@ -1,18 +1,21 @@
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@smithy/types';
-import { type AWSRegion, getAwsDomain } from 'n8n-nodes-base/dist/credentials/common/aws/regions';
-import type {
-	AwsAssumeRoleCredentialsType,
-	AwsIamCredentialsType,
-} from 'n8n-nodes-base/dist/credentials/common/aws/types';
-import { getSystemCredentials } from 'n8n-nodes-base/dist/credentials/common/aws/system-credentials-utils';
-import { assertSupportedAwsRegion } from 'n8n-nodes-base/dist/credentials/common/aws/utils';
+import {
+	type AWSRegion,
+	getAwsDomain,
+	type AwsAssumeRoleCredentialsType,
+	type AwsIamCredentialsType,
+	getSystemCredentials,
+	assertSupportedAwsRegion,
+} from 'n8n-nodes-base/aws-credentials';
 import { UserError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 export type ResolvedAwsCredentials = {
 	region: AWSRegion;
 	credentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
+	/** Runtime endpoint override from the credential (Bedrock inference), if the user set one. */
+	bedrockRuntimeEndpoint?: string;
 };
 
 export async function resolveAwsCredentials(
@@ -25,6 +28,10 @@ export async function resolveAwsCredentials(
 
 	if (authentication !== 'assumeRole') {
 		const creds = (await context.getCredentials('aws')) as AwsIamCredentialsType;
+
+		// Validate before the region is interpolated into service endpoint URLs downstream.
+		assertSupportedAwsRegion(creds.region);
+
 		const identity: AwsCredentialIdentity = {
 			accessKeyId: creds.accessKeyId,
 			secretAccessKey: creds.secretAccessKey,
@@ -32,7 +39,11 @@ export async function resolveAwsCredentials(
 				? { sessionToken: creds.sessionToken }
 				: {}),
 		};
-		return { region: creds.region, credentials: identity };
+		return {
+			region: creds.region,
+			credentials: identity,
+			bedrockRuntimeEndpoint: creds.bedrockRuntimeEndpoint,
+		};
 	}
 
 	const creds = (await context.getCredentials('awsAssumeRole')) as AwsAssumeRoleCredentialsType;
@@ -101,5 +112,9 @@ export async function resolveAwsCredentials(
 		},
 	});
 
-	return { region: creds.region, credentials: provider };
+	return {
+		region: creds.region,
+		credentials: provider,
+		bedrockRuntimeEndpoint: creds.bedrockRuntimeEndpoint,
+	};
 }

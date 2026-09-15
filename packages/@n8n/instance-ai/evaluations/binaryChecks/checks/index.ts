@@ -14,6 +14,7 @@ import { descriptiveNodeNames } from './descriptive-node-names';
 import { errorRoutesConsistent } from './error-routes-consistent';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
 import { fulfillsUserRequest } from './fulfills-user-request';
+import { googleSheetsRlcDefaultMode } from './google-sheets-rlc-default-mode';
 import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
@@ -31,7 +32,8 @@ import { noHardcodedCredentials } from './no-hardcoded-credentials';
 import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
-import { responseMatchesWorkflowChanges } from './response-matches-workflow-changes';
+import { responseDescribesChangesAccurately } from './response-describes-changes-accurately';
+import { secretsUseCredentialsNotParameters } from './secrets-use-credentials-not-parameters';
 import { switchFallbackOutputEnabled } from './switch-fallback-output-enabled';
 import { toolsHaveParameters } from './tools-have-parameters';
 import { validDataFlow } from './valid-data-flow';
@@ -65,9 +67,12 @@ export const PARAMETER_CORRECTNESS_CHECKS: BinaryCheck[] = [
 	httpGenericAuthTypeMatchesPrompt,
 	correctNodeOperations,
 	validDataFlow,
+	googleSheetsRlcDefaultMode,
 ];
 
 export const INTENT_MATCH_CHECKS: BinaryCheck[] = [fulfillsUserRequest];
+
+export const COMMUNICATION_CHECKS: BinaryCheck[] = [responseDescribesChangesAccurately];
 
 export const AI_NODES_CHECKS: BinaryCheck[] = [
 	agentHasDynamicPrompt,
@@ -82,18 +87,22 @@ export const NODES_CRAFTSMANSHIP_CHECKS: BinaryCheck[] = [
 	noUnnecessaryCodeNodes,
 	codeNodeNoHttpRequests,
 	descriptiveNodeNames,
-	responseMatchesWorkflowChanges,
 ];
 
 export const EFFICIENCY_CHECKS: BinaryCheck[] = [noExcessiveBuildFailures];
 
-export const SECURITY_CHECKS: BinaryCheck[] = [noHardcodedCredentials, inboundTriggerAuthDefaults];
+export const SECURITY_CHECKS: BinaryCheck[] = [
+	noHardcodedCredentials,
+	inboundTriggerAuthDefaults,
+	secretsUseCredentialsNotParameters,
+];
 
 export const ALL_CHECKS: BinaryCheck[] = [
 	...STRUCTURE_CHECKS,
 	...CONNECTION_TOPOLOGY_CHECKS,
 	...PARAMETER_CORRECTNESS_CHECKS,
 	...INTENT_MATCH_CHECKS,
+	...COMMUNICATION_CHECKS,
 	...AI_NODES_CHECKS,
 	...NODES_CRAFTSMANSHIP_CHECKS,
 	...EFFICIENCY_CHECKS,

@@ -1,17 +1,18 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import {
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-} from '@n8n/api-types';
+import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
+import { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
 import { NodeCatalogService } from '@/node-catalog';
-import { isAgentProviderNode } from '@/node-execution';
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string
@@ -30,20 +31,15 @@ type NodeRequest =
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
 const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
-const aiUtilityAgentToolNodeTypes = new Set<string>(
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-);
 
 /**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
  * mirrored `*Tool` node type; native tool nodes already follow this shape.
  * HITL tools are excluded because the builder wires regular executable tools,
- * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
- * admitted via the explicit whitelist — they ship the full vendor API
- * (image, audio, …) but lack the `usableAsTool` flag.
- * Frontend-hidden tool variants are excluded here too, so `search_nodes`
- * cannot offer tools the modal intentionally hides.
+ * not approval-gated workflow steps. `AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES`
+ * is shared with the frontend tools picker, so discovery and the picker cannot
+ * offer different tool sets.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
@@ -56,10 +52,7 @@ export const isAgentToolNodeType = (nodeId: string): boolean => {
 		return false;
 	}
 
-	const isAllowedAiUtilityTool = aiUtilityAgentToolNodeTypes.has(nodeId);
-	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
-	const isAllowedProviderNode = isAgentProviderNode(nodeId);
-	return isAllowedAiUtilityTool || isAllowedTool || isAllowedProviderNode;
+	return isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
 };
 
 const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
@@ -70,7 +63,11 @@ const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
 });
 
-const nodeVersionSchema = z.number().describe('Tool node type version from search_nodes');
+const nodeVersionSchema = z
+	.number()
+	.describe(
+		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+	);
 
 const getNodeTypesInputSchema = z.object({
 	nodeIds: z
@@ -87,7 +84,9 @@ const getNodeTypesInputSchema = z.object({
 			]),
 		)
 		.min(1)
-		.describe('Tool node IDs from search_nodes (e.g., ["n8n-nodes-base.gmailTool"])'),
+		.describe(
+			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+		),
 });
 
 const listCredentialsInputSchema = z.object({
@@ -120,6 +119,13 @@ export class AgentsToolsService {
 		];
 	}
 
+	async searchAgentToolNodes(queries: string[]): Promise<CodeBuilderSearchResult> {
+		await this.nodeCatalogService.initialize();
+		return await this.nodeCatalogService.searchNodes(queries, {
+			nodeFilter: isAgentToolNodeType,
+		});
+	}
+
 	private buildSearchNodesTool(): BuiltTool {
 		return new Tool('search_nodes')
 			.description(
@@ -129,10 +135,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				await this.nodeCatalogService.initialize();
-				const { results } = await this.nodeCatalogService.searchNodes(queries, {
-					nodeFilter: isAgentToolNodeType,
-				});
+				const { results } = await this.searchAgentToolNodes(queries);
 				return { results };
 			})
 			.build();
@@ -141,13 +144,31 @@ export class AgentsToolsService {
 	private buildGetNodeTypesTool(): BuiltTool {
 		return new Tool('get_node_types')
 			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
-					'by search_nodes. Returns parameter definitions needed to configure a node for execution. ' +
-					'Use the tool node IDs from search_nodes. ' +
-					'You can optionally filter by resource/operation/mode.',
+				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
+					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'parameter definitions needed to configure a node for execution. Use the tool node ' +
+					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
+					'resource/operation/mode.',
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				const unsupportedOperations = nodeIds.flatMap((request) => {
+					if (
+						typeof request === 'string' ||
+						!isUnsupportedEphemeralNodeOperation(request.operation)
+					) {
+						return [];
+					}
+
+					return [
+						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
+					];
+				});
+
+				if (unsupportedOperations.length > 0) {
+					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
+				}
+
 				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
@@ -168,7 +189,7 @@ export class AgentsToolsService {
 					usageHint,
 			)
 			.input(listCredentialsInputSchema)
-			.handler(async ({ types }) => {
+			.handler(async ({ types }: { types?: string[] }) => {
 				const creds = await credentialProvider.list();
 				if (!types || types.length === 0) return { credentials: creds };
 				const allowed = new Set(types);

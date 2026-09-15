@@ -11,6 +11,7 @@ import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
 import { SEND_AND_WAIT_WAITING_TOOLTIP } from '../../../../../utils/sendAndWait/utils';
+import { mailboxDescription } from '../descriptions';
 
 export const description: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -45,6 +46,15 @@ export const description: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'microsoftEntraServicePrincipalApi',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftEntraServicePrincipalApi'],
+				},
+			},
+		},
 	],
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
@@ -63,8 +73,27 @@ export const description: INodeTypeDescription = {
 					name: 'Microsoft OAuth2 (Graph)',
 					value: 'microsoftOAuth2Api',
 				},
+				{
+					name: 'Microsoft Entra Service Principal (App-Only)',
+					value: 'microsoftEntraServicePrincipalApi',
+					description:
+						'App-only access via a Microsoft Entra app registration. Choose which mailbox to act on under "Mailbox".',
+				},
 			],
 			default: 'microsoftOutlookOAuth2Api',
+		},
+		...mailboxDescription,
+		{
+			displayName:
+				'Unless restricted by an Application Access Policy (Exchange Online New-ApplicationAccessPolicy), the Mail.Send application permission lets this app send as any mailbox in the tenant',
+			name: 'servicePrincipalNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['microsoftEntraServicePrincipalApi'],
+				},
+			},
 		},
 		{
 			displayName: 'Resource',

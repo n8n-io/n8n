@@ -1,6 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { readPrLabels } from './github-helpers.mjs';
+import { getEventFromGithubEventPath, readPrLabels } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -13,6 +13,7 @@ import { readPrLabels } from './github-helpers.mjs';
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op
+		getEventFromGithubEventPath: getEventFromGithubEventPath,
 		readPrLabels: readPrLabels,
 		resolveRcBranchForTrack: mockResolveRcBranchForTrack,
 		writeGithubOutput: () => {}, //no-op
@@ -77,6 +78,15 @@ describe('Compute backport targets', () => {
 		assert.ok(labels.has('release'));
 		assert.ok(labels.has('Backport to Stable'));
 	});
+	it('Should only use the added label on a labeled event', async () => {
+		process.env.GITHUB_EVENT_PATH = './fixtures/mock-github-event-labeled.json';
+		/** @type { Set<string> } */
+		const labels = await getLabels();
+
+		assert.equal(labels.size, 1);
+		assert.ok(labels.has('Backport to Beta'));
+	});
+
 	it('Should parse labels properly in manual workflow context', async () => {
 		process.env.PULL_REQUEST_ID = '123';
 		/** @type { Set<string> } */

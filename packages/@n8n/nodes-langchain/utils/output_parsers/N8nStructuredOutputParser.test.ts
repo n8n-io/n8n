@@ -277,7 +277,7 @@ describe('N8nStructuredOutputParser', () => {
 			);
 		});
 
-		it('should handle empty output', async () => {
+		it.each(['{}', ''])('should handle empty output %j', async (emptyOutput) => {
 			const schema = z.object({
 				output: z.object({
 					message: z.string(),
@@ -285,8 +285,6 @@ describe('N8nStructuredOutputParser', () => {
 			});
 
 			const parser = new N8nStructuredOutputParser(mockContext, schema);
-
-			const emptyOutput = '{}';
 
 			await expect(parser.parse(emptyOutput)).rejects.toThrow(
 				'The AI model returned an empty response to the Structured Output Parser',

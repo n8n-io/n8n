@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test';
 
-import { dialogCloseIconIn } from './dialogLocators';
+import { closeDialogIfOpen } from './dialogLocators';
 
 /**
  * Variable modal component for canvas and variables interactions.
@@ -36,10 +36,7 @@ export class VariableModal {
 	}
 
 	async close(): Promise<void> {
-		const closeBtn = dialogCloseIconIn(this.root);
-		if (await closeBtn.isVisible()) {
-			await closeBtn.click();
-		}
+		await closeDialogIfOpen(this.root);
 	}
 
 	/**

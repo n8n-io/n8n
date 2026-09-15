@@ -10,6 +10,121 @@ import { NodeApiError } from 'n8n-workflow';
 
 import type { BaserowCredentials, LoadedResource } from './types';
 
+export const MULTI_STEP_DATE_OPERATORS = new Set([
+	'date_is',
+	'date_is_not',
+	'date_is_before',
+	'date_is_on_or_before',
+	'date_is_after',
+	'date_is_on_or_after',
+	'date_is_within',
+]);
+
+export const DEPRECATED_TIMEZONE_NUMBER_OPERATORS = new Set([
+	'date_within_days',
+	'date_within_weeks',
+	'date_within_months',
+	'date_equals_days_ago',
+	'date_equals_months_ago',
+	'date_equals_years_ago',
+]);
+
+export const DEPRECATED_TIMEZONE_ONLY_OPERATORS = new Set([
+	'date_equals_today',
+	'date_before_today',
+	'date_after_today',
+	'date_equals_week',
+	'date_equals_month',
+	'date_equals_year',
+]);
+
+const RELATIVE_DATE_OPERATORS = new Set([
+	'today',
+	'yesterday',
+	'tomorrow',
+	'one_week_ago',
+	'one_month_ago',
+	'one_year_ago',
+	'this_week',
+	'this_month',
+	'this_year',
+	'next_week',
+	'next_month',
+	'next_year',
+	'nr_days_ago',
+	'nr_weeks_ago',
+	'nr_months_ago',
+	'nr_years_ago',
+	'nr_days_from_now',
+	'nr_weeks_from_now',
+	'nr_months_from_now',
+	'nr_years_from_now',
+]);
+
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+function isFullyFormattedMultiStepValue(value: string): boolean {
+	const parts = value.split('?');
+	return parts.length === 3 && parts[2].length > 0;
+}
+
+/**
+ * Formats filter values for Baserow date operators.
+ * Multi-step operators require `{timezone}?{value}?{operator}` (e.g. `UTC?2026-06-17?exact_date`).
+ * `date_equals_day_of_month` is not multi-step — pass the day number as-is (e.g. `15`).
+ */
+export function formatBaserowFilterValue(
+	operator: string,
+	value: string,
+	timezone = 'UTC',
+): string {
+	const trimmed = value.trim();
+
+	if (!trimmed) {
+		if (DEPRECATED_TIMEZONE_ONLY_OPERATORS.has(operator)) {
+			return timezone;
+		}
+		return trimmed;
+	}
+
+	if (MULTI_STEP_DATE_OPERATORS.has(operator)) {
+		const malformedMatch = /^([^?]+)\?\?(\d{4}-\d{2}-\d{2})$/.exec(trimmed);
+		if (malformedMatch) {
+			return `${malformedMatch[1]}?${malformedMatch[2]}?exact_date`;
+		}
+
+		if (isFullyFormattedMultiStepValue(trimmed)) {
+			return trimmed;
+		}
+
+		if (ISO_DATE_REGEX.test(trimmed)) {
+			return `${timezone}?${trimmed}?exact_date`;
+		}
+
+		if (RELATIVE_DATE_OPERATORS.has(trimmed)) {
+			return `${timezone}??${trimmed}`;
+		}
+
+		if (operator === 'date_is_within' && /^\d+$/.test(trimmed)) {
+			return `${timezone}?${trimmed}?nr_days_from_now`;
+		}
+
+		return trimmed;
+	}
+
+	if (DEPRECATED_TIMEZONE_NUMBER_OPERATORS.has(operator)) {
+		if (trimmed.includes('?')) {
+			return trimmed;
+		}
+		return `${timezone}?${trimmed}`;
+	}
+
+	return trimmed;
+}
+
+export function normalizeFilterFieldId(field: string | number): string {
+	return String(field).replace(/^field_/, '');
+}
+
 /**
  * Make a request to Baserow API.
  */

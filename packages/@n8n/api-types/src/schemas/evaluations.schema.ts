@@ -18,6 +18,11 @@ const startTestRunPayloadShape = {
 	// run row for traceability but the saved workflow JSON runs as-is.
 	evaluationConfigId: z.string().min(1).optional(),
 	compileFromConfig: z.boolean().optional(),
+	// When provided, only the dataset rows at these 0-based indices are run.
+	// Each TestCaseExecution.runIndex will equal the original dataset index so
+	// the frontend can map results back correctly. Omitting or passing an
+	// empty array runs all rows (unchanged behaviour).
+	rowIndices: z.array(z.number().int().min(0)).optional(),
 };
 
 export const startTestRunPayloadSchema = z.object(startTestRunPayloadShape);

@@ -1,19 +1,40 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import { passthroughEgressFilter } from '@n8n/backend-network';
 import type * as _kafkajs from 'kafkajs';
-import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Kafka } from '../Kafka.node';
+import { KafkaV1 } from '../v1/KafkaV1.node';
+import { KafkaV2 } from '../v2/KafkaV2.node';
+import {
+	confluentKafkaModuleMock,
+	getConfluentKafkaAccessCount,
+	resetConfluentKafkaAccessCount,
+} from './mocks/confluent-kafka';
 
 // The node is imported directly (through vite) so vi.mock can intercept its
 // `kafkajs` / `@kafkajs/confluent-schema-registry` imports. NodeTestHarness can't
 // be used here: it loads nodes from dist via require(), where vi.mock can't reach
-// them. So every node run goes through `new Kafka().execute.call(...)`.
+// them. So every node run goes through `new KafkaV1(baseDescription).execute.call(...)`.
 //
 // The constructor mocks use `vi.fn(function () { ... })` (not `mockReturnValue`):
 // the node calls `new apacheKafka(...)` / `new SchemaRegistry(...)`, and vitest
 // throws "Cannot use mockReturnValue when called with new". importActual keeps the
 // real `CompressionTypes` enum the node relies on.
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Kafka',
+	name: 'kafka',
+	group: ['transform'],
+	description: 'Sends messages to a Kafka topic',
+};
+
 const {
 	mockProducerConnect,
 	mockProducerSend,
@@ -77,6 +98,11 @@ vi.mock('@kafkajs/confluent-schema-registry', () => ({
 	}),
 }));
 
+// v1 must never load the new library — the ESLint import restrictions guard the
+// static-import side; this covers the runtime side (e.g. a dynamic import added
+// by mistake down the line).
+vi.mock('@confluentinc/kafka-javascript', () => confluentKafkaModuleMock());
+
 const defaultKafkaCredentials: IDataObject = {
 	brokers: 'localhost:9092',
 	clientId: 'test-client',
@@ -117,6 +143,7 @@ function createExecuteFunctions(
 			returnJsonArray: (data: IDataObject | IDataObject[]) =>
 				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
 			constructExecutionMetaData: (data: INodeExecutionData[]) => data,
+			getSecureEgressFilter: () => passthroughEgressFilter,
 		} as unknown as IExecuteFunctions['helpers'],
 	});
 }
@@ -131,6 +158,24 @@ const schemaRegistryCredential = {
 describe('Kafka Node', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		resetConfluentKafkaAccessCount();
+	});
+
+	test('never loads the new confluent-kafka-javascript library', async () => {
+		const params: IDataObject = {
+			options: { acks: true, compression: true, timeout: 1000 },
+			sendInputData: true,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: false,
+			useKey: false,
+			headersUi: {},
+		};
+		const items: INodeExecutionData[] = [{ json: { name: 'item' } }];
+
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
+
+		expect(getConfluentKafkaAccessCount()).toBe(0);
 	});
 
 	test('publishes input data as messages with key, headers and options', async () => {
@@ -149,7 +194,7 @@ describe('Kafka Node', () => {
 			{ json: { name: 'Second item', code: 2 } },
 		];
 
-		await new Kafka().execute.call(createExecuteFunctions(params, items));
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledTimes(1);
@@ -197,10 +242,12 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }, { json: { success: true } }];
 
-		await new Kafka().execute.call(createExecuteFunctions(params, items));
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		// The legacy URL-parameter path stays unauthenticated
-		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'https://test-kafka-registry.local/' }),
+		);
 		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
 		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
 
@@ -248,14 +295,16 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }];
 
-		await new Kafka().execute.call(
+		await new KafkaV1(baseDescription).execute.call(
 			createExecuteFunctions(params, items, { schemaRegistryCredential }),
 		);
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://cred-kafka-registry.local',
-			auth: { username: 'registry-user', password: 'registry-password' },
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://cred-kafka-registry.local/',
+				auth: { username: 'registry-user', password: 'registry-password' },
+			}),
+		);
 		expect(mockProducerSend).toHaveBeenCalledWith(
 			expect.objectContaining({
 				topicMessages: [
@@ -287,7 +336,7 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(
+			new KafkaV1(baseDescription).execute.call(
 				createExecuteFunctions(params, items, {
 					schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
 				}),
@@ -312,7 +361,9 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
 		).rejects.toThrow('Verify your Schema Registry configuration');
 
 		expect(mockProducerConnect).not.toHaveBeenCalled();
@@ -331,7 +382,9 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
 		).rejects.toThrow('Message is not valid JSON');
 
 		// The malformed message fails inside the loop, after the producer connected
@@ -352,7 +405,7 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: {} }];
 
-		const result = await new Kafka().execute.call(
+		const result = await new KafkaV1(baseDescription).execute.call(
 			createExecuteFunctions(params, items, {
 				schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
 				continueOnFail: true,
@@ -366,5 +419,64 @@ describe('Kafka Node', () => {
 				}),
 			],
 		]);
+	});
+});
+
+describe('Kafka (versioned entry point)', () => {
+	let kafka: Kafka;
+
+	beforeEach(() => {
+		kafka = new Kafka();
+	});
+
+	it('should instantiate without errors', () => {
+		expect(kafka).toBeInstanceOf(Kafka);
+	});
+
+	it('should expose version 1 as KafkaV1', () => {
+		expect(kafka.nodeVersions[1]).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should expose version 2 as KafkaV2', () => {
+		expect(kafka.nodeVersions[2]).toBeInstanceOf(KafkaV2);
+	});
+
+	// One credential test per credential type, not per node version. Adding
+	// `methods.credentialTest.kafkaConnectionTest` to v2 wouldn't add a second test — it is
+	// resolved newest-version-first, so it would take over v1's test for everyone. Until it
+	// moves, the test exercises v1's kafkajs path while v2 connects through librdkafka.
+	it('should leave the kafka credential test to v1', () => {
+		const v2 = kafka.nodeVersions[2];
+
+		expect(v2.methods?.credentialTest).toBeUndefined();
+		expect(v2.description.credentials?.find((c) => c.name === 'kafka')?.testedBy).toBeUndefined();
+		expect(kafka.nodeVersions[1].methods?.credentialTest).toHaveProperty('kafkaConnectionTest');
+	});
+
+	it('should resolve v1 by default', () => {
+		expect(kafka.getNodeType()).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should resolve v2 when requested', () => {
+		expect(kafka.getNodeType(2)).toBeInstanceOf(KafkaV2);
+	});
+
+	it('should have defaultVersion set to 1', () => {
+		expect(kafka.description.defaultVersion).toBe(1);
+	});
+
+	it('should have the correct displayName', () => {
+		expect(kafka.description.displayName).toBe('Kafka');
+	});
+
+	it('should have the correct name', () => {
+		expect(kafka.description.name).toBe('kafka');
+	});
+
+	it('should have the correct icon', () => {
+		expect(kafka.description.icon).toEqual({
+			light: 'file:kafka.svg',
+			dark: 'file:kafka.dark.svg',
+		});
 	});
 });

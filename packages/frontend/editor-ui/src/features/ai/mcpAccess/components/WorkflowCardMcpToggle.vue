@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { N8nIcon, N8nSwitch2, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';

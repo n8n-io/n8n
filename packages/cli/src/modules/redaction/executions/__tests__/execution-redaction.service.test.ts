@@ -2,15 +2,16 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { shouldRedactConsoleOutput } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import type { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
@@ -34,7 +35,7 @@ describe('ExecutionRedactionService', () => {
 	} as unknown as User;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 		service = new ExecutionRedactionService(
 			logger,
@@ -57,6 +58,7 @@ describe('ExecutionRedactionService', () => {
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
 			withDynamicCredentials?: boolean;
+			usesDynamicCredentials?: boolean;
 			executedByUserId?: string | null;
 		} = {},
 	): RedactableExecution => {
@@ -68,6 +70,7 @@ describe('ExecutionRedactionService', () => {
 			workflowSettingsPolicy,
 			withRuntimeData = true,
 			withDynamicCredentials = false,
+			usesDynamicCredentials = false,
 			executedByUserId = null,
 		} = overrides;
 
@@ -96,6 +99,20 @@ describe('ExecutionRedactionService', () => {
 				establishedAt: Date.now(),
 				source: mode,
 				credentials: 'encrypted-credential-context',
+			};
+		}
+
+		// Stamp the private-credential flag onto runtimeData, mirroring what
+		// `DynamicCredentialsContextHook` does at execution start. Set without a
+		// runData `usedDynamicCredentials` flag, this models a run that failed or
+		// stopped before the private credential resolved.
+		if (usesDynamicCredentials) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				...executionData.runtimeData,
+				usesDynamicCredentials: true,
 			};
 		}
 
@@ -139,7 +156,7 @@ describe('ExecutionRedactionService', () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
 			const options: ExecutionRedactionOptions = { user: mockUser };
 
-			const spy = jest.spyOn(service, 'processExecutions');
+			const spy = vi.spyOn(service, 'processExecutions');
 			const result = await service.processExecution(execution, options);
 
 			expect(spy).toHaveBeenCalledWith([execution], options);
@@ -703,6 +720,34 @@ describe('ExecutionRedactionService', () => {
 			).rejects.toThrow(ForbiddenError);
 		});
 
+		it('emits execution-data-reveal-failure before the ForbiddenError on the reveal path', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(
+				service.processExecution(execution, {
+					user: mockUser,
+					redactExecutionData: false,
+					ipAddress: '1.2.3.4',
+					userAgent: 'TestAgent/1.0',
+				}),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
+				user: mockUser,
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'none',
+				rejectionReason: 'Not the executing user of a private-credential execution',
+			});
+		});
+
 		it('does not force-redact when execution has no dynamic credentials', async () => {
 			const execution = makeExecution({
 				policy: 'none',
@@ -713,6 +758,25 @@ describe('ExecutionRedactionService', () => {
 
 			// policy=none, no dynamic creds → no FullItemRedactionStrategy
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('detects dynamic credentials when a runData node array holds a null slot', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			// runData arrays can contain null placeholder slots at runtime.
+			execution.data.resultData.runData = {
+				SomeNode: [
+					null,
+					{ startTime: 0, executionTime: 0, usedDynamicCredentials: true } as ITaskData,
+				] as unknown as ITaskData[],
+			};
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 		});
 
 		it('scrubs runtimeData.credentials from the execution data', async () => {
@@ -834,6 +898,99 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
+		});
+	});
+
+	describe('dynamic credentials from context flag (failed/partial run)', () => {
+		it('force-redacts a run that used no runData flag but references a private credential', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+			});
+
+			// No runData node ran, so the per-node flag is absent.
+			expect(execution.data.resultData.runData).toEqual({});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.enforceDynCredRedaction).toBe(true);
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('lets the executing user reveal their own failed run', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+				executedByUserId: mockUser.id,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('rejects reveal for a different user even with execution:reveal scope', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('leaves a run with no private credential and no flag unchanged', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: false,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('console-gate equivalence', () => {
+		// The console gate (shouldRedactConsoleOutput) and the execution-data
+		// pipeline resolve the same snapshot independently; this pins them to
+		// identical answers for every snapshot/mode combination (no dynamic
+		// credentials, no reveal scope — the concerns the console gate lacks).
+		it.each([
+			[{ version: 2 as const, production: true, manual: true }, 'manual' as const],
+			[{ version: 2 as const, production: true, manual: true }, 'trigger' as const],
+			[{ version: 2 as const, production: true, manual: false }, 'manual' as const],
+			[{ version: 2 as const, production: true, manual: false }, 'webhook' as const],
+			[{ version: 2 as const, production: false, manual: false }, 'manual' as const],
+			[{ version: 2 as const, production: false, manual: false }, 'trigger' as const],
+			[{ version: 2 as const, production: false, manual: true }, 'manual' as const],
+			[{ version: 2 as const, production: false, manual: true }, 'trigger' as const],
+			[{ version: 1 as const, policy: 'all' as const }, 'manual' as const],
+			[{ version: 1 as const, policy: 'non-manual' as const }, 'manual' as const],
+			[{ version: 1 as const, policy: 'non-manual' as const }, 'trigger' as const],
+			[{ version: 1 as const, policy: 'none' as const }, 'trigger' as const],
+		])('snapshot %j mode %s: console gate matches data pipeline', async (redaction, mode) => {
+			const execution = makeExecution(
+				redaction.version === 2
+					? { mode, channels: { production: redaction.production, manual: redaction.manual } }
+					: { mode, policy: redaction.policy },
+			);
+
+			await service.processExecutions([execution], { user: mockUser });
+			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
+
+			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
 		});
 	});
 });

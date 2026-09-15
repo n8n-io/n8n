@@ -17,8 +17,9 @@ vi.mock('../useBuildManually', () => ({
 vi.mock('./InstanceAiPreviewCanvas.vue', () => ({
 	default: {
 		name: 'InstanceAiPreviewCanvas',
-		template: '<div data-test-id="instance-ai-preview-canvas" />',
-		props: ['workflow', 'animating'],
+		template:
+			'<div data-test-id="instance-ai-preview-canvas" :data-suggestion-id="suggestionId" />',
+		props: ['workflow', 'animating', 'suggestionId'],
 	},
 }));
 
@@ -57,5 +58,13 @@ describe('CyclingPreviewCanvas', () => {
 		const { getByTestId } = renderComponent();
 		await fireEvent.click(getByTestId('instance-ai-canvas-build-manually'));
 		expect(buildManually).toHaveBeenCalledWith('p1');
+	});
+
+	it('passes the active example id to the preview canvas as suggestionId', () => {
+		// renderComponent default props use activeIndex: 1
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('instance-ai-preview-canvas').getAttribute('data-suggestion-id')).toBe(
+			INSTANCE_AI_SPLIT_EMPTY_STATE_EXAMPLES[1].id,
+		);
 	});
 });

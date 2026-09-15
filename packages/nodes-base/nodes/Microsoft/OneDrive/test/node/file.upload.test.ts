@@ -77,6 +77,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			undefined,
 			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
 			{},
+			undefined,
 		);
 	});
 
@@ -103,6 +104,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			undefined,
 			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
 			{},
+			undefined,
 		);
 	});
 
@@ -129,6 +131,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			undefined,
 			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
 			{},
+			undefined,
 		);
 	});
 
@@ -161,6 +164,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			undefined,
 			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
 			{},
+			undefined,
 		);
 	});
 
@@ -186,6 +190,8 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			{},
 			undefined,
 			{ 'Content-Type': 'text/plain' },
+			{ json: true },
+			undefined,
 		);
 	});
 
@@ -389,6 +395,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			undefined,
 			{ 'Content-Type': 'application/pdf', 'Content-length': expect.any(Number) },
 			{},
+			undefined,
 		);
 	});
 
@@ -415,6 +422,8 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			{},
 			undefined,
 			{ 'Content-Type': 'text/plain' },
+			{ json: true },
+			undefined,
 		);
 		expect(result[0][1]).toEqual({ error: expect.stringContaining("OneDrive doesn't allow") });
 	});

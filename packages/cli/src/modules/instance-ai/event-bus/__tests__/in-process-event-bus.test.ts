@@ -1,194 +1,218 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+
+import type { DurableEventLog } from '../durable-event-log';
 import { InProcessEventBus } from '../in-process-event-bus';
 
-function makeEvent(type: string, runId: string): InstanceAiEvent {
+type EmitFn = (drained: { id?: number; event: InstanceAiEvent; live: boolean }) => void;
+
+function makeEvent(text: string, runId: string): InstanceAiEvent {
 	return {
 		type: 'text-delta',
 		runId,
 		agentId: 'agent-001',
-		payload: { text: `${type}-${runId}` },
+		payload: { text },
 	};
 }
 
 describe('InProcessEventBus', () => {
 	let bus: InProcessEventBus;
+	let publisher: ReturnType<typeof mock<Publisher>>;
+	let eventLog: ReturnType<typeof mock<DurableEventLog>>;
+	let logger: ReturnType<typeof mock<Logger>>;
+	let instanceSettings: { isMultiMain: boolean };
+
+	function buildBus() {
+		logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		publisher = mock<Publisher>();
+		publisher.publishCommand.mockResolvedValue(undefined);
+		eventLog = mock<DurableEventLog>();
+		return new InProcessEventBus(logger, instanceSettings as InstanceSettings, publisher, eventLog);
+	}
+
+	/** Route a publish through the mocked drain and hand back its emit callback. */
+	function publishAndCaptureEmit(threadId: string, event: InstanceAiEvent): EmitFn {
+		bus.publish(threadId, event);
+		const call = eventLog.publish.mock.calls.at(-1)!;
+		expect(call[0]).toBe(threadId);
+		// publish() stamps `ts` onto a copy before handing it to the log
+		expect(call[1]).toEqual({ ...event, ts: expect.any(Number) });
+		return call[2] as EmitFn;
+	}
 
 	beforeEach(() => {
-		bus = new InProcessEventBus();
-	});
-
-	afterEach(() => {
-		bus.clear();
+		instanceSettings = { isMultiMain: false };
+		bus = buildBus();
 	});
 
 	describe('publish', () => {
-		it('should assign monotonically increasing IDs per thread', () => {
+		it('enqueues into the durable log rather than storing anything itself', () => {
 			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-			bus.publish('thread-1', makeEvent('c', 'run_1'));
 
-			const events = bus.getEventsAfter('thread-1', 0);
-			expect(events).toHaveLength(3);
-			expect(events[0].id).toBe(1);
-			expect(events[1].id).toBe(2);
-			expect(events[2].id).toBe(3);
+			expect(eventLog.publish).toHaveBeenCalledTimes(1);
 		});
 
-		it('should use independent ID sequences per thread', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-			bus.publish('thread-2', makeEvent('c', 'run_2'));
+		it('stamps ts once and leaves an already-stamped event alone', () => {
+			bus.publish('thread-1', { ...makeEvent('a', 'run_1'), ts: 42 });
 
-			const events1 = bus.getEventsAfter('thread-1', 0);
-			const events2 = bus.getEventsAfter('thread-2', 0);
+			expect(eventLog.publish.mock.calls[0][1]).toEqual(expect.objectContaining({ ts: 42 }));
+		});
+	});
 
-			expect(events1).toHaveLength(2);
-			expect(events1[0].id).toBe(1);
-			expect(events1[1].id).toBe(2);
+	describe('drained events', () => {
+		it('emits a durable fact to subscribers with its DB seq', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
 
-			expect(events2).toHaveLength(1);
-			expect(events2[0].id).toBe(1);
+			publishAndCaptureEmit('thread-1', event)({ id: 7, event, live: true });
+
+			expect(received).toEqual([{ id: 7, event }]);
+		});
+
+		it('emits ephemeral events without an id, so the replay cursor skips them', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			publishAndCaptureEmit('thread-1', event)({ event, live: true });
+
+			expect(received).toEqual([{ event }]);
+			expect(received[0]).not.toHaveProperty('id');
+		});
+
+		it('drops a coalesced block entirely — subscribers already saw its deltas', () => {
+			const received: unknown[] = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			publishAndCaptureEmit('thread-1', event)({ id: 3, event, live: false });
+
+			expect(received).toHaveLength(0);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('subscribe', () => {
-		it('should receive events published after subscription', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
-			bus.subscribe('thread-1', (stored) => received.push(stored));
-
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-
-			expect(received).toHaveLength(2);
-			expect(received[0].id).toBe(1);
-			expect(received[1].id).toBe(2);
-		});
-
-		it('should not receive events from other threads', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
-			bus.subscribe('thread-1', (stored) => received.push(stored));
-
-			bus.publish('thread-2', makeEvent('a', 'run_2'));
-
-			expect(received).toHaveLength(0);
-		});
-
-		it('should stop delivery after unsubscribe', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+		it('delivers only the subscribed thread, and stops after unsubscribe', () => {
+			const received: unknown[] = [];
 			const unsubscribe = bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
 
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			publishAndCaptureEmit('thread-2', event)({ id: 1, event, live: true });
+			expect(received).toHaveLength(0);
+
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ id: 1, event, live: true });
 			expect(received).toHaveLength(1);
 
 			unsubscribe();
-
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
+			emit({ id: 2, event, live: true });
 			expect(received).toHaveLength(1);
 		});
-	});
 
-	describe('getEventsAfter', () => {
-		it('should return all events when afterId is 0', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-			bus.publish('thread-1', makeEvent('c', 'run_1'));
-
-			const events = bus.getEventsAfter('thread-1', 0);
-			expect(events).toHaveLength(3);
-		});
-
-		it('should skip events with id <= afterId', () => {
-			for (let i = 0; i < 7; i++) {
-				bus.publish('thread-1', makeEvent(`e${i}`, 'run_1'));
-			}
-
-			const events = bus.getEventsAfter('thread-1', 5);
-			expect(events).toHaveLength(2);
-			expect(events[0].id).toBe(6);
-			expect(events[1].id).toBe(7);
-		});
-
-		it('should return empty array for unknown thread', () => {
-			const events = bus.getEventsAfter('nonexistent', 0);
-			expect(events).toEqual([]);
-		});
-
-		it('should return empty array when all events are before cursor', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-
-			const events = bus.getEventsAfter('thread-1', 10);
-			expect(events).toEqual([]);
+		it('reports whether this main holds a subscription', () => {
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+			const unsubscribe = bus.subscribe('thread-1', () => {});
+			expect(bus.hasSubscribers('thread-1')).toBe(true);
+			unsubscribe();
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
 		});
 	});
 
-	describe('getNextEventId', () => {
-		it('should return 1 for a new thread', () => {
-			expect(bus.getNextEventId('thread-1')).toBe(1);
+	describe('cross-main relay', () => {
+		it('does not relay when single-main', () => {
+			const event = makeEvent('a', 'run_1');
+
+			publishAndCaptureEmit('thread-1', event)({ id: 1, event, live: true });
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('should return the next sequential ID after publishing', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
+		it('relays live events, passing the DB seq through and omitting it when ephemeral', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+			const event = makeEvent('a', 'run_1');
 
-			expect(bus.getNextEventId('thread-1')).toBe(3);
-		});
-	});
+			const emit = publishAndCaptureEmit('thread-1', event);
+			emit({ id: 9, event, live: true });
+			emit({ event, live: true });
 
-	describe('getEventsForRun', () => {
-		it('should return only events matching the given runId', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			bus.publish('thread-1', makeEvent('b', 'run_2'));
-			bus.publish('thread-1', makeEvent('c', 'run_1'));
-			bus.publish('thread-1', makeEvent('d', 'run_2'));
-
-			const run1Events = bus.getEventsForRun('thread-1', 'run_1');
-			expect(run1Events).toHaveLength(2);
-			expect(run1Events.every((e) => e.runId === 'run_1')).toBe(true);
-
-			const run2Events = bus.getEventsForRun('thread-1', 'run_2');
-			expect(run2Events).toHaveLength(2);
-			expect(run2Events.every((e) => e.runId === 'run_2')).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(1, {
+				command: 'relay-instance-ai-event',
+				payload: { threadId: 'thread-1', storedEvent: { id: 9, event } },
+			});
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(2, {
+				command: 'relay-instance-ai-event',
+				payload: { threadId: 'thread-1', storedEvent: { event } },
+			});
 		});
 
-		it('should return empty array for unknown thread', () => {
-			expect(bus.getEventsForRun('nonexistent', 'run_1')).toEqual([]);
-		});
+		it('skips relay for an oversized event but still delivers it locally', () => {
+			instanceSettings.isMultiMain = true;
+			bus = buildBus();
+			const received: unknown[] = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('x'.repeat(6 * 1024 * 1024), 'run_1'); // > MAX_PUBSUB_PAYLOAD_BYTES
 
-		it('should return empty array when no events match the runId', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			expect(bus.getEventsForRun('thread-1', 'run_99')).toEqual([]);
-		});
+			publishAndCaptureEmit('thread-1', event)({ id: 1, event, live: true });
 
-		it('should return unwrapped InstanceAiEvent objects (not StoredEvent)', () => {
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-
-			const events = bus.getEventsForRun('thread-1', 'run_1');
-			expect(events[0]).not.toHaveProperty('id'); // No StoredEvent wrapper
-			expect(events[0]).toHaveProperty('type');
-			expect(events[0]).toHaveProperty('runId');
-			expect(events[0]).toHaveProperty('agentId');
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(received).toHaveLength(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Skipping cross-main relay'),
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
 		});
 	});
 
-	describe('clear', () => {
-		it('should remove all stored events and listeners', () => {
-			const received: Array<{ id: number; event: InstanceAiEvent }> = [];
+	describe('handleRelayInstanceAiEvent', () => {
+		it('re-emits a relayed frame to subscribers, id-bearing or not', () => {
+			const received: Array<{ id?: number; event: InstanceAiEvent }> = [];
+			bus.subscribe('thread-1', (stored) => received.push(stored));
+			const event = makeEvent('a', 'run_1');
+
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent: { event } });
+			bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent: { id: 4, event } });
+
+			expect(received).toEqual([{ event }, { id: 4, event }]);
+		});
+
+		it('drops a relayed frame for a thread this main has no subscriber for', () => {
+			const event = makeEvent('a', 'run_1');
+			// Nothing to assert beyond "does not throw and delivers nowhere": replay
+			// is served from the log, so an unsubscribed main needs no copy.
+			expect(() =>
+				bus.handleRelayInstanceAiEvent({ threadId: 'thread-1', storedEvent: { id: 4, event } }),
+			).not.toThrow();
+		});
+	});
+
+	describe('teardown', () => {
+		it('clearThread drops the thread subscription and the log drain state', () => {
+			const received: unknown[] = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));
 
-			bus.publish('thread-1', makeEvent('a', 'run_1'));
-			expect(received).toHaveLength(1);
+			bus.clearThread('thread-1');
+
+			expect(eventLog.clearThread).toHaveBeenCalledWith('thread-1');
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+		});
+
+		it('clear drops every subscription and the log state', () => {
+			bus.subscribe('thread-1', () => {});
+			bus.subscribe('thread-2', () => {});
 
 			bus.clear();
 
-			// Events cleared
-			expect(bus.getEventsAfter('thread-1', 0)).toEqual([]);
-			expect(bus.getNextEventId('thread-1')).toBe(1);
-
-			// Listener removed — new publish should not reach old handler
-			bus.publish('thread-1', makeEvent('b', 'run_1'));
-			expect(received).toHaveLength(1);
+			expect(eventLog.clear).toHaveBeenCalledTimes(1);
+			expect(bus.hasSubscribers('thread-1')).toBe(false);
+			expect(bus.hasSubscribers('thread-2')).toBe(false);
 		});
 	});
 });

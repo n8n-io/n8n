@@ -106,10 +106,9 @@ function respondWith(routes: Route[]) {
 type AnyFn = (...args: any[]) => any;
 
 /**
- * Test-framework mock factory — pass `jest.fn` or `vi.fn`. Injected so this
- * helper stays framework-neutral: `@n8n/backend-network` runs on vitest while
- * consumers such as `packages/cli` run on jest, and `expect(fn).toHaveBeenCalled…`
- * assertions need a real mock from the consumer's own framework.
+ * Test-framework mock factory — pass `vi.fn`. Injected so this helper stays
+ * framework-neutral and `expect(fn).toHaveBeenCalled…` assertions get a real
+ * mock from the consumer's own test framework.
  */
 export type MockFnFactory = <T extends AnyFn>(
 	impl: T,
@@ -121,7 +120,7 @@ export type MockFnFactory = <T extends AnyFn>(
  * `headers` merged), so assertions see exactly what the real client would send.
  *
  * @param routes responses to serve, matched and consumed in order.
- * @param fn the consumer's mock factory (`jest.fn` / `vi.fn`).
+ * @param fn the consumer's mock factory (`vi.fn`).
  */
 export function createFakeOutboundHttp(routes: Route[], fn: MockFnFactory) {
 	const stub = respondWith(routes);

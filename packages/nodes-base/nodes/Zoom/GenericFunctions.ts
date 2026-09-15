@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -48,14 +49,6 @@ export async function zoomApiRequest(
 	}
 }
 
-async function wait() {
-	return await new Promise((resolve, _reject) => {
-		setTimeout(() => {
-			resolve(true);
-		}, 1000);
-	});
-}
-
 export async function zoomApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
@@ -73,7 +66,7 @@ export async function zoomApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		// zoom free plan rate limit is 1 request/second
 		// TODO just wait when the plan is free
-		await wait();
+		await sleep(1000);
 	} while (responseData.page_count !== responseData.page_number);
 
 	return returnData;

@@ -10,10 +10,10 @@ vi.mock('n8n-core', () => ({
 }));
 
 import { Container } from '@n8n/di';
-import { type Response } from 'express';
+import { type Request, type Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
-import { type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
+import { ExpressionError, type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
 import { verifyFormUserAuthToken } from '../utils/utils';
@@ -86,6 +86,16 @@ describe('formCompletionUtils', () => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		mockWebhookFunctions.getNode.mockReturnValue(mockNode);
+		mockWebhookFunctions.getWorkflow.mockReturnValue({
+			id: 'workflow-id',
+			name: 'Workflow',
+			active: true,
+		});
+		mockWebhookFunctions.getExecutionId.mockReturnValue('execution-id');
+		// A plain top-level page: no shell around it, so nothing to delegate to.
+		mockWebhookFunctions.getRequestObject.mockReturnValue(
+			mock<Request>({ headers: {}, query: {} }),
+		);
 	});
 
 	afterEach(() => {
@@ -133,10 +143,70 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Form has been submitted successfully',
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: '',
 				title: 'Form Completion',
 			});
+		});
+
+		it('should pass the attribution link to the completion template', async () => {
+			// The completion template renders the "Form automated with n8n" footer as
+			// `<a href={{n8nWebsiteLink}} ...>`. Without the link in the render context
+			// the anchor has no usable href, so the footer resolves against the
+			// completion page's own URL instead of pointing at n8n.io.
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression ===
+				`{{ $(${JSON.stringify(trigger.name)}).params.options?.appendAttribution === false ? false : true }}`
+					? true
+					: '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					appendAttribution: true,
+					n8nWebsiteLink: expect.stringContaining('https://n8n.io/'),
+				}),
+			);
+		});
+
+		it('should let the completion page turn the attribution footer off on its own', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title', appendAttribution: false },
+				};
+				return params[parameterName];
+			});
+			// The trigger keeps the footer on, so only the node's own option can
+			// account for it being dropped here.
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression ===
+				`{{ $(${JSON.stringify(trigger.name)}).params.options?.appendAttribution === false ? false : true }}`
+					? true
+					: '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					appendAttribution: false,
+					n8nWebsiteLink: undefined,
+				}),
+			);
 		});
 
 		it('should render completionTitle and completionMessage as-is without re-evaluating them', async () => {
@@ -181,7 +251,7 @@ describe('formCompletionUtils', () => {
 				return params[parameterName];
 			});
 			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) => {
-				if (expression === `{{ $('${trigger.name}').params.formTitle }}`) {
+				if (expression === `{{ $(${JSON.stringify(trigger.name)}).params.formTitle }}`) {
 					return "={{ $workflow.name.split('-')[0].trim() }}";
 				}
 				if (expression === "{{ $workflow.name.split('-')[0].trim() }}") return 'MyForm';
@@ -206,6 +276,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage: maliciousMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -220,7 +291,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: 'Safe message<b>bold</b>',
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: 'Response text',
 				title: 'Form Completion',
 				dangerousCustomCss: undefined,
@@ -240,6 +311,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -252,7 +324,7 @@ describe('formCompletionUtils', () => {
 				formTitle: 'Form Title',
 				message: `Some message${replacement}Other text`,
 				redirectUrl: undefined,
-				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseBinary: encodeURIComponent(JSON.stringify([])),
 				responseText: 'Response text',
 				title: 'Form Completion',
 				dangerousCustomCss: undefined,
@@ -295,9 +367,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
-					} else if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 						return { someData: {} };
 					} else {
 						return undefined;
@@ -330,11 +402,13 @@ describe('formCompletionUtils', () => {
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
-						JSON.stringify({
-							data: buffer,
-							fileName: expectedBinaryResponse.inputData.fileName,
-							type: expectedBinaryResponse.inputData.mimeType,
-						}),
+						JSON.stringify([
+							{
+								data: buffer,
+								fileName: expectedBinaryResponse.inputData.fileName,
+								type: expectedBinaryResponse.inputData.mimeType,
+							},
+						]),
 					),
 					responseText: '',
 					title: 'Form Completion',
@@ -357,9 +431,9 @@ describe('formCompletionUtils', () => {
 			for (const parentNodes of parentNodesTestCases) {
 				mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodes);
 				mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-					if (arg === `{{ $('${nodeNameWithFileToDownload}').first().binary }}`) {
+					if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
 						return expectedBinaryResponse;
-					} else if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+					} else if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 						return { someData: {} };
 					} else {
 						return undefined;
@@ -384,11 +458,13 @@ describe('formCompletionUtils', () => {
 					message: 'Form has been submitted successfully',
 					redirectUrl: undefined,
 					responseBinary: encodeURIComponent(
-						JSON.stringify({
-							data: atob(expectedBinaryResponse.inputData.data),
-							fileName: expectedBinaryResponse.inputData.fileName,
-							type: expectedBinaryResponse.inputData.mimeType,
-						}),
+						JSON.stringify([
+							{
+								data: atob(expectedBinaryResponse.inputData.data),
+								fileName: expectedBinaryResponse.inputData.fileName,
+								type: expectedBinaryResponse.inputData.mimeType,
+							},
+						]),
 					),
 					responseText: '',
 					title: 'Form Completion',
@@ -422,6 +498,8 @@ describe('formCompletionUtils', () => {
 					completionMessage: 'Form has been submitted successfully',
 					options: { formTitle: 'Form Title' },
 					respondWith: 'redirect',
+					responseText: '<p>Unused response</p>',
+					redirectUrl: 'https://example.com',
 				};
 				return params[parameterName];
 			});
@@ -432,7 +510,13 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
-			expect(mockResponse.render).toHaveBeenCalled();
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					redirectUrl: 'https://example.com',
+					responseText: '',
+				}),
+			);
 		});
 
 		it('embeds an x-auth-token-compatible authToken when an authed user is provided', async () => {
@@ -457,7 +541,59 @@ describe('formCompletionUtils', () => {
 				authToken: string;
 			};
 			expect(renderArgs.authToken).toBeTruthy();
-			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode)).toEqual(authedUser);
+			// Bound to the run that rendered the page, so it is only accepted for it.
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'execution-id')).toEqual(
+				authedUser,
+			);
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'other-execution')).toBeNull();
+		});
+
+		// The completion page reloads itself while the run finishes, and inside the
+		// hosting shell that hop has to go through the host like every other one.
+		describe('host-driven navigation', () => {
+			const setupCompletionParams = () => {
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						completionTitle: 'Form Completion',
+						completionMessage: 'Done',
+						options: { formTitle: 'Form Title' },
+					};
+					return params[parameterName];
+				});
+			};
+
+			it('is offered when the shell navigated its frame here', async () => {
+				setupCompletionParams();
+				mockWebhookFunctions.getRequestObject.mockReturnValue(
+					mock<Request>({
+						headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'same-origin' },
+						query: { n8nShellHosted: '1' },
+					}),
+				);
+				mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+					expression === '{{ $execution.resumeFormUrl }}'
+						? 'http://localhost:5678/form-waiting/execution-id'
+						: '',
+				);
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ hostNavigationPath: '/form-waiting' }),
+				);
+			});
+
+			it('is not offered to a top-level completion page', async () => {
+				setupCompletionParams();
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ hostNavigationPath: undefined }),
+				);
+			});
 		});
 
 		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
@@ -515,7 +651,7 @@ describe('formCompletionUtils', () => {
 
 			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
 			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
-				if (arg === `{{ $('${nodeNameWithFile}').first().binary }}`) {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFile)}).first().binary }}`) {
 					return expectedBinaryResponse;
 				} else {
 					return notExpectedBinaryResponse;
@@ -524,11 +660,139 @@ describe('formCompletionUtils', () => {
 
 			const result = await binaryResponse(mockWebhookFunctions);
 
-			expect(result).toEqual({
-				data: atob(expectedBinaryResponse.inputData.data),
-				fileName: expectedBinaryResponse.inputData.fileName,
-				type: expectedBinaryResponse.inputData.mimeType,
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+			]);
+		});
+
+		it('should skip parent nodes without run data', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: 'inputData',
+				};
+				return params[parameterName];
 			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+				// Parent nodes that did not execute in this run, e.g. after
+				// resuming a waiting form or on branches of another Form Trigger
+				throw new ExpressionError(`Node '${nodeNameWithFile}' hasn't been executed`);
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+			]);
+		});
+
+		it('should return multiple binary files from comma-separated field names', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+				otherData: {
+					data: 'c2Vjb25k',
+					fileName: 'second.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: 'inputData, otherData',
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+
+				return undefined;
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+				{
+					data: atob(expectedBinaryResponse.otherData.data),
+					fileName: expectedBinaryResponse.otherData.fileName,
+					type: expectedBinaryResponse.otherData.mimeType,
+				},
+			]);
+		});
+
+		it('should trim comma-separated field names', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+				otherData: {
+					data: 'c2Vjb25k',
+					fileName: 'second.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: ' inputData , otherData ',
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithSingleNodeFile);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+
+				return undefined;
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+				{
+					data: atob(expectedBinaryResponse.otherData.data),
+					fileName: expectedBinaryResponse.otherData.fileName,
+					type: expectedBinaryResponse.otherData.mimeType,
+				},
+			]);
 		});
 	});
 });
