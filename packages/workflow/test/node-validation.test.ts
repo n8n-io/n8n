@@ -406,10 +406,14 @@ describe('node-validation', () => {
 		): WorkflowForInputValidation =>
 			({
 				expression: {
-					getSimpleParameterValue: (node: INode) =>
-						(node.parameters as { autoFix?: boolean }).autoFix
-							? [{ displayName: 'Model', type: 'ai_languageModel', required: true }]
-							: [],
+					// Mirrors the engine: an undefined `inputs` resolves to undefined
+					// rather than to a list.
+					getSimpleParameterValue: (node: INode, value: unknown) =>
+						value === undefined
+							? undefined
+							: (node.parameters as { autoFix?: boolean }).autoFix
+								? [{ displayName: 'Model', type: 'ai_languageModel', required: true }]
+								: [],
 				},
 				getNode: (name: string) => nodes[name] ?? null,
 				connectionsByDestinationNode: {
@@ -505,6 +509,17 @@ describe('node-validation', () => {
 			it('still reports nothing when swallowing suits the caller', () => {
 				expect(getUnconnectedRequiredInputs(unresolved, parser, description)).toEqual([]);
 			});
+		});
+
+		it('reports nothing for a type that declares no inputs at all', () => {
+			// Nothing to resolve, so this is "requires nothing", not "unknown".
+			const noInputs = { properties: [] } as unknown as INodeTypeDescription;
+
+			expect(
+				getUnconnectedRequiredInputs(makeWorkflow([], { Parser: parser }), parser, noInputs, {
+					throwOnExpressionError: true,
+				}),
+			).toEqual([]);
 		});
 
 		// An agent with a fallback declares two required `ai_languageModel` inputs;

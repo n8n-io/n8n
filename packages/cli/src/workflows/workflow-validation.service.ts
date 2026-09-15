@@ -21,8 +21,10 @@ import type {
 	INodes,
 	IConnections,
 	INodeType,
+	INodeOutputConfiguration,
 	IWorkflowSettings,
 	ICredentialType,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -57,25 +59,34 @@ function formatCredentialNames(credentials: Array<{ name: string }>): string {
 
 /**
  * Whether every node this one feeds is disabled, so nothing will ever ask it
- * for its inputs. Only meaningful for supply-type nodes (LLM models, parsers,
- * memory, tools): a node with a `main` output is part of the flow and runs
- * regardless of what its consumers do.
+ * for its inputs. Only ever true for supply-type nodes (LLM models, parsers,
+ * memory, tools): anything that can produce a `main` output belongs to the
+ * flow and runs regardless of what its consumers do.
+ *
+ * Read from the type's declared outputs rather than the connections, since an
+ * unwired `main` output is still a main-path node.
  */
 function onlySuppliesDisabledNodes(
-	nodeName: string,
+	node: INode,
+	outputs: Array<NodeConnectionType | INodeOutputConfiguration>,
 	connections: IConnections,
 	nodes: INode[],
 ): boolean {
-	const outgoing = connections[nodeName];
+	const canOutputMain = outputs.some((output) =>
+		typeof output === 'string'
+			? output === NodeConnectionTypes.Main
+			: output.type === NodeConnectionTypes.Main,
+	);
+	if (canOutputMain) return false;
+
+	const outgoing = connections[node.name];
 	if (!outgoing) return false;
 
-	const disabledByName = new Map(nodes.map((node) => [node.name, node.disabled === true]));
+	const disabledByName = new Map(nodes.map((n) => [n.name, n.disabled === true]));
 	let consumers = 0;
 
-	for (const [type, outputs] of Object.entries(outgoing)) {
-		if (type === NodeConnectionTypes.Main) return false;
-
-		for (const targets of outputs ?? []) {
+	for (const targetsByOutput of Object.values(outgoing)) {
+		for (const targets of targetsByOutput ?? []) {
 			for (const target of targets ?? []) {
 				consumers++;
 				// An unknown target is treated as live, so a half-built graph does
@@ -423,7 +434,12 @@ export class WorkflowValidationService {
 				// node on the main path runs whatever its consumers do.
 				if (
 					!isTriggerLikeNode(nodeType) &&
-					onlySuppliesDisabledNodes(node.name, connections, nodes)
+					onlySuppliesDisabledNodes(
+						node,
+						NodeHelpers.getNodeOutputs(workflow, node, nodeType.description),
+						connections,
+						nodes,
+					)
 				) {
 					continue;
 				}

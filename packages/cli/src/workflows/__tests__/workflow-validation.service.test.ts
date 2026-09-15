@@ -1796,6 +1796,33 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(false);
 		});
 
+		it('still checks a node that can output main but has only a disabled subnode consumer', async () => {
+			// Its main output happens to be unwired, so the connection record shows
+			// only the ai_ edge. Declared outputs are what decide, not the wiring.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'dualOutput') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main', 'ai_tool'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Store', 'dualOutput'), node('Agent', 'agent', true)],
+				{
+					Store: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Store'");
+		});
+
 		it('still checks a node on the main path when its consumer is disabled', async () => {
 			// Unlike a subnode, a node with a main output runs whatever happens
 			// downstream, so its own unmet input still blocks publishing.

@@ -42,7 +42,9 @@ export function getUnconnectedRequiredInputs(
 	options: { throwOnExpressionError?: boolean } = {},
 ): INodeInputConfiguration[] {
 	const unconnected: INodeInputConfiguration[] = [];
-	const arrivals = workflow.connectionsByDestinationNode[node.name];
+	// Optional: the editor builds this accessor by hand in places, and a missing
+	// map means nothing arrives, which is what an empty graph would say anyway.
+	const arrivals = workflow.connectionsByDestinationNode?.[node.name];
 
 	// A node can declare several inputs of one type — an agent's Chat Model and
 	// Fallback Model are both `ai_languageModel` — and each is satisfied on its
