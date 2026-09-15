@@ -24,16 +24,13 @@ jobs:
         include:
           - name: pnpm 12
             safe_chain: false
-            swap_to_pnpm_11: false
+            bypass_safe_chain: false
           - name: pnpm 12 with SafeChain
             safe_chain: true
-            swap_to_pnpm_11: false
-          - name: pnpm 12 then pnpm 11
-            safe_chain: false
-            swap_to_pnpm_11: true
-          - name: pnpm 12 then pnpm 11 with SafeChain
+            bypass_safe_chain: false
+          - name: pnpm 12 with SafeChain bypass
             safe_chain: true
-            swap_to_pnpm_11: true
+            bypass_safe_chain: true
     env:
       PACKAGE_NAME: ${{ inputs.package-name }}
     steps:
@@ -68,20 +65,11 @@ jobs:
         with:
           build-command: ''
 
-      - name: Swap to pnpm 11
-        if: matrix.swap_to_pnpm_11 == true
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
-        with:
-          install: false
-          version: '11.25.0'
-
       - name: Verify pnpm version for publishing
         shell: bash
-        env:
-          EXPECTED_PNPM_VERSION: ${{ matrix.swap_to_pnpm_11 && '11.25.0' || '12.3.4' }}
         run: |
-          if [ "$(pnpm --version)" != "$EXPECTED_PNPM_VERSION" ]; then
-            echo "::error::Expected pnpm $EXPECTED_PNPM_VERSION for publishing."
+          if [ "$(pnpm --version)" != '12.3.4' ]; then
+            echo '::error::Expected pnpm 12.3.4 for publishing.'
             exit 1
           fi
 
@@ -139,7 +127,11 @@ jobs:
             }));
           ' "$PROBE_DIRECTORY/package.json" "$PACKAGE_NAME" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
 
-          pnpm --dir "$PROBE_DIRECTORY" publish --access public --no-git-checks --dry-run 2>&1 | tee "$RUNNER_TEMP/pnpm-oidc.log"
+          pnpm_command=(pnpm)
+          if [ '${{ matrix.bypass_safe_chain }}' = 'true' ]; then
+            pnpm_command=("$PNPM_HOME/pnpm")
+          fi
+          "${pnpm_command[@]}" --dir "$PROBE_DIRECTORY" publish --access public --no-git-checks --dry-run 2>&1 | tee "$RUNNER_TEMP/pnpm-oidc.log"
           if rg --quiet 'Skipped OIDC|ERR_PNPM_AUTH_TOKEN_FETCH' "$RUNNER_TEMP/pnpm-oidc.log"; then
             echo '::error::pnpm failed to exchange the OIDC token.'
             exit 1
