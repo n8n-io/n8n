@@ -67,6 +67,7 @@ const mockAiGatewayService = () =>
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
+	instanceContextEnabled: false,
 	aiPreferencesEnabled: false,
 	...overrides,
 });
@@ -350,6 +351,7 @@ describe('McpService', () => {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
 			mcpCanvasGroupsEnabled?: boolean;
+			mcpInstanceContextEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -366,6 +368,7 @@ describe('McpService', () => {
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
 						mcpCanvasGroupsEnabled: opts.mcpCanvasGroupsEnabled ?? false,
+						mcpInstanceContextEnabled: opts.mcpInstanceContextEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -411,6 +414,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'variant' },
 				canvasGroupsEnabled: true,
+				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
@@ -513,6 +517,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				canvasGroupsEnabled: true,
+				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
@@ -528,11 +533,13 @@ describe('McpService', () => {
 				postHogClient,
 				mcpAppsEnabled: true,
 				mcpCanvasGroupsEnabled: true,
+				mcpInstanceContextEnabled: true,
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				canvasGroupsEnabled: true,
+				instanceContextEnabled: true,
 				aiPreferencesEnabled: true,
 			});
 

@@ -4,16 +4,21 @@ import type {
 	ActivityEvent,
 	ActivityEventRepository,
 	ExecutionRepository,
+	Project,
+	ProjectRepository,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+
+import type { ProjectService } from '@/services/project.service.ee';
 
 import { cleanStoredUserMessage } from '../internal-messages';
 import {
 	InstanceContextService,
 	readInstanceContextCursor,
 	type InstanceContextCursor,
+	type InstanceContextScope,
 } from '../instance-context.service';
 
 const { userHasScopes } = vi.hoisted(() => ({ userHasScopes: vi.fn() }));
@@ -21,8 +26,24 @@ vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes }));
 
 const NOW = new Date('2026-09-04T12:00:00.000Z');
 const USER_ID = 'user-1';
-const USER = mock<User>({ id: USER_ID });
+/** A real principal always carries a role, and the MCP scope resolver reads it. */
+const USER = mock<User>({ id: USER_ID, role: { slug: 'global:member', scopes: [] } });
+/** An owner reads every project through the scoped query, personal ones included. */
+const GLOBAL_READER = mock<User>({
+	id: 'user-owner',
+	role: { slug: 'global:owner', scopes: [{ slug: 'workflow:read' }] },
+});
 const PROJECT_ID = 'project-1';
+const PERSONAL_PROJECT_ID = 'project-personal';
+
+/** Instance AI: bound to the thread's own project. */
+const BOUND: InstanceContextScope = { surface: 'conversation', projectId: PROJECT_ID };
+/** An MCP client naming a project, so the two surfaces differ only in their visibility rules. */
+const MCP_BOUND: InstanceContextScope = {
+	surface: 'mcp',
+	projectId: PROJECT_ID,
+	credentialGranted: true,
+};
 
 function entry(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
 	return {
@@ -58,6 +79,8 @@ describe('InstanceContextService', () => {
 	let activityEventRepository: MockProxy<ActivityEventRepository>;
 	let executionRepository: MockProxy<ExecutionRepository>;
 	let workflowRepository: MockProxy<WorkflowRepository>;
+	let projectRepository: MockProxy<ProjectRepository>;
+	let projectService: MockProxy<ProjectService>;
 
 	beforeEach(() => userHasScopes.mockResolvedValue(true));
 
@@ -65,10 +88,16 @@ describe('InstanceContextService', () => {
 		activityEventRepository = mock<ActivityEventRepository>();
 		executionRepository = mock<ExecutionRepository>();
 		workflowRepository = mock<WorkflowRepository>();
+		projectRepository = mock<ProjectRepository>();
+		projectService = mock<ProjectService>();
 
 		activityEventRepository.findFeed.mockResolvedValue([]);
 		executionRepository.summariseRunsForProjects.mockResolvedValue([]);
 		workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
+		// Visible unless a test says otherwise, so the MCP filter only shows up where it is the point.
+		workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map());
+		projectService.getProjectIdsWithScope.mockResolvedValue([]);
+		projectRepository.getPersonalProjectForUser.mockResolvedValue(null);
 
 		return new InstanceContextService(
 			logger,
@@ -76,6 +105,8 @@ describe('InstanceContextService', () => {
 			activityEventRepository,
 			executionRepository,
 			workflowRepository,
+			projectRepository,
+			projectService,
 		);
 	}
 
@@ -143,8 +174,8 @@ describe('InstanceContextService', () => {
 			const service = serviceWith();
 			userHasScopes.mockResolvedValue(false);
 
-			expect(await service.list({ user: USER, projectId: PROJECT_ID, limit: 5 })).toEqual([]);
-			expect(await service.expand({ id: 1, user: USER, projectId: PROJECT_ID })).toBeNull();
+			expect(await service.list({ user: USER, scope: BOUND, limit: 5 })).toEqual([]);
+			expect(await service.expand({ id: 1, user: USER, scope: BOUND })).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(activityEventRepository.findEntry).not.toHaveBeenCalled();
 		});
@@ -532,12 +563,7 @@ describe('InstanceContextService', () => {
 		it('passes a known category through', async () => {
 			const service = serviceWith();
 
-			await service.list({
-				user: USER,
-				projectId: PROJECT_ID,
-				limit: 5,
-				category: 'workflow',
-			});
+			await service.list({ user: USER, scope: BOUND, limit: 5, category: 'workflow' });
 
 			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
 				expect.objectContaining({ category: 'workflow' }),
@@ -550,7 +576,7 @@ describe('InstanceContextService', () => {
 
 			const entries = await service.list({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				limit: 5,
 				category: 'execution',
 			});
@@ -565,7 +591,7 @@ describe('InstanceContextService', () => {
 			const service = serviceWith();
 			activityEventRepository.findEntry.mockResolvedValue(null);
 
-			expect(await service.expand({ id: 42, user: USER, projectId: PROJECT_ID })).toBeNull();
+			expect(await service.expand({ id: 42, user: USER, scope: BOUND })).toBeNull();
 		});
 
 		it("returns the entry with the rest of its resource's history and where to fetch the record", async () => {
@@ -576,7 +602,7 @@ describe('InstanceContextService', () => {
 				entry({ id: 4, action: 'created' }),
 			]);
 
-			const expansion = await service.expand({ id: 10, user: USER, projectId: PROJECT_ID });
+			const expansion = await service.expand({ id: 10, user: USER, scope: BOUND });
 
 			expect(expansion?.entry.id).toBe(10);
 			// The entry itself is not repeated inside its own history.
@@ -585,6 +611,246 @@ describe('InstanceContextService', () => {
 			expect(activityEventRepository.findByResource).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);
+		});
+	});
+
+	/**
+	 * An MCP client has no conversation to bind to, so it resolves its own scope — and reads
+	 * under the visibility rules the rest of that surface already enforces.
+	 */
+	describe('the MCP surface', () => {
+		const unbound = (credentialGranted = true): InstanceContextScope => ({
+			surface: 'mcp',
+			credentialGranted,
+		});
+
+		it('reads every project the caller can see, plus their personal one', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockResolvedValue(['team-a', 'team-b']);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(
+				mock<Project>({ id: PERSONAL_PROJECT_ID }),
+			);
+
+			await service.list({ user: USER, scope: unbound(), limit: 5 });
+
+			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(USER, ['workflow:read']);
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ projectIds: ['team-a', 'team-b', PERSONAL_PROJECT_ID] }),
+			);
+		});
+
+		/** The scoped query returns team projects only, so a duplicate is possible for a global reader. */
+		it('does not read the personal project twice when it is already in scope', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockResolvedValue(['team-a', PERSONAL_PROJECT_ID]);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(
+				mock<Project>({ id: PERSONAL_PROJECT_ID }),
+			);
+
+			await service.list({ user: USER, scope: unbound(), limit: 5 });
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ projectIds: ['team-a', PERSONAL_PROJECT_ID] }),
+			);
+		});
+
+		/**
+		 * Enumerating would bind one parameter per project, and an instance holds one per user, so
+		 * a whole-instance reader asks for no project predicate at all.
+		 */
+		it('reads the whole instance without enumerating projects for a global reader', async () => {
+			const service = serviceWith();
+
+			await service.list({ user: GLOBAL_READER, scope: unbound(), limit: 5 });
+
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+			expect(projectRepository.getPersonalProjectForUser).not.toHaveBeenCalled();
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ projectIds: 'all-projects' }),
+			);
+		});
+
+		/**
+		 * The token scope narrows a token; it does not attest a permission. A custom project role
+		 * may hold `workflow:read` without `credential:read`, and its holder must not read
+		 * credential history just because their token asked for the scope.
+		 */
+		it('reads only workflow entries when the grant is not backed by the permission', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('credential:read') ? [] : ['team-a'],
+			);
+
+			await service.list({ user: USER, scope: unbound(true), limit: 5 });
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ category: 'workflow' }),
+			);
+		});
+
+		it('drops a credential entry from a project whose credentials the caller cannot read', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('credential:read') ? ['team-a'] : ['team-a', 'team-b'],
+			);
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 2, category: 'credential', resourceType: 'credential', projectId: 'team-a' }),
+				entry({ id: 1, category: 'credential', resourceType: 'credential', projectId: 'team-b' }),
+			]);
+
+			const entries = await service.list({ user: USER, scope: unbound(true), limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([2]);
+		});
+
+		/**
+		 * The case the cursor exists for: the read filled, every row was withheld, so the page shows
+		 * nothing and still has to be pageable. A cursor drawn from the visible rows would be absent
+		 * exactly here, leaving the caller told that more exists with no way to reach it.
+		 */
+		it('returns a cursor even when every row on the page was withheld', async () => {
+			const service = serviceWith();
+			// A full read: limit 2 over-fetches to 8, and all 8 come back withheld.
+			activityEventRepository.findFeed.mockResolvedValue(
+				Array.from({ length: 8 }, (_, index) => entry({ id: 20 - index, resourceId: 'wf-hidden' })),
+			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([['wf-hidden', false]]),
+			);
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.entries).toEqual([]);
+			expect(page.hasMore).toBe(true);
+			// The lowest id *read*, not the lowest shown — nothing was shown.
+			expect(page.nextBeforeId).toBe(13);
+		});
+
+		it('reports no more below when the read did not fill', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 3 })]);
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.hasMore).toBe(false);
+			expect(page.nextBeforeId).toBeUndefined();
+		});
+
+		it('reads nothing from a named project the caller cannot open', async () => {
+			const service = serviceWith();
+			userHasScopes.mockResolvedValue(false);
+
+			expect(await service.list({ user: USER, scope: MCP_BOUND, limit: 5 })).toEqual([]);
+			expect(await service.expand({ id: 1, user: USER, scope: MCP_BOUND })).toBeNull();
+			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+			expect(activityEventRepository.findEntry).not.toHaveBeenCalled();
+		});
+
+		it('drops entries for a workflow the instance withholds from MCP', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 2, resourceId: 'wf-visible' }),
+				entry({ id: 1, resourceId: 'wf-withheld' }),
+			]);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([
+					['wf-visible', true],
+					['wf-withheld', false],
+				]),
+			);
+
+			const entries = await service.list({ user: USER, scope: MCP_BOUND, limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([2]);
+		});
+
+		/**
+		 * A deleted workflow cannot be withheld from anything, and its deletion is the entry most
+		 * worth carrying — so an unresolvable id is kept rather than dropped to be safe.
+		 */
+		it('keeps the deletion of a workflow that no longer exists', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 3, action: 'deleted', resourceId: 'wf-gone' }),
+			]);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map());
+
+			const entries = await service.list({ user: USER, scope: MCP_BOUND, limit: 5 });
+
+			expect(entries.map((e) => e.id)).toEqual([3]);
+		});
+
+		it('answers a withheld workflow the same way it answers a pruned id', async () => {
+			const service = serviceWith();
+			activityEventRepository.findEntry.mockResolvedValue(entry({ id: 7, resourceId: 'wf-1' }));
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-1', false]]));
+
+			expect(await service.expand({ id: 7, user: USER, scope: MCP_BOUND })).toBeNull();
+		});
+
+		it('over-fetches so the withheld filter cannot short-change the page', async () => {
+			const service = serviceWith();
+
+			await service.list({ user: USER, scope: MCP_BOUND, limit: 5 });
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ limit: 20 }),
+			);
+		});
+
+		it('never returns more than the caller asked for', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue(
+				Array.from({ length: 12 }, (_, index) => entry({ id: index + 1 })),
+			);
+
+			const entries = await service.list({ user: USER, scope: MCP_BOUND, limit: 5 });
+
+			expect(entries).toHaveLength(5);
+		});
+
+		/** A grant that cannot list credentials must not read their history either. */
+		it('reads only workflow entries without a credential grant', async () => {
+			const service = serviceWith();
+
+			await service.list({
+				user: USER,
+				scope: { ...MCP_BOUND, credentialGranted: false },
+				limit: 5,
+			});
+
+			expect(activityEventRepository.findFeed).toHaveBeenLastCalledWith(
+				expect.objectContaining({ category: 'workflow' }),
+			);
+		});
+
+		it('returns nothing when a caller without a credential grant asks for exactly those', async () => {
+			const service = serviceWith();
+
+			const entries = await service.list({
+				user: USER,
+				scope: { ...MCP_BOUND, credentialGranted: false },
+				limit: 5,
+				category: 'credential',
+			});
+
+			expect(entries).toEqual([]);
+			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+		});
+
+		it('hides a credential entry from expand without a credential grant', async () => {
+			const service = serviceWith();
+			activityEventRepository.findEntry.mockResolvedValue(
+				entry({ id: 9, category: 'credential', resourceType: 'credential', resourceId: 'cred-1' }),
+			);
+
+			const expansion = await service.expand({
+				id: 9,
+				user: USER,
+				scope: { ...MCP_BOUND, credentialGranted: false },
+			});
+
+			expect(expansion).toBeNull();
 		});
 	});
 });
