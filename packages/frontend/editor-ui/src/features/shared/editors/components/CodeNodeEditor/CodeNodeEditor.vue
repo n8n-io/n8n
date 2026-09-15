@@ -22,7 +22,6 @@ export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 type Props = {
 	mode: CodeExecutionMode;
 	modelValue: string;
-	aiButtonEnabled?: boolean;
 	fillParent?: boolean;
 	language?: CodeNodeLanguageOption;
 	isReadOnly?: boolean;
@@ -32,7 +31,6 @@ type Props = {
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	aiButtonEnabled: false,
 	fillParent: false,
 	language: 'javaScript',
 	isReadOnly: false,

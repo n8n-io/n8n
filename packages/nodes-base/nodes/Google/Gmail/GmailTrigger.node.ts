@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -21,7 +21,6 @@ import { simplifyMemoryNotice } from './utils/descriptions';
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
-	GmailWorkflowStaticData,
 	GmailWorkflowStaticDataDictionary,
 	Label,
 	ListMessage,
@@ -54,6 +53,8 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
+		// Older versions are aliases of 1.4: all run the same implementation so that
+		// stored workflows keep loading, but legacy per-version behavior is gone
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
@@ -171,11 +172,6 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				},
 				description:
 					'Maximum number of emails to fetch each time the node polls for new messages. If more emails arrive between polls, the remaining ones will be picked up in subsequent polls.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
-					},
-				},
 			},
 			{
 				displayName: 'Filters',
@@ -323,34 +319,42 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowStaticData = this.getWorkflowStaticData('node') as
-			| GmailWorkflowStaticData
-			| GmailWorkflowStaticDataDictionary;
+		const staticData = this.getWorkflowStaticData('node');
 		const node = this.getNode();
-
-		let nodeStaticData = (workflowStaticData ?? {}) as GmailWorkflowStaticData;
-		if (node.typeVersion > 1) {
-			const nodeName = node.name;
-			const dictionary = workflowStaticData as GmailWorkflowStaticDataDictionary;
-			if (!(nodeName in workflowStaticData)) {
-				dictionary[nodeName] = {};
-			}
-
-			nodeStaticData = dictionary[nodeName];
+		// State is keyed by node name, so the name must be a safe object key
+		if (!isSafeObjectProperty(node.name)) {
+			throw new NodeOperationError(
+				node,
+				`The node name '${node.name}' is reserved, please rename the node`,
+			);
 		}
+		// Upgrade from v1: move root-level state under the node name once
+		if (staticData.lastTimeChecked !== undefined && !Object.hasOwn(staticData, node.name)) {
+			staticData[node.name] = {
+				lastTimeChecked: staticData.lastTimeChecked,
+				possibleDuplicates: staticData.possibleDuplicates,
+			};
+			delete staticData.lastTimeChecked;
+			delete staticData.possibleDuplicates;
+		}
+		const workflowStaticData = staticData as GmailWorkflowStaticDataDictionary;
+		if (!Object.hasOwn(workflowStaticData, node.name) || !workflowStaticData[node.name]) {
+			workflowStaticData[node.name] = {};
+		}
+		const nodeStaticData = workflowStaticData[node.name];
 
-		const now = Math.floor(DateTime.now().toSeconds()).toString();
+		const now = Math.floor(DateTime.now().toSeconds());
 
 		if (this.getMode() !== 'manual') {
-			nodeStaticData.lastTimeChecked ??= +now;
+			nodeStaticData.lastTimeChecked ??= now;
 		}
-		const startDate = nodeStaticData.lastTimeChecked ?? +now;
+		const startDate = nodeStaticData.lastTimeChecked ?? now;
 
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 		const simple = this.getNodeParameter('simple') as boolean;
 
-		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		const shouldLimitMessages = this.getMode() !== 'manual';
 		// How far this tick may reach before it must return — bounds scanning and
 		// fetching time, not delivery volume (maxResults stays the per-tick bound).
 		// Only consulted on shouldLimitMessages paths; pre-1.4 and manual polls are
@@ -375,7 +379,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 
 			if (!date || isNaN(date)) {
-				return +startDate;
+				return startDate;
 			}
 
 			return date;
@@ -392,12 +396,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			return qs;
 		};
 
-		let includeDrafts = false;
-		if (node.typeVersion > 1.1) {
-			includeDrafts = filters.includeDrafts ?? false;
-		} else {
-			includeDrafts = filters.includeDrafts ?? true;
-		}
+		const includeDrafts = filters.includeDrafts ?? false;
 
 		const fetchAndProcessMessage = async (
 			messageId: string,
@@ -428,11 +427,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
 				return;
 			}
-			if (
-				node.typeVersion > 1.2 &&
-				fullMessage.labelIds?.includes('SENT') &&
-				!fullMessage.labelIds?.includes('INBOX')
-			) {
+			if (fullMessage.labelIds?.includes('SENT') && !fullMessage.labelIds?.includes('INBOX')) {
 				return;
 			}
 
@@ -622,12 +617,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
-			if (node.typeVersion > 1.3) {
-				if (qs.q) {
-					qs.q += ' -in:scheduled';
-				} else {
-					qs.q = '-in:scheduled';
-				}
+			if (qs.q) {
+				qs.q += ' -in:scheduled';
+			} else {
+				qs.q = '-in:scheduled';
 			}
 
 			let messages: ListMessage[] = [];
@@ -666,9 +659,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			// dropping the page token, so on v1.4+ this must reach the no-progress valve
 			// below. Every other version falls through to the same null return.
 
-			// For v1.4+, filter out already-handled messages before fetching to save API
-			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
-			// held cursor re-scans its whole window, so handled messages can reappear.
+			// Filter out already-handled messages before fetching to save API calls.
+			// Gmail's `after:` query is inclusive at the second boundary, and a held
+			// cursor re-scans its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
 				// Set-aside ids are dropped along with the handled ones: that list
 				// already owns them and retries them every poll, so queueing them here
@@ -708,7 +701,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
 							{ node: node.name },
 						);
-						nodeStaticData.lastTimeChecked = +now;
+						nodeStaticData.lastTimeChecked = now;
 						// The cursor jumped to now, so ids from the old window are no longer
 						// at the boundary. Keeping them would grow the stored-id count for
 						// nothing — every other path merges the set instead.
@@ -737,9 +730,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 			// Queue every scanned id before fetching any of them, so a throw on the
 			// first fetch cannot leave ids in no stored state: the loop below trims
-			// this back down as each fetch succeeds. Stays gated on the version
-			// check, or a pre-1.4 node would store a queue its own drain path
-			// ignores until someone bumps its version.
+			// this back down as each fetch succeeds. Stays gated on the same check as
+			// the drain path, so manual runs never store a queue nothing drains.
 			if (shouldLimitMessages) {
 				nodeStaticData.pendingMessageIds = [
 					...messagesToProcess.map((m) => m.id),
@@ -818,8 +810,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 
 		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
 
-		// For older versions, filter at the response level since the pre-fetch filter
-		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
+		// In manual mode the pre-fetch duplicate filter above is skipped, so filter
+		// at the response level instead.
 		if (!shouldLimitMessages) {
 			const prevDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 			if (prevDuplicates.size > 0) {
@@ -830,7 +822,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			}
 		}
 
-		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		let effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, startDate)) || startDate;
 		if (shouldLimitMessages && !windowFullyScanned) {
 			const trackedIds =
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +
@@ -841,7 +833,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				// time budget. Hold the cursor so later polls can still reach it. The
 				// possibleDuplicates update below keeps every handled id filterable, so a
 				// re-scan under a held cursor cannot re-emit them.
-				effectiveLastTimeChecked = +startDate;
+				effectiveLastTimeChecked = startDate;
 			} else {
 				// Give-up valve: holding again would grow the tracked-id state without
 				// bound. Advance and accept skipping the unscanned older mail instead.
@@ -855,7 +847,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		// When lastTimeChecked didn't advance (only older pending messages were
 		// processed, or the cursor is held), preserve existing possibleDuplicates —
 		// they're still at the query boundary.
-		if (effectiveLastTimeChecked === +startDate && nodeStaticData.possibleDuplicates?.length) {
+		if (effectiveLastTimeChecked === startDate && nodeStaticData.possibleDuplicates?.length) {
 			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
 			nodeStaticData.possibleDuplicates = Array.from(merged);
 		} else {

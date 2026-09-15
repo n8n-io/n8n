@@ -1,21 +1,22 @@
-import type { BinaryDataConfig } from 'n8n-core';
-import { mock } from 'vitest-mock-extended';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { InMemoryBinaryDataRule } from '../in-memory-binary-data.rule';
 
 describe('InMemoryBinaryDataRule', () => {
-	let rule: InMemoryBinaryDataRule;
-	const binaryDataConfig: BinaryDataConfig = mock<BinaryDataConfig>();
+	const rule = new InMemoryBinaryDataRule();
 
-	beforeEach(() => {
-		rule = new InMemoryBinaryDataRule(binaryDataConfig);
+	afterEach(() => {
+		delete process.env.N8N_DEFAULT_BINARY_DATA_MODE;
+		delete process.env.N8N_DEFAULT_BINARY_DATA_MODE_FILE;
 	});
 
 	describe('detect()', () => {
-		it.each(['filesystem', 's3', 'database'] as const)(
-			'should not be affected in %s mode',
+		it.each(['filesystem', 's3', 'database', undefined])(
+			'should not be affected when env var is %s',
 			async (mode) => {
-				binaryDataConfig.mode = mode;
+				if (mode) process.env.N8N_DEFAULT_BINARY_DATA_MODE = mode;
 
 				const result = await rule.detect();
 
@@ -24,8 +25,8 @@ describe('InMemoryBinaryDataRule', () => {
 			},
 		);
 
-		it('should be affected in default (in-memory) mode', async () => {
-			binaryDataConfig.mode = 'default';
+		it('should be affected when env var is set to removed default (in-memory) mode', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'default';
 
 			const result = await rule.detect();
 
@@ -33,6 +34,29 @@ describe('InMemoryBinaryDataRule', () => {
 			expect(result.instanceIssues).toHaveLength(1);
 			expect(result.instanceIssues[0].level).toBe('warning');
 			expect(result.recommendations).toHaveLength(1);
+		});
+
+		it('should be affected when the env value carries quotes or whitespace', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = ' "default" ';
+
+			const result = await rule.detect();
+
+			expect(result.isAffected).toBe(true);
+		});
+
+		it('should be affected when the mode is set via the _FILE variant', async () => {
+			const dir = mkdtempSync(join(tmpdir(), 'n8n-test-'));
+			const filePath = join(dir, 'binary-data-mode');
+			writeFileSync(filePath, 'default\n');
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE_FILE = filePath;
+
+			try {
+				const result = await rule.detect();
+
+				expect(result.isAffected).toBe(true);
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
 		});
 	});
 });

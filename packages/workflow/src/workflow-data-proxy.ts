@@ -10,6 +10,7 @@ import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED }
 import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression } from './expressions/expression-helpers';
+import { REMOVED_EXPRESSION_GLOBALS, removedGlobalMessage } from './expressions/removed-globals';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -55,37 +56,16 @@ const PAIRED_ITEM_METHOD = {
 	PAIRED_ITEM: 'pairedItem',
 	ITEM_MATCHING: 'itemMatching',
 	ITEM: 'item',
-	$GET_PAIRED_ITEM: '$getPairedItem',
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
-/**
- * Whether the runtime can compile expressions. The expression engine compiles
- * expressions via `new Function`, which throws when the process is started with
- * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
- * This is a process-wide invariant, so we probe once and cache the result.
- */
-let codeGenerationAllowed: boolean | undefined;
 // Reads a key from a placeholder source only when it is the source's own
 // property, so a lookup can never resolve to a value reached through the
 // prototype chain (e.g. `constructor` / `__proto__`).
 const readOwnKey = (source: unknown, key: string): unknown => {
 	if (source === null || typeof source !== 'object') return undefined;
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
-};
-
-const isCodeGenerationAllowed = (): boolean => {
-	if (codeGenerationAllowed === undefined) {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-			new Function('return 1');
-			codeGenerationAllowed = true;
-		} catch {
-			codeGenerationAllowed = false;
-		}
-	}
-	return codeGenerationAllowed;
 };
 
 export class WorkflowDataProxy {
@@ -813,53 +793,26 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns the data proxy object which allows to query data from current run
-	 *
+	 * Paired-item resolution and the expression errors it raises. Kept out of
+	 * `getDataProxy` so the execution engine can resolve paired items without
+	 * building the expression data object.
 	 */
-	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
+	private pairedItemHelpers() {
 		const that = this;
-
-		// replacing proxies with the actual data.
-		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
-			if (typeof data !== 'object' || typeof query !== 'string') {
-				throw new ExpressionError('expected two arguments (Object, string) for this function', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-				});
-			}
-
-			// jmespath decodes escape sequences inside quoted identifiers, so
-			// the token check below must run against an unescaped query. Reject
-			// any backslash up front to keep the property-name match meaningful.
-			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
-				throw new ExpressionError(
-					'Cannot access this property in a jmespath query due to security concerns',
-					{
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-					},
-				);
-			}
-
-			if (!Array.isArray(data) && typeof data === 'object') {
-				return jmespath.search({ ...data }, query);
-			}
-			return jmespath.search(data, query);
-		};
 
 		const createExpressionError = (
 			message: string,
 			context?: ExpressionErrorOptions & {
 				moreInfoLink?: boolean;
 				functionOverrides?: {
-					// Custom data to display for Function-Nodes
+					// Custom data to display for scripting nodes
 					message?: string;
 					description?: string;
 				};
 			},
 		) => {
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
-				// If the node in which the error is thrown is a function node,
+				// If the node in which the error is thrown is a scripting node,
 				// display a different error message in case there is one defined
 				message = context.functionOverrides.message || message;
 				context.description = context.functionOverrides.description || context.description;
@@ -1034,7 +987,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
+			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
 		): INodeExecutionData =>
 			resolvePairedItem(
 				destinationNodeName,
@@ -1146,6 +1099,96 @@ export class WorkflowDataProxy {
 
 			return first;
 		};
+
+		return {
+			createExpressionError,
+			createMissingPairedItemError,
+			createNoConnectionError,
+			getPairedItem,
+		};
+	}
+
+	/**
+	 * Resolves the item in `destinationNodeName` that the given paired item
+	 * traces back to. The execution engine calls this directly for error-output
+	 * items, so it is deliberately not part of the expression API.
+	 */
+	resolvePairedItem(
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		initialPairedItem: IPairedItemData,
+	): INodeExecutionData {
+		return this.pairedItemHelpers().getPairedItem(
+			destinationNodeName,
+			incomingSourceData,
+			initialPairedItem,
+		);
+	}
+
+	/**
+	 * Returns the data proxy object which allows to query data from current run
+	 *
+	 */
+	/**
+	 * @param opts.throwOnMissingExecutionData Throw when no execution data is available. Default true.
+	 * @param opts.throwOnEvaluateExpression Throw when `$evaluateExpression` is called.
+	 * Default false. Proxies returned by `$item()` inherit both options.
+	 */
+	getDataProxy(opts?: {
+		throwOnMissingExecutionData?: boolean;
+		throwOnEvaluateExpression?: boolean;
+	}): IWorkflowDataProxyData {
+		const that = this;
+
+		// replacing proxies with the actual data.
+		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
+			}
+
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
+			}
+
+			if (!Array.isArray(data) && typeof data === 'object') {
+				return jmespath.search({ ...data }, query);
+			}
+			return jmespath.search(data, query);
+		};
+
+		const {
+			createExpressionError,
+			createMissingPairedItemError,
+			createNoConnectionError,
+			getPairedItem,
+		} = this.pairedItemHelpers();
+
+		// Globals removed in a major version. Bound to a thrower so a call fails
+		// with a message naming the replacement, instead of resolving to undefined
+		// and feeding that into the workflow's data. The VM engine binds the same
+		// names in-isolate from the same list.
+		const removedGlobals = Object.fromEntries(
+			(
+				Object.keys(REMOVED_EXPRESSION_GLOBALS) as Array<keyof typeof REMOVED_EXPRESSION_GLOBALS>
+			).map((name) => [
+				name,
+				() => {
+					throw createExpressionError(removedGlobalMessage(name));
+				},
+			]),
+		);
 
 		const handleFromAi = (
 			name: string,
@@ -1607,12 +1650,12 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
-				if (!isCodeGenerationAllowed()) {
+				if (opts?.throwOnEvaluateExpression) {
 					throw new ExpressionError(
-						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						'The function "$evaluateExpression" is not available in this context',
 						{
 							description:
-								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+								'Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before this node, and read the result from the input item.',
 						},
 					);
 				}
@@ -1650,7 +1693,7 @@ export class WorkflowDataProxy {
 					{},
 					that.contextNodeName,
 				);
-				return dataProxy.getDataProxy();
+				return dataProxy.getDataProxy(opts);
 			},
 			$fromAI: handleFromAi,
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
@@ -1697,7 +1740,7 @@ export class WorkflowDataProxy {
 
 			Duration,
 			...that.additionalKeys,
-			$getPairedItem: getPairedItem,
+			...removedGlobals,
 
 			// deprecated
 			$jmespath: jmespathWrapper,

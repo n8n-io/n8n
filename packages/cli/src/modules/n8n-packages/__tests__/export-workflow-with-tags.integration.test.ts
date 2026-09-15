@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -203,26 +202,5 @@ describe('workflow package export — with tags', () => {
 
 		const subEntry = manifest.workflows!.find((entry) => entry.id === sub.id)!;
 		expect(workflowJson(entries, subEntry.target).tagIds).toEqual([tag.id]);
-	});
-
-	it('skips tags silently when workflow tags are disabled on the instance', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject('Project A', owner);
-		const workflow = await createWorkflow({ name: 'Tagged workflow' }, project);
-		await createTag({ name: 'prod' }, workflow);
-
-		const globalConfig = Container.get(GlobalConfig);
-		globalConfig.tags.disabled = true;
-		try {
-			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
-			const { manifest, entries } = await readExport(stream);
-
-			expect(workflowJson(entries, manifest.workflows![0].target)).not.toHaveProperty('tagIds');
-			expect(tagFiles(entries)).toEqual([]);
-			expect(manifest).not.toHaveProperty('tags');
-			expect(manifest.requirements).toEqual({ nodeTypes: expect.any(Array) });
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 });

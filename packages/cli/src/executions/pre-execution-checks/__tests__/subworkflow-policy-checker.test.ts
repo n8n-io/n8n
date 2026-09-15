@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import type { INode, Workflow } from 'n8n-workflow';
+import type { INode, Workflow, WorkflowSettings } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -103,19 +103,53 @@ describe('SubworkflowPolicyChecker', () => {
 		});
 	});
 
-	describe('`any` caller policy', () => {
-		it('should not throw on a regular subworkflow call', async () => {
+	describe('removed `any` caller policy', () => {
+		it('should deny a cross-owner caller', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
-			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } });
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+			});
 
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).resolves.not.toThrow();
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+		});
+
+		it('should deny a same-owner caller', async () => {
+			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+			});
+
+			const bothWorkflowsProject = mock<Project>({ id: uuid(), type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject);
+
+			const check = checker.check(subworkflow, parentWorkflow.id);
+
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
+		});
+
+		it('should deny a project-scoped caller from the same project', async () => {
+			const projectId = uuid();
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'any' as WorkflowSettings.CallerPolicy },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: projectId, type: 'team' }),
+			);
+
+			await expect(checker.checkForProject(subworkflow, projectId)).rejects.toThrowError(
+				SubworkflowPolicyDenialError,
+			);
 		});
 	});
 

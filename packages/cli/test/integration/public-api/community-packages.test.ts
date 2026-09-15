@@ -9,6 +9,7 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 import type { CommunityNodeType } from '@n8n/api-types';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import path from 'node:path';
@@ -16,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
@@ -61,6 +63,9 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		// Most tests here assert the npm-based update check, which only runs when
+		// unverified packages are enabled - opt in instead of relying on the default.
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -126,6 +131,19 @@ describe('Community packages (Public API)', () => {
 				['outdated', '--json'],
 				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
 			);
+		});
+
+		it('should not run npm outdated when unverified packages are disabled', async () => {
+			Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
+			const pkg = mockPackage();
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
+			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([pkg]);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toHaveLength(1);
+			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 		});
 
 		it('should return packages with updateAvailable when outdated', async () => {

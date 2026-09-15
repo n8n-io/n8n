@@ -8,9 +8,6 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
-	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
-	PROJECT_ADMIN_ROLE_SLUG,
-	PROJECT_EDITOR_ROLE_SLUG,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -144,31 +141,6 @@ export class AuthRolesService {
 		return scopes;
 	}
 
-	private async getExternalSecretsSystemRolesScopes(
-		roleSlug: string,
-		tx: EntityManager,
-	): Promise<string[]> {
-		const settingRow = await tx.findOneBy(Settings, {
-			key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
-		});
-
-		if (settingRow?.value !== 'true') {
-			return [];
-		}
-
-		const roleScopeMap = EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap;
-		const scopesForRole = roleScopeMap[roleSlug];
-
-		if (scopesForRole) {
-			this.logger.debug(
-				`${EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key} is enabled - allowing ${scopesForRole.join(', ')} scopes to ${roleSlug} role`,
-			);
-			return scopesForRole;
-		}
-
-		return [];
-	}
-
 	/**
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
@@ -183,11 +155,6 @@ export class AuthRolesService {
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
-		}
-
-		// External secrets system roles scopes
-		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
-			scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
 		}
 
 		return scopes;

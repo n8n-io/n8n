@@ -19,7 +19,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, type WorkflowSettings } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -254,53 +254,27 @@ describe('WorkflowSettingsVue', () => {
 		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
 	});
 
-	it('should warn that the `any` caller policy is deprecated', async () => {
+	// A workflow can still store the removed `any` policy, which denies every caller at
+	// runtime. The dialog shows the instance default, and saving persists it as the fix.
+	it('should open with the instance default when the stored policy is the removed `any`', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
+		settingsStore.settings.workflowCallerPolicyDefaultOption = 'workflowsFromSameOwner';
+		workflowDocumentStore.setSettings({
+			executionOrder: 'v1',
+			callerPolicy: 'any' as WorkflowSettings.CallerPolicy,
+		});
 
-		const { getByTestId } = createComponent({ pinia });
+		const { getByRole } = createComponent({ pinia });
 		await flushPromises();
 
-		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
-	});
+		await userEvent.click(getByRole('button', { name: 'Save' }));
 
-	it('should not warn about deprecation for a supported caller policy', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'none' });
-
-		const { queryByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
-	});
-
-	// An instance that lost the Sharing feature can still carry `any`, and has to be able
-	// to leave it before v3 removes the option.
-	it('should render the caller policy without sharing when the stored policy is `any`', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
-
-		const { getByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		expect(getByTestId('workflow-caller-policy')).toBeVisible();
-		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
-	});
-
-	it('should keep the caller policy visible after switching away from `any` without sharing', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
-
-		const { getByTestId, queryByTestId } = createComponent({ pinia });
-		await flushPromises();
-
-		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy-select'));
-		await userEvent.click(dropdownItems[0]);
-		await flushPromises();
-
-		// The row stays so the change can be saved; only the warning goes away.
-		expect(getByTestId('workflow-caller-policy')).toBeVisible();
-		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
+		expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+			'1',
+			expect.objectContaining({
+				settings: expect.objectContaining({ callerPolicy: 'workflowsFromSameOwner' }),
+			}),
+		);
 	});
 
 	describe('Custom span attributes', () => {

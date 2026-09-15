@@ -175,7 +175,6 @@ describe('update-workflow MCP tool', () => {
 			getByNames: getByNamesMock,
 		});
 		globalConfig = mockInstance(GlobalConfig, {
-			tags: { disabled: false },
 			executions: { maxTimeout: 3600, timeout: -1 },
 			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 			workflows: { useWorkflowPublicationService: false },
@@ -1663,7 +1662,6 @@ describe('update-workflow MCP tool', () => {
 			test('honors a custom error trigger type (NODES_ERROR_TRIGGER_TYPE)', async () => {
 				const customType = 'n8n-nodes-base.customErrorTrigger';
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: customType },
 				});
@@ -1728,7 +1726,6 @@ describe('update-workflow MCP tool', () => {
 
 			test('with publication service enabled, validates the service-published version', async () => {
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 					workflows: { useWorkflowPublicationService: true },
@@ -1768,7 +1765,6 @@ describe('update-workflow MCP tool', () => {
 
 			test('with publication service enabled, ignores a stale activeVersion when the service reports none', async () => {
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 					workflows: { useWorkflowPublicationService: true },
@@ -3350,20 +3346,6 @@ describe('update-workflow MCP tool', () => {
 					['workflow:update'],
 					expect.objectContaining({ includeTags: false }),
 				);
-			});
-
-			test('rejects tag operations when tags are disabled instance-wide', async () => {
-				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
-
-				const result = await callHandler({
-					workflowId: 'wf-1',
-					operations: [{ type: 'addTags', names: ['anything'] }],
-				});
-
-				expect(result.isError).toBe(true);
-				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
-				expect(workflowService.update).not.toHaveBeenCalled();
-				expect(findWorkflowMock).not.toHaveBeenCalled();
 			});
 
 			test('without tag:create scope, attaches only existing tags', async () => {

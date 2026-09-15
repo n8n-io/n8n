@@ -605,42 +605,6 @@ describe('GET /workflows/new', () => {
 	});
 });
 
-describe('GET /workflows/from-url', () => {
-	test('should return 403 when user does not have workflow:create permission in the project', async () => {
-		const teamProject = await createTeamProject();
-		await linkUserToProject(member, teamProject, 'project:viewer');
-
-		const response = await authMemberAgent
-			.get('/workflows/from-url')
-			.query({
-				url: 'https://example.com/workflow.json',
-				projectId: teamProject.id,
-			})
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			message: "You don't have the permissions to create a workflow in this project.",
-		});
-	});
-
-	test('should return 403 when user is not part of the project', async () => {
-		const teamProject = await createTeamProject();
-		await linkUserToProject(anotherMember, teamProject, 'project:admin');
-
-		const response = await authMemberAgent
-			.get('/workflows/from-url')
-			.query({
-				url: 'https://example.com/workflow.json',
-				projectId: teamProject.id,
-			})
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			message: "You don't have the permissions to create a workflow in this project.",
-		});
-	});
-});
-
 describe('GET /workflows/:workflowId', () => {
 	test('should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');
@@ -1541,9 +1505,9 @@ describe('PATCH /workflows/:workflowId', () => {
 					},
 					{
 						id: 'uuid-5678',
-						parameters: {},
-						name: 'Cron',
-						type: 'n8n-nodes-base.cron',
+						parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
 						typeVersion: 1,
 						position: [400, 300],
 					},
@@ -2403,8 +2367,8 @@ describe('PATCH /workflows/:workflowId as an editor who may not publish', () => 
 		const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
 			versionId: workflow.versionId,
 			nodes: workflow.nodes.map((node) =>
-				node.type === 'n8n-nodes-base.cron'
-					? { ...node, parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } } }
+				node.type === 'n8n-nodes-base.scheduleTrigger'
+					? { ...node, parameters: { rule: { interval: [{ field: 'months' }] } } }
 					: node,
 			),
 			connections: workflow.connections,

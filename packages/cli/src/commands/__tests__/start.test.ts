@@ -9,6 +9,7 @@ import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import http from 'node:http';
 import https from 'node:https';
 
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
@@ -41,6 +42,9 @@ authRolesService.init.mockResolvedValue(undefined);
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
 deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+
+const encryptionBootstrapService = mockInstance(EncryptionBootstrapService);
+encryptionBootstrapService.run.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -132,6 +136,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
 		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
+		Container.set(EncryptionBootstrapService, encryptionBootstrapService);
 		Container.set(
 			JwtService,
 			mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) }),

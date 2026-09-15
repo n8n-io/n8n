@@ -544,7 +544,7 @@ describe('New SDK API', () => {
 			});
 
 			const httpTool = tool({
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				version: 1.1,
 				config: {
 					name: 'HTTP Tool',
