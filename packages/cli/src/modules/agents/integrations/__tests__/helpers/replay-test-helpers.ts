@@ -211,14 +211,16 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
 	Container.set(ChatIntegrationRegistry, registry);
+	const claimFor = (threadId: string) => ({
+		executionId: 'execution-1',
+		threadId,
+		abortSignal: new AbortController().signal,
+		release: vi.fn(async () => {}),
+		fail: vi.fn(async () => {}),
+	});
 	Container.set(AgentTurnQueueService, {
-		tryRunNow: vi.fn(async ({ threadId }) => ({
-			executionId: 'execution-1',
-			threadId,
-			abortSignal: new AbortController().signal,
-			release: vi.fn(async () => {}),
-			fail: vi.fn(async () => {}),
-		})),
+		tryRunNow: vi.fn(async ({ threadId }) => claimFor(threadId)),
+		submit: vi.fn(async ({ threadId }) => ({ status: 'claimed', claim: claimFor(threadId) })),
 	} as never);
 
 	let stream = params.stream ?? [
