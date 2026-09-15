@@ -315,10 +315,6 @@ export class SchedulerConfig {
 	 * same time.
 	 *
 	 * Give every instance the same value, and the same {@link enabled}.
-	 *
-	 * Do not turn this off in the same step as a rollback to an older version:
-	 * the older version leaves a schedule a newer version wrote in place and
-	 * skips its own timer runs of that job while the schedule stays.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;
