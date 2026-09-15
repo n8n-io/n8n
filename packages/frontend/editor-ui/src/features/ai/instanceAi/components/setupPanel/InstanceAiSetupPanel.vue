@@ -5,7 +5,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nSetupPanel,
-	N8nSetupConnection,
+	N8nButton,
 	N8nIcon,
 	N8nText,
 	type SetupPanelItem,
@@ -29,7 +29,6 @@ import { getAppNameFromCredType, getAppNameFromNodeName } from '@/app/utils/node
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
@@ -69,7 +68,6 @@ const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const rootStore = useRootStore();
-const uiStore = useUIStore();
 const oauth = useCredentialOAuth();
 const connectingItemId = ref<string>();
 let active = true;
@@ -506,7 +504,7 @@ async function onExecute() {
 	}
 }
 
-async function connectFromRow(id: string, advanced = false) {
+async function connectFromRow(id: string) {
 	const group = groupById(id);
 	const item = group?.credential?.item;
 	const projectId = credentialProjectId.value;
@@ -524,27 +522,7 @@ async function connectFromRow(id: string, advanced = false) {
 		)
 			selectedItemId.value = id;
 	};
-	panelTelemetry.trackConnectionStarted(item, advanced ? 'advanced' : 'oauth');
-	if (advanced) {
-		uiStore.openNewCredential(
-			item.credentialType,
-			false,
-			true,
-			projectId,
-			undefined,
-			node?.name,
-			node,
-			{
-				closeOnSave: true,
-				credentialSetupHint: item.setupHint,
-				workflowId,
-				onCredentialCreated: (credential) => {
-					void bind(credential.id);
-				},
-			},
-		);
-		return;
-	}
+	panelTelemetry.trackConnectionStarted(item, 'oauth');
 	connectingItemId.value = id;
 	try {
 		const credential = await oauth.createAndAuthorize(item.credentialType, node?.type, {
@@ -623,16 +601,15 @@ async function onApplyParameters(
 		@detail-closed="onDetailClosed"
 	>
 		<template #action="{ item }">
-			<N8nSetupConnection
-				:connected="false"
-				:action-label="i18n.baseText('instanceAi.setupPanel.connect')"
-				action-variant="subtle"
-				:actions="[{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }]"
+			<N8nButton
+				size="small"
+				variant="subtle"
 				:disabled="item.disabled || Boolean(connectingItemId)"
 				:loading="connectingItemId === item.id"
-				@action="connectFromRow(item.id)"
-				@select="connectFromRow(item.id, true)"
-			/>
+				@click="connectFromRow(item.id)"
+			>
+				{{ i18n.baseText('instanceAi.setupPanel.connect') }}
+			</N8nButton>
 		</template>
 		<template #icon="{ item }">
 			<CredentialIcon

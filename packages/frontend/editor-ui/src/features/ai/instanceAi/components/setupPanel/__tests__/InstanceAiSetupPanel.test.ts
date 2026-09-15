@@ -25,42 +25,33 @@ vi.mock('../../../composables/useSetupPanelTelemetry', () => ({
 	}),
 }));
 
-const {
-	actionsMock,
-	showMessageMock,
-	testCredentialMock,
-	oauthMock,
-	openCredentialMock,
-	credentialsMock,
-} = vi.hoisted(() => ({
-	oauthMock: {
-		isOAuthCredentialType: vi.fn(() => false),
-		canOAuthCredentialQuickConnect: vi.fn(() => false),
-		createAndAuthorize: vi.fn(),
-		cancelAuthorize: vi.fn(),
-	},
-	openCredentialMock: vi.fn(),
-	credentialsMock: {
-		getCredentialById: vi.fn(),
-		getUsableCredentialByType: vi.fn<() => Array<{ id: string; name: string }>>(() => []),
-	},
-	actionsMock: {
-		bindCredential: vi.fn(),
-		applyParameterValues: vi.fn(),
-		executeWorkflow: vi.fn(),
-		flushPendingApplies: vi.fn(),
-		getPendingCredential: vi.fn(),
-		getPendingParameterChanges: vi.fn(() => []),
-	},
-	showMessageMock: vi.fn(),
-	testCredentialMock: vi.fn(),
-}));
+const { actionsMock, showMessageMock, testCredentialMock, oauthMock, credentialsMock } = vi.hoisted(
+	() => ({
+		oauthMock: {
+			isOAuthCredentialType: vi.fn(() => false),
+			canOAuthCredentialQuickConnect: vi.fn(() => false),
+			createAndAuthorize: vi.fn(),
+			cancelAuthorize: vi.fn(),
+		},
+		credentialsMock: {
+			getCredentialById: vi.fn(),
+			getUsableCredentialByType: vi.fn<() => Array<{ id: string; name: string }>>(() => []),
+		},
+		actionsMock: {
+			bindCredential: vi.fn(),
+			applyParameterValues: vi.fn(),
+			executeWorkflow: vi.fn(),
+			flushPendingApplies: vi.fn(),
+			getPendingCredential: vi.fn(),
+			getPendingParameterChanges: vi.fn(() => []),
+		},
+		showMessageMock: vi.fn(),
+		testCredentialMock: vi.fn(),
+	}),
+);
 
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => oauthMock,
-}));
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openNewCredential: openCredentialMock }),
 }));
 
 const stateMock = reactive({
@@ -674,23 +665,13 @@ describe('InstanceAiSetupPanel', () => {
 		},
 	);
 
-	it('opens Advanced setup from the row with workflow context', async () => {
+	it('shows only Connect on the managed OAuth row', () => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(true);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
 		stateMock.rows = [{ item: credentialItem, isDone: false }];
-		const { getByRole } = renderComponent();
-		await userEvent.click(getByRole('button', { name: 'More options' }));
-		await userEvent.click(getByRole('menuitem', { name: 'Advanced setup' }));
-		expect(openCredentialMock).toHaveBeenCalledWith(
-			'notionApi',
-			false,
-			true,
-			'p1',
-			undefined,
-			undefined,
-			undefined,
-			expect.objectContaining({ workflowId: 'wf1', closeOnSave: true }),
-		);
+		const { getByRole, queryByRole } = renderComponent();
+		expect(getByRole('button', { name: 'Connect' })).toBeVisible();
+		expect(queryByRole('button', { name: 'More options' })).not.toBeInTheDocument();
 	});
 
 	it('does not bind a pending row connection after switching workflows', async () => {
