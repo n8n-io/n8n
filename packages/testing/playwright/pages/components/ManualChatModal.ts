@@ -26,6 +26,10 @@ export class ManualChatModal {
 		return this.root.getByTestId('canvas-chat-body');
 	}
 
+	getHeader(): Locator {
+		return this.root.getByTestId('chat-header');
+	}
+
 	getInput(): Locator {
 		return this.root.locator('.chat-inputs textarea');
 	}

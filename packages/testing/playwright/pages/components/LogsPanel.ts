@@ -31,11 +31,23 @@ export class LogsPanel {
 		return this.root.getByTestId('logs-overview-status');
 	}
 
+	/**
+	 * Header of the overview panel, the leftmost of the pane's panel headers.
+	 */
+	getOverviewHeader(): Locator {
+		return this.root.getByTestId('logs-overview-header');
+	}
+
+	/**
+	 * Header of the chat panel, shown left of the overview panel when the
+	 * workflow has a chat trigger.
+	 */
+	getChatHeader(): Locator {
+		return this.manualChat.getHeader();
+	}
+
 	getClearExecutionButton(): Locator {
-		return this.root
-			.getByTestId('logs-overview-header')
-			.locator('button')
-			.filter({ hasText: 'Clear execution' });
+		return this.getOverviewHeader().locator('button').filter({ hasText: 'Clear execution' });
 	}
 
 	getLogEntries(): Locator {
@@ -79,7 +91,7 @@ export class LogsPanel {
 	 */
 
 	async open(): Promise<void> {
-		await this.root.getByTestId('logs-overview-header').click();
+		await this.getOverviewHeader().click();
 	}
 
 	async openActions(): Promise<void> {
