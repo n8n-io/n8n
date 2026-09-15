@@ -553,7 +553,7 @@ describe('ParameterInput.vue', () => {
 		);
 	});
 
-	test('should emit a number from a credential number parameter', async () => {
+	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {
 		const { container, emitted } = renderComponent({
 			props: {
 				path: 'port',
@@ -562,7 +562,7 @@ describe('ParameterInput.vue', () => {
 					name: 'port',
 					type: 'number',
 				}),
-				modelValue: 1433,
+				modelValue: '1433',
 				isForCredential: true,
 			},
 		});
@@ -571,6 +571,9 @@ describe('ParameterInput.vue', () => {
 		if (!(input instanceof HTMLInputElement)) {
 			throw new Error('Expected input element');
 		}
+
+		expect(input).toHaveValue('1433');
+		expect(emitted('update')).toBeUndefined();
 
 		await userEvent.clear(input);
 		await userEvent.type(input, '1434');
