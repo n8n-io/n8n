@@ -2,7 +2,7 @@ import { routeBinaryProperties } from '@utils/binary';
 import { chunk, flatten } from '@utils/utilities';
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
-import { deepCopy, safeRegex } from 'n8n-workflow';
+import { deepCopy, safeInternalRegex } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
@@ -291,7 +291,12 @@ export async function executeSqlQueryAndPrepareResults(
 		// Process in reverse order so $10 is replaced before $1
 		for (let i = queryValues.length; i >= 1; i--) {
 			const paramName = `p${i}`;
-			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
+			processedQuery = safeInternalRegex.replace(
+				`\\$${i}(?!\\d)`,
+				processedQuery,
+				'g',
+				`@${paramName}`,
+			);
 			request.input(paramName, queryValues[i - 1]);
 		}
 	}

@@ -15,7 +15,7 @@ import { transliterate } from 'transliteration';
 import type { Extension, ExtensionMap } from './extensions';
 import { toDateTime as numberToDateTime } from './number-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-import { safeRegex } from '../safe-regex';
+import { safeInternalRegex } from '../safe-regex';
 import { tryToParseDateTime } from '../type-validation';
 
 export const SupportedHashAlgorithms = [
@@ -306,7 +306,7 @@ function toNumber(value: string) {
 function quote(value: string, extraArgs: string[]) {
 	const [quoteChar = '"'] = extraArgs;
 	const escapedBackslashes = value.replace(/\\/g, '\\\\');
-	return `${quoteChar}${safeRegex.replace(`\\${quoteChar}`, escapedBackslashes, 'g', `\\${quoteChar}`)}${quoteChar}`;
+	return `${quoteChar}${safeInternalRegex.replace(`\\${quoteChar}`, escapedBackslashes, 'g', `\\${quoteChar}`)}${quoteChar}`;
 }
 
 function isNumeric(value: string) {
