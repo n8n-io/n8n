@@ -4,7 +4,7 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-bookworm
 
 ARG PLAYWRIGHT_VERSION=1.62.1
-ARG OPENCODE_VERSION=1.18.30
+ARG OPENCODE_VERSION=1.18.25
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux sudo less jq ripgrep postgresql-client \
