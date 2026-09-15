@@ -445,6 +445,33 @@ describe('serializeNode', () => {
 		expect(normalizedNode).not.toHaveProperty('webhookId');
 	});
 
+	it('preserves parameters when parameter normalization returns null', () => {
+		const knownNodeType = {
+			name: 'n8n-nodes-base.ssh',
+			displayName: 'SSH',
+			version: 1,
+			description: '',
+			defaults: { name: 'SSH' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+			group: ['input'],
+		} as INodeTypeDescription;
+		nodeTypeProvider.getNodeType.mockReturnValue(knownNodeType);
+		vi.mocked(NodeHelpers.getNodeParameters).mockReturnValue(null);
+
+		const parameters = {
+			authentication: 'privateKey',
+			resource: 'command',
+			operation: 'execute',
+			command: 'python3 -c "print(1)"',
+			cwd: '/srv/app',
+		};
+		const node = createNode({ type: knownNodeType.name, parameters });
+
+		expect(serializeNode(nodeTypeProvider, node).parameters).toEqual(parameters);
+	});
+
 	describe('credential filtering', () => {
 		// Mirrors how the HTTP Request node declares credentials: only httpSslAuth is
 		// declared; generic/predefined auth types come from the genericAuthType and
