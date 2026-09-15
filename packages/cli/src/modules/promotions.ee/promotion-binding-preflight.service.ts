@@ -106,8 +106,10 @@ export class PromotionBindingPreflightService {
 		const inventory = await this.inventoryReader.read(reader);
 
 		const context = await this.readDestinationProjects(inventory);
-		const credentials = await this.checkCredentials(inventory, context, user);
-		const variables = await this.checkVariables(inventory, context);
+		const [credentials, variables] = await Promise.all([
+			this.checkCredentials(inventory, context, user),
+			this.checkVariables(inventory, context),
+		]);
 
 		return { bindingsNeedingReview: [...credentials, ...variables] };
 	}
