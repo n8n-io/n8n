@@ -16,7 +16,7 @@ import type {
 	IExecutionContext,
 	IRun,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { UnexpectedError, NodeHelpers, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -366,7 +366,7 @@ export const describeCommonTests = (
 			});
 
 			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
-			expect(runExecutionData.waitTill).toEqual(WAIT_INDEFINITELY);
+			expect(runExecutionData.waitTill).toEqual(WAIT_FOR_SUB_EXECUTION);
 			expect(result.waitTill).toBe(waitTill);
 		});
 
