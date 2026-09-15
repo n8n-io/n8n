@@ -164,7 +164,11 @@ describe('EvalMockedCredentialsHelper', () => {
 		describe('server URL rewrite', () => {
 			const serverUrl = 'http://127.0.0.1:55555';
 			const openAiCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
-			const openAiNode = { name: 'OpenAI Chat Model', id: 'node-9' } as INode;
+			const openAiNode = {
+				name: 'OpenAI Chat Model',
+				id: 'node-9',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			} as INode;
 
 			it('rewrites the URL field on openAiApi credentials when serverUrl is set', async () => {
 				const inner = makeInner({
@@ -832,6 +836,108 @@ describe('EvalMockedCredentialsHelper', () => {
 				fakeNode,
 				false,
 			);
+		});
+	});
+
+	// TRUST-508: an un-intercepted model call used to live only in a server log,
+	// so the verifier scored the scenario as if the builder had wired it wrong.
+	describe('interceptionGaps', () => {
+		const lmNode = {
+			name: 'OpenAI Model',
+			id: 'node-lm',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		} as INode;
+		const lmCreds: INodeCredentialsDetails = { id: 'cred-1', name: 'OpenAI cred' };
+
+		async function fetchFor(
+			helper: EvalMockedCredentialsHelper,
+			node: INode,
+			type = 'openAiApi',
+		): Promise<void> {
+			await helper.getDecrypted(fakeAdditionalData, lmCreds, type, 'manual', {
+				node,
+			} as IExecuteData);
+		}
+
+		function innerWithUrl(): ICredentialsHelper {
+			return makeInner({
+				getDecrypted: vi
+					.fn()
+					.mockResolvedValue({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
+			});
+		}
+
+		it('records a gap when the sub-node has no routing entry', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map([['Some Other Sub-Node', 'Some Agent']]),
+			);
+
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('"OpenAI Model"');
+			expect(helper.interceptionGaps[0]).toContain('no vendor LLM routing entry');
+		});
+
+		it('records a gap when the credential type has no rewrite mapping', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map<string, string>(),
+			);
+
+			await fetchFor(
+				helper,
+				{ ...lmNode, type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' },
+				'anthropicApi',
+			);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('no wire-server URL rewrite mapping');
+		});
+
+		it('records a gap when interception is off entirely', async () => {
+			const helper = new EvalMockedCredentialsHelper(innerWithUrl(), undefined, mockLogger);
+
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
+			expect(helper.interceptionGaps[0]).toContain('interception is not active');
+		});
+
+		it('stays empty for a routed sub-node and for non-vendor nodes', async () => {
+			const routed = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map([['OpenAI Model', 'Extract Jobs']]),
+			);
+			await fetchFor(routed, lmNode);
+			expect(routed.interceptionGaps).toEqual([]);
+
+			// A Gmail/HTTP node reaching the same branches is fine — its traffic
+			// goes through the HTTP mock whatever its credential URL says.
+			const httpNode = new EvalMockedCredentialsHelper(innerWithUrl(), undefined, mockLogger);
+			await fetchFor(httpNode, { ...fakeNode, type: 'n8n-nodes-base.gmail' }, 'gmailOAuth2');
+			expect(httpNode.interceptionGaps).toEqual([]);
+		});
+
+		it('does not repeat one node/reason across repeated credential fetches', async () => {
+			const helper = new EvalMockedCredentialsHelper(
+				innerWithUrl(),
+				'http://127.0.0.1:55555',
+				mockLogger,
+				new Map<string, string>(),
+			);
+
+			await fetchFor(helper, lmNode);
+			await fetchFor(helper, lmNode);
+
+			expect(helper.interceptionGaps).toHaveLength(1);
 		});
 	});
 
