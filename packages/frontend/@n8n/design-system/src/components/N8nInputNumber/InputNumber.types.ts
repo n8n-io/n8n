@@ -7,6 +7,8 @@ export type InputNumberProps = Omit<NumberFieldRootProps, 'formatOptions'> & {
 	size?: InputNumberSize;
 	/** Maps to Reka `formatOptions` fraction digits when set. */
 	precision?: number;
+	/** Whether to format the value with locale-specific digit grouping. */
+	useGrouping?: boolean;
 	controls?: boolean;
 	controlsPosition?: InputNumberControlsPosition;
 	placeholder?: string;
