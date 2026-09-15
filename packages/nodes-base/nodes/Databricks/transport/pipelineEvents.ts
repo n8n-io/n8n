@@ -7,7 +7,14 @@ import {
 	type DatabricksContext,
 	type DatabricksCredentialType,
 } from '../actions/helpers';
-import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
+import {
+	clampPageSize,
+	collectPages,
+	DEFAULT_MAX_PAGES,
+	isJsonObject,
+	toPage,
+	type Page,
+} from './pagination';
 
 export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
 const PIPELINE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,7 +26,10 @@ export type IsoUtcTimestamp = string;
 
 export type PipelineEvent = {
 	id?: string;
-	sequence?: IDataObject;
+	sequence?: {
+		control_plane_seq_no?: number;
+		data_plane_id?: { instance?: string; seq_no?: number };
+	};
 	event_type?: string;
 	level?: PipelineEventLevel;
 	message?: string;
@@ -33,7 +43,7 @@ export type PipelineEvent = {
 		flow_name?: string;
 		[key: string]: unknown;
 	};
-	details?: IDataObject;
+	details?: { update_progress?: { state?: string }; [key: string]: unknown };
 	error?: {
 		fatal?: boolean;
 		exceptions?: Array<{
@@ -62,6 +72,10 @@ export interface ListPipelineEventsParams {
 }
 
 type PipelineEventsResponse = { events?: PipelineEvent[]; next_page_token?: string };
+
+function isPipelineEventsResponse(value: unknown): value is PipelineEventsResponse {
+	return isJsonObject(value) && (value.events === undefined || Array.isArray(value.events));
+}
 
 function isPipelineEventLevel(level: string): level is PipelineEventLevel {
 	return PIPELINE_EVENT_LEVELS.some((known) => known === level);
@@ -121,13 +135,20 @@ export async function listPipelineEvents(
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
 	const host = await getHost(context, credentialType);
-	const response: PipelineEventsResponse = await databricksApiRequest(context, credentialType, {
+	const response: unknown = await databricksApiRequest(context, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/pipelines/${params.pipelineId}/events`,
 		qs: toQuery(params),
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
+	if (!isPipelineEventsResponse(response)) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Databricks did not return a JSON list of pipeline events',
+			{ description: `Check that ${host} is the URL of a Databricks workspace.` },
+		);
+	}
 	return toPage(response.events, response.next_page_token);
 }
 

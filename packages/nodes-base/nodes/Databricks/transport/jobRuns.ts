@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -7,7 +8,14 @@ import {
 	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
-import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
+import {
+	clampPageSize,
+	collectPages,
+	DEFAULT_MAX_PAGES,
+	isJsonObject,
+	toPage,
+	type Page,
+} from './pagination';
 
 export const JOB_RUNS_MAX_PAGE_SIZE = 25;
 
@@ -22,6 +30,10 @@ export interface ListJobRunsParams {
 }
 
 type JobRunsListResponse = { runs?: DatabricksJobRun[]; next_page_token?: string };
+
+function isJobRunsListResponse(value: unknown): value is JobRunsListResponse {
+	return isJsonObject(value) && (value.runs === undefined || Array.isArray(value.runs));
+}
 
 function toQuery(params: ListJobRunsParams): IDataObject {
 	const qs: IDataObject = {};
@@ -43,13 +55,20 @@ export async function listJobRuns(
 	params: ListJobRunsParams = {},
 ): Promise<Page<DatabricksJobRun>> {
 	const host = await getHost(context, credentialType);
-	const response: JobRunsListResponse = await databricksApiRequest(context, credentialType, {
+	const response: unknown = await databricksApiRequest(context, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.2/jobs/runs/list`,
 		qs: toQuery(params),
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
+	if (!isJobRunsListResponse(response)) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Databricks did not return a JSON list of job runs',
+			{ description: `Check that ${host} is the URL of a Databricks workspace.` },
+		);
+	}
 	return toPage(response.runs, response.next_page_token);
 }
 

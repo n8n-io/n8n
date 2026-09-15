@@ -114,7 +114,7 @@ describe('databricksApiRequest', () => {
 });
 
 describe('getActiveCredentialType', () => {
-	it('reads the authentication parameter of the given item on an execute context', () => {
+	it('should read the authentication parameter of the given item on an execute context', () => {
 		const context = mock<IExecuteFunctions>({ getInputData: vi.fn() });
 		context.getNodeParameter.mockReturnValue('oAuth2');
 
@@ -125,7 +125,7 @@ describe('getActiveCredentialType', () => {
 	it.each([
 		['a polling context', () => mock<IPollFunctions>()],
 		['a load-options context', () => mock<ILoadOptionsFunctions>()],
-	])('reads the authentication parameter without an item index on %s', (_label, create) => {
+	])('should read the authentication parameter without an item index on %s', (_label, create) => {
 		const context = create();
 		context.getNodeParameter.mockReturnValue('accessToken');
 

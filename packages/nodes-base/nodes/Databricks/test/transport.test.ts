@@ -6,11 +6,13 @@ import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 import {
 	buildPipelineEventsFilter,
 	clampPageSize,
+	DEFAULT_MAX_PAGES,
 	JOB_RUNS_MAX_PAGE_SIZE,
 	listAllJobRuns,
 	listAllPipelineEvents,
 	listJobRuns,
 	listPipelineEvents,
+	PIPELINE_EVENT_LEVELS,
 	PIPELINE_EVENTS_MAX_PAGE_SIZE,
 	type ListJobRunsParams,
 	type ListPipelineEventsParams,
@@ -114,6 +116,16 @@ describe('listJobRuns', () => {
 
 		await expect(listJobRuns(context, 'databricksApi')).resolves.toEqual(expected);
 	});
+
+	it.each([
+		['an HTML body', '<html>sign in</html>'],
+		['a runs field that is not a list', { runs: 'none' }],
+	])('rejects %s instead of returning an empty page', async (_label, response) => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue(response);
+
+		await expect(listJobRuns(context, 'databricksApi')).rejects.toThrow(NodeOperationError);
+	});
 });
 
 describe('listAllJobRuns', () => {
@@ -149,6 +161,17 @@ describe('listAllJobRuns', () => {
 		expect(apiMock(context)).toHaveBeenCalledTimes(3);
 		expect(result).toEqual({ items: [run(1), run(1), run(1)], nextPageToken: 'more' });
 	});
+
+	it('stops at the default page cap', async () => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue({ runs: [run(1)], next_page_token: 'more' });
+
+		const result = await listAllJobRuns(context, 'databricksApi');
+
+		expect(apiMock(context)).toHaveBeenCalledTimes(DEFAULT_MAX_PAGES);
+		expect(result.items).toHaveLength(DEFAULT_MAX_PAGES);
+		expect(result.nextPageToken).toBe('more');
+	});
 });
 
 describe('buildPipelineEventsFilter', () => {
@@ -164,6 +187,11 @@ describe('buildPipelineEventsFilter', () => {
 			"timestamp > '2026-09-01T14:20:31.066Z'",
 		],
 		['levels', { levels: ['ERROR', 'WARN'] }, "level in ('ERROR', 'WARN')"],
+		[
+			'every level',
+			{ levels: PIPELINE_EVENT_LEVELS },
+			"level in ('INFO', 'WARN', 'ERROR', 'METRICS')",
+		],
 		[
 			'levels and a cursor',
 			{ after: CURSOR, levels: ['ERROR'] },
@@ -185,10 +213,8 @@ describe('buildPipelineEventsFilter', () => {
 		expect(() => buildPipelineEventsFilter({ after })).toThrow(UnexpectedError);
 	});
 
-	it('rejects a level the API does not know', () => {
-		expect(() => buildPipelineEventsFilter({ levels: ['ERROR', 'DEBUG'] })).toThrow(
-			UnexpectedError,
-		);
+	it.each(['DEBUG', 'error'])('rejects the level %s', (level) => {
+		expect(() => buildPipelineEventsFilter({ levels: ['ERROR', level] })).toThrow(UnexpectedError);
 	});
 });
 
@@ -278,6 +304,18 @@ describe('listPipelineEvents', () => {
 		await expect(
 			listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID }),
 		).resolves.toEqual(expected);
+	});
+
+	it.each([
+		['an HTML body', '<html>sign in</html>'],
+		['an events field that is not a list', { events: 'none' }],
+	])('rejects %s instead of returning an empty page', async (_label, response) => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue(response);
+
+		await expect(
+			listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID }),
+		).rejects.toThrow(NodeOperationError);
 	});
 });
 

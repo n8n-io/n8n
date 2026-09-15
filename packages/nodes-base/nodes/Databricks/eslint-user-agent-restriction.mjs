@@ -16,7 +16,7 @@ const NO_RAW_ENUM_SYNTAX_RULE = {
 // Raw request helpers that would skip the partner User-Agent, shared by both
 // selectors below so the list can't drift between them.
 const RESTRICTED_HELPER_METHODS =
-	'/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/';
+	'/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated|requestOAuth1|requestOAuth2)$/';
 
 export const databricksUserAgentRestriction = [
 	{
