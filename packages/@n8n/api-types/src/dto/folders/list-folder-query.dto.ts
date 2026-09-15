@@ -50,7 +50,6 @@ export const filterValidator = z
 			try {
 				return filterSchema.parse(parsed);
 			} catch (e) {
-				// `ctx.path` already points at the field, so an explicit `path` would repeat the key.
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: 'Invalid filter fields',
