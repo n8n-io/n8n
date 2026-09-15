@@ -164,6 +164,66 @@ describe('InstanceContextService', () => {
 			);
 		});
 
+		/**
+		 * The floor a narrower scope set must not outlive that scope. A thread that ran without
+		 * credential access advanced the floor past rows it was never allowed to see; granting
+		 * access afterwards has to reopen the window rather than read down to that floor.
+		 */
+		it('starts the window over when the scope widens mid-thread', async () => {
+			const service = serviceWith();
+			const narrowCursor = {
+				activityMark: 500,
+				activityFloor: 400,
+				activityCategories: ['workflow' as const],
+				activitySeen: [500],
+				runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+			};
+			workflowRepository.findRecentForProjects.mockResolvedValue({
+				total: 1,
+				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+			});
+
+			const built = await service.buildBlock({
+				user: USER,
+				projectId: PROJECT_ID,
+				cursor: narrowCursor,
+				now: NOW,
+				enabled: true,
+			});
+
+			// A full window, not a delta against a floor the narrower scope set.
+			expect(built).toMatchObject({ state: 'injected', isUpdate: false });
+			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+				expect.not.objectContaining({ afterId: 500 }),
+			);
+		});
+
+		/** A narrowed scope keeps its cursor: it reads less than the cursor accounted for. */
+		it('keeps the cursor when the scope narrows', async () => {
+			userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				const scopes = args[1];
+				return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+			});
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
+
+			const built = await service.buildBlock({
+				user: USER,
+				projectId: PROJECT_ID,
+				cursor: {
+					activityMark: 500,
+					activityFloor: 400,
+					activityCategories: ['workflow', 'credential'],
+					activitySeen: [500],
+					runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+				},
+				now: NOW,
+				enabled: true,
+			});
+
+			expect(built).toMatchObject({ state: 'injected', isUpdate: true });
+		});
+
 		/** With both scopes the feed carries everything the project recorded. */
 		it('allows credential entries for a caller that may read them', async () => {
 			const service = serviceWith();
@@ -404,6 +464,7 @@ describe('InstanceContextService', () => {
 				activityMark: 500,
 				// An earlier turn cut at 400, so a delta reads down to there and no further.
 				activityFloor: 400,
+				activityCategories: ['workflow', 'credential'],
 				activitySeen: [500, 499],
 				runsThrough: new Date(NOW.getTime() - 10 * 60_000).toISOString(),
 			};
@@ -742,6 +803,7 @@ describe('readInstanceContextCursor', () => {
 		const stored = {
 			activityMark: 12,
 			activityFloor: 4,
+			activityCategories: ['workflow', 'credential'],
 			activitySeen: [12, 11],
 			runsThrough: NOW.toISOString(),
 		};
@@ -770,6 +832,7 @@ describe('readInstanceContextCursor', () => {
 			instanceContext: {
 				activityMark: 5,
 				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
 				activitySeen: [5, 'four', null],
 				runsThrough: NOW.toISOString(),
 			},
@@ -790,6 +853,7 @@ describe('toContextInjection', () => {
 				cursor: {
 					activityMark: 7,
 					activityFloor: 0,
+					activityCategories: ['workflow', 'credential'],
 					activitySeen: [7],
 					runsThrough: NOW.toISOString(),
 				},

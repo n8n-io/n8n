@@ -314,12 +314,14 @@ starts. `injection` is `{ state: 'injected', isUpdate, legs, chars }` or
 block stays server-side: the trace names which legs carried something and how far
 the turn then read, and nothing renders the text, so sending it would put a copy
 on every turn's stream and in its durable log entry. An `absent` outcome is
-published too, with reason `empty`,
-because a turn told nothing must be distinguishable from one that was told and
-ignored it. Nothing is published when the feature is off for the user or on a
-machine follow-up. Durable; the reducer appends one `instance-context` timeline
-entry onto the ROOT agent node regardless of the emitting agent. How far the turn
-then read arrives later, on `run-finish`.
+published too, because a turn told nothing must be distinguishable from one that
+was told and ignored it: `empty` when the read found nothing, and `failed` when
+the read itself broke, so a turn that ran without context it should have had is
+not filed as a quiet instance. Nothing is published at all when the feature is off
+for the user or on a machine follow-up, since neither has a reader to inform.
+Durable; the reducer appends one `instance-context` timeline entry onto the ROOT
+agent node regardless of the emitting agent. How far the turn then read arrives
+later, on `run-finish`.
 
 ### `setup-items`
 

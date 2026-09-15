@@ -95,18 +95,16 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		// An empty allowance means nothing is visible, not everything — `In([])` would match no
 		// row on Postgres but is worth being explicit about rather than relying on it.
 		if (query.projectIds.length === 0 || query.categories.length === 0) return [];
+		// A narrowing request for a category the caller may not read matches nothing. Falling back
+		// to the whole allowance would answer a narrowing request by widening it.
+		if (query.category !== undefined && !query.categories.includes(query.category)) return [];
 
 		const where: FindOptionsWhere<ActivityEvent> = {
 			projectId: In(query.projectIds),
-			category: In(query.categories),
+			category: query.category ?? In(query.categories),
 		};
 		if (query.userId !== undefined) where.userId = query.userId;
 		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
-		// Narrows within the allowance rather than replacing it: a caller asking for a category it
-		// may not see is answered by the guard above, not by widening its own filter.
-		if (query.category !== undefined && query.categories.includes(query.category)) {
-			where.category = query.category;
-		}
 
 		// Both bounds can apply at once — "what arrived while this page was open" pages an
 		// already-bounded range — so they combine rather than overwrite each other.

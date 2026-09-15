@@ -615,6 +615,41 @@ describe('PostHog', () => {
 		);
 	});
 
+	/**
+	 * The activity-log var force-enables its flag, but it is the one per-feature override that
+	 * yields to the generic map — that map is the only way to stop the read while the record keeps
+	 * accruing. Without this pair the guard could be deleted and the suite would stay green.
+	 */
+	describe('the activity-log override, which yields to the generic map', () => {
+		const createdAt = new Date();
+
+		afterEach(() => {
+			globalConfig.activityLog.enabled = false;
+			globalConfig.featureFlags.override = {};
+		});
+
+		it('force-enables the flag when the record is on', async () => {
+			globalConfig.activityLog.enabled = true;
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(flags['114_instance_activity_context']).toBe(true);
+		});
+
+		it('lets an explicit override switch the read off while the record is on', async () => {
+			globalConfig.activityLog.enabled = true;
+			globalConfig.featureFlags.override = { '114_instance_activity_context': false };
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(flags['114_instance_activity_context']).toBe(false);
+		});
+	});
+
 	describe('setupExpressSessionContext', () => {
 		function createApp() {
 			const handlers: RequestHandler[] = [];

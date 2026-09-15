@@ -186,6 +186,7 @@ describe('InstanceContextService', () => {
 					activityMark: newest.id,
 					// No turn has cut anything yet, so every id below the mark is still offerable.
 					activityFloor: 0,
+					activityCategories: ['workflow', 'credential'],
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},

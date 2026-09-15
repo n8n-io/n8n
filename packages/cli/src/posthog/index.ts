@@ -37,6 +37,14 @@ const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
  */
 const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
+/**
+ * Slots the flag cache keeps. Expiry alone does not bound it — an expired entry is replaced only
+ * when that same user is evaluated again, so an outage across many distinct users would otherwise
+ * leave one slot per user for the process lifetime. Evicting the oldest insertion keeps the users
+ * being evaluated now.
+ */
+const FLAGS_CACHE_MAX_ENTRIES = 5_000;
+
 const SESSION_ID_MAX_LENGTH = 1000;
 
 function sanitizeSessionId(value: string | undefined): string | undefined {
@@ -208,9 +216,18 @@ export class PostHogClient {
 		// failure is not remembered as though PostHog had said "no flags".
 		const ttl =
 			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
-		this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + ttl });
+		this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + ttl });
 
 		return data;
+	}
+
+	/** Stores a slot, dropping the oldest insertion once the cache is full. */
+	private rememberFlags(cacheKey: string, entry: CachedFlags): void {
+		if (!this.flagsCache.has(cacheKey) && this.flagsCache.size >= FLAGS_CACHE_MAX_ENTRIES) {
+			const oldest = this.flagsCache.keys().next();
+			if (!oldest.done) this.flagsCache.delete(oldest.value);
+		}
+		this.flagsCache.set(cacheKey, entry);
 	}
 
 	private resolveFeatureFlagData(evaluatedFlags: FeatureFlagEvaluations): FeatureFlagData {

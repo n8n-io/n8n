@@ -203,15 +203,19 @@ describe('ActivityEventRelay', () => {
 		});
 
 		/**
-		 * An explicit override is the one way to turn the read on with neither other control set.
-		 * Registering for it is what stops that instance reading a log nothing writes.
+		 * An explicit override is the one way to turn the read on with neither other control set,
+		 * so the relay has to register for it — otherwise that instance reads a log nothing writes.
+		 *
+		 * Scoped to what it can actually prove. The gate itself reads the override through
+		 * `PostHogClient`, which is mocked whole here, so this asserts the listeners exist rather
+		 * than claiming the override drove the row.
 		 */
-		it('records when an explicit flag override is the only control set', async () => {
-			relayWith(false, { diagnostics: false, flagOverride: true, rolloutFlag: true });
+		it('registers listeners when an explicit flag override is the only control set', async () => {
+			const onSpy = vi.spyOn(eventService, 'on');
 
-			await emitDeletion();
+			relayWith(false, { diagnostics: false, flagOverride: true });
 
-			expect(activityEventRepository.record).toHaveBeenCalled();
+			expect(onSpy).toHaveBeenCalled();
 		});
 
 		/**

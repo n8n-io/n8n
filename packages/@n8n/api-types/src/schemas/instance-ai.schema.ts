@@ -2501,10 +2501,11 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
  * | on | anything | on | on |
  * | on | explicit `false` override | on | off |
  *
- * The env var is the local override, and it wins over whatever PostHog says — including
- * when PostHog is unreachable, since the override is applied to the resolved flags rather
- * than instead of fetching them. Setting it is all that is needed to try this on a dev
- * instance. With it unset the flag decides, and both sides follow it: the relay evaluates
+ * The env var force-enables when it is true, including when PostHog is unreachable, since the
+ * override is applied to the resolved flags rather than instead of fetching them. Setting it is
+ * all that is needed to try this on a dev instance. It does not force anything off: unset or
+ * false, it defers, and a flag PostHog turns on stays on. Only an explicit
+ * `N8N_FEATURE_FLAG_OVERRIDES` entry switches the read off. With it unset the flag decides, and both sides follow it: the relay evaluates
  * it for the acting user of each recorded event, so a rollout reaches writes and reads at
  * the same time and needs no deploy. Both sides send the same person properties, including
  * the real signup date, so a rollout may condition on one without the two sides splitting.

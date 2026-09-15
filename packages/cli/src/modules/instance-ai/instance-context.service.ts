@@ -89,6 +89,11 @@ export type InstanceContextCursor = {
 	activityMark: number;
 	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
 	activityFloor: number;
+	/**
+	 * The categories the turns behind this cursor were allowed to read. A floor advanced by a
+	 * narrower scope would otherwise hide, for good, the rows a later widening makes readable.
+	 */
+	activityCategories: ActivityEventCategory[];
 	/** Entry ids already shown that still sit above the floor. */
 	activitySeen: number[];
 	/** ISO timestamp runs were summarised up to. */
@@ -105,19 +110,34 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activityFloor, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activityCategories, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
 	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
+	if (!Array.isArray(activityCategories)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
 		activityFloor,
+		activityCategories: activityCategories.filter(isKnownCategory),
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
 		runsThrough,
 	};
+}
+
+/**
+ * Whether a stored cursor still describes what this turn may read. Only a widening matters — a
+ * narrowed scope reads less than the cursor accounted for, which is safe; a widened one has rows
+ * below the floor that were never offered.
+ */
+function coversScope(
+	cursor: InstanceContextCursor | null,
+	scope: ActivityReadScope,
+): cursor is InstanceContextCursor {
+	if (cursor === null) return false;
+	return scope.categories.every((category) => cursor.activityCategories.includes(category));
 }
 
 type RunSummary = {
@@ -255,7 +275,6 @@ export class InstanceContextService {
 
 		try {
 			const now = input.now ?? new Date();
-			const isUpdate = input.cursor !== null;
 			const scope = await this.readableScope(input.user, input.projectId);
 			const { projectIds } = scope;
 
@@ -263,9 +282,15 @@ export class InstanceContextService {
 			// boundary available. Nothing in scope means nothing to show, never something wider.
 			if (projectIds.length === 0) return { state: 'absent', reason: 'empty' };
 
+			// A cursor is only good for the scope that built it. Its floor was set by what those
+			// turns were allowed to read, so a widened scope has to start the window over or the
+			// newly readable rows below that floor would never surface in this thread.
+			const cursor = coversScope(input.cursor, scope) ? input.cursor : null;
+			const isUpdate = cursor !== null;
+
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ scope, cursor: input.cursor, now }),
-				this.readRuns({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ scope, cursor, now }),
+				this.readRuns({ projectIds, cursor, now }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
@@ -294,6 +319,7 @@ export class InstanceContextService {
 				cursor: {
 					activityMark: entries.mark,
 					activityFloor: entries.floor,
+					activityCategories: scope.categories,
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
 				},
