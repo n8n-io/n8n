@@ -4,10 +4,9 @@ import { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { RedisClientService } from '@n8n/services-common';
 import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
-
-import { RedisClientService } from '@/services/redis-client.service';
 
 import type { NonStreamingResponseMode } from './chat-hub.types';
 

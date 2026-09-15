@@ -6,9 +6,8 @@ import {
 	type WorkflowHistory,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 export type { PublishedWorkflowDataForExecution };
 

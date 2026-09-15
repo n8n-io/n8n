@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/services-common';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /**

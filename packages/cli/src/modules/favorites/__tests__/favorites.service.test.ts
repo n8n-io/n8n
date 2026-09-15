@@ -7,10 +7,8 @@ import {
 	type User,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import type { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';

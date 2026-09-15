@@ -5,13 +5,12 @@ import {
 } from '@n8n/api-types';
 import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class ChatHubCredentialsService {

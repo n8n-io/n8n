@@ -11,6 +11,7 @@ import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/services-common';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -18,7 +19,6 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { createMember } from '@test-integration/db/users';
 

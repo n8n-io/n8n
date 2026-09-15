@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@n8n/services-common';
 import { z } from 'zod';
 
 vi.mock('@n8n/instance-ai', () => ({
@@ -14,8 +15,6 @@ vi.mock('../eval/execution.service', () => ({
 import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiTestController } from '../instance-ai-test.controller';

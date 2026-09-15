@@ -1,3 +1,4 @@
+import { NotFoundError } from '@n8n/services-common';
 import { EventEmitter } from 'node:events';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -5,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';

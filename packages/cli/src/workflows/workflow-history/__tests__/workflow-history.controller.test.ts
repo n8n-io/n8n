@@ -2,9 +2,9 @@ import type { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { WorkflowHistoryRequest } from '@/requests';

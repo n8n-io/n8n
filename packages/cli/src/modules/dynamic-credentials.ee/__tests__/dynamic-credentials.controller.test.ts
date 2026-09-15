@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -19,7 +20,6 @@ import {
 	DynamicCredentialService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 

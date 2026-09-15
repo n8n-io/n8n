@@ -1,9 +1,9 @@
 import type { LdapConfig } from '@n8n/constants';
 import { Get, Post, Put, RestController, GlobalScope, Licensed } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/services-common';
 import pick from 'lodash/pick';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';

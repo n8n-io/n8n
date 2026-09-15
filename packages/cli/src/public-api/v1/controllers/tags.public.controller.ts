@@ -20,10 +20,9 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
+import { ConflictError, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

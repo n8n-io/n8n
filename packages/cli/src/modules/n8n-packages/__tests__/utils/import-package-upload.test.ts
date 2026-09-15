@@ -1,9 +1,8 @@
 import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/services-common';
 import multer from 'multer';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import {
 	createN8nPackageMulterOptions,

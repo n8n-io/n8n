@@ -25,9 +25,9 @@ import {
 	Put,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ServiceUnavailableError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 
 const tags = ['NodeTypePolicy'];

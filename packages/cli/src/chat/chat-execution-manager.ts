@@ -1,6 +1,7 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 import { ExecuteContext, isEngineRequest } from 'n8n-core';
 import type {
 	IBinaryKeyData,
@@ -17,7 +18,6 @@ import {
 	isHitlToolType,
 } from 'n8n-workflow';
 
-import { NotFoundError } from '../errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';

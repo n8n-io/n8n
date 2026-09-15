@@ -1,7 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
+import { UnauthenticatedError } from '@n8n/services-common';
 import type { Response } from 'express';
-
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
 

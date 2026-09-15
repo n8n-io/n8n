@@ -1,4 +1,4 @@
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/services-common';
 
 import type { AgentChannelPreconditionContext } from './agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';

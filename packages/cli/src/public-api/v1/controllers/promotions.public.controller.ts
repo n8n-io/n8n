@@ -50,11 +50,9 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

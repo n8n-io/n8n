@@ -20,6 +20,7 @@ import {
 	createUserKeyedRateLimiter,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/services-common';
 import express, { json } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import request from 'supertest';
@@ -28,7 +29,6 @@ import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';

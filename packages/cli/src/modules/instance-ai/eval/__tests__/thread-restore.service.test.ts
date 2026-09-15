@@ -11,10 +11,10 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';

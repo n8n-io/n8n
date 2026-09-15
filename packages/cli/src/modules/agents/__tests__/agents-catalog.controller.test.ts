@@ -1,9 +1,8 @@
 import type { AgentProviderModelsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentModelCatalogService } from '../agent-model-catalog.service';

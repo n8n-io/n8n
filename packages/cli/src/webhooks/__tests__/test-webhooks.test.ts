@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
+import { NotFoundError, WebhookNotFoundError } from '@n8n/services-common';
 import type * as express from 'express';
 import type { ExecutionContextService } from 'n8n-core';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -23,8 +24,6 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,

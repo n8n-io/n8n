@@ -2,9 +2,8 @@ import { LicenseState } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/services-common';
 import { Response } from 'express';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { ProvisioningService } from './provisioning.service.ee';
 

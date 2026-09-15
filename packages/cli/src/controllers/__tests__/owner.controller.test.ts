@@ -1,9 +1,9 @@
 import type { DismissBannerRequestDto } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OwnerController } from '@/controllers/owner.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { PostHogClient } from '@/posthog';
 import type { BannerService } from '@/services/banner.service';
 import type { OwnershipService } from '@/services/ownership.service';

@@ -15,6 +15,7 @@ import type {
 	SecretsBuffer,
 	ToolContext,
 } from '@n8n/mcp-browser';
+import { UrlService } from '@n8n/services-common';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
@@ -24,7 +25,6 @@ import { join } from 'node:path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';

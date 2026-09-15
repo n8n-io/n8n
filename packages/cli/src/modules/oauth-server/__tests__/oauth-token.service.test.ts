@@ -1,4 +1,6 @@
 import { InvalidTargetError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import type { UrlService } from '@n8n/services-common';
+import { ProtectedResourceRegistry } from '@n8n/services-common';
 import type { Mocked } from 'vitest';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -18,8 +20,6 @@ import { OAuthTokenService } from '../oauth-token.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });

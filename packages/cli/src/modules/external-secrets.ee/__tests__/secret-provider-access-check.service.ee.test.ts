@@ -4,10 +4,9 @@ import type {
 	User,
 } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
+import { ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 

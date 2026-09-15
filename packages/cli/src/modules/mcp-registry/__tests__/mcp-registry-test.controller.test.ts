@@ -1,6 +1,5 @@
+import { ForbiddenError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { McpRegistryTestController } from '../mcp-registry-test.controller';
 import { McpRegistryServerEntity } from '../registry/mcp-registry-server.entity';

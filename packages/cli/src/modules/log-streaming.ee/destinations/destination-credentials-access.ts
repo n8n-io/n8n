@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/services-common';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 /**
  * Verifies the requesting user has access to every credential referenced by a

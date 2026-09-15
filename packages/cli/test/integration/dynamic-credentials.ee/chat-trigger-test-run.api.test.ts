@@ -25,6 +25,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { DirectoryLoader } from 'n8n-core';
 import { Cipher, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType, NodeLoadingDetails } from 'n8n-workflow';
@@ -39,7 +40,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { SYSTEM_RESOLVER_ID } from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 

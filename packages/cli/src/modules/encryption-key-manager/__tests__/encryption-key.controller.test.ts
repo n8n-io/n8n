@@ -1,8 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/services-common';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EncryptionKeyController } from '@/modules/encryption-key-manager/encryption-key.controller';
 import { KeyManagerService } from '@/encryption/key-manager.service';
 

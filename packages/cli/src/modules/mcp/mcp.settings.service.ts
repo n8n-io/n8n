@@ -8,6 +8,7 @@ import {
 	type EntityManager,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, CacheService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import {
 	calculateWorkflowChecksum,
@@ -17,8 +18,6 @@ import {
 } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from '@/services/cache/cache.service';
 import { removeDefaultValues } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

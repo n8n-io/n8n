@@ -1,6 +1,5 @@
+import { BadRequestError } from '@n8n/services-common';
 import { jsonParse } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type {
 	CursorPagination,

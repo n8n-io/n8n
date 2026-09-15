@@ -1,12 +1,11 @@
 import { LockNamespace } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { RedisClientService } from '@n8n/services-common';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { OperationalError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
-
-import type { RedisClientService } from '@/services/redis-client.service';
 
 import { RedisLockService } from '../redis-lock.service';
 

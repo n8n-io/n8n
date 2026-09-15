@@ -8,6 +8,7 @@ import {
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -16,7 +17,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { License } from '@/license';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
 import { createMember, createOwner } from '@test-integration/db/users';
 

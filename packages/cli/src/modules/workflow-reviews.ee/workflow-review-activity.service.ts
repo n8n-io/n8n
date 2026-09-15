@@ -16,10 +16,8 @@ import {
 	type WorkflowReviewActivityFeedEntry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/services-common';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';

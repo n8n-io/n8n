@@ -7,10 +7,9 @@ import type {
 	WorkflowReviewRequestForWorkflowRow,
 	WorkflowReviewRequestRepository,
 } from '@n8n/db';
+import { ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

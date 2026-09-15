@@ -21,12 +21,11 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import { OperationalError, type IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';

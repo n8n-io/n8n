@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { toJsonSchema } from './credentials.utils';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';

@@ -8,11 +8,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
+import { NotFoundError } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
 import { userHasScopes } from '../check-access';

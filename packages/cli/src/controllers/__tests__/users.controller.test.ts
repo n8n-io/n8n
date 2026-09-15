@@ -1,11 +1,11 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import type { UrlService } from '@n8n/services-common';
+import { NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { UserRequest } from '@/requests';
 import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
 import type { UserService } from '@/services/user.service';
 
 import { UsersController } from '../users.controller';

@@ -1,5 +1,6 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
+import type { CacheService } from '@n8n/services-common';
 import type {
 	INode,
 	INodeProperties,
@@ -18,7 +19,6 @@ import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';
-import type { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>

@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
@@ -9,7 +10,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { executeErrorWorkflow } from '../execute-error-workflow';

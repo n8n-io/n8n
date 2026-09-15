@@ -3,6 +3,7 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
@@ -11,7 +12,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { ExternalHooks } from '@/external-hooks';
 import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
 import { MAX_CSRF_AGE } from '@/oauth/types';
-import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,

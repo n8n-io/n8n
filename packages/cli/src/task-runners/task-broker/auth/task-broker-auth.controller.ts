@@ -1,11 +1,10 @@
 import { Service } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 
 import type { AuthlessRequest } from '@/requests';
 
 import { bearerTokenSchema, taskBrokerAuthRequestBodySchema } from './task-broker-auth.schema';
 import { TaskBrokerAuthService } from './task-broker-auth.service';
-import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
 
 /**
  * Controller responsible for authenticating Task Runner connections

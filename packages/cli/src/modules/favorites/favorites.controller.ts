@@ -1,8 +1,7 @@
 import { FAVORITE_RESOURCE_TYPES, type FavoriteResourceType } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/services-common';
 
 import { AddFavoriteDto } from './dto/add-favorite.dto';
 import { FavoritesService } from './favorites.service';

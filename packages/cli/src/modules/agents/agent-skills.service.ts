@@ -6,11 +6,9 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
+import { ConflictError, NotFoundError } from '@n8n/services-common';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentModificationTelemetryService,

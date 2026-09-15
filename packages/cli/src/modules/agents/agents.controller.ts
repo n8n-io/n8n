@@ -10,9 +10,8 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';

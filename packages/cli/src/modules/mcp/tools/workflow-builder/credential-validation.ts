@@ -1,9 +1,9 @@
 import type { User } from '@n8n/db';
+import { NotFoundError } from '@n8n/services-common';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
 
 import type { PartialUpdateOperation } from './workflow-operations';

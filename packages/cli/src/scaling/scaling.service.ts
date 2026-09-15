@@ -98,7 +98,7 @@ export class ScalingService {
 		if (this.queueByName.size > 0) return;
 
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis-client.service.js');
+		const { RedisClientService } = await import('@n8n/services-common');
 
 		const service = Container.get(RedisClientService);
 

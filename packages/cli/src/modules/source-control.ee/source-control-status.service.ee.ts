@@ -3,11 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { FolderRepository, TagRepository, type User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { ForbiddenError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 

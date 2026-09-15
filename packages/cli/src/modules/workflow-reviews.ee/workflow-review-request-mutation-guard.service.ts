@@ -5,10 +5,7 @@ import {
 	type WorkflowReviewRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/services-common';
 
 type BlockedAction = 'submit' | 'review' | 'update';
 

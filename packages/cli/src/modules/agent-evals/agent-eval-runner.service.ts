@@ -8,6 +8,7 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import type {
 	DataTableColumnJsType,
@@ -20,9 +21,6 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';

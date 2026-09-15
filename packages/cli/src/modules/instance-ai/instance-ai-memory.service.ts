@@ -15,6 +15,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { z } from 'zod';
 import {
 	buildAgentTreeFromEvents,
@@ -24,10 +25,6 @@ import {
 	type AgentBuilderTarget,
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
