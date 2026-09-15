@@ -1547,6 +1547,7 @@ export class WorkflowService {
 			skipArchived?: boolean;
 			expectedChecksum?: string;
 			publicApi?: boolean;
+			/** Version to write instead of minting one. The caller must have written its history row. */
 			versionId?: string;
 		},
 	): Promise<WorkflowEntity | undefined> {
@@ -1625,6 +1626,7 @@ export class WorkflowService {
 		workflowId: string,
 		options?: {
 			publicApi?: boolean;
+			/** Version to write instead of minting one. The caller must have written its history row. */
 			versionId?: string;
 		},
 	): Promise<WorkflowEntity | undefined> {
