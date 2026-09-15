@@ -108,6 +108,21 @@ describe('Instance owner', () => {
 				.send({ email: randomEmail() })
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
 		});
+
+		test('should allow a user with a SAML auth_identity to change email once SAML is disabled', async () => {
+			// The SAML identity is still attached but inactive, so the SSO guard must pass.
+			await enableSaml(false);
+			const newEmail = randomEmail();
+
+			await authSamlUserAgent
+				.post('/change-email')
+				.send({ email: newEmail, currentPassword: samlUserPassword })
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.email).toBe(newEmail);
+			samlUser.email = newEmail;
+		});
 	});
 
 	describe('PATCH /me for a user with a SAML auth_identity', () => {
