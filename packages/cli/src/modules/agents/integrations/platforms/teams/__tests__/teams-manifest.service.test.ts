@@ -96,8 +96,86 @@ describe('TeamsManifestService', () => {
 			expect(service.buildManifest(options()).bots[0].botId).toBe(BOT_ID);
 		});
 
-		it('scopes the bot to direct messages only', () => {
+		it('scopes the bot to direct messages when nothing else is turned on', () => {
 			expect(service.buildManifest(options()).bots[0].scopes).toEqual(['personal']);
+		});
+
+		describe('availability', () => {
+			it.each([
+				['team channels', { teamChannels: true }, ['personal', 'team']],
+				['group chats', { groupChats: true }, ['personal', 'groupChat']],
+				['both', { teamChannels: true, groupChats: true }, ['personal', 'team', 'groupChat']],
+			])('adds the %s scope', (_label, availability, expected) => {
+				expect(service.buildManifest(options({ availability })).bots[0].scopes).toEqual(expected);
+			});
+
+			it('keeps direct chat on whatever else is turned off', () => {
+				expect(
+					service.buildManifest(options({ availability: { teamChannels: false } })).bots[0].scopes,
+				).toEqual(['personal']);
+			});
+
+			it('emits no read permissions by default', () => {
+				const manifest = service.buildManifest(options());
+
+				expect(manifest.authorization).toBeUndefined();
+				expect(manifest.webApplicationInfo).toBeUndefined();
+			});
+
+			it.each([
+				[
+					'channel messages',
+					{ teamChannels: true, readAllChannelMessages: true },
+					'ChannelMessage.Read.Group',
+				],
+				[
+					'group messages',
+					{ groupChats: true, readAllGroupMessages: true },
+					'ChatMessage.Read.Chat',
+				],
+			])('asks to read all %s', (_label, availability, permission) => {
+				const manifest = service.buildManifest(options({ availability }));
+
+				expect(manifest.authorization?.permissions.resourceSpecific).toEqual([
+					{ name: permission, type: 'Application' },
+				]);
+			});
+
+			it('pairs a read permission with webApplicationInfo, which Teams requires', () => {
+				const manifest = service.buildManifest(
+					options({ availability: { teamChannels: true, readAllChannelMessages: true } }),
+				);
+
+				expect(manifest.webApplicationInfo).toEqual({ id: BOT_ID });
+			});
+
+			it('drops a read permission whose surface is off, so it cannot read as in effect', () => {
+				const manifest = service.buildManifest(
+					options({ availability: { teamChannels: false, readAllChannelMessages: true } }),
+				);
+
+				expect(manifest.authorization).toBeUndefined();
+				expect(manifest.bots[0].scopes).toEqual(['personal']);
+			});
+
+			it.each([
+				['nothing', {}],
+				['every scope', { teamChannels: true, groupChats: true }],
+				[
+					'every scope and read permission',
+					{
+						teamChannels: true,
+						groupChats: true,
+						readAllChannelMessages: true,
+						readAllGroupMessages: true,
+					},
+				],
+			])('still satisfies the published schema with %s turned on', (_label, availability) => {
+				const ajv = new Ajv({ strict: false });
+
+				expect(ajv.validate(schema, service.buildManifest(options({ availability })))).toBe(true);
+				expect(ajv.errors).toBeNull();
+			});
 		});
 
 		it('derives a stable GUID id for an agent, and a different one per agent', () => {

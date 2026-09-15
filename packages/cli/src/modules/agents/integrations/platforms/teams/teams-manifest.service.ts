@@ -1,4 +1,4 @@
-import type { TeamsAgentAppManifest } from '@n8n/api-types';
+import type { AgentTeamsIntegrationSettings, TeamsAgentAppManifest } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { zipSync } from 'fflate';
 import { readFile } from 'node:fs/promises';
@@ -36,7 +36,30 @@ export interface BuildTeamsManifestOptions {
 	botId: string;
 	/** Drives the manifest version, so a re-upload is an update. */
 	agentUpdatedAt: Date;
+	/** Where the app may be used. Absent means direct chat only. */
+	availability?: Pick<
+		AgentTeamsIntegrationSettings,
+		'teamChannels' | 'groupChats' | 'readAllChannelMessages' | 'readAllGroupMessages'
+	>;
 }
+
+/**
+ * Teams delivers only @mentions in a shared conversation unless the app asks to
+ * read everything there. Each name is paired with the scope it depends on, so a
+ * permission cannot be emitted without its surface.
+ */
+const READ_PERMISSIONS = [
+	{
+		setting: 'readAllChannelMessages',
+		requires: 'teamChannels',
+		name: 'ChannelMessage.Read.Group',
+	},
+	{
+		setting: 'readAllGroupMessages',
+		requires: 'groupChats',
+		name: 'ChatMessage.Read.Chat',
+	},
+] as const;
 
 @Service()
 export class TeamsManifestService {
@@ -76,14 +99,14 @@ export class TeamsManifestService {
 			bots: [
 				{
 					botId: options.botId,
-					// Direct messages only, matching what the channel supports today.
-					scopes: ['personal'],
+					scopes: this.buildScopes(options.availability),
 					isNotificationOnly: false,
 					supportsFiles: false,
 				},
 			],
 			permissions: ['identity', 'messageTeamMembers'],
 			validDomains: [],
+			...this.buildReadPermissions(options.botId, options.availability),
 		};
 	}
 
@@ -106,6 +129,34 @@ export class TeamsManifestService {
 				'outline.png': outline,
 			}),
 		);
+	}
+
+	/** Direct chat is always on: it is what makes the connection testable. */
+	private buildScopes(availability: BuildTeamsManifestOptions['availability']): string[] {
+		return [
+			'personal',
+			...(availability?.teamChannels ? ['team'] : []),
+			...(availability?.groupChats ? ['groupChat'] : []),
+		];
+	}
+
+	/**
+	 * `webApplicationInfo` is required alongside resource-specific permissions,
+	 * so both appear together or neither does.
+	 */
+	private buildReadPermissions(
+		botId: string,
+		availability: BuildTeamsManifestOptions['availability'],
+	): Partial<TeamsAgentAppManifest> {
+		const resourceSpecific = READ_PERMISSIONS.filter(
+			({ setting, requires }) => availability?.[setting] && availability?.[requires],
+		).map(({ name }) => ({ name, type: 'Application' as const }));
+
+		if (resourceSpecific.length === 0) return {};
+		return {
+			webApplicationInfo: { id: botId },
+			authorization: { permissions: { resourceSpecific } },
+		};
 	}
 
 	/** Stable per agent, so a re-download updates the same Teams app. */
