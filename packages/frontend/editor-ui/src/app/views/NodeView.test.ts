@@ -453,6 +453,23 @@ describe('NodeView', () => {
 			);
 		});
 
+		it.each([
+			['an empty array', []],
+			['an array with a non-object value', [null]],
+			['an array with an incomplete node object', [{}]],
+		])('rejects %s as node data', async (_, clipboardData) => {
+			renderNodeView();
+
+			pasteText(JSON.stringify(clipboardData));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+
+			await expect(deferred?.()).resolves.toBeUndefined();
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+
 		it('does not open the paste nudge for clipboard text that is not workflow JSON', async () => {
 			renderNodeView();
 

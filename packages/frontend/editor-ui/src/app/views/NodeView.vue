@@ -75,6 +75,7 @@ import {
 	jsonParse,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
+	INodesSchema,
 	isTriggerNode,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -658,7 +659,14 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		const parsedData = jsonParse<
 			WorkflowDataUpdate | NonNullable<WorkflowDataUpdate['nodes']> | null
 		>(plainTextData, { fallbackValue: null });
-		workflowData = Array.isArray(parsedData) ? { nodes: parsedData, connections: {} } : parsedData;
+		if (Array.isArray(parsedData)) {
+			workflowData =
+				parsedData.length > 0 && INodesSchema.safeParse(parsedData).success
+					? { nodes: parsedData, connections: {} }
+					: {};
+		} else {
+			workflowData = parsedData;
+		}
 	}
 
 	if (!workflowData) {
