@@ -1518,7 +1518,10 @@ export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
 
 /** Rows the editor reads per history page. Shared because the endpoint pages by
  *  offset (`skip = page * limit`): every page of one thread must use the same
- *  limit, or the offsets of later pages no longer line up. */
+ *  limit, or the offsets of later pages no longer line up. It sits above
+ *  `INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT` because the editor renders parsed
+ *  messages, and a page of rows collapses to far fewer bubbles. It must stay at
+ *  or under `INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT`, or every read answers 400. */
 export const INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE = 100;
 
 export class InstanceAiThreadMessagesQuery extends Z.class({

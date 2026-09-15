@@ -30,6 +30,7 @@ import {
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
 	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
@@ -1076,6 +1077,15 @@ describe('InstanceAiThreadMessagesQuery', () => {
 			page: 2,
 			raw: 'true',
 		});
+	});
+
+	it('accepts the page size the editor reads history at', () => {
+		// Every history page the editor asks for carries this limit. Raise it past
+		// the ceiling and each read answers 400, so the thread shows no history.
+		const result = InstanceAiThreadMessagesQuery.safeParse({
+			limit: INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+		});
+		expect(result.success).toBe(true);
 	});
 
 	it('accepts the ceilings', () => {
