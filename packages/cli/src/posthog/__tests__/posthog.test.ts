@@ -8,7 +8,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { PostHogClient } from '@/posthog';
+import { FLAGS_CACHE_MAX_ENTRIES, PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
 
@@ -647,6 +647,51 @@ describe('PostHog', () => {
 			const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 			expect(flags['114_instance_activity_context']).toBe(false);
+		});
+	});
+
+	/**
+	 * Expiry alone does not bound the cache: an expired slot is replaced only when that same user
+	 * is evaluated again, so an outage across many distinct users would otherwise leave one slot
+	 * per user for the process lifetime.
+	 *
+	 * Only eviction is covered. Refreshing a key that is already present is not observable from
+	 * out here — without the has-check, that path would evict the oldest key and then re-insert
+	 * the refreshed one, which leaves a map of the same size holding the same keys. A test for it
+	 * would pass with the guard deleted.
+	 */
+	describe('the cache ceiling', () => {
+		const createdAt = new Date();
+
+		/** Distinct users, so each evaluation takes its own slot. */
+		async function fillCache(ph: PostHogClient, count: number, from = 0) {
+			for (let i = from; i < from + count; i++) {
+				await ph.getFeatureFlags({ id: `filler-${i}`, createdAt });
+			}
+		}
+
+		beforeEach(() => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ 'test-flag': true }),
+			);
+		});
+
+		it('drops the oldest slot once full, keeping the users being evaluated now', async () => {
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlags({ id: userId, createdAt });
+			// The first user is now the oldest insertion, so filling the rest evicts exactly it.
+			await fillCache(ph, FLAGS_CACHE_MAX_ENTRIES - 1);
+			const callsWhenFull = (PostHog.prototype.evaluateFlags as Mock).mock.calls.length;
+
+			// A newcomer takes a slot, which costs the oldest one.
+			await ph.getFeatureFlags({ id: 'newcomer', createdAt });
+			// The evicted user has to be evaluated again; a survivor does not.
+			await ph.getFeatureFlags({ id: userId, createdAt });
+			await ph.getFeatureFlags({ id: 'filler-1', createdAt });
+
+			expect((PostHog.prototype.evaluateFlags as Mock).mock.calls.length).toBe(callsWhenFull + 2);
 		});
 	});
 

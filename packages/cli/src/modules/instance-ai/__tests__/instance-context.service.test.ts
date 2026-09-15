@@ -166,10 +166,14 @@ describe('InstanceContextService', () => {
 
 		/**
 		 * The floor a narrower scope set must not outlive that scope. A thread that ran without
-		 * credential access advanced the floor past rows it was never allowed to see; granting
-		 * access afterwards has to reopen the window rather than read down to that floor.
+		 * credential access advanced the floor past rows it was never allowed to see, so granting
+		 * access afterwards has to lower the floor again.
+		 *
+		 * Only the floor. Resetting the whole cursor would also drop `runsThrough` and bring the
+		 * inventory back, repeating a week of run summaries and the estate listing for a change
+		 * that says nothing about either.
 		 */
-		it('starts the window over when the scope widens mid-thread', async () => {
+		it('reopens the entry window when the scope widens, without repeating the rest', async () => {
 			const service = serviceWith();
 			const narrowCursor = {
 				activityMark: 500,
@@ -178,10 +182,16 @@ describe('InstanceContextService', () => {
 				activitySeen: [500],
 				runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
 			};
-			workflowRepository.findRecentForProjects.mockResolvedValue({
-				total: 1,
-				workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
-			});
+			// A credential row below the old floor: readable now, and never shown before.
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({
+					id: 320,
+					category: 'credential',
+					resourceType: 'credential',
+					resourceId: 'cred-1',
+					resourceName: 'Slack account',
+				}),
+			]);
 
 			const built = await service.buildBlock({
 				user: USER,
@@ -191,10 +201,16 @@ describe('InstanceContextService', () => {
 				enabled: true,
 			});
 
-			// A full window, not a delta against a floor the narrower scope set.
-			expect(built).toMatchObject({ state: 'injected', isUpdate: false });
+			expect(blockOf(built)).toContain('Slack account');
+
+			// Still a delta: the inventory and the run window are untouched, because a scope
+			// change says nothing about what exists or what has run.
+			expect(built).toMatchObject({ state: 'injected', isUpdate: true });
+			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+			// Only the floor moved, so the rows the narrower scope hid are eligible again while
+			// the mark and the shown ids still suppress everything already in the conversation.
 			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-				expect.not.objectContaining({ afterId: 500 }),
+				expect.objectContaining({ afterId: 0, beforeId: 500 }),
 			);
 		});
 

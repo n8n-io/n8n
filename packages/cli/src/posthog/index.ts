@@ -43,7 +43,7 @@ const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
  * leave one slot per user for the process lifetime. Evicting the oldest insertion keeps the users
  * being evaluated now.
  */
-const FLAGS_CACHE_MAX_ENTRIES = 5_000;
+export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
 
 const SESSION_ID_MAX_LENGTH = 1000;
 

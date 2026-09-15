@@ -96,6 +96,42 @@ describe('ActivityEventRepository', () => {
 			});
 		});
 
+		/**
+		 * The guard is access control, not a filter nicety: falling back to the whole allowance
+		 * would answer "only credentials" from a caller who may not read them with every workflow
+		 * row instead.
+		 */
+		it('reads nothing when the requested category is outside the allowance', async () => {
+			const entries = await repository.findFeed({
+				projectIds: ['project1'],
+				categories: ['workflow'],
+				category: 'credential',
+				limit: 30,
+			});
+
+			expect(entries).toEqual([]);
+			// Refused before the query, so the rows are never read in the first place.
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('narrows to a requested category that is inside the allowance', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repository.findFeed({
+				projectIds: ['project1'],
+				categories: ['workflow', 'credential'],
+				category: 'credential',
+				limit: 30,
+			});
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				ActivityEvent,
+				expect.objectContaining({
+					where: { projectId: In(['project1']), category: 'credential' },
+				}),
+			);
+		});
+
 		it('reads nothing at all when the caller may see no project', async () => {
 			const entries = await repository.findFeed({
 				projectIds: [],

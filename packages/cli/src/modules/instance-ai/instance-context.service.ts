@@ -128,16 +128,29 @@ export function readInstanceContextCursor(
 }
 
 /**
- * Whether a stored cursor still describes what this turn may read. Only a widening matters — a
- * narrowed scope reads less than the cursor accounted for, which is safe; a widened one has rows
- * below the floor that were never offered.
+ * The cursor this turn reads against.
+ *
+ * Only a widening of the category scope matters: a narrowed scope reads less than the cursor
+ * already accounted for, which is safe, while a widened one has rows below the floor that were
+ * never offered — the floor was set by turns that could not see them.
  */
-function coversScope(
+function cursorForScope(
 	cursor: InstanceContextCursor | null,
 	scope: ActivityReadScope,
-): cursor is InstanceContextCursor {
-	if (cursor === null) return false;
-	return scope.categories.every((category) => cursor.activityCategories.includes(category));
+): InstanceContextCursor | null {
+	if (cursor === null) return null;
+
+	const widened = scope.categories.some(
+		(category) => !cursor.activityCategories.includes(category),
+	);
+	if (!widened) return cursor;
+
+	// Only the floor moves. The mark and the shown ids still hold, so nothing already in the
+	// conversation repeats; `runsThrough` and the inventory are untouched because a scope change
+	// says nothing about what exists or what has run. Rows the narrower scope hid were never
+	// shown, so dropping the floor is what makes them eligible while `activitySeen` keeps the
+	// rest suppressed.
+	return { ...cursor, activityFloor: 0, activityCategories: scope.categories };
 }
 
 type RunSummary = {
@@ -282,10 +295,7 @@ export class InstanceContextService {
 			// boundary available. Nothing in scope means nothing to show, never something wider.
 			if (projectIds.length === 0) return { state: 'absent', reason: 'empty' };
 
-			// A cursor is only good for the scope that built it. Its floor was set by what those
-			// turns were allowed to read, so a widened scope has to start the window over or the
-			// newly readable rows below that floor would never surface in this thread.
-			const cursor = coversScope(input.cursor, scope) ? input.cursor : null;
+			const cursor = cursorForScope(input.cursor, scope);
 			const isUpdate = cursor !== null;
 
 			const [entries, runs, inventory] = await Promise.all([

@@ -239,7 +239,6 @@ describe('InstanceContextService', () => {
 			expect(next).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
 
-		/** The late commit the span exists for still arrives, as long as it lands above the cut. */
 		/**
 		 * A late commit is a row that was invisible when a turn read, sits below that turn's mark,
 		 * and was therefore never shown. Built by handing `buildBlock` a cursor that accounts for
