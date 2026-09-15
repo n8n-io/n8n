@@ -91,10 +91,15 @@ function regionNode(name = 'Region'): INode {
 	};
 }
 
+/** A node that needs one credential and nothing else. */
 function credentialNode(name: string, type: string, id: string): INode {
 	return {
-		...regionNode(name),
+		id: `node-${name}`,
+		name,
 		type: 'n8n-nodes-base.github',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
 		credentials: { [type]: { id, name } },
 	};
 }
@@ -143,6 +148,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			'manifest.json': '{ "stale": true',
 			'projects/alpha/project.json': projectFile(projectA),
 			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				regionNode(),
 				credentialNode('Usable', 'githubApi', 'cred-in-a'),
 				credentialNode('Other project', 'githubApi', 'cred-in-b'),
 				credentialNode('Wrong type', 'githubApi', 'cred-slack'),
@@ -242,6 +248,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await writePackage({
 			'projects/alpha/project.json': projectFile(projectA),
 			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				regionNode(),
 				credentialNode('New', 'githubApi', 'cred-new'),
 			]),
 			'projects/alpha/credentials/new/credential.json': {

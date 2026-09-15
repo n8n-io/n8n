@@ -49,6 +49,29 @@ interface DestinationContext {
 }
 
 type CredentialConsumer = PromotionUnresolvedCredential['consumers'][number];
+type CredentialDestination = PromotionUnresolvedCredential['destination'];
+
+/** Everything known about one required credential before its record is built. */
+interface CredentialFacts {
+	sourceId: string | null;
+	name: string;
+	expectedTypes: string[];
+	/** The one type the workflows agree on, or `undefined` when they disagree. */
+	type: string | undefined;
+	typeKnown: boolean;
+	file: InventoryCredential | undefined;
+	sourcePlacement: PromotionSourcePlacement;
+	destination: CredentialDestination;
+	consumers: Array<Omit<CredentialConsumer, 'access'>>;
+}
+
+/** A credential the matcher can check: it has an id, a known type, and exists on the destination. */
+interface CheckableCredential {
+	sourceId: string;
+	type: string;
+	name: string;
+	workflowIds: string[];
+}
 
 /**
  * Finds the credentials and variables the incoming workflows need that the
@@ -124,7 +147,7 @@ export class PromotionBindingPreflightService {
 			(await this.credentialsRepository.findTypesByIds(sourceIds)).map((row) => [row.id, row.type]),
 		);
 
-		const bindings = groups.map(({ sourceId, uses }) => {
+		const facts = groups.map(({ sourceId, uses }): CredentialFacts => {
 			const file = sourceId === null ? undefined : filesById.get(sourceId);
 			const expectedTypes = unique(uses.map((use) => use.type)).sort(compare);
 			const type = expectedTypes.length === 1 ? expectedTypes[0] : undefined;
@@ -135,36 +158,27 @@ export class PromotionBindingPreflightService {
 				);
 			}
 
-			const destination =
-				sourceId === null ? 'unchecked' : destinationStateOf(type, destinationTypes.get(sourceId));
-			const typeKnown = type !== undefined && this.credentialTypes.recognizes(type);
-
-			const binding: PromotionUnresolvedCredential = {
-				kind: 'credential',
+			return {
 				sourceId,
 				name: file?.credential.name ?? uses[0].name,
 				expectedTypes,
-				...(file?.credential.data ? { expressionData: file.credential.data } : {}),
+				type,
+				typeKnown: type !== undefined && this.credentialTypes.recognizes(type),
+				file,
 				sourcePlacement: placementOf(file, context),
-				destination,
-				consumers: consumersOf(uses, context).map((consumer) => ({
-					...consumer,
-					// Usability is only a question for an existing credential in an existing team project.
-					access:
-						destination === 'exists' && typeKnown && consumer.destination === 'team'
-							? 'usable'
-							: 'unchecked',
-				})),
-				issues: type !== undefined && !typeKnown ? ['unknown-type'] : [],
+				destination:
+					sourceId === null
+						? 'unchecked'
+						: destinationStateOf(type, destinationTypes.get(sourceId)),
+				consumers: consumersOf(uses, context),
 			};
-			return binding;
 		});
 
-		await this.markUnavailable(bindings, user);
+		const unavailable = await this.findUnavailable(facts, user);
 
-		return bindings
-			.map((binding) => ({ ...binding, issues: credentialIssues(binding) }))
-			.filter((binding) => binding.issues.length > 0)
+		return facts
+			.map((fact) => buildCredentialRecord(fact, unavailable))
+			.filter((record) => record.issues.length > 0)
 			.sort(
 				(a, b) =>
 					compare(a.sourceId ?? '', b.sourceId ?? '') ||
@@ -172,37 +186,38 @@ export class PromotionBindingPreflightService {
 			);
 	}
 
-	/** The matcher decides what "usable in a project" means for import, so pre-flight agrees with it. */
-	private async markUnavailable(
-		bindings: PromotionUnresolvedCredential[],
-		user: User,
-	): Promise<void> {
-		const byProject = new Map<string, PromotionUnresolvedCredential[]>();
-		for (const binding of bindings) {
-			for (const consumer of binding.consumers) {
-				if (consumer.access === 'usable') pushTo(byProject, consumer.project.id, binding);
+	/**
+	 * Asks the matcher, per consuming team project, which existing credentials that
+	 * project cannot use. The matcher decides what "usable" means for import, so
+	 * pre-flight agrees with it. Returns one key per credential and project.
+	 */
+	private async findUnavailable(facts: CredentialFacts[], user: User): Promise<Set<string>> {
+		const byProject = new Map<string, CheckableCredential[]>();
+		for (const fact of facts) {
+			const checkable = asCheckable(fact);
+			if (!checkable) continue;
+			for (const consumer of fact.consumers) {
+				if (consumer.destination === 'team') pushTo(byProject, consumer.project.id, checkable);
 			}
 		}
 
+		const unavailable = new Set<string>();
 		for (const [projectId, candidates] of byProject) {
 			const resolution = await this.credentialMatcher.match(
-				candidates.map((binding) => ({
-					id: binding.sourceId ?? '',
-					name: binding.name,
-					type: binding.expectedTypes[0],
-					usedByWorkflows: binding.consumers.flatMap((c) => c.workflows.map((w) => w.id)),
+				candidates.map(({ sourceId, name, type, workflowIds }) => ({
+					id: sourceId,
+					name,
+					type,
+					usedByWorkflows: workflowIds,
 				})),
 				{ projectId, user },
 			);
-
-			const unavailable = new Set(resolution.failures.map((failure) => failure.sourceId));
-			for (const binding of candidates) {
-				if (binding.sourceId === null || !unavailable.has(binding.sourceId)) continue;
-				for (const consumer of binding.consumers) {
-					if (consumer.project.id === projectId) consumer.access = 'unavailable';
-				}
+			for (const failure of resolution.failures) {
+				unavailable.add(accessKey(failure.sourceId, projectId));
 			}
 		}
+
+		return unavailable;
 	}
 
 	private async checkVariables(
@@ -219,6 +234,7 @@ export class PromotionBindingPreflightService {
 			unique(requirements.map((requirement) => requirement.projectId)),
 		);
 		const existingKeys = new Set(existing.map(({ key, projectId }) => variableKey(key, projectId)));
+		const filesByName = indexVariableFiles(inventory.variables);
 
 		return requirements
 			.filter(({ name, projectId }) => !existingKeys.has(variableKey(name, projectId)))
@@ -233,7 +249,7 @@ export class PromotionBindingPreflightService {
 					destination: context.destinationOf(projectId),
 					workflows: workflowRefs(workflows),
 				};
-				const sourcePlacement = placementOf(variableFile(inventory, name, projectId), context);
+				const sourcePlacement = placementOf(variableFile(filesByName, name, projectId), context);
 				const issues: PromotionBindingIssue[] = [
 					destination === 'global' ? 'global-only' : 'absent',
 					...projectIssues([consumer.destination], 'consuming-project'),
@@ -301,41 +317,95 @@ function collectCredentialUses(inventory: PackageDirectoryInventory): Credential
 function destinationStateOf(
 	expectedType: string | undefined,
 	destinationType: string | undefined,
-): PromotionUnresolvedCredential['destination'] {
+): CredentialDestination {
 	if (expectedType === undefined) return 'unchecked';
 	if (destinationType === undefined) return 'absent';
 	return destinationType === expectedType ? 'exists' : 'type-mismatch';
+}
+
+function buildCredentialRecord(
+	fact: CredentialFacts,
+	unavailable: Set<string>,
+): PromotionUnresolvedCredential {
+	const consumers = fact.consumers.map((consumer) => ({
+		...consumer,
+		access: accessOf(fact, consumer, unavailable),
+	}));
+
+	return {
+		kind: 'credential',
+		sourceId: fact.sourceId,
+		name: fact.name,
+		expectedTypes: fact.expectedTypes,
+		...(fact.file?.credential.data ? { expressionData: fact.file.credential.data } : {}),
+		sourcePlacement: fact.sourcePlacement,
+		destination: fact.destination,
+		consumers,
+		issues: credentialIssues(fact, consumers),
+	};
+}
+
+function asCheckable(fact: CredentialFacts): CheckableCredential | undefined {
+	if (fact.sourceId === null || fact.type === undefined || !fact.typeKnown) return undefined;
+	if (fact.destination !== 'exists') return undefined;
+	return {
+		sourceId: fact.sourceId,
+		type: fact.type,
+		name: fact.name,
+		workflowIds: fact.consumers.flatMap((consumer) => consumer.workflows.map((w) => w.id)),
+	};
+}
+
+/** Usability is only a question for a checkable credential in a team project that exists. */
+function accessOf(
+	fact: CredentialFacts,
+	consumer: Omit<CredentialConsumer, 'access'>,
+	unavailable: Set<string>,
+): CredentialConsumer['access'] {
+	const checkable = asCheckable(fact);
+	if (!checkable || consumer.destination !== 'team') return 'unchecked';
+	return unavailable.has(accessKey(checkable.sourceId, consumer.project.id))
+		? 'unavailable'
+		: 'usable';
+}
+
+function accessKey(sourceId: string, projectId: string): string {
+	return `${sourceId}\0${projectId}`;
 }
 
 /**
  * Only a missing credential needs an owner, so ownership issues apply only when
  * the destination has no credential with this id.
  */
-function credentialIssues(binding: PromotionUnresolvedCredential): PromotionBindingIssue[] {
-	if (binding.sourceId === null) return ['missing-id'];
-	if (binding.expectedTypes.length > 1) return ['conflicting-types'];
+function credentialIssues(
+	fact: CredentialFacts,
+	consumers: CredentialConsumer[],
+): PromotionBindingIssue[] {
+	if (fact.sourceId === null) return ['missing-id'];
+	if (fact.expectedTypes.length > 1) return ['conflicting-types'];
 
-	const issues: PromotionBindingIssue[] = [...binding.issues];
-	if (binding.destination === 'absent' || binding.destination === 'type-mismatch') {
-		issues.push(binding.destination);
+	const issues: PromotionBindingIssue[] = [];
+	if (!fact.typeKnown) issues.push('unknown-type');
+	if (fact.destination === 'absent' || fact.destination === 'type-mismatch') {
+		issues.push(fact.destination);
 	}
-	if (binding.consumers.some((consumer) => consumer.access === 'unavailable')) {
+	if (consumers.some((consumer) => consumer.access === 'unavailable')) {
 		issues.push('unavailable');
 	}
 	issues.push(
 		...projectIssues(
-			binding.consumers.map((consumer) => consumer.destination),
+			consumers.map((consumer) => consumer.destination),
 			'consuming-project',
 		),
 	);
 
-	if (binding.destination === 'absent') {
-		const placement = binding.sourcePlacement;
+	if (fact.destination === 'absent') {
+		const placement = fact.sourcePlacement;
 		if (placement.state !== 'known') {
 			issues.push('unknown-owner');
 		} else {
 			issues.push(...projectIssues([placement.destination], 'owner-project'));
-			if (binding.consumers.some((consumer) => consumer.project.id !== placement.project.id)) {
+			if (consumers.some((consumer) => consumer.project.id !== placement.project.id)) {
 				issues.push('sharing-required');
 			}
 		}
@@ -368,13 +438,22 @@ function placementOf(
 	};
 }
 
+/** Variable files by name, sorted by path, so the fallback choice below does not depend on reader order. */
+function indexVariableFiles(files: InventoryVariable[]): Map<string, InventoryVariable[]> {
+	const byName = new Map<string, InventoryVariable[]>();
+	for (const file of [...files].sort((a, b) => compare(a.path, b.path))) {
+		pushTo(byName, file.variable.name, file);
+	}
+	return byName;
+}
+
 /** The bundle inside the consuming project wins. Otherwise the first bundle by path is the evidence. */
 function variableFile(
-	inventory: PackageDirectoryInventory,
+	filesByName: Map<string, InventoryVariable[]>,
 	name: string,
 	projectId: string,
 ): InventoryVariable | undefined {
-	const bundles = inventory.variables.filter((file) => file.variable.name === name);
+	const bundles = filesByName.get(name) ?? [];
 	return bundles.find((file) => file.projectId === projectId) ?? bundles[0];
 }
 

@@ -27,17 +27,20 @@ export class VariablesRepository extends Repository<Variables> {
 	): Promise<VariableKeyScope[]> {
 		const found: VariableKeyScope[] = [];
 		for (const keyBatch of chunkIds(keys)) {
+			const globalRows = await this.find({
+				where: { key: In(keyBatch), project: IsNull() },
+				select: { key: true },
+			});
+			found.push(...globalRows.map((row) => ({ key: row.key, projectId: null })));
+
 			for (const projectBatch of chunkIds(projectIds)) {
-				const rows = await this.find({
-					where: [
-						{ key: In(keyBatch), project: { id: In(projectBatch) } },
-						{ key: In(keyBatch), project: IsNull() },
-					],
+				const projectRows = await this.find({
+					where: { key: In(keyBatch), project: { id: In(projectBatch) } },
 					select: { key: true, project: { id: true } },
 					relations: { project: true },
 				});
-				for (const row of rows) {
-					found.push({ key: row.key, projectId: row.project?.id ?? null });
+				for (const row of projectRows) {
+					if (row.project) found.push({ key: row.key, projectId: row.project.id });
 				}
 			}
 		}
