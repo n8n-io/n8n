@@ -245,6 +245,20 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * Minutes of inactivity after which this platform starts a fresh session by
+	 * default, when the channel's own `sessionIdleTimeoutMinutes` setting is
+	 * unset. Every platform lets the user configure that setting explicitly;
+	 * this only supplies the value used before they ever touch it. `null`
+	 * (default) means no idle-based rotation until the user opts in.
+	 *
+	 * WhatsApp overrides this because it has no native "/new" slash command
+	 * equivalent that reliably reaches the bridge, so a sensible default reset
+	 * threshold matters more there than on platforms with an explicit reset
+	 * command.
+	 */
+	readonly defaultSessionIdleTimeoutMinutes: number | null = null;
+
+	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
 	 */

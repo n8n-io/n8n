@@ -460,7 +460,10 @@ export class AgentChatBridge {
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
 		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
+		const idleTimeoutMinutes =
+			this.integration.settings?.sessionIdleTimeoutMinutes ??
+			this.integrationImpl?.defaultSessionIdleTimeoutMinutes ??
+			null;
 		const id = await this.withSessionLock(
 			baseId,
 			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
