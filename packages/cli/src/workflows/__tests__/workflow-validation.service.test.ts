@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	ICredentialType,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -323,7 +324,7 @@ describe('WorkflowValidationService', () => {
 			return nodeType;
 		};
 
-		it('should return valid for workflow with no connected nodes', () => {
+		it('should return valid for workflow with no connected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 			};
@@ -331,12 +332,12 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return valid for workflow with all valid connected nodes', () => {
+		it('should return valid for workflow with all valid connected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				'HTTP Request': createNode('HTTP Request', 'n8n-nodes-base.httpRequest', {
@@ -361,12 +362,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return invalid when connected node is missing required credential', () => {
+		it('should return invalid when connected node is missing required credential', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -390,7 +391,7 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Cannot publish workflow');
@@ -399,7 +400,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('Missing required credential: OpenAI API');
 		});
 
-		it('should return invalid when connected node has credential without ID', () => {
+		it('should return invalid when connected node has credential without ID', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -424,13 +425,13 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Credential not configured: OpenAI API');
 		});
 
-		it('should skip validation for disabled nodes', () => {
+		it('should skip validation for disabled nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -455,12 +456,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should skip validation for disconnected nodes', () => {
+		it('should skip validation for disconnected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -485,12 +486,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should validate multiple nodes with issues', () => {
+		it('should validate multiple nodes with issues', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent1: createNode('Agent1', 'n8n-nodes-base.agent', {
@@ -520,7 +521,7 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('2 nodes have configuration issues');
@@ -528,7 +529,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('Node "Agent2"');
 		});
 
-		it('should return invalid when node type is not found', () => {
+		it('should return invalid when node type is not found', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Unknown: createNode('Unknown', 'n8n-nodes-base.unknownNode'),
@@ -544,14 +545,14 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Node "Unknown"');
 			expect(result.error).toContain('Node type not found');
 		});
 
-		it('should return invalid when workflow has no trigger node', () => {
+		it('should return invalid when workflow has no trigger node', async () => {
 			const nodes = {
 				Set: createNode('Set', 'n8n-nodes-base.set'),
 			};
@@ -559,13 +560,13 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], []));
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('no trigger node');
 		});
 
-		it('should respect displayOptions when validating credentials', () => {
+		it('should respect displayOptions when validating credentials', async () => {
 			// Simulates a Webhook node with authentication parameter set to 'none'
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
@@ -601,13 +602,13 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			// Should be valid because authentication='none', so no credentials are required
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should validate credentials when displayOptions match', () => {
+		it('should validate credentials when displayOptions match', async () => {
 			// Simulates a Webhook node with authentication='basicAuth' but missing credential
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
@@ -633,7 +634,7 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			// Should be invalid because authentication='basicAuth' but no credential is set
 			expect(result.isValid).toBe(false);
@@ -1650,6 +1651,475 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Cannot publish workflow');
 			expect(result.error).toContain('"Webhook"');
+		});
+	});
+	describe('validateRequiredInputsConnected', () => {
+		const nodeTypes = mock<NodeTypes>();
+
+		const node = (name: string, type: string, disabled = false): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...(disabled ? { disabled } : {}),
+		});
+
+		/** Parser-like node whose `Model` input is declared required. */
+		const parserType = {
+			description: {
+				displayName: 'Parser',
+				name: 'parser',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Parser' },
+				inputs: [{ displayName: 'Model', type: 'ai_languageModel', required: true }],
+				outputs: ['ai_outputParser'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		/** A parent with no required gated inputs of its own. */
+		const agentType = {
+			description: {
+				displayName: 'Agent',
+				name: 'agent',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Agent' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		const modelType = {
+			description: {
+				displayName: 'Model',
+				name: 'model',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Model' },
+				inputs: [],
+				outputs: ['ai_languageModel'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'parser') return parserType;
+				if (type === 'agent') return agentType;
+				return modelType;
+			});
+		});
+
+		it('rejects activation when a required input has nothing connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain(
+				"'Parser' has no node connected to its required 'Model' input",
+			);
+		});
+
+		it('ignores a node that is wired to nothing', async () => {
+			// A floating node cannot break a run, so it must not block publishing.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('ignores a subnode whose only consumer is disabled', async () => {
+			// A disabled agent never resolves its parser, so this workflow runs
+			// today and must stay publishable.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Agent', 'agent', true)],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a subnode whose consumer is enabled', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Parser'");
+		});
+
+		it('still checks a subnode that also supplies an enabled consumer', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Off', 'agent', true), node('On', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [
+							[
+								{ node: 'Off', type: 'ai_outputParser', index: 0 },
+								{ node: 'On', type: 'ai_outputParser', index: 0 },
+							],
+						],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('still checks a node that can output main but has only a disabled subnode consumer', async () => {
+			// Its main output happens to be unwired, so the connection record shows
+			// only the ai_ edge. Declared outputs are what decide, not the wiring.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'dualOutput') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main', 'ai_tool'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Store', 'dualOutput'), node('Agent', 'agent', true)],
+				{
+					Store: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Store'");
+		});
+
+		it('still checks a node on the main path when its consumer is disabled', async () => {
+			// Unlike a subnode, a node with a main output runs whatever happens
+			// downstream, so its own unmet input still blocks publishing.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'mainParser'), node('Next', 'agent', true)],
+				{
+					Parser: { main: [[{ node: 'Next', type: 'main', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		describe('with a fallback model declared on a second input of the same type', () => {
+			const agentWithFallbackType = {
+				description: {
+					displayName: 'Agent',
+					name: 'agentWithFallback',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Agent' },
+					inputs: [
+						'main',
+						{ displayName: 'Chat Model', type: 'ai_languageModel', required: true },
+						{ displayName: 'Fallback Model', type: 'ai_languageModel', required: true },
+					],
+					outputs: ['main'],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
+					type === 'agentWithFallback' ? agentWithFallbackType : modelType,
+				);
+			});
+
+			it('rejects activation when only the primary model is connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[node('Agent', 'agentWithFallback'), node('Model', 'model')],
+					{
+						Model: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+
+			it('allows activation once each model sits on its own input', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[node('Agent', 'agentWithFallback'), node('Primary', 'model'), node('Fallback', 'model')],
+					{
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result).toEqual({ isValid: true });
+			});
+
+			it('treats a disabled fallback as not connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[
+						node('Agent', 'agentWithFallback'),
+						node('Primary', 'model'),
+						node('Fallback', 'model', true),
+					],
+					{
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+		});
+
+		it('still checks a trigger that is wired to nothing', async () => {
+			// A trigger starts the run whether or not anything feeds it, so the
+			// floating-node exemption must not cover it.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'triggerParser') {
+					return { ...parserType, trigger: async () => undefined } as unknown as INodeType;
+				}
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'triggerParser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Trigger'");
+		});
+
+		it('does not rewrite the parameters of the nodes it was given', async () => {
+			// These are the nodes about to be persisted as the active version.
+			const parser = node('Parser', 'parser');
+			const before = parser.parameters;
+
+			await service.validateRequiredInputsConnected(
+				[parser, node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(parser.parameters).toBe(before);
+		});
+
+		it('allows activation once the required input is connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('treats a disabled source as not connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model', true)],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('ignores disabled nodes with unmet requirements', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser', true), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('reports every unmet required input at once', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser A', 'parser'), node('Parser B', 'parser'), node('Agent', 'agent')],
+				{
+					'Parser A': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					'Parser B': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.error).toContain("'Parser A'");
+			expect(result.error).toContain("'Parser B'");
+		});
+
+		describe('with a dynamic inputs expression', () => {
+			/** `inputs` is an expression, so it resolves against the node's parameters. */
+			const gatedParserType = {
+				description: {
+					displayName: 'Parser',
+					name: 'gatedParser',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Parser' },
+					inputs:
+						'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
+					outputs: ['ai_outputParser'],
+					properties: [
+						{ name: 'autoFix', displayName: 'Auto-fix', type: 'boolean', default: true },
+					],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			/** Same shape, but the expression cannot be evaluated. */
+			const brokenParserType = {
+				description: {
+					...gatedParserType.description,
+					name: 'brokenParser',
+					inputs: '={{ $parameter.nothing.here }}',
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'gatedParser') return gatedParserType;
+					if (type === 'brokenParser') return brokenParserType;
+					if (type === 'agent') return agentType;
+					return modelType;
+				});
+			});
+
+			it('resolves the expression against parameter defaults the caller never set', async () => {
+				// The node omits `autoFix`; only the type default makes the input
+				// required. The transient workflow fills defaults in, so the
+				// expression must see the filled-in value, not the caller's bare node.
+				const parser = node('Parser', 'gatedParser');
+				expect(parser.parameters).toEqual({});
+
+				const result = await service.validateRequiredInputsConnected(
+					[parser, node('Agent', 'agent')],
+					{
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Parser'");
+				// Filling defaults must not leak back onto the version being saved.
+				expect(parser.parameters).toEqual({});
+			});
+
+			it('reports an input it could not determine instead of treating it as absent', async () => {
+				// A swallowed expression error would read as "requires nothing" and
+				// let a broken workflow publish.
+				const result = await service.validateRequiredInputsConnected(
+					[node('Parser', 'brokenParser'), node('Agent', 'agent')],
+					{
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('could not be determined');
+			});
+		});
+
+		it('does not mutate the connections it was given', async () => {
+			const connections = {
+				Model: {
+					ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+				},
+			} as unknown as IConnections;
+			const snapshot = deepCopy(connections);
+
+			await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				connections,
+				nodeTypes,
+			);
+
+			expect(connections).toEqual(snapshot);
 		});
 	});
 });

@@ -167,7 +167,7 @@ describe('BreakingChangeMigrationService', () => {
 		const workflow = buildWorkflow([aiNode], { versionId: 'v1', activeVersionId: 'v1' });
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
-		workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+		workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 
 		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
 
@@ -210,7 +210,7 @@ describe('BreakingChangeMigrationService', () => {
 		const workflow = buildWorkflow([aiNode], { versionId: 'v2', activeVersionId: 'v1' });
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
-		workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+		workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 
 		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
 
@@ -225,7 +225,7 @@ describe('BreakingChangeMigrationService', () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
 		// e.g. only a manual trigger, so activation validation fails.
-		workflowValidationService.validateForActivation.mockReturnValue({
+		workflowValidationService.validateForActivation.mockResolvedValue({
 			isValid: false,
 			error: 'no trigger',
 		});

@@ -6,26 +6,32 @@ import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
+	Workflow,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
+	getUnconnectedRequiredInputs,
 	isNodeConnected,
 	isTriggerLikeNode,
 	isTriggerNode,
 	classifyTriggerIdentity,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	INode,
 	INodes,
 	IConnections,
 	INodeType,
+	INodeOutputConfiguration,
 	IWorkflowSettings,
 	ICredentialType,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -49,6 +55,48 @@ export interface WorkflowStatus {
 /** Formats credential names as a quoted, comma-separated list for error messages. */
 function formatCredentialNames(credentials: Array<{ name: string }>): string {
 	return credentials.map((c) => `"${c.name}"`).join(', ');
+}
+
+/**
+ * Whether every node this one feeds is disabled, so nothing will ever ask it
+ * for its inputs. Only ever true for supply-type nodes (LLM models, parsers,
+ * memory, tools): anything that can produce a `main` output belongs to the
+ * flow and runs regardless of what its consumers do.
+ *
+ * Read from the type's declared outputs rather than the connections, since an
+ * unwired `main` output is still a main-path node.
+ */
+function onlySuppliesDisabledNodes(
+	node: INode,
+	outputs: Array<NodeConnectionType | INodeOutputConfiguration>,
+	connections: IConnections,
+	nodes: INode[],
+): boolean {
+	const canOutputMain = outputs.some((output) =>
+		typeof output === 'string'
+			? output === NodeConnectionTypes.Main
+			: output.type === NodeConnectionTypes.Main,
+	);
+	if (canOutputMain) return false;
+
+	const outgoing = connections[node.name];
+	if (!outgoing) return false;
+
+	const disabledByName = new Map(nodes.map((n) => [n.name, n.disabled === true]));
+	let consumers = 0;
+
+	for (const targetsByOutput of Object.values(outgoing)) {
+		for (const targets of targetsByOutput ?? []) {
+			for (const target of targets ?? []) {
+				consumers++;
+				// An unknown target is treated as live, so a half-built graph does
+				// not silently opt out of the check.
+				if (!disabledByName.get(target.node)) return false;
+			}
+		}
+	}
+
+	return consumers > 0;
 }
 
 @Service()
@@ -311,11 +359,11 @@ export class WorkflowValidationService {
 		return [];
 	}
 
-	validateForActivation(
+	async validateForActivation(
 		nodes: INodes,
 		connections: IConnections,
 		nodeTypes: NodeTypes,
-	): WorkflowValidationResult {
+	): Promise<WorkflowValidationResult> {
 		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
@@ -334,6 +382,94 @@ export class WorkflowValidationService {
 
 		if (!configValidation.isValid) {
 			return configValidation;
+		}
+
+		return await this.validateRequiredInputsConnected(nodesArray, connections, nodeTypes);
+	}
+
+	/**
+	 * Refuses activation when a required input has nothing connected. The editor
+	 * draws this warning already but nothing enforced it, so such a workflow could
+	 * publish and then throw on every execution.
+	 *
+	 * Called by `validateForActivation`; public so it can be exercised directly.
+	 */
+	async validateRequiredInputsConnected(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		// Transient, so dynamic `inputs` expressions can be evaluated. Built over
+		// shallow node copies because the constructor reassigns `node.parameters`
+		// with defaults filled in, and these nodes are the version about to be saved.
+		const workflow = new Workflow({
+			nodes: nodes.map((node) => ({ ...node })),
+			connections,
+			active: false,
+			nodeTypes,
+		});
+		const connectionsByDestination = mapConnectionsByDestination(connections);
+		const issues: string[] = [];
+
+		// Those expressions need an isolate under the VM engine, or they throw.
+		await withExpressionIsolate(workflow, async () => {
+			for (const node of nodes) {
+				if (node.disabled) continue;
+
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType?.description) continue;
+
+				// A node wired to nothing cannot break a run, so it must not block
+				// publishing. Same rule as validateNodeConfiguration.
+				if (
+					!isNodeConnected(node.name, connections, connectionsByDestination) &&
+					!isTriggerLikeNode(nodeType)
+				) {
+					continue;
+				}
+
+				// Same reasoning one hop out: a subnode is only ever resolved by the
+				// node it supplies, so if every one of those is disabled it cannot
+				// break a run either. Scoped to nodes with no main output, since a
+				// node on the main path runs whatever its consumers do.
+				if (
+					!isTriggerLikeNode(nodeType) &&
+					onlySuppliesDisabledNodes(
+						node,
+						NodeHelpers.getNodeOutputs(workflow, node, nodeType.description),
+						connections,
+						nodes,
+					)
+				) {
+					continue;
+				}
+
+				// Strictly: a swallowed expression error would read as "requires nothing".
+				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
+				try {
+					required = getUnconnectedRequiredInputs(workflow, node, nodeType.description, {
+						throwOnExpressionError: true,
+					});
+				} catch (error) {
+					issues.push(
+						`the inputs of '${node.name}' could not be determined (${ensureError(error).message})`,
+					);
+					continue;
+				}
+
+				for (const input of required) {
+					issues.push(
+						`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
+					);
+				}
+			}
+		});
+
+		if (issues.length > 0) {
+			return {
+				isValid: false,
+				error: `Workflow cannot be activated because required inputs are not connected: ${issues.join('; ')}.`,
+			};
 		}
 
 		return { isValid: true };
