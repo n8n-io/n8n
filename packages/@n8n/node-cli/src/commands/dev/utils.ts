@@ -1,10 +1,13 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import { type ChildProcess, execSync, spawn, type SpawnOptions } from 'node:child_process';
-import { type FSWatcher, statSync, watch } from 'node:fs';
+import { type FSWatcher, readdirSync, statSync, watch } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
 
 import { jsonParse } from '../../utils/json';
+import { STATIC_ASSET_IGNORE } from '../build';
 
 interface CommandOutput {
 	name: string;
@@ -615,10 +618,13 @@ export function createOpenN8nHandler(url: string): KeyHandler {
 	};
 }
 
-/** Gap between /healthz attempts while n8n is still starting. */
 const HEALTH_POLL_INTERVAL_MS = 1000;
 
-/** Resolves once n8n answers on /healthz, or after `timeoutMs`. */
+/**
+ * Resolves once n8n reports itself ready, or after `timeoutMs`. Readiness, not
+ * `/healthz`: the latter answers before the controllers are registered, so a
+ * reload sent on that signal 404s.
+ */
 export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<boolean> {
 	const deadline = Date.now() + timeoutMs;
 
@@ -630,7 +636,7 @@ export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<
 			// Bound every attempt by the time left. A port that accepts but never
 			// answers would otherwise park this await forever, so the loop would
 			// never re-check the deadline and `timeoutMs` would mean nothing.
-			const response = await fetch(`${baseUrl}/healthz`, {
+			const response = await fetch(`${baseUrl}/healthz/readiness`, {
 				signal: AbortSignal.timeout(remaining),
 			});
 			if (response.ok) return true;
@@ -652,32 +658,56 @@ export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<
  */
 const RELOAD_TIMEOUT_MS = 5000;
 
+function reloadFailure(response: Response, body: string): string {
+	// Without the route n8n serves the SPA catch-all, so the body is HTML.
+	if (response.status === 404) {
+		return 'this n8n has no reload endpoint - use a newer image, or set N8N_DEV_RELOAD=true on --external-n8n';
+	}
+
+	const parsed = jsonParse<unknown>(body);
+	if (isRecord(parsed) && typeof parsed.message === 'string' && parsed.message.length > 0) {
+		return parsed.message;
+	}
+
+	return `n8n answered ${response.status}`;
+}
+
 /**
  * Tell a running n8n to re-read the node from disk. Push rather than watch: the
  * container cannot watch a bind mount, and "compile succeeded, now reload"
  * cannot race a half-written `dist` the way a debounced watcher can.
  */
-export async function triggerReload(baseUrl: string): Promise<boolean> {
+export async function triggerReload(baseUrl: string): Promise<Result<void, string>> {
 	try {
 		const response = await fetch(`${baseUrl}/rest/dev/reload`, {
 			method: 'POST',
 			signal: AbortSignal.timeout(RELOAD_TIMEOUT_MS),
 		});
-		return response.ok;
+		if (response.ok) return createResultOk(undefined);
+
+		return createResultError(reloadFailure(response, await response.text().catch(() => '')));
 	} catch {
-		return false;
+		return createResultError(`n8n not reachable at ${baseUrl}`);
 	}
 }
 
 const STATIC_ASSET_PATTERN = /\.(png|svg)$|__schema__[\\/].*\.json$/;
 
 /**
- * The only directories a node keeps icons and schemas in. Watching the whole
- * working directory instead would register the watch first and filter after,
- * and on Linux `recursive` costs one inotify watch per subdirectory — a large
- * `node_modules` can exhaust `fs.inotify.max_user_watches` and fail as ENOSPC.
+ * Every top-level directory `copyStaticFiles` can read from. Dotted directories
+ * and the ignore list are skipped because `recursive` costs one inotify watch
+ * per subdirectory on Linux, which a tree like `.git` can exhaust as ENOSPC.
  */
-const STATIC_ASSET_DIRS = ['nodes', 'credentials', 'icons'];
+function watchableAssetDirs(): string[] {
+	try {
+		return readdirSync(process.cwd(), { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name)
+			.filter((name) => !name.startsWith('.') && !STATIC_ASSET_IGNORE.includes(name));
+	} catch {
+		return [];
+	}
+}
 
 /**
  * Watch static assets on the host. `copyStaticFiles()` only runs at startup, so
@@ -685,8 +715,11 @@ const STATIC_ASSET_DIRS = ['nodes', 'credentials', 'icons'];
  */
 export function watchStaticFiles(onChange: () => void): () => void {
 	const watchers: FSWatcher[] = [];
+	const watched = new Set<string>();
 
 	const watchAssetDir = (dir: string): boolean => {
+		if (watched.has(dir)) return true;
+
 		const target = path.join(process.cwd(), dir);
 		try {
 			if (!statSync(target).isDirectory()) return false;
@@ -702,35 +735,59 @@ export function watchStaticFiles(onChange: () => void): () => void {
 		});
 		watcher.unref();
 		watchers.push(watcher);
+		watched.add(dir);
 		return true;
 	};
 
-	const missing = new Set(STATIC_ASSET_DIRS.filter((dir) => !watchAssetDir(dir)));
+	for (const dir of watchableAssetDirs()) watchAssetDir(dir);
 
-	// An asset root created after startup would otherwise stay unwatched until a
-	// restart. One non-recursive watch on the project root costs a single
-	// descriptor, where watching the tree would cost one per subdirectory.
-	if (missing.size > 0) {
-		const rootWatcher = watch(process.cwd(), (_event, filename) => {
-			if (!filename || !missing.has(filename)) return;
-			if (!watchAssetDir(filename)) return;
-			missing.delete(filename);
-			// The directory can already hold assets by the time the watcher attaches.
+	// Covers both directories created after startup and assets in the root
+	// itself, for a single descriptor.
+	const rootWatcher = watch(process.cwd(), (_event, filename) => {
+		if (!filename) return;
+
+		if (STATIC_ASSET_PATTERN.test(filename)) {
 			onChange();
-		});
-		rootWatcher.unref();
-		watchers.push(rootWatcher);
-	}
+			return;
+		}
+
+		if (filename.startsWith('.') || STATIC_ASSET_IGNORE.includes(filename)) return;
+		if (!watchAssetDir(filename)) return;
+		// The directory can already hold assets when the watcher attaches.
+		onChange();
+	});
+	rootWatcher.unref();
+	watchers.push(rootWatcher);
 
 	return () => {
 		for (const watcher of watchers) watcher.close();
 	};
 }
 
-export function buildHelpText(hasN8n: boolean, isN8nReady: boolean): string {
-	const quitText = `${picocolors.dim('Press')} q ${picocolors.dim('to quit')}`;
-	if (hasN8n && isN8nReady) {
-		return `${quitText} ${picocolors.dim('|')} o ${picocolors.dim('to open n8n')}`;
-	}
-	return quitText;
+export interface ReloadStatus {
+	at: Date;
+	result: Result<void, string>;
+}
+
+function formatReloadStatus({ at, result }: ReloadStatus): string {
+	// 24-hour HH:MM, so the line width does not change by locale.
+	const time = at.toTimeString().slice(0, 5);
+	return result.ok
+		? picocolors.green(`✓ reloaded ${time}`)
+		: picocolors.red(`✗ reload failed: ${result.error}`);
+}
+
+export function buildHelpText(
+	hasN8n: boolean,
+	isN8nReady: boolean,
+	lastReload?: ReloadStatus,
+): string {
+	const segments = [`${picocolors.dim('Press')} q ${picocolors.dim('to quit')}`];
+	if (hasN8n && isN8nReady) segments.push(`o ${picocolors.dim('to open n8n')}`);
+	if (lastReload) segments.push(formatReloadStatus(lastReload));
+
+	// `calculatePanelHeight` budgets one help line, so wrapping a long failure
+	// reason would push a panel row off-screen.
+	const terminalWidth = process.stdout.columns ?? CONFIG.SEPARATOR_WIDTH;
+	return truncateLine(segments.join(` ${picocolors.dim('|')} `), terminalWidth - 1);
 }

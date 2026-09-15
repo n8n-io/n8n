@@ -114,7 +114,7 @@ Desktop, OrbStack and a remote `DOCKER_HOST` all work.
 n8n-node dev
 
 # Pin the n8n version
-n8n-node dev --n8n-image docker.n8n.io/n8nio/n8n:2.20.7
+n8n-node dev --n8n-image docker.n8n.io/n8nio/n8n:VERSION
 
 # Test against a locally built image
 n8n-node dev --n8n-image n8nio/n8n:local
