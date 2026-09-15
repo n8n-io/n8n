@@ -23,10 +23,9 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import { BadRequestError, ConflictError } from '@n8n/services-common';
+import { BadRequestError, ConflictError, EventService } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
 import { getTrackingInformationFromPullResult } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';

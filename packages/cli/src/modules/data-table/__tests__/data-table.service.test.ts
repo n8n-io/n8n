@@ -2,6 +2,7 @@ import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import { EventService, RoleService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -19,9 +20,7 @@ import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-fo
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 
-import { EventService } from '@/events/event.service';
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;

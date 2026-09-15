@@ -23,8 +23,10 @@ import type { Scope } from '@n8n/permissions';
 import {
 	BadRequestError,
 	ConflictError,
+	EventService,
 	InternalServerError,
 	NotFoundError,
+	RoleService,
 } from '@n8n/services-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -54,13 +56,11 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';

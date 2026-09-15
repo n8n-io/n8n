@@ -28,12 +28,10 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
-import { NotFoundError } from '@n8n/services-common';
+import { EventService, NotFoundError, RoleService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
-import { RoleService } from '@/services/role.service';
 
 @RestController('/roles')
 export class RoleController {

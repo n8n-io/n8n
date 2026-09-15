@@ -1,7 +1,7 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
+import { BadRequestError, EventService, NotFoundError } from '@n8n/services-common';
 
 import { toPublicApiUser } from './users.mapper';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
@@ -13,7 +13,6 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-import { EventService } from '@/events/event.service';
 import type { UserRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';

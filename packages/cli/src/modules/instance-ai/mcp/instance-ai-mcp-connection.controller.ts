@@ -17,10 +17,9 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { NotFoundError } from '@n8n/services-common';
+import { CredentialsFinderService, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 

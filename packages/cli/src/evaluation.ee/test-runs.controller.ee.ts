@@ -7,7 +7,7 @@ import {
 import type { TestRun, User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
-import { ConflictError, NotFoundError } from '@n8n/services-common';
+import { ConflictError, NotFoundError, WorkflowFinderService } from '@n8n/services-common';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,7 +17,6 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @RestController('/workflows')
 export class TestRunsController {

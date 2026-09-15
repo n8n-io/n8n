@@ -1,10 +1,10 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/services-common';
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 

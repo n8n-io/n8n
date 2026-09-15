@@ -1,15 +1,18 @@
 import type { CreatePromotionConnectionDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRepository, TransactionRunner, User } from '@n8n/db';
-import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	userHasScopes,
+} from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionConnection } from '../database/entities/promotion-connection.entity';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
@@ -21,7 +24,10 @@ import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
+	userHasScopes: vi.fn(),
+}));
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 /**

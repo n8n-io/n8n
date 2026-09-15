@@ -1,12 +1,12 @@
 import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';

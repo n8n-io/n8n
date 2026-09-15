@@ -3,9 +3,9 @@ import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { SpanStatus, Tracing } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import type { PublicationOperationResult } from '@/events/maps/workflow-publication-metrics.event-map';
 
 /**

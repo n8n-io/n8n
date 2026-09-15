@@ -7,6 +7,7 @@ import type {
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 import type {
 	ActiveWorkflowTriggers,
@@ -16,7 +17,6 @@ import type {
 	Tracing,
 } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service';
 import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import type { PublishedWorkflowTriggerDeactivator } from '../published-workflow-trigger-deactivator';

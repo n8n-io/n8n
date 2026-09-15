@@ -1,13 +1,12 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { createOwner } from '@test-integration/db/users';
-
-import { EventService } from '@/events/event.service';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';

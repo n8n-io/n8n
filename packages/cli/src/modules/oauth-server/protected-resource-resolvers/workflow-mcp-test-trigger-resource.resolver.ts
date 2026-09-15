@@ -1,11 +1,10 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { ProtectedResourceResolver } from '@n8n/services-common';
-import { UrlService } from '@n8n/services-common';
+import { UrlService, WorkflowFinderService } from '@n8n/services-common';
 
 import { triggerResourceGate } from '../resource-gate';
 import {

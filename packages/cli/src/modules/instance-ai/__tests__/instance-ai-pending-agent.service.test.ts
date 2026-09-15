@@ -1,7 +1,7 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ForbiddenError, NotFoundError } from '@n8n/services-common';
+import { ForbiddenError, NotFoundError, userHasScopes } from '@n8n/services-common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,10 +9,18 @@ import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
+
+vi.mock('@n8n/services-common', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/services-common')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 const user = mock<User>({ id: 'user-1' });
 const PROJECT_ID = 'project-1';
@@ -70,7 +78,7 @@ const payload = { projectId: PROJECT_ID, agentId: AGENT_ID, name: 'New Agent' };
 describe('InstanceAiPendingAgentService', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
-		vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});
 
 	it('creates the agent under the client-minted id and binds it to the thread', async () => {
@@ -203,11 +211,11 @@ describe('InstanceAiPendingAgentService', () => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue({});
 		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
-		const userHasScopes = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+		const userHasScopesMock = vi.mocked(userHasScopes).mockResolvedValue(true);
 
 		await service.persistAndBind(user, THREAD_ID, payload);
 
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:create'], false, {
+		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:create'], false, {
 			projectId: PROJECT_ID,
 		});
 	});
@@ -215,10 +223,10 @@ describe('InstanceAiPendingAgentService', () => {
 	it('requires both agent:create and agent:update in the project', async () => {
 		const { service, memoryService, agentsService } = setup();
 		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
-		const userHasScopes = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+		const userHasScopesMock = vi.mocked(userHasScopes).mockResolvedValue(false);
 
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
-		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:create', 'agent:update'], false, {
+		expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:create', 'agent:update'], false, {
 			projectId: PROJECT_ID,
 		});
 		expect(agentsService.create).not.toHaveBeenCalled();

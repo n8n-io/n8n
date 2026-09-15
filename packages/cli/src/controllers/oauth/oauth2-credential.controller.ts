@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
+import { EventService } from '@n8n/services-common';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -11,7 +12,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';

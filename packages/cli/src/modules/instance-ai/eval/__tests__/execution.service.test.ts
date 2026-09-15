@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
@@ -20,7 +21,6 @@ import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // ---------------------------------------------------------------------------

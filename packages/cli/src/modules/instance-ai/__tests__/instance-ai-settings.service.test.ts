@@ -8,10 +8,10 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { CredentialsFinderService, EventService } from '@n8n/services-common';
 import { UnprocessableRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -19,7 +19,6 @@ import {
 	type SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
 import type { UserService } from '@/services/user.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 

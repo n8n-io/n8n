@@ -1,10 +1,10 @@
 import { type User, WorkflowEntity } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

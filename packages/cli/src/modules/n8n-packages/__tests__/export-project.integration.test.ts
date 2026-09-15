@@ -9,9 +9,9 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { jsonParse, type INode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';

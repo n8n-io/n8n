@@ -5,6 +5,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { userHasScopes } from '@n8n/services-common';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +14,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	EvalAgentExecutionService,
@@ -41,7 +41,10 @@ vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 vi.mock('@/modules/agents/json-config/agent-config-composition', () => ({
 	sanitizeToolName: (name: string) => name.replace(/[^a-zA-Z0-9_-]+/g, '_'),
 }));
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));

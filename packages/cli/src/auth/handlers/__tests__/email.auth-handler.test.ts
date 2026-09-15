@@ -1,9 +1,9 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, User, UserRepository } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { AuthError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { PasswordUtility } from '@/services/password.utility';
 
 import { EmailAuthHandler } from '../email.auth-handler';

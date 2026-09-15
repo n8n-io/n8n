@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
+import { EventService } from '@n8n/services-common';
 import { Response } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 

@@ -4,10 +4,10 @@ import type {
 	EvaluationConfigRepository,
 	User,
 } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/services-common';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { InsightsModelResolver } from '../insights-model-resolver';

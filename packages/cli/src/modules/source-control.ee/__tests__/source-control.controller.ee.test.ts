@@ -3,12 +3,11 @@ import type { AuthenticatedRequest, Project, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as permissions from '@n8n/permissions';
+import type { EventService } from '@n8n/services-common';
 import { ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';

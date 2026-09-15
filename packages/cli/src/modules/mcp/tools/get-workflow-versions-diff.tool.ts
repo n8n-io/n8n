@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { diff } from 'json-diff';
 import omit from 'lodash/omit';
@@ -7,7 +8,6 @@ import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-w
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

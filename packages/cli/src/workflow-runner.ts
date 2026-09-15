@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
@@ -31,8 +32,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-
-import { EventService } from './events/event.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';

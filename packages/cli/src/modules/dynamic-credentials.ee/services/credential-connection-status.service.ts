@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { RoleService } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -18,7 +19,6 @@ import type {
 	UserConnection,
 } from '@/credentials/credential-connection-status-provider.interface';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
-import { RoleService } from '@/services/role.service';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';

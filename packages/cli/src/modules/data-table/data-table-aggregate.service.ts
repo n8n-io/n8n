@@ -3,8 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/services-common';
 
 import { DataTableRepository } from './data-table.repository';
 

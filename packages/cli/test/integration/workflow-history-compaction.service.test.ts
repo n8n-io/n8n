@@ -3,13 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { sleep } from '@n8n/utils/sleep';
 import repeat from 'lodash/repeat';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { EventService } from '@/events/event.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 describe('compacting cycle', () => {

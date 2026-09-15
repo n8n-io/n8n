@@ -19,12 +19,16 @@ import {
 } from '@n8n/db';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/services-common';
+import {
+	ConflictError,
+	EventService,
+	ForbiddenError,
+	UnprocessableRequestError,
+} from '@n8n/services-common';
 import { pickVariableForProject } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';

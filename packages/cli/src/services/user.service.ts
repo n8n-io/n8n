@@ -27,9 +27,11 @@ import {
 } from '@n8n/permissions';
 import {
 	BadRequestError,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
+	RoleService,
 	UrlService,
 } from '@n8n/services-common';
 import type { IUserSettings } from 'n8n-workflow';
@@ -40,10 +42,8 @@ import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';

@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Folder, Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { FolderFinderService } from '@n8n/services-common';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -16,7 +17,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { searchWorkflows } from '@/modules/mcp/tools/search-workflows.tool';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { LicenseMocker } from '@test-integration/license';

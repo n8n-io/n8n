@@ -13,6 +13,7 @@ import {
 	PROJECT_VIEWER_ROLE,
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EventService, RoleService } from '@n8n/services-common';
 import { BadRequestError } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
@@ -20,10 +21,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
-import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
-import type { EventService } from '@/events/event.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';

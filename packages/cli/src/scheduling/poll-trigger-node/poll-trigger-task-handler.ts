@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import { EventService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	commitStagedCursor,
@@ -14,7 +15,6 @@ import {
 import type { Failure, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 

@@ -6,6 +6,7 @@ import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { stringify } from 'flatted';
 import {
 	BinaryDataService,
@@ -35,7 +36,6 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '../execution-lifecycle-hooks';
 
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';

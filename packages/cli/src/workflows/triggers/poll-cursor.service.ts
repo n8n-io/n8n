@@ -3,9 +3,9 @@ import { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { PollCursor } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type {
 	PollCursorCommitOperation,
 	PollCursorCommitResult,

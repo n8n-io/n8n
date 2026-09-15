@@ -8,10 +8,9 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
+import { EventService, RoleService } from '@n8n/services-common';
 import { createHash } from 'node:crypto';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
 import { TokenExchangeConfig } from '../token-exchange.config';

@@ -6,12 +6,12 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { LicenseMetricsRepository, User } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 

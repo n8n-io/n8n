@@ -1,5 +1,6 @@
 import { folderIdSchema } from '@n8n/api-types';
 import { type User, type WorkflowEntity } from '@n8n/db';
+import type { FolderFinderService } from '@n8n/services-common';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
@@ -16,7 +17,6 @@ import type {
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { describeFolderError } from './folder-error.utils';

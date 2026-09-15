@@ -1,9 +1,8 @@
 import { ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
-
-import { EventService } from '@/events/event.service';
 
 import type { PrometheusMetricsCollector } from './base';
 

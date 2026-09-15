@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import {
 	ActiveWorkflowTriggers,
 	ErrorReporter,
@@ -18,7 +19,6 @@ import {
 } from 'n8n-core';
 import type { WorkflowId } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';

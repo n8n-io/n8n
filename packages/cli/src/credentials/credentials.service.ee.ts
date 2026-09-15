@@ -9,7 +9,12 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { NotFoundError, TransferCredentialError } from '@n8n/services-common';
+import {
+	CredentialsFinderService,
+	NotFoundError,
+	RoleService,
+	TransferCredentialError,
+} from '@n8n/services-common';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
@@ -17,10 +22,8 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 

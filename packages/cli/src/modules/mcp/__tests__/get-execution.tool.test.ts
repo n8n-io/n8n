@@ -1,11 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
+import { WorkflowFinderService } from '@n8n/services-common';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetExecutionTool } from '../tools/get-execution.tool';

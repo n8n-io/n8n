@@ -7,7 +7,7 @@ import {
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/services-common';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
@@ -23,7 +23,6 @@ import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')

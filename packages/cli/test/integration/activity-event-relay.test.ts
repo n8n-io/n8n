@@ -5,9 +5,9 @@ import { Time } from '@n8n/constants';
 import { ActivityEventRepository, WorkflowRepository } from '@n8n/db';
 import type { Project, User, WorkflowEntity, ActivityEvent } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { INode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { WorkflowService } from '@/workflows/workflow.service';

@@ -8,10 +8,10 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 } from '@n8n/db';
+import { EventService } from '@n8n/services-common';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 

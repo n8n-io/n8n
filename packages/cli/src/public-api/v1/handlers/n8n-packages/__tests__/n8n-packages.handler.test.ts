@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import {
 	BadRequestError,
 	ConflictError,
+	EventService,
 	ForbiddenError,
 	NotFoundError,
 } from '@n8n/services-common';
@@ -12,7 +13,6 @@ import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 import type { Mocked } from 'vitest';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	PackageEntityAccessDeniedError,

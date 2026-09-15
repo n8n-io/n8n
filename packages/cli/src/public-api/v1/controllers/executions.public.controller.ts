@@ -33,14 +33,13 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/services-common';
+import { BadRequestError, ConflictError, EventService, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';

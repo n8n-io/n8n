@@ -21,6 +21,7 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
@@ -28,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';

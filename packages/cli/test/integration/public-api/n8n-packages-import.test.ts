@@ -2,10 +2,10 @@ import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,

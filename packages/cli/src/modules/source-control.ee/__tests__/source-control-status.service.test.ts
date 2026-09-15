@@ -13,11 +13,10 @@ import {
 	type WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import { ForbiddenError } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';

@@ -22,7 +22,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/services-common';
+import { BadRequestError, WorkflowFinderService } from '@n8n/services-common';
 import { EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { Cipher } from 'n8n-core';
@@ -51,7 +51,6 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';

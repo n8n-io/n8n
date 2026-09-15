@@ -10,7 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/services-common';
+import { BadRequestError, WorkflowFinderService } from '@n8n/services-common';
 import {
 	OperationalError,
 	type INodeCredentials,
@@ -24,7 +24,6 @@ import {
 } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';

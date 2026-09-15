@@ -6,6 +6,7 @@ import type {
 import { EvaluationErrorCode } from '@n8n/api-types';
 import type { EvaluationConfig, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { CredentialsFinderService } from '@n8n/services-common';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -14,7 +15,6 @@ import {
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';

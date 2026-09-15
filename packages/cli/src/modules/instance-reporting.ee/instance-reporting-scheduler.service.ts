@@ -2,10 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import { strict } from 'node:assert';
-
-import { EventService } from '@/events/event.service';
 
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';

@@ -8,7 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/services-common';
+import { ConflictError, EventService, NotFoundError } from '@n8n/services-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
@@ -16,7 +16,6 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 

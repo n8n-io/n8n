@@ -1,10 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
+import type { EventService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';

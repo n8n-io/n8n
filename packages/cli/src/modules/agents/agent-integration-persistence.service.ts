@@ -6,11 +6,11 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,

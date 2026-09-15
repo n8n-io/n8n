@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@n8n/services-common';
-import { ProtectedResourceRegistry } from '@n8n/services-common';
+import { ProtectedResourceRegistry, WorkflowFinderService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -20,7 +20,6 @@ import type {
 	OAuthTokenVerifier,
 	UserWithContext,
 } from '@/services/oauth-token-verifier-proxy.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';

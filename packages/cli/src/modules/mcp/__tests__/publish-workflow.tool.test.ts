@@ -1,12 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-import { WorkflowPublishBlockedError } from '@n8n/services-common';
+import { WorkflowFinderService, WorkflowPublishBlockedError } from '@n8n/services-common';
 import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createWorkflow } from './mock.utils';

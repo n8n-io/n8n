@@ -1,8 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { UserRepository } from '@n8n/db';
+import { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { UserManagementMailer } from '@/user-management/email';

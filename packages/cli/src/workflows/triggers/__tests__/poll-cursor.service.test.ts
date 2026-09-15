@@ -7,11 +7,11 @@ import type {
 	PollerStateRepository,
 	TransactionRunner,
 } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 

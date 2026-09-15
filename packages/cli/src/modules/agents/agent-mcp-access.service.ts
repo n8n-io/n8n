@@ -1,9 +1,7 @@
 import type { ListAgentsQueryDto, UpdateAgentsMcpAvailabilityDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/services-common';
-
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { BadRequestError, ProjectScopeService } from '@n8n/services-common';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';

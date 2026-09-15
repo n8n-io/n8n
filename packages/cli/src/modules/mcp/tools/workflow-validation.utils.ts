@@ -1,7 +1,6 @@
 import type { User } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/services-common';
 
 import { WorkflowAccessError } from '../mcp.errors';
 import {

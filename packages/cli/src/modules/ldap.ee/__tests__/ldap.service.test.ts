@@ -5,6 +5,7 @@ import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
@@ -13,7 +14,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
-import type { EventService } from '@/events/event.service';
 
 import { BINARY_AD_ATTRIBUTES } from '../constants';
 import {

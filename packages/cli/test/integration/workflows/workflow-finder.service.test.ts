@@ -1,8 +1,7 @@
 import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/services-common';
 
 import { createUser } from '../shared/db/users';
 

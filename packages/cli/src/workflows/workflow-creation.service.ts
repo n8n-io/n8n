@@ -13,16 +13,18 @@ import {
 import { Service } from '@n8n/di';
 import {
 	BadRequestError,
+	CredentialsFinderService,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
+	WorkflowFinderService,
 	WorkflowValidationError,
+	userHasScopes,
 } from '@n8n/services-common';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -30,7 +32,6 @@ import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -39,7 +40,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import { dropRedactionPolicy } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';

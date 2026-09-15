@@ -9,6 +9,7 @@ import {
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { EventService } from '@n8n/services-common';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
@@ -16,7 +17,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 

@@ -4,12 +4,11 @@ import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
-import { BadRequestError, ForbiddenError, UrlService } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError, UrlService } from '@n8n/services-common';
 import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { EventService } from '@/events/event.service';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,

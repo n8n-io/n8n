@@ -14,11 +14,15 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	InternalServerError,
+	NotFoundError,
+} from '@n8n/services-common';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';
