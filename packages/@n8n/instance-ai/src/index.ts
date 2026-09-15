@@ -692,6 +692,8 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
+	StepRunInputMode,
 	ExecutionDebugInfo,
 	NodeOutputBranch,
 	NodeOutputResult,

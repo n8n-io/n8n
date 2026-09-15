@@ -55,6 +55,19 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
+ * Builds the thread-level "always allow" grant key for running one node of a
+ * workflow ("execute step").
+ *
+ * Scoped per node, so a debug loop on one node stops re-prompting while the
+ * other nodes of the same workflow still need approval. A whole-workflow run
+ * grant covers a step of that workflow too — running everything is strictly
+ * more than running one node — so the executions tool checks both keys.
+ */
+export function buildRunStepSessionGrantKey(workflowId: string, nodeName: string): string {
+	return `executions:run-step:${workflowId}:${nodeName}`;
+}
+
+/**
  * Builds the thread-level grant key for updating a specific workflow without HITL.
  *
  * Written automatically when the agent creates a workflow in this thread, so follow-up
