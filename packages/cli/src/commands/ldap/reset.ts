@@ -59,7 +59,7 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
-	// Deleting active workflows deregisters their webhooks, whose parameters may be expressions
+	// Deleting active workflows deregisters their webhooks, whose parameters may be expressions or regexes
 	override needsExpressionEngine = true;
 
 	async run(): Promise<void> {

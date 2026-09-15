@@ -46,6 +46,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -79,6 +80,13 @@ export abstract class BaseCommand<F = never> {
 
 	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
+	private _regexEngineService?: RegexEngineService;
+
+	/** Resolved lazily: only commands with `needsRegexEngine` ever use it. */
+	protected get regexEngineService(): RegexEngineService {
+		return (this._regexEngineService ??= Container.get(RegexEngineService));
+	}
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -93,6 +101,15 @@ export abstract class BaseCommand<F = never> {
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
+
+	/**
+	 * Whether to init the regex engine. Defaults to `needsExpressionEngine`: a command
+	 * that evaluates workflow expressions also evaluates a user's regexes. Override only
+	 * where the two genuinely diverge.
+	 */
+	get needsRegexEngine(): boolean {
+		return this.needsExpressionEngine;
+	}
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -281,6 +298,28 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+
+		if (this.needsRegexEngine) {
+			try {
+				await this.regexEngineService.init();
+			} catch (error) {
+				await this.exitWithCrash(
+					'Could not initialize the regular expression engine (see errors above for details).',
+					error,
+				);
+			}
+		} else {
+			const configuredEngine: string = this.globalConfig.regexEngine.engine;
+			if (configuredEngine !== 'js') {
+				// This command never initializes the regex engine, so an instance configured
+				// for a non-default one must fail loudly here instead of silently evaluating a
+				// user's regexes on the built-in engine.
+				await this.exitWithCrash(
+					`This command does not support the "${configuredEngine}" regular expression engine. Set N8N_REGEX_ENGINE=js, or run a command that initializes it.`,
+					new UnexpectedError('Regex engine not initialized for a non-default configuration'),
+				);
+			}
+		}
 	}
 
 	/**
@@ -315,6 +354,7 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
+			this.regexEngineService.shutdown();
 			await Promise.all([
 				CrashJournal.cleanup(),
 				this.dbConnection.close(),

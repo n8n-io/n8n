@@ -32,11 +32,13 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 
 import { BaseCommand } from '../base-command';
 import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
+mockInstance(RegexEngineService);
 const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
@@ -84,6 +86,7 @@ beforeEach(() => {
 			taskRunners: {},
 			nodes: {},
 			expressionEngine: { engine: 'legacy' },
+			regexEngine: { engine: 'js' },
 			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
 			// a setTimeout delay from it, and a mock proxy yields NaN at pool teardown
 			generic: { gracefulShutdownTimeout: 30 },
@@ -158,6 +161,7 @@ test('should not init the expression engine for commands that do not need it', a
 			taskRunners: {},
 			nodes: {},
 			expressionEngine: { engine: 'vm' },
+			regexEngine: { engine: 'js' },
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
@@ -264,4 +268,5 @@ test('exitWithCrash logs the crash message to the console', async () => {
 
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
+	expect(new Execute().needsRegexEngine).toBe(true);
 });
