@@ -310,8 +310,11 @@ progress indicator from this data.
 
 What the turn was handed as instance context, published once before the agent
 starts. `injection` is `{ state: 'injected', isUpdate, legs, chars }` or
-`{ state: 'absent', reason }`; `block` carries the rendered block and is present
-only when injected. An `absent` outcome is published too, with reason `empty`,
+`{ state: 'absent', reason }` — the shape of the injection only. The rendered
+block stays server-side: the trace names which legs carried something and how far
+the turn then read, and nothing renders the text, so sending it would put a copy
+on every turn's stream and in its durable log entry. An `absent` outcome is
+published too, with reason `empty`,
 because a turn told nothing must be distinguishable from one that was told and
 ignored it. Nothing is published when the feature is off for the user or on a
 machine follow-up. Durable; the reducer appends one `instance-context` timeline
@@ -663,7 +666,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
-| `instance-context` | `injection`, `block?` | What the turn was handed as instance context (once, before the agent runs) |
+| `instance-context` | `injection` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |

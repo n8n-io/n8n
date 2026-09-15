@@ -52,7 +52,6 @@ const INJECTED_PAYLOAD = {
 		legs: { inventory: 3, events: 2, runs: 1 },
 		chars: 420,
 	},
-	block: '<instance-context>\nwhat exists\n</instance-context>',
 };
 
 function makeTextDelta(
@@ -229,12 +228,14 @@ describe('agent-run-reducer', () => {
 
 			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
 
+			// The shape of the injection, not the block text: the row names what the turn was
+			// handed and nothing renders the text, so sending it would cost every turn's stream
+			// and its durable log entry for nothing.
 			expect(state.agentsById.root.timeline).toEqual([
 				{
 					type: 'instance-context',
 					runId: 'run-1',
 					injection: INJECTED_PAYLOAD.injection,
-					block: INJECTED_PAYLOAD.block,
 				},
 			]);
 		});

@@ -864,7 +864,6 @@ describe('buildTimelineBlocks — instance context', () => {
 			legs: { inventory: 2, events: 1, runs: 0 },
 			chars: 90,
 		},
-		block: '<instance-context>x</instance-context>',
 	};
 
 	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */

@@ -373,10 +373,14 @@ export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSc
  * reader can tell a turn that knew about prior work from one that guessed. `reach`
  * is not known yet at that point and arrives on `run-finish`.
  */
+/**
+ * Deliberately only the shape of the injection, not the block itself. The trace names what a turn
+ * was handed and how far it then read; it does not reproduce the text. Sending the block would put
+ * a copy of it on every turn's stream and in the durable log, for something nothing renders.
+ * `block_chars` on the turn event still records the size, which is what the rollout reads.
+ */
 export const instanceContextPayloadSchema = z.object({
 	injection: instanceContextInjectionSchema,
-	/** The rendered block, so the trace can show what was actually said. */
-	block: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -1709,8 +1713,6 @@ export type InstanceAiTimelineEntry =
 			injection: InstanceContextInjection;
 			/** Absent until the run finishes. */
 			reach?: InstanceContextReach;
-			/** The rendered block. Omitted on `absent`. */
-			block?: string;
 			responseId?: string;
 	  };
 

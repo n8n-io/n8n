@@ -4102,16 +4102,14 @@ export class InstanceAiService {
 			};
 
 			// Published before the agent runs, so the trace records what the turn was handed
-			// rather than what it did with it.
+			// rather than what it did with it. The shape only — the block text stays server-side,
+			// since the row names what was handed over rather than reproducing it.
 			if (shouldTraceContextInjection(contextInjection)) {
 				this.eventBus.publish(threadId, {
 					type: 'instance-context',
 					runId,
 					agentId: orchestratorAgentId(runId),
-					payload: {
-						injection: contextInjection,
-						...(instanceContext.state === 'injected' ? { block: instanceContext.block } : {}),
-					},
+					payload: { injection: contextInjection },
 				});
 			}
 			const existingTasks = await taskStorage.get(threadId);

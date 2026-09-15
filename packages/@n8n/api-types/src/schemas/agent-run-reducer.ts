@@ -501,7 +501,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					type: 'instance-context',
 					runId: event.runId,
 					injection: event.payload.injection,
-					...(event.payload.block !== undefined ? { block: event.payload.block } : {}),
 					...(event.responseId ? { responseId: event.responseId } : {}),
 				});
 			}

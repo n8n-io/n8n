@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import userEvent from '@testing-library/user-event';
 import type { InstanceAiTimelineEntry } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceContextStep from '../components/InstanceContextStep.vue';
@@ -18,7 +17,6 @@ function injected(overrides: Partial<ContextEntry> = {}): ContextEntry {
 			legs: { inventory: 3, events: 2, runs: 1 },
 			chars: 120,
 		},
-		block: '<instance-context>\nLead enrichment ran 6x, 6 failed\n</instance-context>',
 		...overrides,
 	};
 }
@@ -68,26 +66,12 @@ describe('InstanceContextStep', () => {
 		).toContain('Read new instance activity');
 	});
 
-	/** Collapsed by default: expanding is what shows it, not the transcript. */
-	it('shows the block once expanded, which is the record the chat transcript strips', async () => {
-		const { getByRole, queryByText, getByText } = renderComponent({
-			props: { entry: injected() },
-		});
-
-		expect(queryByText(/Lead enrichment ran 6x, 6 failed/)).toBeNull();
-
-		await userEvent.click(getByRole('button'));
-
-		expect(getByText(/Lead enrichment ran 6x, 6 failed/)).toBeTruthy();
-	});
-
 	/**
 	 * The distinction this row exists to draw: told nothing, versus told and ignored it.
 	 */
 	it('reads differently when the turn was handed nothing', () => {
 		const entry = injected({
 			injection: { state: 'absent', reason: 'empty' },
-			block: undefined,
 		});
 
 		const text = renderComponent({ props: { entry } }).getByTestId(
@@ -102,7 +86,6 @@ describe('InstanceContextStep', () => {
 	it('says a read failed rather than calling it empty', () => {
 		const entry = injected({
 			injection: { state: 'absent', reason: 'failed' },
-			block: undefined,
 		});
 
 		const text = renderComponent({ props: { entry } }).getByTestId(
@@ -114,17 +97,14 @@ describe('InstanceContextStep', () => {
 	});
 
 	/**
-	 * The block rides beside the injection rather than inside it, so an injected entry with no
-	 * block text is representable. Falling through to the absent hint would put "no context was
-	 * available" under a label that says the turn read three workflows.
+	 * A line, not an expandable one. The row still renders as a button for layout, but it
+	 * carries no expanded state, which is what `aria-expanded` would announce.
 	 */
-	it('does not call an injected turn empty when only the block text is missing', async () => {
-		const entry = injected({ block: undefined });
+	it('renders as a plain row with nothing to expand', () => {
+		const { getByRole, getByTestId } = renderComponent({ props: { entry: injected() } });
 
-		const { getByRole, getByText } = renderComponent({ props: { entry } });
-		await userEvent.click(getByRole('button'));
-
-		expect(getByText(/was not kept with the trace/)).toBeTruthy();
+		expect(getByTestId('instance-ai-context-step')).toBeTruthy();
+		expect(getByRole('button').getAttribute('aria-expanded')).toBeNull();
 	});
 
 	it('names each surface the turn used', () => {

@@ -487,7 +487,6 @@ describe('instanceAi.reducer', () => {
 				legs: { inventory: 8, events: 0, runs: 0 },
 				chars: 512,
 			},
-			block: '<instance-context>what exists</instance-context>',
 		};
 
 		const makeContextEvent = (
