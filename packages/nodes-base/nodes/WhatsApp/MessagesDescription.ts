@@ -1357,6 +1357,14 @@ export const messageTypeFields: INodeProperties[] = [
 								name: 'URL',
 								value: 'url',
 							},
+							{
+								name: 'Copy Code',
+								value: 'copy_code',
+							},
+							{
+								name: 'Flow',
+								value: 'flow',
+							},
 						],
 						default: 'quick_reply',
 					},
@@ -1407,6 +1415,14 @@ export const messageTypeFields: INodeProperties[] = [
 												name: 'Text',
 												value: 'text',
 											},
+											{
+												name: 'Coupon Code',
+												value: 'coupon_code',
+											},
+											{
+												name: 'Action',
+												value: 'action',
+											},
 										],
 										default: 'payload',
 									},
@@ -1428,6 +1444,28 @@ export const messageTypeFields: INodeProperties[] = [
 										displayOptions: {
 											show: {
 												type: ['text'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Coupon Code',
+										name: 'coupon_code',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['coupon_code'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Flow Token',
+										name: 'flowToken',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['action'],
 											},
 										},
 										default: '',
@@ -1476,6 +1514,14 @@ export const messageTypeFields: INodeProperties[] = [
 											{
 												name: 'Image',
 												value: 'image',
+											},
+											{
+												name: 'Video',
+												value: 'video',
+											},
+											{
+												name: 'Document',
+												value: 'document',
 											},
 										],
 										default: 'text',
@@ -1535,6 +1581,28 @@ export const messageTypeFields: INodeProperties[] = [
 										displayOptions: {
 											show: {
 												type: ['image'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Video Link',
+										name: 'videoLink',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['video'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Document Link',
+										name: 'documentLink',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['document'],
 											},
 										},
 										default: '',
