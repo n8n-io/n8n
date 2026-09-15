@@ -123,13 +123,13 @@ export class SystemTaskJobRegistrar {
 	}
 
 	/**
-	 * Whether any instance stored a durable job for the task that the sweep has
-	 * not quarantined. Never throws: a store this instance cannot read must not
+	 * Whether any instance stored a durable job for the task that the scheduler
+	 * will claim. Never throws: a store this instance cannot read must not
 	 * silence the task's in-memory timer.
 	 */
 	async isProvisioned(taskName: string): Promise<boolean> {
 		try {
-			return await this.jobs.existsUnquarantinedByOwner(this.systemTaskOwner.owner(taskName));
+			return await this.jobs.existsRunnableByOwner(this.systemTaskOwner.owner(taskName));
 		} catch (error) {
 			this.logger.warn('Could not check for the durable job of a system task, so it runs', {
 				name: taskName,

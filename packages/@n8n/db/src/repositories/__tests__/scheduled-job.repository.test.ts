@@ -198,14 +198,14 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('existsUnquarantinedByOwner', () => {
-		it('checks only the jobs of the owner that are not quarantined', async () => {
+	describe('existsRunnableByOwner', () => {
+		it('checks only the enabled jobs of the owner that are not quarantined', async () => {
 			entityManager.exists.mockResolvedValueOnce(true);
 
-			const result = await repository.existsUnquarantinedByOwner(OWNER);
+			const result = await repository.existsRunnableByOwner(OWNER);
 
 			expect(entityManager.exists).toHaveBeenCalledWith(ScheduledJob, {
-				where: { ...OWNER, orphanedAt: IsNull() },
+				where: { ...OWNER, enabled: true, orphanedAt: IsNull() },
 			});
 			expect(result).toBe(true);
 		});

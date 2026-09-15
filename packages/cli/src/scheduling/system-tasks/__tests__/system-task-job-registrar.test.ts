@@ -226,17 +226,17 @@ describe('SystemTaskJobRegistrar', () => {
 	describe('isProvisioned', () => {
 		it('reports a task with a stored job as provisioned', async () => {
 			const { registrar, jobs, owner } = setup();
-			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
+			jobs.existsRunnableByOwner.mockResolvedValue(true);
 
 			await expect(registrar.isProvisioned('prune-executions')).resolves.toBe(true);
-			expect(jobs.existsUnquarantinedByOwner).toHaveBeenCalledExactlyOnceWith(
+			expect(jobs.existsRunnableByOwner).toHaveBeenCalledExactlyOnceWith(
 				owner.owner('prune-executions'),
 			);
 		});
 
-		it('reports a task without a stored job or with only a quarantined one as not provisioned', async () => {
+		it('reports a task without a stored job or with only a disabled or quarantined one as not provisioned', async () => {
 			const { registrar, jobs } = setup();
-			jobs.existsUnquarantinedByOwner.mockResolvedValue(false);
+			jobs.existsRunnableByOwner.mockResolvedValue(false);
 
 			await expect(registrar.isProvisioned('prune-executions')).resolves.toBe(false);
 		});
@@ -244,7 +244,7 @@ describe('SystemTaskJobRegistrar', () => {
 		it('reports a task as not provisioned and warns when the store cannot be read', async () => {
 			const error = new Error('connection lost');
 			const { registrar, jobs, logger, errorReporter } = setup();
-			jobs.existsUnquarantinedByOwner.mockRejectedValue(error);
+			jobs.existsRunnableByOwner.mockRejectedValue(error);
 
 			await expect(registrar.isProvisioned('prune-executions')).resolves.toBe(false);
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('durable job'), {
