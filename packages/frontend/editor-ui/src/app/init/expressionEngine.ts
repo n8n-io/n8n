@@ -45,9 +45,10 @@ export async function initializeExpressionEngine(
 		// The editor's evaluate() is synchronous, so it needs a caller that already
 		// holds a scope. One shared scope covers every Expression the editor builds.
 		sharedCaller: true,
-		// Open that scope without building the runtime yet. The first expression
-		// that reaches the engine cold-starts it from inside the synchronous path,
-		// so enabling the engine costs nothing until something is evaluated.
+		// Defer which caller owns a bridge, not when one is built: the pool seeds
+		// `poolSize` bridges in initialize(), so the wasm runtime is up before the
+		// first expression. This only lets the synchronous evaluate() path build
+		// one itself if the pool is empty by then.
 		lazyAcquire: true,
 	});
 }

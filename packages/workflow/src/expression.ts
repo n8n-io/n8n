@@ -320,9 +320,9 @@ export class Expression {
 				// usable as the signal either: vite-plugin-node-polyfills shims
 				// `process` with extra keys, which defeats its detection.
 				if (options.sharedCaller) {
-					// Under `lazyAcquire` this only opens the scope. The runtime itself
-					// is built by the first expression that reaches the engine, so a
-					// session that evaluates nothing never pays for one.
+					// Under `lazyAcquire` this only opens the scope. The pool has already
+					// seeded its bridges in initialize(), so this does not decide when a
+					// runtime is built — only which caller owns one.
 					await evaluator.acquire(Expression.BROWSER_CALLER);
 					this.useSharedCaller = true;
 				}
