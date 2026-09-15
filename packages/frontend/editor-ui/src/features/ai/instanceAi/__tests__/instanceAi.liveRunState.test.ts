@@ -125,6 +125,29 @@ describe('instanceAi.liveRunState', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'approval', approved: false })).toBe(false);
 		});
 
+		test('only re-arms after a credential destination is approved', () => {
+			const destination = { origin: 'https://api.example.com' };
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'credentialDestination',
+					approved: true,
+					...destination,
+				}),
+			).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'credentialDestination',
+					approved: false,
+					...destination,
+				}),
+			).toBe(false);
+		});
+
+		test('re-arms on both legs of the MCP connect card', () => {
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: true })).toBe(true);
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: false })).toBe(true);
+		});
+
 		test('re-arms on resume-capable confirm kinds', () => {
 			expect(
 				shouldRearmRunAfterConfirm({

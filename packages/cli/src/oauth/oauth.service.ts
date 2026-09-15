@@ -1,14 +1,20 @@
-import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
+import { LockNamespace, LockService, Logger, SingleFlightLease } from '@n8n/backend-common';
+import {
+	OutboundHttp,
+	SsrfProtectionService,
+	type HttpRequestClient,
+	type SsrfBridge,
+} from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -21,10 +27,12 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
+import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
+	AuthError as OAuth2AuthError,
 	ClientOAuth2,
 	resolveClientAuthOptions,
 	type ClientOAuth2Options,
@@ -44,6 +52,10 @@ import { ExternalHooks } from '@/external-hooks';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	type DcrManagedCredentialValues,
+} from './dcr-managed-fields';
 import {
 	algorithmMap,
 	MAX_CSRF_AGE,
@@ -83,6 +95,17 @@ export type OauthFlowState = {
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
 
+export interface OAuth2CredentialRefreshResult {
+	headers: Record<string, string>;
+	expiresAt?: number;
+	expiresInSeconds?: number;
+}
+
+export interface OAuth2CredentialTokenRevision {
+	accessToken?: string;
+	expiresAt?: number;
+}
+
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
 	return value === 'true';
@@ -108,8 +131,11 @@ export class InvalidOAuthUrlError extends BadRequestError {
 
 @Service()
 export class OauthService {
+	private readonly oauth2Refreshes = new SingleFlightLease<OAuth2CredentialRefreshResult | null>();
+
 	constructor(
 		protected readonly logger: Logger,
+		private readonly lockService: LockService,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -124,21 +150,28 @@ export class OauthService {
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
 		outboundHttp: OutboundHttp,
-		ssrfProtectionService: SsrfProtectionService,
-		ssrfProtectionConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
-		// Unlike most OutboundHttp callsites, here we opt into SSRF protection (when the environment enables it) because the attack risk is higher:
-		// these URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
-		// so the service can't tell at runtime which are trustworthy.
-		// Self-hosted users with an internal OAuth/MCP server are accommodated via the SSRF allowlist config, not by disabling the guard.
-		// In the future, enabling SSRF "per feature" could be refined through configuration.
+		// These URLs can be user-, instance- or remote-server-supplied (discovery /
+		// dynamic client registration), so the default safe mode applies. Self-hosted
+		// users with an internal OAuth/MCP server are accommodated via the SSRF
+		// allowlist config, not by bypassing the guard.
 		this.http = outboundHttp.requests({
-			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
 			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}
 
 	private readonly http: HttpRequestClient;
+
+	/**
+	 * The bridge to hand to `ClientOAuth2` so token endpoint requests are subject to the
+	 * same outbound network policy as discovery / dynamic client registration.
+	 * `undefined` when the guard is disabled for this instance.
+	 */
+	getSsrfBridge(): SsrfBridge | undefined {
+		return this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+	}
 
 	private oauthFlowCacheKey(token: string): string {
 		return `${OAUTH_FLOW_CACHE_PREFIX}${token}`;
@@ -264,12 +297,9 @@ export class OauthService {
 		// Private credentials are connected per-user, so executing users can authorize
 		// their own account without edit rights. Shared/static credentials store the
 		// token on the shared credential itself, so connecting them still requires edit.
-		const existingCredential = await this.credentialsFinderService.findCredentialById(
-			credentialId,
-			{
-				includeInstanceCredentials: true,
-			},
-		);
+		const existingCredential = await this.credentialsFinderService.findById(credentialId, {
+			includeInstanceCredentials: true,
+		});
 		const requiredScope = existingCredential?.isResolvable
 			? 'credential:connect'
 			: 'credential:update';
@@ -378,13 +408,9 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
 	) {
-		if (toUpdate.oauthTokenData && typeof toUpdate.oauthTokenData === 'object') {
-			const identifier = OauthService.extractAccountIdentifier(
-				toUpdate.oauthTokenData as Record<string, unknown>,
-			);
-			if (identifier) {
-				toUpdate.accountIdentifier = identifier;
-			}
+		const identifier = extractAccountIdentifierFromData(toUpdate);
+		if (identifier) {
+			toUpdate.accountIdentifier = identifier;
 		}
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
@@ -393,41 +419,6 @@ export class OauthService {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
 		});
-	}
-
-	static extractAccountIdentifier(tokenData: Record<string, unknown>): string | undefined {
-		for (const key of ['email', 'login', 'username', 'user', 'account']) {
-			if (typeof tokenData[key] === 'string' && tokenData[key]) {
-				return tokenData[key];
-			}
-		}
-
-		if (typeof tokenData.id_token === 'string') {
-			const parts = tokenData.id_token.split('.');
-			if (parts.length === 3) {
-				try {
-					const payload: Record<string, unknown> = JSON.parse(
-						Buffer.from(parts[1], 'base64url').toString(),
-					);
-					if (typeof payload.email === 'string' && payload.email) {
-						return payload.email;
-					}
-					if (typeof payload.preferred_username === 'string' && payload.preferred_username) {
-						return payload.preferred_username;
-					}
-				} catch {}
-			}
-		}
-
-		const authedUser = tokenData.authed_user;
-		if (authedUser && typeof authedUser === 'object') {
-			const user = authedUser as Record<string, unknown>;
-			if (typeof user.id === 'string' && user.id) {
-				return user.id;
-			}
-		}
-
-		return undefined;
 	}
 
 	/** Get a credential without user check */
@@ -642,13 +633,19 @@ export class OauthService {
 
 	/**
 	 * Derive a human-readable reason for the OAuth callback error page.
-	 * Prefers a structured HTTP `body`, then falls back to the wrapped `cause`
-	 * chain so errors like {@link CredentialStorageError} surface their root
-	 * cause instead of rendering an empty "More details" section.
+	 * Surfaces the fixed OAuth2 error code when the authorization server returned one,
+	 * then falls back to the wrapped `cause` chain so errors like
+	 * {@link CredentialStorageError} surface their root cause instead of rendering an
+	 * empty "More details" section.
+	 *
+	 * The reason is rendered into a page, so it is limited to values n8n produces or a
+	 * known OAuth2 code — never free-form content read back from the token endpoint.
+	 * Callers log the full error before rendering.
 	 */
 	extractCallbackErrorReason(error: Error): string | undefined {
-		if ('body' in error && error.body) {
-			return jsonStringify(error.body, { replaceCircularRefs: true });
+		if (error instanceof OAuth2AuthError) {
+			const errorCode = (error.body as { error?: unknown } | undefined)?.error;
+			return typeof errorCode === 'string' && errorCode.length > 0 ? errorCode : undefined;
 		}
 
 		const causes: string[] = [];
@@ -707,6 +704,12 @@ export class OauthService {
 	}
 
 	private createOAuth2ClientForRefresh(oauthCredentials: OAuth2CredentialData, resource?: string) {
+		if (!oauthCredentials.clientId || !oauthCredentials.accessTokenUrl) {
+			throw new UserError(
+				'This credential is missing its OAuth client details. Reconnect it to continue.',
+			);
+		}
+
 		const scopes = oauthCredentials.scope
 			?.split(' ')
 			.map((s) => s.trim())
@@ -720,6 +723,7 @@ export class OauthService {
 			...(resource ? { resource } : {}),
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
 			authentication: oauthCredentials.authentication ?? 'header',
+			ssrfBridge: this.getSsrfBridge(),
 		});
 	}
 
@@ -728,21 +732,75 @@ export class OauthService {
 		refreshedData: ClientOAuth2TokenData,
 		resource?: string,
 	) {
-		return {
+		const merged = {
 			...oauthTokenData,
 			...refreshedData,
 			...(!refreshedData.resource && resource ? { resource } : {}),
 		};
+		const expiresInSeconds = Number(merged.expires_in);
+		return Number.isFinite(expiresInSeconds) && expiresInSeconds > 0
+			? {
+					...merged,
+					n8n_expires_at: String(Date.now() + expiresInSeconds * 1000),
+				}
+			: merged;
+	}
+
+	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
+		if (!isRecord(tokenData)) return undefined;
+		const accessToken = tokenData.access_token ?? tokenData.accessToken;
+		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
+	}
+
+	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
+		const accessToken = this.getOAuth2AccessToken(tokenData);
+		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
+		return {
+			...(accessToken ? { accessToken } : {}),
+			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+		};
+	}
+
+	private oauth2TokenRevisionChanged(
+		initial: OAuth2CredentialTokenRevision,
+		current: ClientOAuth2TokenData,
+	): boolean {
+		const currentRevision = this.getOAuth2TokenRevision(current);
+		return (
+			initial.accessToken !== currentRevision.accessToken ||
+			initial.expiresAt !== currentRevision.expiresAt
+		);
+	}
+
+	private buildOAuth2RefreshResult(
+		tokenData: ClientOAuth2TokenData,
+		accessToken = this.getOAuth2AccessToken(tokenData),
+	): OAuth2CredentialRefreshResult | null {
+		if (!accessToken) return null;
+
+		const expiresAt = Number(tokenData.n8n_expires_at);
+		const expiresInSeconds = Number(tokenData.expires_in);
+		return {
+			headers: { Authorization: `Bearer ${accessToken}` },
+			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+			...(Number.isFinite(expiresInSeconds) && expiresInSeconds > 0 ? { expiresInSeconds } : {}),
+		};
+	}
+
+	private isRevokedOAuth2GrantError(error: unknown): boolean {
+		if (!(error instanceof OAuth2AuthError)) return false;
+		return (error.body as { error?: unknown } | undefined)?.error === 'invalid_grant';
 	}
 
 	/**
-	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
-	 * and return the new auth headers to inject into outbound requests.
+	 * Refresh the OAuth2 token stored on a credential by ID. Save the new token data.
+	 * Return the auth headers and expiry time for outbound requests.
 	 */
 	async refreshOAuth2CredentialById(
 		credentialId: string,
 		projectId: string,
-	): Promise<Record<string, string> | null> {
+		knownTokenRevision?: OAuth2CredentialTokenRevision,
+	): Promise<OAuth2CredentialRefreshResult | null> {
 		const credential = await this.credentialsRepository.findOne({
 			where: { id: credentialId, usageScope: 'project' },
 			relations: { shared: true },
@@ -754,49 +812,88 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
+		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
 
-		const resource = this.resolveOAuth2Resource(oauthCredentials, oauthTokenData);
-		const oAuthClient = this.createOAuth2ClientForRefresh(oauthCredentials, resource);
+		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
+			const currentCredential = await this.credentialsRepository.findOne({
+				where: { id: credentialId, usageScope: 'project' },
+				relations: { shared: true },
+			});
+			if (!currentCredential) return null;
+			if (!this.credentialIsAccessibleToProject(currentCredential, projectId)) return null;
 
-		const token = oAuthClient.createToken(
-			{
-				...oauthTokenData,
-				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
-				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			const currentOAuthCredentials =
+				await this.getOAuthCredentials<OAuth2CredentialData>(currentCredential);
+			const currentTokenData = currentOAuthCredentials.oauthTokenData as
+				| ClientOAuth2TokenData
+				| undefined;
+			if (!currentTokenData) return null;
+
+			if (this.oauth2TokenRevisionChanged(tokenRevision, currentTokenData)) {
+				return this.buildOAuth2RefreshResult(currentTokenData);
+			}
+
+			const resource = this.resolveOAuth2Resource(currentOAuthCredentials, currentTokenData);
+			const oAuthClient = this.createOAuth2ClientForRefresh(currentOAuthCredentials, resource);
+			const token = oAuthClient.createToken(
+				{
+					...currentTokenData,
+					...(currentTokenData.access_token ? { access_token: currentTokenData.access_token } : {}),
+					...(currentTokenData.refresh_token
+						? { refresh_token: currentTokenData.refresh_token }
+						: {}),
+				},
+				currentTokenData.token_type,
+			);
+
+			let refreshed;
+			try {
+				refreshed =
+					currentOAuthCredentials.grantType === 'clientCredentials'
+						? await token.client.credentials.getToken()
+						: await token.refresh();
+			} catch (error) {
+				if (this.isRevokedOAuth2GrantError(error)) {
+					throw new UserError('This credential needs to be reconnected.', { cause: error });
+				}
+				this.logger.warn('Failed to refresh OAuth2 token for credential', {
+					credentialId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return null;
+			}
+
+			const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
+				currentTokenData,
+				refreshed.data,
+				resource,
+			);
+
+			try {
+				await this.encryptAndSaveData(currentCredential, { oauthTokenData: refreshedTokenData });
+			} catch (error) {
+				this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+					credentialId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				throw new OperationalError('Could not save the refreshed OAuth2 token.', { cause: error });
+			}
+
+			return this.buildOAuth2RefreshResult(refreshedTokenData, refreshed.accessToken);
+		};
+
+		return await this.oauth2Refreshes.run(credentialId, runRefresh, {
+			lockService: this.lockService,
+			namespace: LockNamespace.CREDENTIALS,
+			waitTimeoutMs: 10_000,
+			leaseTtlMs: 30_000,
+			onLeaseTimeout: (error) => {
+				this.logger.warn('Refreshing the OAuth2 credential without cross-process coordination', {
+					credentialId,
+					error: error.message,
+				});
 			},
-			oauthTokenData.token_type,
-		);
-
-		let refreshed;
-		try {
-			refreshed =
-				oauthCredentials.grantType === 'clientCredentials'
-					? await token.client.credentials.getToken()
-					: await token.refresh();
-		} catch (error) {
-			this.logger.warn('Failed to refresh OAuth2 token for credential', {
-				credentialId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return null;
-		}
-
-		const refreshedTokenData = this.mergeRefreshedOAuthTokenData(
-			oauthTokenData,
-			refreshed.data,
-			resource,
-		);
-
-		try {
-			await this.encryptAndSaveData(credential, { oauthTokenData: refreshedTokenData });
-		} catch (error) {
-			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
-				credentialId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-
-		return { Authorization: `Bearer ${refreshed.accessToken}` };
+		});
 	}
 
 	/**
@@ -1060,10 +1157,6 @@ export class OauthService {
 
 		const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
 			metadataValidation.data;
-		oauthCredentials.authUrl = authorization_endpoint;
-		oauthCredentials.accessTokenUrl = token_endpoint;
-		toUpdate.authUrl = authorization_endpoint;
-		toUpdate.accessTokenUrl = token_endpoint;
 		// Prefer the scopes advertised by the protected resource (RFC 9728) over the
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
@@ -1081,18 +1174,6 @@ export class OauthService {
 			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
 			metadataValidation.data.code_challenge_methods_supported ?? [],
 		);
-		oauthCredentials.grantType = grantType;
-		toUpdate.grantType = grantType;
-		oauthCredentials.usePkce = usePkce;
-		toUpdate.usePkce = usePkce;
-		if (authentication) {
-			oauthCredentials.authentication = authentication;
-			toUpdate.authentication = authentication;
-		} else {
-			delete oauthCredentials.authentication;
-			toDelete.push('authentication');
-		}
-
 		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
 			grantType,
 			authentication,
@@ -1127,14 +1208,35 @@ export class OauthService {
 		}
 
 		const { client_id, client_secret } = registrationValidation.data;
-		oauthCredentials.clientId = client_id;
-		toUpdate.clientId = client_id;
-		if (authentication && client_secret) {
-			oauthCredentials.clientSecret = client_secret;
-			toUpdate.clientSecret = client_secret;
-		} else {
-			delete oauthCredentials.clientSecret;
-			toDelete.push('clientSecret');
+
+		this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
+			authUrl: authorization_endpoint,
+			accessTokenUrl: token_endpoint,
+			grantType,
+			authentication,
+			usePkce,
+			clientId: client_id,
+			clientSecret: authentication ? client_secret : undefined,
+		});
+	}
+
+	/** Clears the fields the authorization server did not grant. */
+	private applyDcrManagedFields(
+		oauthCredentials: OAuth2CredentialData,
+		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[],
+		negotiated: DcrManagedCredentialValues,
+	): void {
+		for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+			const value = negotiated[field];
+			if (value === undefined) {
+				Reflect.deleteProperty(oauthCredentials, field);
+				toDelete.push(field);
+				continue;
+			}
+
+			Object.assign(oauthCredentials, { [field]: value });
+			toUpdate[field] = value;
 		}
 	}
 

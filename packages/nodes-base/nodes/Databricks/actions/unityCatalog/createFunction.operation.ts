@@ -1,6 +1,11 @@
 import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+import {
+	databricksApiRequest,
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -21,7 +26,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
 	}));
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = await databricksApiRequest(this, credentialType, {
 		method: 'POST',
 		url: `${host}/api/2.1/unity-catalog/functions`,
 		body: {

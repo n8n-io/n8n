@@ -23,11 +23,13 @@ export { seedMcpRegistry } from './mcp-registry/seeder';
 export type { McpRegistrySeedResult } from './mcp-registry/seeder';
 
 // -- Concurrency helper --
-export { runWithConcurrency } from './harness/runner';
+export { runWithConcurrency } from './harness/cleanup';
 
 // -- Runner (split API: build once, run scenarios independently) --
-export { buildWorkflow, executeScenario, cleanupBuild } from './harness/runner';
-export type { BuildResult, BuildWorkflowConfig } from './harness/runner';
+export { buildWorkflow } from './harness/build-workflow';
+export type { BuildResult, BuildWorkflowConfig } from './harness/build-workflow';
+export { executeScenario } from './harness/scenario-execution';
+export { cleanupBuild } from './harness/cleanup';
 
 // -- Workflow discovery --
 export { snapshotWorkflowIds } from './outcome/workflow-discovery';

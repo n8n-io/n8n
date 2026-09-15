@@ -822,6 +822,59 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should reconstruct thinking blocks with empty thinking text', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_omitted_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.messageLog?.[0].content).toEqual([
+				{
+					type: 'thinking',
+					thinking: '',
+					signature: 'encrypted_signature_abc',
+				},
+				{
+					type: 'tool_use',
+					id: 'call_omitted_1',
+					name: 'Calculator',
+					input: { expression: '2+2' },
+				},
+			]);
+		});
+
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -1029,6 +1082,96 @@ describe('buildSteps', () => {
 			});
 			// When thinking blocks are present, tool_calls is not used (everything is in content array)
 			// Note: Anthropic thinking and Gemini thought_signature are mutually exclusive
+		});
+	});
+
+	describe('DeepSeek reasoning_content reconstruction', () => {
+		it('should reconstruct AIMessage with reasoning_content in additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								deepseek: {
+									reasoningContent: 'The user wants me to add 2+2, I should call the calculator.',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+			// Unlike Anthropic thinking, DeepSeek keeps tool_calls (content stays a plain array)
+			expect(message.tool_calls).toHaveLength(1);
+			expect(message.tool_calls?.[0]).toMatchObject({
+				id: 'call_123',
+				name: 'Calculator',
+				type: 'tool_call',
+			});
+		});
+
+		it('should not set additional_kwargs when reasoning_content is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBeUndefined();
 		});
 	});
 
@@ -1429,6 +1572,10 @@ describe('buildSteps', () => {
 			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
 				call_123: 'gemini_thought_sig_abc123',
 			});
+			// Content is empty, so the function call is the only Gemini request part; the
+			// signatures array must align with the parts or google-common drops it entirely
+			expect(message.content).toEqual([]);
+			expect(message.additional_kwargs.signatures).toEqual(['gemini_thought_sig_abc123']);
 		});
 
 		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {

@@ -5,7 +5,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -13,6 +13,7 @@ import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
@@ -419,6 +420,35 @@ describe('CredentialsView', () => {
 			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
+		});
+	});
+
+	describe('credentials shared with all users and projects', () => {
+		it('requests global credentials for the personal project page', async () => {
+			const personalProject = createTestProject({
+				id: 'personal-project-id',
+				type: ProjectTypes.Personal,
+			});
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = personalProject;
+			projectsStore.currentProject = personalProject;
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.fetchAllCredentials.mockClear();
+
+			await router.push({
+				name: VIEWS.CREDENTIALS,
+				params: { projectId: personalProject.id },
+			});
+			renderComponent();
+			await flushPromises();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: personalProject.id,
+					includeGlobal: true,
+				}),
+			);
 		});
 	});
 

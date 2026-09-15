@@ -23,9 +23,12 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -37,9 +40,13 @@ import {
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
+	shouldRedactConsoleOutput,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -93,10 +100,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
+		this.executeData.metadata = deepMerge(this.executeData.metadata ?? {}, metadata);
 	}
 
 	getContext(type: ContextType): IContextObject {
@@ -212,7 +216,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
+		const threadId = callerSessionId || randomUUID();
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -240,6 +244,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
+		const sendResponseChunk =
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
+
 		return await this.additionalData.executeAgent(
 			source,
 			message,
@@ -249,7 +261,47 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
 			workflowContext,
+			{
+				nodeId: this.node.id,
+				nodeName: this.node.name,
+				runIndex: this.runIndex,
+				itemIndex,
+				...(sendResponseChunk ? { sendResponseChunk } : {}),
+			},
 		);
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
@@ -297,10 +349,39 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		).getDataProxy();
 	}
 
+	/**
+	 * Console output never passes through the execution-data redaction pipeline,
+	 * so the push/stdout sinks gate on this before emitting. Fails closed: an
+	 * error while resolving the policy redacts rather than emits.
+	 */
+	isConsoleOutputRedacted(): boolean {
+		try {
+			return shouldRedactConsoleOutput(
+				this.runExecutionData.executionData?.runtimeData?.redaction,
+				this.workflow.settings,
+				this.mode,
+			);
+		} catch {
+			return true;
+		}
+	}
+
+	/**
+	 * `args` unchanged, or just the redaction marker when console output is
+	 * redacted for this run. Shared by the stdout branch of `logNodeOutput` in
+	 * `ExecuteContext` and `SupplyDataContext`.
+	 */
+	protected redactedConsoleArgs(args: unknown[]): unknown[] {
+		return this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	sendMessageToUI(...args: any[]): void {
 		if (this.mode !== 'manual') {
 			return;
+		}
+		if (this.isConsoleOutputRedacted()) {
+			args = [CONSOLE_OUTPUT_REDACTED_MESSAGE];
 		}
 		try {
 			if (this.additionalData.sendDataToUI) {

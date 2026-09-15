@@ -9,7 +9,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
-import { readFirstOutputItem, readFirstInputItemViaGraph } from '../../composables/useSliceInputs';
+import {
+	readFirstOutputItem,
+	readFirstInputItemViaGraph,
+	buildEvaluationTriggerSources,
+} from '../../composables/useSliceInputs';
 import { formatShortDateTime, stringifyValue } from '../../evaluation.utils';
 
 const props = defineProps<{
@@ -66,9 +70,10 @@ const items = computed<{ input?: Record<string, unknown>; output?: Record<string
 		const isTrigger = allNodes.some(
 			(n) => n.name === probe && nodeTypesStore.isTriggerNode(n.type),
 		);
+		const evaluationTriggers = buildEvaluationTriggerSources(allNodes);
 		const input = isTrigger
-			? readFirstOutputItem(runData, probe)
-			: readFirstInputItemViaGraph(runData, connections, probe);
+			? readFirstOutputItem(runData, probe, evaluationTriggers)
+			: readFirstInputItemViaGraph(runData, connections, probe, evaluationTriggers);
 		const output = readFirstOutputItem(runData, probe);
 		return { input, output };
 	},
@@ -115,7 +120,6 @@ const outputEntries = computed(() => toEntries(items.value.output));
 
 			<N8nButton
 				size="mini"
-				type="primary"
 				:class="[$style.createButton, expanded ? $style.createButtonVisible : null]"
 				:data-test-id="`tests-execution-create-${execution.id}`"
 				@click="emit('create')"

@@ -94,7 +94,7 @@ export class KafkaHelper {
 				const groups = await admin.describeGroups([groupId]);
 				const group = groups.groups[0];
 
-				if (group && group.state === 'Stable' && group.members.length > 0) {
+				if (group?.state === 'Stable' && group.members.length > 0) {
 					return;
 				}
 

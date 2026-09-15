@@ -4,8 +4,8 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
-import { defaultSettings } from '@/__tests__/defaults';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import type { AgentJsonConfig } from '../types';
 
@@ -22,8 +22,9 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDialogHeader: { template: '<div><slot /></div>' },
 	N8nDialogTitle: { template: '<div><slot /></div>' },
-	N8nIconButton: {
-		template: '<button :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\', $event)" />',
+	N8nButton: {
+		template:
+			'<button :disabled="disabled" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\', $event)" />',
 		props: ['disabled'],
 		emits: ['click'],
 	},

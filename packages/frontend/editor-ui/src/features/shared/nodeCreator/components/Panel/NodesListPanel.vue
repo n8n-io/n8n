@@ -37,7 +37,7 @@ import CommunityNodeDetails from '@/features/settings/communityNodes/components/
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
@@ -112,6 +112,10 @@ function getDefaultActiveIndex(search: string = ''): number {
 
 function applySearch(value: string) {
 	if (!activeViewStack.value.uuid) return;
+	// Re-applying an identical term (e.g. a trailing space, trimmed on emit) would
+	// regenerate item uuids without the memoized list DOM picking them up,
+	// breaking Enter selection.
+	if (activeViewStack.value.search === value) return;
 	updateCurrentViewStack({ search: value });
 	void setActiveItemIndex(getDefaultActiveIndex(value));
 	if (value.length) {
@@ -335,6 +339,8 @@ function onBackButton() {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 :global(.panel-slide-in-leave-active),
 :global(.panel-slide-in-enter-active),
 :global(.panel-slide-out-leave-active),
@@ -460,6 +466,8 @@ function onBackButton() {
 </style>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 @each $node-type in $supplemental-node-types {
 	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
 		.n8n-node-icon svg {

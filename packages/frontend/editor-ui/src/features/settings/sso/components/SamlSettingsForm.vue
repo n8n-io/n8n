@@ -4,15 +4,15 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSegmentControl, N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
@@ -73,6 +73,7 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
+	defaultInstanceRole,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	trackProvisioningChange,
@@ -398,7 +399,7 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nRadioButtons
+						<N8nSegmentControl
 							v-model="ipsType"
 							:disabled="isSsoManagedByEnv"
 							:options="ipsOptions"
@@ -435,12 +436,14 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
+				v-model:default-instance-role="defaultInstanceRole"
 				:disabled="isSsoManagedByEnv"
 				auth-protocol="saml"
 			/>
 			<RoleMappingRuleEditor
 				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
+				v-model:default-instance-role="defaultInstanceRole"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog

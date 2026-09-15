@@ -17,10 +17,7 @@ This rule applies to node classes that:
 - define a `webhookMethods` class property.
 
 For every webhook group inside `webhookMethods` (typically `default`), the
-methods `checkExists`, `create`, and `delete` must all be implemented. A key
-names its method however it is written, so `delete`, `'delete'` and `['delete']`
-are the same property here. A key built at runtime (`[methodName]`) cannot be
-read, so it does not count as an implementation.
+methods `checkExists`, `create`, and `delete` must all be implemented.
 
 Polling triggers (trigger nodes without a `webhooks` array and without
 `webhookMethods`) are intentionally out of scope.

@@ -12,6 +12,7 @@
  * The tool-result is inserted right after its tool-call, regardless of what
  * messages follow it in the n8n list.
  */
+import type { ModelMessage } from 'ai';
 import { describe, it, expect } from 'vitest';
 
 import type { Message } from '../../types/sdk/message';
@@ -123,6 +124,58 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		});
 	});
 
+	it('keeps only the last Anthropic signature when assistant responses are adjacent', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'First response reasoning',
+						providerMetadata: { anthropic: { signature: 'first-signature' } },
+					},
+					{ type: 'text', text: 'First response' },
+				],
+			},
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Second response reasoning',
+						providerMetadata: { anthropic: { signature: 'second-signature' } },
+					},
+					{ type: 'text', text: 'Second response' },
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const content = aiMessages.map(
+			(message) =>
+				(
+					message as {
+						content: Array<{
+							type: string;
+							text?: string;
+							providerOptions?: { anthropic?: { signature?: string } };
+						}>;
+					}
+				).content,
+		);
+
+		expect(content.flatMap((parts) => parts).filter((part) => part.type === 'text')).toEqual([
+			{ type: 'text', text: 'First response' },
+			{ type: 'text', text: 'Second response' },
+		]);
+		expect(
+			content
+				.flatMap((parts) => parts)
+				.map((part) => part.providerOptions?.anthropic?.signature)
+				.filter((signature) => signature !== undefined),
+		).toEqual(['second-signature']);
+	});
+
 	it('copies OpenAI reasoning replay metadata into providerOptions on replay', () => {
 		const providerMetadata = {
 			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
@@ -152,6 +205,70 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(reasoningPart.providerOptions).toEqual({
 			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
 		});
+	});
+
+	it('round-trips SDK 7 reasoning files with provider replay state', () => {
+		const aiMessage: ModelMessage = {
+			role: 'assistant',
+			content: [
+				{
+					type: 'reasoning-file',
+					data: 'base64-reasoning-data',
+					mediaType: 'application/octet-stream',
+					providerOptions: { google: { thoughtSignature: 'gemini-signature' } },
+				},
+			],
+		};
+
+		const agentMessages = fromAiMessages([aiMessage]);
+
+		expect(agentMessages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning-file',
+						data: 'base64-reasoning-data',
+						mediaType: 'application/octet-stream',
+						providerOptions: { google: { thoughtSignature: 'gemini-signature' } },
+					},
+				],
+			},
+		]);
+		expect(toAiMessages(agentMessages as Message[])).toEqual([aiMessage]);
+	});
+
+	it('round-trips SDK 7 custom provider state', () => {
+		const aiMessage: ModelMessage = {
+			role: 'assistant',
+			content: [
+				{
+					type: 'custom',
+					kind: 'openai.compaction',
+					providerOptions: {
+						openai: { itemId: 'cmp_123', encryptedContent: 'encrypted' },
+					},
+				},
+			],
+		};
+
+		const agentMessages = fromAiMessages([aiMessage]);
+
+		expect(agentMessages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'custom',
+						kind: 'openai.compaction',
+						providerOptions: {
+							openai: { itemId: 'cmp_123', encryptedContent: 'encrypted' },
+						},
+					},
+				],
+			},
+		]);
+		expect(toAiMessages(agentMessages as Message[])).toEqual([aiMessage]);
 	});
 
 	it.each([
@@ -589,6 +706,69 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(block.type).toBe('tool-call');
 		expect((block as { state: string }).state).toBe('resolved');
 		expect((block as { output: unknown }).output).toEqual({ result: 3 });
+	});
+
+	it('round-trips provider-executed tool results inside the assistant message', () => {
+		// Native web search: the AI SDK places the result in the assistant message,
+		// never in a role:tool message.
+		const results = [{ url: 'https://n8n.io', title: 'n8n', type: 'web_search_result' }];
+		const searchError = { type: 'web_search_tool_result_error', errorCode: 'max_uses_exceeded' };
+		const error = JSON.stringify(searchError);
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_1',
+						toolName: 'web_search',
+						output: { type: 'json', value: results },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						input: { query: 'more' },
+						providerExecuted: true,
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'srvtoolu_2',
+						toolName: 'web_search',
+						output: { type: 'error-json', value: searchError },
+					},
+					{ type: 'text', text: 'Here is what I found.' },
+				],
+			},
+		];
+
+		const persisted = fromAiMessages(aiMessages) as Message[];
+		expect(persisted[0].content).toMatchObject([
+			{ type: 'tool-call', state: 'resolved', output: results },
+			{ type: 'tool-call', state: 'rejected', error },
+			{ type: 'text' },
+		]);
+
+		const replayed = toAiMessages(persisted);
+		expect(replayed).toHaveLength(1);
+		expect(replayed[0].content).toMatchObject([
+			{ type: 'tool-call', toolCallId: 'srvtoolu_1', providerExecuted: true },
+			{ type: 'tool-result', toolCallId: 'srvtoolu_1', output: { type: 'json', value: results } },
+			{ type: 'tool-call', toolCallId: 'srvtoolu_2', providerExecuted: true },
+			{
+				type: 'tool-result',
+				toolCallId: 'srvtoolu_2',
+				output: { type: 'error-json', value: error },
+			},
+			{ type: 'text', text: 'Here is what I found.' },
+		]);
 	});
 
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {

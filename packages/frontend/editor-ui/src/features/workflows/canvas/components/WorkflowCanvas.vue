@@ -36,6 +36,7 @@ import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -130,6 +131,7 @@ const suppressInteractionRef = computed(() => props.suppressInteraction ?? false
 
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+const agentNodeGeometryStore = useAgentNodeCanvasGeometryStore();
 
 const {
 	nodes: mappedWorkflowNodes,
@@ -143,6 +145,7 @@ const {
 	allGroups,
 	nodeGroupView,
 	isExperimentalNdvActive,
+	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
 
 const groupIdsToExpand = computed(() => {

@@ -6,7 +6,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
-import { getSites, resolveSiteId, siteRLC } from '../../v2/site';
+import { getSites, resolveSiteId, SITE_ID_REGEX, siteRLC } from '../../v2/site';
 import * as transport from '../../v2/transport';
 import type * as _importType0 from '../../v2/transport';
 
@@ -120,23 +120,53 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 		expect(thrown?.description).toContain('Sites.Read.All application permission');
 	});
 
-	it('keeps the permission-naming message for delegated refusals', async () => {
+	it('points delegated sign-ins without search rights at URL or ID mode', async () => {
 		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-		// Mirrors the transport's delegated 403 shape: the permission-naming
-		// message is set as the error option, as delegatedApiError does
+		// The old permission-naming message must be replaced, not merely unread —
+		// mock it present so a leak would show up in the assertions below
 		apiRequest.mockRejectedValue(
 			new NodeApiError(
 				mock<INode>(),
-				{ message: 'refused' },
-				{
-					httpCode: '403',
-					message: 'the credential may be missing the Sites.Read.All permission',
-				},
+				{},
+				{ httpCode: '403', message: 'the credential may be missing the Sites.Read.All permission' },
 			),
 		);
 
-		// URL paste would hit the same refusal — the accurate message must survive
-		await expect(getSites.call(ctx)).rejects.toThrow(/Sites\.Read\.All/);
+		let thrown: NodeApiError | undefined;
+		try {
+			await getSites.call(ctx);
+		} catch (error) {
+			thrown = error as NodeApiError;
+		}
+
+		expect(thrown).toBeInstanceOf(NodeApiError);
+		expect(thrown?.httpCode).toBe('403');
+		expect(thrown?.message).toBe('This credential cannot search sites');
+		const description = thrown?.description ?? '';
+		expect(description).toContain('URL or ID mode');
+		expect(description).toContain('Sites.Selected');
+		// Sites.Read.All is the optional, secondary path — not the primary instruction
+		expect(description.indexOf('URL or ID mode')).toBeLessThan(
+			description.indexOf('Sites.Read.All'),
+		);
+		// The transport's original wording must not survive into the new message
+		expect(thrown?.message).not.toContain('missing');
+		expect(description).not.toContain('missing');
+	});
+
+	it('passes through a non-403 delegated error unchanged', async () => {
+		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+		const original = new NodeApiError(mock<INode>(), { message: 'boom' }, { httpCode: '500' });
+		apiRequest.mockRejectedValue(original);
+
+		await expect(getSites.call(ctx)).rejects.toBe(original);
+	});
+
+	it('passes through a non-NodeApiError delegated rejection unchanged', async () => {
+		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+		apiRequest.mockRejectedValue(new Error('boom'));
+
+		await expect(getSites.call(ctx)).rejects.toThrow('boom');
 	});
 
 	it('offers search first, with URL and ID modes alongside', () => {
@@ -168,7 +198,9 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		vi.clearAllMocks();
 		ctx = mockDeep<IExecuteFunctions>();
 		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
-		apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+		apiRequest.mockResolvedValue({
+			id: 'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
+		});
 	});
 
 	// Graph documents both shapes: a bare hostname addresses that host's root
@@ -200,7 +232,9 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 	])('resolves %s via the documented Graph addressing', async (_name, url, endpoint) => {
 		setSite({ mode: 'url', value: url });
 
-		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe(
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
+		);
 
 		expect(apiRequest).toHaveBeenCalledWith('GET', endpoint, {}, { $select: 'id' });
 	});
@@ -231,11 +265,52 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		);
 	});
 
-	it('returns an ID as given, without a request', async () => {
-		setSite({ mode: 'id', value: 'contoso.sharepoint.com,g1,g2' });
+	const COMPOSITE_ID =
+		'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 
-		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+	it.each([
+		['a composite hostname,GUID,GUID ID', COMPOSITE_ID],
+		['a bare site GUID', '2C712604-1370-44E7-A1F5-426573FDA80A'],
+		['a bare hostname', 'contoso.sharepoint.com'],
+		['the literal "root"', 'root'],
+	])('returns %s as given, without a request', async (_name, value) => {
+		setSite({ mode: 'id', value });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe(value);
 		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// The live repro was a composite ID pasted with a trailing quote, forwarded
+	// to Graph verbatim and answered with a raw 400 that never named the field
+	it.each([
+		['a trailing quote', `${COMPOSITE_ID}"`],
+		['an embedded space', COMPOSITE_ID.replace(',2D', ', 2D')],
+		['a site URL pasted into ID mode', 'https://contoso.sharepoint.com/sites/a'],
+	])('rejects an ID with %s before any request', async (_name, value) => {
+		setSite({ mode: 'id', value });
+
+		await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' ID is not valid");
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it("does not regex-check list-mode values — they come from Graph's own search", async () => {
+		setSite({ mode: 'list', value: 'not a valid typed id "at all"' });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('not a valid typed id "at all"');
+	});
+
+	it('validates typed IDs in the By ID mode with the same pattern the runtime guard uses', () => {
+		const idMode = siteRLC.modes?.find((mode) => mode.name === 'id');
+
+		expect(idMode?.validation).toEqual([
+			{
+				type: 'regex',
+				properties: {
+					regex: SITE_ID_REGEX,
+					errorMessage: expect.stringContaining('hostname,GUID,GUID'),
+				},
+			},
+		]);
 	});
 
 	it('resolves a repeated site URL once when given a per-run cache', async () => {
@@ -243,10 +318,10 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		const siteIdCache = new Map<string, string>();
 
 		await expect(resolveSiteId.call(ctx, 0, siteIdCache)).resolves.toBe(
-			'contoso.sharepoint.com,g1,g2',
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
 		);
 		await expect(resolveSiteId.call(ctx, 1, siteIdCache)).resolves.toBe(
-			'contoso.sharepoint.com,g1,g2',
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
 		);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);

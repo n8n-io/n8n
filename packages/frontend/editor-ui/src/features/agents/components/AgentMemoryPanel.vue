@@ -5,20 +5,22 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nTooltip,
-	N8nIconButton,
+	N8nButton,
 	N8nText,
 	N8nSwitch,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import AgentModelSelector from './AgentModelSelector.vue';
+import AgentPanel from './AgentPanel.vue';
+
 import {
 	type AgentModelOption,
 	type AgentModelProvider,
@@ -65,7 +67,7 @@ const isAiAssistantProxyEnabled = computed(
 const configuredMemoryModel = computed(() => {
 	const episodicModel =
 		episodicMemory.value?.enabled === true
-			? (episodicMemory.value.reflectorModel?.model ?? episodicMemory.value.extractorModel?.model)
+			? (episodicMemory.value.reflectorModel?.model ?? null)
 			: null;
 
 	return (
@@ -76,6 +78,23 @@ const configuredMemoryModel = computed(() => {
 	);
 });
 const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
+
+// Follows the same precedence as `configuredMemoryModel`, down to falling back
+// to the agent's own credential when no memory-specific model is configured.
+const configuredMemoryCredential = computed(() => {
+	const episodicCredential =
+		episodicMemory.value?.enabled === true
+			? (episodicMemory.value.reflectorModel?.credential ?? null)
+			: null;
+
+	return (
+		episodicCredential ??
+		props.config?.memory?.observationalMemory?.reflectorModel?.credential ??
+		props.config?.memory?.observationalMemory?.observerModel?.credential ??
+		props.config?.credential ??
+		null
+	);
+});
 
 watch(
 	projectId,
@@ -174,7 +193,6 @@ function onMemoryRecallModelChange(selection: AgentModelSelection) {
 				? {
 						episodicMemory: {
 							...existingEpisodicMemory,
-							extractorModel: workerModel,
 							reflectorModel: workerModel,
 						},
 					}
@@ -203,37 +221,32 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.header">
-			<div :class="$style.titleGroup">
-				<N8nText step="sm" bold :class="shared.dataEntryLabel">
-					{{ i18n.baseText('agents.builder.memory.title') }}
-				</N8nText>
-				<N8nText size="small" :class="shared.dataEntrySubLabel">
-					{{ i18n.baseText('agents.builder.memory.description') }}
-				</N8nText>
-			</div>
-			<N8nTooltip>
-				<template #content>{{ i18n.baseText('generic.settings') }}</template>
-				<N8nIconButton
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.memory.title')"
+		:description="i18n.baseText('agents.builder.memory.description')"
+	>
+		<template #header-actions>
+			<N8nTooltip :content="i18n.baseText('generic.settings')">
+				<N8nButton
 					variant="ghost"
-					size="small"
-					icon-size="medium"
+					size="medium"
 					icon="cog"
+					icon-size="large"
+					icon-only
 					:aria-label="i18n.baseText('generic.settings')"
 					:disabled="props.disabled"
 					data-testid="agent-memory-settings-button"
 					@click="settingsDialogOpen = true"
 				/>
 			</N8nTooltip>
-		</div>
+		</template>
 
 		<div :class="$style.row">
 			<div :class="$style.titleGroup">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
-				<N8nText size="small" :class="shared.dataEntrySubLabel">
+				<N8nText step="sm" color="text-light">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
 			</div>
@@ -244,7 +257,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
 			/>
 		</div>
-
 		<N8nDialog :open="settingsDialogOpen" size="medium" @update:open="settingsDialogOpen = $event">
 			<N8nDialogHeader>
 				<N8nDialogTitle>
@@ -257,7 +269,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
 						</N8nText>
-						<N8nText size="small" :class="shared.dataEntrySubLabel">
+						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
 						</N8nText>
 					</div>
@@ -269,6 +281,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
+							:bound-credential-id="configuredMemoryCredential"
 							credential-modal-append-to-body
 							data-testid="agent-memory-recall-model-selector"
 							@change="onMemoryRecallModelChange"
@@ -286,7 +299,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 								)
 							}}
 						</N8nText>
-						<N8nText size="small" :class="shared.dataEntrySubLabel">
+						<N8nText size="small" color="text-light">
 							{{
 								i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
 							}}
@@ -312,7 +325,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				</div>
 			</div>
 		</N8nDialog>
-	</div>
+	</AgentPanel>
 </template>
 
 <style module>
@@ -425,5 +438,9 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	border: none;
 	border-top: var(--border);
 	margin: var(--spacing--2xs) 0;
+}
+
+.settingsButton {
+	color: var(--text-color--subtler);
 }
 </style>

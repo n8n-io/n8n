@@ -1,6 +1,6 @@
 # @n8n/instance-ai
 
-Instance AI is the agent runtime behind the AI assistant experience in n8n. It
+Instance AI is the agent runtime behind the n8n Assistant experience in n8n. It
 lets users ask for help with workflows, executions, credentials, nodes, and
 workflow building from inside an n8n instance.
 
@@ -14,7 +14,7 @@ database entities, settings, and n8n service adapters live in
 Instance AI is built around a deep-agent loop:
 
 - An orchestrator agent receives the user's request and maintains the plan.
-- Most work runs in the orchestrator; eval setup uses a focused background agent.
+- Evaluation setup runs in the orchestrator through the config-evals skill.
 - Domain tools read and update n8n resources through backend adapters.
 - Observational memory condenses long conversations.
 - Workflow building runs in a sandbox workspace, validates generated TypeScript,
@@ -55,14 +55,11 @@ Expected response:
 {"status":"ok"}
 ```
 
-### 2. Start n8n With Instance AI Enabled
+### 2. Start n8n With Instance AI Configured
 
 In a second terminal:
 
 ```bash
-export N8N_ENABLED_MODULES=instance-ai
-export N8N_AI_ENABLED=true
-
 export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
 export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
@@ -70,6 +67,9 @@ export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 
 pnpm dev:ai
 ```
+
+The `instance-ai` module is enabled by default. `N8N_AI_ENABLED` is not an
+Instance AI runtime gate.
 
 The `pnpm --filter n8n-containers services` command writes
 `N8N_INSTANCE_AI_SANDBOX_PROVIDER`, `N8N_SANDBOX_SERVICE_URL`, and
@@ -120,9 +120,12 @@ pnpm --filter @n8n/instance-ai eval:instance-ai
 ## More Documentation
 
 - [Architecture](docs/architecture.md)
+- [Engineering standards](docs/ENGINEERING.md)
 - [Configuration](docs/configuration.md)
 - [Sandboxing](docs/sandboxing.md)
+- [Local Computer Use gateway](docs/filesystem-access.md)
 - [Tools](docs/tools.md)
 - [Memory](docs/memory.md)
 - [Streaming protocol](docs/streaming-protocol.md)
+- [E2E tests](docs/e2e-tests.md)
 - [Evaluations](evaluations/README.md)

@@ -7,7 +7,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -15,7 +15,7 @@ describe('CredentialSelectorModal', () => {
 	it('keeps the selector and nested credential editor above its parent modal', () => {
 		const wrapper = shallowMount(CredentialSelectorModal, {
 			props: {
-				modalName: 'agentModelCredentialModal',
+				modalName: 'chatCredentialSelectorModal',
 				data: {
 					credentialType: 'anthropicApi',
 					displayName: 'Anthropic',

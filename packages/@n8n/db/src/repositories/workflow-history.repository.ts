@@ -1,21 +1,50 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
+import { BaseRepository } from './base-repository';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
+import { WorkflowReviewRequest } from '../entities/workflow-review-request.ee';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
-export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
+export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	constructor(
 		dataSource: DataSource,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowHistory, dataSource.manager);
+		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
 
 	async deleteEarlierThan(date: Date) {
 		return await this.delete({ createdAt: LessThan(date) });
+	}
+
+	/**
+	 * Name and optionally describe a single version. Scoped by `workflowId` too
+	 * so a version of another workflow can never be touched, and returns the
+	 * affected row count so callers running inside a transaction can treat `0`
+	 * as "already pruned". An omitted description leaves the column untouched.
+	 */
+	async updateVersionMetadata(
+		{
+			workflowId,
+			versionId,
+			name,
+			description,
+		}: { workflowId: string; versionId: string; name: string; description?: string | null },
+		ctx: OperationContext,
+	): Promise<number | undefined> {
+		const result = await this.managerFor(ctx).update(
+			WorkflowHistory,
+			{ workflowId, versionId },
+			{ name, ...(description !== undefined ? { description } : {}) },
+		);
+		return result.affected ?? undefined;
 	}
 
 	/**
@@ -48,6 +77,18 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.from(WorkflowPublishedVersion, 'wpv')
 			.getQuery();
 
+		// Versions pinned by an open review request must stay reviewable and
+		// publishable-on-approval. Closed reviews don't need it.
+		const openReviewPinnedVersionIdsSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('wrrw.workflowVersionId')
+			.from(WorkflowReviewRequestWorkflow, 'wrrw')
+			.innerJoin(WorkflowReviewRequest, 'wrr', 'wrr.id = wrrw.workflowReviewRequestId')
+			.where("wrr.state = 'open'")
+			.andWhere('wrrw.workflowVersionId IS NOT NULL')
+			.getQuery();
+
 		const query = this.manager
 			.createQueryBuilder()
 			.delete()
@@ -55,7 +96,8 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
 			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${publishedVersionIdsSubquery})`);
+			.andWhere(`versionId NOT IN (${publishedVersionIdsSubquery})`)
+			.andWhere(`versionId NOT IN (${openReviewPinnedVersionIdsSubquery})`);
 
 		if (preserveNamedVersions) {
 			query.andWhere('name IS NULL');

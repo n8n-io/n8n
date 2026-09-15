@@ -46,6 +46,12 @@ function isDiscriminatedUnionSchema(schema: z.ZodTypeAny): schema is Discriminat
 	return schema instanceof z.ZodDiscriminatedUnion;
 }
 
+function isZodUnionSchema(
+	schema: z.ZodTypeAny,
+): schema is z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]> {
+	return schema instanceof z.ZodUnion;
+}
+
 function filterUnsupportedTypedEntries(
 	entries: unknown,
 	supportedTypes: readonly string[],
@@ -182,6 +188,13 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 
 	if (isDiscriminatedUnionSchema(schema)) {
 		const option = getDiscriminatedUnionOption(schema, value);
+		return option === undefined ? value : stripUnknownSchemaFields(value, option);
+	}
+
+	if (isZodUnionSchema(schema)) {
+		// Strip against the first matching variant; a value matching none is
+		// kept as-is so strict validation surfaces the error.
+		const option = schema.options.find((candidate) => candidate.safeParse(value).success);
 		return option === undefined ? value : stripUnknownSchemaFields(value, option);
 	}
 

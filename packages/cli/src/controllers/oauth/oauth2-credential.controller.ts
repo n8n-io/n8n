@@ -84,7 +84,12 @@ export class OAuth2CredentialController {
 
 			await this.externalHooks.run('oauth2.callback', [oAuthOptions]);
 
-			const oAuthObj = new ClientOAuth2(oAuthOptions);
+			// The bridge is attached here rather than in the options object so it stays out of
+			// the payload handed to external hooks.
+			const oAuthObj = new ClientOAuth2({
+				...oAuthOptions,
+				ssrfBridge: this.oauthService.getSsrfBridge(),
+			});
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 

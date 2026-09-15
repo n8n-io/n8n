@@ -62,7 +62,7 @@ import {
 	XML_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -207,11 +207,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		TEMPLATE_CATEGORY_AI,
 	);
 
-	const askAiEnabled = settingsStore.isAskAiEnabled;
-	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
-	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
-
-	const callouts: NodeViewItem[] = [getAiTemplatesCallout(aiTemplatesURL)];
+	const callouts: NodeViewItem[] = settingsStore.isCanvasOnly
+		? []
+		: [getAiTemplatesCallout(aiTemplatesURL)];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -224,7 +222,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
-			...transformNode,
 			...evaluationNode,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,

@@ -68,6 +68,7 @@ describe('buildFromJson()', () => {
 
 	const makeMockToolExecutor = (): ToolExecutor => ({
 		executeTool: vi.fn().mockResolvedValue({ result: 'tool result' }),
+		executeToMessage: vi.fn().mockResolvedValue(undefined),
 	});
 
 	const makeMockCredentialProvider = () => ({
@@ -113,7 +114,6 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						extract?: unknown;
 						reflect?: unknown;
 					};
 					titleGeneration?: {
@@ -199,6 +199,28 @@ describe('buildFromJson()', () => {
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
+	it('appends the self-modification policy only for the preview chat', async () => {
+		const build = async (previewChat?: boolean) =>
+			(
+				await buildFromJson(
+					makeConfig(),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+						previewChat,
+					},
+				)
+			).snapshot.instructions ?? '';
+
+		const preview = await build(true);
+		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Preview chat policy');
+		expect(await build(false)).toBe('You are a test agent.');
+		expect(await build()).toBe('You are a test agent.');
+	});
+
 	it('handles multi-slash model string for aggregator providers', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),
@@ -233,21 +255,46 @@ describe('buildFromJson()', () => {
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
 	});
 
-	it('wires a custom tool', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search' });
+	it('executes a custom tool handler and message transform', async () => {
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+		const rawOutput = { matches: ['first', 'second'] };
+		const toolExecutor: ToolExecutor = {
+			executeTool: async () => rawOutput,
+			executeToMessage: async (_toolName, output) => ({
+				role: 'assistant',
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+			}),
+		};
 
 		const agent = await buildFromJson(
 			config,
 			{ search_tool: descriptor },
 			{
-				toolExecutor: makeMockToolExecutor(),
+				toolExecutor,
 				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
+		const tool = (
+			agent as unknown as {
+				tools: BuiltTool[];
+			}
+		).tools.find(({ name }) => name === 'my_search');
+		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
-		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
+		const output = await tool.handler({ query: 'n8n' }, {} as never);
+
+		expect(output).toEqual(rawOutput);
+		expect(await tool.toMessage(output)).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: '{"matches":["first","second"]}' }],
+		});
 	});
 
 	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
@@ -548,6 +595,23 @@ describe('buildFromJson()', () => {
 		expect(tool!.approval).toBeUndefined();
 	});
 
+	it('drops a workflow tool when resolveTool returns null', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Deleted Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool: vi.fn().mockResolvedValue(null),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Deleted Workflow')).toBe(false);
+	});
+
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 
@@ -564,9 +628,9 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
 	});
 
-	it('sets thinking config', async () => {
+	it('sets generic reasoning effort', async () => {
 		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+			config: { reasoning: 'high' },
 		});
 
 		const agent = await buildFromJson(
@@ -580,8 +644,7 @@ describe('buildFromJson()', () => {
 		);
 		const snap: AgentSnapshot = agent.snapshot;
 
-		expect(snap.thinking).not.toBeNull();
-		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+		expect(snap.reasoning).toBe('high');
 	});
 
 	it('sets prompt caching config with an Anthropic ttl', async () => {
@@ -846,6 +909,42 @@ describe('buildFromJson()', () => {
 		expect(getLocalToolNames(agent)).toContain('web_search');
 	});
 
+	it('routes fallback SearXNG search through the injected webSearchFetch', async () => {
+		const webSearchFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ results: [] }),
+		});
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiUrl: 'http://searxng.internal:8080' }),
+			list: vi.fn().mockResolvedValue([]),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'searxng', credential: 'searxng-url' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+				webSearchFetch: webSearchFetch as unknown as typeof fetch,
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'test' }, {} as never);
+
+		expect(webSearchFetch).toHaveBeenCalledTimes(1);
+		const [requestUrl] = webSearchFetch.mock.calls[0] as [string];
+		expect(requestUrl).toContain('http://searxng.internal:8080/search');
+	});
+
 	it('uses native web search when native provider is explicitly configured', async () => {
 		const agent = await buildFromJson(
 			makeConfig({
@@ -1079,7 +1178,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
@@ -1126,8 +1224,7 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
-		const extractSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
@@ -1143,7 +1240,6 @@ describe('buildFromJson()', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'embedding-key',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'episodic-reflector-key',
@@ -1162,11 +1258,6 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(extractSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'extractor-key-api-key',
-			baseURL: 'https://extractor-key.example/v1',
-		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
@@ -1179,7 +1270,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
-		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
 	});
 
@@ -1796,6 +1886,22 @@ describe('AgentJsonConfigSchema', () => {
 				transport: 'streamableHttp',
 				authentication: 'none',
 			});
+		});
+
+		it('accepts a native OAuth2 credential type', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://api.githubcopilot.com/mcp/',
+						authentication: 'githubOAuth2Api',
+						credential: 'github-credential',
+					},
+				],
+			});
+
+			expect(parsed.mcpServers?.[0].authentication).toBe('githubOAuth2Api');
 		});
 
 		it('rejects duplicate MCP server names', () => {

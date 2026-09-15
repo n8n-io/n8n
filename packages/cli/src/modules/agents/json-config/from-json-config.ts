@@ -1,5 +1,6 @@
 import type {
 	AgentBuilder,
+	AgentMessage,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -14,6 +15,7 @@ import type {
 	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import {
 	getNativeWebSearchProviderTools,
@@ -62,13 +64,23 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/**
+ * Appended only for the in-app preview chat. The agent has no tool that edits
+ * its own configuration, so without this it agrees to setup changes it cannot
+ * make. The preview UI offers the AI Assistant hand-off beside this answer.
+ */
+const PREVIEW_SELF_MODIFICATION_POLICY =
+	'### Preview chat policy\n' +
+	'This conversation only runs you. You cannot change your own setup — instructions, model, tools, skills, knowledge, channels, integrations, schedules, name or any other configuration — and you have no tool that can. This holds whether or not the user names you as the owner of the thing: "add a tool" and "connect a Slack channel" are setup changes too. If the user asks for such a change, say plainly that you cannot make it here, and tell them to ask the AI Assistant, which edits the agent for them. Never claim a setup change was applied.';
+
+/** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessageSync?(toolName: string, output: unknown): unknown;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -109,6 +121,8 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
+	webSearchFetch?: FetchFn;
 	/**
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool is attached without requiring a search provider
@@ -121,6 +135,13 @@ export interface BuildFromJsonOptions {
 	 * the eval path when its mock MCP transport is injected.
 	 */
 	attachAuthPendingMcpServers?: boolean;
+	/**
+	 * Build for the in-app preview chat, which appends
+	 * {@link PREVIEW_SELF_MODIFICATION_POLICY} to the instructions. Runtimes
+	 * built with this differ from every other surface, so callers must keep
+	 * them on their own cache key.
+	 */
+	previewChat?: boolean;
 }
 
 /**
@@ -149,7 +170,7 @@ export async function buildFromJson(
 		options.skills ?? {},
 		createRuntimeSkillRegistry,
 	);
-	agent.instructions(getInstructionsWithWebSearchPolicy(config));
+	agent.instructions(buildInstructions(config, options));
 
 	// Tools
 	if (config.tools) {
@@ -204,6 +225,7 @@ export async function buildFromJson(
 	const fallbackWebSearchTool = buildFallbackWebSearchTool(
 		config,
 		options.credentialProvider,
+		options.webSearchFetch,
 		options.fallbackWebSearch,
 	);
 	if (fallbackWebSearchTool) {
@@ -223,9 +245,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);
@@ -241,32 +262,18 @@ export async function buildFromJson(
 	return agent;
 }
 
-function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
-}
-
 function getProviderToolPrefix(toolName: string): string | undefined {
 	const dotIndex = toolName.indexOf('.');
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
 }
 
-function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
-	if (config.config?.webSearch?.enabled !== true) return config.instructions;
-	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+function buildInstructions(config: AgentJsonConfig, options: BuildFromJsonOptions): string {
+	const policies = [
+		config.config?.webSearch?.enabled === true ? WEB_SEARCH_POLICY_INSTRUCTION : undefined,
+		options.previewChat === true ? PREVIEW_SELF_MODIFICATION_POLICY : undefined,
+	].filter((policy) => policy !== undefined);
+	if (policies.length === 0) return config.instructions;
+	return [config.instructions.trimEnd(), ...policies].join('\n\n');
 }
 
 /**
@@ -277,7 +284,7 @@ export function buildProviderToolsForModel(
 	config: AgentJsonConfig,
 	modelConfig: ModelConfig,
 ): BuiltProviderTool[] {
-	const modelId = modelConfigToModelId(modelConfig);
+	const modelId = modelConfigToId(modelConfig);
 	if (!modelId) return [];
 
 	const providerPrefix = getProviderPrefix(modelId);
@@ -299,6 +306,7 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
@@ -346,11 +354,16 @@ function buildFallbackWebSearchTool(
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(credential.apiUrl, args.query, {
-				maxResults: args.maxResults,
-				includeDomains: args.includeDomains,
-				excludeDomains: args.excludeDomains,
-			});
+			return await searxngSearch(
+				credential.apiUrl,
+				args.query,
+				{
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				},
+				webSearchFetch,
+			);
 		},
 	};
 }
@@ -431,18 +444,24 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
+				...(descriptor.hasToMessage
+					? {
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
+						}
+					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
@@ -463,7 +482,9 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -477,7 +498,9 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -561,11 +584,9 @@ async function resolveEpisodicMemoryJsonConfig(
 	credentialProvider: CredentialProvider,
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
-	const {
-		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-		createEpisodicMemoryExtractFn,
-		createEpisodicMemoryReflectFn,
-	} = await import('@n8n/agents');
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
+		'@n8n/agents'
+	);
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const embeddingProviderOptions =
 		config.credential === MANAGED_CREDENTIAL_TOKEN
@@ -582,11 +603,6 @@ async function resolveEpisodicMemoryJsonConfig(
 
 	return {
 		enabled: true,
-		...(config.extractorModel !== undefined && {
-			extract: createEpisodicMemoryExtractFn(
-				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
-			),
-		}),
 		...(config.reflectorModel !== undefined && {
 			reflect: createEpisodicMemoryReflectFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
@@ -608,6 +624,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 
@@ -615,6 +632,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

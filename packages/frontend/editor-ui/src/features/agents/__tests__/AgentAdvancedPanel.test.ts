@@ -1,14 +1,47 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
+import AgentCredentialSelect from '../components/AgentCredentialSelect.vue';
+import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
+const ensureLoadedMock = vi.fn();
+const openNewCredentialMock = vi.hoisted(() => vi.fn());
+const modelCatalog = ref<ProviderCatalog>({});
+
+type MockProject = { id: string; scopes: string[] };
+const CREDENTIAL_CREATE_SCOPES = ['credential:create'];
+// Mutable per test (reset in beforeEach) so the project → permission resolution can be exercised.
+const projectsStoreState = vi.hoisted(() => ({
+	currentProject: null as MockProject | null,
+	personalProject: null as MockProject | null,
+	myProjects: [] as MockProject[],
+}));
+
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		catalog: modelCatalog,
+		ensureLoaded: ensureLoadedMock,
+	}),
+}));
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (k: string) => k }),
+	useI18n: () => ({
+		baseText: (key: string) =>
+			({
+				'agents.builder.advanced.reasoning.hint': 'Let the model reason before responding.',
+				'agents.builder.advanced.reasoning.unsupportedHint':
+					'This model does not support reasoning',
+				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+				'nodeCredentials.createNew': 'Create new credential',
+				'nodeCredentials.createNew.permissionDenied':
+					'Your current role does not allow you to create credentials',
+			})[key] ?? key,
+	}),
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -17,10 +50,19 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
 			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
 		],
+		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
 }));
 
-// Numeric/thinking sub-controls debounce — execute synchronously in the test.
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStoreState,
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+// Numeric/reasoning sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
 	return {
@@ -32,20 +74,34 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
-	N8nInputNumber2: {
+	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
 		template:
 			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
+	// Keep <select> as the single root so `findComponent('[data-testid=…]')` matches the stub;
+	// the footer slot is where CredentialsDropdown renders "Create new credential".
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template:
-			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /><slot name="footer" /></select>',
 	},
-	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
+	N8nTooltip: {
+		props: ['disabled', 'content'],
+		template:
+			'<span :data-tooltip-disabled="String(disabled)" :data-tooltip-content="content"><slot /></span>',
+	},
+	N8nOption: {
+		name: 'N8nOption',
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
+	Option: {
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -62,6 +118,64 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 		credential: 'c',
 		...overrides,
 	} as AgentJsonConfig;
+}
+
+function makeCatalog(): ProviderCatalog {
+	return {
+		anthropic: {
+			id: 'anthropic',
+			name: 'Anthropic',
+			models: {
+				'claude-sonnet-4-6': {
+					id: 'claude-sonnet-4-6',
+					name: 'Claude Sonnet 4.6',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+		google: {
+			id: 'google',
+			name: 'Google',
+			models: {
+				'gemini-pro': {
+					id: 'gemini-pro',
+					name: 'Gemini Pro',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+		openai: {
+			id: 'openai',
+			name: 'OpenAI',
+			models: {
+				'gpt-4.1-mini': {
+					id: 'gpt-4.1-mini',
+					name: 'GPT-4.1 mini',
+					reasoning: false,
+					toolCall: true,
+				},
+				'gpt-unknown': {
+					id: 'gpt-unknown',
+					name: 'GPT Unknown',
+					toolCall: true,
+				},
+			},
+		},
+		'aws-bedrock': {
+			id: 'aws-bedrock',
+			name: 'AWS Bedrock',
+			models: {
+				'anthropic.claude-sonnet-4-5-v1:0': {
+					id: 'anthropic.claude-sonnet-4-5-v1:0',
+					name: 'Claude Sonnet 4.5',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+	};
 }
 
 function emitSelectValue(wrapper: ReturnType<typeof mount>, testId: string, value: string) {
@@ -92,25 +206,57 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 	)?.webSearch;
 }
 
+/** Mounts the panel with the Brave fallback picker visible for `projectId`. */
+function mountWithFallbackPicker({
+	projectId = 'project-1',
+	disabled = false,
+}: { projectId?: string; disabled?: boolean } = {}) {
+	return mount(AgentAdvancedPanel, {
+		props: {
+			config: makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave' } },
+			} as Partial<AgentJsonConfig>),
+			projectId,
+			disabled,
+		},
+		global: { stubs: globalStubs },
+	});
+}
+
+function findCreateCredentialButton(wrapper: ReturnType<typeof mount>) {
+	return wrapper.find('[data-test-id="node-credentials-select-item-new"]');
+}
+
+function getCreateCredentialTooltip(wrapper: ReturnType<typeof mount>) {
+	const tooltip = findCreateCredentialButton(wrapper).element.closest('[data-tooltip-disabled]');
+	return {
+		disabled: tooltip?.getAttribute('data-tooltip-disabled'),
+		content: tooltip?.getAttribute('data-tooltip-content'),
+	};
+}
+
 describe('AgentAdvancedPanel', () => {
-	it('renders the collapsible heading and toggles the advanced content', async () => {
+	beforeEach(() => {
+		ensureLoadedMock.mockReset();
+		openNewCredentialMock.mockReset();
+		modelCatalog.value = makeCatalog();
+		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
+		projectsStoreState.personalProject = null;
+		projectsStoreState.myProjects = [];
+	});
+
+	it('renders both advanced sections without a collapsible heading', () => {
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig(), collapsible: true },
+			props: { config: makeConfig() },
 			global: { stubs: globalStubs },
 		});
 
-		const title = wrapper.find('[data-testid="agent-advanced-title"]');
-		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
-		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
-		const content = wrapper.find('[data-testid="agent-advanced-content"]');
-
-		expect(title.text()).toContain('agents.builder.advanced.title');
-		expect(chevron.exists()).toBe(true);
-		expect(content.isVisible()).toBe(false);
-
-		await trigger.trigger('click');
-
-		expect(content.isVisible()).toBe(true);
+		expect(wrapper.text()).toContain('agents.builder.advanced.webSearch.label');
+		expect(wrapper.text()).toContain('agents.builder.advanced.title');
+		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-advanced-content"]').isVisible()).toBe(true);
 	});
 
 	it('treats sparse native web search config as disabled', async () => {
@@ -202,10 +348,164 @@ describe('AgentAdvancedPanel', () => {
 		});
 
 		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-web-search-fallback-credential"]').exists()).toBe(
+		expect(wrapper.find('[data-test-id="agent-web-search-fallback-credential"]').exists()).toBe(
 			true,
 		);
 		expect(wrapper.find('[data-testid="agent-web-search-max-uses"]').exists()).toBe(false);
+	});
+
+	it.each([
+		['brave', 'braveSearchApi'],
+		['searxng', 'searXngApi'],
+	] as const)(
+		"creating a credential from the fallback picker opens the credential modal for the provider's type in the panel's project and selects the created credential",
+		async (provider, credentialType) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: {
+					config: makeConfig({
+						model: 'deepseek/deepseek-chat',
+						config: { webSearch: { enabled: true, provider } },
+					} as Partial<AgentJsonConfig>),
+					projectId: 'project-1',
+				},
+				global: { stubs: globalStubs },
+			});
+
+			wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+
+			expect(openNewCredentialMock).toHaveBeenCalledWith(
+				credentialType,
+				false,
+				false,
+				'project-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ hideAskAssistant: true }),
+			);
+
+			const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
+			expect(onCredentialCreated).toBeTypeOf('function');
+			onCredentialCreated?.({ id: 'new-cred' });
+
+			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(getWebSearchConfig(last)).toEqual({
+				enabled: true,
+				provider,
+				credential: 'new-cred',
+			});
+		},
+	);
+
+	it('offers an enabled "Create new credential" action without the permission tooltip when the user can create credentials in the project', () => {
+		const wrapper = mountWithFallbackPicker();
+
+		const createButton = findCreateCredentialButton(wrapper);
+		expect(createButton.text()).toBe('Create new credential');
+		expect(createButton.attributes()).not.toHaveProperty('disabled');
+		expect(getCreateCredentialTooltip(wrapper).disabled).toBe('true');
+	});
+
+	it('disables "Create new credential" with the permission tooltip and does not open the credential modal when the user cannot create credentials in the project', () => {
+		projectsStoreState.currentProject = { id: 'project-1', scopes: ['credential:read'] };
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(
+			wrapper.findComponent(AgentCredentialSelect).props('credentialPermissions'),
+		).toMatchObject({ create: false });
+		expect(findCreateCredentialButton(wrapper).attributes()).toHaveProperty('disabled');
+		expect(getCreateCredentialTooltip(wrapper)).toEqual({
+			disabled: 'false',
+			content: 'Your current role does not allow you to create credentials',
+		});
+
+		// Even if the dropdown emits `create` anyway, the panel must not open the modal.
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+		expect(openNewCredentialMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('does not open the credential modal from the fallback picker while the panel is disabled', () => {
+		const wrapper = mountWithFallbackPicker({ disabled: true });
+
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+
+		expect(openNewCredentialMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	describe('resolving the project whose scopes decide whether a credential can be created', () => {
+		const canCreate = CREDENTIAL_CREATE_SCOPES;
+		const cannotCreate = ['credential:read'];
+
+		it.each<{
+			name: string;
+			projectId: string;
+			currentProject: MockProject;
+			personalProject: MockProject;
+			myProjects: MockProject[];
+			expectedCreate: boolean;
+		}>([
+			{
+				name: 'uses the current project when it matches the panel project',
+				projectId: 'project-1',
+				currentProject: { id: 'project-1', scopes: canCreate },
+				personalProject: { id: 'project-2', scopes: cannotCreate },
+				myProjects: [{ id: 'project-3', scopes: cannotCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'falls back to the personal project when the current project does not match',
+				projectId: 'project-2',
+				currentProject: { id: 'project-1', scopes: cannotCreate },
+				personalProject: { id: 'project-2', scopes: canCreate },
+				myProjects: [{ id: 'project-3', scopes: cannotCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'falls back to the matching entry in myProjects when neither the current nor the personal project match',
+				projectId: 'project-3',
+				currentProject: { id: 'project-1', scopes: cannotCreate },
+				personalProject: { id: 'project-2', scopes: cannotCreate },
+				myProjects: [{ id: 'project-3', scopes: canCreate }],
+				expectedCreate: true,
+			},
+			{
+				name: 'denies creating credentials when no known project matches the panel project',
+				projectId: 'project-unknown',
+				currentProject: { id: 'project-1', scopes: canCreate },
+				personalProject: { id: 'project-2', scopes: canCreate },
+				myProjects: [{ id: 'project-3', scopes: canCreate }],
+				expectedCreate: false,
+			},
+		])('$name', ({ projectId, currentProject, personalProject, myProjects, expectedCreate }) => {
+			projectsStoreState.currentProject = currentProject;
+			projectsStoreState.personalProject = personalProject;
+			projectsStoreState.myProjects = myProjects;
+
+			const wrapper = mountWithFallbackPicker({ projectId });
+
+			expect(
+				wrapper.findComponent(AgentCredentialSelect).props('credentialPermissions'),
+			).toMatchObject({ create: expectedCreate });
+
+			wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+			if (expectedCreate) {
+				expect(openNewCredentialMock).toHaveBeenCalledWith(
+					'braveSearchApi',
+					false,
+					false,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					expect.objectContaining({ hideAskAssistant: true }),
+				);
+			} else {
+				expect(openNewCredentialMock).not.toHaveBeenCalled();
+			}
+		});
 	});
 
 	it('switches fallback web search to native and emits native provider tools', async () => {
@@ -288,55 +588,244 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
-	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {
-		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+	it('loads the model catalog for the current project', () => {
+		mount(AgentAdvancedPanel, {
+			props: { config: makeConfig(), projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(false);
+
+		expect(ensureLoadedMock).toHaveBeenCalledWith('project-1');
 	});
 
-	it('shows the reasoning-effort sub-control for OpenAI when thinking is on', async () => {
+	it('shows the configured reasoning effort when the selected model supports reasoning', async () => {
 		const config = makeConfig({
-			model: 'openai/gpt-4o',
-			config: { thinking: { provider: 'openai', reasoningEffort: 'high' } },
+			model: 'google/gemini-pro',
+			config: { reasoning: 'high' },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
+		const effort = findStubComponent(wrapper, 'agent-reasoning-effort-select');
+		expect(effort.exists()).toBe(true);
+		expect(effort.props('modelValue')).toBe('high');
 		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
 	});
 
-	it('disables the thinking toggle for providers that do not support it', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
+	it('shows the reasoning toggle when the selected model supports reasoning', () => {
+		const config = makeConfig({
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
 	});
 
-	it('emits update:config with the thinking subtree when the toggle flips on', async () => {
-		const config = makeConfig();
+	it('enables generic medium reasoning when the toggle flips on', async () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
+		expect(last.config?.reasoning).toBe('medium');
+	});
+
+	it('updates the generic reasoning effort', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'medium' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: { ...globalStubs, Select: globalStubs.N8nSelect } },
+		});
+
+		emitSelectValue(wrapper, 'agent-reasoning-effort-select', 'low');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('low');
+	});
+
+	it('removes reasoning when the toggle flips off', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'medium' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBeUndefined();
+	});
+
+	it('disables reasoning and explains when the selected model does not support it', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: 'openai/gpt-4.1-mini',
+					config: { reasoning: 'high', toolCallConcurrency: 3 },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning and explains when no model is selected', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: '',
+					config: { reasoning: 'medium' },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe('No model selected');
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('keeps reasoning enabled while support metadata loads', async () => {
+		modelCatalog.value = {};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig(),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+
+		modelCatalog.value = makeCatalog();
+		await nextTick();
+
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning when loaded metadata explicitly marks the model unsupported', async () => {
+		modelCatalog.value = {};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'openai/gpt-4.1-mini' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+
+		modelCatalog.value = makeCatalog();
+		await nextTick();
+
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('keeps reasoning enabled when the catalog model omits support metadata', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: 'openai/gpt-unknown',
+					config: { reasoning: 'medium' },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			false,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning when the selected model changes to an unsupported model', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'high' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(true);
+
+		await wrapper.setProps({
+			config: makeConfig({
+				model: 'openai/gpt-4.1-mini',
+				config: { reasoning: 'high' },
+			}),
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
@@ -394,7 +883,7 @@ describe('AgentAdvancedPanel', () => {
 		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
 		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),

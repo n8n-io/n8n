@@ -85,8 +85,7 @@ describe('CommunityPackagesController', () => {
 				packageName: 'n8n-nodes-test',
 				version: '1.1.1',
 			});
-			communityPackagesService.isPackageInstalled.mockResolvedValue(false);
-			communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({
 				status: 'OK',
 			});

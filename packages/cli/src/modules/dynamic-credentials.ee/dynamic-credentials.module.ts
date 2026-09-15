@@ -1,9 +1,8 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-
-import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 
 /**
  * Superset capability: external/custom credential resolvers (OAuth/Slack) plus
@@ -11,22 +10,13 @@ import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity
  * credentials" capability is always on once the module is licensed.
  */
 function isExternalResolversEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+	return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 }
 
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
 		await import('./dynamic-credentials.controller.js');
-
-		// Import the n8n oauth extractor and seeder
-		const { N8nOAuthIdentitySeeder } = await import(
-			'./context-establishment-hooks/n8n-oauth/index.js'
-		);
-
-		Container.get(TriggerAuthIdentitySeederProxy).registerSeeder(
-			Container.get(N8nOAuthIdentitySeeder),
-		);
 
 		// System resolver powers private credentials; OAuth/Slack resolvers and
 		// their management/identity-extractor surfaces are external-only.
@@ -67,6 +57,15 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		Container.get(CredentialConnectionStatusProxy).setProvider(
 			Container.get(CredentialConnectionStatusService),
 		);
+
+		// Register the executing-user identifier so the redaction layer can attribute
+		// a run to its user from the established identity carrier — the same source
+		// credential resolution uses.
+		const { ExecutingUserIdentifierProxy } = await import(
+			'../../credentials/executing-user-identifier-proxy.js'
+		);
+		const { N8NIdentifier } = await import('./credential-resolvers/identifiers/n8n-identifier.js');
+		Container.get(ExecutingUserIdentifierProxy).setProvider(Container.get(N8NIdentifier));
 	}
 
 	async entities() {

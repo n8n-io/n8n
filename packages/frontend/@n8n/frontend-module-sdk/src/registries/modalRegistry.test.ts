@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { computed, isReactive } from 'vue';
 import type { Component } from 'vue';
 
 import * as modalRegistry from './modalRegistry';
@@ -28,9 +29,7 @@ describe('modalRegistry', () => {
 	};
 
 	beforeEach(() => {
-		// Clear all modals before each test
-		const keys = modalRegistry.getKeys();
-		keys.forEach((key) => modalRegistry.unregister(key));
+		modalRegistry.clear();
 	});
 
 	describe('register', () => {
@@ -50,18 +49,43 @@ describe('modalRegistry', () => {
 			expect(modalRegistry.getKeys()).toHaveLength(2);
 		});
 
-		it('should warn and skip registration if modal key already exists', () => {
+		it('should warn and skip registration if a different modal claims the key', () => {
 			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			modalRegistry.register(mockModal1);
-			modalRegistry.register(mockModal1);
+			modalRegistry.register({ ...mockModal1, component: mockComponent2 });
 
 			expect(consoleSpy).toHaveBeenCalledWith(
 				'Modal with key "test-modal-1" is already registered. Skipping.',
 			);
 			expect(modalRegistry.getKeys()).toHaveLength(1);
+			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
 
 			consoleSpy.mockRestore();
+		});
+
+		// A re-login replays the manifest, so the same definitions arrive twice.
+		it('should re-register the same definition silently', () => {
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			modalRegistry.register(mockModal1);
+			modalRegistry.register(mockModal1);
+
+			expect(consoleSpy).not.toHaveBeenCalled();
+			expect(modalRegistry.get('test-modal-1')).toBe(mockModal1);
+			expect(modalRegistry.getKeys()).toHaveLength(1);
+
+			consoleSpy.mockRestore();
+		});
+
+		it('should not notify listeners when the same definition is re-registered', () => {
+			modalRegistry.register(mockModal1);
+			const listener = vi.fn();
+			modalRegistry.subscribe(listener);
+
+			modalRegistry.register(mockModal1);
+
+			expect(listener).not.toHaveBeenCalled();
 		});
 
 		it('should notify listeners when a modal is registered', () => {
@@ -111,6 +135,53 @@ describe('modalRegistry', () => {
 
 			expect(listener).toHaveBeenCalledWith(expect.any(Map));
 			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it('should allow a key to be registered again after it was unregistered', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.unregister('test-modal-1');
+
+			const replacement: ModalDefinition = {
+				key: 'test-modal-1',
+				component: mockComponent2,
+				initialState: { open: true },
+			};
+			modalRegistry.register(replacement);
+
+			expect(modalRegistry.get('test-modal-1')).toEqual(replacement);
+		});
+	});
+
+	describe('clear', () => {
+		it('should remove all registered modals', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.register(mockModal2);
+
+			modalRegistry.clear();
+
+			expect(modalRegistry.getKeys()).toEqual([]);
+			expect(modalRegistry.has('test-modal-1')).toBe(false);
+			expect(modalRegistry.getAll().size).toBe(0);
+		});
+
+		it('should notify listeners so renderers drop the cleared modals', () => {
+			modalRegistry.register(mockModal1);
+			const listener = vi.fn<(modals: Map<string, ModalDefinition>) => void>();
+			modalRegistry.subscribe(listener);
+
+			modalRegistry.clear();
+
+			expect(listener).toHaveBeenCalledTimes(1);
+			expect(listener.mock.calls[0][0].size).toBe(0);
+		});
+
+		it('should allow registration again after clearing', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.clear();
+
+			modalRegistry.register(mockModal1);
+
+			expect(modalRegistry.get('test-modal-1')).toEqual(mockModal1);
 		});
 	});
 
@@ -294,6 +365,68 @@ describe('modalRegistry', () => {
 			const keys = modalRegistry.getKeys();
 
 			expect(keys).toEqual(['test-modal-2', 'test-modal-1', 'test-modal-3']);
+		});
+	});
+
+	// The registry is the single definition source: consumers derive from it rather
+	// than mirroring it, which only works if reading it inside a computed tracks.
+	describe('reactivity', () => {
+		it('should re-evaluate a computed over getAll on register, unregister and clear', () => {
+			const keys = computed(() => [...modalRegistry.getAll().keys()]);
+
+			expect(keys.value).toEqual([]);
+
+			modalRegistry.register(mockModal1);
+			expect(keys.value).toEqual(['test-modal-1']);
+
+			modalRegistry.register(mockModal2);
+			expect(keys.value).toEqual(['test-modal-1', 'test-modal-2']);
+
+			modalRegistry.unregister('test-modal-1');
+			expect(keys.value).toEqual(['test-modal-2']);
+
+			modalRegistry.clear();
+			expect(keys.value).toEqual([]);
+		});
+
+		it('should not make a registered component reactive', () => {
+			modalRegistry.register(mockModal1);
+
+			// Wrapping a component in a reactive proxy costs render performance and
+			// breaks identity checks — the registry is shallow for this reason.
+			expect(isReactive(modalRegistry.get('test-modal-1')?.component)).toBe(false);
+			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
+		});
+	});
+	describe('ad-hoc key prefixes', () => {
+		it('should report a key built from a declared prefix as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal-42')).toBe(true);
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal')).toBe(true);
+		});
+
+		it('should not report an undeclared key as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('someOtherModal')).toBe(false);
+			expect(modalRegistry.isAdHocKey('someOtherModal-42')).toBe(false);
+		});
+
+		it('should not treat a prefix as a match for an unrelated key that merely starts with it', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			// Only the bare prefix and the `<prefix>-<id>` form count, so a longer
+			// camelCase name starting with the same letters is still a real key.
+			expect(modalRegistry.isAdHocKey('importCsvModalSettings')).toBe(false);
+		});
+
+		it('should survive clear(), which empties registrations and not declarations', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			modalRegistry.clear();
+
+			expect(modalRegistry.isAdHocKey('importCsvModal-7')).toBe(true);
 		});
 	});
 });

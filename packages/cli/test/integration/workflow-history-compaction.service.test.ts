@@ -3,9 +3,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import repeat from 'lodash/repeat';
 import { InstanceSettings } from 'n8n-core';
-import { sleep, type INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { EventService } from '@/events/event.service';
@@ -122,7 +123,7 @@ describe('compacting cycle', () => {
 		}
 
 		// ACT
-		await compactionService['optimizeHistories']();
+		await compactionService['optimizeHistories'](new AbortController().signal);
 
 		// ASSERT
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
@@ -205,7 +206,7 @@ describe('compacting cycle', () => {
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching
-		void compactionService['optimizeHistories']();
+		void compactionService['optimizeHistories'](new AbortController().signal);
 		await sleep(500);
 
 		// ASSERT
@@ -258,7 +259,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			// All versions span ~9.6 hours which is under the 10-hour threshold,
@@ -299,7 +300,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			// Total span is ~9.6 hours with a 5-hour threshold.
@@ -342,7 +343,7 @@ describe('compacting cycle', () => {
 			}
 
 			// ACT
-			await compactionService['trimLongRunningHistories']();
+			await compactionService['trimLongRunningHistories'](new AbortController().signal);
 
 			// ASSERT
 			const allHistories = await Container.get(WorkflowHistoryRepository).find({});

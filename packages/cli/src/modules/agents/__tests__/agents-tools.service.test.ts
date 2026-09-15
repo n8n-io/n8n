@@ -1,9 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
-import {
-	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
-	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-} from '@n8n/api-types';
+import { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '@n8n/api-types';
 
 import type { NodeCatalogService } from '@/node-catalog';
 
@@ -160,9 +157,7 @@ describe('AgentsToolsService', () => {
 			expect(isAgentToolNodeType('n8n-nodes-base.slackHitlTool')).toBe(false);
 		});
 
-		it('admits whitelisted AI provider nodes (full vendor APIs)', () => {
-			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.openAi')).toBe(true);
-			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.anthropic')).toBe(true);
+		it('rejects non-provider langchain nodes that are not tool types', () => {
 			// Non-provider langchain nodes stay excluded.
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.agent')).toBe(false);
@@ -171,16 +166,6 @@ describe('AgentsToolsService', () => {
 		it('rejects hidden agent-builder tool node IDs', () => {
 			for (const nodeType of AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES) {
 				expect(isAgentToolNodeType(nodeType)).toBe(false);
-			}
-		});
-
-		it('rejects the sub-workflow tool node', () => {
-			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.toolWorkflow')).toBe(false);
-		});
-
-		it('allows shared AI utility tool node IDs', () => {
-			for (const nodeType of AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES) {
-				expect(isAgentToolNodeType(nodeType)).toBe(true);
 			}
 		});
 

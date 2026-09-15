@@ -7,13 +7,13 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
 	WORKFLOW_MCP_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
-import { User } from '@n8n/db';
 
 @Service()
 export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResourceResolver {
@@ -29,11 +29,12 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
@@ -78,24 +79,17 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.mcpTest}/${path}`;
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp-test:' + workflowEntity.id,
 				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflowEntity.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflowEntity.id);
-					}
-					return true;
-				},
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,
+				}),
 			};
 		}
 

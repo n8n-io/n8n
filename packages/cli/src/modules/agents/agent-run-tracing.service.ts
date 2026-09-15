@@ -19,6 +19,13 @@ interface WorkflowAgentRunTracingMetadata extends AgentRunTracingMetadataBase {
 	executionId?: string;
 	workflowId?: string;
 	nodeId?: string;
+	/**
+	 * Whether the caller found (and is running inside) an active node/workflow
+	 * OTel span to nest under. Only then should the agent span give up root
+	 * anchoring — otherwise `rootAnchored: false` would let it silently inherit
+	 * whatever ambient context happens to be active instead.
+	 */
+	hasParentContext?: boolean;
 }
 
 interface NonWorkflowAgentRunTracingMetadata extends AgentRunTracingMetadataBase {
@@ -83,12 +90,22 @@ export class AgentRunTracingService {
 				: {}),
 		};
 
-		return await new Telemetry()
+		const built = await new Telemetry()
 			.tracer(trace.getTracer(AGENTS_TRACER_NAME))
 			.metadata(attributes)
 			.recordInputs(this.agentsConfig.tracingRecordInputs)
 			.recordOutputs(this.agentsConfig.tracingRecordOutputs)
 			.build();
+
+		// Workflow-invoked runs nest under the calling node's OTel span (see
+		// `ExecutionLevelTracer.getActiveContext` / `AgentWorkflowExecutionService`)
+		// instead of starting a disconnected root trace like chat-integration runs do.
+		// Only give up root anchoring when the caller actually found that parent
+		// span — otherwise the run is unwrapped and would inherit whatever
+		// ambient context happens to be active instead of staying its own root.
+		return isWorkflowTracingMetadata(metadata) && metadata.hasParentContext
+			? { ...built, rootAnchored: false }
+			: built;
 	}
 }
 

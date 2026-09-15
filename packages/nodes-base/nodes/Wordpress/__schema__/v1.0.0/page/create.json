@@ -156,6 +156,12 @@
         "author": {
             "type": "integer"
         },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "comment_status": {
             "type": "string"
         },
@@ -169,6 +175,9 @@
                     "type": "boolean"
                 },
                 "raw": {
+                    "type": "string"
+                },
+                "rendered": {
                     "type": "string"
                 }
             }
@@ -269,5 +278,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

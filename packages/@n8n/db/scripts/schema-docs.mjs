@@ -18,7 +18,7 @@
  * a local binary.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +30,15 @@ const TMP_DIR = resolve(PKG_ROOT, '.tmp-schema-docs');
 // Pinned by tag + digest for reproducible CI runs; bump deliberately.
 const TBLS_IMAGE =
 	'ghcr.io/k1low/tbls:v1.94.5@sha256:ae8a3bff6d4f8495d13a7982cd71fac3e8a3d1dd394888f2c44ef82216aa14e4';
+
+const POSTGRES_VERSIONS_PATH = resolve(
+	REPO_ROOT,
+	'packages/testing/containers/postgres-versions.json',
+);
+
+function primaryPostgresImage() {
+	return JSON.parse(readFileSync(POSTGRES_VERSIONS_PATH, 'utf8')).primary;
+}
 
 /** Thrown for expected, user-facing failures so `main`'s cleanup still runs. */
 class FailError extends Error {}
@@ -122,10 +131,10 @@ async function provision(dbType) {
 		};
 	}
 
-	// postgres: spin a throwaway container. Image tag matches the testcontainers
-	// default in `n8n-containers` (packages/testing/containers/test-containers.ts).
+	// postgres: spin a throwaway container on the version the rest of the test
+	// tooling defaults to.
 	const { PostgreSqlContainer } = await import('@testcontainers/postgresql');
-	const container = await new PostgreSqlContainer('postgres:18-alpine').start();
+	const container = await new PostgreSqlContainer(primaryPostgresImage()).start();
 	const conn = {
 		host: container.getHost(),
 		port: container.getMappedPort(5432),

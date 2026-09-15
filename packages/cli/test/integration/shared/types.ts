@@ -8,6 +8,7 @@ import type TestAgent from 'supertest/lib/agent';
 import type { LicenseMocker } from './license';
 
 type EndpointGroup =
+	| 'activeWorkflows'
 	| 'health'
 	| 'me'
 	| 'users'
@@ -16,17 +17,20 @@ type EndpointGroup =
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
+	| 'changeEmail'
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
 	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'ai-preferences'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
@@ -40,6 +44,7 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -47,6 +52,7 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'promotions'
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
@@ -54,7 +60,8 @@ type EndpointGroup =
 	| 'workflowDependencies'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
 	| 'insights'
@@ -68,8 +75,12 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'promotions'
+	| 'n8n-packages'
 	| 'token-exchange'
-	| 'workflow-reviews';
+	| 'policy-infrastructure'
+	| 'workflow-reviews'
+	| 'type-availability-policies';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
@@ -89,6 +100,7 @@ export interface TestServer {
 	publicApiAgentFor: (user: User) => TestAgent;
 	publicApiAgentWithApiKey: (apiKey: string) => TestAgent;
 	publicApiAgentWithoutApiKey: () => TestAgent;
+	publicApiAgentWithCookie: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
 	restlessAgent: TestAgent;
 	license: LicenseMocker;

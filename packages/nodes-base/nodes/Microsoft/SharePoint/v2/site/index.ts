@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -17,6 +18,15 @@ import {
 // The whole site-selection piece lives here — the field, the search behind
 // it, and the URL resolution — so later actions and the future trigger plug
 // it in without their own copies.
+
+const GUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+// Every /sites/{id} form Graph documents: composite hostname,GUID,GUID, a bare
+// site GUID, a bare hostname (tenant root), or the literal `root`
+// https://learn.microsoft.com/en-us/graph/api/site-get
+export const SITE_ID_REGEX = `^(?:root|${GUID}|[a-zA-Z0-9][a-zA-Z0-9.-]*(?:,${GUID},${GUID})?)$`;
+const SITE_ID_PATTERN = new RegExp(SITE_ID_REGEX);
+const SITE_ID_FORMATS_HINT =
+	'Use the ID from the site picker or Graph (hostname,GUID,GUID), a site GUID, a hostname, or "root". For a site address, switch the field to URL mode.';
 
 export const siteRLC: INodeProperties = {
 	displayName: 'Site',
@@ -55,6 +65,15 @@ export const siteRLC: INodeProperties = {
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. contoso.sharepoint.com,5a58bb09-…,9f0d…',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: SITE_ID_REGEX,
+						errorMessage: SITE_ID_FORMATS_HINT,
+					},
+				},
+			],
 		},
 	],
 };
@@ -93,18 +112,23 @@ export async function getSites(
 					},
 				)) as SiteSearchReply);
 	} catch (error) {
-		// An app with only per-site permissions can't list what it can't see —
-		// point at the URL mode. Delegated refusals keep the transport's message,
-		// which names the missing permission (URL paste would hit the same 403).
-		if (
-			error instanceof NodeApiError &&
-			error.httpCode === '403' &&
-			getSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
-		) {
-			throw new NodeOperationError(this.getNode(), 'This app registration cannot search sites', {
-				description:
-					"An app registration with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works — or grant the app the Sites.Read.All application permission to enable search.",
-			});
+		if (error instanceof NodeApiError && error.httpCode === '403') {
+			if (getSharePointCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+				throw new NodeOperationError(this.getNode(), 'This app registration cannot search sites', {
+					description:
+						"An app registration with only per-site permissions can't list sites. Choose the site by pasting its URL instead — that still works — or grant the app the Sites.Read.All application permission to enable search.",
+				});
+			}
+			throw new NodeApiError(
+				this.getNode(),
+				{ message: 'This credential cannot search sites' } as JsonObject,
+				{
+					message: 'This credential cannot search sites',
+					description:
+						"Switch the Site field to URL or ID mode — Microsoft Graph doesn't support site search under Sites.Selected, and neither mode needs that permission. If URL or ID mode also fails, the credential likely lacks a different permission or consent, not just Sites.Read.All.",
+					httpCode: '403',
+				},
+			);
 		}
 		throw error;
 	}
@@ -143,6 +167,13 @@ export async function resolveSiteId(
 	if (value === '') {
 		throw new NodeOperationError(this.getNode(), "The 'Site' parameter is empty", {
 			description: 'Set the site ID or URL and try again.',
+		});
+	}
+	// The field's typed validation doesn't run for expression-provided values,
+	// so ID mode re-checks here; list-mode values come from Graph's own search.
+	if (site.mode === 'id' && !SITE_ID_PATTERN.test(value)) {
+		throw new NodeOperationError(this.getNode(), "The 'Site' ID is not valid", {
+			description: `${SITE_ID_FORMATS_HINT} Check for stray characters such as quotes.`,
 		});
 	}
 	if (site.mode !== 'url') {

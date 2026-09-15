@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "workflowId" varchar(36) NOT NULL, "workflowVersionId" varchar(36), CONSTRAINT "FK_e44b652e6dc99ef1364a2d85504" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_619f5b0544bcec60c3387e82f2f" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_0f6f0f2c6d46b806fee02962ac2" FOREIGN KEY ("workflowVersionId") REFERENCES "workflow_history" ("versionId") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "workflowId" varchar(36) NOT NULL, "workflowVersionId" varchar(36), "baselineVersionId" varchar(36), CONSTRAINT "FK_0f6f0f2c6d46b806fee02962ac2" FOREIGN KEY ("workflowVersionId") REFERENCES "workflow_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_619f5b0544bcec60c3387e82f2f" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_e44b652e6dc99ef1364a2d85504" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflow_review_request_workflow_baselineVersionId" FOREIGN KEY ("baselineVersionId") REFERENCES "workflow_history" ("versionId") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NO
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| baselineVersionId | varchar(36) |  | true |  | [workflow_history](workflow_history.md) |  |
 | id | varchar(36) |  | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [workflow_review_request](workflow_review_request.md) |  |
@@ -24,9 +25,10 @@ CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NO
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (baselineVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_workflow_review_request_workflow_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -34,8 +36,8 @@ CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NO
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_request_workflow_workflow_request | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_request"<br />			ON "workflow_review_request_workflow"("workflowId", "workflowReviewRequestId") |
-| UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow"<br />			ON "workflow_review_request_workflow"("workflowReviewRequestId", "workflowId") |
+| IDX_workflow_review_request_workflow_workflow_request | CREATE INDEX "IDX_workflow_review_request_workflow_workflow_request" ON "workflow_review_request_workflow" ("workflowId", "workflowReviewRequestId")  |
+| UQ_workflow_review_request_workflow_request_workflow | CREATE UNIQUE INDEX "UQ_workflow_review_request_workflow_request_workflow" ON "workflow_review_request_workflow" ("workflowReviewRequestId", "workflowId")  |
 | sqlite_autoindex_workflow_review_request_workflow_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -43,15 +45,30 @@ CREATE TABLE "workflow_review_request_workflow" ("id" varchar(36) PRIMARY KEY NO
 ```mermaid
 erDiagram
 
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (baselineVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id PK
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
   varchar_36_ workflowVersionId FK
+}
+"workflow_history" {
+  varchar_255_ authors
+  boolean autosaved
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  datetime_3_ updatedAt
+  varchar_36_ versionId PK
+  varchar_36_ workflowId FK
 }
 "workflow_entity" {
   boolean active
@@ -88,19 +105,6 @@ erDiagram
   varchar_255_ title
   datetime_3_ updatedAt
   varchar updatedById FK
-}
-"workflow_history" {
-  varchar_255_ authors
-  boolean autosaved
-  TEXT connections
-  datetime_3_ createdAt
-  TEXT description
-  varchar_128_ name
-  TEXT nodeGroups
-  TEXT nodes
-  datetime_3_ updatedAt
-  varchar_36_ versionId PK
-  varchar_36_ workflowId FK
 }
 ```
 

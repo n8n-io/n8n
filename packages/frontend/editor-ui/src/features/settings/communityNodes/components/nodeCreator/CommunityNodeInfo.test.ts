@@ -8,10 +8,6 @@ import { type ComputedRef, ref } from 'vue';
 import type { CommunityNodeDetails } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 
-vi.mock('./utils', () => ({
-	fetchInstalledPackageInfo: vi.fn(),
-}));
-
 // const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
 // const isUpdateCheckAvailable = ref(false);
 
@@ -44,7 +40,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isAdmin: true,
 		isAdminOrOwner: true,

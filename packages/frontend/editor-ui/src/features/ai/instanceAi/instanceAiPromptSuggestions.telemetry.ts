@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from './emptyStateSuggestions';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';

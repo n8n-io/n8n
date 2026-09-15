@@ -1,7 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
-import { httpRequest, SsrfProtectionService } from '@n8n/backend-network';
+import type { DnsResolver } from '@n8n/backend-network';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { httpRequest } from '@n8n/backend-network/testing';
 import { SsrfProtectionConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type {
 	IHttpRequestOptions,
 	INode,
@@ -10,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
+import dns from 'node:dns';
 import type { LookupAddress } from 'node:dns';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -35,7 +38,7 @@ function createMockDnsResolver(
 function createSsrfBridge(
 	configOverrides: Partial<SsrfProtectionConfig> = {},
 	dnsResolver = createMockDnsResolver(),
-): { ssrfBridge: SsrfBridge; dnsResolver: MockProxy<DnsResolver> } {
+): { ssrfBridge: SsrfProtectionService; dnsResolver: MockProxy<DnsResolver> } {
 	const scopedLogger = mock<Logger>();
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const config = createConfig(configOverrides);
@@ -43,7 +46,19 @@ function createSsrfBridge(
 	return { ssrfBridge, dnsResolver };
 }
 
-function createRequestHelpers(ssrfBridge?: SsrfBridge) {
+// Installs an `OutboundHttp` in the container wired like production: the given
+// service as the SSRF policy and `enabled` mirroring whether one is provided,
+// so `helpers.httpRequest` picks it up through the default safe mode.
+function createRequestHelpers(ssrfBridge?: SsrfProtectionService) {
+	Container.set(
+		OutboundHttp,
+		new OutboundHttp(
+			ssrfBridge ?? mock<SsrfProtectionService>(),
+			createConfig({ enabled: ssrfBridge !== undefined }),
+			mock<Logger>(),
+		),
+	);
+
 	const workflow = mock<Workflow>();
 	const node = mock<INode>();
 	const hooks = mock<ExecutionLifecycleHooks>();
@@ -218,10 +233,13 @@ describe('SSRF end-to-end integration', () => {
 			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
 		});
 
-		test('returns undefined when egress filtering is not configured', () => {
+		test('returns a passthrough filter using the plain system lookup when egress filtering is not configured', () => {
 			const helpers = createRequestHelpers(undefined);
 
-			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+			const filter = helpers.getSecureEgressFilter();
+
+			expect(filter).toBeDefined();
+			expect(filter.createSecureLookup()).toBe(dns.lookup);
 		});
 	});
 

@@ -8,6 +8,21 @@ import type { INodeProperties } from 'n8n-workflow';
  */
 export const telegramHitlProperties: INodeProperties[] = [
 	{
+		displayName: 'Advanced Interactivity',
+		name: 'advancedInteractivityNotice',
+		type: 'notice',
+		default: '',
+		// Renders as a section-header divider (like "Options"), not a notice box.
+		typeOptions: {
+			sectionHeader: true,
+		},
+		displayOptions: {
+			show: {
+				responseType: ['approval'],
+			},
+		},
+	},
+	{
 		displayName: 'Approve Within Chat',
 		name: 'chatApproval',
 		type: 'boolean',
@@ -21,46 +36,49 @@ export const telegramHitlProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Chat Approval Options',
-		name: 'chatApprovalOptions',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
+		displayName: 'Restrict Who Can Approve',
+		name: 'approverIds',
+		type: 'string',
+		default: '',
+		description:
+			'The user IDs allowed to approve or decline. Multiple can be defined separated by comma. If empty, anyone who can see the message can respond.',
 		displayOptions: {
 			show: {
 				responseType: ['approval'],
 				chatApproval: [true],
 			},
 		},
+	},
+	{
+		displayName: 'Unauthorized Reply',
+		name: 'unauthorizedReplyText',
+		type: 'string',
+		default: 'You are not authorized to respond to this request.',
+		description:
+			'Popup shown (via Telegram alert) to users who tap a button but are not in the approver list',
+		displayOptions: {
+			show: {
+				responseType: ['approval'],
+				chatApproval: [true],
+			},
+		},
+	},
+	{
+		displayName: 'After Decision',
+		name: 'postDecisionBehavior',
+		type: 'options',
+		default: 'showOutcome',
 		options: [
-			{
-				displayName: 'Restrict to User IDs',
-				name: 'approverIds',
-				type: 'string',
-				default: '',
-				description:
-					'The user IDs allowed to approve or decline. Multiple can be defined separated by comma. If empty, anyone who can see the message can respond.',
-			},
-			{
-				displayName: 'Unauthorized Reply',
-				name: 'unauthorizedReplyText',
-				type: 'string',
-				default: 'You are not authorized to respond to this request.',
-				description:
-					'Popup shown (via Telegram alert) to users who tap a button but are not in the approver list',
-			},
-			{
-				displayName: 'After Decision',
-				name: 'postDecisionBehavior',
-				type: 'options',
-				default: 'showOutcome',
-				options: [
-					{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
-					{ name: 'Remove Buttons Only', value: 'removeButtons' },
-					{ name: 'Keep Message Unchanged', value: 'keepMessage' },
-				],
-			},
+			{ name: 'Show Outcome and Remove Buttons', value: 'showOutcome' },
+			{ name: 'Remove Buttons Only', value: 'removeButtons' },
+			{ name: 'Keep Message Unchanged', value: 'keepMessage' },
 		],
+		displayOptions: {
+			show: {
+				responseType: ['approval'],
+				chatApproval: [true],
+			},
+		},
 	},
 ];
 

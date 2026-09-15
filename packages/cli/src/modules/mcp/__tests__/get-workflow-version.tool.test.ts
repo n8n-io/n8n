@@ -51,7 +51,7 @@ describe('get-workflow-version MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
-		test('returns version content with credentials stripped from nodes', async () => {
+		test('returns version content with node credentials reduced to id and name', async () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
 			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
 				createWorkflowHistoryVersion({
@@ -79,8 +79,37 @@ describe('get-workflow-version MCP tool', () => {
 			});
 			expect(content.nodeGroups[0]).not.toHaveProperty('nodeIds');
 			expect(content.nodes).toHaveLength(1);
-			expect(content.nodes[0]).not.toHaveProperty('credentials');
+			expect(content.nodes[0].credentials).toEqual({
+				httpHeaderAuth: { id: 'cred-1', name: 'Secret' },
+			});
 			expect(content.nodes[0]).toMatchObject({ name: 'HTTP Request' });
+		});
+
+		test('normalizes nodes persisted without a parameters key, matching get_workflow_details', async () => {
+			// Regression (ADO-5355): the same stored node must read identically
+			// through every MCP tool that emits node payloads.
+			const skeletonNode = {
+				id: 'node-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'hook-1',
+			} as INode;
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'v1',
+					nodes: [skeletonNode],
+				}),
+			);
+
+			const tool = buildTool();
+			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			const content = result.structuredContent as { nodes: Array<Record<string, unknown>> };
+			expect(content.nodes[0].parameters).toEqual({});
 		});
 
 		test('omits group member ids that no longer resolve to a node', async () => {

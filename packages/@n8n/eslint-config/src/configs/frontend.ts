@@ -2,10 +2,10 @@ import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
+import { configs as designSystemConfigs } from '@n8n/eslint-plugin-design-system';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
-const isCI = process.env.CI === 'true';
 const extraFileExtensions = ['.vue'];
 const allGlobals = { NodeJS: true, ...globals.node, ...globals.browser };
 
@@ -13,14 +13,18 @@ export const frontendConfig = tseslint.config(
 	globalIgnores(['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap']),
 	baseConfig,
 	VuePlugin.configs['flat/recommended'],
+	designSystemConfigs.recommended,
 	{
 		rules: {
 			'no-console': 'warn',
-			'no-debugger': isCI ? 'error' : 'off',
-			semi: [2, 'always'],
-			'comma-dangle': ['error', 'always-multiline'],
+
+			// A component file is PascalCase and a composable is `useThing.ts`, so
+			// the kebab-case default from the base layer does not apply here.
+			'unicorn/filename-case': 'off',
+
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
+			'n8n-local-rules/no-reka-ui-pagination': 'error',
 		},
 	},
 	{

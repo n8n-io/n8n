@@ -26,6 +26,7 @@ const N8N_STARTUP_TIMEOUT_MS = 60_000;
 const N8N_READ_TIMEOUT_MS = 250;
 
 export interface N8NStartupDiagnostics {
+	attemptId?: string;
 	logs: Record<string, string>;
 	readinessPayloads: Record<string, string | null>;
 }
@@ -45,7 +46,6 @@ export class N8NStartupError extends Error {
 
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
-	N8N_EXPRESSION_ENGINE: 'vm',
 	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
 	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
@@ -64,6 +64,7 @@ const BASE_ENV: Record<string, string> = {
 };
 
 export interface N8NInstancesOptions {
+	attemptId?: string;
 	mains: number;
 	workers: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
@@ -261,6 +262,7 @@ export async function createN8NInstances(
 	options: N8NInstancesOptions,
 ): Promise<N8NInstancesResult> {
 	const {
+		attemptId,
 		mains,
 		workers,
 		webhooks = 0,
@@ -277,7 +279,7 @@ export async function createN8NInstances(
 	const log = createElapsedLogger('n8n-instances');
 	const environment = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
-	const diagnostics: N8NStartupDiagnostics = { logs: {}, readinessPayloads: {} };
+	const diagnostics: N8NStartupDiagnostics = { attemptId, logs: {}, readinessPayloads: {} };
 
 	const mainShared: SharedConfig = {
 		projectName,

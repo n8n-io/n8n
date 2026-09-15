@@ -5,6 +5,18 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+/**
+ * Cached in place of a runner ID for a grant token minted without one bound.
+ * Far shorter than a generated runner ID, so it can never be mistaken for one.
+ */
+const NO_BOUND_RUNNER = '-';
+
+export type GrantTokenConsumption = {
+	isValid: boolean;
+	/** ID bound to the token when it was minted, if any. Always `null` for an invalid token. */
+	boundRunnerId: string | null;
+};
+
 @Service()
 export class TaskBrokerAuthService {
 	private readonly authToken = Buffer.from(this.runnersConfig.authToken);
@@ -26,13 +38,16 @@ export class TaskBrokerAuthService {
 	}
 
 	/**
-	 * @returns grant token that can be used to establish a task runner connection
+	 * Mints a single-use grant token for establishing a task runner connection.
+	 *
+	 * @param runnerId ID to bind to the token, so that whoever presents it is known to be
+	 * the runner the token was minted for. Omit when the runner is not known in advance.
 	 */
-	async createGrantToken() {
+	async createGrantToken(runnerId?: string) {
 		const grantToken = this.generateGrantToken();
 
 		const key = this.cacheKeyForGrantToken(grantToken);
-		await this.cacheService.set(key, '1', this.grantTokenTtlInMs);
+		await this.cacheService.set(key, runnerId ?? NO_BOUND_RUNNER, this.grantTokenTtlInMs);
 
 		return grantToken;
 	}
@@ -41,14 +56,16 @@ export class TaskBrokerAuthService {
 	 * Checks if the given `grantToken` is a valid token and marks it as
 	 * used.
 	 */
-	async tryConsumeGrantToken(grantToken: string) {
+	async tryConsumeGrantToken(grantToken: string): Promise<GrantTokenConsumption> {
 		const key = this.cacheKeyForGrantToken(grantToken);
-		const consumed = await this.cacheService.get<string>(key);
-		// Not found from cache --> Invalid token
-		if (consumed === undefined) return false;
+		const consumed = await this.cacheService.take<string>(key);
+		// Not found in cache --> Invalid or already consumed token
+		if (consumed === undefined) return { isValid: false, boundRunnerId: null };
 
-		await this.cacheService.delete(key);
-		return true;
+		return {
+			isValid: true,
+			boundRunnerId: consumed === NO_BOUND_RUNNER ? null : consumed,
+		};
 	}
 
 	private generateGrantToken() {

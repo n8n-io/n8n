@@ -9,7 +9,7 @@ import {
 	PUBLICATION_STATUS_POLL_INTERVAL_MS,
 } from './useWorkflowPublicationStatusSync';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -73,6 +73,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 
+		workflowsStore.isNewWorkflow = false;
 		settingsStore.isWorkflowPublicationServiceEnabled = true;
 
 		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue(makeStatus('published'));

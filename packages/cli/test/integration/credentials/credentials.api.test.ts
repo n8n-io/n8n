@@ -1570,9 +1570,11 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should create credential with isResolvable set to true', async () => {
+		// End-user credentials are only available in team projects
+		const teamProject = await createTeamProject(undefined, owner);
 		const response = await authOwnerAgent
 			.post('/credentials')
-			.send({ ...randomCredentialPayload(), isResolvable: true });
+			.send({ ...randomCredentialPayload(), isResolvable: true, projectId: teamProject.id });
 
 		expect(response.statusCode).toBe(200);
 
@@ -1610,8 +1612,10 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should allow updating isResolvable field', async () => {
+		// End-user credentials are only available in team projects
+		const teamProject = await createTeamProject(undefined, owner);
 		const savedCredential = await saveCredential(randomCredentialPayload({ isResolvable: false }), {
-			user: owner,
+			project: teamProject,
 			role: 'credential:owner',
 		});
 

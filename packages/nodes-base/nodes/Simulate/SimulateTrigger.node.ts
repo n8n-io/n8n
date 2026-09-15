@@ -1,4 +1,4 @@
-import { sleep, NodeOperationError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeOperationError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	ITriggerFunctions,
@@ -7,6 +7,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import {
 	executionDurationProperty,

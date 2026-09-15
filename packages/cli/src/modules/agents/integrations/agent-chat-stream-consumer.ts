@@ -1,41 +1,69 @@
 import type { StreamChunk } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import { OperationalError, type Logger } from 'n8n-workflow';
 
 import type { BridgeStatusHandle } from './agent-chat-integration';
+import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
+import { isRateLimitedToolOutput } from './channel-rate-limit';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
+type ToolResultChunk = Extract<StreamChunk, { type: 'tool-result' }>;
 
 export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
 
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
-	postErrorToThread: (thread: Thread<unknown, unknown> | null, error: unknown) => Promise<void>;
+	postErrorToThread: (
+		thread: Thread<unknown, unknown> | null,
+		error: unknown,
+		throwOnDeliveryError?: boolean,
+	) => Promise<void>;
 	handleSuspension: (
 		chunk: SuspendedChunk,
 		thread: Thread<unknown, unknown>,
 	) => Promise<SuspensionHandlingResult>;
-	handleMessage: (chunk: MessageChunk, thread: Thread<unknown, unknown>) => Promise<boolean>;
+	handleMessage: (
+		chunk: MessageChunk,
+		thread: Thread<unknown, unknown>,
+		throwOnDeliveryError?: boolean,
+	) => Promise<boolean>;
+	/**
+	 * Identifies this bridge's integration action tool. Only its results are
+	 * trusted for the `silent: true` outcome (`do_not_respond`) — arbitrary
+	 * tools returning a `silent` field must not mute the reply.
+	 */
+	isIntegrationActionTool?: (toolName: string) => boolean;
 }
 
 interface ConsumeStreamOptions {
 	forceBuffered?: boolean;
+	/** Buffer output and report posting failures so the caller can retry. */
+	throwOnDeliveryError?: boolean;
 	statusHandle?: BridgeStatusHandle;
 }
 
 interface ResponseState {
 	hasVisibleResponse: boolean;
 	/**
+	 * Set when the integration action tool reported a silent outcome
+	 * (`do_not_respond`): the agent chose not to reply, so any text it still
+	 * emits afterwards must not be posted.
+	 */
+	suppressText: boolean;
+	/**
 	 * Why a fallback error may need to be posted when the run ends. A
 	 * 'tool-error' fallback is cleared by a later successful tool call (the
 	 * retry recovered) and suppressed by visible output (the agent's own text
 	 * explains the failure). A 'suspension' fallback is neither — the user
 	 * still has an approval request they never received.
+	 * A 'rate-limit' fallback is set when the integration action tool fails with a
+	 * HTTP 429. The user must be informed that the integration is rate-limited.
 	 */
-	fallbackSource: 'tool-error' | 'suspension' | null;
+	fallbackSource: 'tool-error' | 'suspension' | 'rate-limit' | null;
 	fallbackError: unknown;
 }
 
@@ -47,6 +75,7 @@ interface ResponseLifecycle {
 
 const createResponseState = (): ResponseState => ({
 	hasVisibleResponse: false,
+	suppressText: false,
 	fallbackSource: null,
 	fallbackError: null,
 });
@@ -59,10 +88,8 @@ export class AgentChatStreamConsumer {
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
-		if (this.options.disableStreaming || options.forceBuffered) {
-			await this.consumeBuffered(stream, thread, {
-				statusHandle: options.statusHandle,
-			});
+		if (this.options.disableStreaming || options.forceBuffered || options.throwOnDeliveryError) {
+			await this.consumeBuffered(stream, thread, options);
 			return;
 		}
 
@@ -157,16 +184,10 @@ export class AgentChatStreamConsumer {
 			for await (const chunk of stream) {
 				switch (chunk.type) {
 					case 'text-delta': {
+						if (responseState.suppressText) break;
 						const { delta } = chunk;
 						await responseLifecycle.startStreamingResponse();
 						textStream.yield?.(delta);
-						if (delta.trim()) responseState.hasVisibleResponse = true;
-						break;
-					}
-					case 'reasoning-delta': {
-						const { delta } = chunk;
-						await responseLifecycle.startStreamingResponse();
-						textStream.yield?.(`_${delta}_`);
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
 					}
@@ -191,16 +212,12 @@ export class AgentChatStreamConsumer {
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
-						if (chunk.isError) {
-							responseState.fallbackSource = 'tool-error';
-							responseState.fallbackError = chunk.output;
-						} else if (responseState.fallbackSource === 'tool-error') {
-							responseState.fallbackSource = null;
-						}
+						this.noteToolResult(chunk, responseState);
+						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
 						break;
 					default:
-						// Ignore other chunk types (finish, tool-input-*,
-						// start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, finish,
+						// tool-input-*, start-step, finish-step, etc.)
 						break;
 				}
 			}
@@ -208,6 +225,47 @@ export class AgentChatStreamConsumer {
 		} finally {
 			await responseLifecycle.finish();
 		}
+	}
+
+	private noteToolResult(chunk: ToolResultChunk, state: ResponseState): void {
+		if (isRateLimitedToolOutput(chunk.output)) {
+			state.fallbackSource = 'rate-limit';
+			state.fallbackError = chunk.output;
+			return;
+		}
+		if (chunk.isError) {
+			state.fallbackSource = 'tool-error';
+			state.fallbackError = chunk.output;
+			return;
+		}
+		if (state.fallbackSource === 'tool-error') {
+			state.fallbackSource = null;
+		}
+	}
+
+	/**
+	 * True when this bridge's integration action tool reported that no reply
+	 * will be sent (`do_not_respond`). Checked per tool so an arbitrary tool
+	 * returning a `silent` field cannot mute the reply.
+	 */
+	private isSilentOutcome(chunk: ToolResultChunk): boolean {
+		if (chunk.isError || !(this.options.isIntegrationActionTool?.(chunk.toolName) ?? false)) {
+			return false;
+		}
+		if (!isRecord(chunk.output)) return false;
+		if (chunk.output.silent === true) return true;
+		// Batched action calls nest per-operation results under `results`.
+		return (
+			Array.isArray(chunk.output.results) &&
+			chunk.output.results.some(
+				(entry) =>
+					isRecord(entry) &&
+					entry.action === 'do_not_respond' &&
+					isRecord(entry.result) &&
+					entry.result.ok === true &&
+					entry.result.silent === true,
+			)
+		);
 	}
 
 	private createResponseLifecycle(options: {
@@ -243,22 +301,23 @@ export class AgentChatStreamConsumer {
 		state: ResponseState,
 		lifecycle: ResponseLifecycle,
 		thread: Thread<unknown, unknown>,
+		throwOnDeliveryError = false,
 	): Promise<void> {
 		if (!state.fallbackSource) return;
 		// Earlier output only excuses a tool error (the agent's own text explains
 		// it). A dropped approval card is never explained by prior text — the run
 		// stays suspended, so the user must be told to retry.
 		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
-
+		// 'rate-limit' and 'suspension' always post.
 		await lifecycle.startDiscreteResponse();
-		await this.options.postErrorToThread(thread, state.fallbackError);
+		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
 		state.hasVisibleResponse = true;
 	}
 
 	private async consumeBuffered(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: Thread<unknown, unknown>,
-		options: { statusHandle?: BridgeStatusHandle } = {},
+		options: ConsumeStreamOptions = {},
 	): Promise<void> {
 		let buffer = '';
 		const responseState = createResponseState();
@@ -279,10 +338,11 @@ export class AgentChatStreamConsumer {
 				// shape the streaming path uses under the hood.
 				await thread.post({ markdown: text });
 			} catch (postError: unknown) {
-				await this.options.postErrorToThread(thread, postError);
 				this.options.logger.error('[AgentChatBridge] Buffered post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
 				});
+				if (options.throwOnDeliveryError) throw postError;
+				await this.options.postErrorToThread(thread, postError);
 			}
 			responseState.hasVisibleResponse = true;
 		};
@@ -291,39 +351,51 @@ export class AgentChatStreamConsumer {
 			for await (const chunk of stream) {
 				switch (chunk.type) {
 					case 'text-delta':
-						buffer += chunk.delta;
-						break;
-					case 'reasoning-delta':
-						buffer += `_${chunk.delta}_`;
+						if (!responseState.suppressText) buffer += chunk.delta;
 						break;
 					case 'tool-call-suspended': {
-						await flushBuffer();
+						if (isIntegrationActionSuspendPayload(chunk.suspendPayload)) {
+							// The integration action already posted its interactive card.
+							buffer = '';
+						} else {
+							await flushBuffer();
+						}
 						await responseLifecycle.startDiscreteResponse();
 						const result = await this.options.handleSuspension(chunk, thread);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
+							if (options.throwOnDeliveryError) {
+								throw new OperationalError('Failed to post tool approval request');
+							}
 							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}
 						break;
 					}
-					case 'message':
+					case 'message': {
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						responseState.hasVisibleResponse ||= await this.options.handleMessage(chunk, thread);
+						const posted = await this.options.handleMessage(
+							chunk,
+							thread,
+							options.throwOnDeliveryError,
+						);
+						responseState.hasVisibleResponse ||= posted;
 						break;
+					}
 					case 'error':
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error);
+						await this.options.postErrorToThread(thread, chunk.error, options.throwOnDeliveryError);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
-						if (chunk.isError) {
-							responseState.fallbackSource = 'tool-error';
-							responseState.fallbackError = chunk.output;
-						} else if (responseState.fallbackSource === 'tool-error') {
-							responseState.fallbackSource = null;
+						this.noteToolResult(chunk, responseState);
+						if (this.isSilentOutcome(chunk)) {
+							responseState.suppressText = true;
+							// Nothing has been posted yet in buffered mode, so the
+							// silence can be honored for already-buffered text too.
+							buffer = '';
 						}
 						break;
 					default:
@@ -331,7 +403,12 @@ export class AgentChatStreamConsumer {
 				}
 			}
 			await flushBuffer();
-			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			await this.postFallbackIfNeeded(
+				responseState,
+				responseLifecycle,
+				thread,
+				options.throwOnDeliveryError,
+			);
 		} finally {
 			await flushBuffer();
 			await responseLifecycle.finish();

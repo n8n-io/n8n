@@ -184,9 +184,12 @@ describe('mergeProviderOptions', () => {
 
 	it('preserves unrelated providers from different arguments', () => {
 		expect(
-			mergeProviderOptions({ anthropic: { thinking: { type: 'enabled' } } }, { openai: { a: 1 } }),
+			mergeProviderOptions(
+				{ anthropic: { cacheControl: { type: 'ephemeral' } } },
+				{ openai: { a: 1 } },
+			),
 		).toEqual({
-			anthropic: { thinking: { type: 'enabled' } },
+			anthropic: { cacheControl: { type: 'ephemeral' } },
 			openai: { a: 1 },
 		});
 	});

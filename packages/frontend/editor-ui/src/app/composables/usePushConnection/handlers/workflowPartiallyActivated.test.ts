@@ -57,7 +57,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => mockUIStore,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 
@@ -65,7 +65,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => mockI18n,
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => mockSettingsStore,
 }));
 

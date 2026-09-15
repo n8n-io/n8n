@@ -9,6 +9,8 @@ import type { GraphNode } from '@vue-flow/core';
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useIsNodeContextEnabled } from '@/features/ai/instanceAi/composables/useIsNodeContextEnabled';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { BoundingBox } from '../../../canvas.types';
 
 const TOOLBAR_OFFSET_PX = 12;
@@ -33,25 +35,47 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 const { teleportTarget } = useVueFlowTransformPaneTeleport();
 const { isSelectionExtractable } = useSelectionValidation();
 const { canGroup, groupSelection } = useCanvasNodeGroupActions(() => props.selectedNodes, {
 	readOnly: () => props.readOnly,
 });
+const isNodeContextEnabled = useIsNodeContextEnabled();
 
 const emit = defineEmits<{
 	'group-created': [id: string];
 	'extract-workflow': [ids: string[]];
+	'add-nodes-to-chat': [ids: string[]];
 }>();
 
 const selectedNodeIds = computed(() => props.selectedNodes.map((node) => node.id));
 
 const canExtractWorkflow = computed(
-	() => !props.readOnly && isSelectionExtractable(selectedNodeIds.value).valid,
+	() =>
+		!props.readOnly &&
+		!settingsStore.isSubworkflowConversionDisabled &&
+		isSelectionExtractable(selectedNodeIds.value).valid,
+);
+
+// Multi-select only: a single node's add-to-chat lives on its own hover
+// toolbar (CanvasNodeToolbar). Showing it here too would duplicate that button
+// and float the multi-selection toolbar over a lone node.
+const showAddToChat = computed(
+	() => isNodeContextEnabled.value && selectedNodeIds.value.length > 1,
 );
 
 const isToolbarVisible = computed(
-	() => (canGroup.value || canExtractWorkflow.value) && selectedNodeIds.value.length > 1,
+	() =>
+		(canGroup.value || canExtractWorkflow.value || showAddToChat.value) &&
+		selectedNodeIds.value.length > 1,
+);
+
+const addToChatLabel = computed(() =>
+	i18n.baseText('canvas.selection.toolbar.addToChat', {
+		adjustToNumber: props.selectedNodes.length,
+		interpolate: { count: props.selectedNodes.length },
+	}),
 );
 
 const extractWorkflowLabel = computed(() =>
@@ -125,6 +149,17 @@ function onExtractWorkflowClick() {
 					data-test-id="canvas-selection-toolbar-extract"
 					:aria-label="extractWorkflowLabel"
 					@click.stop="onExtractWorkflowClick"
+				/>
+			</KeyboardShortcutTooltip>
+			<KeyboardShortcutTooltip v-if="showAddToChat" placement="top" :label="addToChatLabel">
+				<N8nIconButton
+					size="small"
+					variant="ghost"
+					icon="sparkles"
+					icon-size="large"
+					data-test-id="canvas-selection-toolbar-add-to-chat"
+					:aria-label="addToChatLabel"
+					@click.stop="emit('add-nodes-to-chat', selectedNodeIds)"
 				/>
 			</KeyboardShortcutTooltip>
 		</div>

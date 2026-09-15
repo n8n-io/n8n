@@ -6,7 +6,7 @@ import type {
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -48,7 +48,7 @@ const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const dataTableHasDependents = computed(() => hasDependencies(props.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.id, 'dataTable'));
 
 const loading = ref(false);
 const saving = ref(false);

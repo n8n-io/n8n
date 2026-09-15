@@ -1,10 +1,9 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import type { IUser, UserAction } from '@n8n/design-system/types';
-
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
+import type { IUser, UserAction } from '../../types';
 import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import Tags from '../N8nTags/Tags.vue';
 
@@ -57,6 +56,19 @@ export const Default = defaultTemplate.bind({});
 Default.args = {
 	items,
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { Breadcrumbs },
+	setup() {
+		return { items };
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<Breadcrumbs :items="items" theme="medium" />
+			<Breadcrumbs :items="items" theme="small" />
+		</div>
+	`,
+});
 
 export const CustomSeparator = defaultTemplate.bind({});
 CustomSeparator.args = {
@@ -169,19 +181,6 @@ WithSlots.args = {
 		{ id: '3', label: 'Parent 1', href: '/hidden1' },
 		{ id: '4', label: 'Parent 2', href: '/hidden2' },
 	],
-};
-
-const smallVersionTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	components: { Breadcrumbs },
-	props: Object.keys(argTypes),
-	template: '<Breadcrumbs v-bind="args" />',
-});
-export const SmallVersion = smallVersionTemplate.bind({});
-SmallVersion.args = {
-	items,
-	theme: 'small',
-	showBorder: true,
 };
 
 const smallWithSlotsTemplate: StoryFn = (args, { argTypes }) => ({

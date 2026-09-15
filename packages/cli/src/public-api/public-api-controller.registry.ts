@@ -1,34 +1,46 @@
-import type { ZodClass } from '@n8n/api-types';
+import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import {
+	apiKeyScopesSatisfy,
+	findBodyArg,
+	isRequestBodyRequired,
+	resolveRouteArgs,
+	resolveSuccessStatus,
+} from '@/public-api/public-api-route-resolver';
+import { formatValidationError } from '@/public-api/public-api-validation-error';
+import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
-function apiKeyScopesSatisfy(
-	granted: readonly string[] | undefined,
-	requirement: ApiKeyScopeRequirement,
-): boolean {
-	if (!granted) return false;
+function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
+	const output = z.object({ [key]: schema }).safeParse(params);
 
-	if (typeof requirement === 'string') {
-		return granted.includes(requirement);
+	if (!output.success) {
+		throw new BadRequestError(formatValidationError('params', output.error));
 	}
 
-	if ('anyOf' in requirement) {
-		return requirement.anyOf.some((scope) => granted.includes(scope));
-	}
+	return output.data[key];
+}
 
-	return requirement.allOf.every((scope) => granted.includes(scope));
+// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
+function routePath(prefix: string, req: Request): string {
+	const path = (prefix === '/' ? '' : prefix) + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
 @Service()
@@ -60,35 +72,34 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			const argTypes = Reflect.getMetadata(
-				'design:paramtypes',
-				controller,
+			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
+
+			const successStatus = resolveSuccessStatus(
+				controllerClass.name,
 				handlerName,
-			) as unknown[];
+				route.successStatus,
+			);
+
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyDto = bodyArg?.dto;
+			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
 
 			const handler = async (req: Request, res: Response) => {
+				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+
 				const args: unknown[] = [req, res];
-				for (let index = 0; index < route.args.length; index++) {
-					const arg = route.args[index];
-					if (!arg) continue;
+				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
-					} else if (arg.type === 'body' || arg.type === 'query') {
-						const paramType = argTypes[index] as ZodClass | undefined;
-						if (paramType && 'safeParse' in paramType) {
-							const output = paramType.safeParse(req[arg.type]);
-							if (output.success) {
-								args.push(output.data);
-							} else {
-								throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
-							}
-						} else {
-							throw new UnexpectedError(
-								`Public API route ${controllerClass.name}.${handlerName} is missing a Zod DTO for @${arg.type}`,
-							);
-						}
+						args.push(
+							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
+						);
 					} else {
-						throw new UnexpectedError(`Unknown arg type: ${String(arg.type)}`);
+						const output = arg.dto.safeParse(req[arg.type]);
+						if (output.success) {
+							args.push(output.data);
+						} else {
+							throw new BadRequestError(formatValidationError(arg.type, output.error));
+						}
 					}
 				}
 
@@ -96,15 +107,23 @@ export class PublicApiControllerRegistry {
 
 				if (res.headersSent) return;
 
-				if (route.responseDto) {
-					res.json(route.responseDto.parse(result));
+				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					res.status(successStatus).send();
 					return;
 				}
 
-				res.json(result);
+				res
+					.status(successStatus)
+					.json(route.responseDto ? route.responseDto.parse(result) : result);
 			};
 
-			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];
+			const middlewares: RequestHandler[] = [];
+
+			if (route.deprecated) {
+				middlewares.push(deprecated(route.deprecated));
+			}
+
+			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -112,6 +131,10 @@ export class PublicApiControllerRegistry {
 
 			if (route.accessScope) {
 				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
+			}
+
+			if (route.licenseFeature) {
+				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
@@ -135,7 +158,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
 			const authenticated = await this.authStrategyRegistry.authenticate(
 				req as AuthenticatedRequest,
@@ -151,7 +174,7 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
-					path: req.path,
+					path: routePath(prefix, req),
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
@@ -168,6 +191,17 @@ export class PublicApiControllerRegistry {
 
 			if (!tokenGrant || !apiKeyScopesSatisfy(tokenGrant.apiKeyScopes, requirement)) {
 				res.status(403).json({ message: 'Forbidden' });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
+		return (_req, res, next) => {
+			if (!Container.get(License).isLicensed(feature)) {
+				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 				return;
 			}
 

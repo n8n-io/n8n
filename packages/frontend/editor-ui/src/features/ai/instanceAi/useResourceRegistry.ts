@@ -19,6 +19,11 @@ export type ResourceEntry = {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
+	/**
+	 * A new-agent artifact with no agent row behind it yet. The builder renders
+	 * it from a local default config and persists on the first real edit.
+	 */
+	pending?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -34,8 +39,15 @@ interface Collections {
 	linkableByName: Map<string, ResourceEntry>;
 }
 
+/**
+ * A blank string is treated as absent. Every caller uses the result as the head
+ * of a fallback chain, so a blank name from a patch call would otherwise beat
+ * the known name and re-key the indexes under an empty string.
+ */
 function optionalString(val: unknown): string | undefined {
-	return typeof val === 'string' ? val : undefined;
+	if (typeof val !== 'string') return undefined;
+	const trimmed = val.trim();
+	return trimmed === '' ? undefined : trimmed;
 }
 
 type RecordProducedOptions = {
@@ -46,6 +58,12 @@ type AgentBuilderTargetMetadata = {
 	agentId: string;
 	projectId: string;
 	name?: string;
+};
+
+type PendingAgentTargetMetadata = {
+	agentId: string;
+	projectId: string;
+	name: string;
 };
 
 /**
@@ -179,9 +197,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
+	// Historical workflows action=get-json events return the workflow document itself,
+	// not under a `workflow` key. Keep them available when replaying stored threads.
 	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
@@ -332,12 +349,17 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				name: attachment.name ?? 'Untitled',
 			});
 		} else if (attachment.type === 'agent') {
-			recordProduced(col, {
-				type: 'agent',
-				id: attachment.id,
-				name: attachment.name ?? 'Untitled',
-				projectId: attachment.projectId,
-			});
+			recordProduced(
+				col,
+				{
+					type: 'agent',
+					id: attachment.id,
+					name: attachment.name ?? 'Untitled',
+					projectId: attachment.projectId,
+					...(attachment.pending ? { pending: true } : {}),
+				},
+				{ linkable: !attachment.pending },
+			);
 		}
 	}
 }
@@ -352,7 +374,8 @@ function enrichAgentFromBuilderTarget(
 	// Event-derived names are canonical; the persisted metadata name only fills
 	// in when no run event carried one (e.g. historical threads whose events
 	// aren't loaded). The 'Untitled' placeholder is not a real name.
-	const eventName = existing && existing.name !== 'Untitled' ? existing.name : undefined;
+	const eventName =
+		existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined;
 	recordProduced(
 		col,
 		{
@@ -382,6 +405,38 @@ function enrichWorkflowNames(
 	}
 }
 
+/**
+ * Surface a new-agent artifact the user opened but has not configured yet, so
+ * the panel can show it before any agent row exists.
+ *
+ * Skipped once anything else knows this id — a bound target, or a builder event
+ * — because that means the agent was persisted and the marker is only still
+ * there because the thread-metadata API can merge keys but not delete them.
+ */
+function enrichAgentFromPendingTarget(
+	col: Collections,
+	pending: PendingAgentTargetMetadata | undefined,
+	boundTarget: AgentBuilderTargetMetadata | undefined,
+): void {
+	if (!pending) return;
+	if (boundTarget?.agentId === pending.agentId) return;
+	if (col.produced.has(pending.agentId)) return;
+
+	recordProduced(
+		col,
+		{
+			type: 'agent',
+			id: pending.agentId,
+			name: pending.name,
+			projectId: pending.projectId,
+			pending: true,
+		},
+		// The placeholder name is generic, so linking it would rewrite ordinary
+		// prose mentioning a new agent.
+		{ linkable: false },
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Composable
 // ---------------------------------------------------------------------------
@@ -407,6 +462,7 @@ export function useResourceRegistry(
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
+	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -430,7 +486,9 @@ export function useResourceRegistry(
 				collectFromMessageAttachments(msg, col);
 				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
 			}
-			enrichAgentFromBuilderTarget(col, agentBuilderTarget?.());
+			const boundTarget = agentBuilderTarget?.();
+			enrichAgentFromBuilderTarget(col, boundTarget);
+			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

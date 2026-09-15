@@ -2,7 +2,7 @@ import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WorkflowConfigurationError } from 'n8n-workflow';
+import { recordConsumedAuth, WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -10,6 +10,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	MultiPartFormData,
 	INode,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -205,11 +206,11 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
-	const isRespondToWebhookConnected = connectedNodes.some(
+	const respondToWebhookNodes = connectedNodes.filter(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
+	if (respondToWebhookNodes.length === 0 && responseMode === 'responseNode') {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('No Respond to Webhook node found in the workflow'),
@@ -220,15 +221,37 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && !['responseNode', 'streaming'].includes(responseMode)) {
-		throw new WorkflowConfigurationError(
-			context.getNode(),
-			new Error('Unused Respond to Webhook node found in the workflow'),
-			{
-				description:
-					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
-			},
+	if (respondToWebhookNodes.length > 0 && !['responseNode', 'streaming'].includes(responseMode)) {
+		// A Respond to Webhook node downstream of a Wait node resuming on
+		// webhook/form and responding via Respond to Webhook node belongs to
+		// that Wait node, not to this webhook.
+		const descendantNames = new Set(connectedNodes.map((node) => node.name));
+		const isOwnedByDownstreamWait = (respondNode: NodeTypeAndVersion) =>
+			context
+				.getParentNodes(respondNode.name, { includeNodeParameters: true })
+				.some(
+					(node) =>
+						descendantNames.has(node.name) &&
+						node.type === 'n8n-nodes-base.wait' &&
+						!node.disabled &&
+						['webhook', 'form'].includes((node.parameters?.resume as string) ?? '') &&
+						node.parameters?.responseMode === 'responseNode',
+				);
+
+		const hasUnusedRespondNode = respondToWebhookNodes.some(
+			(node) => !isOwnedByDownstreamWait(node),
 		);
+
+		if (hasUnusedRespondNode) {
+			throw new WorkflowConfigurationError(
+				context.getNode(),
+				new Error('Unused Respond to Webhook node found in the workflow'),
+				{
+					description:
+						'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+				},
+			);
+		}
 	}
 };
 
@@ -271,12 +294,16 @@ export async function validateWebhookAuthentication(
 			) {
 				throw new WebhookAuthorizationError(403);
 			}
+
+			recordConsumedAuth(req, ['x-auth-token']);
 		} else if (
 			providedAuth.name !== expectedAuth.user ||
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
+		} else {
+			recordConsumedAuth(req, ['authorization']);
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -292,6 +319,8 @@ export async function validateWebhookAuthentication(
 		if (headers.authorization !== `Bearer ${expectedToken}`) {
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, ['authorization']);
 	} else if (authentication === 'headerAuth') {
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -313,6 +342,8 @@ export async function validateWebhookAuthentication(
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, [headerName]);
 	} else if (authentication === 'jwtAuth') {
 		let expectedAuth;
 
@@ -346,9 +377,13 @@ export async function validateWebhookAuthentication(
 		}
 
 		try {
-			return jwt.verify(token, secretOrPublicKey, {
+			const payload = jwt.verify(token, secretOrPublicKey, {
 				algorithms: [expectedAuth.algorithm],
 			}) as IDataObject;
+
+			recordConsumedAuth(req, ['authorization']);
+
+			return payload;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}

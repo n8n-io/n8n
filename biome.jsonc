@@ -42,6 +42,14 @@
 		]
 	},
 	"organizeImports": { "enabled": false },
+	// Every `tsconfig*.json` is JSONC. Biome only infers that from the exact name `tsconfig.json`,
+	// so variants like `tsconfig.frontend-module.json` need it spelled out.
+	"overrides": [
+		{
+			"include": ["**/tsconfig*.json"],
+			"json": { "parser": { "allowComments": true } }
+		}
+	],
 	"linter": {
 		"enabled": false
 	},

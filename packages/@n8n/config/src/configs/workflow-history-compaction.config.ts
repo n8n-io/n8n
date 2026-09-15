@@ -47,4 +47,11 @@ export class WorkflowHistoryCompactionConfig {
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TRIM_ON_START_UP')
 	trimOnStartUp: boolean = false;
+
+	/**
+	 * Whether to skip the compaction pass that normally runs on startup.
+	 * Scheduled runs are unaffected. Takes precedence over `trimOnStartUp`.
+	 */
+	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_SKIP_ON_START_UP')
+	skipOnStartUp: boolean = false;
 }

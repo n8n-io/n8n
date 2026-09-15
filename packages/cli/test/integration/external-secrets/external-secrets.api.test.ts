@@ -13,7 +13,6 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { ExternalSecretsProviderConnectionManager } from '@/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee';
 import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
 import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
 import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 import type {
@@ -69,8 +68,10 @@ const resetManager = async () => {
 	const config = Container.get(ExternalSecretsConfig);
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
+	// Simulate a fresh process: without this, providers from the previous test survive in the
+	// singleton registry and act as connected predecessors during replacement.
+	providerRegistry.clear();
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
-	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
 	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
@@ -87,7 +88,6 @@ const resetManager = async () => {
 			settingsStore,
 			providerRegistry,
 			providerLifecycle,
-			retryManager,
 			providerConnectionManager,
 			secretsCache,
 			secretsProviderConnectionRepository,
@@ -143,7 +143,6 @@ beforeAll(async () => {
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
-	const retryManager = Container.get(ExternalSecretsRetryManager);
 	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
 	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
@@ -160,7 +159,6 @@ beforeAll(async () => {
 			settingsStore,
 			providerRegistry,
 			providerLifecycle,
-			retryManager,
 			providerConnectionManager,
 			secretsCache,
 			secretsProviderConnectionRepository,

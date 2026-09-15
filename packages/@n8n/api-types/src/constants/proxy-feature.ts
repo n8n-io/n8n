@@ -6,11 +6,18 @@
 
 export const X_N8N_FEATURE_HEADER = 'x-n8n-feature';
 export const X_N8N_VERSION_HEADER = 'x-n8n-version';
+export const X_N8N_RUN_ID_HEADER = 'x-n8n-run-id';
+export const X_N8N_THREAD_ID_HEADER = 'x-n8n-thread-id';
 
 export const N8N_PROXY_FEATURES = ['instance-ai', 'workflow-builder', 'agent-builder'] as const;
 export type N8nProxyFeature = (typeof N8N_PROXY_FEATURES)[number];
 
-export interface ProxyHeaderInput {
+export interface ProxyContext {
+	runId?: string;
+	threadId?: string;
+}
+
+export interface ProxyHeaderInput extends ProxyContext {
 	feature: N8nProxyFeature;
 	n8nVersion: string;
 }
@@ -25,5 +32,7 @@ export function buildProxyHeaders(input: ProxyHeaderInput): Record<string, strin
 	return {
 		[X_N8N_FEATURE_HEADER]: input.feature,
 		[X_N8N_VERSION_HEADER]: input.n8nVersion,
+		...(input.runId ? { [X_N8N_RUN_ID_HEADER]: input.runId } : {}),
+		...(input.threadId ? { [X_N8N_THREAD_ID_HEADER]: input.threadId } : {}),
 	};
 }

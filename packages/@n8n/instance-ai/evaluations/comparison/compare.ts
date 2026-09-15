@@ -285,8 +285,15 @@ const KNOWN_FAILURE_CATEGORIES = new Set([
 	'builder_issue',
 	'mock_issue',
 	'framework_issue',
+	// The verifier's "not enough information to decide" arm. In its prompt enum
+	// from the start but missing here, so every one of these was dropped from the
+	// PR comment with a console warning (TRUST-375).
+	'verification_gap',
 	'verification_failure',
 	'build_failure',
+	// Build-only sentinel rows — reachable through a LangSmith baseline fetch,
+	// which reads run outputs rather than execution-scenario results.
+	'expectations_failed',
 ]);
 
 function isCategoryNotable(

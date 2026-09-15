@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "agent": {
+            "type": "null"
+        },
         "badges": {
             "type": "object",
             "properties": {
@@ -53,6 +56,9 @@
                 "location": {
                     "type": "boolean"
                 },
+                "maliciousAttachments": {
+                    "type": "integer"
+                },
                 "subscribed": {
                     "type": "boolean"
                 },
@@ -90,11 +96,20 @@
                 "brightness": {
                     "type": "string"
                 },
+                "color": {
+                    "type": "null"
+                },
+                "idPlugin": {
+                    "type": "null"
+                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
                 "size": {
                     "type": "string"
+                },
+                "yPosition": {
+                    "type": "number"
                 }
             }
         },
@@ -148,6 +163,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -168,6 +186,9 @@
                     }
                 }
             }
+        },
+        "manifest": {
+            "type": "null"
         },
         "manualCoverAttachment": {
             "type": "boolean"
@@ -197,5 +218,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

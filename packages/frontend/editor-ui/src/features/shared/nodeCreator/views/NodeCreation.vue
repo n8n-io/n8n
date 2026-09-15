@@ -22,13 +22,20 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
 import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
-import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nButtonList,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -59,6 +66,7 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
+const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -159,7 +167,7 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
+	<N8nButtonList v-if="!createNodeActive" orientation="vertical" :class="$style.nodeButtonsWrapper">
 		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"
@@ -177,6 +185,7 @@ function openCommandBar(event: MouseEvent) {
 			</KeyboardShortcutTooltip>
 		</NodeCreatorShortcutCoachmark>
 		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"
 			placement="left"
@@ -262,7 +271,7 @@ function openCommandBar(event: MouseEvent) {
 				</template>
 			</N8nButton>
 		</N8nTooltip>
-	</div>
+	</N8nButtonList>
 	<Suspense>
 		<LazyNodeCreator
 			:active="createNodeActive"
@@ -277,9 +286,6 @@ function openCommandBar(event: MouseEvent) {
 	position: absolute;
 	top: 0;
 	right: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }

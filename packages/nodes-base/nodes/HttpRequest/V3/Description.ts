@@ -1,6 +1,34 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
+const webdavMethodOptions: INodePropertyOptions[] = [
+	'COPY',
+	'MKCOL',
+	'MOVE',
+	'PROPFIND',
+	'REPORT',
+].flatMap((method) => [
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			show: {
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			hide: {
+				method: [{ _cnd: { not: method } }],
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+]);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -42,6 +70,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'PUT',
 				value: 'PUT',
 			},
+			...webdavMethodOptions,
 		],
 		default: 'GET',
 		description: 'The request method to use',
@@ -122,12 +151,12 @@ export const mainProperties: INodeProperties[] = [
 			},
 		},
 		builderHint: {
-			propertyHint: `Pick by how the API authenticates, not by what the user calls it:
-- "Authorization: Bearer <token>" → httpBearerAuth (single token field, best UX). Use this for OpenAI, Anthropic, GitHub PATs, Stripe, Notion, and any service whose docs say "Bearer".
-- Custom header like X-API-Key, apikey, X-Auth-Token, or non-Bearer Authorization schemes → httpHeaderAuth (user must enter the header name and/or full value).
+			propertyHint: `For a NEW credential default to httpTemplatedCustomAuth whenever the auth fits header/query/body values — API keys and bearer tokens alike ("Authorization: Bearer <token>" becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}). Setup rejects new plain generic credentials on this node UNLESS the user explicitly asked for that type — an explicit user choice always wins, don't argue with it.
+Pick a plain generic type when reusing an existing credential of that type, or when the user explicitly asks for one, matching how the API authenticates:
+- "Authorization: Bearer <token>" → httpBearerAuth.
+- Custom header like X-API-Key, apikey, X-Auth-Token, or non-Bearer Authorization schemes → httpHeaderAuth.
 - API key in the query string (?api_key=...) → httpQueryAuth.
-- username + password → httpBasicAuth.
-A user saying "API key" or "header auth" usually means httpBearerAuth only when the docs use the Authorization: Bearer <token> scheme. Use httpHeaderAuth for custom header names or non-Bearer Authorization schemes where the full header value/prefix must be user-controlled.`,
+For what a template cannot express, use the matching type for new and existing credentials alike: username + password → httpBasicAuth, digest → httpDigestAuth, OAuth → oAuth2Api/oAuth1Api.`,
 		},
 	},
 	{
@@ -1221,6 +1250,14 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 				default: false,
 				description:
 					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
+			},
+			{
+				displayName: 'Enable WebDAV Methods',
+				name: 'webdavMethods',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY and REPORT to the Method list',
 			},
 		],
 	},

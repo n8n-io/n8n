@@ -53,7 +53,11 @@ export class UserConsentRepository extends Repository<UserConsent> {
 	async findConnectedClients(
 		options: FindConnectedClientsOptions,
 	): Promise<{ rows: UserConsent[]; total: number }> {
-		const qb = this.createQueryBuilder('consent').leftJoinAndSelect('consent.client', 'client');
+		const qb = this.createQueryBuilder('consent')
+			.leftJoinAndSelect('consent.client', 'client')
+			// First-party clients are internal per-resource virtual clients (e.g. form
+			// triggers), not user-manageable OAuth clients — keep them out of the list.
+			.andWhere('client.isFirstParty = :isFirstParty', { isFirstParty: false });
 
 		if (options.withOwner) qb.leftJoinAndSelect('consent.user', 'user');
 		if (options.userId) qb.andWhere('consent.userId = :userId', { userId: options.userId });
@@ -87,15 +91,32 @@ export class UserConsentRepository extends Repository<UserConsent> {
 	/**
 	 * Distinct owners across every consent, for the "Connected by" filter. Not
 	 * scoped by the current filters, so the dropdown always lists all owners.
+	 * First-party (internal) client consents are excluded, matching the list.
 	 */
 	async findConsentOwners(): Promise<ConsentOwner[]> {
 		return await this.createQueryBuilder('consent')
 			.innerJoin('consent.user', 'user')
+			.innerJoin('consent.client', 'client')
+			.where('client.isFirstParty = :isFirstParty', { isFirstParty: false })
 			.select('user.id', 'id')
 			.addSelect('user.firstName', 'firstName')
 			.addSelect('user.lastName', 'lastName')
 			.addSelect('user.email', 'email')
 			.distinct(true)
 			.getRawMany<ConsentOwner>();
+	}
+
+	/**
+	 * Count connected-client consents, optionally scoped to a single user. Backs
+	 * the "mine"/"all" tab totals. Excludes first-party (internal) client consents
+	 * so the totals match the listing.
+	 */
+	async countConnectedConsents(userId?: string): Promise<number> {
+		return await this.count({
+			where: {
+				...(userId ? { userId } : {}),
+				client: { isFirstParty: false },
+			},
+		});
 	}
 }

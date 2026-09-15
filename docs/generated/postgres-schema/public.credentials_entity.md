@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
-| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -50,6 +50,7 @@
 ```mermaid
 erDiagram
 
+"public.agent_credential_dependency" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.chat_hub_agents" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
 "public.chat_hub_sessions" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
 "public.credential_dependency" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
@@ -73,6 +74,11 @@ erDiagram
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
   varchar_16_ usageScope
+}
+"public.agent_credential_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ credentialId FK
 }
 "public.chat_hub_agents" {
   timestamp_3__with_time_zone createdAt

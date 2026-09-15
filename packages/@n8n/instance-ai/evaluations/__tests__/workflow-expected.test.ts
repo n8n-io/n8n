@@ -1,4 +1,4 @@
-import { workflowExpectedForCase } from '../harness/runner';
+import { workflowExpectedForCase } from '../harness/build-workflow';
 
 describe('workflowExpectedForCase', () => {
 	const scenario = {

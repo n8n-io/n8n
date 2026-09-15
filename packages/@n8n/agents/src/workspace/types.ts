@@ -140,7 +140,6 @@ export interface WorkspaceSandbox {
 	readonly provider: string;
 	status: ProviderStatus;
 	getInstructions?(): string;
-	getDefaultCommandEnv?(): NodeJS.ProcessEnv;
 	executeCommand?(
 		command: string,
 		args?: string[],
@@ -150,6 +149,8 @@ export interface WorkspaceSandbox {
 	start?(): Promise<void>;
 	stop?(): Promise<void>;
 	destroy?(): Promise<void>;
+	/** Delete the provider-side sandbox by identity, regardless of local ownership. */
+	deleteRemote?(): Promise<void>;
 	_start?(): Promise<void>;
 	_stop?(): Promise<void>;
 	_destroy?(): Promise<void>;

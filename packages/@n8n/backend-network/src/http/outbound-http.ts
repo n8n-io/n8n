@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
 	IHttpRequestOptions,
@@ -25,6 +26,7 @@ import {
 	type RequestAuthorizer,
 	type TransportTimeoutOptions,
 } from './undici/transport';
+import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpTransportOptions {
 	/**
@@ -36,10 +38,10 @@ export interface HttpTransportOptions {
 	 */
 	proxy?: ProxyOption;
 	/**
-	 * SSRF protection level. Defaults to the container's `SsrfProtectionService`.
-	 * Pass `'disabled'` to explicitly opt out.
+	 * Whether this transport enforces the instance's outbound network policy.
+	 * Defaults to `'safe'`. Pass `'unsafe'` to explicitly opt out.
 	 */
-	ssrf?: SsrfOption;
+	useDefaultSsrfPolicy?: UseDefaultSsrfPolicy;
 	/**
 	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
 	 * Used for long-running outbound calls (e.g. LLM completions) that would
@@ -139,8 +141,13 @@ export interface HttpRequestClient {
  * SSRF coverage is identical for `asCustomFetch()` and `getDispatcher()` (same
  * underlying dispatcher): every dispatched request — initial and each redirect
  * hop — is validated, and direct connections also carry a connect-time secure
- * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` enforces the
- * same connect-time secure lookup for direct connections.
+ * DNS lookup that defeats DNS-rebinding (TOCTOU). `getNodeAgent()` carries that
+ * same lookup, applied to whichever host its socket opens to: the target on a
+ * direct connection, the proxy behind an explicit one.
+ * It does **not** validate the targets sent through it.
+ * Behind any proxy the proxy resolves the final target, so no client-side
+ * connect-time check of that target is possible.
+ * Callers taking the agents validate those targets themselves (see `buildNodeAgents`).
  */
 export interface HttpTransport {
 	asCustomFetch(): CustomFetch;
@@ -155,20 +162,26 @@ export interface HttpTransport {
  *
  * - {@link requests}: you make a request and get a response (n8n request pipeline).
  * - {@link transport}: you obtain transport primitives to hand to a third-party SDK.
+ *
+ * Every client and transport enforces the instance's outbound network policy by
+ * default (`useDefaultSsrfPolicy: 'safe'`). Whether the SSRF guard actually runs is
+ * resolved here from `SsrfProtectionConfig.enabled` — callers never read that
+ * flag. The only way to bypass the policy is an explicit `useDefaultSsrfPolicy: 'unsafe'`.
  */
 @Service()
 export class OutboundHttp {
 	constructor(
 		private readonly ssrfProtection: SsrfProtectionService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly logger: Logger,
 	) {}
 
 	/**
-	 * A {@link HttpRequestClient} carrying the given SSRF policy.
+	 * A {@link HttpRequestClient} enforcing the given {@link UseDefaultSsrfPolicy}.
 	 * Proxy is resolved per request from `IHttpRequestOptions.proxy` / the environment.
 	 */
 	requests(options?: HttpRequestClientOptions): HttpRequestClient {
-		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
@@ -205,11 +218,12 @@ export class OutboundHttp {
 	}
 
 	/**
-	 * An {@link HttpTransport} carrying the given proxy + SSRF policy.
+	 * An {@link HttpTransport} carrying the given proxy policy and enforcing the
+	 * given {@link UseDefaultSsrfPolicy}.
 	 */
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
-		const ssrf = options?.ssrf ?? this.ssrfProtection;
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const timeouts = options?.timeouts;
 		const authorize = options?.authorize;
 
@@ -225,6 +239,21 @@ export class OutboundHttp {
 			getNodeAgent: (agentOptions) =>
 				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};
+	}
+
+	/**
+	 * Resolves a caller's {@link UseDefaultSsrfPolicy} to the SSRF policy to enforce:
+	 * the container's `SsrfProtectionService` always in `'enforced'` mode, and in
+	 * `'safe'` mode when the instance enables protection, nothing otherwise.
+	 */
+	private resolveSsrf(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): SsrfOption {
+		if (useDefaultSsrfPolicy === 'enforced') {
+			return this.ssrfProtection;
+		}
+		if (useDefaultSsrfPolicy === 'unsafe' || !this.ssrfConfig.enabled) {
+			return 'disabled';
+		}
+		return this.ssrfProtection;
 	}
 }
 

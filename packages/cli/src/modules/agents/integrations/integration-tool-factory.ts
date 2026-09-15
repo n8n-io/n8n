@@ -20,7 +20,6 @@ import {
 import {
 	buildActionInputSchema,
 	buildContextInputSchema,
-	type RawActionToolInput,
 	type RawContextToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
@@ -164,11 +163,11 @@ export function createIntegrationActionTool(params: {
 			}
 
 			const interruptCtx = ctx as InterruptibleToolContext;
-			const toolInput = input as RawActionToolInput;
+			const toolInput = input;
 
 			if (toolInput.actions !== undefined) {
 				return await executeActionToolBatch({
-					operations: toolInput.actions,
+					operations: toolInput.actions.map(toSingleActionOperation),
 					descriptor,
 					messageContextStore,
 					actionExecutor,

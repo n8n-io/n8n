@@ -8,17 +8,21 @@ import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-type
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
 import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -27,7 +31,6 @@ import {
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
-import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	InstanceAiProactiveStarterMessage,
@@ -50,12 +53,20 @@ import {
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
 import {
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+	isPersonalizedPromptSuggestionResolution,
+	isTaxonomyPromptSuggestionResolution,
+	resolveTaxonomyPromptSuggestions,
+	resolveTaxonomySegment,
+	useInstanceAiInspirationFromTaxonomyExperiment,
+	type TaxonomyPromptSuggestionResolution,
+} from '@/experiments/instanceAiInspirationFromTaxonomy';
+import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
 	getPreviewWorkflow,
-	useInstanceAiWorkflowPreviewSuggestionsExperiment,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions';
 import {
 	InstanceAiSplitEmptyState,
@@ -75,8 +86,8 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
-const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
@@ -97,6 +108,8 @@ const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
+const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
+	'Instance AI inspiration from taxonomy exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -120,19 +133,20 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+// Opening a new conversation drops the tab title of the thread we came from —
+// this view mounts on every entry to the empty route, the parent layout doesn't.
+useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
-const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
-	useInstanceAiWorkflowPreviewSuggestionsExperiment();
 const {
 	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
 	currentVariant: templateExamplesVariant,
@@ -167,6 +181,10 @@ const {
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
+const {
+	currentVariant: inspirationFromTaxonomyVariant,
+	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
+} = useInstanceAiInspirationFromTaxonomyExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
@@ -181,17 +199,51 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!isSplitLayoutActive.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
+const personalizedPromptSuggestionResolution = ref<
+	PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null
+>(null);
+const shouldShowTaxonomySuggestions = computed(() =>
+	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+const isTaxonomySegmentResolved = computed(
+	() =>
+		appSettingsStore.isCloudDeployment &&
+		cloudPlanStore.state.initialized &&
+		resolveTaxonomySegment(cloudPlanStore.currentUserCloudInfo?.information ?? null).source ===
+			'taxonomy',
+);
+const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || showTemplateExamples.value) {
+		return false;
+	}
+
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return false;
+	}
+
+	if (
+		inspirationFromTaxonomyVariant.value ===
+		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
+	) {
+		return isTaxonomySegmentResolved.value;
+	}
+
+	return shouldShowTaxonomySuggestions.value;
+});
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
 	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
 });
-const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
-	null,
-);
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
+let hasTrackedInspirationFromTaxonomyExposure = false;
+const isAnyPersonalizedSuggestionsTreatmentActive = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value ||
+		isPersonalizedPromptSuggestionsTreatmentVariant.value,
+);
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -207,6 +259,23 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
+	if (isInspirationFromTaxonomyTreatmentVariant.value) {
+		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
+			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
+			metadataLoadState,
+		});
+
+		if (taxonomyResolution.source === 'taxonomy') {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+
+		if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+	}
+
 	const format = personalizedPromptSuggestionsFormat.value;
 	if (!format) {
 		personalizedPromptSuggestionResolution.value = null;
@@ -228,11 +297,11 @@ function resolvePersonalizedPromptMetadata() {
 	clearPersonalizedPromptMetadataTimeout();
 	personalizedPromptSuggestionResolution.value = null;
 
-	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (!isAnyPersonalizedSuggestionsTreatmentActive.value) {
 		return;
 	}
 
-	if (personalizedPromptProfileOverride.value) {
+	if (!isInspirationFromTaxonomyTreatmentVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
 	}
@@ -255,6 +324,7 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
+		isInspirationFromTaxonomyTreatmentVariant,
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -289,10 +359,31 @@ watch(
 );
 
 watch(
+	shouldTrackInspirationFromTaxonomyExposure,
+	(shouldTrackExposure) => {
+		const variant = inspirationFromTaxonomyVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedInspirationFromTaxonomyExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT, variant),
+		);
+		hasTrackedInspirationFromTaxonomyExposure = true;
+	},
+	{ immediate: true },
+);
+
+watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
 		if (
-			!isPersonalizedPromptSuggestionsTreatmentVariant.value ||
+			!isAnyPersonalizedSuggestionsTreatmentActive.value ||
 			personalizedPromptSuggestionResolution.value !== null ||
 			!initialized
 		) {
@@ -304,6 +395,15 @@ watch(
 	},
 );
 
+const isTaxonomySuggestionsPending = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value &&
+		personalizedPromptSuggestionResolution.value === null,
+);
+const shouldShowPersonalizedPromptSuggestions = computed(() =>
+	isPersonalizedPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
@@ -313,9 +413,35 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	if (showTemplateExamples.value) {
 		return {};
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
-		const resolution = personalizedPromptSuggestionResolution.value;
 
+	if (isTaxonomySuggestionsPending.value) {
+		return {
+			suggestions: [],
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	const resolution = personalizedPromptSuggestionResolution.value;
+	if (isTaxonomyPromptSuggestionResolution(resolution)) {
+		return {
+			suggestions: resolution.suggestions,
+			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+			suggestionsComponentProps: {
+				fallbackSuggestions: [],
+				format: 'list',
+				showSeeMore: resolution.showSeeMore,
+			},
+			suggestionCatalogVersion: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+			suggestionTelemetryPayload: getExperimentTelemetryPayload(
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+				inspirationFromTaxonomyVariant.value,
+				resolution.telemetryPayload,
+			),
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		if (!resolution) {
 			return {
 				suggestions: [],
@@ -323,22 +449,24 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			};
 		}
 
-		return {
-			suggestions: resolution.suggestions,
-			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
-			suggestionsComponentProps: {
-				fallbackSuggestions: resolution.fallbackSuggestions,
-				format: personalizedPromptSuggestionsFormat.value,
-				showSeeMore: resolution.showSeeMore,
-			},
-			suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
-			suggestionTelemetryPayload: getExperimentTelemetryPayload(
-				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-				personalizedPromptSuggestionsVariant.value,
-				resolution.telemetryPayload,
-			),
-			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
+		if (isPersonalizedPromptSuggestionResolution(resolution)) {
+			return {
+				suggestions: resolution.suggestions,
+				suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+				suggestionsComponentProps: {
+					fallbackSuggestions: resolution.fallbackSuggestions,
+					format: personalizedPromptSuggestionsFormat.value,
+					showSeeMore: resolution.showSeeMore,
+				},
+				suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+				suggestionTelemetryPayload: getExperimentTelemetryPayload(
+					INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+					personalizedPromptSuggestionsVariant.value,
+					resolution.telemetryPayload,
+				),
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+			};
+		}
 	}
 
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -350,17 +478,11 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		};
 	}
 
-	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
-		return {
-			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
-			suggestionsComponent: WorkflowPreviewSuggestions,
-			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
-			placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
-	}
-
 	return {
-		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
+		suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+		suggestionsComponent: WorkflowPreviewSuggestions,
+		suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+		placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
 	};
 });
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
@@ -373,16 +495,19 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	if (showTemplateExamples.value) {
 		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (
+		shouldShowTaxonomySuggestions.value ||
+		isTaxonomySuggestionsPending.value ||
+		shouldShowPersonalizedPromptSuggestions.value ||
+		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
+			personalizedPromptSuggestionResolution.value === null)
+	) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
-	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
-		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
-	}
-	return INSTANCE_AI_DEFAULT_TITLE_KEY;
+	return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -431,8 +556,9 @@ const CANVAS_NATURAL_HEIGHT_PX = 420;
 const PREVIEW_MIN_SCALE = 0.3;
 
 const previewScale = ref(1);
+const previewRemainingSpace = ref(CANVAS_NATURAL_HEIGHT_PX);
 
-useResizeObserver(emptyLayoutRef, () => {
+function updatePreviewScale() {
 	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
 	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
 	const inputRect = centeredInputRef.value.getBoundingClientRect();
@@ -440,15 +566,20 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	previewRemainingSpace.value = Math.max(0, remainingSpace);
 	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
-});
+}
+
+useResizeObserver(emptyLayoutRef, updatePreviewScale);
+useResizeObserver(centeredInputRef, updatePreviewScale);
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
 
 const workflowPreviewWrapperStyle = computed(() => ({
 	transform: `scale(${previewScale.value})`,
 	transformOrigin: 'top center',
-	height: `${CANVAS_NATURAL_HEIGHT_PX * previewScale.value}px`,
+	height: `${previewRemainingSpace.value}px`,
+	'--workflow-preview-canvas-height': `${Math.max(CANVAS_NATURAL_HEIGHT_PX, previewRemainingSpace.value)}px`,
 }));
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
@@ -462,12 +593,27 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+	void nextTick(() => {
+		// Restore text without replacing new text or attachments.
+		if (!restoreDraft?.()) {
+			chatInputRef.value?.setTextIfEmpty(message);
+		}
+		chatInputRef.value?.focus();
+	});
+}
+
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
 
 	if (!selectedProject.value) {
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -492,12 +638,49 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		});
 	} catch {
 		isStartingThread.value = false;
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
+	// drop the user into a blank thread, and handing the draft to the destination view is
+	// not an option: it reads its composer draft from localStorage once, synchronously, on
+	// mount, which always precedes this response. `sendMessage` has already surfaced the
+	// reason, so restore what was typed and stay put.
+	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (!sent) {
+		isStartingThread.value = false;
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
+		// so without this every refusal would strand a blank thread in the sidebar and leave
+		// an EventSource open behind it (deleting disposes the runtime, which closes it).
+		// Discarding it also keeps the server's view matching what the user was just told: if
+		// a run did start but its response never arrived, this tears it down rather than
+		// leaving it burning credits on a conversation they believe never began. Runs after
+		// the restore is queued so cleanup can never delay giving the draft back.
+		//
+		// Silent because the refusal was already reported; a second "delete failed" for
+		// cleanup the user never asked for would only confuse. A refused delete returns
+		// early, before the store's own teardown, so dispose the runtime here -- the thread
+		// itself does still exist and rightly stays listed, but its EventSource was opened
+		// for a turn that never started and nothing else would ever close it.
+		if (!(await store.deleteThread(threadId, { silent: true }))) {
+			store.disposeRuntime(threadId);
+		}
+		return;
+	}
+
+	// Track message-with-nodes only after a successful send, so refused sends and
+	// retries don't inflate the node-count metric.
+	const nodeCount = countAttachedNodes(attachments);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
+
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
@@ -536,9 +719,9 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -575,6 +758,7 @@ function handleShelfSuggestionInsert(payload: {
 							v-if="creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
+							:amounts-hidden="quotaLocked"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -603,18 +787,26 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"
@@ -643,11 +835,7 @@ function handleShelfSuggestionInsert(payload: {
 				/>
 				<Transition name="workflow-preview-fade">
 					<div
-						v-if="
-							isWorkflowPreviewSuggestionsExperimentEnabled &&
-							activeWorkflowPreview &&
-							hasSpaceForPreview
-						"
+						v-if="activeWorkflowPreview && hasSpaceForPreview"
 						:class="$style.workflowPreviewWrapper"
 						:style="workflowPreviewWrapperStyle"
 					>

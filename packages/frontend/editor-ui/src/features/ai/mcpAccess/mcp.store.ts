@@ -10,19 +10,25 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
 	toggleWorkflowsMcpAccessApi,
+	toggleAgentsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
+	type McpSettingsResponse,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
+	type ToggleAgentsMcpAccessResponse,
+	type ToggleAgentsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
+import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
 	type OAuthClientFilters,
@@ -61,6 +67,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+	const autoExposeNewWorkflows = computed(
+		() => !!settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows,
+	);
 
 	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
 	// reflected; the editor-base fallback covers settings not yet loaded.
@@ -86,34 +95,75 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	/**
-	 * Fetch a page of MCP-available workflows, clamping to the last non-empty
-	 * page when the requested one shrank away (e.g. after removing access).
-	 * Returns the effective 1-based page so callers can sync their table state.
+	 * Runs a page fetch, clamping to the last non-empty page when the requested
+	 * one shrank away (e.g. after removing access). Returns the effective 1-based
+	 * page so callers can sync their table state.
 	 */
-	async function fetchWorkflowsAvailableForMCPPage(
+	async function clampToLastPage<T>(
+		fetchPage: (page: number, pageSize: number) => Promise<{ data: T[]; count: number }>,
 		page: number,
 		pageSize: number,
-	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
-		const response = await fetchWorkflowsAvailableForMCP(page, pageSize);
+	): Promise<{ data: T[]; count: number; page: number }> {
+		const response = await fetchPage(page, pageSize);
 		if (response.data.length === 0 && response.count > 0 && page > 1) {
 			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
-			const clamped = await fetchWorkflowsAvailableForMCP(maxPage, pageSize);
+			const clamped = await fetchPage(maxPage, pageSize);
 			return { ...clamped, page: maxPage };
 		}
 		return { ...response, page };
 	}
 
-	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated } = await updateMcpSettings(
-			rootStore.restApiContext,
-			enabled,
-		);
+	async function fetchWorkflowsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
+		return await clampToLastPage(fetchWorkflowsAvailableForMCP, page, pageSize);
+	}
+
+	async function fetchAgentsAvailableForMCP(
+		page = 1,
+		pageSize = 50,
+	): Promise<{ data: Agent[]; count: number }> {
+		const { data, count } = await fetchMcpAgents(rootStore.restApiContext, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+			availableInMCP: true,
+		});
+		return { data, count };
+	}
+
+	async function fetchAgentsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: Agent[]; count: number; page: number }> {
+		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
+	}
+
+	// The PATCH endpoint always returns both current values, so local state can
+	// be synced from the response without a follow-up module-settings fetch.
+	function applyMcpSettingsResponse(response: McpSettingsResponse) {
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
-			mcpAccessEnabled: updated,
+			mcpAccessEnabled: response.mcpAccessEnabled,
+			autoExposeNewWorkflows: response.autoExposeNewWorkflows,
 		};
-		return updated;
+	}
+
+	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			mcpAccessEnabled: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.mcpAccessEnabled;
+	}
+
+	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			autoExposeNewWorkflows: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.autoExposeNewWorkflows;
 	}
 
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
@@ -183,6 +233,41 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 
 		return response;
+	}
+
+	// Toggle MCP access for a single agent
+	async function toggleAgentMcpAccess(
+		agentId: string,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		const response = await toggleAgentsMcpAccessApi(
+			rootStore.restApiContext,
+			{ agentIds: [agentId] },
+			availableInMCP,
+		);
+
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(agentId)) {
+			throw new Error(
+				i18n.baseText('agents.toggleMCP.updateSkippedError', {
+					interpolate: { agentId },
+				}),
+			);
+		}
+
+		return response;
+	}
+
+	/** Bulk-toggle MCP availability for agents, scoped by an id list, a project, or all agents. */
+	async function toggleAgentsMcpAccess(
+		target: ToggleAgentsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleAgentsMcpAccessResponse> {
+		return await toggleAgentsMcpAccessApi(rootStore.restApiContext, target, availableInMCP);
 	}
 
 	async function getOrCreateApiKey(): Promise<ApiKey> {
@@ -293,6 +378,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await fetchMcpEligibleWorkflows(rootStore.restApiContext, options);
 	}
 
+	async function getMcpEligibleAgents(options?: {
+		take?: number;
+		skip?: number;
+		query?: string;
+	}): Promise<{ count: number; data: Agent[] }> {
+		return await fetchMcpAgents(rootStore.restApiContext, options);
+	}
+
 	function openConnectPopover(): void {
 		connectPopoverOpen.value = true;
 	}
@@ -315,12 +408,18 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		autoExposeNewWorkflows,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,
+		fetchAgentsAvailableForMCP,
+		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
+		setAutoExposeNewWorkflows,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
+		toggleAgentMcpAccess,
+		toggleAgentsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
@@ -342,6 +441,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		getMcpEligibleAgents,
 		allowedRedirectUris,
 		fetchAllowedRedirectUris,
 		setAllowedRedirectUris,

@@ -5,7 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -124,7 +124,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -290,7 +290,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect.tooltip') }}
 					</template>
 					<N8nButton
-						type="primary"
 						size="mini"
 						:loading="isConnecting"
 						data-test-id="credential-card-connect"
@@ -311,6 +310,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -354,7 +355,7 @@ function moveResource() {
 	cursor: default;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

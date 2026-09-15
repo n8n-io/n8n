@@ -8,7 +8,7 @@ import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '../credentials.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -33,7 +33,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const showMessage = vi.fn();
 const showError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage,
 		showError,

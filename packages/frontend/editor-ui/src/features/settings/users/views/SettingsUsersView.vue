@@ -8,17 +8,18 @@ import {
 	USERS_LIST_SORT_OPTIONS,
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableOptions } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useUsersStore } from '../users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { copyInviteLink } from '../invite-link.utils';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@n8n/composables/useClipboard';
@@ -28,8 +29,8 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
+	N8nAlert,
 	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
@@ -255,8 +256,7 @@ async function onGenerateInviteLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			await copyInviteLink(clipboard, usersStore, userId);
 
 			showToast({
 				type: 'success',

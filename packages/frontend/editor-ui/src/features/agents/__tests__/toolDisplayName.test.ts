@@ -1,3 +1,4 @@
+import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -41,6 +42,9 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
 		expect(getToolNameTranslationKey('list_credentials')).toBe('instanceAi.tools.list_credentials');
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
+		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
+		expect(getToolNameTranslationKey('read_skill')).toBe('instanceAi.tools.read_skill');
+		expect(getToolNameTranslationKey('update_skill')).toBe('instanceAi.tools.update_skill');
 	});
 
 	it('returns an empty string for missing or blank names', () => {
@@ -49,6 +53,21 @@ describe('formatToolNameForDisplay', () => {
 	});
 
 	it('falls back to a humanized tool name when a translation key is missing', () => {
-		expect(resolveToolNameForDisplay('search_nodes', (key) => key)).toBe('Search nodes');
+		expect(resolveToolNameForDisplay('search_nodes', { baseText: (key) => key })).toBe(
+			'Search nodes',
+		);
+	});
+
+	it('preserves the translation context when resolving a tool name', () => {
+		const translator = {
+			translations: {
+				[WEB_SEARCH_TOOL_NAME_KEY]: 'Web search',
+			} as Partial<Record<BaseTextKey, string>>,
+			baseText(key: BaseTextKey) {
+				return this.translations[key] ?? key;
+			},
+		};
+
+		expect(resolveToolNameForDisplay('web_search', translator)).toBe('Web search');
 	});
 });

@@ -1,6 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
 import { InstanceSettings } from 'n8n-core';
@@ -76,19 +75,15 @@ export class InterruptedRunSweeper {
 
 	private resumeHost: InterruptedRunResumeHost | undefined;
 
-	private readonly durableLogEnabled: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly eventLogRepo: InstanceAiEventLogRepository,
 		private readonly checkpointRepo: InstanceAiCheckpointRepository,
 		private readonly eventBus: InProcessEventBus,
 		private readonly metrics: DurableLogMetrics,
-		globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	setResumeHost(host: InterruptedRunResumeHost): void {
@@ -97,8 +92,6 @@ export class InterruptedRunSweeper {
 
 	/** Called from module init (startup). */
 	async sweep(): Promise<void> {
-		if (!this.durableLogEnabled) return;
-
 		let unfinished;
 		try {
 			unfinished = await this.eventLogRepo.findUnfinishedRuns();
@@ -154,8 +147,6 @@ export class InterruptedRunSweeper {
 	 * window — a per-run claim would need the lease table this design avoids.
 	 */
 	async cancelUnfinishedRuns(threadId: string): Promise<number> {
-		if (!this.durableLogEnabled) return 0;
-
 		let unfinished;
 		try {
 			unfinished = await this.eventLogRepo.findUnfinishedRuns(threadId);
@@ -209,9 +200,9 @@ export class InterruptedRunSweeper {
 
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
-		// Exact hostRunId match only: every flag-on run post-dates the column
-		// (production never runs a hybrid pre/post-log state), and sub-agent or
-		// legacy rows carry null, so they never match another run's sweep.
+		// Exact hostRunId match only: every logged run post-dates the column, and
+		// sub-agent or legacy rows carry null, so they never match another run's
+		// sweep.
 		const runCheckpoints = checkpoints.filter(
 			(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === runId,
 		);
@@ -263,8 +254,9 @@ export class InterruptedRunSweeper {
 				payload: {
 					role: agent.role,
 					result: '',
-					// Matches the live cancel path's wording for spawned agents.
-					error: finish.status === 'cancelled' ? 'Cancelled by user' : AGENT_INTERRUPTED_MESSAGE,
+					...(finish.status === 'cancelled'
+						? { status: 'cancelled' as const }
+						: { error: AGENT_INTERRUPTED_MESSAGE }),
 				},
 			});
 		}

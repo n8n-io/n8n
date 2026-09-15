@@ -7,10 +7,23 @@ import { v4 as uuid } from 'uuid';
 import type { ErrorReporter } from '@/errors';
 
 import type { BinaryData } from './types';
-import { FileLocation } from './utils';
+import { FileLocation, TEMP_EXECUTION_ID } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
+/** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+
+/**
+ * Workflow and execution encoded in a path-format fileId, or null for
+ * non-execution paths. The execution is {@link TEMP_EXECUTION_ID} when the file
+ * was written before the execution row existed.
+ */
+export function parseExecutionFileId(
+	fileId: string,
+): { workflowId: string; executionId: string } | null {
+	const match = fileId.match(EXECUTION_PATH_MATCHER);
+	return match ? { workflowId: match[1], executionId: match[2] } : null;
+}
 
 /**
  * Stores binary data as blobs via a {@link ByteStore}.
@@ -18,8 +31,9 @@ const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary
  * Backend differences are capability-driven:
  * - Backends with native object metadata (S3, Azure) store it on the object.
  * FS keeps it in companion `{fileId}.metadata` entries.
- * - Deletion happens only on backends that can delete by prefix (FS). Others
- * delegate deletion, e.g. to bucket lifecycle policies.
+ * - Deletion by file id works on all backends. Location-wide deletion happens
+ * only on backends that can delete by prefix (FS); others delegate it, e.g. to
+ * bucket lifecycle policies.
  */
 export class BinaryDataBlobManager implements BinaryData.Manager {
 	constructor(
@@ -77,18 +91,22 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	}
 
 	async deleteManyByFileId(ids: string[]) {
-		if (!this.byteStore.deletePrefix) return;
-
-		const locations = ids.flatMap((id) => {
+		const keys = ids.flatMap((fileId) => {
 			try {
-				return [this.parseFileId(id)];
+				this.parseFileId(fileId);
 			} catch {
-				this.errorReporter.warn(`Could not parse file ID ${id}. Skip deletion`);
+				this.errorReporter.warn('Could not parse file ID. Skip deletion', {
+					extra: { fileId },
+				});
 				return [];
 			}
+
+			return this.byteStore.getMetadata ? [fileId] : [fileId, this.metadataKey(fileId)];
 		});
 
-		await this.deleteBinaryDataDirs(locations);
+		if (keys.length > 0) {
+			await this.byteStore.delete(keys);
+		}
 	}
 
 	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {
@@ -137,7 +155,7 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 	private toRelativePath(location: BinaryData.FileLocation) {
 		switch (location.type) {
 			case 'execution': {
-				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
+				const executionId = location.executionId || TEMP_EXECUTION_ID; // missing for triggers and webhooks, see PR #7244
 				return `workflows/${location.workflowId}/executions/${executionId}`;
 			}
 			case 'custom': {

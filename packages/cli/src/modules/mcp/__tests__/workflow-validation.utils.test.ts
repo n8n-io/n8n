@@ -8,7 +8,7 @@ import { WorkflowAccessError } from '../mcp.errors';
 import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
-	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
+	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_workflow_sdk_reference', displayTitle: 'SDK Ref' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));
 
@@ -19,7 +19,7 @@ describe('getSdkReferenceHint', () => {
 
 		const hint = getSdkReferenceHint(error);
 
-		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('get_workflow_sdk_reference');
 		expect(hint).toContain('Workflow SDK reference');
 		expect(hint).toContain('validate_workflow');
 	});
@@ -29,7 +29,7 @@ describe('getSdkReferenceHint', () => {
 			new SyntaxError('Code must export a workflow built with the workflow() SDK function.'),
 		);
 
-		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('get_workflow_sdk_reference');
 		expect(hint).toContain('required SDK patterns');
 	});
 

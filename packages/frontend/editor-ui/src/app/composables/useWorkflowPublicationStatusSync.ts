@@ -2,7 +2,7 @@ import { onBeforeUnmount, onMounted, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -35,11 +35,18 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	function armPoll() {
 		if (disposed) return;
 		clearTimeout(timer);
-		timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
+		timer = setTimeout(() => {
+			void refetch();
+		}, PUBLICATION_STATUS_POLL_INTERVAL_MS);
 	}
 
 	async function refetch() {
-		if (disposed || !settingsStore.isWorkflowPublicationServiceEnabled) return;
+		if (
+			disposed ||
+			!settingsStore.isWorkflowPublicationServiceEnabled ||
+			workflowsStore.isNewWorkflow
+		)
+			return;
 
 		// Resolve the store from the current documentId on every call so a
 		// workflow switch is immediately reflected without remounting.
@@ -80,7 +87,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	// Re-sync whenever the document switches (component is not keyed per workflow).
 	watch(
 		() => toValue(documentId),
-		() => void refetch(),
+		() => {
+			void refetch();
+		},
 	);
 
 	// Back every "publishing" state with an authoritative poll so a state clobbered
@@ -92,8 +101,12 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		},
 	);
 
-	onMounted(() => void refetch());
-	onDocumentVisible(() => void refetch());
+	onMounted(() => {
+		void refetch();
+	});
+	onDocumentVisible(() => {
+		void refetch();
+	});
 	onBeforeUnmount(() => {
 		disposed = true;
 		clearTimeout(timer);

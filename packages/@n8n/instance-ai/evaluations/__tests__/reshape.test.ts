@@ -77,6 +77,41 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
 	});
 
+	it('retains the structured agent artifact from a target row', () => {
+		const cases = [withFile('agent-case', [scenario('s1')])];
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: {
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage requests.',
+			},
+			skills: {},
+		};
+		const rows = [
+			row(
+				{ testCaseFile: 'agent-case', scenarioName: 's1', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					agentId: 'agent-1',
+					agentContext: 'AGENT CONTEXT',
+					agentArtifact,
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		expect(result[0][0]).toMatchObject({
+			agentId: 'agent-1',
+			agentArtifactContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
+	});
+
 	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
 		const cases = [withFile('build-only', [])];
 		const rows = [
@@ -205,6 +240,9 @@ describe('reshapeLangSmithRuns', () => {
 		expect(s2.success).toBe(false);
 		expect(s2.reasoning).toBe('No run result for this scenario');
 		expect(s2.score).toBe(0);
+		// Unowned and unmeasured: visible as a gap, but out of the pass rate.
+		expect(s2.attribution).toBe('verification_gap');
+		expect(s2.incomplete).toBe(true);
 	});
 
 	it('skips a malformed run output rather than scoring it as a failure', () => {
@@ -216,6 +254,8 @@ describe('reshapeLangSmithRuns', () => {
 		const s1 = result[0][0].executionScenarioResults[0];
 		expect(s1.success).toBe(false);
 		expect(s1.reasoning).toBe('Malformed run output — skipped');
+		expect(s1.attribution).toBe('verification_gap');
+		expect(s1.incomplete).toBe(true);
 	});
 
 	it('groups runs into separate iterations by the injected _iteration index', () => {

@@ -1,6 +1,21 @@
 import type { Mock } from 'vitest';
 
-import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from '../instance-ai-error-reporter.service';
+
+describe('getAgentErrorSeverity', () => {
+	it.each([
+		['observer', 'warning'],
+		['reflector', 'warning'],
+		['episodic-memory', 'warning'],
+		['input-persistence', undefined],
+		['turn-delta-persistence', undefined],
+	] as const)('classifies %s as %s', (source, expected) => {
+		expect(getAgentErrorSeverity(source)).toBe(expected);
+	});
+});
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
@@ -105,6 +120,94 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('logs at warning level instead of reporting when the provider connection drops', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+
+		service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-stream',
+			providerStream: true,
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Instance AI stream transport failure in instance-ai-stream',
+			expect.objectContaining({ threadId: 't', runId: 'r' }),
+		);
+	});
+
+	it('still reports a dropped connection outside the provider stream', () => {
+		const { service, errorReporter } = createService();
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+
+		service.report(error, {
+			component: 'instance-ai-ensure-thread',
+			threadId: 't',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
+	it('still reports application errors that merely mention a socket code', () => {
+		const { service, errorReporter } = createService();
+
+		service.beginRun('r');
+		service.report(new Error('tool returned ECONNRESET in its output'), {
+			component: 'instance-ai-stream',
+			providerStream: true,
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports at warning level when the context declares warning severity', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = new Error('Observer failed');
+
+		service.report(error, {
+			component: 'instance-ai-observer',
+			severity: 'warning',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({ level: 'warning' }),
+		);
+	});
+
+	it('reports unresolved masked stream failures at error level by default', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
+			name: 'AI_NoOutputGeneratedError',
+		});
+
+		service.report(error, {
+			component: 'instance-ai-stream',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.not.objectContaining({ level: 'warning' }),
+		);
+	});
+
 	it('withBoundary rethrows quota-exhausted errors without reporting to Sentry', async () => {
 		const { service, errorReporter } = createService();
 		const error = Object.assign(new Error('Have reached end of quota'), {
@@ -158,13 +261,13 @@ describe('InstanceAiErrorReporterService', () => {
 		const { service, errorReporter } = createService();
 		const error = new Error('boom');
 
-		service.beginRun('r');
+		const executionToken = service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
 			threadId: 't',
 			runId: 'r',
 		});
-		service.endRun('r');
+		service.endRun('r', executionToken);
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
@@ -173,6 +276,19 @@ describe('InstanceAiErrorReporterService', () => {
 		});
 
 		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let an older segment end a newer run scope with the same run ID', () => {
+		const { service, errorReporter } = createService();
+		const firstExecution = service.beginRun('r');
+		service.beginRun('r');
+		service.endRun('r', firstExecution);
+		const error = new Error('boom');
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+		service.report(error, { component: 'instance-ai-stream', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not dedup run-scoped errors when beginRun was not called', () => {

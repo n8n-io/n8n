@@ -1,11 +1,22 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -36,7 +47,12 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 		service = new EvalThreadRestoreService(
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
 			dataTableService,
+			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
 		);
 	});
 
@@ -114,7 +130,12 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 		service = new EvalThreadRestoreService(
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
 			dataTableService,
+			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
 		);
 	});
 
@@ -157,5 +178,89 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 
 		const { count } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
 		expect(count).toBe(0);
+	});
+});
+
+describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
+	const DENIAL: PolicyViolation = {
+		kind: 'test-denial',
+		checkId: 'integration-test-thread-restore',
+		message: 'Denied by the test policy check',
+		subject: 'n8n-nodes-base.manualTrigger',
+		subjectType: 'nodeType',
+	};
+	/** Only the seed with this name is refused; `null` allows everything. */
+	let denyWorkflowNamed: string | null = null;
+
+	let service: EvalThreadRestoreService;
+	let workflowRepository: WorkflowRepository;
+	let project: Project;
+
+	const seed = (id: string, name: string) => ({
+		id,
+		name,
+		nodes: [
+			{
+				id: `${id}-trigger`,
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [240, 300],
+				parameters: {},
+			},
+		],
+		connections: {},
+	});
+
+	beforeAll(() => {
+		workflowRepository = Container.get(WorkflowRepository);
+		// Registration is single-shot per process, so one fake backend serves every case.
+		Container.get(PolicyEnforcementService).setImplementation({
+			enforce: async (_point, context) => ({
+				violations:
+					'workflow' in context && context.workflow.name === denyWorkflowNamed ? [DENIAL] : [],
+			}),
+			evaluate: async () => ({ violations: [] }),
+			hasChecksFor: () => true,
+		});
+		service = new EvalThreadRestoreService(
+			workflowRepository,
+			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
+			Container.get(DataTableService),
+			Container.get(PolicyEnforcementService),
+			mock<WorkflowHistoryService>(),
+			mock<WorkflowService>(),
+		);
+	});
+
+	beforeEach(async () => {
+		denyWorkflowNamed = null;
+		await testDb.truncate(['SharedWorkflow', 'WorkflowEntity']);
+		project = await createTeamProject();
+	});
+
+	it('persists the seed workflow at its id and makes the project its owner', async () => {
+		const created = await service.restoreWorkflows([seed('wf-seeded-1', 'Allowed')], project.id);
+
+		expect(created).toEqual(['wf-seeded-1']);
+		const stored = await workflowRepository.findById('wf-seeded-1');
+		expect(stored?.nodes).toHaveLength(1);
+		expect(stored?.shared.map((s) => s.projectId)).toEqual([project.id]);
+	});
+
+	it('a refused seed fails the restore, names the workflow and leaves nothing behind', async () => {
+		denyWorkflowNamed = 'Blocked';
+
+		const restore = service.restoreWorkflows(
+			[seed('wf-seeded-ok', 'Allowed'), seed('wf-seeded-blocked', 'Blocked')],
+			project.id,
+		);
+
+		await expect(restore).rejects.toThrow(PolicyViolationError);
+		await expect(restore).rejects.toThrow('Seed workflow wf-seeded-blocked ("Blocked")');
+		await expect(restore).rejects.toMatchObject({ violations: [DENIAL] });
+		expect(await workflowRepository.findByIds(['wf-seeded-ok', 'wf-seeded-blocked'])).toEqual([]);
 	});
 });

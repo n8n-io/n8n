@@ -20,8 +20,8 @@ instance-wide error workflow behavior.
 
 When creating an error workflow to attach to another workflow:
 
-1. Build the target workflow first, then ask whether the user wants an error
-   workflow for it. Do not create one before the user opts in.
+1. Wait until the target workflow is published, then ask whether the user wants
+   an error workflow for it.
 2. Build the error workflow as a separate workflow. It starts with an Error
    Trigger and sends the notification the user requested.
 3. Publish the error workflow with `workflows(action="publish")` before setting

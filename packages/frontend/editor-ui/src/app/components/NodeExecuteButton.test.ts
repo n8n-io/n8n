@@ -32,7 +32,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import * as buttonParameterUtils from '@/features/ndv/parameters/utils/buttonParameter.utils';
 
 vi.mock('vue-router', () => ({
@@ -41,7 +41,7 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	return {

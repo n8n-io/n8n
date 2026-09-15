@@ -76,7 +76,9 @@ onMounted(async () => {
 
 watch(
 	() => props.ready,
-	() => void maybeGenerate(),
+	() => {
+		void maybeGenerate();
+	},
 );
 </script>
 

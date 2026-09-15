@@ -29,6 +29,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { collectSecretFieldNames, redactSecretConfig } from './config-redaction';
 import { CredentialResolutionError } from './errors/credential-resolution.error';
 import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
 import { SystemResolverModificationError } from './errors/system-resolver-modification.error';
@@ -37,6 +38,32 @@ import { DynamicCredentialResolverService } from './services/credential-resolver
 @RestController('/credential-resolvers')
 export class CredentialResolversController {
 	constructor(private readonly service: DynamicCredentialResolverService) {}
+
+	/**
+	 * Blank the resolver's secret config fields before returning it over HTTP.
+	 * Secret fields are those the resolver type marks with `typeOptions.password`
+	 * (including fields nested in collections); non-secret fields stay intact so the
+	 * editor can still prefill them. The raw secret remains reachable only through the
+	 * internal resolution path.
+	 */
+	private redactSecrets(resolver: CredentialResolver): CredentialResolver {
+		const type = this.service.getAvailableTypes().find((t) => t.metadata.name === resolver.type);
+
+		// Fail closed: an unregistered type means we can't tell which fields are secret,
+		// so drop the decrypted config entirely rather than risk leaking a secret.
+		if (!type) {
+			const { decryptedConfig: _drop, ...rest } = resolver;
+			return { ...rest, config: '' };
+		}
+
+		const secretFields = collectSecretFieldNames(type.metadata.options);
+
+		return {
+			...resolver,
+			config: '',
+			decryptedConfig: redactSecretConfig(resolver.decryptedConfig, secretFields),
+		};
+	}
 
 	@Get('/')
 	@GlobalScope('credentialResolver:list')
@@ -87,7 +114,7 @@ export class CredentialResolversController {
 				config: dto.config,
 				user: req.user,
 			});
-			return credentialResolverSchema.parse(createdResolver);
+			return this.redactSecrets(credentialResolverSchema.parse(createdResolver));
 		} catch (e: unknown) {
 			if (e instanceof SystemResolverModificationError) {
 				throw new BadRequestError(e.message);
@@ -134,7 +161,7 @@ export class CredentialResolversController {
 		@Param('id') id: string,
 	): Promise<CredentialResolver> {
 		try {
-			return credentialResolverSchema.parse(await this.service.findById(id));
+			return this.redactSecrets(credentialResolverSchema.parse(await this.service.findById(id)));
 		} catch (e: unknown) {
 			if (e instanceof DynamicCredentialResolverNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -155,14 +182,16 @@ export class CredentialResolversController {
 		@Body dto: UpdateCredentialResolverDto,
 	): Promise<CredentialResolver> {
 		try {
-			return credentialResolverSchema.parse(
-				await this.service.update(id, {
-					type: dto.type,
-					name: dto.name,
-					config: dto.config,
-					clearCredentials: dto.clearCredentials,
-					user: req.user,
-				}),
+			return this.redactSecrets(
+				credentialResolverSchema.parse(
+					await this.service.update(id, {
+						type: dto.type,
+						name: dto.name,
+						config: dto.config,
+						clearCredentials: dto.clearCredentials,
+						user: req.user,
+					}),
+				),
 			);
 		} catch (e: unknown) {
 			if (e instanceof DynamicCredentialResolverNotFoundError) {

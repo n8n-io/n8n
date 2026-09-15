@@ -167,7 +167,7 @@ export class LinearIntegration extends AgentChatIntegration {
 		try {
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled', // the GraphQL host is the fixed, public Linear API endpoint
+					useDefaultSsrfPolicy: 'unsafe', // the GraphQL host is the fixed, public Linear API endpoint
 				})
 				.request({
 					method: 'POST',

@@ -1,3 +1,4 @@
+import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import type { ChatIntegrationActionExecutor } from '../../integration-action-executor';
@@ -17,6 +18,7 @@ export interface ChannelIntegrationReplayScenario {
 	};
 	expected: {
 		message: string;
+		author: AgentMessageAuthor;
 		followUpMessage: string;
 		integrationType: string;
 		context: Partial<IntegrationMessageContext>;
@@ -62,6 +64,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 					agentId: 'agent-1',
 					projectId: 'project-1',
 					message: scenario.expected.message,
+					author: scenario.expected.author,
 					integrationType: scenario.expected.integrationType,
 				}),
 			);
@@ -106,12 +109,24 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 			const context = ctx.latestContext();
 			expect(context).toMatchObject(scenario.expected.context);
 
-			const result = await ctx.actionExecutor.execute({
+			// The inbound chat message marked this turn's context with a reply
+			// expectation, so a text-only respond is rejected — the reply text is
+			// already delivered by the bridge.
+			const rejected = await ctx.actionExecutor.execute({
 				descriptor: ctx.descriptor,
 				action: 'respond',
 				input: { message: { text: 'Action response' } },
 				awaitResponse: false,
 				currentMessageContext: context,
+			});
+			expect(rejected).toMatchObject({ ok: false, error: { code: 'ACTION_FAILED' } });
+
+			const result = await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'respond',
+				input: { message: { text: 'Action response' } },
+				awaitResponse: false,
+				currentMessageContext: { ...context!, replyExpectation: undefined },
 			});
 
 			expect(result).toMatchObject({

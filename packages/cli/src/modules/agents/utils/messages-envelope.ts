@@ -74,10 +74,11 @@ function mergeOpenSuspendedToolCalls(
 
 /**
  * Merge an open suspended checkpoint into already-persisted history and
- * surface the open-suspensions sidecar (toolCallId + runId) so the FE can
- * re-arm suspended interactive cards after a refresh. Used by the chat
- * controller's `GET /:agentId/chat/:threadId/messages` and
- * `GET /:agentId/chat/messages` envelopes.
+ * surface the open-suspensions sidecar (parent tool/run ids plus the client-safe
+ * suspend payload) so the FE can re-arm suspended interactive cards after a
+ * refresh. Used by the chat controller's
+ * `GET /:agentId/chat/:threadId/messages` and `GET /:agentId/chat/messages`
+ * envelopes.
  *
  * The input `messages` must already be in DTO form (the caller converts raw
  * memory before passing it here). Checkpoint messages are converted here so
@@ -92,7 +93,11 @@ export function withOpenSuspensions(
 
 	const openSuspensions = Object.values(checkpoint.pendingToolCalls ?? {})
 		.filter((tc) => tc.suspended)
-		.map((tc) => ({ toolCallId: tc.toolCallId, runId: tc.runId }));
+		.map((tc) => ({
+			toolCallId: tc.toolCallId,
+			runId: tc.runId,
+			suspendPayload: tc.suspendPayload,
+		}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));
 	const merged = [...messages];

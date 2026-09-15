@@ -124,8 +124,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				variables: [
-					{ name: 'API_URL', value: 'a', usedByWorkflows: ['wf-abc'] },
-					{ name: 'API_URL', value: 'b', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
 				],
 			},
 		};
@@ -140,6 +140,18 @@ describe('packageManifestSchema', () => {
 		};
 
 		expect(packageManifestSchema.parse(manifest).variables).toEqual(manifest.variables);
+	});
+
+	it('rejects a manifest containing duplicate tag ids', () => {
+		const manifest = {
+			...validManifest,
+			tags: [
+				{ id: 'tag-1', name: 'production', target: 'tags/production' },
+				{ id: 'tag-1', name: 'production', target: 'tags/production-2' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate tag id/i);
 	});
 
 	it('accepts manifests with unknown sections for forward compatibility', () => {

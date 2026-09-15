@@ -24,6 +24,18 @@ export interface RuntimeBridge {
 	initialize(): Promise<void>;
 
 	/**
+	 * Synchronous variant of initialize(), for creating a bridge on demand
+	 * from inside the synchronous evaluate() path (lazy acquisition with an
+	 * exhausted pool). Optional: a bridge whose setup is inherently async can
+	 * omit it, but then it can only enter service through pool warmup.
+	 *
+	 * May require one-time async preparation to have happened earlier in the
+	 * process (e.g. QuickJS's WASM module load); implementations must throw a
+	 * clear error when that preparation is missing.
+	 */
+	initializeSync?(): void;
+
+	/**
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * @param code - Transformed JavaScript code to execute
@@ -71,13 +83,21 @@ export interface BridgeConfig {
 	memoryLimit?: number;
 
 	/**
-	 * Timeout in milliseconds for expression execution.
+	 * Timeout in milliseconds for one expression evaluation. A chain of nested
+	 * evaluations (`$evaluateExpression`) shares this limit; a nested call does
+	 * not get a new one.
 	 * Default: 5000ms
 	 */
 	timeout?: number;
 
 	/** Optional logger. Falls back to no-op if not provided. */
 	logger?: Logger;
+
+	/**
+	 * Reuse V8 compile cache for the runtime bundle. isolated-vm only.
+	 * Default: false
+	 */
+	compileCache?: boolean;
 }
 
 const NO_OP_LOGGER: Logger = {
@@ -92,6 +112,7 @@ export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
 	logger: NO_OP_LOGGER,
+	compileCache: false,
 };
 
 /** Options for a single execute() call. */
@@ -101,4 +122,11 @@ export interface ExecuteOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/**
+	 * Milliseconds already spent by the chain of evaluations this call belongs
+	 * to. Subtracted from the configured timeout so a chain shares one budget
+	 * instead of each call starting a fresh one. Omit for a standalone call.
+	 */
+	elapsedMs?: number;
 }

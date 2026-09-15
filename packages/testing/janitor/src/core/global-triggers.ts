@@ -25,6 +25,12 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
  *     ~everything; a behaviour change that keeps the same type signature is not
  *     visible to a downstream import-graph walk (typecheck only catches the
  *     contract). DEVP-195.
+ *   - `packages/@n8n/vitest-config/` — the shared vitest config and the shared
+ *     jsdom harness (`setup/frontend.ts`) that every frontend package's
+ *     `src/__tests__/setup.ts` imports. A per-package setup file is already a
+ *     bail-to-full-run trigger below; once the harness body lives here, editing
+ *     it must trigger the same full run, or a change to 350 lines of global DOM
+ *     patching would scope to zero test files and report a false green.
  *
  * Over-broad on the rare PRs that touch these (keeps the failure mode "ran too
  * much" rather than "ran nothing"), which is the intended trade-off.
@@ -33,6 +39,7 @@ export const GLOBAL_TRIGGER_PREFIXES = [
 	'packages/@n8n/db/',
 	'packages/workflow/',
 	'packages/core/',
+	'packages/@n8n/vitest-config/',
 ];
 
 /** True when a repo-root-relative path forces a full workspace run. */

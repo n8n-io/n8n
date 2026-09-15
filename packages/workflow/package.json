@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.32.0",
+  "version": "2.39.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -70,11 +70,11 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
+    "@n8n/constants": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
-    "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "ast-types": "0.16.1",
     "axios": "catalog:",

@@ -4,8 +4,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { LockNamespace, LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
-import { removeEmptyBody } from '@n8n/backend-network';
+import { LockNamespace, LockService, SingleFlightLease } from '@n8n/backend-common';
+import { isFormDataInstance, removeEmptyBody, type SsrfBridge } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -15,6 +15,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { AuthError, ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
@@ -39,10 +40,14 @@ import {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+import { Stream } from 'stream';
 
 import type { IResponseError } from '@/interfaces';
 
-function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+function createOAuth2Client(
+	credentials: OAuth2CredentialData,
+	ssrfBridge?: SsrfBridge,
+): ClientOAuth2 {
 	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
 	const scopes = credentials.scope
 		?.split(' ')
@@ -59,6 +64,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		...(resource ? { resource } : {}),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
+		ssrfBridge,
 		...(credentials.additionalBodyProperties && {
 			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
 				fallbackValue: {},
@@ -135,11 +141,12 @@ function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOp
 			description:
 				'Access could not be refreshed because the connected account has revoked access, the refresh token expired, or the account password or permissions changed. Open the credential and reconnect it to continue.',
 			level: 'warning',
+			failure: { cause: 'credential-invalid' },
 		},
 	);
 }
 
-const inFlightRefreshes = new Map<string, Promise<ClientOAuth2Token>>();
+const inFlightRefreshes = new SingleFlightLease<ClientOAuth2Token>();
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
 	const nodeCredentials = ctx.node.credentials?.[ctx.credentialsType];
@@ -150,15 +157,6 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			extra: { credentialName: nodeCredentials?.name },
 			tags: { credentialType: ctx.credentialsType },
 		});
-	}
-
-	// Critical section from here until the in-flight promise is stored in the map.
-	// This map is process-LOCAL: it coalesces concurrent refreshes *within this instance*
-	// so they share one network call. Cross-instance serialization is handled by the lease below.
-	// We must not yield to the event loop before `inFlightRefreshes.set(...)`, or a second concurrent
-	// caller could pass the `has` check before the promise is registered and trigger a duplicate refresh.
-	if (inFlightRefreshes.has(credentialId)) {
-		return await inFlightRefreshes.get(credentialId)!;
 	}
 
 	const runRefresh = async () => {
@@ -203,7 +201,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 				client_id: credentials.clientId,
 				...(credentials.grantType === 'authorizationCode' &&
 					credentials.clientCredentialType !== 'certificate' && {
-						client_secret: credentials.clientSecret as string,
+						client_secret: credentials.clientSecret,
 					}),
 			};
 			tokenRefreshOptions.body = body;
@@ -295,36 +293,94 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		return signingToken;
 	};
 
-	const promise = Container.get(LockService)
-		.withLease(LockNamespace.CREDENTIALS, credentialId, runRefresh, {
-			waitTimeoutMs: 10_000,
-			leaseTtlMs: 30_000,
-		})
-		.catch(async (error) => {
-			if (error instanceof LockAcquisitionTimeoutError) {
-				// The lease is an efficiency primitive, not a correctness one. If the lock
-				// backend is unavailable/contended, refresh without cross-process coordination
-				// rather than stalling the execution; runRefresh's read-back check still avoids
-				// a redundant network call when another holder already rotated the token.
-				ctx.logger.warn(
-					`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
-					{ error },
-				);
-				return await runRefresh();
-			}
-			throw error;
-		})
-		.finally(() => inFlightRefreshes.delete(credentialId));
-	inFlightRefreshes.set(credentialId, promise);
-
-	return await promise;
+	return await inFlightRefreshes.run(credentialId, runRefresh, {
+		lockService: Container.get(LockService),
+		namespace: LockNamespace.CREDENTIALS,
+		waitTimeoutMs: 10_000,
+		leaseTtlMs: 30_000,
+		onLeaseTimeout: (error) => {
+			ctx.logger.warn(
+				`Could not acquire refresh lock for credential "${credentialId}"; refreshing without cross-process coordination`,
+				{ error },
+			);
+		},
+	});
 }
 
 function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
-): number {
+): number | number[] {
 	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+}
+
+// Some gateways signal an expired token with different codes on different endpoints
+// (e.g. 403 on legacy paths, 404 on newer ones), so a single caller may need to match more
+// than one status.
+export function isTokenExpiredStatusCode(
+	status: unknown,
+	tokenExpiredStatusCode: number | number[],
+) {
+	return Array.isArray(tokenExpiredStatusCode)
+		? tokenExpiredStatusCode.includes(status as number)
+		: status === tokenExpiredStatusCode;
+}
+
+/** Refresh a little before the stored expiry, so a token that dies mid-request still refreshes. */
+const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+
+/**
+ * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
+ * expired, so callers fall back to refreshing when the expiry is unknown.
+ */
+function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
+	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
+	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
+}
+
+function isSingleUseValue(value: unknown): boolean {
+	return isFormDataInstance(value) || value instanceof Stream;
+}
+
+function hasMultipartContentType(headers: unknown): boolean {
+	if (!isRecord(headers)) return false;
+	return Object.entries(headers).some(
+		([name, value]) =>
+			name.toLowerCase() === 'content-type' &&
+			typeof value === 'string' &&
+			value.includes('multipart/form-data'),
+	);
+}
+
+// Mirrors createFormDataObject's traversal: fields may be arrays and {value, options} tuples
+function descriptorContainsSingleUseValue(descriptor: unknown): boolean {
+	if (!isRecord(descriptor)) return false;
+	return Object.values(descriptor).some((field) => {
+		const items = Array.isArray(field) ? field : [field];
+		return items.some(
+			(item) => isSingleUseValue(item) || (isRecord(item) && isSingleUseValue(item.value)),
+		);
+	});
+}
+
+/**
+ * Whether the request body is drained by sending it once: form-data instances
+ * and stream values cannot be resent, so replaying them makes the retried
+ * request advertise a body it never delivers and hang until timeout.
+ * A plain `formData` descriptor is rebuilt per send and stays replayable
+ * unless one of its field values is itself a stream.
+ */
+export function hasSingleUseBody(requestOptions: {
+	body?: unknown;
+	formData?: unknown;
+	headers?: unknown;
+}): boolean {
+	const { body, formData, headers } = requestOptions;
+	if (isSingleUseValue(body) || isSingleUseValue(formData)) return true;
+	if (descriptorContainsSingleUseValue(formData)) return true;
+	// Under an explicit multipart content-type the legacy transport also merges
+	// `body` fields into the form payload, so their streams are drained too
+	return hasMultipartContentType(headers) && descriptorContainsSingleUseValue(body);
 }
 
 /** @deprecated make these requests using httpRequestWithAuthentication */
@@ -348,7 +404,7 @@ export async function requestOAuth2(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials);
+	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
@@ -377,9 +433,11 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
+		// Stamp the expiry now so `skipRefreshWhileTokenIsFresh` can tell a live first token
+		// from one that must be renewed.
 		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
 			additionalData,
-			data,
+			addExpiresAt(data),
 			credentials.jweEnabled === true,
 		)) as ClientOAuth2TokenData;
 		credentials.oauthTokenData = initialTokenData;
@@ -428,6 +486,19 @@ export async function requestOAuth2(
 	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
 	const shouldSkipTokenRefresh = oAuth2Options?.skipTokenRefresh === true;
 
+	/**
+	 * A 401 means the server rejected the token, so it always earns a refresh. Any other
+	 * configured status can be ambiguous (a gateway that answers 404 for both an expired token
+	 * and a missing page), so `skipRefreshWhileTokenIsFresh` lets a caller ask for the stored
+	 * expiry to be checked first, instead of paying a refresh per missing item.
+	 */
+	const shouldRefreshToken = (status: unknown): boolean => {
+		if (shouldSkipTokenRefresh) return false;
+		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
+		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
+		return !isStoredTokenUnexpired(credentials);
+	};
+
 	const refreshCtx: RefreshOAuth2TokenContext = {
 		credentials,
 		token,
@@ -442,8 +513,18 @@ export async function requestOAuth2(
 
 	const retryWithNewToken = async (
 		makeRequest: (opts: ClientOAuth2RequestObject) => Promise<any>,
+		// Not `() => never`: the legacy caller resolves with the original response
+		// under `simple: false` instead of throwing
+		surfaceOriginalError: () => unknown,
 	) => {
+		// Refresh even when the request cannot be resent, so the next run starts with a valid token
 		const newToken = await refreshOrFetchToken(refreshCtx);
+		if (hasSingleUseBody(requestOptions)) {
+			this.logger.warn(
+				`OAuth2 request for credential type "${credentialsType}" was not retried after the token refresh: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original response instead.`,
+			);
+			return surfaceOriginalError();
+		}
 		const refreshedRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 		refreshedRequestOptions.headers = refreshedRequestOptions.headers ?? {};
 		if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
@@ -456,8 +537,13 @@ export async function requestOAuth2(
 
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (!shouldSkipTokenRefresh && error.response?.status === tokenExpiredStatusCode) {
-				return await retryWithNewToken(async (opts) => await this.helpers.httpRequest(opts));
+			if (shouldRefreshToken(error.response?.status)) {
+				return await retryWithNewToken(
+					async (opts) => await this.helpers.httpRequest(opts),
+					() => {
+						throw error;
+					},
+				);
 			}
 			throw error;
 		});
@@ -468,19 +554,30 @@ export async function requestOAuth2(
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
-				!shouldSkipTokenRefresh &&
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode === tokenExpiredStatusCode
+				shouldRefreshToken(response.statusCode)
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (!shouldSkipTokenRefresh && error.statusCode === tokenExpiredStatusCode) {
+			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
-					async (opts) => await this.helpers.request(opts as IRequestOptions),
+					async (opts) => await this.helpers.request(opts),
+					() => {
+						// Under simple:false the "error" is the full 401 response thrown above;
+						// hand it back resolved, matching what the caller gets without a retry
+						if (
+							'simple' in requestOptions &&
+							requestOptions.simple === false &&
+							requestOptions.resolveWithFullResponse === true
+						) {
+							return error;
+						}
+						throw error;
+					},
 				);
 			}
 			throw error;
@@ -574,7 +671,7 @@ export async function refreshOAuth2Token(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials);
+	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
 	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 

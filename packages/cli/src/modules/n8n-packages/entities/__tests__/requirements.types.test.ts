@@ -1,6 +1,7 @@
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { mergeRequirements } from '../requirements.types';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 import type { WorkflowNodeTypeSource } from '../workflow/node-type-usage';
 
@@ -21,6 +22,10 @@ function dataTable(dataTableId: string, workflowId: string): WorkflowDataTableRe
 	return { workflowId, dataTableId };
 }
 
+function tagUsage(tagId: string, workflowId: string): WorkflowTagUsage {
+	return { workflowId, tag: { id: tagId, name: `Tag ${tagId}` } };
+}
+
 function nodeTypeSource(workflowId: string): WorkflowNodeTypeSource {
 	return { workflowId, nodes: [] };
 }
@@ -32,12 +37,14 @@ describe('mergeRequirements', () => {
 				credentials: [cred('c1', 'w1')],
 				dataTables: [dataTable('dt1', 'w1')],
 				variables: [variable('V1', 'w1')],
+				tags: [tagUsage('t1', 'w1')],
 				nodeTypes: [nodeTypeSource('w1')],
 			},
 			{
 				credentials: [cred('c2', 'w2'), cred('c3', 'w3')],
 				dataTables: [dataTable('dt2', 'w2')],
 				variables: [variable('V2', 'w2')],
+				tags: [tagUsage('t2', 'w2')],
 				nodeTypes: [nodeTypeSource('w2')],
 			},
 		);
@@ -45,6 +52,7 @@ describe('mergeRequirements', () => {
 		expect(merged.credentials).toEqual([cred('c1', 'w1'), cred('c2', 'w2'), cred('c3', 'w3')]);
 		expect(merged.dataTables).toEqual([dataTable('dt1', 'w1'), dataTable('dt2', 'w2')]);
 		expect(merged.variables).toEqual([variable('V1', 'w1'), variable('V2', 'w2')]);
+		expect(merged.tags).toEqual([tagUsage('t1', 'w1'), tagUsage('t2', 'w2')]);
 		expect(merged.nodeTypes).toEqual([nodeTypeSource('w1'), nodeTypeSource('w2')]);
 	});
 
@@ -55,6 +63,7 @@ describe('mergeRequirements', () => {
 				credentials: [cred('c1', 'w1')],
 				dataTables: [dataTable('dt1', 'w1')],
 				variables: [variable('V1', 'w1')],
+				tags: [tagUsage('t1', 'w1')],
 				nodeTypes: [nodeTypeSource('w1')],
 			},
 			undefined,
@@ -63,6 +72,7 @@ describe('mergeRequirements', () => {
 		expect(merged.credentials).toEqual([cred('c1', 'w1')]);
 		expect(merged.dataTables).toEqual([dataTable('dt1', 'w1')]);
 		expect(merged.variables).toEqual([variable('V1', 'w1')]);
+		expect(merged.tags).toEqual([tagUsage('t1', 'w1')]);
 		expect(merged.nodeTypes).toEqual([nodeTypeSource('w1')]);
 	});
 
@@ -71,6 +81,7 @@ describe('mergeRequirements', () => {
 			credentials: [],
 			dataTables: [],
 			variables: [],
+			tags: [],
 			nodeTypes: [],
 		});
 	});
