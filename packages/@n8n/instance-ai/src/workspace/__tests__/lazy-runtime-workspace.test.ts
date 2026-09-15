@@ -5,6 +5,7 @@ import {
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
 
@@ -96,6 +97,36 @@ describe('createLazyRuntimeWorkspace', () => {
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
 
 		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports cancellation when an active command returns a transport cancellation', async () => {
+		const { workspace, executeCommand } = createMockWorkspace();
+		const started = createDeferredPromise();
+		executeCommand.mockImplementation(
+			async (_command, _args, options) =>
+				await new Promise<CommandResult>((_resolve, reject) => {
+					options?.abortSignal?.addEventListener(
+						'abort',
+						() => {
+							const error = new Error('canceled');
+							error.name = 'CanceledError';
+							reject(error);
+						},
+						{ once: true },
+					);
+					started.resolve();
+				}),
+		);
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
+		});
+		const controller = new AbortController();
+		const operation = lazyWorkspace.sandbox!.executeCommand!('sleep 10', [], {
+			abortSignal: controller.signal,
+		});
+		await started.promise;
+		controller.abort();
+		await expect(operation).rejects.toMatchObject({ name: 'AbortError' });
 	});
 
 	it('retries workspace creation after the first lazy initialization fails', async () => {

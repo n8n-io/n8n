@@ -1,6 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { successfulVerification } from '../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
 import { createReportVerificationVerdictTool } from '../../tools/orchestration/report-verification-verdict.tool';
 import { createVerifyBuiltWorkflowTool } from '../../tools/orchestration/verify-built-workflow.tool';
@@ -14,6 +15,21 @@ function createStorage() {
 	const records = new Map<string, Record<string, unknown>>();
 
 	const storage = {
+		updateBuildOutcome: vi.fn(
+			async (
+				_threadId: string,
+				workItemId: string,
+				update: (outcome: WorkflowBuildOutcome) => WorkflowBuildOutcome,
+			) => {
+				const record = records.get(workItemId);
+				if (!record?.lastBuildOutcome) throw new Error('Missing outcome');
+				records.set(workItemId, {
+					...record,
+					lastBuildOutcome: update(record.lastBuildOutcome as WorkflowBuildOutcome),
+				});
+				await Promise.resolve();
+			},
+		),
 		getWorkItem: vi.fn(async (_threadId: string, workItemId: string) => {
 			return await Promise.resolve(
 				(records.get(workItemId) ?? null) as Awaited<
@@ -70,6 +86,32 @@ function createBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): Work
 }
 
 describe('WorkflowTaskCoordinator', () => {
+	it('counts reservations and stops at the attempt limit', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(createBuildOutcome());
+		for (let attempt = 0; attempt < MAX_VERIFY_ATTEMPTS; attempt++) {
+			await coordinator.startVerification('wi_1');
+		}
+		await expect(coordinator.startVerification('wi_1')).rejects.toThrow('attempt limit');
+		expect((await coordinator.getBuildOutcome('wi_1'))?.verifyAttempts).toBe(MAX_VERIFY_ATTEMPTS);
+	});
+
+	it('merges completed trigger runs against the latest stored coverage', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(createBuildOutcome({ verificationProgress: {} }));
+		await coordinator.startVerification('wi_1', 'A');
+		await coordinator.startVerification('wi_1', 'B');
+		for (const triggerNodeName of ['B', 'A']) {
+			await coordinator.recordVerification('wi_1', successfulVerification(triggerNodeName));
+		}
+		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toMatchObject({
+			A: [{ evidence: { nodesExecuted: ['A'] } }],
+			B: [{ evidence: { nodesExecuted: ['B'] } }],
+		});
+	});
+
 	function setupBlockedOutcome(overrides: Partial<WorkflowBuildOutcome> = {}) {
 		return createBuildOutcome({
 			runId: 'run-1',
@@ -96,7 +138,12 @@ describe('WorkflowTaskCoordinator', () => {
 				workflowTaskService: coordinator,
 				logger: mock<OrchestrationContext['logger']>(),
 				domainContext: mock<InstanceAiContext>({
-					executionService: mock<InstanceAiContext['executionService']>({ run }),
+					executionService: mock<InstanceAiContext['executionService']>({
+						run,
+						getResolvedNodeParameters: vi
+							.fn()
+							.mockRejectedValue(new Error('No saved parameter data')),
+					}),
 					workflowService: mock<InstanceAiContext['workflowService']>({
 						getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [], connections: {} }),
 					}),

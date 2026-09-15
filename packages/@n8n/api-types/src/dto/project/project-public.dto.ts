@@ -66,7 +66,18 @@ export class CreateProjectPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
+export class UpdateProjectPublicDto extends Z.class(
+	{
+		name: projectNameSchema.openapi(projectFieldDocs.name),
+		id: readOnlyPublicSchema(createProjectReadOnlyFieldDocs.id),
+		type: readOnlyPublicSchema(createProjectReadOnlyFieldDocs.type),
+	},
+	{ strict: true },
+) {}
+
 export class ListProjectsQueryPublicDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 }) {}
+
+export class DeleteProjectQueryPublicDto extends Z.class({}, { strict: true }) {}

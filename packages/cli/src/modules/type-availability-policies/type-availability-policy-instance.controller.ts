@@ -1,3 +1,9 @@
+import {
+	CreatePolicyDocumentDto,
+	PutInstancePolicyDto,
+	ReplaceAttachmentsDto,
+	UpdatePolicyDocumentDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -17,10 +23,6 @@ import type { Response } from 'express';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { NODE_TYPES_KIND } from './constants';
-import { CreatePolicyDocumentDto } from './dto/create-policy-document.dto';
-import { PutInstancePolicyDto } from './dto/put-instance-policy.dto';
-import { ReplaceAttachmentsDto } from './dto/replace-attachments.dto';
-import { UpdatePolicyDocumentDto } from './dto/update-policy-document.dto';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**

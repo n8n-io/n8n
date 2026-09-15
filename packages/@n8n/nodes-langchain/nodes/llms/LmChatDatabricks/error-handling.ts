@@ -1,7 +1,38 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError } from 'n8n-workflow';
 
 import { findSessionExpiredError } from '../../../utils/oauth2-token-provider';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+
+/**
+ * Databricks error bodies are `{ error_code, message }`. The OpenAI client only
+ * surfaces `{ error: { message } }` and otherwise reports "<status> status code
+ * (no body)", losing e.g. "endpoint is temporarily disabled due to a
+ * Databricks-set rate limit of 0". Reshape so the real message reaches the user.
+ */
+export function wrapDatabricksErrorFetch(baseFetch: typeof fetch): typeof fetch {
+	return async (input, init) => {
+		const response = await baseFetch(input, init);
+		if (response.ok) return response;
+
+		const text = await response.text();
+		let body = text;
+		try {
+			const parsed: unknown = JSON.parse(text);
+			if (isRecord(parsed) && !('error' in parsed) && typeof parsed.message === 'string') {
+				body = JSON.stringify({ error: { message: parsed.message, code: parsed.error_code } });
+			}
+		} catch {}
+
+		const headers = new Headers(response.headers);
+		headers.delete('content-length');
+		return new Response(body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers,
+		});
+	};
+}
 
 /**
  * Databricks answers both a dead token and "no permission on this endpoint" with

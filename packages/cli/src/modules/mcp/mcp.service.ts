@@ -5,6 +5,7 @@ import {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
 	MCP_INSTANCE_CONTEXT_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -55,9 +56,10 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -249,6 +251,7 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
@@ -274,7 +277,7 @@ export class McpService {
 			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
 			instanceContextEnabled:
 				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === true,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -828,6 +831,8 @@ export class McpService {
 			dataTableOps,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -931,6 +936,8 @@ export class McpService {
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 		registerIfAllowed(updateTool);
 

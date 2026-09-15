@@ -12,6 +12,7 @@ describe('DeprecationService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
+		taskRunners: { mode: 'internal' },
 	});
 	const instanceSettings = mockInstance(InstanceSettings, {
 		instanceType: 'main',
@@ -64,6 +65,7 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
+		['N8N_DB_PING_TIMEOUT', '1', true],
 		['WEBHOOK_URL', 'https://example.com/', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
@@ -78,7 +80,7 @@ describe('DeprecationService', () => {
 		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
 		['N8N_RUNNERS_MODE', 'internal', true],
 		['N8N_RUNNERS_MODE', 'external', false],
-		['N8N_RUNNERS_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', undefined, true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
 		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],

@@ -18,7 +18,7 @@ const DATA_TABLE_PROMPT =
 	'After creating all 5, delete all of them.';
 
 test.describe(
-	'Instance-AI Memory: Data Table CRUD @capability:observability',
+	'Instance-AI Memory: Data Table CRUD',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

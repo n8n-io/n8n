@@ -305,12 +305,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
-
-			// Catches leadership already taken over before this instance had a
-			// takeover listener subscribed, whose one-shot event would otherwise
-			// be lost for the process lifetime.
-			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
-				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -423,13 +417,16 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
-		Container.get(SystemTaskRunner).init();
-		Container.get(DurableScheduler).start();
 
 		const systemTaskMetadata = Container.get(SystemTaskMetadata);
 		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
 			systemTaskMetadata.register(taskClass);
 		}
+
+		// The runner provisions the durable system task jobs, so it must finish
+		// before the scheduler can claim one.
+		await Container.get(SystemTaskRunner).init();
+		Container.get(DurableScheduler).start();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			const { EnqueuedExecutionRecoveryService } = await import(

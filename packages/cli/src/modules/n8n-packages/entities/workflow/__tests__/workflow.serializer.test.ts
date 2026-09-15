@@ -19,6 +19,7 @@ const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow =
 	connections: {},
 	versionId: 'version-from-source',
 	parentFolderId: 'folder-from-source',
+	isArchived: false,
 	...overrides,
 });
 
@@ -82,15 +83,17 @@ describe('WorkflowSerializer.deserialize', () => {
 		expect(partial).not.toHaveProperty('activeVersionId');
 	});
 
-	it('does not carry lifecycle state, which lives in its own file', () => {
-		const partial = serializer.deserialize(wire());
+	it('does not carry the published version, which lives in its own file', () => {
+		expect(serializer.deserialize(wire())).not.toHaveProperty('publishedVersionId');
+	});
 
-		expect(partial).not.toHaveProperty('publishedVersionId');
-		expect(partial).not.toHaveProperty('isArchived');
+	it('carries the archived flag', () => {
+		expect(serializer.deserialize(wire({ isArchived: true })).isArchived).toBe(true);
+		expect(serializer.deserialize(wire({ isArchived: false })).isArchived).toBe(false);
 	});
 });
 
-describe('WorkflowSerializer.serializeLifecycle', () => {
+describe('WorkflowSerializer.serializeMetadata', () => {
 	const serializer = new WorkflowSerializer();
 
 	const workflow = (overrides: Partial<WorkflowEntity> = {}) =>
@@ -102,23 +105,18 @@ describe('WorkflowSerializer.serializeLifecycle', () => {
 		});
 
 	it('names the exported version when it is the live one', () => {
-		expect(serializer.serializeLifecycle(workflow()).publishedVersionId).toBe('version-2');
+		expect(serializer.serializeMetadata(workflow()).publishedVersionId).toBe('version-2');
 	});
 
 	it('names the live version when the export carries a later draft', () => {
 		const draft = workflow({ versionId: 'version-3', activeVersionId: 'version-2' });
 
-		expect(serializer.serializeLifecycle(draft).publishedVersionId).toBe('version-2');
+		expect(serializer.serializeMetadata(draft).publishedVersionId).toBe('version-2');
 	});
 
 	it('names no version when the workflow has no live one', () => {
 		const neverPublished = workflow({ activeVersionId: null });
 
-		expect(serializer.serializeLifecycle(neverPublished).publishedVersionId).toBeNull();
-	});
-
-	it('carries the archived flag', () => {
-		expect(serializer.serializeLifecycle(workflow({ isArchived: true })).isArchived).toBe(true);
-		expect(serializer.serializeLifecycle(workflow({ isArchived: false })).isArchived).toBe(false);
+		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
 	});
 });

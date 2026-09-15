@@ -19,6 +19,7 @@ import {
 import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type {
 	BuiltFileStore,
 	BuiltMemory,
@@ -68,6 +69,7 @@ import {
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
+import { ActiveSkills } from '../skills/active-skills';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -100,6 +102,7 @@ export interface AgentRuntimeConfig {
 	 */
 	modelFetch?: FetchFn;
 	instructions: string;
+	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
@@ -210,9 +213,18 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
+	private activeSkills?: ActiveSkills;
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		// Keep full tool results when the memory backend cannot persist active skill IDs.
+		if (config.skillSource && (!config.memory || config.memory.skillState)) {
+			this.activeSkills = new ActiveSkills(
+				config.skillSource,
+				config.name,
+				config.memory?.skillState,
+			);
+		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
@@ -241,6 +253,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
+			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -768,6 +781,7 @@ export class AgentRuntime {
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
+		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateDeferredToolsFromList(list);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when
@@ -857,6 +871,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const batch = await this.toolExecutor.iteratePendingToolCallsConcurrent({
 				...buildToolBatchContext(pendingLoopContext.toolMap),
@@ -885,6 +900,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
 			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
@@ -892,7 +908,10 @@ export class AgentRuntime {
 				.filter((value): value is string => Boolean(value))
 				.join('\n\n');
 			const { system, messages } = list.forLlm(
-				effectiveInstructions,
+				// Skill content changes only on activation. Keep it cached when memory compacts.
+				[effectiveInstructions, this.activeSkills?.instructions()]
+					.filter(Boolean)
+					.join('\n\n'),
 				instructionProviderOptions,
 				combinedVolatileInstructions || undefined,
 				supportsSplitSystemMessages(this.config.model),
@@ -901,7 +920,7 @@ export class AgentRuntime {
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages,
+				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,

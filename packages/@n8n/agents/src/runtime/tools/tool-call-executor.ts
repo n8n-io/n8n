@@ -21,6 +21,7 @@ import {
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
@@ -63,6 +64,7 @@ type ToolCallOutcome =
 			 */
 			modelOutput: unknown;
 			customMessage?: AgentMessage;
+			mcpServerName?: string;
 	  }
 	| {
 			outcome: 'suspended';
@@ -89,6 +91,8 @@ export interface ToolCallSuccess {
 	toolEntry: ToolResultEntry;
 	modelOutput: unknown;
 	customMessage?: AgentMessage;
+	/** Set when the tool belongs to an MCP server, so hosts can attribute the result to it. */
+	mcpServerName?: string;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -184,6 +188,7 @@ function getToolResumeJsonSchema(
 }
 
 export interface ToolCallExecutorDeps {
+	loadSkill?: RuntimeSkillLoader;
 	telemetry: RuntimeTelemetry;
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */
@@ -427,6 +432,9 @@ export class ToolCallExecutor {
 						toolEntry: result.value.toolEntry,
 						modelOutput: result.value.modelOutput,
 						customMessage: result.value.customMessage,
+						...(result.value.mcpServerName !== undefined
+							? { mcpServerName: result.value.mcpServerName }
+							: {}),
 					});
 				} else if (result.value.outcome === 'cancelled') {
 					results.push({
@@ -556,6 +564,9 @@ export class ToolCallExecutor {
 				toolEntry: processResult.toolEntry,
 				modelOutput: processResult.modelOutput,
 				customMessage: processResult.customMessage,
+				...(processResult.mcpServerName !== undefined
+					? { mcpServerName: processResult.mcpServerName }
+					: {}),
 			});
 		} else if (processResult.outcome === 'cancelled') {
 			results.push({
@@ -998,6 +1009,7 @@ export class ToolCallExecutor {
 						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
+							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
@@ -1112,6 +1124,7 @@ export class ToolCallExecutor {
 			},
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
+			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
 		};
 	}
 
