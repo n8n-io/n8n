@@ -423,6 +423,7 @@ describe('build-agent tool', () => {
 		// stream is consumed. A call-time rejection (as this test used to simulate) cannot
 		// happen in production; see build-agent.tool.ts's `runBuilderConsumeLoop` catch.
 		const { context, delegate, publishedEvents } = makeContext();
+		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			throwingStream(
@@ -451,6 +452,9 @@ describe('build-agent tool', () => {
 			role: 'agent-builder',
 			error: friendlyMessage,
 		});
+		expect(context.domainContext!.resolvedUserDecisions).toEqual([
+			{ question: 'Which model?', answer: 'Claude' },
+		]);
 	});
 
 	it('publishes agent-completed and rethrows when streamBuild throws an unknown error', async () => {

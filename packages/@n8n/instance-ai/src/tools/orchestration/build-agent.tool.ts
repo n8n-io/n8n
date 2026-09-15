@@ -1136,7 +1136,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 						}
 					: undefined,
 			});
-			await consumeUserDecisions(domainContext, handedOffDecisions);
+			if (output?.ok) await consumeUserDecisions(domainContext, handedOffDecisions);
 			return output;
 		})
 		.build();

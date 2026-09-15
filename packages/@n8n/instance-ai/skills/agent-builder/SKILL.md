@@ -66,8 +66,9 @@ as possible. Include only:
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
 
-The host appends an <aia-handoff> block with the current user text and resolved ask-user answers.
-Treat those as the user's decisions, not as implementation you invented.
+The host appends an <aia-handoff> block with the current user text and pending
+ask-user answers that have not yet reached Agent Builder. Treat those as the
+user's decisions for this build call, not as implementation you invented.
 Still copy user-stated model, channel, and credential choices into message; do not omit
 them because the host also injected them.
 
