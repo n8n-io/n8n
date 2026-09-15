@@ -32,6 +32,7 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
@@ -64,6 +65,7 @@ export class RolesPublicController {
 	constructor(
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
+		private readonly canvasOnlyPersonalSpaceRole: CanvasOnlyPersonalSpaceRoleService,
 	) {}
 
 	@Get('/')
@@ -172,17 +174,20 @@ export class RolesPublicController {
 			throw new NotFoundError('Role not found');
 		}
 
+		const apiKeyScopes = req.tokenGrant?.apiKeyScopes ?? [];
 		assertCanManageRoleType({
-			apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
+			apiKeyScopes,
 			roleType: role.roleType,
 			user: req.user,
 		});
 
-		const result = await this.roleService.updateCustomRole({
-			slug: roleSlug,
-			newRole: updateRole,
-			userId: req.user.id,
-		});
+		const result = this.canvasOnlyPersonalSpaceRole.isActiveFor(roleSlug)
+			? await this.canvasOnlyPersonalSpaceRole.updateRole(updateRole, apiKeyScopes)
+			: await this.roleService.updateCustomRole({
+					slug: roleSlug,
+					newRole: updateRole,
+					userId: req.user.id,
+				});
 
 		return toRolePublicDto({ ...result, roleType: role.roleType });
 	}
