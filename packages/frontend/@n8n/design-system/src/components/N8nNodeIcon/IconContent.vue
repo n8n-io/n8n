@@ -2,11 +2,26 @@
 import { computed } from 'vue';
 
 import N8nNodeIcon from './NodeIcon.vue';
+import N8nAvatar from '../N8nAvatar';
 import N8nIcon from '../N8nIcon';
 import { isSupportedIconName, type IconName, type NodeIconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 type IconType = 'file' | 'icon' | 'unknown';
+
+/**
+ * A badge is an icon, an image, or a user avatar (initials over a generated
+ * pattern, the same as the users list). The avatar variant names a person, for
+ * example who scheduled executions run as.
+ */
+export interface NodeIconBadge {
+	type: IconType | 'avatar';
+	src?: string;
+	name?: string;
+	tooltip?: string;
+	firstName?: string | null;
+	lastName?: string | null;
+}
 
 interface IconContentProps {
 	type: IconType;
@@ -14,7 +29,7 @@ interface IconContentProps {
 	name?: string;
 	nodeTypeName?: string;
 	size?: number;
-	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
+	badge?: NodeIconBadge;
 }
 
 const props = defineProps<IconContentProps>();
@@ -73,15 +88,37 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 			<!-- Only render the (memory-heavy) tooltip when the badge actually has one -->
 			<N8nTooltip v-if="badge.tooltip" placement="top">
 				<template #content>{{ badge.tooltip }}</template>
-				<N8nNodeIcon :type="badge.type" :src="badge.src" :name="badge.name" :size="badgeSize" />
+				<N8nAvatar
+					v-if="badge.type === 'avatar'"
+					:first-name="badge.firstName"
+					:last-name="badge.lastName"
+					size="xxsmall"
+					data-test-id="node-icon-badge-avatar"
+				/>
+				<N8nNodeIcon
+					v-else
+					:type="badge.type"
+					:src="badge.src"
+					:name="badge.name"
+					:size="badgeSize"
+				/>
 			</N8nTooltip>
-			<N8nNodeIcon
-				v-else
-				:type="badge.type"
-				:src="badge.src"
-				:name="badge.name"
-				:size="badgeSize"
-			/>
+			<template v-else>
+				<N8nAvatar
+					v-if="badge.type === 'avatar'"
+					:first-name="badge.firstName"
+					:last-name="badge.lastName"
+					size="xxsmall"
+					data-test-id="node-icon-badge-avatar"
+				/>
+				<N8nNodeIcon
+					v-else
+					:type="badge.type"
+					:src="badge.src"
+					:name="badge.name"
+					:size="badgeSize"
+				/>
+			</template>
 		</div>
 	</div>
 	<div v-else :class="$style.nodeIconPlaceholder">

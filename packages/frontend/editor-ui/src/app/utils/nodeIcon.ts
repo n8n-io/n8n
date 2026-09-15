@@ -22,9 +22,15 @@ type NodeIconSourceFile = {
 	src: string;
 };
 
+type NodeIconSourceAvatar = {
+	type: 'avatar';
+	firstName?: string | null;
+	lastName?: string | null;
+};
+
 type BaseNodeIconSource = NodeIconSourceIcon | NodeIconSourceFile;
 export type NodeIconSource = BaseNodeIconSource & {
-	badge?: BaseNodeIconSource & { tooltip?: string };
+	badge?: (BaseNodeIconSource | NodeIconSourceAvatar) & { tooltip?: string };
 };
 
 export type NodeIconType = 'file' | 'icon' | 'unknown';

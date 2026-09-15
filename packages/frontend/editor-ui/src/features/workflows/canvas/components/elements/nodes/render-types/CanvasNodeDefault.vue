@@ -52,7 +52,7 @@ const {
 } = useCanvasNode();
 const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
 	useNodePrivateCredential(name);
-const { showRunAsBadge, tooltipText: runAsTooltip } = useNodeRunAsBadge(name);
+const { showRunAsBadge, tooltipText: runAsTooltip, holder: runAsHolder } = useNodeRunAsBadge(name);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
@@ -174,14 +174,13 @@ const iconSource = computed(() => {
 		return { ...source, badge };
 	}
 
-	// A Schedule Trigger with a run-as user shows who scheduled executions run as.
-	// The Schedule Trigger never carries a private credential, so the slot is free.
+	// A Schedule Trigger with a run-as user shows who scheduled executions run as:
+	// the holder's avatar, or a generic user icon until the holder is loaded. The
+	// Schedule Trigger never carries a private credential, so the slot is free.
 	if (showRunAsBadge.value && source) {
-		const badge: NodeIconSource['badge'] = {
-			type: 'icon',
-			name: 'circle-user-round',
-			tooltip: runAsTooltip.value,
-		};
+		const badge: NodeIconSource['badge'] = runAsHolder.value
+			? { type: 'avatar', ...runAsHolder.value, tooltip: runAsTooltip.value }
+			: { type: 'icon', name: 'circle-user-round', tooltip: runAsTooltip.value };
 		return { ...source, badge };
 	}
 

@@ -64,7 +64,7 @@ import { useNodeRunAsBadge } from '@/features/resolvers/composables/useNodeRunAs
 const stubs = {
 	NodeIcon: {
 		template:
-			'<node-icon-stub :data-badge-name="iconSource?.badge?.name" :data-badge-tooltip="iconSource?.badge?.tooltip" :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
+			'<node-icon-stub :data-badge-type="iconSource?.badge?.type" :data-badge-name="iconSource?.badge?.name" :data-badge-first-name="iconSource?.badge?.firstName" :data-badge-tooltip="iconSource?.badge?.tooltip" :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
 		props: ['icon-source', 'size', 'shrink', 'disabled'],
 	},
 };
@@ -101,6 +101,7 @@ beforeEach(() => {
 	vi.mocked(useNodeRunAsBadge).mockReturnValue({
 		showRunAsBadge: computed(() => false),
 		tooltipText: computed(() => ''),
+		holder: computed(() => undefined),
 	});
 });
 
@@ -153,10 +154,43 @@ describe('CanvasNodeDefault', () => {
 	});
 
 	describe('run-as badge', () => {
-		it('shows the run-as icon (with tooltip) as the node badge on a Schedule Trigger', () => {
+		it('shows the holder avatar (with tooltip) as the node badge on a Schedule Trigger', () => {
 			vi.mocked(useNodeRunAsBadge).mockReturnValue({
 				showRunAsBadge: computed(() => true),
 				tooltipText: computed(() => 'Scheduled executions run as Ada Lovelace'),
+				holder: computed(() => ({ firstName: 'Ada', lastName: 'Lovelace' })),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { icon: { type: 'file', src: 'https://example.com/icon.png' } },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeIcon = getByTestId('canvas-default-node').querySelector('node-icon-stub');
+			expect(nodeIcon).toHaveAttribute('data-badge-type', 'avatar');
+			expect(nodeIcon).toHaveAttribute('data-badge-first-name', 'Ada');
+			expect(nodeIcon).toHaveAttribute(
+				'data-badge-tooltip',
+				'Scheduled executions run as Ada Lovelace',
+			);
+		});
+
+		it('falls back to the user icon until the holder is loaded', () => {
+			vi.mocked(useNodeRunAsBadge).mockReturnValue({
+				showRunAsBadge: computed(() => true),
+				tooltipText: computed(() => 'Scheduled executions run as Ada Lovelace'),
+				holder: computed(() => undefined),
 			});
 
 			const { getByTestId } = renderComponent({

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 import N8nTooltip from '../N8nTooltip';
 import IconContent from './IconContent.vue';
+import type { NodeIconBadge } from './IconContent.vue';
 import type { Placement } from '../N8nTooltip/Tooltip.types';
 
 type IconType = 'file' | 'icon' | 'unknown';
@@ -18,7 +19,7 @@ interface NodeIconProps {
 	color?: string;
 	showTooltip?: boolean;
 	tooltipPosition?: Placement;
-	badge?: { src?: string; name?: string; type: IconType; tooltip?: string };
+	badge?: NodeIconBadge;
 }
 
 const props = withDefaults(defineProps<NodeIconProps>(), {

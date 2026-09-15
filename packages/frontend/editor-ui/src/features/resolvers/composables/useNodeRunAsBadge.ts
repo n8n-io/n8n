@@ -37,5 +37,16 @@ export function useNodeRunAsBadge(nodeName: MaybeRefOrGetter<string>) {
 			: i18n.baseText('runAs.badge.other', { interpolate: { name: holderName.value } }),
 	);
 
-	return { showRunAsBadge, tooltipText };
+	// The holder's names for the avatar badge. Undefined until the user is loaded,
+	// so the caller falls back to a plain icon.
+	const holder = computed<{ firstName?: string | null; lastName?: string | null } | undefined>(
+		() => {
+			const id = runAsUserId.value;
+			const user = id ? usersStore.usersById[id] : undefined;
+			if (!user || (!user.firstName && !user.lastName)) return undefined;
+			return { firstName: user.firstName, lastName: user.lastName };
+		},
+	);
+
+	return { showRunAsBadge, tooltipText, holder };
 }

@@ -177,6 +177,24 @@ describe('NodeIcon', () => {
 			expect(badge).toBeTruthy();
 		});
 
+		it('renders a user avatar with initials for an avatar badge', () => {
+			const { getByTestId, getByText } = render(NodeIcon, {
+				props: {
+					type: 'file',
+					src: 'test.png',
+					size: 40,
+					badge: {
+						type: 'avatar',
+						firstName: 'Phyllis',
+						lastName: 'Noester',
+					},
+				},
+			});
+
+			expect(getByTestId('node-icon-badge-avatar')).toBeInTheDocument();
+			expect(getByText('PN')).toBeInTheDocument();
+		});
+
 		it('does not render badge when badge prop is not provided', () => {
 			const { container } = render(NodeIcon, {
 				props: {

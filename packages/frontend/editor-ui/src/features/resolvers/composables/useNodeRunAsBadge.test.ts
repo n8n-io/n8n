@@ -49,12 +49,13 @@ const scheduleTrigger = {
 
 const TestComponent = defineComponent({
 	setup() {
-		const { showRunAsBadge, tooltipText } = useNodeRunAsBadge(() => 'Schedule Trigger');
-		return { showRunAsBadge, tooltipText };
+		const { showRunAsBadge, tooltipText, holder } = useNodeRunAsBadge(() => 'Schedule Trigger');
+		return { showRunAsBadge, tooltipText, holder };
 	},
 	template: `<div>
 		<span data-test-id="show">{{ showRunAsBadge }}</span>
 		<span data-test-id="tooltip">{{ tooltipText }}</span>
+		<span data-test-id="holder">{{ holder ? holder.firstName + ' ' + holder.lastName : 'none' }}</span>
 	</div>`,
 });
 
@@ -75,7 +76,13 @@ describe('useNodeRunAsBadge', () => {
 		vi.mocked(useUsersStore).mockReturnValue({
 			currentUser: { id: CURRENT_USER_ID },
 			usersById: {
-				[OTHER_USER_ID]: { id: OTHER_USER_ID, fullName: 'Ada Lovelace', email: 'ada@example.com' },
+				[OTHER_USER_ID]: {
+					id: OTHER_USER_ID,
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+					fullName: 'Ada Lovelace',
+					email: 'ada@example.com',
+				},
 			},
 			fetchUsers: vi.fn(),
 		} as unknown as ReturnType<typeof useUsersStore>);
@@ -92,6 +99,14 @@ describe('useNodeRunAsBadge', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('show')).toHaveTextContent('true');
 		expect(getByTestId('tooltip')).toHaveTextContent('Scheduled executions run as Ada Lovelace');
+		expect(getByTestId('holder')).toHaveTextContent('Ada Lovelace');
+	});
+
+	it('has no holder names until the user is loaded', () => {
+		mockDocumentStore.settings = { runAsUserId: 'not-loaded-user' };
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('show')).toHaveTextContent('true');
+		expect(getByTestId('holder')).toHaveTextContent('none');
 	});
 
 	it('hides the badge when the setting is unset', () => {
