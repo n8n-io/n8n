@@ -132,7 +132,7 @@ jobs:
             pnpm_command=("$PNPM_HOME/pnpm")
           fi
           "${pnpm_command[@]}" --dir "$PROBE_DIRECTORY" publish --access public --no-git-checks --dry-run 2>&1 | tee "$RUNNER_TEMP/pnpm-oidc.log"
-          if rg --quiet 'Skipped OIDC|ERR_PNPM_AUTH_TOKEN_FETCH' "$RUNNER_TEMP/pnpm-oidc.log"; then
+          if rg --fixed-strings --quiet 'Skipped OIDC: ERR_PNPM_AUTH_TOKEN_FETCH' "$RUNNER_TEMP/pnpm-oidc.log"; then
             echo '::error::pnpm failed to exchange the OIDC token.'
             exit 1
           fi
