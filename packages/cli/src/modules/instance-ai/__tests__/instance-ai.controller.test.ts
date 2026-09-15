@@ -1793,6 +1793,7 @@ describe('InstanceAiController', () => {
 				threadId: THREAD_ID,
 				messages: [],
 				hasMore: true,
+				page: 0,
 			});
 			eventLog.getNextEventId.mockResolvedValue(7);
 

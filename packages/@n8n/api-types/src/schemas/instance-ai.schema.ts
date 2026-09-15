@@ -1522,7 +1522,7 @@ export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
  *  `INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT` because the editor renders parsed
  *  messages, and a page of rows collapses to far fewer bubbles. It must stay at
  *  or under `INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT`, or every read answers 400. */
-export const INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE = 100;
+export const INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE = 5;
 
 export class InstanceAiThreadMessagesQuery extends Z.class({
 	limit: z.coerce
@@ -1792,9 +1792,14 @@ export interface InstanceAiRichMessagesResponse {
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
-	/** Whether rows older than this page exist, so the editor knows to offer
-	 *  "load earlier" rather than presenting a truncated thread as complete. */
+	/** Whether renderable history older than this page exists, so the editor
+	 *  knows to offer "load earlier" rather than presenting a truncated thread
+	 *  as complete. */
 	hasMore: boolean;
+	/** The page actually served. It runs ahead of the requested page when the
+	 *  pages in between held only rows that render nothing, so the caller asks
+	 *  for `page + 1` next instead of re-reading what was already skipped. */
+	page: number;
 }
 
 // ---------------------------------------------------------------------------

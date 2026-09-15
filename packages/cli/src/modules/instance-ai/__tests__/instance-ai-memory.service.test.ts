@@ -229,6 +229,78 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 			expect(result.hasMore).toBe(hasMore);
 		},
 	);
+
+	describe('pages that render nothing', () => {
+		function toolRow(id: string, createdAt: string) {
+			return { id, role: 'tool', content: 'tool output', createdAt: new Date(createdAt) };
+		}
+		function userRow(id: string, createdAt: string) {
+			return { id, role: 'user', content: 'Hello', createdAt: new Date(createdAt) };
+		}
+
+		it('serves the next page with content when a page parses away to nothing', async () => {
+			// The rows are real, so storage reports more, but the parser drops every
+			// one of them. Answering with the empty page makes the editor chase it.
+			mockListMessages
+				.mockResolvedValueOnce({
+					messages: [toolRow('msg-t', '2026-01-01T00:00:02.000Z')],
+					hasMore: true,
+				})
+				.mockResolvedValueOnce({
+					messages: [userRow('msg-u', '2026-01-01T00:00:01.000Z')],
+					hasMore: false,
+				});
+
+			const result = await createService().getRichMessages('user-1', 'thread-1', { page: 0 });
+
+			expect(result.messages.map((message) => message.id)).toEqual(['msg-u']);
+			expect(result.page).toBe(1);
+			expect(result.hasMore).toBe(false);
+			expect(mockListMessages).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the page it served so the caller can ask for the next one', async () => {
+			mockListMessages.mockResolvedValueOnce({
+				messages: [userRow('msg-u', '2026-01-01T00:00:01.000Z')],
+				hasMore: true,
+			});
+
+			const result = await createService().getRichMessages('user-1', 'thread-1', { page: 3 });
+
+			expect(result.page).toBe(3);
+			expect(mockListMessages).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops at the oldest page when storage reports no rows behind it', async () => {
+			mockListMessages.mockResolvedValueOnce({
+				messages: [toolRow('msg-t', '2026-01-01T00:00:02.000Z')],
+				hasMore: false,
+			});
+
+			const result = await createService().getRichMessages('user-1', 'thread-1', { page: 0 });
+
+			expect(result.messages).toEqual([]);
+			expect(result.hasMore).toBe(false);
+			expect(mockListMessages).toHaveBeenCalledTimes(1);
+		});
+
+		it('gives up after a bounded run of empty pages, leaving more history reported', async () => {
+			// A thread can hold a long stretch of tool-only rows. One read must not
+			// walk it all; the caller asks again from the page this one stopped on.
+			mockListMessages.mockResolvedValue({
+				messages: [toolRow('msg-t', '2026-01-01T00:00:02.000Z')],
+				hasMore: true,
+			});
+
+			const result = await createService().getRichMessages('user-1', 'thread-1', { page: 0 });
+
+			expect(result.messages).toEqual([]);
+			expect(result.hasMore).toBe(true);
+			expect(result.page).toBe(mockListMessages.mock.calls.length - 1);
+			expect(mockListMessages.mock.calls.length).toBeLessThan(25);
+			expect(mockListMessages.mock.calls.length).toBeGreaterThan(1);
+		});
+	});
 });
 
 describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read', () => {
