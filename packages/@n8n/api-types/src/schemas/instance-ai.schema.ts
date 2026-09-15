@@ -1,6 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -186,6 +187,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'setup-items',
+	'preferences-applied',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -1063,6 +1065,46 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
 
+/**
+ * What the saved AI preferences contributed to one turn.
+ *
+ * The turn is the only place that knows this. The settings endpoint lists every row the
+ * user can see, which is a different question and a different answer: the turn reads a
+ * bound project rather than all projects, the read is best effort, the feature flag can be
+ * off, and a row can change between the turn and the moment somebody looks. So the chat
+ * and the plus menu report this payload instead of deriving one of their own.
+ *
+ * An empty `preferences` array says that the turn applied none. No event at all says that
+ * the code path never ran, which is a different fact.
+ *
+ * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ */
+export const aiPreferencesAppliedPayloadSchema = z.object({
+	preferences: z
+		.array(
+			z.object({
+				/** Stable row id, so a reader can link to the preference or edit it. */
+				id: z.string(),
+				scope: aiPreferenceScopeSchema,
+				/** Set only for a team project. A personal project reports as `user`. */
+				projectId: z.string().optional(),
+				projectName: z.string().optional(),
+			}),
+		)
+		.describe('Every preference the request carried, instance first, then personal, then projects'),
+	/** Characters in the rendered block. Reviews the caps against real conversations. */
+	renderedLength: z.number(),
+	/**
+	 * False when this turn sent no new block because the text has not changed. The thread
+	 * history travels with every request, so an earlier block still reaches the model.
+	 */
+	injectedThisTurn: z.boolean(),
+	/** The run whose block the model is reading. Set only when `injectedThisTurn` is false. */
+	carriedFromRunId: z.string().optional(),
+});
+
+export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1126,6 +1168,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
+	z.object({
+		type: z.literal('preferences-applied'),
+		...eventBase,
+		payload: aiPreferencesAppliedPayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1163,6 +1210,10 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
+export type InstanceAiPreferencesAppliedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'preferences-applied' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<

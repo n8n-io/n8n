@@ -144,6 +144,57 @@ describe('instanceAiEventSchema', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
 
+	it('parses a preferences-applied event that names the rows the turn carried', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [
+					{ id: 'pref-1', scope: 'user' },
+					{ id: 'pref-2', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+				],
+				renderedLength: 240,
+				injectedThisTurn: true,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses a turn that reused an earlier block, naming the run that sent it', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-1',
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses an empty payload, which says the turn applied no preferences', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { preferences: [], renderedLength: 0, injectedThisTurn: true },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps preferences-applied durable, so a reload still reports the turn', () => {
+		// A live-only frame would leave the plus menu blank for every turn a client
+		// missed, and a week-old thread could never answer the question at all.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
+	});
+
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
 		const event = {
 			type: 'setup-items',
