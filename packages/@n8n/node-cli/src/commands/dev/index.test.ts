@@ -76,8 +76,8 @@ describe('dev command', () => {
 		const server = commands?.[1];
 		expect(server?.cmd).toBe('docker');
 		expect(server?.args).toContain('docker.n8n.io/n8nio/n8n:latest');
-		expect(server?.args.join(' ')).toContain(
-			`${tmpdir}:/home/node/.n8n/custom/node_modules/n8n-nodes-test`,
+		expect(server?.args).toContain(
+			`${process.cwd()}:/home/node/.n8n/custom/node_modules/n8n-nodes-test`,
 		);
 		expect(server?.args).toContain('N8N_DEV_RELOAD=true');
 	});
