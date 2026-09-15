@@ -528,6 +528,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private nodeTypePolicySaved({
 		updatedBy,
+		kind,
 		projectId,
 		before,
 		after,
@@ -537,6 +538,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-saved']) {
 		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
 			...policyActor(updatedBy),
+			kind,
 			...policyScope(projectId),
 			default_action: after.defaultAction,
 			previous_default_action: before?.defaultAction ?? null,
@@ -560,17 +562,19 @@ export class TelemetryEventRelay extends EventRelay {
 	 */
 	private nodeTypePolicyDocumentCreated({
 		updatedBy,
+		kind,
 		policyId,
 		origin,
 		after,
 	}: RelayEventMap['node-type-policy-document-created']) {
 		if (origin === 'composed-save') return;
 
-		this.trackPolicyDocument(updatedBy, policyId, 'created', after.rules, null);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'created', after.rules, null);
 	}
 
 	private nodeTypePolicyDocumentUpdated({
 		updatedBy,
+		kind,
 		policyId,
 		origin,
 		before,
@@ -578,19 +582,21 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['node-type-policy-document-updated']) {
 		if (origin === 'composed-save') return;
 
-		this.trackPolicyDocument(updatedBy, policyId, 'updated', after.rules, before.rules);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'updated', after.rules, before.rules);
 	}
 
 	private nodeTypePolicyDocumentDeleted({
 		updatedBy,
+		kind,
 		policyId,
 		before,
 	}: RelayEventMap['node-type-policy-document-deleted']) {
-		this.trackPolicyDocument(updatedBy, policyId, 'deleted', [], before.rules);
+		this.trackPolicyDocument(updatedBy, kind, policyId, 'deleted', [], before.rules);
 	}
 
 	private trackPolicyDocument(
 		updatedBy: string,
+		kind: string,
 		policyId: string,
 		operation: 'created' | 'updated' | 'deleted',
 		rulesAfter: readonly PolicyRule[],
@@ -600,6 +606,7 @@ export class TelemetryEventRelay extends EventRelay {
 			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
 			{
 				...policyActor(updatedBy),
+				kind,
 				operation,
 				policy_id: policyId,
 				...countRuleActions(rulesAfter),
@@ -610,6 +617,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private nodeTypePolicyAttachmentsUpdated({
 		updatedBy,
+		kind,
 		projectId,
 		scopeId,
 		before,
@@ -619,6 +627,7 @@ export class TelemetryEventRelay extends EventRelay {
 			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
 			{
 				...policyActor(updatedBy),
+				kind,
 				...policyScope(projectId),
 				scope_id: scopeId,
 				attachment_count: after.attachments.length,

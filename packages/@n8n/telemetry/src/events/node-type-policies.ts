@@ -16,6 +16,12 @@ const scope = z
 	.enum(['instance', 'project'])
 	.describe('Which scope the policy was written at; project policies compose under instance');
 
+const kind = z
+	.string()
+	.describe(
+		"Which type family the policy governs, e.g. 'node-types' or 'credential-types'. Credential type policies report through these same events instead of a second set, so this is what tells the two apart.",
+	);
+
 const projectId = z.string().optional().describe('Absent at instance scope');
 
 const ruleCounts = {
@@ -35,6 +41,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			scope,
 			project_id: projectId,
 			default_action: z
@@ -80,6 +87,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			operation: z.enum(['created', 'updated', 'deleted']),
 			policy_id: z.string(),
 			...ruleCounts,
@@ -93,6 +101,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			scope,
 			project_id: projectId,
 			scope_id: z.string(),
