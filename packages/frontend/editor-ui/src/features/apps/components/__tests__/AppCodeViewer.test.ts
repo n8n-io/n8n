@@ -209,7 +209,7 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		appsStore.saveAppDraftFile.mockResolvedValue(makeApp({ activeVersionId: 'v-3' }));
-		const { getByText, getByTestId } = renderViewer({
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -236,7 +236,7 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		const updated = makeApp({ activeVersionId: 'v-3' });
 		appsStore.saveAppDraftFile.mockResolvedValue(updated);
-		const { getByText, getByTestId, emitted } = renderViewer({
+		const { getByTestId, emitted } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -252,7 +252,7 @@ describe('AppCodeViewer', () => {
 		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		appsStore.saveAppDraftFile.mockRejectedValue(new Error("Could not find the file: 'main.ts'"));
-		const { getByText, getByTestId } = renderViewer({
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -274,7 +274,7 @@ describe('AppCodeViewer', () => {
 			path === 'a.ts' ? 'a content' : 'b content',
 		);
 		confirm.mockResolvedValue('cancel');
-		const { getByText, getByTestId } = renderViewer({
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -293,7 +293,7 @@ describe('AppCodeViewer', () => {
 			path === 'a.ts' ? 'a content' : 'b content',
 		);
 		confirm.mockResolvedValue('confirm');
-		const { getByText, getByTestId } = renderViewer({
+		const { getByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -328,7 +328,7 @@ describe('AppCodeViewer', () => {
 		appsStore.saveAppDraftFile.mockImplementation(
 			async () => await new Promise((resolve) => (resolveSave = resolve)),
 		);
-		const { getByText, getByTestId, emitted, rerender } = renderViewer({
+		const { getByTestId, emitted, rerender } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
@@ -397,7 +397,7 @@ describe('AppCodeViewer', () => {
 	it('reloads the list on refreshKey but keeps unsaved edits in the open file', async () => {
 		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
-		const { getByText, getByTestId, rerender } = renderViewer({
+		const { getByTestId, rerender } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1', refreshKey: 0 },
 		});
 		await waitAllPromises();

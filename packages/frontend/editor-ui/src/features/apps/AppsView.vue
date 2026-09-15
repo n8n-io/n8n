@@ -21,7 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { APP_DETAILS, APP_NEW } from '@/features/apps/apps.constants';
-import type { App } from '@/features/apps/apps.types';
+import type { App, AppResource } from '@/features/apps/apps.types';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 
 const APPS_SORT_MAP: Record<string, AppsListSortBy> = {
@@ -65,6 +65,10 @@ const canCreate = computed(
 
 const isApp = (value: unknown): value is App =>
 	typeof value === 'object' && value !== null && 'namespace' in value;
+
+const appResources = computed<AppResource[]>(() =>
+	appsStore.apps.map((app) => ({ ...app, resourceType: 'app' })),
+);
 
 async function fetchApps() {
 	const delayedLoading = debounce(() => {
@@ -134,7 +138,7 @@ onMounted(() => {
 		v-model:filters="filters"
 		resource-key="apps"
 		type="list-paginated"
-		:resources="appsStore.apps"
+		:resources="appResources"
 		:initialize="fetchApps"
 		:loading="false"
 		:resources-refreshing="loading"

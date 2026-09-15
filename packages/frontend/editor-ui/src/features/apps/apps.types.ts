@@ -2,7 +2,7 @@ import type { AppTheme, AppThemeSettings } from '@n8n/api-types';
 
 export type { AppTheme, AppThemeSettings };
 
-export interface App {
+export type App = {
 	id: string;
 	name: string;
 	namespace: string;
@@ -14,6 +14,14 @@ export interface App {
 	hasUnpublishedChanges: boolean;
 	createdAt: string;
 	updatedAt: string;
+};
+
+export type AppResource = App & { resourceType: 'app' };
+
+declare module '@/Interface' {
+	interface ModuleResources {
+		app: AppResource;
+	}
 }
 
 /** A stored version of the app: a published build, or a source-only snapshot of the draft. */
