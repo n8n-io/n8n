@@ -36,11 +36,42 @@ The bot's messaging endpoint is the n8n webhook URL for the agent:
 {publicBaseUrl}/rest/projects/{projectId}/agents/v2/{agentId}/webhooks/teams
 ```
 
-Take `projectId` and `agentId` from the agent's URL in n8n. The host must be
-publicly reachable over HTTPS, so a local instance needs a tunnel.
+Take `projectId` and `agentId` from the agent's URL in n8n.
 
 Paste it into the bot resource under **Settings → Configuration → Messaging
 endpoint**.
+
+### Local instances need a tunnel
+
+Azure pushes activities to this endpoint, and Teams has no polling mode to fall
+back on, so the host must be reachable over public HTTPS. `n8n --tunnel` no
+longer exists, so run your own:
+
+```bash
+cloudflared tunnel --url http://localhost:5678
+# or: ngrok http 5678
+```
+
+Use the tunnel hostname in the endpoint URL above.
+
+A free Cloudflare quick tunnel gets a new hostname every restart, and Azure
+holds only the hostname you last pasted. Use a named tunnel to keep one
+hostname across restarts.
+
+### `N8N_WEBHOOK_URL`
+
+```bash
+N8N_WEBHOOK_URL=https://your-tunnel.example.com
+```
+
+This is the env var behind `UrlService.getWebhookBaseUrl()`. The deprecated
+`WEBHOOK_URL` still works, and the new name wins when both are set.
+
+Teams does not need it. `webhookUrlFor()` reads that base URL, and this channel
+never calls it, because there is no endpoint to register. Inbound activities
+reach whatever path you gave Azure. Set it anyway, so every other absolute URL
+n8n builds matches the tunnel — but a wrong value will not stop Teams from
+working, the way it would stop Telegram.
 
 Unlike Telegram, n8n cannot register this for you. The endpoint lives on the
 Azure Bot resource, so setting it needs Azure management credentials rather
@@ -90,7 +121,7 @@ scope this slice supports.
   "bots": [
     {
       "botId": "<Application (client) ID from step 1>",
-      "scopes": ["personal"],
+      "scopes": ["personal", "team", "groupchat"],
       "isNotificationOnly": false,
       "supportsFiles": false
     }
@@ -99,6 +130,21 @@ scope this slice supports.
   "validDomains": []
 }
 ```
+
+Only `personal` is supported and tested. `team` and `groupchat` are here so a
+tester can try those surfaces early, and an @-mention does reach the agent,
+because Teams delivers mentions without an RSC permission grant. What happens
+after that is unverified: channel and group thread identity was never
+exercised. Treat anything odd there as expected, not as a defect. NODE-5965
+makes these surfaces supported. Drop them from `scopes` to install the
+supported configuration only.
+
+Two things about updating an installed app:
+
+- Keep the same `id` and raise `version`. Teams caches a package by version, and
+  a new `id` installs a second, separate app instead of updating the first.
+- Adding a scope needs more than an upload. Add the app to a team or a group
+  chat from its page in the Teams client before the bot can be mentioned there.
 
 Upload it in the **Teams desktop or web client** — not the Azure portal and not
 the Teams admin center:
