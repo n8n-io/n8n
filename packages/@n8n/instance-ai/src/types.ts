@@ -21,6 +21,7 @@ import type {
 	TaskList,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
+	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	McpTool,
@@ -165,6 +166,13 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Workflow version this execution actually ran, read back from the
+	 * execution record. Authoritative: a save landing while the run was in
+	 * flight moves the workflow head, but not this. Null for an execution of an
+	 * unsaved workflow, absent when the record could not be read.
+	 */
+	workflowVersionId?: string | null;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -451,10 +459,14 @@ export interface InstanceAiWorkflowService {
 	getPinnedDataSummary?(
 		workflowId: string,
 	): Promise<Array<{ nodeName: string; itemCount: number }>>;
-	/** Cheap version-only lookup. The adapter projects just `versionId` and
-	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
-	 *  Use to validate per-session caches when the body isn't needed. */
-	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Cheap version-only lookup. The adapter projects just `versionId`,
+	 *  `activeVersionId` and `updatedAt` from the workflow row, skipping
+	 *  `nodes`/`connections`/etc. Use to validate per-session caches when the
+	 *  body isn't needed, or to compare the draft against the published
+	 *  version. `activeVersionId` is null while the workflow is unpublished. */
+	getWorkflowHead(
+		workflowId: string,
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: number }>;
 	/** Single fetch returning the SDK WorkflowJSON together with the version it
 	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
 	 *  versionId you'll pin to it land in one round-trip. */
@@ -530,6 +542,13 @@ export interface ExecutionSummary {
 	startedAt: string;
 	finishedAt?: string;
 	mode: string;
+	/**
+	 * Workflow version this execution ran. Compare it with the workflow's
+	 * `activeVersionId` to tell a run of the published version from a run of a
+	 * draft. Null for executions of an unsaved workflow, and on rows recorded
+	 * before the column existed.
+	 */
+	workflowVersionId?: string | null;
 }
 
 export interface InstanceAiExecutionService {
@@ -1294,16 +1313,22 @@ export interface InstanceAiBuilderDelegate {
 	} | null>;
 }
 
-// ── Local gateway status ─────────────────────────────────────────────────────
+// ── Computer Use state ──────────────────────────────────────────────────────
 
-export type LocalGatewayStatus =
-	| {
-			status: 'connected';
-			capabilities: string[];
-	  }
-	| {
-			status: 'disabledGlobally' | 'disconnected' | 'disabled';
-	  };
+export type ComputerUseChannelState =
+	/** Not offered to this user, so the + menu has no entry to name. */
+	| { status: 'unavailable' }
+	/** In the + menu, not paired. */
+	| { status: 'disconnected' }
+	/** In the + menu, switched off in the user's own settings. */
+	| { status: 'disabledByUser' }
+	/** Live. `toolCategories` are the categories this channel serves, in the
+	 *  daemon's own vocabulary: `filesystem`, `shell`, `browser`, … */
+	| { status: 'connected'; toolCategories: string[] };
+
+export type ComputerUseState = Record<ComputerUseChannel, ComputerUseChannelState>;
+
+export type { ComputerUseChannel };
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
@@ -1406,8 +1431,8 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
-	/** Connection state of the local gateway — drives system prompt guidance. */
-	localGatewayStatus?: LocalGatewayStatus;
+	/** Per-channel Computer Use state — drives system prompt guidance. */
+	computerUseState?: ComputerUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
@@ -1762,6 +1787,8 @@ export interface InstanceAiMemoryConfig {
 	observationalMemory?: {
 		observerThresholdTokens: number;
 		reflectorThresholdTokens: number;
+		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
+		midRunObservation?: boolean;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};

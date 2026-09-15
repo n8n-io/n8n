@@ -34,6 +34,9 @@ function stringifyToolValue(value: unknown): string {
 }
 
 function formatTimelineEvent(event: TimelineEvent): string {
+	if (event.type === 'background-task-signal') {
+		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
+	}
 	if (event.type === 'text') {
 		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
 	}

@@ -16,6 +16,7 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
+	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -109,6 +110,7 @@ import {
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
+	type ProjectSummary,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
 	type WorkflowTaskService,
@@ -137,9 +139,10 @@ import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Push } from '@/push';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -156,6 +159,7 @@ import {
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
+import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -168,7 +172,7 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -185,6 +189,7 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withAiPreferences,
 	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
@@ -852,6 +857,7 @@ export class InstanceAiService {
 		private readonly push: Push,
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1458,6 +1464,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
+		computerUseChannels?: ComputerUseChannel[],
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1478,6 +1485,10 @@ export class InstanceAiService {
 		if (timeZone) {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
+
+		// Same reason: a resumed or background run has no request of its own to ask
+		// which + menu entries the client renders.
+		this.runState.setComputerUseChannels(threadId, computerUseChannels);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -2198,6 +2209,7 @@ export class InstanceAiService {
 			observationalMemory: {
 				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				midRunObservation: this.instanceAiConfig.midRunObservation,
 				// Observer/reflector calls run in the background outside the run's
 				// finish-chunk usage, so they are claimed here per report. Best-effort:
 				// a billing failure must never block observation persistence.
@@ -2490,6 +2502,7 @@ export class InstanceAiService {
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
+			aiPreferencesEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
@@ -2618,34 +2631,19 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// Compute gateway status for the system prompt. The direct browser
-		// session contributes a `browser` capability even without the daemon.
-		if (gatewayMcpServer || browserMcpServer) {
-			const capabilities = new Set<string>();
-			if (gatewayMcpServer) {
-				// getStatus() already drops excluded categories (e.g. browser when disabled).
-				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
-					if (enabled) {
-						capabilities.add(name);
-					}
-				}
-			}
-
-			if (browserMcpServer) {
-				capabilities.add(BROWSER_TOOL_CATEGORY);
-			}
-
-			context.localGatewayStatus = {
-				status: 'connected',
-				capabilities: [...capabilities],
-			};
-		} else if (localGatewayDisabledGlobally && !browserUseEnabledGlobally) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else {
-			context.localGatewayStatus = {
-				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
-			};
-		}
+		// The client reports which + menu entries it renders, because only it can see
+		// its own rollout and the device. The admin switches are still applied here,
+		// so the report can only narrow.
+		context.computerUseState = resolveComputerUseState({
+			localGatewayDisabledGlobally,
+			localGatewayDisabledForUser,
+			browserUseEnabledGlobally,
+			clientChannels: this.runState.getComputerUseChannels(threadId),
+			localComputerToolCategories: gatewayMcpServer
+				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
+				: undefined,
+			browserConnected: browserMcpServer !== undefined,
+		});
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -2830,6 +2828,7 @@ export class InstanceAiService {
 			modelId,
 			orchestrationContext,
 			conversationHistory,
+			aiPreferencesEnabled,
 		};
 	}
 
@@ -3886,6 +3885,7 @@ export class InstanceAiService {
 				modelId,
 				orchestrationContext,
 				conversationHistory,
+				aiPreferencesEnabled,
 			} = environment;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -4109,21 +4109,30 @@ export class InstanceAiService {
 			//
 			// The opening turn names the project's recent conversations; otherwise the
 			// agent has no reason to believe the conversation-history tool holds anything.
-			const [projectSection, pastConversationsSection] = await Promise.all([
-				this.resolveProjectContextSection(context),
+			const [boundProject, pastConversationsSection] = await Promise.all([
+				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
+			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
+			// Saved preferences ride the opening turn too, under the same project name.
+			const aiPreferencesBlock =
+				isOpeningTurn && aiPreferencesEnabled
+					? await this.resolveAiPreferencesBlock(user.id, boundProject)
+					: undefined;
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
 				: messageWithContext;
 			const messageWithPastConversations = pastConversationsSection
 				? withPastConversations(messageWithProject, pastConversationsSection)
 				: messageWithProject;
+			const messageWithPreferences = aiPreferencesBlock
+				? withAiPreferences(messageWithPastConversations, aiPreferencesBlock)
+				: messageWithPastConversations;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithPastConversations,
+				messageWithPreferences,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -5114,17 +5123,16 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The one-line "you are in project X" fact for the per-turn block, or undefined
-	 * when there is nothing useful to say (no bound project, no workspace adapter, a
-	 * project we can't read).
+	 * The bound project for the per-turn blocks, or undefined when it cannot be named
+	 * (no bound project, no workspace adapter, a project we can't read).
 	 *
 	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
 	 * name its project should be a less-informed run, not a failed one - the write access is
 	 * locked to the bound project either way.
 	 */
-	private async resolveProjectContextSection(
+	private async resolveBoundProject(
 		context: InstanceAiContext,
-	): Promise<string | undefined> {
+	): Promise<ProjectSummary | undefined> {
 		const projectId = context.projectId;
 		if (!projectId) return undefined;
 
@@ -5134,7 +5142,7 @@ export class InstanceAiService {
 		// the failure this block exists to prevent.
 		try {
 			const project = await context.workspaceService?.getProject?.(projectId);
-			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+			if (project) return project;
 
 			this.logger.warn('Instance AI could not name the bound project for this turn', {
 				projectId,
@@ -5154,6 +5162,21 @@ export class InstanceAiService {
 			});
 			return undefined;
 		}
+	}
+
+	/** Best-effort like the project block: a failed read costs the preferences, not the turn. */
+	private async resolveAiPreferencesBlock(
+		userId: string,
+		project: ProjectSummary | undefined,
+	): Promise<string | undefined> {
+		return await this.bestEffort(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId },
+			async () =>
+				renderAiPreferencesBlock(
+					await this.aiPreferenceService.getApplicable(userId, project ? [project] : []),
+				),
+		);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
@@ -6126,7 +6149,7 @@ export class InstanceAiService {
 
 	private async bestEffort<T>(
 		failureMessage: string,
-		context: { threadId: string; runId: string },
+		context: Record<string, unknown>,
 		step: () => T | Promise<T>,
 	): Promise<Awaited<T> | undefined> {
 		try {

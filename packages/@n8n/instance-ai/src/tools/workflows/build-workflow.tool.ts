@@ -1,8 +1,9 @@
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -103,6 +104,7 @@ import {
 	type WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { approvalSummarySchema, formatApprovalMessage } from '../approval-copy';
 import { buildChatModelProviderMismatchWarnings } from '../nodes/preferred-chat-model';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
@@ -113,6 +115,9 @@ const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	/** Workflow name shown in the approval card title. */
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
 	workflowId: z.string(),
@@ -135,6 +140,38 @@ interface BuildCtx {
  * AI_InvalidToolInputError instead of a recoverable tool result. The handler
  * does the authoritative normalization against the workspace root.
  */
+/**
+ * Where this save landed relative to production. A save never republishes, so
+ * on a published workflow the change sits in the draft while the previous
+ * version keeps running. Verification reports the same fact through
+ * `claim.liveState`, but a trigger-only workflow and any repair that skips
+ * `verify-built-workflow` never produce a claim — this rides on every save
+ * instead, from data the save already returned.
+ */
+function describeSavedPublishState(saved: { versionId: string; activeVersionId?: string | null }): {
+	publishState?: { live: 'current' | 'stale'; activeVersionId: string; savedVersionId: string };
+	publishStateNote?: string;
+} {
+	const { activeVersionId, versionId } = saved;
+	if (!activeVersionId) return {};
+
+	const live = activeVersionId === versionId ? 'current' : 'stale';
+	return {
+		publishState: { live, activeVersionId, savedVersionId: versionId },
+		...(live === 'stale'
+			? {
+					// Fact only. A save happens before verification and setup, so a
+					// publish question here would jump the post-build flow and offer
+					// to publish a workflow that is not ready.
+					publishStateNote:
+						'This workflow is published, and this save is a draft. The live version is still ' +
+						'the previous one, so nothing changed for production yet. Do NOT describe the ' +
+						'workflow as fixed, live, or working in production until it is published again.',
+				}
+			: {}),
+	};
+}
+
 function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
 	try {
 		normalizeWorkflowSourceFilePath(value);
@@ -180,6 +217,7 @@ export const buildWorkflowInputSchema = z
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
+		approvalSummary: approvalSummarySchema,
 		workItemId: z
 			.string()
 			.optional()
@@ -565,6 +603,16 @@ const buildWorkflowOutputSchema = z.object({
 	credentialResolutionNote: z.string().optional(),
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/** Where this save landed relative to production. Absent while unpublished. */
+	publishState: z
+		.object({
+			live: z.enum(['current', 'stale']),
+			activeVersionId: z.string(),
+			savedVersionId: z.string(),
+		})
+		.optional(),
+	/** Present only for `live: 'stale'` — the sentence to relay. */
+	publishStateNote: z.string().optional(),
 	grouping: groupingOutcomeSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
@@ -827,7 +875,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					return await ctx.suspend({
 						requestId: nanoid(),
-						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
+						message: formatApprovalMessage(
+							'Save the changes to this workflow',
+							input.approvalSummary,
+						),
+						resourceName: workflowName,
+						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
 						severity: 'warning',
 						workflowId: targetWorkflowId,
 					});
@@ -1355,7 +1408,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
 				);
 				const createSuccessResponse = async (
-					saved: { id: string; versionId: string; checksum?: string; folder?: WorkflowFolderRef },
+					saved: {
+						id: string;
+						versionId: string;
+						/** Published version, null while the workflow is unpublished. */
+						activeVersionId?: string | null;
+						checksum?: string;
+						folder?: WorkflowFolderRef;
+					},
 					operation: 'create' | 'update',
 				) => {
 					// The setup panel lists bound slots too (rendered as done), so its
@@ -1524,6 +1584,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					return {
 						success: true,
 						...sourceResponseBase(binding),
+						...describeSavedPublishState(saved),
 						workflowId: saved.id,
 						workflowName: json.name || undefined,
 						workItemId: resolvedWorkItemId,

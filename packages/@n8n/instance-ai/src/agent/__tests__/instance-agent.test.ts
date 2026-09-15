@@ -174,7 +174,7 @@ describe('createInstanceAgent', () => {
 				modelId: 'test-model',
 				context: {
 					runLabel: runId,
-					localGatewayStatus: undefined,
+					computerUseState: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
 				},
@@ -229,7 +229,7 @@ describe('createInstanceAgent', () => {
 				modelId: 'test-model',
 				context: {
 					runLabel: 'mcp-approval-run',
-					localGatewayStatus: undefined,
+					computerUseState: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
 					permissions: executeMcpTool ? { executeMcpTool } : undefined,
@@ -265,7 +265,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'checkpoint-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -291,7 +291,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'builder-skill-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -321,7 +321,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'docs-parity-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -353,7 +353,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -374,7 +374,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -399,7 +399,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'trace-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -445,7 +445,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'skills-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -508,7 +508,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'browser-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -530,7 +530,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -555,7 +555,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'project-scope-prompt',
 				projectId: 'project-1',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -647,7 +647,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-eager-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -679,7 +679,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-mcp-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -714,7 +714,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-priority',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -753,7 +753,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'reserved-names',
 				conversationHistoryService: {},
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -773,7 +773,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'inactive-native-tools',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -809,7 +809,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'active-native-tools',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -842,7 +842,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -868,12 +868,42 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 
+	it('forwards midRunObservation to the Memory builder when provided', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					midRunObservation: false,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			midRunObservation: false,
+		});
+	});
+
 	it('enables adaptive thinking by default for Anthropic models', async () => {
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -895,7 +925,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-off',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -920,7 +950,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'mcp-failure-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -940,7 +970,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'no-mcp-failure-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -963,7 +993,7 @@ describe('createInstanceAgent', () => {
 		const context = {
 			threadId: 'thread-sticky-1',
 			runLabel: 'modal-sticky-run',
-			localGatewayStatus: undefined,
+			computerUseState: undefined,
 			licenseHints: undefined,
 			localMcpServer: undefined,
 			modelId: modalModel,
