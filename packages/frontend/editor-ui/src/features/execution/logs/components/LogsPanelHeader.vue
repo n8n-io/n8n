@@ -30,6 +30,9 @@ function handleClick() {
 	font-size: var(--font-size--2xs);
 	text-align: left;
 	height: var(--logs-panel--header-height);
+	/* Keep the declared height in a column flex parent, so every panel header
+	   ends on the same line and the divider is not interrupted. */
+	flex-shrink: 0;
 	padding-inline: var(--spacing--2xs);
 	background-color: var(--color--foreground--tint-2);
 	display: flex;
