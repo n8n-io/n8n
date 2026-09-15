@@ -2050,6 +2050,38 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
 		});
 
+		it('should mark a hidden node as deprecated above its description', () => {
+			const node = { ...mockGmailNode, hidden: true };
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('Do not use it in a new workflow');
+			// The reader must meet the marker before the parameters.
+			expect(result.indexOf('@deprecated')).toBeLessThan(
+				result.indexOf('Send and receive emails using Gmail'),
+			);
+		});
+
+		it('should name the replacement node from the builder hint of a hidden node', () => {
+			const node = {
+				...mockGmailNode,
+				hidden: true,
+				builderHint: { searchHint: 'Use `n8n-nodes-base.httpRequestTool` instead.' },
+			};
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('@builderHint Use `n8n-nodes-base.httpRequestTool` instead.');
+		});
+
+		it('should not mark a visible node as deprecated', () => {
+			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
+
+			expect(result).not.toContain('@deprecated');
+		});
+
 		it('should emit unconditional extraTypeDefContent variations at the file header but skip gated ones', () => {
 			const node = {
 				...mockGmailNode,

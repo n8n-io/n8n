@@ -132,6 +132,7 @@ export class StepReadyHandler {
 				workflowId: execution.workflowId,
 				mode: execution.mode,
 				iteration: step.iteration,
+				callerContext: execution.callerContext,
 			},
 		});
 		return outputs;

@@ -241,6 +241,11 @@ describe('ToolRow', () => {
 		expect(queryByTestId('tools-connection-row-free-credits')).toBeNull();
 	});
 
+	it('shows the warning of a workflow row', () => {
+		const { getByTestId } = render({ ...baseWorkflow, warning: 'Not published' });
+		expect(getByTestId('tools-connection-row-warning').textContent).toContain('Not published');
+	});
+
 	it('keeps the verified badge on an installed community node', () => {
 		const item: NodeConnectionItem = { ...baseNode, verified: true };
 		const { getByTestId, queryByTestId } = render(item);

@@ -44,10 +44,17 @@ const mockModels = [
 describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;
 	let fetchSpy: ReturnType<typeof vi.fn>;
+	const secureLookup = vi.fn();
 
 	beforeEach(() => {
 		mockContext = {
 			getCredentials: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+			helpers: {
+				getSecureEgressFilter: vi.fn().mockReturnValue({
+					validateUrl: vi.fn(),
+					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+				}),
+			},
 		} as unknown as Mocked<ILoadOptionsFunctions>;
 
 		fetchSpy = vi.fn().mockResolvedValue({
@@ -69,15 +76,16 @@ describe('searchModels', () => {
 		const result = await searchModels.call(mockContext);
 
 		expect(mockContext.getCredentials).toHaveBeenCalledWith('anthropicApi');
-		expect(fetchSpy).toHaveBeenCalledWith(
-			'https://api.anthropic.com/v1/models',
-			expect.objectContaining({
+		expect(fetchSpy).toHaveBeenCalledWith({
+			input: 'https://api.anthropic.com/v1/models',
+			init: expect.objectContaining({
 				headers: expect.objectContaining({
 					'x-api-key': 'test-api-key',
 					'anthropic-version': '2023-06-01',
 				}),
 			}),
-		);
+			lookup: secureLookup,
+		});
 		expect(result.results).toHaveLength(5);
 	});
 
@@ -89,7 +97,9 @@ describe('searchModels', () => {
 
 		const result = await searchModels.call(mockContext);
 
-		expect(fetchSpy).toHaveBeenCalledWith(`${customUrl}/v1/models`, expect.anything());
+		expect(fetchSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ input: `${customUrl}/v1/models` }),
+		);
 		expect(result.results).toHaveLength(5);
 	});
 
@@ -100,7 +110,9 @@ describe('searchModels', () => {
 
 		const result = await searchModels.call(mockContext);
 
-		expect(fetchSpy).toHaveBeenCalledWith('https://api.anthropic.com/v1/models', expect.anything());
+		expect(fetchSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ input: 'https://api.anthropic.com/v1/models' }),
+		);
 		expect(result.results).toHaveLength(5);
 	});
 
@@ -154,11 +166,13 @@ describe('searchModels', () => {
 		await searchModels.call(mockContext);
 
 		expect(fetchSpy).toHaveBeenCalledWith(
-			'https://api.anthropic.com/v1/models',
 			expect.objectContaining({
-				headers: expect.objectContaining({
-					'x-api-key': 'test-api-key',
-					'X-Gateway-Auth': 'gateway-value',
+				input: 'https://api.anthropic.com/v1/models',
+				init: expect.objectContaining({
+					headers: expect.objectContaining({
+						'x-api-key': 'test-api-key',
+						'X-Gateway-Auth': 'gateway-value',
+					}),
 				}),
 			}),
 		);

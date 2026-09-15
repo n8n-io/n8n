@@ -58,11 +58,9 @@ export class TaskBrokerAuthService {
 	 */
 	async tryConsumeGrantToken(grantToken: string): Promise<GrantTokenConsumption> {
 		const key = this.cacheKeyForGrantToken(grantToken);
-		const consumed = await this.cacheService.get<string>(key);
-		// Not found from cache --> Invalid token
+		const consumed = await this.cacheService.take<string>(key);
+		// Not found in cache --> Invalid or already consumed token
 		if (consumed === undefined) return { isValid: false, boundRunnerId: null };
-
-		await this.cacheService.delete(key);
 
 		return {
 			isValid: true,

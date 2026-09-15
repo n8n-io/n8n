@@ -219,7 +219,14 @@ export class OidcService {
 		return nonce;
 	}
 
+	assertOidcLoginEnabled(): void {
+		if (!this.oidcConfig.loginEnabled || !isOidcCurrentAuthenticationMethod()) {
+			throw new ForbiddenError('OIDC login is not enabled');
+		}
+	}
+
 	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -267,6 +274,7 @@ export class OidcService {
 		storedState: string,
 		storedNonce: string,
 	): Promise<{ user: User; idToken?: string }> {
+		this.assertOidcLoginEnabled();
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
@@ -316,10 +324,7 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
-		await this.assertProvisioningLoginAllowed(
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
@@ -331,11 +336,7 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(
-				openidUser.user,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
@@ -361,11 +362,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(
-				foundUser,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
+			await this.applySsoProvisioning(foundUser, claims, userInfo);
 
 			return { user: foundUser, idToken: tokens.id_token };
 		}
@@ -394,11 +391,7 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(
-			user,
-			claims as Record<string, unknown>,
-			userInfo as Record<string, unknown>,
-		);
+		await this.applySsoProvisioning(user, claims, userInfo);
 
 		return { user, idToken: tokens.id_token };
 	}

@@ -104,6 +104,20 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('getProjectsAndCount', () => {
+		it('orders the page by creation time, then id, so cursor pages are stable', async () => {
+			projectRepository.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await projectService.getProjectsAndCount({ offset: 20, limit: 10 });
+
+			expect(projectRepository.findAndCount).toHaveBeenCalledWith({
+				skip: 20,
+				take: 10,
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+		});
+	});
+
 	describe('addUsersToProject', () => {
 		it('throws if called with a personal project', async () => {
 			// ARRANGE

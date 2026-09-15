@@ -23,6 +23,7 @@ const notionResult: McpRegistrySearchResult = {
 	credentialType: 'notionMcpOAuth2Api',
 	tools: [],
 	metadata: { nodeTypeName: '@n8n/mcp-registry.notion' },
+	isTemplated: false,
 };
 
 describe('buildResolveIntegrationTool', () => {

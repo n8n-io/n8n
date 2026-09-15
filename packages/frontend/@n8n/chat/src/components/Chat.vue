@@ -2,7 +2,6 @@
 import Close from 'virtual:icons/mdi/close';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 
-import CredentialStatusStrip from '@n8n/chat/components/CredentialStatusStrip.vue';
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
 import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
 import Input from '@n8n/chat/components/Input.vue';
@@ -11,7 +10,6 @@ import Layout from '@n8n/chat/components/Layout.vue';
 import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { CredentialStatus } from '@n8n/chat/types';
 import { listenForCredentialStatus } from '@n8n/chat/utils/credentialStatus';
 
 const { t } = useI18n();
@@ -21,12 +19,6 @@ const { messages, currentSessionId, credentialStatus } = chatStore;
 const { options } = useOptions();
 
 const showCloseButton = computed(() => options.mode === 'window' && options.showWindowCloseButton);
-
-const activeCredentialStatus = computed<CredentialStatus | null>(() => {
-	const status = credentialStatus.value;
-	if (!status) return null;
-	return status.testMode || !status.ready ? status : null;
-});
 
 // Message history navigation
 const messageHistoryIndex = ref(-1);
@@ -114,8 +106,6 @@ let clearOnMessageSent: () => void;
 let stopListeningForCredentialStatus: () => void;
 
 onMounted(async () => {
-	// Register before the initialize() await so a credential-status message
-	// arriving while loadPreviousSession() is pending isn't dropped.
 	stopListeningForCredentialStatus = listenForCredentialStatus((status) => {
 		credentialStatus.value = status;
 	});
@@ -165,9 +155,6 @@ onUnmounted(() => {
 		</template>
 		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
-		<template v-if="activeCredentialStatus" #statusStrip>
-			<CredentialStatusStrip :status="activeCredentialStatus" />
-		</template>
 		<template #footer>
 			<Input v-if="currentSessionId" @arrow-key-down="onArrowKeyDown" />
 			<GetStartedFooter v-else />

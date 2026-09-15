@@ -1,5 +1,6 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
+import { defineField } from './utils';
 
 const min = Math.min;
 const max = Math.max;
@@ -29,7 +30,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 	}
 	const result: Record<string, unknown> = {};
 	for (let i = 0; i < keys.length; i++) {
-		result[keys[i] as string] = values[i];
+		defineField(result, keys[i] as PropertyKey, values[i]);
 	}
 	return result;
 };

@@ -267,8 +267,8 @@ describe('PollerStateRepository', () => {
 			});
 
 			it('rejects the advance once deprovisioning cascaded the running task away', async () => {
-				// scheduled_job.workflowId FKs to workflow_published_version, which itself
-				// FKs to workflow_history, so a job insert needs all three rows in place.
+				// poller_state.workflowId FKs to the workflow, so the cursor rows below
+				// need a real one; the job row carries the workflow as owner data.
 				const published = await createWorkflowWithHistory({});
 				await setActiveVersion(published.id, published.versionId);
 				await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
@@ -276,11 +276,15 @@ describe('PollerStateRepository', () => {
 					published.versionId,
 				);
 
+				const owner = {
+					ownerType: 'workflow',
+					ownerId: published.id,
+					ownerMemberId: 'node-1',
+				};
 				const job = await jobRepository.save(
 					jobRepository.create({
 						name: 'poll-node-1',
-						workflowId: published.id,
-						nodeId: 'node-1',
+						...owner,
 						taskType: 'pollTrigger',
 						payload: {},
 						kind: 'interval',
@@ -313,7 +317,7 @@ describe('PollerStateRepository', () => {
 				).resolves.toBe(true);
 
 				// The same call deactivation's deprovision makes.
-				await jobRepository.deleteByWorkflowNode(jobRepository.manager, published.id, 'node-1');
+				await jobRepository.deleteByOwnerMember(jobRepository.manager, owner);
 
 				// The running task row is gone with its job, not orphaned.
 				await expect(taskRepository.findOneBy({ id: task.id })).resolves.toBeNull();

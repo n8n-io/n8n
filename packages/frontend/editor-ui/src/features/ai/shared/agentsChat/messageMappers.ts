@@ -324,6 +324,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
@@ -334,6 +335,21 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);
+
+		// A turn that ended in an error carries the recorded run error — render
+		// it as its own error bubble, mirroring what the live stream showed.
+		// Without this, an errored turn reloads as red-marked partial output (or
+		// nothing at all) with no explanation.
+		if (msg.executionError) {
+			result.push({
+				id: `${chatMessage.id}:error`,
+				role: 'assistant',
+				content: msg.executionError,
+				toolCalls: [],
+				status: CHAT_MESSAGE_STATUS.ERROR,
+				...(msg.executionId ? { executionId: msg.executionId } : {}),
+			});
+		}
 	}
 	return result;
 }

@@ -20,6 +20,11 @@
 	],
 	"notTransferred": [
 		{
+			"name": "ActivityEvent",
+			"path": "packages/@n8n/db/src/entities/activity-event.ts",
+			"reason": "Append-only record of what happened in the deleted project; re-homing entries would misstate where the events occurred. Dropped via FK cascade."
+		},
+		{
 			"name": "ProjectRelation",
 			"path": "packages/@n8n/db/src/entities/project-relation.ts",
 			"reason": "Membership rows; they describe the deleted project itself."
@@ -28,6 +33,11 @@
 			"name": "ProjectSecretsProviderAccess",
 			"path": "packages/@n8n/db/src/entities/project-secrets-provider-access.ts",
 			"reason": "Per-project secrets-provider config; scoped to the deleted project."
+		},
+		{
+			"name": "ProjectPoolSettings",
+			"path": "packages/@n8n/db/src/entities/project-pool-settings.ee.ts",
+			"reason": "Per-project worker-pool config; scoped to the deleted project and dropped via FK cascade."
 		},
 		{
 			"name": "RoleMappingRule",
@@ -75,9 +85,14 @@
 			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows. WorkflowReviewActivity and WorkflowReviewActivityComment ride this entity's cascade and have no projectId of their own, so they never appear in this manifest."
 		},
 		{
-			"name": "GitConnectionProject",
-			"path": "packages/cli/src/modules/git-connections.ee/database/entities/git-connection-project.entity.ts",
-			"reason": "Project-scoped git configuration (which connection the project is linked to), not user data. Dropped via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
+			"name": "PromotionConnectionProject",
+			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-connection-project.entity.ts",
+			"reason": "Promotion configuration for the project (which connection it is linked to), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
+		},
+		{
+			"name": "AiPreference",
+			"path": "packages/@n8n/db/src/entities/ai-preference.ts",
+			"reason": "Project-scoped AI preferences describe how to work inside the deleted project; dropped via FK cascade, like Variables. Personal and global preferences carry no projectId."
 		}
 	]
 }

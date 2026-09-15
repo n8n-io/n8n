@@ -78,7 +78,7 @@ const eventGroupsFromStringList = (
 			selected: selectionList.has(group),
 			indeterminate: false,
 		};
-		const eventsOfGroup = eventNameArray.filter((e) => e.startsWith(group));
+		const eventsOfGroup = eventNameArray.filter((e) => e === group || e.startsWith(`${group}.`));
 		for (const event of eventsOfGroup) {
 			if (!collection.selected && selectionList.has(event)) {
 				collection.indeterminate = true;

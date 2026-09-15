@@ -5,7 +5,10 @@ import { Container } from '@n8n/di';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
-import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import type {
+	PolicyAction,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
 
 const KIND = 'node-types';
 
@@ -56,10 +59,19 @@ describe('type availability policy repositories', () => {
 	}
 
 	async function createInstanceScope() {
-		return await scopeRepo.createScope(
+		const { scope } = await scopeRepo.createScopeIfAbsent(
 			{ kind: KIND, projectId: null, defaultAction: 'allow', updatedBy: 'user-1' },
 			ROOT,
 		);
+		return scope;
+	}
+
+	async function createProjectScope(projectId: string, defaultAction: PolicyAction = 'allow') {
+		const { scope } = await scopeRepo.createScopeIfAbsent(
+			{ kind: KIND, projectId, defaultAction, updatedBy: 'user-1' },
+			ROOT,
+		);
+		return scope;
 	}
 
 	describe('TypeAvailabilityPolicyRepository', () => {
@@ -158,6 +170,17 @@ describe('type availability policy repositories', () => {
 			expect(found.map((p) => p.id).sort()).toEqual([a.id, b.id].sort());
 		});
 
+		it('finds many by id under a row lock inside a transaction', async () => {
+			const a = await createPolicy();
+			const b = await createPolicy([ALLOW_BASE]);
+
+			const found = await transactionRunner.run(ROOT, async (ctx) => {
+				return await policyRepo.findManyByIds([b.id, a.id], ctx, true);
+			});
+
+			expect(found.map((p) => p.id)).toEqual([a.id, b.id].sort());
+		});
+
 		it('refuses to delete a policy that is still attached', async () => {
 			const policy = await createPolicy();
 			const scope = await createInstanceScope();
@@ -200,10 +223,7 @@ describe('type availability policy repositories', () => {
 		it('does not confuse a project scope with the instance scope', async () => {
 			const project = await createTeamProject();
 			await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'deny', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id, 'deny');
 
 			const found = await scopeRepo.findScopeByKindAndProject(KIND, project.id, ROOT);
 
@@ -211,10 +231,18 @@ describe('type availability policy repositories', () => {
 			expect(found?.defaultAction).toBe('deny');
 		});
 
-		it('rejects a second instance scope for the same kind', async () => {
+		it('rejects a second instance scope for the same kind at the database level', async () => {
 			await createInstanceScope();
 
-			await expect(createInstanceScope()).rejects.toThrow();
+			const secondRow = scopeRepo.create({
+				kind: KIND,
+				projectId: null,
+				defaultAction: 'deny',
+				updatedBy: 'user-2',
+				version: 1,
+			});
+
+			await expect(scopeRepo.save(secondRow)).rejects.toThrow();
 		});
 
 		it('bumps the version when the default action changes', async () => {
@@ -237,15 +265,95 @@ describe('type availability policy repositories', () => {
 		it('bumps many versions at once', async () => {
 			const project = await createTeamProject();
 			const instanceScope = await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id);
 
 			await scopeRepo.bumpVersions([instanceScope.id, projectScope.id], ROOT);
 
 			expect((await scopeRepo.findScopeById(instanceScope.id, ROOT))?.version).toBe(2);
 			expect((await scopeRepo.findScopeById(projectScope.id, ROOT))?.version).toBe(2);
+		});
+
+		it('creates the scope when absent and reports it as created', async () => {
+			const { scope, created } = await scopeRepo.createScopeIfAbsent(
+				{ kind: KIND, projectId: null, defaultAction: 'deny', updatedBy: 'user-1' },
+				ROOT,
+			);
+
+			expect(created).toBe(true);
+			expect(scope.version).toBe(1);
+			expect(scope.defaultAction).toBe('deny');
+			expect((await scopeRepo.findScopeByKindAndProject(KIND, null, ROOT))?.id).toBe(scope.id);
+		});
+
+		it('returns the existing scope untouched, not created, when one already exists', async () => {
+			const existing = await createInstanceScope();
+
+			const { scope, created } = await scopeRepo.createScopeIfAbsent(
+				{ kind: KIND, projectId: null, defaultAction: 'deny', updatedBy: 'user-2' },
+				ROOT,
+			);
+
+			expect(created).toBe(false);
+			expect(scope.id).toBe(existing.id);
+			expect(scope.defaultAction).toBe('allow');
+			expect(scope.updatedBy).toBe('user-1');
+		});
+
+		describe('containsProjectScope', () => {
+			it('is false for an empty id list', async () => {
+				expect(await scopeRepo.containsProjectScope([], ROOT)).toBe(false);
+			});
+
+			it('is false when every named scope is the instance scope', async () => {
+				const instanceScope = await createInstanceScope();
+
+				expect(await scopeRepo.containsProjectScope([instanceScope.id], ROOT)).toBe(false);
+			});
+
+			it('is true when one of the named scopes is a project scope', async () => {
+				const project = await createTeamProject();
+				const instanceScope = await createInstanceScope();
+				const projectScope = await createProjectScope(project.id);
+
+				expect(
+					await scopeRepo.containsProjectScope([instanceScope.id, projectScope.id], ROOT),
+				).toBe(true);
+			});
+
+			it('ignores ids that name no scope', async () => {
+				await createInstanceScope();
+
+				expect(await scopeRepo.containsProjectScope(['does-not-exist'], ROOT)).toBe(false);
+			});
+
+			it('finds a project scope that lands in a later batch', async () => {
+				const project = await createTeamProject();
+				const projectScope = await createProjectScope(project.id);
+				// One batch per ID_QUERY_BATCH_SIZE (10,000) ids: the real id is the 10,001st, so
+				// only the second batch can find it.
+				const ids = [...Array.from({ length: 10_000 }, (_, i) => `missing-${i}`), projectScope.id];
+
+				expect(await scopeRepo.containsProjectScope(ids, ROOT)).toBe(true);
+			});
+		});
+
+		it('locks only the scopes that exist and returns their ids', async () => {
+			const project = await createTeamProject();
+			const instanceScope = await createInstanceScope();
+			const projectScope = await createProjectScope(project.id);
+
+			const locked = await transactionRunner.run(ROOT, async (ctx) => {
+				return await scopeRepo.lockScopesByIds(
+					[projectScope.id, 'does-not-exist', instanceScope.id],
+					ctx,
+				);
+			});
+
+			expect(locked).toEqual([instanceScope.id, projectScope.id].sort());
+		});
+
+		it('locks nothing and returns an empty list for an empty input', async () => {
+			expect(await scopeRepo.lockScopesByIds([], ROOT)).toEqual([]);
 		});
 	});
 
@@ -451,10 +559,7 @@ describe('type availability policy repositories', () => {
 			const project = await createTeamProject();
 			const policy = await createPolicy();
 			const instanceScope = await createInstanceScope();
-			const projectScope = await scopeRepo.createScope(
-				{ kind: KIND, projectId: project.id, defaultAction: 'allow', updatedBy: 'user-1' },
-				ROOT,
-			);
+			const projectScope = await createProjectScope(project.id);
 			for (const scopeId of [instanceScope.id, projectScope.id]) {
 				await attachmentRepo.replaceAttachmentsForScope(
 					scopeId,

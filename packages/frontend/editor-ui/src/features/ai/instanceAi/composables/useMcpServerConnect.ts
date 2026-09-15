@@ -1,4 +1,6 @@
 import { effectScope } from 'vue';
+import { camelCase } from 'change-case';
+import type { INode } from 'n8n-workflow';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
@@ -14,6 +16,7 @@ import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 export interface McpConnectTarget {
 	slug: string;
 	credentialType: string;
+	credentialTypes?: readonly string[];
 }
 
 const inFlightConnectsByServerSlug = new Map<string, Promise<string | null>>();
@@ -80,11 +83,23 @@ export function useMcpServerConnect() {
 	}
 
 	async function startConnect(server: McpConnectTarget): Promise<string | null> {
-		if (canOAuthCredentialQuickConnect(server.credentialType)) {
+		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
+		if (hasOneOption && canOAuthCredentialQuickConnect(server.credentialType)) {
 			const credential = await createAndAuthorize(server.credentialType);
 			return credential ? await connectWithCredential(server.slug, credential.id) : null;
 		}
 		return await connectViaCredentialModal(server);
+	}
+
+	function registryContextNode(server: McpConnectTarget): INode {
+		return {
+			id: server.slug,
+			name: server.slug,
+			type: `@n8n/mcp-registry.${camelCase(server.slug)}`,
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		};
 	}
 
 	/**
@@ -95,6 +110,7 @@ export function useMcpServerConnect() {
 	async function connectViaCredentialModal(server: McpConnectTarget): Promise<string | null> {
 		return await new Promise<string | null>((settle) => {
 			let createdCredentialId: string | null = null;
+			const credentialTypes = server.credentialTypes ?? [server.credentialType];
 
 			// Detached because pinia disposes subscriptions with the effect scope they
 			// were created in, and an attempt outlives the surface that started it
@@ -103,8 +119,7 @@ export function useMcpServerConnect() {
 				listenForCredentialChanges({
 					store: credentialsStore,
 					onCredentialCreated: (credential) => {
-						// Credential types are per server, so this only ever matches ours
-						if (credential.type === server.credentialType) createdCredentialId = credential.id;
+						if (credentialTypes.includes(credential.type)) createdCredentialId = credential.id;
 					},
 				});
 
@@ -127,7 +142,20 @@ export function useMcpServerConnect() {
 			});
 
 			try {
-				uiStore.openNewCredential(server.credentialType);
+				if (credentialTypes.length > 1) {
+					const contextNode = registryContextNode(server);
+					uiStore.openNewCredential(
+						server.credentialType,
+						true,
+						false,
+						undefined,
+						undefined,
+						contextNode.name,
+						contextNode,
+					);
+				} else {
+					uiStore.openNewCredential(server.credentialType);
+				}
 			} catch (error) {
 				listeners.stop();
 				throw error;

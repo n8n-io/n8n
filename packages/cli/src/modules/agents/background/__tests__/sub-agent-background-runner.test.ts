@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { SUB_AGENT_BACKGROUND_TIMEOUT_MS } from '../agent-background-job.service';
@@ -32,6 +33,7 @@ const request: BackgroundSpawnRequest = {
 	goal: 'find things',
 	parentThreadId: 'thread-1',
 	parentResourceId: 'resource-1',
+	parentSandboxPrincipalHash: 'principal-hash',
 };
 
 function setup() {
@@ -92,6 +94,11 @@ describe('spawn', () => {
 		const spawnRequest = runner.run.mock.calls[0][0];
 		expect(spawnRequest.childThreadId).toBe(registered.childThreadId);
 		expect(registered.childThreadId).toBeTruthy();
+		// The parent identity travels from the request onto the job row.
+		expect(registered).toMatchObject({
+			parentResourceId: 'resource-1',
+			parentPrincipalHash: 'principal-hash',
+		});
 	});
 
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
@@ -115,6 +122,19 @@ describe('spawn', () => {
 		await flushDetachedRun();
 
 		expect(runner.run.mock.calls[0][1].selfDelegationDifficulty).toBe('high');
+	});
+
+	it('forwards a parent workspace handle to the run and omits the key when none is supplied', async () => {
+		const { backgroundRunner, runner, context } = setup();
+		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
+
+		await backgroundRunner.spawn(request, { ...context, parentWorkspaceHandle });
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[0][1].parentWorkspaceHandle).toBe(parentWorkspaceHandle);
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[1][1]).not.toHaveProperty('parentWorkspaceHandle');
 	});
 
 	it('does not start a run when the receipt is limit-reached', async () => {

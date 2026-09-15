@@ -189,7 +189,10 @@ function handlePaste(e: ClipboardEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-	if (e.key === 'Tab' && !e.shiftKey) {
+	// Only the textarea gets tab-to-autocomplete; other focusable children
+	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
+	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
 		e.preventDefault();
 		emit('tab');
 	}

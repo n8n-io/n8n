@@ -494,14 +494,19 @@ describe('agent-run-reducer', () => {
 				makeToolCall('run-1', 'root', 'tc-legacy-builder', 'build-workflow-with-agent'),
 			);
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-research', 'research-with-agent'));
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-skill', 'load_skill'));
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-legacy-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-research'].renderHint).toBe('researcher');
-			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 			expect(state.toolCallsById['tc-skill'].renderHint).toBe('skill');
+		});
+
+		it('keeps the eval-setup render hint when replaying a historical tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
+
+			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 		});
 
 		it('tool-input-start announces a pending tool call before its args stream', () => {
@@ -644,6 +649,23 @@ describe('agent-run-reducer', () => {
 			});
 		});
 
+		it('hydrates the kind from a historical eval-setup agent event', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'legacy-eval',
+				payload: {
+					parentId: 'root',
+					role: 'evaluation setup',
+					tools: ['workflows'],
+					kind: 'eval-setup',
+				},
+			});
+
+			expect(state.agentsById['legacy-eval'].kind).toBe('eval-setup');
+		});
+
 		it('agent-spawned with unknown parent is silently dropped', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeAgentSpawned('run-1', 'orphan', 'unknown-parent'));
@@ -775,6 +797,39 @@ describe('agent-run-reducer', () => {
 				severity: 'info',
 				message: 'n8n AI wants to search the web for: sanuli',
 				webSearch: { query: 'sanuli' },
+			});
+		});
+
+		it('confirmation-request passes through credential destination metadata when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'workflows'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-destination',
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'setup' },
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch data'],
+					},
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-destination',
+				severity: 'warning',
+				message: 'Review where this credential will be used',
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch data'],
+				},
 			});
 		});
 

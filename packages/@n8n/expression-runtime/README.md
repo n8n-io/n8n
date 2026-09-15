@@ -200,6 +200,10 @@ N8N_EXPRESSION_ENGINE_POOL_SIZE=1
 N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE=1024
 N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT=       # seconds; unset = pool never scales to 0
 
+# Experimental
+N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE=false  # create the isolate on the first evaluation that needs it
+N8N_EXPRESSION_ENGINE_COMPILE_CACHE=false # reuse the V8 compile cache for the runtime bundle ('vm' only)
+
 # Bridge limits
 N8N_EXPRESSION_ENGINE_TIMEOUT=5000        # ms; positive integer
 N8N_EXPRESSION_ENGINE_MEMORY_LIMIT=128    # MB; minimum 8

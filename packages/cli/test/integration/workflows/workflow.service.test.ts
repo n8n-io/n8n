@@ -74,10 +74,16 @@ const externalHooks = mock<ExternalHooks>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
+let originalUseWorkflowPublicationService: boolean;
+
 beforeAll(async () => {
 	await testDb.init();
 
 	globalConfig = Container.get(GlobalConfig);
+	// Most of this file asserts on the legacy activation path; the
+	// 'workflow publication outbox' block enables the service itself.
+	originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
@@ -111,6 +117,8 @@ beforeAll(async () => {
 		workflowPublicationNotifier,
 		mock(), // scheduleTriggerJobRegistrar
 		mock(), // pollTriggerJobRegistrar
+		mock(), // workflowScheduledJobOwner
+		mock(), // durableJobProvisioner
 		workflowPublishedVersionRepository,
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
@@ -120,6 +128,10 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(() => {
@@ -632,8 +644,9 @@ describe('activateWorkflow()', () => {
 
 		const workflow = await createWorkflowWithHistory({}, project);
 
+		// Resolvable through the member's update scope, so the refusal is about publishing, not access.
 		await expect(workflowService.activateWorkflow(member, workflow.id)).rejects.toThrow(
-			'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
 		);
 
 		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });

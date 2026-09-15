@@ -61,7 +61,7 @@ export class SecurityConfig {
 	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
-	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
+	blockFilePatterns: string = '^(?:[^/]*/)*\\.git(?:/.*)?$';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.
@@ -160,6 +160,14 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_AWS_SYSTEM_CREDENTIALS_SDK_SOURCES', awsSystemCredentialsSdkSourcesSchema)
 	awsSystemCredentialsSdkSources: string = 'all';
+
+	/**
+	 * Whether Azure Storage Shared Key credentials can target a custom endpoint, such as a private
+	 * endpoint or a custom domain. Off by default. The Azure sovereign clouds are always available
+	 * and do not need this setting.
+	 */
+	@Env('N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED')
+	azureStorageCustomEndpoints: boolean = false;
 
 	/**
 	 * Whether to enable hooks (like pre-commit hooks) for the Git node.

@@ -1,5 +1,5 @@
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
-import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -7,21 +7,21 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();
 	const workflowRepository = mock<WorkflowRepository>();
-	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const workflowSharingService = mock<WorkflowSharingService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const service = new ActiveWorkflowsService(
 		mock(),
 		workflowRepository,
-		sharedWorkflowRepository,
+		workflowSharingService,
 		activationErrorsService,
 		workflowFinderService,
-		projectScopeService,
 	);
 	const activeIds = ['1', '2', '3', '4'];
 
@@ -49,34 +49,26 @@ describe('ActiveWorkflowsService', () => {
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
-			expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, ['workflow:list']);
-			expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).not.toHaveBeenCalled();
+			expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
 		});
 
-		it('should filter out workflow ids that the user cannot list', async () => {
-			user.role = GLOBAL_MEMBER_ROLE;
-			user.id = 'user-1';
-			projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:admin']);
-			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set(['3']));
-			const ids = await service.getAllActiveIdsFor(user);
+		it.each([
+			{ accessible: ['3'], expected: ['3'] },
+			{ accessible: [], expected: [] },
+		])(
+			'should return only workflow ids the member has access to (accessible: $accessible)',
+			async ({ accessible, expected }) => {
+				user.role = GLOBAL_MEMBER_ROLE;
+				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(accessible);
 
-			expect(ids).toEqual(['3']);
-			expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, ['workflow:list']);
-			expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).toHaveBeenCalledWith(
-				activeIds,
-				'user-1',
-				['project:admin'],
-			);
-		});
+				const ids = await service.getAllActiveIdsFor(user);
 
-		it('should return no ids when the user cannot list workflows in any project', async () => {
-			user.role = GLOBAL_MEMBER_ROLE;
-			projectScopeService.getProjectRoleSlugs.mockResolvedValue([]);
-			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set());
-			const ids = await service.getAllActiveIdsFor(user);
-
-			expect(ids).toEqual([]);
-		});
+				expect(ids).toEqual(expected);
+				expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
+					scopes: ['workflow:read'],
+				});
+			},
+		);
 	});
 
 	describe('getActivationError', () => {

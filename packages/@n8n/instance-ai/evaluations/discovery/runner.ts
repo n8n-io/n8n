@@ -46,15 +46,16 @@ import {
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
-import { createAllTools } from '../../src/tools';
 import type {
+	BuilderTurnStream,
 	InstanceAiContext,
-	InstanceAiToolRegistry,
+	InstanceAiBuilderDelegate,
 	LocalGatewayStatus,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -124,6 +125,7 @@ export async function runDiscoveryScenario(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
 			workspace: createStubWorkspace(),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -142,9 +144,8 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
-		// for the heavy fields: discovery scenarios measure first-step tool-call
-		// decisions, not background execution.
+		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -258,11 +259,57 @@ function applyInstanceState(
 		...(localGateway ? { localGatewayStatus: localGateway } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
+		...(state.folderExploration !== undefined
+			? { folderExplorationEnabled: state.folderExploration }
+			: {}),
 	};
 }
 
 function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+function completedBuilderTurn(): BuilderTurnStream {
+	return {
+		fullStream: (async function* () {
+			await Promise.resolve();
+			yield {
+				type: 'tool-call',
+				toolCallId: 'discovery-write',
+				toolName: 'write_config',
+				input: {},
+			};
+			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
+		})(),
+		text: Promise.resolve('Agent configured for discovery evaluation.'),
+	};
+}
+
+function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	return {
+		createAgent: async (name) =>
+			await Promise.resolve({
+				agentId: 'discovery-agent',
+				projectId: 'discovery-project',
+				name,
+			}),
+		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		findOpenSuspensions: async () => await Promise.resolve([]),
+		cancelOpenSuspension: async () => await Promise.resolve(),
+		listAgents: async () => await Promise.resolve([]),
+		listAgentCapabilities: async () =>
+			await Promise.resolve({
+				channels: [],
+				agentCapabilities: [
+					'Use tools',
+					'Run scheduled tasks',
+					'Keep memory across sessions and runs',
+				],
+				limitations: [],
+			}),
+		resolveAgentName: async () => await Promise.resolve(undefined),
+	};
 }
 
 interface StubOrchestrationContextOptions {
@@ -277,13 +324,6 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to background agents such as eval-setup.
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
-	// background execution is out of scope. We still populate domainTools faithfully
-	// so any background agent that does spawn has a coherent toolset (avoids hitting
-	// "no tools" errors that would confuse the diagnostic comment).
-	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
-
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
@@ -299,14 +339,9 @@ function createStubOrchestrationContext(
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		domainTools,
 		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Discovery evals assert first-dispatch intent only. Production starts a
-		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the background agent.
-		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
@@ -325,6 +360,6 @@ function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {
 		type: event.type,
 		// `extractOutcomeFromEvents` reads `data.payload.toolName` etc. — our
 		// InstanceAiEvent already has that shape, so we pass it through directly.
-		data: event as unknown as Record<string, unknown>,
+		data: event,
 	};
 }

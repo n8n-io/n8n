@@ -1,7 +1,7 @@
 {
   "name": "@n8n/rest-api-client",
   "type": "module",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "files": [
     "dist"
   ],
@@ -40,10 +40,8 @@
     "@n8n/constants": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
-    "js-base64": "catalog:",
     "n8n-workflow": "workspace:*",
-    "axios": "catalog:",
-    "flatted": "catalog:"
+    "axios": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -52,7 +50,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
-    "@testing-library/user-event": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

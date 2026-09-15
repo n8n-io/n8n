@@ -335,6 +335,8 @@ describe('WorkflowIndexService Integration', () => {
 			eventService.emit('workflow-deleted', {
 				user: createUserPayload(owner),
 				workflowId: workflow.id,
+				workflowName: workflow.name,
+				projectId: undefined,
 				publicApi: false,
 			});
 

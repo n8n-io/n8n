@@ -116,6 +116,51 @@ const agent = node({
   }
 });
 </pattern>
+
+<pattern title="Agent with a fallback model (primary + backup provider)">
+// Give ONE agent a backup model with a FLAT model array: the first entry is the
+// primary, the second fills the agent's Fallback Model input. The agent retries
+// on the second model when the first call fails.
+// Do NOT build a second agent or an error-output branch for this — one agent.
+// A NESTED array (model: [[a, b]]) means something else: both models on the SAME
+// input, which is not a fallback.
+
+const primaryModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+  version: 1.6,
+  config: {
+    name: 'Claude (Primary)',
+    parameters: { model: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' } }
+  }
+});
+
+const fallbackModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI (Fallback)',
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } }
+  }
+});
+
+const agentWithFallback = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'AI Agent',
+    parameters: {
+      promptType: 'define',
+      text: expr('{{ $json.prompt }}'),
+      options: { systemMessage: 'You are an expert...' },
+      // REQUIRED with a second model: the agent only declares its Fallback Model
+      // input when this is on. Without it the second model is wired to an input
+      // that does not exist and never runs.
+      needsFallback: true
+    },
+    subnodes: { model: [primaryModel, fallbackModel] }
+  }
+});
+</pattern>
 </patterns>`,
 					},
 				],

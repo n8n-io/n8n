@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 import N8nTooltip from '../../components/N8nTooltip/Tooltip.vue';
-import { TOOLTIP_DELAY_MS } from '../../constants';
+import primitivesSource from '../../css/_primitives.scss?raw';
+import { getColorTokenNames } from '../utils/cssTokenSource';
 
-type ColorRow = {
-	label: string;
-	tokenPrefix?: string;
-	tokens?: Record<string, string>;
-};
-
-const columns = [
+const SCALE_STEPS = [
 	'50',
 	'100',
 	'150',
@@ -24,68 +19,99 @@ const columns = [
 	'800',
 	'900',
 	'950',
-];
+] as const;
 
-const rows: ColorRow[] = [
-	{ label: 'Neutral', tokenPrefix: '--color--neutral-' },
-	{ label: 'Red', tokenPrefix: '--color--red-' },
-	{ label: 'Orange', tokenPrefix: '--color--orange-' },
-	{ label: 'Yellow', tokenPrefix: '--color--yellow-' },
-	{ label: 'Green', tokenPrefix: '--color--green-' },
-	{ label: 'Mint', tokenPrefix: '--color--mint-' },
-	{ label: 'Blue', tokenPrefix: '--color--blue-' },
-	{ label: 'Purple', tokenPrefix: '--color--purple-' },
-	{ label: 'Pink', tokenPrefix: '--color--pink-' },
-	{ label: 'White Alpha', tokenPrefix: '--color--white-alpha-' },
-	{ label: 'Black Alpha', tokenPrefix: '--color--black-alpha-' },
-];
+type ScaleStep = (typeof SCALE_STEPS)[number];
+
+type ColorFamily = {
+	id: string;
+	label: string;
+	scale: Partial<Record<ScaleStep, string>>;
+	extras: Array<{ step: string; token: string }>;
+};
+
+const isScaleStep = (step: string): step is ScaleStep =>
+	SCALE_STEPS.some((scaleStep) => scaleStep === step);
+
+const humanize = (value: string) =>
+	value
+		.split('-')
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+
+const groupColorFamilies = (tokens: string[]): ColorFamily[] => {
+	const families = new Map<string, ColorFamily>();
+
+	for (const token of tokens) {
+		if (!token.startsWith('--color--')) {
+			continue;
+		}
+
+		const rest = token.slice('--color--'.length);
+		const lastDash = rest.lastIndexOf('-');
+		if (lastDash <= 0) {
+			continue;
+		}
+
+		const id = rest.slice(0, lastDash);
+		const step = rest.slice(lastDash + 1);
+		const family = families.get(id) ?? { id, label: humanize(id), scale: {}, extras: [] };
+
+		if (isScaleStep(step)) {
+			family.scale[step] = token;
+		} else {
+			family.extras.push({ step, token });
+		}
+
+		families.set(id, family);
+	}
+
+	return [...families.values()];
+};
+
+const columns = SCALE_STEPS;
+const columnCount = columns.length;
+const families = groupColorFamilies(getColorTokenNames(primitivesSource));
+
+const COPIED_FEEDBACK_MS = 2000;
+const SWATCH_TOOLTIP_OFFSET = 4;
 
 const tokenValues = ref<Record<string, string>>({});
-const copiedToken = ref('');
+const copiedToken = ref<string | null>(null);
 
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 let observer: MutationObserver | null = null;
 
-const allTokens = computed(() => {
-	const tokens = new Set<string>();
-
-	for (const row of rows) {
-		for (const column of columns) {
-			const token = resolveToken(row, column);
-			if (token) {
-				tokens.add(token);
-			}
-		}
-	}
-
-	return [...tokens];
-});
+const allTokens = families.flatMap((family) => [
+	...Object.values(family.scale),
+	...family.extras.map((extra) => extra.token),
+]);
 
 const updateValues = () => {
 	const style = getComputedStyle(document.body);
 
-	tokenValues.value = allTokens.value.reduce<Record<string, string>>((acc, token) => {
+	tokenValues.value = allTokens.reduce<Record<string, string>>((acc, token) => {
 		acc[token] = style.getPropertyValue(token).trim();
 		return acc;
 	}, {});
 };
 
-const resolveToken = (row: ColorRow, column: string): string => {
-	if (row.tokens?.[column]) {
-		return row.tokens[column];
-	}
+const scaleToken = (family: ColorFamily, column: ScaleStep): string => family.scale[column] ?? '';
 
-	if (row.tokenPrefix) {
-		return `${row.tokenPrefix}${column}`;
-	}
+const scaleCells = (family: ColorFamily) =>
+	columns.map((column) => ({
+		column,
+		token: scaleToken(family, column),
+	}));
 
-	return '';
-};
+const hasScale = (family: ColorFamily) => Object.keys(family.scale).length > 0;
 
 const hasTokenValue = (token: string) => Boolean(token && tokenValues.value[token]);
 
-const getTooltipContent = (token: string) =>
-	copiedToken.value === token ? 'Copy' : 'Click to copy';
+const isCopied = (token: string) => Boolean(token) && copiedToken.value === token;
+
+const tokenValue = (token: string) => tokenValues.value[token] ?? '';
 
 const copyToken = async (token: string) => {
 	if (!token || !hasTokenValue(token) || !navigator.clipboard?.writeText) {
@@ -100,8 +126,8 @@ const copyToken = async (token: string) => {
 	}
 
 	copiedTimeout = setTimeout(() => {
-		copiedToken.value = '';
-	}, 1200);
+		copiedToken.value = null;
+	}, COPIED_FEEDBACK_MS);
 };
 
 onMounted(() => {
@@ -127,38 +153,81 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" :style="{ '--n8n--color-scale-columns': columnCount }">
 		<div :class="$style.wrapper">
 			<div></div>
 			<div :class="$style.row">
-				<p v-for="column in columns" :key="column">{{ column }}</p>
+				<span v-for="column in columns" :key="column" :class="$style.columnLabel">{{
+					column
+				}}</span>
 			</div>
 		</div>
 
-		<section v-for="row in rows" :key="row.label" :class="$style.wrapper">
-			<p :class="$style.label">{{ row.label }}</p>
-			<div :class="$style.row">
-				<N8nTooltip
-					v-for="column in columns"
-					:key="`${row.label}-${column}`"
-					:disabled="!hasTokenValue(resolveToken(row, column))"
-					placement="top"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<template #content>{{ getTooltipContent(resolveToken(row, column)) }}</template>
-					<button
-						type="button"
-						:class="$style.swatch"
-						:style="{ backgroundColor: `var(${resolveToken(row, column)})` }"
-						:aria-label="`Copy ${resolveToken(row, column)}`"
-						:disabled="!hasTokenValue(resolveToken(row, column))"
-						@click="copyToken(resolveToken(row, column))"
+		<section v-for="family in families" :key="family.id" :class="$style.wrapper">
+			<span :class="$style.label">{{ family.label }}</span>
+			<div>
+				<div v-if="hasScale(family)" :class="$style.row">
+					<template v-for="cell in scaleCells(family)" :key="`${family.id}-${cell.column}`">
+						<N8nTooltip
+							v-if="cell.token"
+							as-child
+							:disabled="!hasTokenValue(cell.token)"
+							placement="top"
+							:offset="SWATCH_TOOLTIP_OFFSET"
+							:avoid-collisions="false"
+							:show-after="0"
+							:enterable="false"
+							:content-class="$style.tooltip"
+						>
+							<template #content>
+								<template v-if="isCopied(cell.token)">Copied</template>
+								<template v-else>
+									<span :class="$style.tooltipToken">{{ cell.token }}</span>
+									<span :class="$style.tooltipValue">{{ tokenValue(cell.token) }}</span>
+								</template>
+							</template>
+							<button
+								type="button"
+								:class="$style.swatch"
+								:style="{ backgroundColor: `var(${cell.token})` }"
+								:aria-label="isCopied(cell.token) ? `Copied ${cell.token}` : `Copy ${cell.token}`"
+								:disabled="!hasTokenValue(cell.token)"
+								@click="copyToken(cell.token)"
+							/>
+						</N8nTooltip>
+						<span v-else :class="$style.swatchPlaceholder" aria-hidden="true" />
+					</template>
+				</div>
+				<div v-if="family.extras.length > 0" :class="$style.extras">
+					<N8nTooltip
+						v-for="extra in family.extras"
+						:key="extra.token"
+						as-child
+						:disabled="!hasTokenValue(extra.token)"
+						placement="top"
+						:offset="SWATCH_TOOLTIP_OFFSET"
+						:avoid-collisions="false"
+						:show-after="0"
+						:enterable="false"
+						:content-class="$style.tooltip"
 					>
-						<span v-if="copiedToken === resolveToken(row, column)" :class="$style.copied">
-							Copied
-						</span>
-					</button>
-				</N8nTooltip>
+						<template #content>
+							<template v-if="isCopied(extra.token)">Copied</template>
+							<template v-else>
+								<span :class="$style.tooltipToken">{{ extra.token }}</span>
+								<span :class="$style.tooltipValue">{{ tokenValue(extra.token) }}</span>
+							</template>
+						</template>
+						<button
+							type="button"
+							:class="$style.swatch"
+							:style="{ backgroundColor: `var(${extra.token})` }"
+							:aria-label="isCopied(extra.token) ? `Copied ${extra.token}` : `Copy ${extra.token}`"
+							:disabled="!hasTokenValue(extra.token)"
+							@click="copyToken(extra.token)"
+						/>
+					</N8nTooltip>
+				</div>
 			</div>
 		</section>
 	</div>
@@ -166,50 +235,84 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .container {
+	--n8n--color-swatch-gap: var(--spacing--2xs);
+	--n8n--color-swatch-row-gap: var(--spacing--2xs);
+
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	overflow: hidden;
+	gap: var(--n8n--color-swatch-row-gap);
 	margin: var(--spacing--2xl) 0;
 }
 
 .wrapper {
 	display: grid;
-	grid-template-columns: 160px 1fr;
+	grid-template-columns: minmax(var(--spacing--4xl), max-content) minmax(0, 1fr);
 	width: 100%;
-	align-items: end;
-	gap: var(--spacing--xs);
+	align-items: center;
+	gap: var(--spacing--sm);
 	margin-top: 0;
 }
 
 .row {
 	display: grid;
-	grid-template-columns: repeat(13, 1fr);
-	gap: var(--spacing--2xs);
-	justify-items: end;
+	grid-template-columns: repeat(var(--n8n--color-scale-columns), minmax(0, 1fr));
+	gap: var(--n8n--color-swatch-gap);
+	width: 100%;
+	min-width: 0;
 
-	p {
-		margin: 0;
-		font-size: var(--font-size--sm);
-		color: var(--text-color--subtle);
+	> * {
+		min-width: 0;
+		width: 100%;
 	}
 }
 
+.extras {
+	display: grid;
+	grid-template-columns: repeat(var(--n8n--color-scale-columns), minmax(0, 1fr));
+	gap: var(--n8n--color-swatch-gap);
+	width: 100%;
+	min-width: 0;
+	margin-top: var(--n8n--color-swatch-gap);
+
+	> * {
+		min-width: 0;
+		width: 100%;
+	}
+}
+
+.columnLabel,
 .label {
 	margin: 0;
+}
+
+.columnLabel {
+	display: block;
+	width: 100%;
+	text-align: center;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-color--subtle);
+}
+
+.label {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--shade-1);
-	margin-bottom: 0 !important;
+	color: var(--text-color);
+}
+
+.swatch,
+.swatchPlaceholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	aspect-ratio: 1;
+	height: auto;
 }
 
 .swatch {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
 	padding: 0;
 	border: 0;
 	border-radius: var(--radius);
@@ -227,13 +330,21 @@ onUnmounted(() => {
 	}
 }
 
-.copied {
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	line-height: 1;
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: var(--radius);
-	color: var(--text-color);
-	background: var(--color--white-alpha-500);
+:global(.n8n-tooltip).tooltip {
+	max-width: none;
+	align-items: flex-start;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	font-family: var(--font-family--monospace);
+	font-weight: var(--font-weight--regular);
+	white-space: nowrap;
+}
+
+.tooltipToken {
+	color: var(--color--neutral-100);
+}
+
+.tooltipValue {
+	color: var(--color--neutral-400);
 }
 </style>

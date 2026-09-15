@@ -1,8 +1,15 @@
+import { DATABRICKS_PARTNER_USER_AGENT } from '../../nodes/Databricks/constants';
 import { DatabricksOAuth2Api } from '../DatabricksOAuth2Api.credentials';
 
 describe('DatabricksOAuth2Api Credential', () => {
 	const databricksOAuth2Api = new DatabricksOAuth2Api();
 	const property = (name: string) => databricksOAuth2Api.properties.find((p) => p.name === name);
+
+	it('should send the partner User-Agent on the credential test', () => {
+		expect(databricksOAuth2Api.test.request.headers).toEqual({
+			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
+		});
+	});
 
 	it('should have correct credential metadata', () => {
 		expect(databricksOAuth2Api.name).toBe('databricksOAuth2Api');

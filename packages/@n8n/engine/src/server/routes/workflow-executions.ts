@@ -2,12 +2,9 @@ import { UUID_V7_PATTERN } from '@n8n/constants';
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
-import {
-	createGetExecutionHandler,
-	createGetExecutionStepsHandler,
-} from './workflow-executions.handlers';
+import { createGetExecutionHandler } from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
-import { jsonValueSchema, UnimplementedError } from '../../common';
+import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
@@ -42,9 +39,23 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
+	/**
+	 * The workflow the graph came from. Only its JSON-ness is checked: the engine
+	 * stores and reports it without reading a field out of it.
+	 */
+	workflow: jsonObjectSchema,
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
+	// `strict`, so a misspelled key fails loudly instead of running the step
+	// without the fact the caller meant to supply.
+	callerContext: z
+		.object({
+			userId: z.string().min(1).optional(),
+			projectId: z.string().min(1).optional(),
+			hostMode: z.string().min(1).optional(),
+		})
+		.strict(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });
@@ -80,8 +91,6 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
-
-	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }

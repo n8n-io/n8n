@@ -4,7 +4,6 @@ import type {
 	DependencyResourceType,
 	ResolvedDependency,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -17,11 +16,37 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
+
+/** Workflows named for a node type when the caller does not say how many it wants. */
+const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
+
+/** Node types in the histogram when the caller does not say how many it wants. Higher than the
+ *  workflow limit because the histogram is the answer rather than a sample of it, and a project
+ *  rarely reaches for more types than this — but it stays bounded, because an instance-wide read
+ *  otherwise returns every type in use. */
+const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
+
+/**
+ * Node-type usage over the workflows in scope. Exactly one of `nodeTypes` and `workflows` is set:
+ * the histogram when no node type was named, the workflows using it when one was.
+ */
+export interface NodeTypeUsage {
+	/** Indexed, non-archived workflows in scope — the denominator for every count. */
+	workflowsInScope: number;
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: Date }>;
+	/**
+	 * Whether the limit cut the list short. On the histogram this also decides whether an absent
+	 * node type means "not used" or "not shown", so callers must not report absence as evidence
+	 * when it is true.
+	 */
+	truncated?: boolean;
+}
 
 interface RawDepMaps {
 	agentUsageMap: Map<string, Set<string>>;
@@ -48,10 +73,58 @@ export class WorkflowDependencyQueryService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
-		private readonly agentDependencyRepository: AgentCredentialDependencyRepository,
-		private readonly agentRepository: AgentRepository,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly agentUsageProvider: AgentUsageProviderProxy,
 	) {}
+
+	/**
+	 * Node-type usage across the workflows a user can read, read from the dependency index rather
+	 * than by fetching workflows.
+	 *
+	 * Without `nodeType` it returns the histogram; with one, the workflows using it. Either way the
+	 * denominator ships with the answer, because a count means nothing without it.
+	 */
+	async getNodeTypeUsage(
+		user: User,
+		options: { projectId?: string; nodeType?: string; limit?: number } = {},
+	): Promise<NodeTypeUsage> {
+		// The same scopes-to-roles step the workflow listing performs, so this reads exactly the
+		// workflows a listing would return rather than applying a rule of its own.
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+		const scope = {
+			projectRoles,
+			workflowRoles,
+			...(options.projectId ? { projectId: options.projectId } : {}),
+		};
+
+		if (!options.nodeType) {
+			return await this.dependencyRepository.countNodeTypeUsage(
+				user,
+				scope,
+				options.limit ?? DEFAULT_NODE_USAGE_TYPE_LIMIT,
+			);
+		}
+
+		const limit = options.limit ?? DEFAULT_NODE_USAGE_WORKFLOW_LIMIT;
+		const [rows, workflowsInScope] = await Promise.all([
+			// One over the limit, so a truncated list is reported as truncated rather than guessed at.
+			this.dependencyRepository.findWorkflowsUsingNodeType(
+				user,
+				scope,
+				options.nodeType,
+				limit + 1,
+			),
+			this.dependencyRepository.countWorkflowsInScope(user, scope),
+		]);
+
+		return {
+			workflowsInScope,
+			workflows: rows.slice(0, limit),
+			...(rows.length > limit ? { truncated: true } : {}),
+		};
+	}
 
 	async getDependencyCounts(
 		resourceIds: string[],
@@ -121,7 +194,7 @@ export class WorkflowDependencyQueryService {
 					})
 				: [],
 			maps.allAgentIds.size > 0
-				? this.agentRepository.findSummariesByIds([...maps.allAgentIds])
+				? this.agentUsageProvider.findAgentSummaries([...maps.allAgentIds])
 				: [],
 		]);
 
@@ -194,9 +267,7 @@ export class WorkflowDependencyQueryService {
 				],
 				select: ['workflowId', 'dependencyType', 'dependencyKey'],
 			}),
-			resourceType === 'credential' && this.moduleRegistry.isActive('agents')
-				? this.agentDependencyRepository.findByCredentialIds(accessibleInputIds)
-				: [],
+			this.loadAgentDeps(resourceType, accessibleInputIds),
 		]);
 
 		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
@@ -204,9 +275,17 @@ export class WorkflowDependencyQueryService {
 		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps) };
 	}
 
+	/** Agents using the resources, as `{ agentId, resourceId }` regardless of resource type. */
+	private async loadAgentDeps(
+		resourceType: DependencyResourceType,
+		resourceIds: string[],
+	): Promise<Array<{ agentId: string; resourceId: string }>> {
+		return await this.agentUsageProvider.findAgentUsages(resourceType, resourceIds);
+	}
+
 	private buildDepMaps(
 		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
-		agentDeps: Array<{ agentId: string; credentialId: string }>,
+		agentDeps: Array<{ agentId: string; resourceId: string }>,
 	): RawDepMaps {
 		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
@@ -247,7 +326,7 @@ export class WorkflowDependencyQueryService {
 		}
 
 		for (const dep of agentDeps) {
-			addToSet(agentUsageMap, dep.credentialId, dep.agentId);
+			addToSet(agentUsageMap, dep.resourceId, dep.agentId);
 			allAgentIds.add(dep.agentId);
 		}
 

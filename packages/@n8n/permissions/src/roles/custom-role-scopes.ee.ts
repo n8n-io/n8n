@@ -1,5 +1,5 @@
-import type { RESOURCES } from '@/constants.ee';
-import type { Scope } from '@/types.ee';
+import type { RESOURCES } from '../constants.ee';
+import type { Scope } from '../types.ee';
 
 /**
  * UI-visible operations per resource for the project role editor.
@@ -50,6 +50,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'delete',
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
+	projectAiPreference: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -73,8 +74,8 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page, including MCP and AI
-		// Assistant management. MCP and AI Assistant also have their own narrower
+		// Grants access to every instance Settings page, including MCP and n8n
+		// Assistant management. MCP and n8n Assistant also have their own narrower
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all
 		// four, so checking Manage checks them too, and unchecking any one of them
@@ -102,9 +103,14 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:list',
 			'variable:read',
 			'dataTable:list',
+			'aiPreference:create', // Context (instance-wide AI preferences)
+			'aiPreference:read',
+			'aiPreference:update',
+			'aiPreference:delete',
+			'aiPreference:list',
 			'chatHub:manage', // Chat
 			'chatHub:message', // needed for model listing on the Chat settings page
-			'aiAssistant:manage', // AI Assistant
+			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
 			'instanceAi:gateway', // computer-use gateway pairing
