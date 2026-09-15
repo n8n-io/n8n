@@ -454,7 +454,9 @@ export class WorkflowTriggerActivator {
 			workflowId,
 			nodes.map((node) => node.name),
 		);
-		await Promise.all(
+		// Settle every node before rethrowing: the caller releases the workflow
+		// lock on a throw, and a sibling still tearing down must not outlive it.
+		const results = await Promise.allSettled(
 			nodes.map(
 				async (node) =>
 					await raceAbort(
@@ -463,6 +465,7 @@ export class WorkflowTriggerActivator {
 					),
 			),
 		);
+		this.throwRejectedPhaseError(results);
 	}
 
 	private async deactivateInternal(
