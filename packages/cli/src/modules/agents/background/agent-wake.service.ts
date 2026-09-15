@@ -16,6 +16,8 @@ import {
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
 import { AgentTurnQueueService } from '../agent-turn-queue.service';
+import { backgroundTaskSignalEvent } from '../execution-recorder';
+import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -60,6 +62,7 @@ export class AgentWakeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -187,6 +190,11 @@ export class AgentWakeService {
 		}
 
 		try {
+			const backgroundJobSignal = {
+				tasks: jobs.flatMap(({ id, title, kind, status }) =>
+					status === 'running' ? [] : [{ id, title, kind, status }],
+				),
+			};
 			// A wake yields to user turns: nothing is written while the thread runs
 			// or has rows waiting, and the next finished turn requests it again.
 			const claim = await this.turnQueueService.tryRunNow(
@@ -197,6 +205,9 @@ export class AgentWakeService {
 					userMessage: null,
 					source: identity.type === 'draft' ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType,
 					runContext: { kind: 'message' },
+					// The row is claimed before the runtime loads, so the finished tasks
+					// are stored before clients learn that the wake started.
+					initialTimeline: [backgroundTaskSignalEvent(backgroundJobSignal, Date.now())],
 				},
 				{ wake: true },
 			);
@@ -209,11 +220,14 @@ export class AgentWakeService {
 						agentId: agent.id,
 						projectId: agent.projectId,
 						message: formatWakeMessage(jobs),
+						backgroundJobSignal,
 						memory: { threadId, resourceId: first.parentResourceId },
 						identity,
 						abortSignal: signal,
 						markResultsConsumed: async () => {
-							await this.jobRepository.markMailConsumed(
+							// The wake still owns the thread here, so the guarded
+							// `markMailConsumed` would skip these results.
+							await this.backgroundJobService.consumeMail(
 								threadId,
 								jobs.map((job) => job.id),
 							);

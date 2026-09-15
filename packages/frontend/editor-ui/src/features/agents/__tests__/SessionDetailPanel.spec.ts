@@ -293,7 +293,7 @@ describe('SessionDetailPanel — other kinds', () => {
 			content: 'Model request failed',
 		});
 
-		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+		expect(w.get('[data-test-id="execution-error-callout"]').text()).toContain(
 			'Model request failed',
 		);
 		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
@@ -488,4 +488,23 @@ describe('SessionDetailPanel — other kinds', () => {
 		const w = mountIt(null);
 		expect(w.text().toLowerCase()).toContain('select');
 	});
+});
+
+it('shows each task and its translated status in signal details', () => {
+	const wrapper = mountIt({
+		kind: 'background-task-signal',
+		executionId: 'e1',
+		timestamp: 1000,
+		backgroundJobSignal: {
+			tasks: [
+				{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
+				{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
+			],
+		},
+	});
+	expect(wrapper.text()).toContain('Background task results received');
+	const details = wrapper.get('[data-test-id="background-job-signal-details"]');
+	expect(details.findAll('li')).toHaveLength(2);
+	expect(details.text()).toContain('Check invoices — Completed');
+	expect(details.text()).toContain('Wait for reply — Canceled');
 });
