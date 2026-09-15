@@ -2,12 +2,14 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User, UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionOrchestratorService,
+	type ExecuteForChatConfig,
 	type ResumeForChatConfig,
 } from './agent-execution-orchestrator.service';
 import {
@@ -17,7 +19,11 @@ import {
 	type TurnRowValues,
 } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import type { AgentExecution, QueuedChannelTurn } from './entities/agent-execution.entity';
+import type {
+	AgentExecution,
+	AgentTurnRunContext,
+	QueuedChannelTurn,
+} from './entities/agent-execution.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -164,7 +170,7 @@ export class AgentTurnQueueService {
 			const rows = await this.executionRepository.findQueuedByThread(threadId);
 			const row = rows.find((candidate) => candidate.runContext?.kind === 'resume') ?? rows[0];
 			if (!row) return;
-			if ((await this.runQueuedRow(row, thread)) === 'deferred') return;
+			if ((await this.runQueuedRow(row, thread)) !== 'skipped') return;
 		}
 	}
 
@@ -189,7 +195,7 @@ export class AgentTurnQueueService {
 			if (prepared === 'deferred') return 'deferred';
 			run = prepared;
 		} catch (error) {
-			await this.executionService.failQueuedExecution(scope, errorMessage(error));
+			await this.executionService.failQueuedExecution(scope, getErrorMessage(error));
 			return 'skipped';
 		}
 
@@ -232,21 +238,14 @@ export class AgentTurnQueueService {
 		}
 
 		const user = await this.resolveSender(row.resourceId, thread.projectId);
-		const memory = { threadId: row.threadId, resourceId: draftChatMemoryResourceId(user.id) };
+		const turn = {
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+			threadId: row.threadId,
+			source: row.source ?? undefined,
+		};
 		if (context.kind === 'resume') {
-			const config: ResumeForChatConfig = {
-				agentId: thread.agentId,
-				projectId: thread.projectId,
-				runId: context.runId,
-				toolCallId: context.toolCallId,
-				resumeData: context.resumeData,
-				user,
-				usePublishedVersion: false,
-				integrationType: N8N_CHAT_INTEGRATION_TYPE,
-				expectedMemory: memory,
-				source: row.source ?? undefined,
-				previewChat: true,
-			};
+			const config = buildDraftResumeConfig({ ...turn, runContext: context }, user);
 			// A resume whose checkpoint moved on can never run; failing it here ends the row.
 			await this.orchestrator.resolveResumeThread(config);
 			return async (claim) => await consumeStream(this.orchestrator.resumeForChat(config, claim));
@@ -254,16 +253,16 @@ export class AgentTurnQueueService {
 		return async (claim) =>
 			await consumeStream(
 				this.orchestrator.executeForChat(
-					{
-						agentId: thread.agentId,
-						projectId: thread.projectId,
-						message: row.userMessage ?? '',
+					buildDraftMessageConfig(
+						{
+							...turn,
+							userMessage: row.userMessage,
+							attachments: row.attachments ?? undefined,
+							resourceId: row.resourceId,
+							runContext: context,
+						},
 						user,
-						memory,
-						attachments: row.attachments ?? undefined,
-						source: row.source ?? undefined,
-						previewChat: true,
-					},
+					),
 					claim,
 				),
 			);
@@ -300,7 +299,7 @@ export class AgentTurnQueueService {
 			fail: async (error) => {
 				// The orchestrator records its own failures on the row; this only ends a
 				// turn that failed before it started, so the claim cannot leak.
-				if (await this.executionService.failClaimedExecution(scope, errorMessage(error))) {
+				if (await this.executionService.failClaimedExecution(scope, getErrorMessage(error))) {
 					await release();
 				}
 			},
@@ -383,13 +382,52 @@ export async function consumeStream(stream: AsyncIterable<unknown>): Promise<voi
 	}
 }
 
+/** Draft options must not depend on whether the turn waited. */
+export function buildDraftMessageConfig(
+	turn: AgentTurnSubmission,
+	user: User,
+): ExecuteForChatConfig {
+	return {
+		agentId: turn.agentId,
+		projectId: turn.projectId,
+		message: turn.userMessage ?? '',
+		user,
+		memory: { threadId: turn.threadId, resourceId: draftChatMemoryResourceId(user.id) },
+		attachments: turn.attachments,
+		source: turn.source,
+		previewChat: turn.runContext.previewChat,
+	};
+}
+
+/** The thread is optional until the checkpoint resolves the resume's session. */
+export function buildDraftResumeConfig(
+	turn: Pick<AgentTurnSubmission, 'agentId' | 'projectId' | 'source'> & {
+		threadId?: string;
+		runContext: Extract<AgentTurnRunContext, { kind: 'resume' }>;
+	},
+	user: User,
+): ResumeForChatConfig {
+	return {
+		agentId: turn.agentId,
+		projectId: turn.projectId,
+		runId: turn.runContext.runId,
+		toolCallId: turn.runContext.toolCallId,
+		resumeData: turn.runContext.resumeData,
+		user,
+		usePublishedVersion: false,
+		integrationType: N8N_CHAT_INTEGRATION_TYPE,
+		expectedMemory: {
+			...(turn.threadId ? { threadId: turn.threadId } : {}),
+			resourceId: draftChatMemoryResourceId(user.id),
+		},
+		source: turn.source,
+		previewChat: turn.runContext.previewChat,
+	};
+}
+
 function scopeOf(
 	{ threadId, agentId, projectId }: Pick<ExecutionScope, 'threadId' | 'agentId' | 'projectId'>,
 	executionId: string,
 ): ExecutionScope {
 	return { executionId, threadId, agentId, projectId };
-}
-
-function errorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
 }

@@ -134,7 +134,7 @@ export class AgentChatController {
 		const abortController = new AbortController();
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
-		let executionId: string | undefined;
+		let persisted = false;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
@@ -175,8 +175,8 @@ export class AgentChatController {
 				user: req.user,
 				sessionId: threadId,
 				previewChat: true,
-				onExecutionRecorded: (id) => {
-					executionId = id;
+				onPersisted: () => {
+					persisted = true;
 				},
 				abortSignal: abortController.signal,
 			});
@@ -187,13 +187,11 @@ export class AgentChatController {
 			}
 			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
+				send({ type: 'done', sessionId: threadId, executionId: submitted.executionId });
 			}
 		} catch (error) {
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
+			// Only remove attachments before the stored turn takes ownership, also on abort.
+			if (!persisted && storedAttachments?.length) {
 				await this.agentChatAttachmentService
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
@@ -223,7 +221,6 @@ export class AgentChatController {
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
 		try {
-			let executionId: string | undefined;
 			const submitted = await this.agentTestRunService.submitDraftResume({
 				agentId,
 				projectId,
@@ -232,9 +229,6 @@ export class AgentChatController {
 				resumeData,
 				user: req.user,
 				previewChat: true,
-				onExecutionRecorded: (id) => {
-					executionId = id;
-				},
 				abortSignal: abortController.signal,
 			});
 			if (submitted.status === 'session_not_found') {
@@ -248,7 +242,7 @@ export class AgentChatController {
 			}
 			const suspended = await pumpChunks(submitted.stream, send);
 			if (!suspended) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
+				send({ type: 'done', executionId: submitted.executionId });
 			}
 		} catch (error) {
 			if (!abortController.signal.aborted) {

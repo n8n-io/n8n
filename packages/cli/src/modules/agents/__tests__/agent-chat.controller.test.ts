@@ -45,20 +45,25 @@ function makeController(testRunService?: AgentTestRunService) {
 	});
 	// The idle-session path: the turn is claimed and streams through the orchestrator.
 	const claim = mock<AgentTurnClaim>({ executionId: 'exec-1', threadId: 'thread-1' });
-	agentTestRunService.submitDraftRun.mockImplementation(async (config) => ({
-		status: 'claimed',
-		sessionId: config.sessionId,
-		stream: agentExecutionOrchestratorService.executeForChat(
-			{
-				...config,
-				memory: { threadId: config.sessionId, resourceId: `draft-chat:${config.user.id}` },
-			},
-			claim,
-		),
-	}));
+	agentTestRunService.submitDraftRun.mockImplementation(async ({ onPersisted, ...config }) => {
+		onPersisted?.(claim.executionId);
+		return {
+			status: 'claimed',
+			sessionId: config.sessionId,
+			executionId: claim.executionId,
+			stream: agentExecutionOrchestratorService.executeForChat(
+				{
+					...config,
+					memory: { threadId: config.sessionId, resourceId: `draft-chat:${config.user.id}` },
+				},
+				claim,
+			),
+		};
+	});
 	agentTestRunService.submitDraftResume.mockImplementation(async (config) => ({
 		status: 'claimed',
 		sessionId: 'thread-1',
+		executionId: claim.executionId,
 		stream: agentExecutionOrchestratorService.resumeForChat(config, claim),
 	}));
 
@@ -385,10 +390,9 @@ describe('AgentChatController SSE done payload', () => {
 		expect(res.end).toHaveBeenCalled();
 	});
 
-	it('includes executionId on done when recorded', async () => {
+	it('includes the claimed executionId on done', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
-		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-99');
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
 			yield* [];
 		});
 
@@ -409,14 +413,13 @@ describe('AgentChatController SSE done payload', () => {
 		expect(events).toContainEqual({
 			type: 'done',
 			sessionId: 'thread-1',
-			executionId: 'exec-99',
+			executionId: 'exec-1',
 		});
 	});
 
-	it('includes executionId on resume done when recorded', async () => {
+	it('includes the claimed executionId on resume done', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
-		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-resume-1');
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* () {
 			yield* [];
 		});
 
@@ -436,7 +439,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(events).toContainEqual({
 			type: 'done',
-			executionId: 'exec-resume-1',
+			executionId: 'exec-1',
 		});
 	});
 

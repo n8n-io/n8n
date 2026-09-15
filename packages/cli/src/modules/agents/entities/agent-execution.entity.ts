@@ -43,6 +43,7 @@ export interface QueuedChannelAction {
 export type AgentTurnRunContext =
 	| {
 			kind: 'message';
+			previewChat?: boolean;
 			channel?: QueuedChannelTurn & {
 				isNewMention: boolean;
 				subject?: IntegrationMessageSubject;
@@ -52,6 +53,7 @@ export type AgentTurnRunContext =
 	  }
 	| {
 			kind: 'resume';
+			previewChat?: boolean;
 			runId: string;
 			toolCallId: string;
 			resumeData: unknown;

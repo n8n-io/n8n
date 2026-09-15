@@ -256,7 +256,13 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 			yield { type: 'finish', finishReason: 'stop' } as never;
 			consumed += 1;
 		})();
-		return { status: 'claimed' as const, sessionId: 's', stream, chunksConsumed: () => consumed };
+		return {
+			status: 'claimed' as const,
+			sessionId: 's',
+			executionId: 'exec-1',
+			stream,
+			chunksConsumed: () => consumed,
+		};
 	}
 
 	// The preview's SSE stream closed when the run suspended, so the resume runs

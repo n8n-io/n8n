@@ -576,10 +576,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('awaits finalization and notifies onExecutionRecorded with the returned id', async () => {
-		const { service, executionService } = makeService();
+	it('releases the runtime and claim when finalization fails', async () => {
+		const { service, executionService, runtimeCacheService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-		const onExecutionRecorded = vi.fn();
+		const claim = claimFor('thread-1');
+		executionService.finalizeExecution.mockRejectedValueOnce(new Error('Database unavailable'));
 
 		await collect(
 			service.streamChatResponse({
@@ -591,34 +592,12 @@ describe('AgentExecutionOrchestratorService', () => {
 				projectId,
 				runType: 'test',
 				sandboxPrincipalHash: userPrincipalHash,
-				onExecutionRecorded,
-				claim: claimFor('thread-1'),
+				claim,
 			}),
 		);
 
-		expect(executionService.finalizeExecution).toHaveBeenCalled();
-		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
-	});
-
-	it('still records the message when onExecutionRecorded is omitted', async () => {
-		const { service, executionService } = makeService();
-		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-
-		await collect(
-			service.streamChatResponse({
-				getRuntime: async () => runtime,
-				agentId,
-				userId,
-				message: 'hello',
-				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
-				projectId,
-				runType: 'test',
-				sandboxPrincipalHash: userPrincipalHash,
-				claim: claimFor('thread-1'),
-			}),
-		);
-
-		expect(executionService.finalizeExecution).toHaveBeenCalled();
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledExactlyOnceWith(runtime.agent);
+		expect(claim.release).toHaveBeenCalledOnce();
 	});
 
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
@@ -1424,7 +1403,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			runType: 'test',
 			sandboxPrincipalHash: userPrincipalHash,
 			abortSignal: abortController.signal,
-			onExecutionRecorded: vi.fn(),
 			claim: claimFor('thread-1'),
 		});
 
@@ -1698,7 +1676,6 @@ describe('AgentExecutionOrchestratorService', () => {
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
 				abortSignal: abortController.signal,
-				onExecutionRecorded: vi.fn(),
 			},
 			claimFor('thread-1'),
 		);

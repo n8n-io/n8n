@@ -170,10 +170,14 @@ function claimFor(threadId: string): AgentTurnClaim {
 function queueExecutor() {
 	return {
 		submitTurn: vi.fn(
-			async (turn: AgentTurnSubmission): Promise<AgentTurnSubmitResult> => ({
-				status: 'claimed',
-				claim: claimFor(turn.threadId),
-			}),
+			async (
+				turn: AgentTurnSubmission,
+				onPersisted?: (executionId: string) => void,
+			): Promise<AgentTurnSubmitResult> => {
+				const claim = claimFor(turn.threadId);
+				onPersisted?.(claim.executionId);
+				return { status: 'claimed', claim };
+			},
 		),
 		resolveResumeThread: vi.fn(async () => 'agent-1:thread-1'),
 	};
@@ -1570,28 +1574,31 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			await bridge.send('second');
 
-			expect(bridge.submitTurn).toHaveBeenCalledWith({
-				threadId: 'agent-1:thread-1',
-				agentId: 'agent-1',
-				projectId: 'project-1',
-				userMessage: 'second',
-				author: { id: 'u1', name: 'user1' },
-				source: 'test-streaming',
-				resourceId: 'integration:test-streaming:u1',
-				runContext: {
-					kind: 'message',
-					channel: {
-						integrationType: 'test-streaming',
-						credentialId: 'cred-1',
-						thread: expect.objectContaining({
-							id: 'thread-1',
-							currentMessage: expect.objectContaining({ text: 'second', author }),
-						}),
-						isNewMention: true,
-						conversationThreadId: 'agent-1:thread-1',
+			expect(bridge.submitTurn).toHaveBeenCalledWith(
+				{
+					threadId: 'agent-1:thread-1',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					userMessage: 'second',
+					author: { id: 'u1', name: 'user1' },
+					source: 'test-streaming',
+					resourceId: 'integration:test-streaming:u1',
+					runContext: {
+						kind: 'message',
+						channel: {
+							integrationType: 'test-streaming',
+							credentialId: 'cred-1',
+							thread: expect.objectContaining({
+								id: 'thread-1',
+								currentMessage: expect.objectContaining({ text: 'second', author }),
+							}),
+							isNewMention: true,
+							conversationThreadId: 'agent-1:thread-1',
+						},
 					},
 				},
-			});
+				expect.any(Function),
+			);
 			// The waiting message neither runs nor redirects the running turn's replies.
 			expect(bridge.executeForChatPublished).not.toHaveBeenCalled();
 			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
@@ -2143,31 +2150,40 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it('deletes stored attachments when the queue rejects the message', async () => {
-			const agentExecutor = makeAgentExecutor([finishChunk]);
-			agentExecutor.submitTurn.mockRejectedValueOnce(new AgentThreadQueueFullError());
-			const attachmentService = makeAttachmentService();
-			const handlers = makeBridge(agentExecutor, attachmentService);
-			const thread = makeThread();
+		it.each([false, true])(
+			'cleans rejected attachments only before persistence (persisted: %s)',
+			async (persisted) => {
+				const agentExecutor = makeAgentExecutor([finishChunk]);
+				agentExecutor.submitTurn.mockImplementationOnce(async (_turn, onPersisted) => {
+					if (persisted) onPersisted?.('exec-1');
+					throw persisted ? new Error('Claim lookup failed') : new AgentThreadQueueFullError();
+				});
+				const attachmentService = makeAttachmentService();
+				const handlers = makeBridge(agentExecutor, attachmentService);
+				const thread = makeThread();
 
-			await handlers.mention!(thread, {
-				text: 'look at this',
-				author: { userId: 'u1', userName: 'user1' },
-				attachments: [
-					{
-						type: 'image',
-						name: 'photo.png',
-						mimeType: 'image/png',
-						fetchData: vi.fn().mockResolvedValue(pngBytes),
-					},
-				],
-			});
+				await handlers.mention!(thread, {
+					text: 'look at this',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							name: 'photo.png',
+							mimeType: 'image/png',
+							fetchData: vi.fn().mockResolvedValue(pngBytes),
+						},
+					],
+				});
 
-			// Nothing references the attachments of a message that has no row.
-			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
-			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
-			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('messages waiting'));
-		});
+				if (persisted) {
+					expect(attachmentService.deleteByIds).not.toHaveBeenCalled();
+				} else {
+					expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+					expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('messages waiting'));
+				}
+				expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			},
+		);
 
 		it('ends the claimed row and keeps its attachments when execution setup fails before the stream', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);

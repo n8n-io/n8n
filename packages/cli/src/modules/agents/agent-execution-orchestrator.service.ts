@@ -80,8 +80,6 @@ export interface ExecuteForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
-	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -138,8 +136,6 @@ export interface ResumeForChatConfig {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
-	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	/**
 	 * Runs once the resume holds its claimed running row, right before
 	 * `agentInstance.resume()`. Chat integrations settle the action card and
@@ -221,8 +217,6 @@ export interface StreamChatResponseConfig {
 	taskId?: string;
 	taskVersionId?: string;
 	runType: AgentRunTelemetryType;
-	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 	/** Add full sanitized tool configuration to approval cards in preview chat. */
 	includeHitlToolDetails?: boolean;
@@ -477,7 +471,6 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			user,
 			usePublishedVersion = true,
-			onExecutionRecorded,
 			beforeResume,
 			abortSignal,
 		} = config;
@@ -506,7 +499,7 @@ export class AgentExecutionOrchestratorService {
 				previewChat: config.previewChat,
 			});
 			const { agent: agentInstance, toolRegistry } = runtime;
-			recorder = this.createRecorder(toolRegistry, () => claim.executionId, {
+			recorder = this.createRecorder(toolRegistry, claim.executionId, {
 				projectId,
 				agentId,
 				threadId,
@@ -567,7 +560,6 @@ export class AgentExecutionOrchestratorService {
 				claim,
 				runtime,
 				record: normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal),
-				onExecutionRecorded,
 				failureMessage: 'Failed to record resumed agent execution',
 				params: {
 					threadId,
@@ -599,7 +591,6 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			source,
 			previewChat,
-			onExecutionRecorded,
 			abortSignal,
 		} = config;
 
@@ -649,7 +640,6 @@ export class AgentExecutionOrchestratorService {
 			projectId,
 			source,
 			runType: 'test',
-			onExecutionRecorded,
 			abortSignal,
 			includeHitlToolDetails: true,
 			sandboxPrincipalHash,
@@ -899,7 +889,6 @@ export class AgentExecutionOrchestratorService {
 			taskId,
 			taskVersionId,
 			runType,
-			onExecutionRecorded,
 			abortSignal,
 			includeHitlToolDetails,
 			sandboxPrincipalHash,
@@ -919,7 +908,7 @@ export class AgentExecutionOrchestratorService {
 			const { agent: agentInstance, toolRegistry } = runtime;
 			recorder = this.createRecorder(
 				toolRegistry,
-				() => claim.executionId,
+				claim.executionId,
 				{ projectId, agentId, threadId },
 				backgroundJobSignal,
 			);
@@ -986,7 +975,6 @@ export class AgentExecutionOrchestratorService {
 				claim,
 				runtime,
 				record: normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal),
-				onExecutionRecorded,
 				failureMessage: 'Failed to record agent execution',
 				params: {
 					threadId,
@@ -1014,12 +1002,11 @@ export class AgentExecutionOrchestratorService {
 		claim: AgentTurnClaim;
 		runtime: AgentRuntime | undefined;
 		record: MessageRecord;
-		onExecutionRecorded?: (executionId: string) => void;
 		failureMessage: string;
 		params: Omit<RecordMessageParams, 'record' | 'telemetry'>;
 		telemetry: { userId?: string; runType: AgentRunTelemetryType };
 	}): Promise<void> {
-		const { claim, runtime, record, onExecutionRecorded, failureMessage, params, telemetry } = args;
+		const { claim, runtime, record, failureMessage, params, telemetry } = args;
 		try {
 			const configuration =
 				runtime?.telemetryConfiguration ??
@@ -1028,15 +1015,16 @@ export class AgentExecutionOrchestratorService {
 					params.projectId,
 					telemetry.runType,
 				));
-			await this.persistRecordedExecution({
-				executionId: claim.executionId,
-				onExecutionRecorded,
-				failureMessage,
-				params: {
-					...params,
-					record,
-					...(configuration ? { telemetry: { ...telemetry, configuration } } : {}),
-				},
+			await this.agentExecutionService.finalizeExecution(claim.executionId, {
+				...params,
+				record,
+				...(configuration ? { telemetry: { ...telemetry, configuration } } : {}),
+			});
+		} catch (error) {
+			this.logger.warn(failureMessage, {
+				agentId: params.agentId,
+				threadId: params.threadId,
+				error: error instanceof Error ? error.message : String(error),
 			});
 		} finally {
 			if (runtime) this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
@@ -1067,43 +1055,21 @@ export class AgentExecutionOrchestratorService {
 
 	private createRecorder(
 		toolRegistry: ToolRegistry,
-		getExecutionId: () => string | undefined,
+		executionId: string,
 		context: Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>,
 		backgroundJobSignal?: AgentBackgroundJobSignal,
 	): ExecutionRecorder {
 		return new ExecutionRecorder(
 			toolRegistry,
 			(timeline) => {
-				const executionId = getExecutionId();
-				if (executionId) {
-					this.agentExecutionService.recordTimelineSnapshot({
-						...context,
-						executionId,
-						timeline,
-					});
-				}
+				this.agentExecutionService.recordTimelineSnapshot({
+					...context,
+					executionId,
+					timeline,
+				});
 			},
 			backgroundJobSignal,
 		);
-	}
-
-	private async persistRecordedExecution(args: {
-		executionId: string;
-		onExecutionRecorded?: (executionId: string) => void;
-		params: RecordMessageParams;
-		failureMessage: string;
-	}): Promise<void> {
-		const { executionId, onExecutionRecorded, params, failureMessage } = args;
-		try {
-			const recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
-			onExecutionRecorded?.(recordedId);
-		} catch (error) {
-			this.logger.warn(failureMessage, {
-				agentId: params.agentId,
-				threadId: params.threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 }
 

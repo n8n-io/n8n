@@ -11,7 +11,6 @@ import {
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -25,10 +24,13 @@ import {
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import {
 	AgentTurnQueueService,
+	buildDraftMessageConfig,
+	buildDraftResumeConfig,
 	type AgentTurnClaim,
 	type AgentTurnSubmission,
 } from './agent-turn-queue.service';
 import { AgentValidationService } from './agent-validation.service';
+import type { AgentTurnRunContext } from './entities/agent-execution.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 
@@ -55,7 +57,7 @@ interface DraftRunInput {
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
 	/** Runs after the turn has a durable execution row. */
-	onExecutionRecorded?: (executionId: string) => void;
+	onPersisted?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -78,7 +80,6 @@ interface DraftResumeInput {
 	source?: string;
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
-	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -93,7 +94,12 @@ interface ResumeDraftRunInput extends DraftResumeInput {
  * ends, so the answer arrives through the execution update push and history.
  */
 export type DraftTurnSubmission =
-	| { status: 'claimed'; sessionId: string; stream: AsyncGenerator<StreamChunk> }
+	| {
+			status: 'claimed';
+			sessionId: string;
+			executionId: string;
+			stream: AsyncGenerator<StreamChunk>;
+	  }
 	| { status: 'queued'; sessionId: string; executionId: string };
 
 /** The session runs another turn and this caller cannot wait for it. */
@@ -221,16 +227,14 @@ export class AgentTestRunService {
 
 	/** Store the message as the session's next turn; see {@link DraftTurnSubmission}. */
 	async submitDraftRun(input: DraftRunInput): Promise<DraftTurnSubmission> {
-		const { onExecutionRecorded, ...run } = input;
-		const submitted = await this.agentTurnQueueService.submit(
-			this.messageTurn(run),
-			onExecutionRecorded,
-		);
+		const { onPersisted, ...run } = input;
+		const submitted = await this.agentTurnQueueService.submit(this.messageTurn(run), onPersisted);
 		return submitted.status === 'queued'
 			? { ...submitted, sessionId: run.sessionId }
 			: {
 					status: 'claimed',
 					sessionId: run.sessionId,
+					executionId: submitted.claim.executionId,
 					stream: this.streamDraftRun(run, submitted.claim),
 				};
 	}
@@ -250,6 +254,7 @@ export class AgentTestRunService {
 			: {
 					status: 'claimed',
 					sessionId: prepared.sessionId,
+					executionId: submitted.claim.executionId,
 					stream: this.agentExecutionOrchestratorService.resumeForChat(
 						prepared.config,
 						submitted.claim,
@@ -266,13 +271,9 @@ export class AgentTestRunService {
 		const prepared = await this.prepareDraftRun(input);
 		if (prepared.status !== 'ready') return prepared;
 
-		let executionId: string | undefined;
 		const run: DraftRunInput = {
 			...input,
 			sessionId: prepared.sessionId,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
 		};
 		const claim = await this.agentTurnQueueService.tryRunNow(this.messageTurn(run));
 		if (!claim) throw new AgentThreadBusyError();
@@ -281,19 +282,13 @@ export class AgentTestRunService {
 			this.streamDraftRun(run, claim),
 			prepared.sessionId,
 			'',
-			() => executionId,
+			claim.executionId,
 		);
 	}
 
 	/** Resume now and return the outcome; throws {@link AgentThreadBusyError} like {@link executeDraftRun}. */
 	async resumeDraftRun(input: ResumeDraftRunInput): Promise<AgentTestRunResult> {
-		let executionId: string | undefined;
-		const prepared = await this.prepareDraftResume({
-			...input,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-		});
+		const prepared = await this.prepareDraftResume(input);
 		if (prepared.status !== 'ready') return prepared;
 		const claim = await this.agentTurnQueueService.tryRunNow(prepared.turn);
 		if (!claim) throw new AgentThreadBusyError();
@@ -302,40 +297,15 @@ export class AgentTestRunService {
 			this.agentExecutionOrchestratorService.resumeForChat(prepared.config, claim),
 			input.sessionId,
 			input.response,
-			() => executionId,
+			claim.executionId,
 		);
 	}
 
-	private streamDraftRun(
-		{
-			agentId,
-			projectId,
-			message,
-			user,
-			sessionId,
-			attachments,
-			source,
-			previewChat,
-			onExecutionRecorded,
-			abortSignal,
-		}: DraftRunInput,
-		claim: AgentTurnClaim,
-	): AsyncGenerator<StreamChunk> {
+	private streamDraftRun(input: DraftRunInput, claim: AgentTurnClaim): AsyncGenerator<StreamChunk> {
 		return this.agentExecutionOrchestratorService.executeForChat(
 			{
-				agentId,
-				projectId,
-				message,
-				user,
-				memory: {
-					threadId: sessionId,
-					resourceId: draftChatMemoryResourceId(user.id),
-				},
-				attachments,
-				source,
-				previewChat,
-				onExecutionRecorded,
-				abortSignal,
+				...buildDraftMessageConfig(this.messageTurn(input), input.user),
+				abortSignal: input.abortSignal,
 			},
 			claim,
 		);
@@ -350,7 +320,7 @@ export class AgentTestRunService {
 			attachments: input.attachments,
 			source: input.source,
 			resourceId: draftChatMemoryResourceId(input.user.id),
-			runContext: { kind: 'message' },
+			runContext: { kind: 'message', previewChat: input.previewChat },
 		};
 	}
 
@@ -370,19 +340,18 @@ export class AgentTestRunService {
 		}
 
 		const resourceId = draftChatMemoryResourceId(user.id);
-		const config: ResumeForChatConfig = {
-			agentId,
-			projectId,
+		const runContext = {
+			kind: 'resume',
 			runId,
 			toolCallId,
 			resumeData,
-			user,
-			usePublishedVersion: false,
-			integrationType: N8N_CHAT_INTEGRATION_TYPE,
-			expectedMemory: { ...(sessionId ? { threadId: sessionId } : {}), resourceId },
-			source,
 			previewChat: input.previewChat,
-			onExecutionRecorded: input.onExecutionRecorded,
+		} satisfies AgentTurnRunContext;
+		const config: ResumeForChatConfig = {
+			...buildDraftResumeConfig(
+				{ agentId, projectId, threadId: sessionId, source, runContext },
+				user,
+			),
 			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
 		};
 		const threadId = await this.agentExecutionOrchestratorService.resolveResumeThread(config);
@@ -397,7 +366,7 @@ export class AgentTestRunService {
 				userMessage: null,
 				source,
 				resourceId,
-				runContext: { kind: 'resume', runId, toolCallId, resumeData },
+				runContext,
 			},
 		};
 	}
@@ -487,7 +456,7 @@ export class AgentTestRunService {
 		stream: AsyncIterable<StreamChunk>,
 		sessionId: string,
 		initialResponse: string,
-		getExecutionId: () => string | undefined,
+		executionId: string,
 	): Promise<CollectedDraftRunResult> {
 		let response = initialResponse;
 		const suspensions: AgentTestRunSuspension[] = [];
@@ -510,11 +479,10 @@ export class AgentTestRunService {
 			}
 		}
 
-		const executionId = getExecutionId();
 		const metadata = {
 			response,
 			sessionId,
-			...(executionId ? { executionId } : {}),
+			executionId,
 		};
 		return suspensions.length > 0
 			? { status: 'suspended', ...metadata, suspensions }

@@ -67,8 +67,6 @@ function makeService() {
 	return { ...queue, ran };
 }
 
-const settled = async (assertion: () => void) => await vi.waitFor(assertion);
-
 describe('AgentTurnQueueService', () => {
 	afterEach(() => {
 		Container.reset();
@@ -163,7 +161,7 @@ describe('AgentTurnQueueService', () => {
 		finish(first.claim);
 		await first.claim.release();
 
-		await settled(() => expect(ran).toEqual(['second', 'third']));
+		await vi.waitFor(() => expect(ran).toEqual(['second', 'third']));
 		expect(rows.map((row) => row.status)).toEqual(['success', 'success', 'success']);
 		expect(orchestrator.executeForChat).toHaveBeenLastCalledWith(
 			expect.objectContaining({
@@ -172,7 +170,6 @@ describe('AgentTurnQueueService', () => {
 				message: 'third',
 				user,
 				memory: { threadId, resourceId: 'draft-chat:user-1' },
-				previewChat: true,
 			}),
 			expect.objectContaining({ executionId: 'exec-3', threadId }),
 		);
@@ -190,7 +187,7 @@ describe('AgentTurnQueueService', () => {
 		finish(first.claim);
 		await first.claim.release();
 
-		await settled(() => expect(ran).toEqual(['resume:run-1', 'second']));
+		await vi.waitFor(() => expect(ran).toEqual(['resume:run-1', 'second']));
 	});
 
 	it('defers a message while the thread awaits a human response, and claims at once for the resume', async () => {
@@ -210,7 +207,7 @@ describe('AgentTurnQueueService', () => {
 		finish(resume.claim);
 		await resume.claim.release();
 
-		await settled(() => expect(ran).toEqual(['while waiting']));
+		await vi.waitFor(() => expect(ran).toEqual(['while waiting']));
 		expect(rows.map((row) => row.status)).toEqual(['success', 'success']);
 	});
 
@@ -224,7 +221,7 @@ describe('AgentTurnQueueService', () => {
 		// The sweeper's pass while the first turn still runs, e.g. on another main.
 		expect(await executionRepository.findThreadIdsWithQueued()).toEqual([threadId]);
 		await service.drainAll();
-		await settled(() =>
+		await vi.waitFor(() =>
 			expect(executionService.claimQueuedExecution).toHaveBeenCalledWith(
 				'exec-2',
 				threadId,
@@ -238,25 +235,42 @@ describe('AgentTurnQueueService', () => {
 
 		finish(first.claim);
 		await first.claim.release();
-		await settled(() => expect(ran).toEqual(['second']));
+		await vi.waitFor(() => expect(ran).toEqual(['second']));
 	});
 
-	it('ends a row whose sender is disabled as an error execution and drains on', async () => {
-		const { service, rows, ran, finish } = makeService();
-		const first = await service.submit(messageTurn('first'));
-		if (first.status !== 'claimed') throw new Error('Expected the first turn to be claimed');
-		await service.submit(messageTurn('from a disabled user', 'draft-chat:user-2'));
-		await service.submit(messageTurn('third'));
-
-		finish(first.claim);
-		await first.claim.release();
-
-		await settled(() => expect(ran).toEqual(['third']));
-		expect(rows[1]).toMatchObject({
-			status: 'error',
+	it.each([
+		{
+			reason: 'disabled',
+			resourceId: 'draft-chat:user-2',
+			authorized: true,
 			error: 'The user who sent this message is no longer active',
-		});
-	});
+		},
+		{
+			reason: 'no longer authorized',
+			resourceId: 'draft-chat:user-1',
+			authorized: false,
+			error: 'The user who sent this message can no longer run this agent',
+		},
+	])(
+		'ends a row whose sender is $reason as an error execution and drains on',
+		async ({ resourceId, authorized, error }) => {
+			const { service, rows, ran, finish } = makeService();
+			const first = await service.submit(messageTurn('first'));
+			if (first.status !== 'claimed') throw new Error('Expected the first turn to be claimed');
+			await service.submit(messageTurn('second', resourceId));
+			await service.submit(messageTurn('third'));
+			if (!authorized) vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+
+			finish(first.claim);
+			await first.claim.release();
+
+			await vi.waitFor(() => expect(ran).toEqual(['third']));
+			expect(rows[1]).toMatchObject({
+				status: 'error',
+				error,
+			});
+		},
+	);
 
 	it('ends a claimed turn that never started as an error execution and runs the waiting rows', async () => {
 		const { service, rows, ran } = makeService();
@@ -267,7 +281,7 @@ describe('AgentTurnQueueService', () => {
 		await first.claim.fail(new Error('setup failed'));
 
 		expect(rows[0]).toMatchObject({ status: 'error', error: 'setup failed' });
-		await settled(() => expect(ran).toEqual(['second']));
+		await vi.waitFor(() => expect(ran).toEqual(['second']));
 	});
 
 	it('runs a channel row through its bridge and leaves it queued while this main has none', async () => {
@@ -309,7 +323,7 @@ describe('AgentTurnQueueService', () => {
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 		await service.drainAll();
 
-		await settled(() => expect(rows[1].status).toBe('success'));
+		await vi.waitFor(() => expect(rows[1].status).toBe('success'));
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'cred-1');
 		expect(bridge.runQueuedMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'exec-2' }),

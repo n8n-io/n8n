@@ -103,7 +103,10 @@ function stillWaitingNotice(suspendPayload: unknown): string {
 
 interface AgentExecutor {
 	/** Store the turn; it runs at once when the thread is free, else once the running turn ends. */
-	submitTurn(turn: AgentTurnSubmission): Promise<AgentTurnSubmitResult>;
+	submitTurn(
+		turn: AgentTurnSubmission,
+		onPersisted?: (executionId: string) => void,
+	): Promise<AgentTurnSubmitResult>;
 
 	executeForChatPublished(
 		config: {
@@ -277,8 +280,8 @@ export class AgentChatBridge {
 		integration: AgentIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
-			async submitTurn(turn) {
-				return await Container.get(AgentTurnQueueService).submit(turn);
+			async submitTurn(turn, onPersisted) {
+				return await Container.get(AgentTurnQueueService).submit(turn, onPersisted);
 			},
 			async *executeForChatPublished(
 				{
@@ -693,31 +696,37 @@ export class AgentChatBridge {
 			subject: await this.messageContextBridge.resolveSubject(message),
 		};
 		let submitted: AgentTurnSubmitResult;
+		let persisted = false;
 		try {
 			// The row is the queue item: a message behind a running turn waits there
 			// and runs headless from `runQueuedMessage` once that turn ends.
-			submitted = await this.agentService.submitTurn({
-				threadId: memoryThreadId.id,
-				agentId: this.agentId,
-				projectId: this.n8nProjectId,
-				userMessage: turn.text,
-				author: toMessageAuthor(message.author),
-				attachments: attachments.length > 0 ? attachments : undefined,
-				source: this.integration.type,
-				resourceId: memoryResourceId,
-				runContext: {
-					kind: 'message',
-					channel: {
-						...this.channelTurn(thread),
-						isNewMention,
-						subject: turn.subject,
-						conversationThreadId: threadId.id,
+			submitted = await this.agentService.submitTurn(
+				{
+					threadId: memoryThreadId.id,
+					agentId: this.agentId,
+					projectId: this.n8nProjectId,
+					userMessage: turn.text,
+					author: toMessageAuthor(message.author),
+					attachments: attachments.length > 0 ? attachments : undefined,
+					source: this.integration.type,
+					resourceId: memoryResourceId,
+					runContext: {
+						kind: 'message',
+						channel: {
+							...this.channelTurn(thread),
+							isNewMention,
+							subject: turn.subject,
+							conversationThreadId: threadId.id,
+						},
 					},
 				},
-			});
+				() => {
+					persisted = true;
+				},
+			);
 		} catch (error) {
-			// Nothing references the attachments of a rejected message.
-			if (attachments.length > 0) {
+			// A persisted turn owns its attachments even if claiming fails.
+			if (!persisted && attachments.length > 0) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}
 			throw error;
