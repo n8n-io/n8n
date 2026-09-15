@@ -14,6 +14,7 @@ import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
+import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { PrometheusPollTriggerMetricsService } from './poll-trigger-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
@@ -54,6 +55,7 @@ export class PrometheusMetricsService {
 		webhook: PrometheusWebhookAndFormMetricsService,
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
 		instanceAi: PrometheusInstanceAiMetricsService,
+		mcpPostSave: PrometheusMcpPostSaveMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
 		scheduler: PrometheusSchedulerMetricsService,
@@ -80,6 +82,7 @@ export class PrometheusMetricsService {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			mcpPostSave,
 			dbPool,
 			workflowPublication,
 			scheduler,

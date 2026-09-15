@@ -301,7 +301,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': true });
+				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': 'test' });
 			});
 
 			it('applies the generic override map on top of resolved flags', async () => {

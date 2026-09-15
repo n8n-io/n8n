@@ -16,6 +16,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import AgentModelSelector from './AgentModelSelector.vue';
+import AgentPanel from './AgentPanel.vue';
 import {
 	type AgentCredentialsByProvider,
 	type AgentModelOption,
@@ -311,7 +312,12 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 </script>
 
 <template>
-	<div :class="$style.subAgentsPanel" :aria-disabled="disabled">
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.subAgents.title')"
+		:description="i18n.baseText('agents.builder.subAgents.settings.description')"
+		:class="$style.subAgentsPanel"
+		:aria-disabled="disabled"
+	>
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
@@ -412,7 +418,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				</div>
 			</div>
 		</div>
-	</div>
+	</AgentPanel>
 </template>
 
 <style lang="scss" module>

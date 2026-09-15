@@ -14,6 +14,7 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type {
 	RemediationMetadata,
 	VerificationClaim,
+	WorkflowTriggerVerificationProgress,
 } from '../../../workflow-loop/workflow-loop-state';
 
 /**
@@ -91,11 +92,11 @@ export async function persistVerificationOutcome(args: {
 	workflowId: string;
 	result: ExecutionRunResult;
 	analysis: VerificationAnalysis;
+	scopedTriggerNodeName?: string;
+	previousProgress?: WorkflowTriggerVerificationProgress;
 	/** Deterministic verdict for this run, persisted so later turns cannot re-litigate it. */
 	claim: VerificationClaim;
-	/** Running count of verify runs for this build, used to enforce MAX_VERIFY_ATTEMPTS. */
-	verifyAttempts: number;
-}): Promise<void> {
+}): Promise<VerificationClaim | undefined> {
 	const {
 		input,
 		context,
@@ -103,36 +104,34 @@ export async function persistVerificationOutcome(args: {
 		workflowId,
 		result,
 		analysis,
+		scopedTriggerNodeName,
+		previousProgress,
 		claim,
-		verifyAttempts,
 	} = args;
-	try {
-		const executedForEvidence = namesOrDataKeys(analysis.reachedNames, result.data);
-		await workflowTaskService.updateBuildOutcome(input.workItemId, {
-			verifyAttempts,
-			verification: {
-				attempted: true,
-				success: analysis.success,
-				executionId: result.executionId || undefined,
-				status: result.status,
-				failureSignature: analysis.success ? undefined : analysis.errorMessage,
-				claim,
-				evidence: {
-					nodesExecuted:
-						executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
-					nodesNotReached:
-						analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
-					producedOutputRows: countProducedOutputRows(result.data),
-					errorNodeName: analysis.success ? undefined : analysis.nodeErrors[0]?.nodeName,
-					errorMessage: analysis.success ? undefined : analysis.errorMessage,
-					nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
-				},
-				verifiedAt: new Date().toISOString(),
+	const executedForEvidence = namesOrDataKeys(analysis.reachedNames, result.data);
+	const storedClaim = await workflowTaskService.recordVerification(
+		input.workItemId,
+		{
+			attempted: true,
+			success: analysis.success,
+			executionId: result.executionId || undefined,
+			status: result.status,
+			failureSignature: analysis.success ? undefined : analysis.errorMessage,
+			claim,
+			evidence: {
+				...(scopedTriggerNodeName ? { triggerNodeName: scopedTriggerNodeName } : {}),
+				nodesExecuted:
+					executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
+				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
+				producedOutputRows: countProducedOutputRows(result.data),
+				errorNodeName: analysis.success ? undefined : analysis.nodeErrors[0]?.nodeName,
+				errorMessage: analysis.success ? undefined : analysis.errorMessage,
+				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 			},
-		});
-	} catch {
-		// intentional: verification record persistence is advisory
-	}
+			verifiedAt: new Date().toISOString(),
+		},
+		previousProgress,
+	);
 
 	if (analysis.remediation && !analysis.remediation.shouldEdit) {
 		await reportTerminalRemediation({
@@ -144,6 +143,7 @@ export async function persistVerificationOutcome(args: {
 			remediation: analysis.remediation,
 		});
 	}
+	return storedClaim;
 }
 
 async function reportTerminalRemediation(args: {

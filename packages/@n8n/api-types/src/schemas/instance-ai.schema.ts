@@ -1,3 +1,4 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -715,6 +716,13 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
@@ -1390,12 +1398,33 @@ export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
+/**
+ * Build style for a run. `progressive` makes the agent build a minimal working
+ * slice first, gate increments on real executions, and extend on actual
+ * execution data. `default` uses the standard building policy.
+ */
+export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
+export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
+
+export const instanceAiPromptConfigurationSchema = z.object({
+	version: z.string(),
+	systemPromptVersion: z.string(),
+	skillVariants: z.array(z.string()),
+	skillsHash: z.string(),
+	fallbackFrom: z.string().optional(),
+});
+export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	/** Explicit override for evals. Omit to use the backend experiment assignment. */
+	mode: instanceAiBuildModeSchema.optional(),
+	/** Pin a published prompt profile. Takes precedence over mode. */
+	promptVersion: z.string().trim().min(1).max(128).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -1673,6 +1702,24 @@ export interface InstanceAiThreadListResponse {
 	hasMore: boolean;
 }
 
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
+	search: z
+		.string()
+		.trim()
+		.max(500)
+		.refine((value) => !value.includes('\u0000'))
+		.optional(),
+	cursor: z.string().min(1).max(256).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
+
 export interface InstanceAiEnsureThreadResponse {
 	thread: InstanceAiThreadInfo;
 	created: boolean;
@@ -1765,6 +1812,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 }
 
 export interface InstanceAiThreadStatusResponse {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	hasActiveRun: boolean;
 	isSuspended: boolean;
 	runId?: string;
@@ -2288,6 +2336,10 @@ export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
  *  action and the `nodeTypes` filter on `workflows(action="list")`. */
@@ -2300,6 +2352,14 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
+ * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
+ * variant string, not a boolean. The flag names its on-arm `test` rather than
+ * the `variant` the other Instance AI experiments use, so this constant tracks
+ * the flag's own spelling.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

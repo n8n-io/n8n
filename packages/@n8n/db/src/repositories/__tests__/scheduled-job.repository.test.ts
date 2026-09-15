@@ -311,6 +311,7 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 3,
 				misfirePolicy: 'skip',
 				misfireGraceSeconds: 120,
 			};

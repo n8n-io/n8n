@@ -49,6 +49,7 @@ import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
+import { createAttributionTracker } from '../utils/mcp-attribution';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentRunContext {
@@ -205,30 +206,31 @@ export class SubAgentRunner {
 			context.instrumentation?.transformDelegatedAgentConfig?.(resolvedConfig, {
 				subAgentId: runtimeSource.source.sourceId,
 			}) ?? resolvedConfig;
-		const { agent } = await reconstructionService.reconstructFromResolvedSource({
-			config: childConfig,
-			memoryOwnerAgentId: runtimeSource.source.sourceId,
-			projectId: context.projectId,
-			credentialProvider: context.credentialProvider,
-			toolDescriptors: runtimeSource.toolDescriptors,
-			toolCodeByName: runtimeSource.toolCodeByName,
-			skills: runtimeSource.skills,
-			runtimeProfile: 'sub-agent',
-			runType: context.runType,
-			workflowToolExecutionMode: context.workflowToolExecutionMode,
-			parentAgentIdForDelegation: context.parentAgentId,
-			user: context.user,
-			instrumentation: context.instrumentation,
-			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
-			...(context.parentWorkspaceHandle !== undefined
-				? {
-						parentWorkspace: {
-							handle: context.parentWorkspaceHandle,
-							delegationThreadId: threadId,
-						},
-					}
-				: {}),
-		});
+		const { agent, mcpServerAttributions } =
+			await reconstructionService.reconstructFromResolvedSource({
+				config: childConfig,
+				memoryOwnerAgentId: runtimeSource.source.sourceId,
+				projectId: context.projectId,
+				credentialProvider: context.credentialProvider,
+				toolDescriptors: runtimeSource.toolDescriptors,
+				toolCodeByName: runtimeSource.toolCodeByName,
+				skills: runtimeSource.skills,
+				runtimeProfile: 'sub-agent',
+				runType: context.runType,
+				workflowToolExecutionMode: context.workflowToolExecutionMode,
+				parentAgentIdForDelegation: context.parentAgentId,
+				user: context.user,
+				instrumentation: context.instrumentation,
+				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
+				...(context.parentWorkspaceHandle !== undefined
+					? {
+							parentWorkspace: {
+								handle: context.parentWorkspaceHandle,
+								delegationThreadId: threadId,
+							},
+						}
+					: {}),
+			});
 
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
@@ -317,6 +319,7 @@ export class SubAgentRunner {
 			const { messageRecord, result } = await consumeAgentStream(
 				resultStream,
 				recorder,
+				createAttributionTracker(mcpServerAttributions),
 				context.onChunk,
 			);
 			const suspended = result.pendingSuspend !== undefined && result.pendingSuspend.length > 0;
@@ -485,6 +488,7 @@ async function getReconstructionService() {
 async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
+	attributionTracker: ReturnType<typeof createAttributionTracker>,
 	onChunk?: (chunk: StreamChunk) => void,
 ): Promise<{ messageRecord: MessageRecord; result: GenerateResult }> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
@@ -492,6 +496,12 @@ async function consumeAgentStream(
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
+		// Recorded before the record is read, so the label reaches the child's
+		// timeline, the parent's live stream, and the answer the parent model sees.
+		for (const attributionChunk of attributionTracker.observe(value)) {
+			recorder.record(attributionChunk);
+			onChunk?.(attributionChunk);
+		}
 		onChunk?.(value);
 		if (value.type === 'tool-call-suspended') {
 			pendingSuspend.push({

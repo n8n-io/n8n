@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useStorage } from '@vueuse/core';
+import { useEventListener, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -18,6 +18,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -42,7 +43,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -89,6 +90,7 @@ import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/use
 import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
@@ -154,6 +156,7 @@ const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -242,7 +245,7 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
+async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 	const session = sessionsStore.threads.find(({ id }) => id === threadId);
@@ -256,32 +259,39 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle,
-		...(event
-			? {
-					executionId: event.executionId,
-					initialDraft: buildAgentFixWithAssistantPrompt(
-						{
-							projectId: projectId.value,
-							agentId: agentId.value,
-							agentName: agentName.value || undefined,
-							threadId,
-							sessionTitle,
-							...(sessionNumber !== undefined ? { sessionNumber } : {}),
-							executionId: event.executionId,
-							failures: event.failures,
-						},
-						locale,
-					),
-				}
-			: {}),
+		...(!event
+			? {}
+			: 'failures' in event
+				? {
+						executionId: event.executionId,
+						initialDraft: buildAgentFixWithAssistantPrompt(
+							{
+								projectId: projectId.value,
+								agentId: agentId.value,
+								agentName: agentName.value || undefined,
+								threadId,
+								sessionTitle,
+								...(sessionNumber !== undefined ? { sessionNumber } : {}),
+								executionId: event.executionId,
+								failures: event.failures,
+							},
+							locale,
+						),
+					}
+				: { initialDraft: buildAgentChangeRequestPrompt(event.changeRequest, locale) }),
 	};
 
 	if (isArtifactMode.value) {
+		// The host closes the dock — only it knows whether the hand-off went
+		// through (it refuses one while its composer holds a draft).
 		emit('assistant-handoff', params);
 		return;
 	}
 
-	await sendPreviewSessionToInstanceAi(params);
+	// Close the preview once the assistant has the request: coming back to an
+	// open preview chat beside the assistant reads as two places to ask.
+	// No route push — the hand-off already navigated to the assistant.
+	if (await sendPreviewSessionToInstanceAi(params)) persistedPreviewOpen.value = false;
 }
 
 /**
@@ -1103,6 +1113,12 @@ async function flushAutosave() {
 		mcpAutosave.flushAutosave(),
 	]);
 }
+
+useEventListener(document, 'keydown', (event) => {
+	if (!isCtrlKeyPressed(event) || event.key.toLowerCase() !== 's') return;
+	event.preventDefault();
+	void flushAutosave().catch(() => {});
+});
 
 async function flushPendingRouteDraftBeforeNavigation() {
 	if (!isRouteAgentPending.value || !isUnsaved.value) return;
@@ -2152,6 +2168,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
 				/>
 
 				<AgentVersionHistoryPanel

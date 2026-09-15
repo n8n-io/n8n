@@ -5,6 +5,7 @@ import {
 	makeScheduleTriggerWorkflow,
 	makeCronScheduleTriggerWorkflow,
 } from './schedule-trigger-workflow';
+import { durableScheduleTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
 // Durable scheduler path. Both flags are required: with only
@@ -14,16 +15,7 @@ import { test, expect } from '../../../fixtures/base';
 //
 // A successful trigger-mode execution does not by itself prove durable-vs-legacy
 // (both emit `mode:trigger`); the restart-continuity spec distinguishes them.
-test.use({
-	capability: {
-		env: {
-			N8N_SCHEDULER_ENABLED: 'true',
-			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
-			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
-		},
-	},
-});
+test.use(durableScheduleTestConfig);
 
 test.describe(
 	'Schedule Trigger (durable scheduler)',
@@ -37,25 +29,17 @@ test.describe(
 			await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 		});
 
-		test('should not fire once per sweep when the tick is slower than the sweep', async ({
-			api,
-		}) => {
-			// Sweep and executor run every 1s but the schedule ticks every 2s. The
-			// dedupe guards (row claim + guarded fire-time write) must collapse the
-			// intervening sweeps so a single tick yields a single execution, not one
-			// per second.
+		test('should execute each scheduled tick once', async ({ api }) => {
+			// The claim and fire-time guards must prevent duplicate executions.
 			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
-			// Count the delta over a fixed window rather than the absolute total:
-			// expectScheduleTriggerFires already polled for up to 60s, so ticks
-			// accrued during detection must not count against the window's budget.
+			// The delta excludes executions created during initial detection.
 			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
 			await sleep(10_000);
 			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
 			const fired = countAfter - countBefore;
 
-			// ~5 expected over 10s at a 2s tick. A per-sweep double-fire (once every
-			// 1s) would land near ~10. Tolerant band absorbs scheduling jitter.
+			// This range allows for scheduling jitter around five expected executions.
 			expect(fired).toBeGreaterThanOrEqual(2);
 			expect(fired).toBeLessThanOrEqual(8);
 		});
