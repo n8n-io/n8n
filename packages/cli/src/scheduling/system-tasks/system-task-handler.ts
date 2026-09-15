@@ -25,9 +25,6 @@ export class SystemTaskHandler implements TaskHandler {
 	) {}
 
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
-		const decision =
-			this.systemTask.effects === 'non-idempotent' ? report.dispatched() : report.notDispatched();
-
 		const outcome = await observeSystemTaskRun(
 			this.eventService,
 			this.tracing,
@@ -50,6 +47,9 @@ export class SystemTaskHandler implements TaskHandler {
 			jobId: task.jobId,
 		});
 
-		return decision;
+		// Non-idempotent work is pinned to one attempt, so a dispatch marker can
+		// never prevent a redelivery. Stamping it before the run would only record
+		// a thrown run as succeeded and drop its error message.
+		return report.notDispatched();
 	}
 }
