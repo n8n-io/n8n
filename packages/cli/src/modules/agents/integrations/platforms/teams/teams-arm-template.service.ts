@@ -15,7 +15,11 @@ const BOT_API_VERSION = '2022-09-15';
 export interface TeamsArmTemplateOptions {
 	agentName: string;
 	agentId: string;
-	/** Application (client) ID of the Entra app backing the bot. */
+	/**
+	 * Application (client) ID of the Entra app backing the bot. Empty before the
+	 * bot exists: the user is creating that app in the portal, and the deployment
+	 * blade is where they paste its ID.
+	 */
 	msaAppId: string;
 	/** Directory (tenant) ID, so the bot is registered single-tenant. */
 	msaAppTenantId: string;
@@ -32,8 +36,14 @@ export class TeamsArmTemplateService {
 	/**
 	 * Every value the user would otherwise copy is a parameter default, because
 	 * the portal pre-fills the blade from defaults and offers no way to pass
-	 * values in the URL. The user picks a subscription and a resource group and
-	 * nothing else.
+	 * values in the URL.
+	 *
+	 * The two Entra IDs are the exception, and only on a first run: the user is
+	 * creating that app registration in the portal right now, so nothing here
+	 * knows them yet and they arrive blank. Everything that is easy to get wrong
+	 * — the endpoint, the Teams channel, the single-tenant type — is already
+	 * filled in, and the next step reads those IDs back off the first activity
+	 * so they are never typed into n8n.
 	 */
 	buildTemplate(options: TeamsArmTemplateOptions): Record<string, unknown> {
 		return {

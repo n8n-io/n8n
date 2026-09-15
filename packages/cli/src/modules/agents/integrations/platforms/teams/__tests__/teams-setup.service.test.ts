@@ -76,20 +76,19 @@ describe('TeamsSetupService', () => {
 			);
 		});
 
-		it('withholds the package and deployment until a credential is connected', async () => {
+		it('offers the deployment before any credential exists, since that is how one is got', async () => {
 			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBeNull();
-			expect(state.deployToAzureUrl).toBeNull();
+			expect(state.deployToAzureUrl).toContain('portal.azure.com');
 		});
 
-		it('offers the deployment once a credential is connected', async () => {
+		it('reports the bot once a credential is connected', async () => {
 			connectTeamsCredential();
 
 			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBe(CLIENT_ID);
-			expect(state.deployToAzureUrl).toContain('portal.azure.com');
 		});
 
 		it('ignores a connected credential of the wrong type', async () => {
@@ -137,6 +136,20 @@ describe('TeamsSetupService', () => {
 			await expect(
 				service.buildArmTemplate({ projectId: PROJECT_ID, agentId: AGENT_ID, token: 'nope' }),
 			).rejects.toThrow(/expired/);
+		});
+
+		it('leaves the Entra IDs blank before a credential exists, rather than refusing', async () => {
+			const template = await service.buildArmTemplate({
+				projectId: PROJECT_ID,
+				agentId: AGENT_ID,
+				token: validToken(),
+			});
+
+			const parameters = template.parameters as Record<string, { defaultValue: unknown }>;
+			expect(parameters.msaAppId.defaultValue).toBe('');
+			expect(parameters.msaAppTenantId.defaultValue).toBe('');
+			// The fiddly half is still filled in, which is the point of the button.
+			expect(parameters.messagingEndpoint.defaultValue).toContain('/webhooks/teams');
 		});
 
 		it('does not read the agent at all when the token is bad', async () => {

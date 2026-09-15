@@ -35,9 +35,9 @@ export class TeamsSetupService {
 	) {}
 
 	/**
-	 * The package and the deployment both need the Entra client ID, so both stay
-	 * null until a credential is connected. That is what makes the stepper
-	 * connect the credential first, unlike Discord.
+	 * The deployment comes first and needs no credential: creating the bot is how
+	 * the user gets one. The package comes last and does need it, because the
+	 * manifest carries the bot's client ID.
 	 */
 	async getSetupState(scope: AgentScope): Promise<TeamsAgentSetupState> {
 		const agent = await this.getAgent(scope);
@@ -46,9 +46,7 @@ export class TeamsSetupService {
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
 			botId: identity?.clientId ?? null,
-			deployToAzureUrl: identity
-				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId)
-				: null,
+			deployToAzureUrl: this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId),
 		};
 	}
 
@@ -80,16 +78,15 @@ export class TeamsSetupService {
 		}
 
 		const agent = await this.getAgent(scope);
+		// Absent on a first run, present when repointing a bot that is already
+		// connected. Either way the blade opens; only these two fields differ.
 		const identity = await this.findBotIdentity(agent);
-		if (!identity) {
-			throw new BadRequestError('Connect a Microsoft Entra credential before deploying the bot.');
-		}
 
 		return this.armTemplateService.buildTemplate({
 			agentName: agent.name,
 			agentId: agent.id,
-			msaAppId: identity.clientId,
-			msaAppTenantId: identity.tenantId,
+			msaAppId: identity?.clientId ?? '',
+			msaAppTenantId: identity?.tenantId ?? '',
 			messagingEndpoint: this.messagingEndpointUrl(scope),
 		});
 	}
