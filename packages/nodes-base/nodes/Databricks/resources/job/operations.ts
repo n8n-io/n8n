@@ -12,6 +12,12 @@ export const jobOperations: INodeProperties = {
 	},
 	options: [
 		{
+			name: 'Get Run Output',
+			value: 'getRunOutput',
+			description: 'Get what the tasks of a job run produced',
+			action: 'Get run output',
+		},
+		{
 			name: 'Run',
 			value: 'run',
 			description: 'Start a run of an existing job',
