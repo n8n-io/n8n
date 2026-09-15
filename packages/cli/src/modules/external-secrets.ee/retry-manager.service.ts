@@ -77,13 +77,15 @@ export class ExternalSecretsRetryManager {
 			this.logger.debug(`Retrying operation for ${key} (attempt ${attempt + 1})`);
 			this.retries.delete(key);
 
-			// Detached from any caller, so a throw here would be an unhandled rejection.
-			// connectProvider() throws outright when the key has left the registry.
+			// Detached from any caller, so a throw here would be an unhandled rejection. A throw is
+			// terminal: connectProvider() throws when the key has left the registry, and a retry that
+			// slipped past cancelRetry() would otherwise re-arm itself forever.
 			let result: { success: boolean; error?: Error };
 			try {
 				result = await operation();
 			} catch (error) {
-				result = { success: false, error: ensureError(error) };
+				this.logger.warn(`Stopped retrying ${key}`, { error: ensureError(error) });
+				return;
 			}
 
 			if (result.success) {

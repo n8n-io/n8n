@@ -28,7 +28,7 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('test-key')).toBe(false);
 		});
 
-		it('should keep retrying when a scheduled attempt throws', async () => {
+		it('should stop retrying when a scheduled attempt throws', async () => {
 			const operation = vi
 				.fn()
 				.mockResolvedValueOnce({ success: false, error: new Error('Connection failed') })
@@ -38,7 +38,7 @@ describe('RetryManager', () => {
 			await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_INITIAL_BACKOFF);
 
 			expect(operation).toHaveBeenCalledTimes(2);
-			expect(retryManager.isRetrying('test-key')).toBe(true);
+			expect(retryManager.isRetrying('test-key')).toBe(false);
 		});
 
 		it('should schedule retry when operation fails', async () => {
