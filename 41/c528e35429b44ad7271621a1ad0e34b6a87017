@@ -1,0 +1,55 @@
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-settings.service.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-182
+scripts/lint-parity/samples.json
+  s_961920f67985bf::t_a93dbd3372682a 216
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.module.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-125
+packages/cli/src/modules/instance-reporting.ee/database/entities/instance-monitoring-report.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-65
+packages/cli/eslint.config.mjs
+  s_961920f67985bf::t_be0651aead9d7c 389
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-scheduler.service.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-327
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-124
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-189
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.config.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-27
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.constants.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-8
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-settings.service.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-181
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-570
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.controller.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-41
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-275
+packages/cli/src/modules/instance-reporting.ee/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-235
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_961920f67985bf::t_d71d63e33a362e 1-223
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_961920f67985bf::t_d71d63e33a362e 1-140
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.module.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-91
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.controller.ts
+  s_961920f67985bf::t_d71d63e33a362e 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "41c528e35429b44ad7271621a1ad0e34b6a87017",
+  "prompts": {},
+  "sessions": {
+    "s_961920f67985bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea13a67a-7e5e-4cd0-80dc-1276fccc5591",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
