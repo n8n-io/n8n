@@ -56,12 +56,15 @@ export async function contentfulApiRequestAllItems(
 
 	let responseData;
 
-	query.limit = 100;
+	// Contentful's `skip` is the index of the first record to return, so it
+	// has to advance by the page size to reach the next page.
+	const limit = 100;
+	query.limit = limit;
 	query.skip = 0;
 
 	do {
 		responseData = await contentfulApiRequest.call(this, method, resource, body, query);
-		query.skip = (query.skip + 1) * query.limit;
+		query.skip = (query.skip as number) + limit;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
