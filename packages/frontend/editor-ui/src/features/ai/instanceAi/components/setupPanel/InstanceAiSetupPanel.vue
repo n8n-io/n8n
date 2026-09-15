@@ -177,16 +177,14 @@ const execution = useSetupPanelExecution({ thread, workflowId: () => props.workf
 
 const selectedItemId = ref<string>();
 // Persist dismissal, not completion. New requirements reopen the panel.
-const setupDismissed = useLocalStorage(
-	() =>
-		LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED(
-			usersStore.currentUserId ?? '',
-			thread.id,
-			props.workflowId,
-		),
-	false,
-	{ writeDefaults: false },
+const setupDismissedKey = computed(() =>
+	LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED(
+		usersStore.currentUserId ?? '',
+		thread.id,
+		props.workflowId,
+	),
 );
+const setupDismissed = useLocalStorage(setupDismissedKey, false, { writeDefaults: false });
 watch(
 	() => props.workflowId,
 	() => {
@@ -494,12 +492,16 @@ watch(
 async function onExecute() {
 	if (terminalStatus.value !== 'complete' || isChatBusy.value || requestingExecution.value) return;
 	const workflowId = props.workflowId;
+	const dismissedKey = setupDismissedKey.value;
 	try {
 		const result = await execution.executeWorkflow();
+		if (!active || !result?.notified) return;
+		if (props.workflowId !== workflowId) {
+			// On return, the pending-row watcher reopens setup if this workflow needs more input.
+			localStorage.setItem(dismissedKey, 'true');
+			return;
+		}
 		if (
-			active &&
-			result?.notified &&
-			props.workflowId === workflowId &&
 			allRowsDone.value &&
 			!isAgentBuilding.value &&
 			!hasChanges.value &&
@@ -570,7 +572,10 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 		finishSubmission(result, version);
 		return;
 	}
-	const credential = credentialsStore.getCredentialById(credentialId);
+	const credential =
+		(credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
+			? credentialsStore.getUsableCredentialById(credentialId)
+			: undefined) ?? credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
 	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });

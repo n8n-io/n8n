@@ -142,9 +142,6 @@ const connected = computed(
 		!hasDraft.value &&
 		Boolean(binding.value?.id || binding.value?.__aiGatewayManaged),
 );
-const storedCredential = computed(() =>
-	binding.value?.id ? credentialsStore.getCredentialById(binding.value.id) : undefined,
-);
 watch(
 	() => (isOAuth.value && canQuickConnect.value ? binding.value?.id : undefined),
 	async (id) => {
@@ -167,6 +164,12 @@ const usableCredentials = computed(() =>
 	credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
 		? credentialsStore.getUsableCredentialByType(props.item.credentialType)
 		: [],
+);
+const storedCredential = computed(() =>
+	binding.value?.id
+		? (usableCredentials.value.find(({ id }) => id === binding.value?.id) ??
+			credentialsStore.getCredentialById(binding.value.id))
+		: undefined,
 );
 const showExistingPicker = computed(
 	() =>

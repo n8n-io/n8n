@@ -293,7 +293,7 @@ function isCredentialResolvable(credentialType: string): boolean {
 	if (!isPrivateCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
 	if (!credentialId) return false;
-	const credential = credentialsStore.getCredentialById(credentialId);
+	const credential = findDisplayedCredential(credentialType, credentialId);
 	return credential?.isResolvable === true;
 }
 
@@ -301,7 +301,7 @@ function getSelectedPrivateCredential(credentialType: string): ICredentialsRespo
 	if (!isPrivateCredentialsEnabled.value) return null;
 	const id = selected.value[credentialType]?.id;
 	if (!id) return null;
-	const credential = credentialsStore.getCredentialById(id);
+	const credential = findDisplayedCredential(credentialType, id);
 	return credential?.isResolvable === true ? credential : null;
 }
 

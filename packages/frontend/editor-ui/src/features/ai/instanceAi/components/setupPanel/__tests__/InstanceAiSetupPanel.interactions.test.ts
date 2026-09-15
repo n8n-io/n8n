@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	deepCopy,
 	NodeConnectionTypes,
@@ -18,6 +20,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiCredentialSetupHint,
 	InstanceAiSetupItem,
+	PushMessage,
 } from '@n8n/api-types';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
@@ -32,6 +35,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { getWorkflowExecutionStateStoreId } from '@/app/stores/workflowExecutionState.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -44,15 +48,24 @@ import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelS
 import type { ThreadRuntime } from '../../../instanceAi.store';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 
-const { showMessage, testCredentialInBackground } = vi.hoisted(() => ({
+const { showMessage, testCredentialInBackground, authorize } = vi.hoisted(() => ({
 	showMessage: vi.fn(),
 	testCredentialInBackground: vi.fn().mockResolvedValue(undefined),
+	authorize: vi.fn(),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
 vi.mock('@/features/credentials/composables/useCredentialTestInBackground', () => ({
 	useCredentialTestInBackground: () => ({ testCredentialInBackground }),
 }));
+vi.mock('@/features/credentials/composables/useCredentialOAuth', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/credentials/composables/useCredentialOAuth')>();
+	return {
+		...actual,
+		useCredentialOAuth: () => ({ ...actual.useCredentialOAuth(), authorize }),
+	};
+});
 vi.mock('@/app/api/workflows', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	getWorkflow: vi.fn(),
@@ -69,7 +82,8 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 	};
 });
 
-let thread: SetupPanelThreadSource & Pick<ThreadRuntime, 'sendMessage'>;
+let thread: SetupPanelThreadSource &
+	Pick<ThreadRuntime, 'id' | 'sendMessage' | 'rememberManualExecution'>;
 vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
 
 const accounts = [
@@ -276,6 +290,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 		fetchWorkflow.mockImplementation(async () => deepCopy(saved));
 		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 		thread = reactive({
+			id: 'thread-1',
 			messages: [],
 			setupItemsByWorkflowId: {
 				'wf-1': [
@@ -283,6 +298,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 				],
 			},
 			sendMessage: vi.fn().mockResolvedValue(true),
+			rememberManualExecution: vi.fn(),
 		});
 	});
 
@@ -411,6 +427,127 @@ describe('InstanceAiSetupPanel interactions', () => {
 		},
 	);
 
+	it('keeps private Connect available after an unrelated credential list replaces the flat map', async () => {
+		vi.spyOn(useSettingsStore(), 'isModuleActive').mockReturnValue(true);
+		const credential = mock<ICredentialsResponse>({
+			id: 'private-account',
+			name: 'Private Slack',
+			type: 'slackApi',
+			isResolvable: true,
+			connectedByMe: false,
+			scopes: ['credential:read', 'credential:connect'],
+		});
+		const credentials = mockedStore(useCredentialsStore);
+		credentials.setCredentials([credential]);
+		credentials.usableCredentials = { [credential.id]: credential };
+		saved.nodes[0].credentials = { slackApi: { id: credential.id, name: credential.name } };
+		const view = renderPanel(false, {
+			global: { stubs: { InstanceAiSetupCredential: false, NodeCredentials: false } },
+		});
+		await userEvent.click(await view.findByRole('button', { name: /Slack/ }));
+		expect(await view.findByTestId('node-credential-private-connect')).toBeEnabled();
+		credentials.setCredentials([]);
+		await flushPromises();
+		expect(credentials.getCredentialById(credential.id)).toBeUndefined();
+		expect(credentials.getUsableCredentialById(credential.id)).toMatchObject({
+			connectedByMe: false,
+		});
+		expect(view.getByTestId('node-credential-private-connect')).toBeEnabled();
+		authorize.mockResolvedValueOnce(true);
+		await userEvent.click(view.getByTestId('node-credential-private-connect'));
+		await flushPromises();
+		expect(authorize).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ id: credential.id, type: credential.type, isResolvable: true }),
+		);
+		expect(credentials.getUsableCredentialById(credential.id)).toMatchObject({
+			connectedByMe: true,
+		});
+		expect(view.getByTestId('node-credential-private-connected-actions')).toBeVisible();
+		expect(testCredentialInBackground).toHaveBeenCalledWith(
+			credential.id,
+			credential.name,
+			credential.type,
+		);
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('keeps a completed workflow dismissed when its execution finishes on another artifact', async () => {
+		saved.nodes[0].parameters = { channel: 'ready', options: { value: 'ready' } };
+		saved.nodes.push(createTestNode({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }));
+		const nodeTypes = mockedStore(useNodeTypesStore);
+		const notifyType = nodeTypes.allNodeTypes[0];
+		const triggerType: INodeTypeDescription = {
+			...notifyType,
+			name: 'n8n-nodes-base.manualTrigger',
+			group: ['trigger'],
+			credentials: [],
+			properties: [],
+		};
+		nodeTypes.getNodeType = vi.fn((type) => (type === triggerType.name ? triggerType : notifyType));
+		const otherWorkflow = createTestWorkflow({ id: 'wf-2', nodes: deepCopy(saved.nodes) });
+		vi.mocked(getWorkflow).mockImplementation(async (_context, id) =>
+			deepCopy(id === otherWorkflow.id ? otherWorkflow : saved),
+		);
+		fetchWorkflow.mockImplementation(async (id) =>
+			deepCopy(id === otherWorkflow.id ? otherWorkflow : saved),
+		);
+		mockedStore(useNodeTypesStore).isTriggerNode = vi.fn(
+			(type) => type === 'n8n-nodes-base.manualTrigger',
+		);
+		const handlers = new Set<(event: PushMessage) => void>();
+		const push = mockedStore(usePushConnectionStore);
+		push.isConnected = true;
+		push.addEventListener.mockImplementation((handler) => {
+			handlers.add(handler);
+			return () => {
+				handlers.delete(handler);
+			};
+		});
+		const workflows = mockedStore(useWorkflowsStore);
+		workflows.runWorkflow.mockResolvedValueOnce({ executionId: 'run-first' });
+		workflows.fetchExecutionDataById.mockResolvedValue(null);
+		const view = renderPanel(false);
+		await userEvent.click(await view.findByRole('button', { name: /Slack/ }));
+		await fireEvent.change(view.getByRole('combobox'), { target: { value: 'cred-1' } });
+		await userEvent.click(await view.findByRole('button', { name: 'Execute' }));
+		await flushPromises();
+		expect(workflows.runWorkflow).toHaveBeenCalledWith({
+			workflowId: 'wf-1',
+			triggerToStartFrom: { name: 'Start' },
+		});
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		await view.rerender({ workflowId: 'wf-2' });
+		await flushPromises();
+		expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();
+		for (const handler of handlers)
+			handler({
+				type: 'executionFinished',
+				data: { workflowId: 'wf-1', executionId: 'run-first', status: 'success' },
+			});
+		await waitFor(() =>
+			expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+				'The workflow execution finished with execution id "run-first"',
+				undefined,
+				useRootStore().pushRef,
+			),
+		);
+		expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();
+		await view.rerender({ workflowId: 'wf-1' });
+		await flushPromises();
+		expect(view.queryByTestId('instance-ai-setup-panel')).toBeNull();
+		view.unmount();
+		const restored = renderPanel(false);
+		await flushPromises();
+		expect(restored.queryByTestId('instance-ai-setup-panel')).toBeNull();
+		saved.nodes[0].parameters.channel = '';
+		await restored.rerender({ workflowId: 'wf-2' });
+		await flushPromises();
+		await restored.rerender({ workflowId: 'wf-1' });
+		await flushPromises();
+		expect(restored.getByRole('button', { name: /Slack/ })).toBeVisible();
+		expect(restored.queryByRole('button', { name: 'Execute' })).toBeNull();
+	});
+
 	it('opens a remaining bound node and passes its recipe to the picker', async () => {
 		startBuild();
 		const setupHint = {
@@ -505,7 +642,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(await rendered.findByPlaceholderText('Choose a channel')).toBeVisible();
 	});
 
-	it('disposes the temporary execution store when a parameter detail closes', async () => {
+	it('disposes the temporary execution store when the panel unmounts', async () => {
 		const rendered = await openParameters(false, {
 			global: { stubs: { ParameterInputList: false } },
 		});
@@ -515,6 +652,30 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(getActivePinia()!.state.value[storeId]).toBeDefined();
 		rendered.unmount();
 		expect(getActivePinia()!.state.value[storeId]).toBeUndefined();
+	});
+
+	it.each(['back', 'escape'])('disposes detail stores after closing with %s', async (method) => {
+		const rendered = await openParameters(false, {
+			global: { stubs: { ParameterInputList: false, transition: false } },
+		});
+		const documentId = createWorkflowDocumentId('wf-1', 'wf-1:parameters:Notify');
+		const storeIds = [
+			useWorkflowDocumentStore(documentId).$id,
+			useNDVStore(documentId).$id,
+			getWorkflowExecutionStateStoreId(documentId),
+		];
+		for (const id of storeIds) expect(getActivePinia()!.state.value[id]).toBeDefined();
+		if (method === 'back') {
+			await userEvent.click(rendered.getByRole('button', { name: 'Back to setup checklist' }));
+		} else {
+			rendered.getByRole('button', { name: 'Back to setup checklist' }).focus();
+			await userEvent.keyboard('{Escape}');
+		}
+		await waitFor(() => {
+			for (const id of storeIds) expect(getActivePinia()!.state.value[id]).toBeUndefined();
+		});
+		expect(rendered.getByTestId('instance-ai-setup-panel')).toBeVisible();
+		expect(rendered.getByRole('button', { name: /Slack/ })).toBeVisible();
 	});
 
 	it.each([true, false])('clears saved drafts with a hydrated canvas: %s', async (hydrated) => {

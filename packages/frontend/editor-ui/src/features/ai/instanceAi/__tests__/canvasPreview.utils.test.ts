@@ -1187,6 +1187,7 @@ describe('isAgentEditingWorkflow', () => {
 		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
 		call.startedAt = '2026-09-15T08:01:00.000Z';
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+		call.startedAt = '2026-09-15T08:00:00.000Z';
 		call.isLoading = false;
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});

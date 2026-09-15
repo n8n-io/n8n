@@ -165,6 +165,7 @@ const item = {
 } as const;
 const node = createTestNode({ name: 'Service', type: 'test.service' });
 const savedCredential = mock<ICredentialsResponse>({
+	isResolvable: false,
 	id: 'new-credential',
 	name: 'Service account',
 	type: 'serviceApi',
@@ -531,11 +532,10 @@ describe('InstanceAiSetupCredential', () => {
 		'reuses the scoped picker for existing and private credentials, private: %s',
 		async (isPrivate) => {
 			const store = mockedStore(useCredentialsStore);
+			const credential = { ...savedCredential, isResolvable: isPrivate };
 			store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
-			store.getUsableCredentialByType = vi.fn().mockReturnValue([savedCredential]);
-			store.getCredentialById = vi
-				.fn()
-				.mockReturnValue({ ...savedCredential, isResolvable: isPrivate });
+			store.getUsableCredentialByType = vi.fn().mockReturnValue([credential]);
+			store.getCredentialById = vi.fn().mockReturnValue(credential);
 			const rendered = renderComponent({
 				props: {
 					node: isPrivate
@@ -681,21 +681,28 @@ describe('InstanceAiSetupCredential', () => {
 		expect(rendered.getByRole('button', { name: 'Save' })).toBeDisabled();
 	});
 
-	it.each(['version', 'action', 'unsupported'])(
-		'omits Gateway if any bound node fails the %s eligibility check',
-		async (reason) => {
-			gateway.isEnabled.value = true;
-			if (reason === 'version') gateway.isNodeTypeVersionSupported.mockReturnValue(false);
-			if (reason === 'action') gateway.isActionSupported.mockReturnValue(false);
-			const boundNode = {
-				...node,
-				type: reason === 'unsupported' ? 'n8n-nodes-base.httpRequest' : node.type,
-				parameters: { operation: 'send' },
-			};
-			const rendered = renderComponent({ props: { nodes: [node, boundNode] } });
-			await flushPromises();
-			expect(rendered.queryByRole('button', { name: 'Use credits' })).toBeNull();
-			expect(rendered.getByRole('button', { name: 'Save' })).toBeVisible();
-		},
-	);
+	it.each([
+		{ reason: 'version', reverse: false },
+		{ reason: 'version', reverse: true },
+		{ reason: 'action', reverse: false },
+		{ reason: 'unsupported', reverse: false },
+	])('omits Gateway when a node fails $reason, reversed: $reverse', async ({ reason, reverse }) => {
+		gateway.isEnabled.value = true;
+		if (reason === 'version')
+			gateway.isNodeTypeVersionSupported.mockImplementation(
+				(_type: string, version: number) => version === 1,
+			);
+		if (reason === 'action') gateway.isActionSupported.mockReturnValue(false);
+		const boundNode = {
+			...node,
+			type: reason === 'unsupported' ? 'n8n-nodes-base.httpRequest' : node.type,
+			typeVersion: 2,
+			parameters: { operation: 'send' },
+		};
+		const nodes = [{ ...node, typeVersion: 1 }, boundNode];
+		const rendered = renderComponent({ props: { nodes: reverse ? nodes.toReversed() : nodes } });
+		await flushPromises();
+		expect(rendered.queryByRole('button', { name: 'Use credits' })).toBeNull();
+		expect(rendered.getByRole('button', { name: 'Save' })).toBeVisible();
+	});
 });

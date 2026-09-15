@@ -35,6 +35,8 @@ const { actionsMock, showMessageMock, testCredentialMock, oauthMock, credentials
 		},
 		credentialsMock: {
 			getCredentialById: vi.fn(),
+			getUsableCredentialById: vi.fn(),
+			hasUsableCredentialsForScope: vi.fn(() => false),
 			getUsableCredentialByType: vi.fn<() => Array<{ id: string; name: string }>>(() => []),
 		},
 		actionsMock: {
@@ -563,24 +565,6 @@ describe('InstanceAiSetupPanel', () => {
 		const { getByRole, getByTestId } = renderComponent();
 		await fireEvent.click(getByRole('button', { name: /Notion/ }));
 		expect(getByTestId('setup-panel-back')).toBeVisible();
-	});
-
-	it('opens an overlay and keeps the checklist in place beneath it', async () => {
-		stateMock.rows = [{ item: parametersItem, isDone: false }];
-		stateMock.nodesByName = { 'Send Slack': slackNode };
-
-		const { getByTestId, getAllByTestId, queryByTestId, queryAllByTestId } = renderComponent();
-
-		await fireEvent.click(getAllByTestId('setup-panel-row')[0]);
-
-		expect(getByTestId('setup-panel-back')).toBeInTheDocument();
-		expect(queryAllByTestId('setup-panel-row')).toHaveLength(1);
-		expect(getAllByTestId('setup-panel-row')[0].closest('ul')).toHaveAttribute('inert');
-
-		await fireEvent.click(getByTestId('setup-panel-back'));
-
-		expect(queryByTestId('setup-panel-back')).toBeNull();
-		expect(getAllByTestId('setup-panel-row')).toHaveLength(1);
 	});
 
 	it('connects managed OAuth directly from the row and keeps cancellation pending', async () => {

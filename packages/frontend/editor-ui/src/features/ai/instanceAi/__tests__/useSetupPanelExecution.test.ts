@@ -259,9 +259,20 @@ describe('useSetupPanelExecution', () => {
 
 	it('allows another workflow to execute while the first waits for a webhook', async () => {
 		const { executeWorkflow, workflowId, workflows, isRunning } = harness();
+		const otherWorkflow = createTestWorkflow({
+			id: 'wf-2',
+			nodes: [createTestNode({ name: 'Second start', type: 'n8n-nodes-base.manualTrigger' })],
+		});
+		vi.mocked(getWorkflow).mockImplementation(async (_context, id) =>
+			id === otherWorkflow.id ? otherWorkflow : workflow,
+		);
 		workflows.runWorkflow.mockResolvedValueOnce({ waitingForWebhook: true });
 		const first = executeWorkflow();
 		await flushPromises();
+		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(1, {
+			workflowId: 'wf-1',
+			triggerToStartFrom: { name: 'Start' },
+		});
 		expect(isRunning.value).toBe(true);
 		workflowId.value = 'wf-2';
 		expect(isRunning.value).toBe(false);
@@ -269,8 +280,16 @@ describe('useSetupPanelExecution', () => {
 		const second = executeWorkflow();
 		await flushPromises();
 		expect(workflows.runWorkflow).toHaveBeenCalledTimes(2);
+		expect(workflows.runWorkflow).toHaveBeenNthCalledWith(2, {
+			workflowId: 'wf-2',
+			triggerToStartFrom: { name: 'Second start' },
+		});
 		finish('success', 'exec-2', 'wf-2');
-		await second;
+		await expect(second).resolves.toMatchObject({
+			workflowId: 'wf-2',
+			executionId: 'exec-2',
+			notified: true,
+		});
 		expect(isRunning.value).toBe(false);
 		for (const handler of handlers)
 			handler({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
@@ -363,13 +382,13 @@ describe('useSetupPanelExecution', () => {
 		expect(workflows.runWorkflow).toHaveBeenCalledOnce();
 	});
 
-	it('uses the selected enabled trigger', async () => {
+	it.each([false, true])('selects an eligible trigger, selected disabled: %s', async (disabled) => {
 		const { executeWorkflow, workflows } = harness();
 		vi.mocked(getWorkflow).mockResolvedValueOnce({
 			...workflow,
 			nodes: [
 				workflow.nodes[0],
-				createTestNode({ name: 'Selected', type: 'n8n-nodes-base.manualTrigger' }),
+				createTestNode({ name: 'Selected', type: 'n8n-nodes-base.manualTrigger', disabled }),
 			],
 		});
 		useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1')).setSelectedTriggerNodeName(
@@ -379,9 +398,23 @@ describe('useSetupPanelExecution', () => {
 		await flushPromises();
 		expect(workflows.runWorkflow).toHaveBeenCalledWith({
 			workflowId: 'wf-1',
-			triggerToStartFrom: { name: 'Selected' },
+			triggerToStartFrom: { name: disabled ? 'Start' : 'Selected' },
 		});
 		finish();
 		await pending;
 	});
+
+	it.each(['missing', 'disabled'])(
+		'does not execute when eligible triggers are %s',
+		async (reason) => {
+			const { executeWorkflow, workflows, thread } = harness();
+			vi.mocked(getWorkflow).mockResolvedValueOnce({
+				...workflow,
+				nodes: reason === 'missing' ? [] : [{ ...workflow.nodes[0], disabled: true }],
+			});
+			await expect(executeWorkflow()).rejects.toThrow(/trigger node/i);
+			expect(workflows.runWorkflow).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		},
+	);
 });
