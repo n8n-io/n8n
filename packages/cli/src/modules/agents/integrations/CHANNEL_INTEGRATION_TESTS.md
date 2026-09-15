@@ -67,6 +67,26 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   required: the client-credentials token endpoint is **tenant**-scoped, not `botframework.com`-scoped,
   and the SDK decodes the access token it gets back, so that stub must return a real JWT rather than
   an opaque string.
+#### Teams setup, outside the adapter
+
+The Teams **setup** path is tested separately from the channel, because none of
+it goes through the adapter:
+
+- `teams-manifest.service.test.ts` validates the generated manifest against
+  Microsoft's published schema, vendored at
+  `platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json` so the
+  test needs no network. The schema is **draft-04**, hence `ajv-draft-04`. Icon
+  checks decode the bundled PNGs with `node:zlib` rather than adding a decoder.
+- `teams-discovery.service.test.ts` reuses the same Bot Framework signer idea as
+  the replay helper, but verifies the token *itself* rather than handing it to
+  the adapter: the setup step's claim is that real Bot Framework traffic reaches
+  the messaging endpoint, and only the signature proves it. Falsifying that
+  verification must fail the foreign-signature and wrong-issuer cases.
+- The bundled icons live in `platforms/teams/assets/`. `copyAgentIntegrationAssets`
+  in `packages/cli/scripts/build.mjs` discovers every `platforms/*/assets`
+  directory; a platform that hardcodes itself out of that list works in dev,
+  where assets are read from `src`, and ships without them.
+
 - **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
   refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
   entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities
