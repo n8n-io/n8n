@@ -10,6 +10,11 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
+import {
+	TEAMS_APP_ID as CLIENT_ID,
+	TEAMS_CLIENT_SECRET as CLIENT_SECRET,
+	TEAMS_TENANT_ID as TENANT_ID,
+} from './helpers/teams/synthetic-fixtures';
 import { TeamsIntegration } from '../platforms/teams-integration';
 
 const createTeamsAdapter = vi.fn(() => ({ name: 'teams' }));
@@ -23,9 +28,6 @@ vi.mock('../esm-loader', () => ({
 
 const AGENT_ID = 'agent-1';
 const CREDENTIAL_ID = 'cred-teams';
-const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
-const TENANT_ID = '99999999-8888-7777-6666-555555555555';
-const CLIENT_SECRET = 'test-client-secret';
 
 function servicePrincipalCredential(overrides: Record<string, unknown> = {}) {
 	return {
@@ -52,52 +54,36 @@ function connectionContext(
 	};
 }
 
-function createIntegration(agentRepository = mock<AgentRepository>()) {
-	agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-	return { integration: new TeamsIntegration(mock<Logger>(), agentRepository), agentRepository };
-}
-
 describe('TeamsIntegration', () => {
+	let integration: TeamsIntegration;
+	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
+
 	beforeEach(() => {
 		createTeamsAdapter.mockClear();
+		agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		integration = new TeamsIntegration(mock<Logger>(), agentRepository);
 	});
 
 	describe('platform capabilities', () => {
-		it('reuses the Microsoft Entra service principal credential', () => {
-			const { integration } = createIntegration();
-			expect(integration.credentialTypes).toEqual(['microsoftEntraServicePrincipalApi']);
-		});
-
-		it('stays hidden from the public integrations catalog', () => {
-			const { integration } = createIntegration();
-			expect(integration.internal).toBe(true);
-		});
-
-		it('buffers agent output instead of streaming it', () => {
-			const { integration } = createIntegration();
-			expect(integration.disableStreaming).toBe(true);
+		it('reuses the Entra credential, stays hidden, buffers, and settles in place', () => {
+			expect(integration).toMatchObject({
+				credentialTypes: ['microsoftEntraServicePrincipalApi'],
+				internal: true,
+				disableStreaming: true,
+				// Full Adaptive Card payloads fit, so no callback store is needed.
+				needsShortCallbackData: false,
+				deleteActionMessageBeforeResume: false,
+			});
 		});
 
 		it('runs on every main because Teams only receives webhooks', () => {
-			const { integration } = createIntegration();
 			expect(integration.requiresLeader()).toBe(false);
-		});
-
-		it('carries full Adaptive Card action payloads without a callback store', () => {
-			const { integration } = createIntegration();
-			expect(integration.needsShortCallbackData).toBe(false);
-		});
-
-		it('settles an answered action card in place instead of deleting it', () => {
-			const { integration } = createIntegration();
-			expect(integration.deleteActionMessageBeforeResume).toBe(false);
 		});
 	});
 
 	describe('createAdapter', () => {
 		it('maps the credential onto a single-tenant bot identity', async () => {
-			const { integration } = createIntegration();
-
 			await integration.createAdapter(connectionContext());
 
 			expect(createTeamsAdapter).toHaveBeenCalledWith(
@@ -111,8 +97,6 @@ describe('TeamsIntegration', () => {
 		});
 
 		it('trims whitespace pasted into credential fields', async () => {
-			const { integration } = createIntegration();
-
 			await integration.createAdapter(
 				connectionContext(servicePrincipalCredential({ clientId: `  ${CLIENT_ID}  ` })),
 			);
@@ -123,7 +107,6 @@ describe('TeamsIntegration', () => {
 		});
 
 		it('rejects a credential that uses certificate authentication', async () => {
-			const { integration } = createIntegration();
 			const credential = servicePrincipalCredential({
 				authentication: 'certificate',
 				clientSecret: '',
@@ -131,18 +114,13 @@ describe('TeamsIntegration', () => {
 				certificate: 'pem-cert',
 			});
 
-			await expect(integration.createAdapter(connectionContext(credential))).rejects.toThrow(
-				UserError,
-			);
-			await expect(integration.createAdapter(connectionContext(credential))).rejects.toThrow(
-				/certificate authentication/i,
-			);
+			const rejected = integration.createAdapter(connectionContext(credential));
+			await expect(rejected).rejects.toThrow(UserError);
+			await expect(rejected).rejects.toThrow(/certificate authentication/i);
 			expect(createTeamsAdapter).not.toHaveBeenCalled();
 		});
 
 		it('pins the Bot Connector host instead of letting an env var choose it', async () => {
-			const { integration } = createIntegration();
-
 			await integration.createAdapter(connectionContext());
 
 			expect(createTeamsAdapter).toHaveBeenCalledWith(
@@ -155,8 +133,6 @@ describe('TeamsIntegration', () => {
 			'https://dod-graph.microsoft.us',
 			'https://microsoftgraph.chinacloudapi.cn',
 		])('rejects the sovereign cloud %s', async (graphApiBaseUrl) => {
-			const { integration } = createIntegration();
-
 			await expect(
 				integration.createAdapter(
 					connectionContext(servicePrincipalCredential({ graphApiBaseUrl })),
@@ -170,8 +146,6 @@ describe('TeamsIntegration', () => {
 			['clientSecret', /Client Secret/],
 			['tenantId', /Directory \(tenant\) ID/],
 		])('rejects a credential with no %s', async (field, message) => {
-			const { integration } = createIntegration();
-
 			await expect(
 				integration.createAdapter(connectionContext(servicePrincipalCredential({ [field]: '' }))),
 			).rejects.toThrow(message);
@@ -181,7 +155,6 @@ describe('TeamsIntegration', () => {
 
 	describe('onBeforeConnect', () => {
 		it('rejects a credential another agent already connected', async () => {
-			const { integration, agentRepository } = createIntegration();
 			agentRepository.findByIntegrationCredential.mockResolvedValue([
 				mock<Agent>({ name: 'Support bot' }),
 			]);
@@ -190,8 +163,6 @@ describe('TeamsIntegration', () => {
 		});
 
 		it('surfaces a broken credential before the channel connects', async () => {
-			const { integration } = createIntegration();
-
 			await expect(
 				integration.onBeforeConnect(
 					connectionContext(servicePrincipalCredential({ tenantId: '' })),
@@ -204,8 +175,6 @@ describe('TeamsIntegration', () => {
 		const user = { userId: 'u-1', userName: 'alice', fullName: 'Alice', isBot: false, isMe: false };
 
 		it('names the decision when one was resolved', () => {
-			const { integration } = createIntegration();
-
 			expect(
 				integration.formatActionDecisionMessage({
 					approved: false,
@@ -219,8 +188,6 @@ describe('TeamsIntegration', () => {
 		// decision nor the label, so this generic wording is what a Teams
 		// approval actually settles to today.
 		it('falls back to a generic outcome when no decision reaches it', () => {
-			const { integration } = createIntegration();
-
 			expect(
 				integration.formatActionDecisionMessage({
 					raw: {},
@@ -232,8 +199,6 @@ describe('TeamsIntegration', () => {
 
 	describe('normalizeComponents', () => {
 		it('converts select options into individual buttons', () => {
-			const { integration } = createIntegration();
-
 			expect(
 				integration.normalizeComponents([
 					{
@@ -252,7 +217,6 @@ describe('TeamsIntegration', () => {
 		});
 
 		it('leaves components Adaptive Cards render natively untouched', () => {
-			const { integration } = createIntegration();
 			const components = [
 				{ type: 'section' as const, text: 'Deploy summary' },
 				{ type: 'image' as const, url: 'https://example.com/chart.png', altText: 'Chart' },
@@ -267,7 +231,7 @@ describe('TeamsIntegration', () => {
 
 describe('Teams channel registration', () => {
 	it('resolves by type but stays out of the public catalog', () => {
-		const { integration } = createIntegration();
+		const integration = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
 		const registry = new ChatIntegrationRegistry();
 		registry.register(integration);
 

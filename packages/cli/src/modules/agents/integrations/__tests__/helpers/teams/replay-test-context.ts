@@ -1,5 +1,4 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -20,11 +19,12 @@ import {
 import {
 	TEAMS_APP_ID,
 	TEAMS_SERVICE_URL,
+	TEAMS_CLIENT_SECRET,
 	TEAMS_TENANT_ID,
-	type TeamsActivityFixture,
 } from './synthetic-fixtures';
 
-const TEAMS_CLIENT_SECRET = 'test-client-secret';
+/** Id the Bot Connector stub returns for the first outbound post. */
+export const FIRST_POSTED_MESSAGE_ID = 'message-1000';
 
 /**
  * Bot Framework constants the Teams SDK derives from its `PUBLIC` cloud config.
@@ -38,7 +38,6 @@ const LOGIN_ORIGIN = 'https://login.microsoftonline.com';
 
 export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	chat: ChatInstance;
-	apiCalls: ReplayApiCall[];
 	sendWebhook: (payload: unknown) => Promise<Response>;
 	/** Same payload, no Authorization header — proves the token check is live. */
 	sendUnauthenticatedWebhook: (payload: unknown) => Promise<Response>;
@@ -49,16 +48,18 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 }
 
 /**
- * The Teams adapter exposes no signature-verification escape hatch the way the
- * Slack helper's `webhookVerifier` does, and `TeamsAdapterConfig` cannot pass
- * the Teams SDK's `skipAuth` through. So inbound activities must carry a real
- * RS256 Bot Framework token.
- *
- * The token is signed with a keypair generated per test run and the matching
- * public JWK is served from the stubbed JWKS endpoint, which keeps the
- * adapter's own validation running for real — only the network is answered here.
+ * Signs real RS256 Bot Framework tokens, because the adapter exposes no
+ * verification bypass. The matching JWK is served from the stubbed JWKS, so the
+ * adapter's own validation stays under test.
  */
+let cachedSigner: ReturnType<typeof buildBotFrameworkSigner> | undefined;
+
+/** Reused across contexts: no test needs distinct key material. */
 function createBotFrameworkSigner() {
+	return (cachedSigner ??= buildBotFrameworkSigner());
+}
+
+function buildBotFrameworkSigner() {
 	const keyId = randomUUID();
 	const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 	const jwk = publicKey.export({ format: 'jwk' });
@@ -75,11 +76,11 @@ function createBotFrameworkSigner() {
 				expiresIn: '1h',
 				keyid: keyId,
 			}),
-		/** Sign a token the adapter will accept for an activity on `serviceUrl`. */
-		sign: (serviceUrl: string) =>
+		/** Sign a token the adapter accepts for an activity on TEAMS_SERVICE_URL. */
+		sign: () =>
 			jwt.sign(
 				{
-					serviceurl: serviceUrl,
+					serviceurl: TEAMS_SERVICE_URL,
 					aud: TEAMS_APP_ID,
 					iss: TOKEN_ISSUER,
 					appid: TEAMS_APP_ID,
@@ -91,42 +92,12 @@ function createBotFrameworkSigner() {
 	};
 }
 
-/**
- * Answer every Microsoft host the real adapter reaches: the JWKS the inbound
- * token is validated against, the client-credentials token mint, and the Bot
- * Connector endpoint that outbound replies post to. Outbound activity posts are
- * recorded so tests can assert what the adapter actually sent.
- */
+/** Answer the JWKS, the token mint, and the Bot Connector reply endpoint. */
 function installTeamsApiStub(jwks: object, accessToken: string) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
 
 	nock(JWKS_ORIGIN).persist().get(JWKS_PATH).reply(200, jwks);
-
-	nock(JWKS_ORIGIN)
-		.persist()
-		.get('/v1/.well-known/openidconfiguration')
-		.reply(200, { issuer: TOKEN_ISSUER, jwks_uri: `${JWKS_ORIGIN}${JWKS_PATH}` });
-
-	// Client-credentials mint for outbound calls, plus the OIDC discovery MSAL
-	// performs before it.
-	nock(LOGIN_ORIGIN)
-		.persist()
-		.get(/\/[^/]+\/v2\.0\/\.well-known\/openid-configuration/)
-		.reply(200, {
-			issuer: `${LOGIN_ORIGIN}/botframework.com/v2.0`,
-			token_endpoint: `${LOGIN_ORIGIN}/botframework.com/oauth2/v2.0/token`,
-			authorization_endpoint: `${LOGIN_ORIGIN}/botframework.com/oauth2/v2.0/authorize`,
-			jwks_uri: `${LOGIN_ORIGIN}/botframework.com/discovery/v2.0/keys`,
-			response_modes_supported: ['query', 'fragment', 'form_post'],
-			response_types_supported: ['code', 'id_token', 'token'],
-			subject_types_supported: ['pairwise'],
-			id_token_signing_alg_values_supported: ['RS256'],
-			tenant_region_scope: 'WW',
-			cloud_instance_name: 'microsoftonline.com',
-			cloud_graph_host_name: 'graph.windows.net',
-			msgraph_host: 'graph.microsoft.com',
-		});
 
 	nock(LOGIN_ORIGIN)
 		.persist()
@@ -138,14 +109,9 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 			access_token: accessToken,
 		});
 
-	nock('https://graph.microsoft.com')
-		.persist()
-		.get(/.*/)
-		.reply(404, { error: { code: 'NotFound', message: 'Not stubbed' } });
-
 	// Outbound replies. Recorded as `sendActivity` so assertions read the same
 	// way as the other platforms' `lastPost()`.
-	let nextMessageId = 1000;
+	let nextMessageId = Number(FIRST_POSTED_MESSAGE_ID.split('-')[1]);
 	nock(serviceUrl.origin)
 		.persist()
 		.post(/\/v3\/conversations\/.+\/activities.*/)
@@ -171,15 +137,8 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 	return { apiCalls, restore: () => nock.cleanAll() };
 }
 
-function createIntegration() {
-	return new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>());
-}
-
 export async function createTeamsReplayContext(
-	options: {
-		stream?: StreamChunk[];
-		integration?: AgentIntegrationConfig;
-	} = {},
+	options: { stream?: StreamChunk[] } = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
 	const stub = installTeamsApiStub(signer.jwks, signer.accessToken());
@@ -202,15 +161,10 @@ export async function createTeamsReplayContext(
 		state: createMemoryState(),
 	});
 
-	const integration = options.integration ?? {
-		type: 'teams',
-		credentialId: 'cred-teams',
-		settings: undefined,
-	};
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: createIntegration(),
-		integration,
+		integrationImpl: new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>()),
+		integration: { type: 'teams', credentialId: 'cred-teams', settings: undefined },
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
 	});
@@ -227,22 +181,23 @@ export async function createTeamsReplayContext(
 		);
 
 	const sendWebhook = async (payload: unknown) => {
-		const activity = payload as TeamsActivityFixture;
 		const headers = new Headers();
-		headers.set('authorization', `Bearer ${signer.sign(activity.serviceUrl)}`);
+		headers.set('authorization', `Bearer ${signer.sign()}`);
 		return await post(payload, headers);
 	};
+
+	const lastCall = (method: string) =>
+		stub.apiCalls.filter((call) => call.method === method).at(-1);
 
 	return {
 		...setup,
 		chat: chat as unknown as ChatInstance,
-		apiCalls: stub.apiCalls,
 		sendWebhook,
 		sendUnauthenticatedWebhook: async (payload: unknown) => await post(payload, new Headers()),
 		latestContext: () => setup.messageContextStore.latest(),
 		latestThreadId: () => setup.messageContextStore.latestThreadId(),
-		lastPost: () => [...stub.apiCalls].reverse().find((call) => call.method === 'sendActivity'),
-		lastEdit: () => [...stub.apiCalls].reverse().find((call) => call.method === 'updateActivity'),
+		lastPost: () => lastCall('sendActivity'),
+		lastEdit: () => lastCall('updateActivity'),
 		shutdown: async () => {
 			stub.restore();
 			await setup.shutdown();

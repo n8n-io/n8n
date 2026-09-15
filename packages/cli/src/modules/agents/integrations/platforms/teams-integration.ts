@@ -1,20 +1,26 @@
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Logger as ChatLogger } from 'chat';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../repositories/agent.repository';
+import { createAdapterLogger } from '../adapter-logger';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 } from '../agent-chat-integration';
-import type { SuspendComponent } from '../component-mapper';
+import { expandSelectsToButtons, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTeamsAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+
+/** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
+const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
+
+/** The only Microsoft cloud this channel reaches. */
+const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 
 /**
  * Microsoft Teams platform integration.
@@ -23,32 +29,10 @@ import { resolveIntegrationActionDefinitions } from '../integration-tool-definit
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
- * Three capability notes:
- * - {@link disableStreaming} — Teams streams natively in 1:1 chats but only
- *   buffers in group chats. The base class models one boolean per platform, so
- *   this ships fully buffered and gives up DM streaming rather than streaming
- *   inconsistently by conversation type.
- * - {@link needsShortCallbackData} — Adaptive Card `Action.Submit` payloads carry
- *   no documented size cap, unlike Telegram's 64-byte `callback_data`.
- * - {@link internal} — hidden from the integrations catalog until the setup
- *   stepper exists, because the fallback view cannot show the user the messaging
- *   endpoint URL that Azure Bot Service needs.
- *
  * This first slice targets 1:1 direct messages. Group chats and channels are not
  * blocked, but they are untested: without RSC permissions Teams only delivers an
  * @-mention there, so nothing arrives ambiently.
  */
-/**
- * Pinned rather than left to the adapter's env fallback. Omitting it lets
- * `TEAMS_API_URL` — and below that the Teams SDK's own `SERVICE_URL` — choose the
- * Bot Connector host that proactive sends carry the bot token to. On a
- * multi-tenant instance a stray host variable must not redirect those.
- */
-const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
-
-/** The only Microsoft cloud this channel reaches. See {@link TEAMS_API_URL}. */
-const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
-
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
 	readonly type = 'teams';
@@ -57,7 +41,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly displayLabel = 'Microsoft Teams';
 
-	readonly displayIcon = 'microsoft-teams';
+	readonly displayIcon = 'teams';
 
 	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
 	readonly internal = true;
@@ -93,8 +77,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
 	];
 
-	readonly needsShortCallbackData = false;
-
 	/**
 	 * Teams acknowledges an Adaptive Card action by editing the card in place, so
 	 * the answered card is settled rather than deleted.
@@ -122,15 +104,10 @@ export class TeamsIntegration extends AgentChatIntegration {
 			// The credential always carries a tenant ID, which is what single-tenant
 			// means here. A multi-tenant bot omits it and is not supported yet.
 			appType: 'SingleTenant',
-			logger: this.createAdapterLogger(),
+			logger: createAdapterLogger(this.logger, '[TeamsAdapter]'),
 		});
 	}
 
-	/**
-	 * Nothing here calls Teams: the credential claim reads only our own rows, and
-	 * there is no messaging endpoint to register, so the whole precondition set is
-	 * deterministic and safe to run as a publish preflight.
-	 */
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
 		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
 	}
@@ -146,36 +123,12 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * Adaptive Cards do render a select as `Input.ChoiceSet`, but the adapter
 	 * submits one through a `__auto_submit` sentinel that fans every input out as
 	 * its own action event. A suspended tool call expects a single action to
-	 * resume it, and there is no tenant to verify the fan-out against yet, so
-	 * options become individual buttons — the path HITL resume already uses.
+	 * resume it, so options become individual buttons instead.
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
-		const normalized: SuspendComponent[] = [];
-		for (const c of components) {
-			switch (c.type) {
-				case 'select':
-				case 'radio_select':
-					for (const opt of c.options ?? []) {
-						normalized.push({ type: 'button', label: opt.label, value: opt.value });
-					}
-					break;
-				default:
-					normalized.push(c);
-			}
-		}
-		return normalized;
+		return expandSelectsToButtons(components);
 	}
 
-	/**
-	 * Settling replaces the card, so this is all the user is left with.
-	 *
-	 * Two limits worth knowing, both from flags above rather than from Teams:
-	 * `approved` and `selectedLabel` only arrive via the CallbackStore, which
-	 * {@link needsShortCallbackData} turns off, so an approval settles as the
-	 * generic "Action selected" rather than "Approved". And a Teams card's text
-	 * lives in its Adaptive Card attachment, not in `raw.text`, so there is
-	 * nothing to carry over the way Telegram and Discord do.
-	 */
 	formatActionDecisionMessage({
 		approved,
 		selectedLabel,
@@ -191,11 +144,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 	/**
 	 * Map the Entra service-principal credential onto the adapter's bot identity.
 	 *
-	 * The certificate check is ours to make, not the adapter's: certificate mode
-	 * stores `privateKey`/`certificate` instead of `clientSecret`, so passing it
-	 * through would build an adapter with no secret and fail later with an opaque
-	 * authentication error. The adapter only rejects its own `certificate` option,
-	 * which we never set.
+	 * The certificate check is ours to make: that mode stores no `clientSecret`,
+	 * so passing it through would build an adapter with no secret and fail later
+	 * with an opaque authentication error.
 	 */
 	private extractBotCredentials(credential: Record<string, unknown>): {
 		appId: string;
@@ -251,21 +202,5 @@ export class TeamsIntegration extends AgentChatIntegration {
 			throw new UserError(`The Microsoft Teams credential is missing ${requirement}`);
 		}
 		return value;
-	}
-
-	private createAdapterLogger(): ChatLogger {
-		const forward =
-			(level: 'debug' | 'info' | 'warn' | 'error') =>
-			(message: string, ..._args: unknown[]) => {
-				this.logger[level](`[TeamsAdapter] ${message}`);
-			};
-		const logger: ChatLogger = {
-			child: () => logger,
-			debug: forward('debug'),
-			info: forward('info'),
-			warn: forward('warn'),
-			error: forward('error'),
-		};
-		return logger;
 	}
 }

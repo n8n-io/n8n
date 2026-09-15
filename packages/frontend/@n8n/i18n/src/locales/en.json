@@ -1453,7 +1453,7 @@
 	"agentSessions.origin.telegram": "Telegram",
 	"agentSessions.origin.linear": "Linear",
 	"agentSessions.origin.discord": "Discord",
-	"agentSessions.origin.teams": "Microsoft Teams",
+	"agentSessions.origin.teams": "Teams",
 	"agentSessions.goToParentRun": "Go to parent run",
 	"agentSessions.viewTrace": "View session trace",
 	"agentSessions.langsmithExport.button": "Send to LangSmith",

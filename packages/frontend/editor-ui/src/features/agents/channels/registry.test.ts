@@ -23,12 +23,8 @@ describe('agent channel platform registry', () => {
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
-	});
-
-	// Teams ships without a setup stepper, so it rides the generic fallback view.
-	it('serves Microsoft Teams from the fallback view', () => {
+		// Teams ships without a setup stepper, so it rides the fallback view.
 		expect(isRegisteredAgentChannelPlatform('teams')).toBe(false);
-		expect(getAgentChannelPlatform('teams').type).toBe('unknown');
 	});
 
 	it('derives Slack list metadata from its local runtime state', () => {

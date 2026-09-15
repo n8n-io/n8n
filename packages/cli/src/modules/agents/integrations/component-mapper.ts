@@ -81,6 +81,26 @@ interface ComponentRenderContext {
  * The `chat` package is ESM-only, so every method dynamically imports it
  * via the ESM loader to bypass TypeScript's CJS transform.
  */
+/**
+ * Replace every select with one button per option.
+ *
+ * Shared by the platforms whose rich cards have no select control. Telegram
+ * keeps its own override because it also rewrites images.
+ */
+export function expandSelectsToButtons(components: SuspendComponent[]): SuspendComponent[] {
+	const normalized: SuspendComponent[] = [];
+	for (const c of components) {
+		if (c.type === 'select' || c.type === 'radio_select') {
+			for (const opt of c.options ?? []) {
+				normalized.push({ type: 'button', label: opt.label, value: opt.value });
+			}
+			continue;
+		}
+		normalized.push(c);
+	}
+	return normalized;
+}
+
 export class ComponentMapper {
 	/**
 	 * Convert a suspend payload to a Chat SDK Card.
