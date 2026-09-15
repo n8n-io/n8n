@@ -12,12 +12,18 @@ import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
+	SharedWorkflowRepository,
 	VariablesRepository,
 	TagRepository,
 	WorkflowHistoryRepository,
 	WorkflowTagMappingRepository,
 	FolderRepository,
 	ProjectRepository,
+	ProjectRelationRepository,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -256,8 +262,21 @@ async function snapshotApplyState() {
 		Container.get(DataTableRepository).find({ order: { id: 'ASC' } }),
 		Container.get(DataTableColumnRepository).find({ order: { id: 'ASC' } }),
 		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
+		Container.get(ProjectRelationRepository).find({
+			relations: { role: true },
+			order: { projectId: 'ASC', userId: 'ASC' },
+		}),
 		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
+		Container.get(SharedWorkflowRepository).find({
+			order: { workflowId: 'ASC', projectId: 'ASC' },
+		}),
 		Container.get(WorkflowHistoryRepository).find({ order: { versionId: 'ASC' } }),
+		Container.get(WorkflowPublishHistoryRepository).find({ order: { id: 'ASC' } }),
+		Container.get(WorkflowPublishedVersionRepository).find({ order: { workflowId: 'ASC' } }),
+		Container.get(WorkflowPublicationOutboxRepository).find({ order: { id: 'ASC' } }),
+		Container.get(WorkflowPublicationTriggerStatusRepository).find({
+			order: { workflowId: 'ASC', nodeId: 'ASC' },
+		}),
 		Container.get(FolderRepository).find({ order: { id: 'ASC' } }),
 		Container.get(TagRepository).find({ order: { id: 'ASC' } }),
 		Container.get(WorkflowTagMappingRepository).find({
