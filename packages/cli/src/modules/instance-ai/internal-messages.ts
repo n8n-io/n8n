@@ -3,6 +3,8 @@ import {
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
 	type InstanceAiResourceAttachment,
+	type InstanceAiThreadArtifact,
+	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
@@ -47,6 +49,8 @@ export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
  */
 export const INSTANCE_CONTEXT_OPEN_TAG = '<instance-context>';
 export const INSTANCE_CONTEXT_CLOSE_TAG = '</instance-context>';
+export const THREAD_ARTIFACTS_OPEN_TAG = '<thread-artifacts>';
+export const THREAD_ARTIFACTS_CLOSE_TAG = '</thread-artifacts>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
@@ -80,7 +84,7 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -228,4 +232,80 @@ export function extractAgentPreviewHandoffContext(
 		jsonParse(match[1], { fallbackValue: undefined }),
 	);
 	return parsed.success ? parsed.data : undefined;
+}
+
+const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
+	workflow: 'Workflow',
+	agent: 'Agent',
+	'data-table': 'Data table',
+};
+
+/** Longest a display name may be inside the block. Matches the instance-context bound. */
+const THREAD_ARTIFACT_NAME_MAX_LENGTH = 128;
+
+/**
+ * Neutralise a stored name before it enters the block. Names are user-written and
+ * the block is prose the model reads as trusted, so a name holding a closing tag
+ * would end the block early.
+ */
+function sanitiseThreadArtifactName(value: string): string {
+	const printable = Array.from(value)
+		.map((character) => {
+			const code = character.codePointAt(0) ?? 0;
+			return code < 0x20 || code === 0x7f ? ' ' : character;
+		})
+		.join('');
+
+	return printable
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, THREAD_ARTIFACT_NAME_MAX_LENGTH);
+}
+
+function formatThreadArtifactLine(artifact: InstanceAiThreadArtifact, current: boolean): string {
+	const kind =
+		artifact.type === 'agent' && artifact.pending
+			? 'New unsaved Agent'
+			: THREAD_ARTIFACT_KIND[artifact.type];
+	const name = artifact.name ? ` "${sanitiseThreadArtifactName(artifact.name)}"` : '';
+	const project = artifact.projectId ? `, in project \`${artifact.projectId}\`` : '';
+	const flags = [current ? 'current' : '', artifact.archived ? 'archived' : '']
+		.filter(Boolean)
+		.join(', ');
+	const flagSuffix = flags ? ` [${flags}]` : '';
+	return `  - ${kind}${name} (id: \`${artifact.id}\`${project})${flagSuffix}`;
+}
+
+/**
+ * Index of the artifacts the thread view is showing. Ids and names only.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function buildThreadArtifactsBlock(
+	context: InstanceAiThreadArtifactsContext | undefined,
+): string {
+	if (!context || context.artifacts.length === 0) return '';
+
+	const activeId =
+		context.activeId && context.artifacts.some((artifact) => artifact.id === context.activeId)
+			? context.activeId
+			: undefined;
+
+	const lines = context.artifacts.map((artifact) =>
+		formatThreadArtifactLine(artifact, artifact.id === activeId),
+	);
+
+	const currentGuidance = activeId
+		? 'Treat “this workflow”, “the agent”, “the data table”, or “it” as the item marked current.'
+		: 'When the user refers to an artifact in this conversation, match it against this list.';
+
+	const prose = [
+		'Artifacts the user can see in this conversation’s preview:',
+		...lines,
+		currentGuidance,
+		'Use these ids when you act. Do not inspect, run, or describe their contents until the user asks.',
+	].join('\n');
+
+	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
 }

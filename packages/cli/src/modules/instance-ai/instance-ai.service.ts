@@ -29,6 +29,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -199,6 +200,7 @@ import {
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	buildWorkflowTestRequestBlock,
+	buildThreadArtifactsBlock,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -1472,6 +1474,7 @@ export class InstanceAiService {
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
 		computerUseChannels?: ComputerUseChannel[],
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1516,6 +1519,11 @@ export class InstanceAiService {
 			context,
 			messageGroupId,
 			timeZone,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 
 		return runId;
@@ -3721,6 +3729,7 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): Promise<void> {
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
@@ -3780,6 +3789,9 @@ export class InstanceAiService {
 
 					return resource;
 				});
+			}
+			if (threadArtifacts?.artifacts.length) {
+				traceInput.threadArtifacts = threadArtifacts;
 			}
 			if (messageGroupId) {
 				traceInput.messageGroupId = messageGroupId;
@@ -4107,11 +4119,16 @@ export class InstanceAiService {
 			// entire prompt, and the agent greets rather than investigating.
 			// Instance context sits last of the leading blocks, nearest the user's own words: it is
 			// background for reading their intent, not a statement of what they are looking at now.
+			// Thread artifacts sit after that so “this workflow” resolves to the open preview tab
+			// even after observation-log compaction hides the original build tool results.
+			const threadArtifactsBlock =
+				resumeReason === undefined ? buildThreadArtifactsBlock(threadArtifacts) : '';
 			const messageWithContext = [
 				contextResourcesBlock,
 				handoffContextBlock,
 				setupStateBlock,
 				instanceContext?.block ?? '',
+				threadArtifactsBlock,
 				messageBody,
 			]
 				.filter(Boolean)
