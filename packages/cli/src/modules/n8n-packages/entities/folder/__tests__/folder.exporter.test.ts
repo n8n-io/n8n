@@ -1,8 +1,6 @@
 import type { Folder, User } from '@n8n/db';
+import type { FolderFinderService, WorkflowFinderService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import type { FolderFinderService } from '@/services/folder-finder.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import type { WorkflowExporter } from '../../workflow/workflow.exporter';

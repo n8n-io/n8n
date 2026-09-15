@@ -39,7 +39,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
-import { ConflictError } from '@n8n/services-common';
+import { ConflictError, userHasScopes } from '@n8n/services-common';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -47,7 +47,6 @@ import { CredentialTypes } from '@/credential-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';

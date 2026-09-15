@@ -2,14 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UrlService } from '@n8n/services-common';
+import { CredentialsFinderService, EventService, UrlService } from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { EventService } from '@/events/event.service';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';

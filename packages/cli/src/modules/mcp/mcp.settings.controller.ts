@@ -2,10 +2,9 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
-import { ForbiddenError } from '@n8n/services-common';
+import { EventService, ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';

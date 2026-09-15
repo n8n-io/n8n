@@ -8,6 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService, WorkflowFinderService } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -16,10 +17,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-
-import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {

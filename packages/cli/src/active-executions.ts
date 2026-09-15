@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
@@ -36,7 +37,6 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
 
 const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 

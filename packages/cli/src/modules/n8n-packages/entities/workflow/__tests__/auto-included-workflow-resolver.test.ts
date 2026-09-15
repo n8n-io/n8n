@@ -1,9 +1,8 @@
 import type { Folder, Project, SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
+import type { FolderFinderService, WorkflowFinderService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	PackageEntityAccessDeniedError,

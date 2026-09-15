@@ -1,4 +1,5 @@
 import { WorkflowEntity, type User } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -6,7 +7,6 @@ import type {
 	WorkflowCreateBatchContext,
 	WorkflowCreationService,
 } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PackageImportBindings } from '../../../n8n-packages.types';

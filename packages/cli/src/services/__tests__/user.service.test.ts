@@ -14,13 +14,13 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type { EventService, RoleService } from '@n8n/services-common';
 import { BadRequestError, ForbiddenError, NotFoundError, UrlService } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -32,7 +32,6 @@ import { JwtService } from '../jwt.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
-import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

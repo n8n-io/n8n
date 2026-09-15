@@ -1,8 +1,7 @@
 import type { OperationContext, TransactionRunner } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { ConflictError, NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';

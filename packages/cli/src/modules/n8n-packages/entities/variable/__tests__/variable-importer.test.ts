@@ -1,10 +1,10 @@
 import type { Variables } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import { userHasScopes } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { ImportContext } from '../../../n8n-packages.types';
 import { VariableImporter } from '../variable-importer';
@@ -15,7 +15,8 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 	hasGlobalScope: vi.fn(),
 }));
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn(),
 }));
 

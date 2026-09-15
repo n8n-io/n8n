@@ -16,7 +16,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
+import { BadRequestError, EventService, NotFoundError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
@@ -26,7 +26,6 @@ import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from '@/credentials/credential-dependency.service';
-import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';

@@ -4,10 +4,14 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, LicenseEulaRequiredError, UrlService } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	LicenseEulaRequiredError,
+	UrlService,
+} from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;

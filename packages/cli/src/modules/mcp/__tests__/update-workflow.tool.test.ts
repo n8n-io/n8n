@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
-import { NotFoundError, UrlService } from '@n8n/services-common';
+import { NotFoundError, UrlService, WorkflowFinderService } from '@n8n/services-common';
 import {
 	ERROR_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -20,7 +20,6 @@ import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subw
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 

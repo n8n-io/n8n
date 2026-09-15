@@ -9,10 +9,10 @@ import {
 } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Telemetry } from '@/telemetry';
 import {

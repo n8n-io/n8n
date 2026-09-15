@@ -8,9 +8,9 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';

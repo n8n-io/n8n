@@ -10,12 +10,11 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import { EventService, RoleService } from '@n8n/services-common';
 import type { DistributiveOmit } from '@n8n/utils/types';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { RoleService } from '@/services/role.service';
 
 /**
  * The writable subset of the security policy shared by the internal controller

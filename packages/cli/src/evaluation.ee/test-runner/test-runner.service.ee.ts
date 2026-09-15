@@ -13,6 +13,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
@@ -49,7 +50,6 @@ import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OwnershipService } from '@/services/ownership.service';

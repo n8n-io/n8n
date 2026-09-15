@@ -1,4 +1,9 @@
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	userHasScopes,
+} from '@n8n/services-common';
 import type { Mocked, MockedFunction } from 'vitest';
 import type { AddDatasetRowDto } from '@n8n/api-types';
 import type { EvaluationConfig, IExecutionResponse, User } from '@n8n/db';
@@ -10,11 +15,13 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
+	userHasScopes: vi.fn(),
+}));
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 describe('EvaluationDatasetService', () => {

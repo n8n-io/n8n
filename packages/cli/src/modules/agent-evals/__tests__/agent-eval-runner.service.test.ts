@@ -8,7 +8,7 @@ import type {
 	AgentEvalRunRepository,
 	User,
 } from '@n8n/db';
-import { NotFoundError } from '@n8n/services-common';
+import { NotFoundError, userHasScopes } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -19,7 +19,6 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
@@ -43,7 +42,8 @@ vi.mock('@/modules/data-table/data-table.service', () => ({
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 	EvalAgentExecutionService: class EvalAgentExecutionService {},
 }));
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 

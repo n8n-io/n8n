@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { WorkflowFinderService } from '@n8n/services-common';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -48,7 +49,6 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createLlmCompletionMockHandler } from './llm-completion-mock';

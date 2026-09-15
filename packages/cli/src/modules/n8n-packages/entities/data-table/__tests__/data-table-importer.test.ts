@@ -1,16 +1,17 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { userHasScopes } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DataTableImporter } from '../data-table-importer';
 import type { DataTableImportRequest } from '../data-table.types';
 import type { ImportContext } from '../../../n8n-packages.types';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn(),
 }));
 

@@ -2,12 +2,12 @@ import type { LicenseState } from '@n8n/backend-common';
 import { markHttpRequestError } from '@n8n/backend-network';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { WorkflowRepository } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { BadRequestError } from '@n8n/services-common';
 import type { TEntitlement } from '@n8n_io/license-sdk';
 import { AxiosError } from 'axios';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import { LicenseErrors, LicenseService } from '@/license/license.service';
 

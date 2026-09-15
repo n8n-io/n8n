@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';

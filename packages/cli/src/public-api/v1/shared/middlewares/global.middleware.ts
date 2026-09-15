@@ -4,13 +4,12 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
-import { NotFoundError } from '@n8n/services-common';
+import { NotFoundError, userHasScopes } from '@n8n/services-common';
 import type express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';

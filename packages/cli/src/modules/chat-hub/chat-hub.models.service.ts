@@ -10,6 +10,7 @@ import {
 import { In, WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Scope } from '@n8n/permissions';
+import { CredentialsFinderService } from '@n8n/services-common';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	type INodeCredentials,
@@ -17,7 +18,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';

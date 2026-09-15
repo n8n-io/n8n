@@ -5,17 +5,16 @@ import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { CredentialsFinderService, WorkflowFinderService } from '@n8n/services-common';
+import { userHasScopes } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
@@ -35,7 +34,8 @@ import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn(),
 }));
 

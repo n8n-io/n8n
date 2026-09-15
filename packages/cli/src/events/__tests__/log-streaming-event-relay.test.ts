@@ -1,10 +1,10 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
+import { EventService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 

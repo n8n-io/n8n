@@ -29,16 +29,20 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	CredentialsFinderService,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/services-common';
 import type { Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,

@@ -9,12 +9,11 @@ import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
-import { CacheService, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import { CacheService, EventService, ForbiddenError, NotFoundError } from '@n8n/services-common';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {

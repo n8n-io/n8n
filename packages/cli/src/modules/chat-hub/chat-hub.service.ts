@@ -16,7 +16,7 @@ import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
+import { BadRequestError, NotFoundError, WorkflowFinderService } from '@n8n/services-common';
 import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -29,7 +29,6 @@ import {
 
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';

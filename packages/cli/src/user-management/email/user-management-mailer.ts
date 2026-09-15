@@ -4,7 +4,7 @@ import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
-import { InternalServerError, UrlService } from '@n8n/services-common';
+import { EventService, InternalServerError, UrlService } from '@n8n/services-common';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
@@ -20,7 +20,6 @@ import type {
 } from './interfaces';
 import { NodeMailer } from './node-mailer';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { toError } from '@/utils';
 

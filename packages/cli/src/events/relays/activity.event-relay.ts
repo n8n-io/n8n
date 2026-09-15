@@ -8,9 +8,9 @@ import {
 } from '@n8n/db';
 import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 

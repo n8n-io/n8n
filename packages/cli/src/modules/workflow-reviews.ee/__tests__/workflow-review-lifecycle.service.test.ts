@@ -11,10 +11,10 @@ import type {
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 
 import { WorkflowReviewLifecycleService } from '../workflow-review-lifecycle.service';
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';

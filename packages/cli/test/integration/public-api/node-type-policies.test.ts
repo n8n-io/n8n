@@ -2,8 +2,8 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 

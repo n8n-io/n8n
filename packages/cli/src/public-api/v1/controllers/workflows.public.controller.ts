@@ -51,14 +51,19 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
-import { BadRequestError, NotFoundError, ResponseError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	NotFoundError,
+	ResponseError,
+	WorkflowFinderService,
+} from '@n8n/services-common';
 import type { Response } from 'express';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
@@ -70,7 +75,6 @@ import {
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

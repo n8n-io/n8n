@@ -18,11 +18,10 @@ import {
 	CredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/services-common';
+import { BadRequestError, EventService, UnprocessableRequestError } from '@n8n/services-common';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,

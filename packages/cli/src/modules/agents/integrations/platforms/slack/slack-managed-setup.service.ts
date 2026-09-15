@@ -9,7 +9,12 @@ import type {
 } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, CacheService, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	CacheService,
+	CredentialsFinderService,
+	NotFoundError,
+} from '@n8n/services-common';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -18,7 +23,6 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 

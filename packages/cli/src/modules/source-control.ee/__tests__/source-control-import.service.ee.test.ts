@@ -23,6 +23,7 @@ import {
 	type WorkflowRepository,
 	type WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import { WorkflowPublishBlockedError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
@@ -47,7 +48,6 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';

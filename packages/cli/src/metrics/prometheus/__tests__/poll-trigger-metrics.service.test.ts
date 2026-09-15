@@ -1,11 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
+import type { EventService } from '@n8n/services-common';
 import type { InstanceSettings, TriggersAndPollers } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { PrometheusPollTriggerMetricsService } from '../poll-trigger-metrics.service';
 

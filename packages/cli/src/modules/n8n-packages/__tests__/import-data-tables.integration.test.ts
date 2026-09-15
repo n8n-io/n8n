@@ -3,12 +3,11 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/services-common';
+import { EventService, ForbiddenError } from '@n8n/services-common';
 import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';

@@ -28,12 +28,10 @@ import {
 	Query,
 } from '@n8n/decorators';
 import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
-import { NotFoundError } from '@n8n/services-common';
+import { EventService, NotFoundError, RoleService } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
-import { RoleService } from '@/services/role.service';
 
 type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
 const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>

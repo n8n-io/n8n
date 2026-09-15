@@ -4,7 +4,12 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError, ForbiddenError, InvalidMfaCodeError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	InvalidMfaCodeError,
+} from '@n8n/services-common';
 import type { Response } from 'express';
 import jwt from 'jsonwebtoken';
 import type { Mock } from 'vitest';
@@ -12,7 +17,6 @@ import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

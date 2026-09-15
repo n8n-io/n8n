@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
+import { EventService } from '@n8n/services-common';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiMcpRegistryConnectionRepository } from './repositories/instance-ai-mcp-registry-connection.repository';

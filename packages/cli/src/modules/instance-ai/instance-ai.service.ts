@@ -123,7 +123,13 @@ import {
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError, UrlService } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	UrlService,
+	userHasScopes,
+} from '@n8n/services-common';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { lazyImport } from '@n8n/utils/lazy-import';
@@ -133,10 +139,8 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Push } from '@/push';

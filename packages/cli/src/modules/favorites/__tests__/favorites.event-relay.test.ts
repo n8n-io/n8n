@@ -1,6 +1,6 @@
+import { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { FavoritesEventRelay } from '../favorites.event-relay';

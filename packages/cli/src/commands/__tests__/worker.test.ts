@@ -6,6 +6,7 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import { RedisClientService } from '@n8n/services-common';
 import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -18,7 +19,6 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';

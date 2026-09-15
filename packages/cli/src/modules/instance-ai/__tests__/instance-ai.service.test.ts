@@ -225,7 +225,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn(),
 }));
 
@@ -257,12 +258,12 @@ import {
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
+import { userHasScopes } from '@n8n/services-common';
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {

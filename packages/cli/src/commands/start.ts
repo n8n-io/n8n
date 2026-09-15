@@ -10,7 +10,7 @@ import {
 import { Command, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
-import { UrlService } from '@n8n/services-common';
+import { EventService, UrlService } from '@n8n/services-common';
 import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -30,7 +30,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';

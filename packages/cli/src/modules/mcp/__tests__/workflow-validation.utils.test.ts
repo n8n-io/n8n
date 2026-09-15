@@ -1,7 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/services-common';
 
 import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';

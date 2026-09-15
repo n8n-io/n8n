@@ -13,12 +13,12 @@ import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } fr
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
+import { RoleCacheService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 

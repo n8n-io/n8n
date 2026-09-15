@@ -27,7 +27,7 @@ import {
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
-import { WorkflowPublishBlockedError } from '@n8n/services-common';
+import { WorkflowFinderService, WorkflowPublishBlockedError } from '@n8n/services-common';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
@@ -62,7 +62,6 @@ import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';

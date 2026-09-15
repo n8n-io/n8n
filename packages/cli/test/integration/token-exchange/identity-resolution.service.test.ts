@@ -7,8 +7,8 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import {
 	IdentityResolutionService,
 	qualifiedProviderId,

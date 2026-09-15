@@ -9,10 +9,9 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import { EventService, RoleService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { RoleService } from '@/services/role.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
 describe('SecuritySettingsService', () => {

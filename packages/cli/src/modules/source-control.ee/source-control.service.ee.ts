@@ -3,14 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/services-common';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {

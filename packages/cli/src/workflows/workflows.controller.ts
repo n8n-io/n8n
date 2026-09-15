@@ -35,19 +35,24 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+	WorkflowFinderService,
+	userHasScopes,
+} from '@n8n/services-common';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -61,7 +66,6 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';

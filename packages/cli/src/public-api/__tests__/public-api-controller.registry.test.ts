@@ -11,12 +11,12 @@ import {
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import express from 'express';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { EventService } from '@/events/event.service';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,

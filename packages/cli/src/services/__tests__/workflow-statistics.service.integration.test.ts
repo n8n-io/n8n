@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -27,7 +28,6 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { INSTANCE_ACTIVATED_SETTINGS_KEY } from '@/services/instance-activation.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';

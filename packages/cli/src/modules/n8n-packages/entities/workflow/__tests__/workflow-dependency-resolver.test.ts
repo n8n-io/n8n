@@ -1,8 +1,7 @@
 import type { User, WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowDependencyResolver } from '../workflow-dependency-resolver';
 

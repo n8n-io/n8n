@@ -9,9 +9,8 @@ import {
 	type Scope,
 	PROJECT_OWNER_ROLE_SLUG,
 } from '@n8n/permissions';
+import { RoleService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
 
 export type ShareWorkflowOptions =
 	| { scopes: Scope[]; projectId?: string }

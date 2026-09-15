@@ -14,6 +14,7 @@ import type {
 } from '@n8n/db';
 import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -30,7 +31,6 @@ import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-r
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';

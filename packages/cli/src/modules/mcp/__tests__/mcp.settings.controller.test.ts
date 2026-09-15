@@ -2,11 +2,10 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/services-common';
+import { EventService, ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 

@@ -4,6 +4,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
+import { CredentialsFinderService } from '@n8n/services-common';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -15,7 +16,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';

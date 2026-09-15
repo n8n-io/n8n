@@ -16,10 +16,9 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
-import { BadRequestError } from '@n8n/services-common';
+import { BadRequestError, EventService } from '@n8n/services-common';
 import type { RequestHandler } from 'express';
 
-import { EventService } from '@/events/event.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 

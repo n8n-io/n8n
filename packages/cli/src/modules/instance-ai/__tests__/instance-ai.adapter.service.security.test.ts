@@ -40,11 +40,17 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import type {
+	CredentialsFinderService,
+	EventService,
+	RoleService,
+	WorkflowFinderService,
+} from '@n8n/services-common';
+import { userHasScopes } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -58,7 +64,6 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -66,13 +71,15 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({}),
 }));
@@ -80,8 +87,6 @@ vi.mock('node:fs/promises', () => ({
 	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

@@ -1,12 +1,11 @@
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
 import type { User, WorkflowRepository } from '@n8n/db';
+import type { ProjectScopeService, WorkflowFinderService } from '@n8n/services-common';
 import { BadRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ActiveWorkflowsService', () => {

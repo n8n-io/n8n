@@ -1,11 +1,11 @@
 import type { LockService, Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
+import { userHasScopes } from '@n8n/services-common';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
@@ -24,7 +24,8 @@ import {
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 

@@ -8,7 +8,12 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	userHasScopes,
+} from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import type {
 	DataTableColumnJsType,
@@ -26,7 +31,6 @@ import { License } from '@/license';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';

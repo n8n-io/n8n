@@ -5,13 +5,13 @@ import type {
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import { NotFoundError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';

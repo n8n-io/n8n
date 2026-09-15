@@ -9,11 +9,10 @@ import type {
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
+import type { RoleService, WorkflowFinderService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 

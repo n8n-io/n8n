@@ -1,8 +1,7 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Role } from '@n8n/permissions';
-
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/services-common';
 
 import { cleanupRolesAndScopes } from '../shared/db/roles';
 import { createMember, createOwner } from '../shared/db/users';

@@ -1,10 +1,9 @@
 import type { Project, User } from '@n8n/db';
+import type { FolderFinderService, WorkflowFinderService } from '@n8n/services-common';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { PackageWriter } from '../../../io/package-writer';
 import type { FolderExporter } from '../../folder/folder.exporter';

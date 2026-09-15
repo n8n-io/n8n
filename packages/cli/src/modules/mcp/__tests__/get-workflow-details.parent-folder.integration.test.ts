@@ -6,13 +6,12 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { RoleService, WorkflowFinderService } from '@n8n/services-common';
 import type { INodeTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';

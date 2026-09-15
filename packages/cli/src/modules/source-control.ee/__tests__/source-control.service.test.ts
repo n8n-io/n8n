@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/services-common';
 import { ForbiddenError } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
@@ -10,7 +11,6 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';

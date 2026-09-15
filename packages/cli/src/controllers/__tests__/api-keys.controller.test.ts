@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User, ApiKey } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { ApiKeysController } from '../api-keys.controller';

@@ -1,14 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, type WorkflowEntity } from '@n8n/db';
+import { RoleService, WorkflowFinderService } from '@n8n/services-common';
 import type { INode, INodeTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';

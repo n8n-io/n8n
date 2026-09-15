@@ -13,7 +13,8 @@ import type {
 	DbLockService,
 } from '@n8n/db';
 import { CredentialsEntity, DbLock, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import type { CredentialsFinderService, EventService, RoleService } from '@n8n/services-common';
+import { BadRequestError, ForbiddenError, userHasScopes } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -30,13 +31,11 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -44,13 +43,20 @@ import {
 	DCR_MANAGED_CREDENTIAL_FIELDS,
 	type DcrManagedCredentialField,
 } from '@/oauth/dcr-managed-fields';
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 import { mockExistingCredential } from './credentials.test-data';
+
+vi.mock('@n8n/services-common', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/services-common')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
@@ -2925,7 +2931,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
 		it('should allow owner to create global credential', async () => {
@@ -3058,7 +3064,7 @@ describe('CredentialsService', () => {
 
 		describe('external secrets', () => {
 			it('should prevent use of external secret expression when required permission is missing', async () => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.mocked(userHasScopes).mockResolvedValue(false);
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				const payload = {
 					name: 'Test Credential',
@@ -3414,7 +3420,7 @@ describe('CredentialsService', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
 				vi.spyOn(service, 'decrypt').mockResolvedValue({});
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.mocked(userHasScopes).mockResolvedValue(true);
 			});
 
 			it('should list all unavailable external secret providers in error message', async () => {
@@ -3541,7 +3547,7 @@ describe('CredentialsService', () => {
 			beforeEach(() => {
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as never);
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.mocked(userHasScopes).mockResolvedValue(true);
 			});
 
 			it('keeps incoming data as-is when dataMerge is replace', async () => {

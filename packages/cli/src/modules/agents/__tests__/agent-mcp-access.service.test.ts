@@ -1,7 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { ProjectScopeService } from '@n8n/services-common';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';
 import { AgentRepository } from '../repositories/agent.repository';

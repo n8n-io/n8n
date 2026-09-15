@@ -1,7 +1,6 @@
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
-
-import { EventService } from './event.service';
+import { EventService } from '@n8n/services-common';
 
 /** This controller holds endpoints that the frontend uses to trigger telemetry events */
 @RestController('/events')
