@@ -5,6 +5,8 @@ export type AgentExecutionUpdated = {
 		agentId: string;
 		threadId: string;
 		executionId: string;
+		/** Present for queue transitions that affect optimistic client state. */
+		executionStatus?: 'queued' | 'running' | 'error';
 	};
 };
 

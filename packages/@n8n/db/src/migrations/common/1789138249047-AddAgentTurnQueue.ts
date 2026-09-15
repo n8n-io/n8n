@@ -10,8 +10,13 @@ export class AddAgentTurnQueue1789138249047 implements ReversibleMigration {
 		isSqlite,
 		escape,
 		runQuery,
+		queryRunner,
+		tablePrefix,
 		schemaBuilder: { addColumns, column, createIndex, addEnumCheck, dropEnumCheck },
 	}: MigrationContext) {
+		// Earlier migrations add SQLite columns through raw SQL.
+		// Refresh TypeORM's table cache before the check rebuild.
+		if (isSqlite) await queryRunner.getTable(`${tablePrefix}${executionTable}`);
 		await dropEnumCheck(executionTable, 'status', { recreatesOnSqlite: true });
 		await addEnumCheck(executionTable, 'status', statusesAfter, { recreatesOnSqlite: true });
 
@@ -47,6 +52,8 @@ export class AddAgentTurnQueue1789138249047 implements ReversibleMigration {
 		isSqlite,
 		escape,
 		runQuery,
+		queryRunner,
+		tablePrefix,
 		schemaBuilder: { dropColumns, dropIndex, addEnumCheck, dropEnumCheck },
 	}: MigrationContext) {
 		await dropIndex(executionTable, ['threadId', 'enqueueSequence']);
@@ -57,6 +64,8 @@ export class AddAgentTurnQueue1789138249047 implements ReversibleMigration {
 				`SET ${escape.columnName('status')} = 'cancelled' ` +
 				`WHERE ${escape.columnName('status')} = 'queued'`,
 		);
+		// The raw column changes in `up` leave the cached SQLite table stale.
+		if (isSqlite) await queryRunner.getTable(`${tablePrefix}${executionTable}`);
 		await dropEnumCheck(executionTable, 'status', { recreatesOnSqlite: true });
 		await addEnumCheck(executionTable, 'status', statusesBefore, { recreatesOnSqlite: true });
 

@@ -46,6 +46,7 @@ export type AgentTurnRunContext =
 			runId: string;
 			toolCallId: string;
 			resumeData: unknown;
+			previewChat?: boolean;
 			channel?: QueuedChannelTurn & { action?: QueuedChannelAction };
 	  };
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';

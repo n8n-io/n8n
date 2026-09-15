@@ -41,6 +41,7 @@ describe('AddAgentTurnQueue migration', () => {
 			project: randomUUID(),
 			agent: randomUUID(),
 			thread: randomUUID(),
+			secondThread: randomUUID(),
 		};
 		const now = new Date('2026-09-14T10:00:00.000Z');
 
@@ -76,6 +77,18 @@ describe('AddAgentTurnQueue migration', () => {
 					updatedAt: now,
 				},
 			);
+			await context.runQuery(
+				`INSERT INTO ${context.escape.tableName('agent_execution_threads')} ("id", "agentId", "agentName", "projectId", "createdAt", "updatedAt")
+				 VALUES (:id, :agentId, :agentName, :projectId, :createdAt, :updatedAt)`,
+				{
+					id: ids.secondThread,
+					agentId: ids.agent,
+					agentName: 'Test agent',
+					projectId: ids.project,
+					createdAt: now,
+					updatedAt: now,
+				},
+			);
 		});
 
 		await runSingleMigration(MIGRATION_NAME);
@@ -87,13 +100,14 @@ describe('AddAgentTurnQueue migration', () => {
 				status: 'queued' | 'running',
 				enqueueSequence: number | null,
 				resourceId: string | null,
+				threadId = ids.thread,
 			) =>
 				await context.runQuery(
 					`INSERT INTO ${table} ("id", "threadId", "status", "resourceId", "runContext", "enqueueSequence", "createdAt", "updatedAt")
 					 VALUES (:id, :threadId, :status, :resourceId, :runContext, :enqueueSequence, :now, :now)`,
 					{
 						id: randomUUID(),
-						threadId: ids.thread,
+						threadId,
 						status,
 						resourceId,
 						runContext: '{"kind":"resume","runId":"run-1","toolCallId":"tool-1","resumeData":true}',
@@ -104,6 +118,7 @@ describe('AddAgentTurnQueue migration', () => {
 
 			await insert('queued', 1, 'draft-chat:user-1');
 			await expect(insert('queued', 1, 'draft-chat:user-1')).rejects.toThrow();
+			await insert('queued', 1, 'draft-chat:user-2', ids.secondThread);
 			await insert('running', null, null);
 			await expect(insert('running', null, null)).rejects.toThrow();
 		});

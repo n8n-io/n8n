@@ -247,7 +247,7 @@ export class AgentTurnQueueService {
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				expectedMemory: memory,
 				source: row.source ?? undefined,
-				previewChat: true,
+				previewChat: context.previewChat ?? false,
 			};
 			// A resume whose checkpoint moved on can never run; failing it here ends the row.
 			await this.orchestrator.resolveResumeThread(config);
@@ -277,11 +277,7 @@ export class AgentTurnQueueService {
 	 */
 	private async claimQueuedRow(scope: ExecutionScope): Promise<AgentTurnClaim | null> {
 		try {
-			const claimed = await this.executionService.claimQueuedExecution(
-				scope.executionId,
-				scope.threadId,
-				new Date(),
-			);
+			const claimed = await this.executionService.claimQueuedExecution(scope, new Date());
 			return claimed ? this.toClaim(scope, claimed.claimLost, false) : null;
 		} catch (error) {
 			if (error instanceof AgentThreadClaimConflictError) return null;

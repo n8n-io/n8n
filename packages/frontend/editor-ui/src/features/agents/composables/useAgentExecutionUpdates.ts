@@ -3,6 +3,8 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
+type AgentExecutionUpdate = Extract<PushMessage, { type: 'agentExecutionUpdated' }>;
+
 interface AgentExecutionUpdatesTarget {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -12,19 +14,21 @@ interface AgentExecutionUpdatesTarget {
 
 /**
  * Call `onUpdate` when the backend records a turn for this agent. The push is an
- * invalidation signal, not the data, so the callback has to re-read.
+ * invalidation signal, not the transcript data, so the callback has to re-read.
+ * Queue transitions include status so optimistic controls stay disabled until
+ * the queued execution advances.
  *
  * Connects the shared push client but never disconnects it — the editor has one
  * connection, and tearing it down here would cut off everything else on it.
  */
 export function useAgentExecutionUpdates(
 	target: AgentExecutionUpdatesTarget,
-	onUpdate: () => void | Promise<void>,
+	onUpdate: (event?: AgentExecutionUpdate) => void | Promise<void>,
 	onInvalidate?: () => void,
 ): () => void {
 	const pushStore = usePushConnectionStore();
 
-	function matches(event: PushMessage): boolean {
+	function matches(event: PushMessage): event is AgentExecutionUpdate {
 		if (event.type !== 'agentExecutionUpdated') return false;
 		if (event.data.projectId !== target.projectId.value) return false;
 		if (event.data.agentId !== target.agentId.value) return false;
@@ -35,25 +39,29 @@ export function useAgentExecutionUpdates(
 	// Combine push notifications into one active refresh and one queued refresh.
 	let inFlight: Promise<void> | undefined;
 	let queued = false;
+	let queuedEvent: AgentExecutionUpdate | undefined;
 	let disposed = false;
 
-	function run(): void {
+	function run(event?: AgentExecutionUpdate): void {
 		if (disposed) return;
 		if (inFlight) {
 			queued = true;
+			if (event) queuedEvent = event;
 			return;
 		}
 		// Run the callback in a promise so synchronous errors do not escape push dispatch.
 		inFlight = Promise.resolve()
 			.then(async () => {
-				if (!disposed) await onUpdate();
+				if (!disposed) await onUpdate(event);
 			})
 			.catch(() => {})
 			.finally(() => {
 				inFlight = undefined;
 				if (queued) {
 					queued = false;
-					run();
+					const nextEvent = queuedEvent;
+					queuedEvent = undefined;
+					run(nextEvent);
 				}
 			});
 	}
@@ -61,7 +69,7 @@ export function useAgentExecutionUpdates(
 	const removeListener = pushStore.addEventListener((event) => {
 		if (matches(event)) {
 			onInvalidate?.();
-			run();
+			run(event);
 		}
 	});
 	pushStore.pushConnect();

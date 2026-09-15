@@ -255,6 +255,56 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('queued execution transitions', () => {
+		const scope = {
+			executionId: 'execution-1',
+			threadId: 'thread-1',
+			agentId: 'agent-1',
+			projectId: 'project-1',
+		};
+
+		it('broadcasts a successful promotion', async () => {
+			vi.useFakeTimers();
+			try {
+				agentExecutionRepository.promoteQueuedToRunning.mockResolvedValue(true);
+
+				await expect(service.claimQueuedExecution(scope, new Date())).resolves.not.toBeNull();
+
+				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
+					...scope,
+					executionStatus: 'running',
+				});
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('records and broadcasts a queued execution failure', async () => {
+			agentExecutionRepository.failQueued.mockResolvedValue(true);
+
+			await service.failQueuedExecution(scope, 'Sender is unavailable');
+
+			expect(agentExecutionRepository.failQueued).toHaveBeenCalledWith(
+				scope.executionId,
+				'Sender is unavailable',
+				expect.any(Date),
+				{
+					count: 1,
+					latest: {
+						kind: 'execution',
+						name: null,
+						message: 'Sender is unavailable',
+						occurredAt: expect.any(Number),
+					},
+				},
+			);
+			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
+				...scope,
+				executionStatus: 'error',
+			});
+		});
+	});
+
 	it('serializes timeline snapshot updates', async () => {
 		let releaseFirstWrite!: () => void;
 		agentExecutionRepository.updateTimelineIfRunning

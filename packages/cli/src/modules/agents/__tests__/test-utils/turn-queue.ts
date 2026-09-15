@@ -95,10 +95,10 @@ export function createTestTurnQueue(user: User = { id: 'user-1', disabled: false
 		if (running.has(params.threadId)) throw new AgentThreadClaimConflictError();
 		return hold(insert(params, 'running'), params.threadId);
 	});
-	executionService.claimQueuedExecution.mockImplementation(async (id, threadId) => {
-		const row = rows.find((candidate) => candidate.id === id);
+	executionService.claimQueuedExecution.mockImplementation(async (scope) => {
+		const row = rows.find((candidate) => candidate.id === scope.executionId);
 		if (row?.status !== 'queued') return null;
-		const held = hold(id, threadId);
+		const held = hold(scope.executionId, scope.threadId);
 		row.status = 'running';
 		return held;
 	});

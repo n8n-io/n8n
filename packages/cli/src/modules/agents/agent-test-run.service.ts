@@ -385,7 +385,13 @@ export class AgentTestRunService {
 				userMessage: null,
 				source,
 				resourceId,
-				runContext: { kind: 'resume', runId, toolCallId, resumeData },
+				runContext: {
+					kind: 'resume',
+					runId,
+					toolCallId,
+					resumeData,
+					previewChat: input.previewChat,
+				},
 			},
 		};
 	}

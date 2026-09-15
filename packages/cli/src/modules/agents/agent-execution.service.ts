@@ -198,27 +198,35 @@ export class AgentExecutionService {
 	 * while another claimed run holds the thread.
 	 */
 	async claimQueuedExecution(
-		executionId: string,
-		threadId: string,
+		scope: ExecutionScope,
 		startedAt: Date,
 	): Promise<ClaimedExecutionRecording | null> {
 		const promoted = await this.agentExecutionRepository.promoteQueuedToRunning(
-			executionId,
-			threadId,
+			scope.executionId,
+			scope.threadId,
 			startedAt,
 		);
-		return promoted ? this.holdClaim(executionId, threadId) : null;
+		if (!promoted) return null;
+		this.executionUpdateBroadcaster.notify({ ...scope, executionStatus: 'running' });
+		return this.holdClaim(scope.executionId, scope.threadId);
 	}
 
 	/** End a queued row that cannot run, so the queue moves on and the sender sees why. */
 	async failQueuedExecution(scope: ExecutionScope, error: string): Promise<void> {
+		const stoppedAt = new Date();
 		const failed = await this.agentExecutionRepository.failQueued(
 			scope.executionId,
 			error,
-			new Date(),
+			stoppedAt,
+			computeExecutionFailureSummary({
+				timeline: [],
+				status: 'error',
+				error,
+				stoppedAt: stoppedAt.getTime(),
+			}),
 		);
 		this.executionsNeedingTitleSync.delete(scope.executionId);
-		if (failed) this.executionUpdateBroadcaster.notify(scope);
+		if (failed) this.executionUpdateBroadcaster.notify({ ...scope, executionStatus: 'error' });
 	}
 
 	/**
@@ -294,6 +302,7 @@ export class AgentExecutionService {
 			agentId: params.agentId,
 			threadId: params.threadId,
 			executionId: inserted.id,
+			...(row.status === 'queued' ? { executionStatus: 'queued' as const } : {}),
 		});
 		return inserted.id;
 	}

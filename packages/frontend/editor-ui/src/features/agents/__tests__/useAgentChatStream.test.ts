@@ -280,7 +280,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
 	});
 
-	it('does not assign a queued card resume to the prior user message', async () => {
+	it('keeps a queued card resume settled until its execution advances', async () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(
@@ -307,11 +307,23 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 					{ type: 'done' },
 				]),
 			)
-			.mockResolvedValueOnce(
-				makeSseResponse([
+			.mockImplementationOnce(async () => {
+				for (const listener of [...pushListeners]) {
+					listener({
+						type: 'agentExecutionUpdated',
+						data: {
+							projectId: 'p1',
+							agentId: 'a1',
+							threadId: 'thread-1',
+							executionId: 'exec-queued-resume',
+							executionStatus: 'queued',
+						},
+					});
+				}
+				return makeSseResponse([
 					{ type: 'queued', sessionId: 'thread-1', executionId: 'exec-queued-resume' },
-				]),
-			);
+				]);
+			});
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const hook = buildHook();
@@ -339,6 +351,24 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.interactive?.resolvedValue).toEqual({ approved: true });
 		expect(assistant.status).toBe('success');
+		await flushPromises();
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+
+		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: {
+					projectId: 'p1',
+					agentId: 'a1',
+					threadId: 'thread-1',
+					executionId: 'exec-queued-resume',
+					executionStatus: 'running',
+				},
+			});
+		}
+		await flushPromises();
+		expect(getTestChatMessagesMock).toHaveBeenCalledOnce();
 	});
 
 	it('cancels an open chat interaction before steering with a new message', async () => {

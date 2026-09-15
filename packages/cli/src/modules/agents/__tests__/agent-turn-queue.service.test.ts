@@ -27,7 +27,7 @@ function messageTurn(userMessage: string, resourceId = 'draft-chat:user-1'): Age
 	};
 }
 
-function resumeTurn(): AgentTurnSubmission {
+function resumeTurn(previewChat?: boolean): AgentTurnSubmission {
 	return {
 		threadId,
 		agentId,
@@ -40,6 +40,7 @@ function resumeTurn(): AgentTurnSubmission {
 			runId: 'run-1',
 			toolCallId: 'tool-1',
 			resumeData: { approved: true },
+			previewChat,
 		},
 	};
 }
@@ -91,15 +92,22 @@ describe('AgentTurnQueueService', () => {
 	});
 
 	it('runs a blocked resume when the active turn releases its claim', async () => {
-		const { service, ran, finish } = makeService();
+		const { service, ran, finish, orchestrator } = makeService();
 		const first = await service.tryRunNow(messageTurn('first'));
 		if (!first) throw new Error('Expected the first turn to be claimed');
-		expect(await service.submit(resumeTurn())).toEqual({ status: 'queued', executionId: 'exec-2' });
+		expect(await service.submit(resumeTurn(false))).toEqual({
+			status: 'queued',
+			executionId: 'exec-2',
+		});
 
 		finish(first);
 		await first.release();
 
 		await settled(() => expect(ran).toEqual(['resume:run-1']));
+		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({ previewChat: false }),
+			expect.objectContaining({ threadId }),
+		);
 	});
 
 	it('claims a resume while the thread awaits a human response', async () => {
@@ -154,8 +162,7 @@ describe('AgentTurnQueueService', () => {
 		await service.drainAll();
 		await settled(() =>
 			expect(executionService.claimQueuedExecution).toHaveBeenCalledWith(
-				'exec-2',
-				threadId,
+				expect.objectContaining({ executionId: 'exec-2', threadId }),
 				expect.any(Date),
 			),
 		);

@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentActionAlreadyHandledError } from '@/modules/agents/agent-action-already-handled.error';
 import { AgentTurnQueueService } from '@/modules/agents/agent-turn-queue.service';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import {
@@ -463,10 +464,11 @@ describe('AgentExecutionRepository', () => {
 		});
 	});
 
-	it('orders, promotes, and fails blocked resumptions', async () => {
+	it('reserves one blocked resumption per thread', async () => {
 		const thread = await createThread();
-		const resumeValues = (runId: string) => ({
-			threadId: thread.id,
+		const otherThread = await createThread({ id: uuid(), sessionNumber: 2 });
+		const resumeValues = (runId: string, threadId = thread.id) => ({
+			threadId,
 			status: 'queued' as const,
 			startedAt: null,
 			stoppedAt: null,
@@ -502,17 +504,20 @@ describe('AgentExecutionRepository', () => {
 			runContext: { kind: 'message' },
 		});
 		const first = await repository.insertExecution(resumeValues('run-1'));
-		const second = await repository.insertExecution(resumeValues('run-2'));
+		await expect(repository.insertExecution(resumeValues('run-2'))).rejects.toBeInstanceOf(
+			AgentActionAlreadyHandledError,
+		);
+		const other = await repository.insertExecution(resumeValues('run-3', otherThread.id));
 
 		expect(
 			(await repository.findQueuedByThread(thread.id)).map((row) => ({
 				sequence: row.enqueueSequence,
 				runId: row.runContext?.kind === 'resume' ? row.runContext.runId : null,
 			})),
-		).toEqual([
-			{ sequence: 1, runId: 'run-1' },
-			{ sequence: 2, runId: 'run-2' },
-		]);
+		).toEqual([{ sequence: 1, runId: 'run-1' }]);
+		expect(
+			(await repository.findQueuedByThread(otherThread.id)).map((row) => row.enqueueSequence),
+		).toEqual([1]);
 		await expect(
 			repository.promoteQueuedToRunning(first.id, thread.id, new Date()),
 		).rejects.toBeInstanceOf(AgentThreadClaimConflictError);
@@ -527,7 +532,9 @@ describe('AgentExecutionRepository', () => {
 			failureSummary: null,
 		});
 		expect(await repository.promoteQueuedToRunning(first.id, thread.id, new Date())).toBe(true);
-		expect(await repository.failQueued(second.id, 'resume unavailable', new Date())).toBe(true);
+		expect(await repository.failQueued(other.id, 'resume unavailable', new Date(), null)).toBe(
+			true,
+		);
 		expect(await repository.findThreadIdsWithQueued()).toEqual([]);
 	});
 });

@@ -9,6 +9,7 @@ import { DataSource, IsNull, LessThan, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { OperationalError } from 'n8n-workflow';
 
+import { AgentActionAlreadyHandledError } from '../agent-action-already-handled.error';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
@@ -81,6 +82,15 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 						.execute();
 
 					const repository = entityManager.getRepository(AgentExecution);
+					if (values.runContext?.kind === 'resume') {
+						const queued = await repository.find({
+							select: ['runContext'],
+							where: { threadId: values.threadId, status: 'queued' },
+						});
+						if (queued.some((row) => row.runContext?.kind === 'resume')) {
+							throw new AgentActionAlreadyHandledError();
+						}
+					}
 					const latest = await repository
 						.createQueryBuilder('execution')
 						.select('MAX(execution.enqueueSequence)', 'max')
@@ -96,7 +106,29 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 				});
 			}
 
-			return await this.save(this.create({ ...values, enqueueSequence: null }));
+			if (
+				values.status === 'running' &&
+				values.runContext !== null &&
+				values.runContext.kind !== 'resume'
+			) {
+				return await this.runInTransaction(ctx, async (entityManager) => {
+					await entityManager
+						.getRepository(AgentExecutionThread)
+						.createQueryBuilder()
+						.update(AgentExecutionThread)
+						.set({ updatedAt: () => '"updatedAt"' })
+						.where('id = :threadId', { threadId: values.threadId })
+						.execute();
+
+					const repository = entityManager.getRepository(AgentExecution);
+					if (await repository.existsBy({ threadId: values.threadId, status: 'queued' })) {
+						throw new AgentThreadClaimConflictError();
+					}
+					return await repository.save(repository.create({ ...values, enqueueSequence: null }));
+				});
+			}
+
+			return await this.managerFor(ctx).save(this.create({ ...values, enqueueSequence: null }));
 		} catch (error) {
 			if (
 				values.status === 'running' &&
@@ -149,10 +181,15 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/** End a queued row that cannot run. `false` once the row left `queued`. */
-	async failQueued(executionId: string, error: string, stoppedAt: Date): Promise<boolean> {
+	async failQueued(
+		executionId: string,
+		error: string,
+		stoppedAt: Date,
+		failureSummary: AgentExecution['failureSummary'],
+	): Promise<boolean> {
 		const result = await this.update(
 			{ id: executionId, status: 'queued' },
-			{ status: 'error', error, runContext: null, stoppedAt, updatedAt: stoppedAt },
+			{ status: 'error', error, failureSummary, runContext: null, stoppedAt, updatedAt: stoppedAt },
 		);
 		return result.affected === 1;
 	}

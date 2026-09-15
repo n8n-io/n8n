@@ -104,6 +104,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	let historyVersion = 0;
 	let streamVersion = 0;
 	let refreshAfterStream = false;
+	const pendingQueuedResumes = new Set<string>();
+	const executionTransitionsSeenDuringStream = new Map<
+		string,
+		NonNullable<AgentPersistedMessageDto['executionStatus']>
+	>();
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	const targetKey = () =>
@@ -213,12 +218,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			// only one, so any update for this agent is the chat being shown.
 			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
 		},
-		async () => {
+		async (event) => {
+			let pendingResumeSettled = false;
+			if (event) {
+				const { executionId, executionStatus } = event.data;
+				if (
+					pendingQueuedResumes.has(executionId) &&
+					executionStatus !== undefined &&
+					executionStatus !== 'queued'
+				) {
+					pendingQueuedResumes.delete(executionId);
+					pendingResumeSettled = true;
+				} else if (isStreaming.value && executionStatus !== undefined) {
+					executionTransitionsSeenDuringStream.set(executionId, executionStatus);
+				}
+			}
 			// Defer history refreshes until the local stream ends to preserve streamed text.
 			if (isStreaming.value) {
 				refreshAfterStream = true;
 				return;
 			}
+			if (pendingQueuedResumes.size > 0 && !pendingResumeSettled) return;
 			await refreshHistory({ silent: true });
 		},
 		() => {
@@ -246,11 +266,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	watch(targetKey, () => {
 		historyVersion++;
 		streamVersion++;
+		pendingQueuedResumes.clear();
+		executionTransitionsSeenDuringStream.clear();
 		refresh();
 	});
 	// Clear retry timers and ignore late responses when this chat closes.
 	onScopeDispose(() => {
 		disposed = true;
+		pendingQueuedResumes.clear();
+		executionTransitionsSeenDuringStream.clear();
 		clearTimeout(retryTimer);
 	});
 
@@ -261,6 +285,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.projectId.value,
 				params.agentId.value,
 			);
+			pendingQueuedResumes.clear();
 			messages.value = [];
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
@@ -290,6 +315,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
 		minted: Set<ChatMessage>;
 		submittedUserMessage: ChatMessage | undefined;
+		submittedResumeToolCallId: string | undefined;
 		reasoningStartedAt: Map<string, number>;
 		openReasoning: Map<string, ThinkingSegment>;
 	}
@@ -727,6 +753,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (session.submittedUserMessage) {
 					session.submittedUserMessage.executionId = event.executionId;
 				}
+				if (session.submittedResumeToolCallId) {
+					const latestStatus = executionTransitionsSeenDuringStream.get(event.executionId);
+					executionTransitionsSeenDuringStream.delete(event.executionId);
+					if (latestStatus === undefined || latestStatus === 'queued') {
+						pendingQueuedResumes.add(event.executionId);
+					}
+				}
 				session.terminalEventReceived = true;
 				return { done: true };
 			}
@@ -791,12 +824,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		url: string,
 		body: Record<string, unknown>,
 		submittedUserMessage?: ChatMessage,
+		submittedResumeToolCallId?: string,
 	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' }> {
 		const session: StreamSession = {
 			errorEmitted: false,
 			terminalEventReceived: false,
 			minted: new Set(),
 			submittedUserMessage,
+			submittedResumeToolCallId,
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
 		};
@@ -866,9 +901,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			streamSettlements.delete(controller);
 			settleStream?.();
 			streamVersion++;
+			executionTransitionsSeenDuringStream.clear();
 			if (refreshAfterStream && !isStreaming.value) {
 				refreshAfterStream = false;
-				refreshHistoryFromPush();
+				if (pendingQueuedResumes.size === 0) refreshHistoryFromPush();
 			}
 		}
 
@@ -992,6 +1028,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				resumeData,
 			},
 			optimisticUserMessage,
+			payload.toolCallId,
 		);
 		let reconciled = false;
 		if (outcome === 'failed') {
