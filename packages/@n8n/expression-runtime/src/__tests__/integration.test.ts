@@ -1278,4 +1278,19 @@ describe('QuickJsBridge runtimeBundle injection', () => {
 			await evaluator.dispose();
 		}
 	});
+
+	it('should not cache a runtimeBundle that fails to load', async () => {
+		const withBadBundle = new QuickJsBridge({
+			timeout: 5000,
+			runtimeBundle: 'this is not javascript (((',
+		});
+
+		await expect(withBadBundle.initialize()).rejects.toThrow('Failed to load runtime bundle');
+
+		const withDiskRead = new QuickJsBridge({ timeout: 5000 });
+
+		await expect(withDiskRead.initialize()).resolves.toBeUndefined();
+
+		await withDiskRead.dispose();
+	});
 });

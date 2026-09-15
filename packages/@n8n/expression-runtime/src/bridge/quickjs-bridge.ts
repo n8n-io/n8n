@@ -497,12 +497,15 @@ export class QuickJsBridge implements RuntimeBridge {
 		const QuickJS = await getQuickJS();
 		_quickjsWasm = QuickJS;
 
-		// A host without a filesystem (the browser) passes the bundle in. Seed the
-		// module cache with it, so initializeSync() can build later bridges too and
+		// A host without a filesystem (the browser) passes the bundle in, so
 		// loadRuntimeBundle() — the only Node-only code here — is never reached.
-		if (this.config.runtimeBundle) _runtimeBundle = this.config.runtimeBundle;
+		const runtimeBundle = this.config.runtimeBundle || _runtimeBundle || loadRuntimeBundle();
 
-		this.setupContext(QuickJS, _runtimeBundle ?? loadRuntimeBundle());
+		this.setupContext(QuickJS, runtimeBundle);
+
+		// Cached after the load, so initializeSync() can only ever build a later
+		// bridge from a bundle this one proved good.
+		_runtimeBundle = runtimeBundle;
 	}
 
 	/**
