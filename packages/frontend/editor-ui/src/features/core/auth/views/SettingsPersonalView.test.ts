@@ -123,6 +123,33 @@ describe('SettingsPersonalView', () => {
 			});
 			expect(updateUserSpy).not.toHaveBeenCalled();
 		});
+
+		it('should apply the change at once and keep the new email when SMTP is disabled', async () => {
+			// No email delivery: the backend applies the change immediately, so the
+			// field must not revert to the old address.
+			const requestEmailChangeSpy = vi
+				.spyOn(usersStore, 'requestEmailChange')
+				.mockResolvedValue({ status: 'changed', user: currentUser });
+
+			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const emailInput = getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')!;
+			await fireEvent.update(emailInput, 'new@example.com');
+			await waitAllPromises();
+
+			getByTestId('save-settings-button').click();
+			await waitAllPromises();
+
+			confirmPasswordEventBus.emit('close', { currentPassword: 'secret' });
+			await waitAllPromises();
+
+			expect(requestEmailChangeSpy).toHaveBeenCalledWith({
+				email: 'new@example.com',
+				currentPassword: 'secret',
+			});
+			expect(emailInput).toHaveValue('new@example.com');
+		});
 	});
 
 	describe('when changing theme', () => {

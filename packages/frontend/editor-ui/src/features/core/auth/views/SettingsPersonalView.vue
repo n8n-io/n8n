@@ -54,6 +54,7 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
+const isActive = ref<boolean>(true);
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
@@ -241,7 +242,9 @@ async function onSubmit(data: Record<string, string | number | boolean | null | 
 	await saveNameAndPersonalisation(form);
 
 	// Email changes go through the confirmation flow, gated by password or MFA.
-	if (emailChanged) {
+	// Skip if the view unmounted during the awaited save, so the modal never
+	// opens on a departed page.
+	if (emailChanged && isActive.value) {
 		startEmailChange(form.email);
 	}
 }
@@ -385,6 +388,7 @@ async function onMfaDisableClick() {
 }
 
 onBeforeUnmount(() => {
+	isActive.value = false;
 	promptMfaCodeBus.off('closed', disableMfa);
 });
 </script>

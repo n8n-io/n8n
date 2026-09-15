@@ -42,6 +42,9 @@ const onConfirm = async () => {
 			message: locale.baseText('auth.confirmEmailChange.success.message'),
 		});
 
+		// Clear the session so the /signin guest guard passes and the user
+		// re-authenticates with the new email.
+		await usersStore.logout();
 		await router.push({ name: VIEWS.SIGNIN });
 	} catch (error) {
 		toast.showError(error, locale.baseText('auth.confirmEmailChange.error'));

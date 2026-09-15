@@ -45,7 +45,9 @@ describe('ConfirmEmailChangeView', () => {
 
 		const { findByTestId } = renderComponent({ pinia });
 
-		expect(await findByTestId('confirm-email-change')).toBeInTheDocument();
+		const card = await findByTestId('confirm-email-change');
+		expect(card).toBeInTheDocument();
+		expect(card).toHaveTextContent('new@email.com');
 		expect(usersStore.resolveEmailChangeToken).toHaveBeenCalledWith({ token: 'test-token' });
 	});
 
@@ -54,6 +56,7 @@ describe('ConfirmEmailChangeView', () => {
 		const usersStore = mockedStore(useUsersStore);
 		usersStore.resolveEmailChangeToken.mockResolvedValue({ email: 'new@email.com' });
 		usersStore.confirmEmailChange.mockResolvedValue(undefined);
+		usersStore.logout.mockResolvedValue({ redirectUrl: null });
 
 		const { findByTestId } = renderComponent({ pinia });
 
@@ -62,6 +65,8 @@ describe('ConfirmEmailChangeView', () => {
 
 		await waitFor(() => {
 			expect(usersStore.confirmEmailChange).toHaveBeenCalledWith({ token: 'test-token' });
+			// Clear the session before navigating, so the /signin guest guard passes.
+			expect(usersStore.logout).toHaveBeenCalled();
 			expect(push).toHaveBeenCalledWith({ name: VIEWS.SIGNIN });
 		});
 	});
