@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { AIMessage } from '@langchain/core/messages';
 import { OutputParserException } from '@langchain/core/output_parsers';
 import { normalizeItems } from 'n8n-core';
 import type {
@@ -58,9 +59,7 @@ describe('OutputParserAutofixing', () => {
 
 	function getMockedRetryChain(output: string) {
 		return vi.fn().mockReturnValue({
-			invoke: vi.fn().mockResolvedValue({
-				content: output,
-			}),
+			invoke: vi.fn().mockResolvedValue(new AIMessage({ content: output })),
 		});
 	}
 
