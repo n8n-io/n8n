@@ -41,6 +41,10 @@ import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
+import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
@@ -1176,6 +1180,15 @@ export const createUpdateWorkflowTool = (
 		 * the flag and is always available.
 		 */
 		canvasGroupsEnabled?: boolean;
+
+		/**
+		 * Reports which node types are verified community nodes not installed
+		 * here, so an update that adds one can warn that it will not run. Supplied
+		 * only on surfaces that offer community-node discovery.
+		 */
+		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+		/** Whether this session can call the install tool; steers the warning text. */
+		installToolAvailable?: boolean;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1359,6 +1372,14 @@ export const createUpdateWorkflowTool = (
 					workflowUpdateData,
 					existingWorkflow,
 					nodeTypes,
+				);
+
+				validationWarnings.push(
+					...(await buildUninstalledNodeWarnings(
+						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						options.findUninstalledNodeTypes,
+						options.installToolAvailable,
+					)),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);

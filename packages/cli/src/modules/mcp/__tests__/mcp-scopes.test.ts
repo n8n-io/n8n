@@ -6,7 +6,14 @@ import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
+	getAllowedToolNames,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
@@ -146,6 +153,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
+			mockInstance(McpConfig),
 		);
 
 	beforeEach(() => {
@@ -165,9 +173,13 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// tools need that module, the verified catalog, and a scope-bearing
+		// caller; their registration guard lives in
+		// install-community-node.registration.test.ts.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) =>
+				!registered.has(name) && !AGENT_TOOLS.has(name) && !COMMUNITY_PACKAGE_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
@@ -181,7 +193,11 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
-		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+		// Community-package tools are builder-gated but register in neither
+		// service here, because this harness has the module inactive. Their
+		// builder gating is asserted in install-community-node.registration.test.ts.
+		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		expect(gated).toEqual(expected);
 	});
 
 	it('does not register folder tools when folders are not licensed', async () => {

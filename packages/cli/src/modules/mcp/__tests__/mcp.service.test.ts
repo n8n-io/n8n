@@ -48,6 +48,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
+import { McpConfig } from '../mcp.config';
 import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
@@ -133,6 +134,7 @@ describe('McpService', () => {
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
+			mockInstance(McpConfig),
 		);
 	});
 
@@ -187,6 +189,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -396,6 +399,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -1163,6 +1167,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1219,6 +1224,7 @@ describe('McpService', () => {
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1300,6 +1306,7 @@ describe('McpService', () => {
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),
+					mockInstance(McpConfig),
 				);
 			};
 
