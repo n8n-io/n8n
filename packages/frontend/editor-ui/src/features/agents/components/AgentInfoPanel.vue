@@ -475,7 +475,7 @@ function onInstructionsInput(value: string) {
 					:disabled="props.disabled"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
 					is-collapsible
-					show-toolbar="floating"
+					show-toolbar="hover"
 					variant="ghost"
 					data-testid="agent-instructions-document"
 					@update:model-value="onInstructionsInput"

@@ -230,7 +230,7 @@ function onConfirm() {
 						:class="$style.useWhenEditor"
 						:model-value="useWhen"
 						:placeholder="i18n.baseText('agents.builder.subAgents.useWhen.placeholder')"
-						show-toolbar="floating"
+						show-toolbar="hover"
 						max-height="100%"
 						data-testid="agent-sub-agents-modal-use-when"
 						@update:model-value="useWhen = $event"
