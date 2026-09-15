@@ -5,6 +5,7 @@ import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
+
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';

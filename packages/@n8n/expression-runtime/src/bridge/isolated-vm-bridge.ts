@@ -5,7 +5,14 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
-import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
+import {
+	dispatchHostCall,
+	getArrayElement,
+	getValueAtPath,
+	isErrorSentinel,
+	reconstructError,
+	serializeError,
+} from './host-functions';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -80,39 +87,6 @@ const ERROR_HANDLER_SOURCE = `
 		};
 	}
 `;
-
-/** Check if a value is an error sentinel returned by serializeError. */
-function isErrorSentinel(value: unknown): value is ErrorSentinel {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		(value as Record<string, unknown>).__isError === true
-	);
-}
-
-/**
- * Serialize an error into a transferable metadata object.
- *
- * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
- * sentinel instead of letting the error cross the isolate boundary (which
- * strips custom class identity and properties). The isolate-side proxy
- * detects __isError and reconstructs a proper Error to throw.
- */
-function serializeError(err: unknown): ErrorSentinel {
-	if (err instanceof Error) {
-		const extra = Object.fromEntries(
-			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
-		);
-		return {
-			__isError: true,
-			name: err.name,
-			message: err.message,
-			stack: err.stack,
-			extra,
-		};
-	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
-}
 
 /**
  * Read the runtime IIFE bundle by walking up from `__dirname` until
@@ -325,6 +299,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Create an ivm.Callback for getting value/metadata at a path.
 	 *
+<<<<<<< HEAD
 	 * Used by createDeepLazyProxy when accessing properties. Returns metadata
 	 * markers for arrays and objects, or the primitive value directly.
 	 *
@@ -333,73 +308,19 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * `$evaluateExpression()`) is wired in-isolate via
 	 * the typed-RPC dispatcher (`callHost`). No expression form should
 	 * reach a function through this path.
+=======
+	 * Thin wrapper around the shared getValueAtPath (see host-functions.ts
+	 * for navigation and guard semantics); errors are caught and returned
+	 * as sentinels instead of crossing the isolate boundary.
+>>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
 	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
-		return new (getIvm().Callback)((path: string[]) => {
+		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				// Navigate to value
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				// to get the sub-proxy for that item, then continue navigating the rest.
-				let value: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						value = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				} else {
-					const dollarFn = (data as Record<string, unknown>).$;
-					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
-						value = (dollarFn as (name: string) => unknown)(path[1]);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					value = (value as Record<string, unknown>)?.[path[i]];
-					if (value === undefined || value === null) {
-						return value;
-					}
-				}
-
-				// Functions are not reachable via the lazy-proxy data path —
-				// every callable on the host data surface routes through the
-				// typed-RPC dispatcher. Return undefined so any residual
-				// access surfaces as missing rather than as a stale metadata
-				// marker the runtime no longer knows how to interpret.
-				if (typeof value === 'function') {
-					return undefined;
-				}
-
-				// Handle arrays - always lazy, only transfer length
-				if (Array.isArray(value)) {
-					return {
-						__isArray: true,
-						__length: value.length,
-						__data: null,
-					};
-				}
-
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
-				if (value instanceof Date) {
-					return value;
-				}
-
-				// Handle objects - return metadata with keys
-				if (value !== null && typeof value === 'object') {
-					return {
-						__isObject: true,
-						__keys: Object.keys(value),
-					};
-				}
-
-				// Primitive value
-				return value;
+				return getValueAtPath(data, pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -409,81 +330,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Create an ivm.Callback for getting array elements at an index.
 	 *
-	 * Used by array proxy when accessing numeric indices.
+	 * Thin wrapper around the shared getArrayElement (see host-functions.ts
+	 * for navigation and guard semantics); errors are caught and returned
+	 * as sentinels instead of crossing the isolate boundary.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
 	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
-		return new (getIvm().Callback)((path: string[], index: number) => {
+		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				// Navigate to array
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				let arr: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						arr = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				} else {
-					const dollarFn = (data as Record<string, unknown>).$;
-					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
-						arr = (dollarFn as (name: string) => unknown)(path[1]);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					arr = (arr as Record<string, unknown>)?.[path[i]];
-					if (arr === undefined || arr === null) {
-						return undefined;
-					}
-				}
-
-				if (!Array.isArray(arr)) {
-					return undefined;
-				}
-
-				// Only genuine array indices are reachable; anything else (e.g.
-				// 'constructor', '__lookupGetter__') would read off the prototype
-				// chain and could leak a host function reference across the boundary.
-				if (!Number.isInteger(index) || index < 0) {
-					return undefined;
-				}
-
-				const element = arr[index];
-
-				// Functions are never reachable through the data surface — mirror the
-				// guard in getValueAtPath so a host callable can't cross the boundary.
-				if (typeof element === 'function') {
-					return undefined;
-				}
-
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
-				if (element instanceof Date) {
-					return element;
-				}
-
-				// If element is object/array, return metadata
-				if (element !== null && typeof element === 'object') {
-					if (Array.isArray(element)) {
-						return {
-							__isArray: true,
-							__length: element.length,
-							__data: null,
-						};
-					}
-					return {
-						__isObject: true,
-						__keys: Object.keys(element),
-					};
-				}
-
-				// Primitive element
-				return element;
+				return getArrayElement(data, pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -491,28 +348,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create the single typed-RPC dispatcher.
+	 * Create the ivm.Callback for the typed-RPC `callHost` channel.
 	 *
-	 * The isolate sends one envelope per typed RPC invocation:
-	 *   `callHost({ type: 'getNodeFirst', nodeName, branchIndex?, runIndex? })`
+	 * Thin wrapper around the shared dispatchHostCall (see host-functions.ts
+	 * for envelope validation and per-message rationale); errors — including
+	 * zod parse failures — are caught and returned as sentinels instead of
+	 * crossing the isolate boundary.
 	 *
-	 * Inputs cross a trust boundary, so the dispatcher parses every envelope
-	 * with the host-side zod schema (`bridgeMessageSchema`) before any
-	 * dispatch happens. Anything that deviates from the declared shape —
-	 * unknown `type`, missing required fields, extra unexpected fields,
-	 * wrong field types — fails the parse and an error sentinel is returned
-	 * to the caller.
-	 *
-	 * After parsing, `switch (msg.type)` dispatches to a private handler with
-	 * a fully narrowed message type. The operation set is exactly the cases
-	 * in this switch; the `type` field selects a static branch in source,
-	 * not a property lookup on a runtime object.
-	 *
-	 * Return-value note: handlers must return plain, structured-clone-able
-	 * data. Results cross into the isolate through an ivm.Callback, which copies
-	 * them via the structured-clone algorithm — return JSON-shaped values, not
-	 * isolated-vm objects (`Reference`/`ExternalCopy`) or other non-cloneable
-	 * values.
+	 * Return-value note: the dispatcher returns plain, structured-clone-able
+	 * data. Results cross into the isolate through an ivm.Callback, which
+	 * copies them via the structured-clone algorithm — JSON-shaped values,
+	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
+	 * non-cloneable values.
 	 *
 	 * @param data - Current workflow data
 	 * @private
@@ -520,6 +367,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
+<<<<<<< HEAD
 				const msg = bridgeMessageSchema.parse(rawMsg);
 				switch (msg.type) {
 					case 'getNodeFirst':
@@ -556,6 +404,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						throw new Error('Unhandled bridge message');
 					}
 				}
+=======
+				return dispatchHostCall(rawMsg, data);
+>>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -563,6 +414,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
+<<<<<<< HEAD
 	 * Handlers for the `$('Foo').{first,last,all}` typed RPCs.
 	 *
 	 * Each handler reads a fixed literal property name off the host-side node
@@ -718,6 +570,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
+=======
+>>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
@@ -815,7 +669,7 @@ try {
 			);
 
 			if (isErrorSentinel(result)) {
-				throw this.reconstructError(result);
+				throw reconstructError(result);
 			}
 
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
@@ -860,27 +714,6 @@ try {
 				: `Expression timed out after ${this.config.timeout}ms`,
 			{},
 		);
-	}
-
-	/**
-	 * Reconstruct an error from serialized isolate data.
-	 *
-	 * Maps error names back to their host-side classes and restores
-	 * custom properties that would otherwise be lost crossing the boundary.
-	 */
-	private reconstructError(data: ErrorSentinel): Error {
-		const error = new Error(data.message);
-		error.name = data.name || 'Error';
-		if (data.stack) {
-			error.stack = data.stack;
-		}
-
-		// Restore custom properties transferred via copy: true
-		if (data.extra) {
-			Object.assign(error, data.extra);
-		}
-
-		return error;
 	}
 
 	/**

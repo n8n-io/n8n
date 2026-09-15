@@ -99,6 +99,7 @@ function mountSection(
 				NodeIcon: { template: '<span />' },
 				N8nButton: {
 					props: ['disabled'],
+					emits: ['click'],
 					template:
 						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 				},
@@ -821,8 +822,8 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			const workflowChip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.missingReference',
 			);
 
@@ -859,13 +860,13 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChips).toHaveLength(2);
+			const workflowChips = wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChips).toHaveLength(2);
 
-			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleNodes',
 			);
-			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.noSupportedTrigger',
 			);
 		});
@@ -896,12 +897,12 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChips).toHaveLength(2);
-			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			const workflowChips = wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChips).toHaveLength(2);
+			expect(workflowChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
 			);
-			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
 			);
 		});
@@ -923,7 +924,7 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			const chip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
 			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
 			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
 			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
@@ -954,6 +955,38 @@ describe('AgentCapabilitiesSection', () => {
 		});
 	});
 
+	describe('capability rows', () => {
+		it('renders workflow tools in a separate row and opens the selected workflow', async () => {
+			const wrapper = mountSection([
+				{
+					type: 'node',
+					name: 'search',
+					node: { nodeType: 'toolSearch', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Handle refund' },
+			]);
+
+			expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+			const workflowChip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChip.exists()).toBe(true);
+
+			await workflowChip.trigger('click');
+
+			expect(wrapper.emitted('open-tool')).toEqual([
+				[{ kind: 'tool', toolType: 'workflow', id: 'Handle refund' }],
+			]);
+		});
+
+		it('emits the picker mode from each add button', async () => {
+			const wrapper = mountSection([]);
+
+			await wrapper.find('[data-testid="agent-capabilities-add-tool"]').trigger('click');
+			await wrapper.find('[data-testid="agent-capabilities-add-workflow"]').trigger('click');
+
+			expect(wrapper.emitted('add-tool')).toEqual([['tools'], ['workflows']]);
+		});
+	});
+
 	describe('sections allowlist', () => {
 		it('renders every capability section by default', () => {
 			const wrapper = mountSection([]);
@@ -980,6 +1013,7 @@ describe('AgentCapabilitiesSection', () => {
 						NodeIcon: { template: '<span />' },
 						N8nButton: {
 							props: ['disabled'],
+							emits: ['click'],
 							template:
 								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 						},

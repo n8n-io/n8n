@@ -68,6 +68,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+<<<<<<< HEAD
 	'externalSecretsProvider:create',
 	'externalSecretsProvider:read',
 	'externalSecretsProvider:update',
@@ -75,6 +76,13 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'externalSecretsProvider:list',
 	'externalSecretsProvider:sync',
 	'externalSecret:list',
+=======
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
+>>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -127,6 +135,11 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:writeRow',
 	'dataTable:readColumn',
 	'dataTable:writeColumn',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -177,9 +190,17 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+<<<<<<< HEAD
 	'externalSecretsProvider:read',
 	'externalSecretsProvider:list',
 	'externalSecret:list',
+=======
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
+>>>>>>> d609c47344a3e7f801ab55970351a25b2c867682
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -203,6 +224,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

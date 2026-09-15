@@ -21,6 +21,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
+import { EmailChangeService } from '@/services/email-change.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -39,6 +40,7 @@ export class MeController {
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly emailChangeService: EmailChangeService,
 	) {}
 
 	/**
@@ -87,7 +89,12 @@ export class MeController {
 			}
 		}
 
-		await this.validateChangingUserEmail(req.user, payload);
+		if (isEmailBeingChanged) {
+			await this.emailChangeService.assertMayRequestEmailChange(req.user, {
+				currentPassword,
+				mfaCode: payload.mfaCode,
+			});
+		}
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [
 			userId,
@@ -115,60 +122,6 @@ export class MeController {
 		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
 
 		return publicUser;
-	}
-
-	private async validateChangingUserEmail(currentUser: User, payload: UserUpdateRequestDto) {
-		if (!payload.email || payload.email === currentUser.email) {
-			// email is not being changed
-			return;
-		}
-		const { currentPassword: providedCurrentPassword, ...payloadWithoutPassword } = payload;
-		const { id: userId, mfaEnabled } = currentUser;
-
-		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled()) {
-			this.logger.debug(
-				'Request to update user failed because SAML user may not change their email',
-				{
-					userId: currentUser.id,
-					payload: payloadWithoutPassword,
-				},
-			);
-			throw new BadRequestError('SAML user may not change their email');
-		}
-
-		if (mfaEnabled) {
-			if (!payload.mfaCode) {
-				throw new BadRequestError('Two-factor code is required to change email');
-			}
-
-			const isMfaCodeValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
-			if (!isMfaCodeValid) {
-				throw new InvalidMfaCodeError();
-			}
-		} else {
-			if (currentUser.password === null) {
-				this.logger.debug('User with no password changed their email', {
-					userId: currentUser.id,
-					payload: payloadWithoutPassword,
-				});
-				return;
-			}
-
-			if (!providedCurrentPassword || typeof providedCurrentPassword !== 'string') {
-				throw new BadRequestError('Current password is required to change email');
-			}
-
-			const isProvidedPasswordCorrect = await this.passwordUtility.compare(
-				providedCurrentPassword,
-				currentUser.password,
-			);
-			if (!isProvidedPasswordCorrect) {
-				throw new BadRequestError(
-					'Unable to update profile. Please check your credentials and try again.',
-				);
-			}
-		}
 	}
 
 	private isUserManagedByEnv(user: User): boolean {
