@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/InputPanel.vue
+  s_f489685fba5f6b::t_b1cca257aae240 536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ceb7cb0ce860a1c253553de5b080b8edabd59f76",
+  "prompts": {},
+  "sessions": {
+    "s_f489685fba5f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a873cd76-015f-4b9b-95b0-e7a8bccf4620",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

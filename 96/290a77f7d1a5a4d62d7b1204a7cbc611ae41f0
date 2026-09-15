@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/index.ts
+  h_a348dde7c02e89 359
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  h_a348dde7c02e89 707-714,806-810,845
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  h_a348dde7c02e89 659-717
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  h_a348dde7c02e89 12,359,404
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_a348dde7c02e89 7048-7050
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  h_a348dde7c02e89 10,61-71,760-859
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  h_a348dde7c02e89 7,10,46,391-439,654-700,835-842,844-845
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  h_a348dde7c02e89 12-13,23
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  h_a348dde7c02e89 728
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96290a77f7d1a5a4d62d7b1204a7cbc611ae41f0",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
