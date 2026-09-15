@@ -18,6 +18,8 @@ const props = withDefaults(
 
 const icon = computed((): IconName => {
 	switch (props.kind) {
+		case 'background-task-signal':
+			return 'list-checks';
 		case 'user':
 			return 'user';
 		case 'agent':
