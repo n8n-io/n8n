@@ -10,11 +10,50 @@ import { findPackageJsonFiles, relativeDir } from '../utils/package-json-scanner
 
 const CONFIG_FILENAMES = ['eslint.config.mjs', 'eslint.config.js', 'eslint.config.cjs'];
 
+/**
+ * A package that has moved to oxlint deletes its ESLint config, so the layering
+ * policy has to follow it there. Only the layered `oxlint.config.{mts,ts}` form
+ * is checked: `.oxlintrc.json` is the editor-ui bridge, a standalone rule table
+ * whose policy still lives in its ESLint config.
+ */
+const OXLINT_CONFIG_FILENAMES = ['oxlint.config.mts', 'oxlint.config.ts'];
+
 const LAYERS = ['base', 'backend', 'frontend', 'nodes'];
 const LAYER_IMPORT = /^@n8n\/eslint-config\/([a-z-]+)$/;
+const OXLINT_LAYER_IMPORT = /^@n8n\/oxlint-config\/([a-z-]+)$/;
 
 /** Retired export paths, replaced by the four layers. */
 const REMOVED_SUBPATHS = new Set(['node', 'encryption-boundary']);
+
+/** What differs between an ESLint config and an oxlint one. */
+interface Flavour {
+	/** `@n8n/eslint-config` or `@n8n/oxlint-config`, as written in an import. */
+	layerPackage: string;
+	layerImport: RegExp;
+	/** oxlint configs are TypeScript; ESLint ones are parsed as JavaScript. */
+	scriptKind: ScriptKind;
+	/** Kept verbatim per flavour: the baseline is keyed by message text. */
+	missingLayerMessage: (packageName: string) => string;
+	missingLayerSuggestion: string;
+}
+
+const ESLINT_FLAVOUR: Flavour = {
+	layerPackage: '@n8n/eslint-config',
+	layerImport: LAYER_IMPORT,
+	scriptKind: ScriptKind.JS,
+	missingLayerMessage: (packageName) => `${packageName} does not extend a shared ESLint layer.`,
+	missingLayerSuggestion:
+		'Import baseConfig, backendConfig, frontendConfig or nodesConfig from @n8n/eslint-config and pass it to defineConfig.',
+};
+
+const OXLINT_FLAVOUR: Flavour = {
+	layerPackage: '@n8n/oxlint-config',
+	layerImport: OXLINT_LAYER_IMPORT,
+	scriptKind: ScriptKind.TS,
+	missingLayerMessage: (packageName) => `${packageName} does not extend a shared oxlint layer.`,
+	missingLayerSuggestion:
+		'Import a layer from @n8n/oxlint-config and pass it to defineConfig as `extends: [layer]`.',
+};
 
 /**
  * A `files` glob that covers effectively the whole package, so a block scoped to
@@ -69,24 +108,31 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 			const rel = relativeDir(rootDir, packageJsonPath);
 			if (exempt.some((entry) => rel === entry || rel.startsWith(`${entry}/`))) continue;
 
-			const configPath = CONFIG_FILENAMES.map((name) => path.join(packageDir, name)).find((p) =>
-				fs.existsSync(p),
-			);
-			if (!configPath || seen.has(configPath)) continue;
-			seen.add(configPath);
+			// A package may hold both while a migration is in flight, and each
+			// config decides policy for the linter that reads it.
+			for (const [filenames, flavour] of [
+				[CONFIG_FILENAMES, ESLINT_FLAVOUR],
+				[OXLINT_CONFIG_FILENAMES, OXLINT_FLAVOUR],
+			] as const) {
+				const configPath = filenames
+					.map((name) => path.join(packageDir, name))
+					.find((p) => fs.existsSync(p));
+				if (!configPath || seen.has(configPath)) continue;
+				seen.add(configPath);
 
-			violations.push(...this.checkConfig(configPath, rel));
+				violations.push(...this.checkConfig(configPath, rel, flavour));
+			}
 		}
 
 		return violations;
 	}
 
-	private checkConfig(configPath: string, packageName: string): Violation[] {
+	private checkConfig(configPath: string, packageName: string, flavour: Flavour): Violation[] {
 		const text = fs.readFileSync(configPath, 'utf-8');
 		const source = new Project({
 			useInMemoryFileSystem: true,
 			compilerOptions: { allowJs: true },
-		}).createSourceFile(configPath, text, { scriptKind: ScriptKind.JS });
+		}).createSourceFile(configPath, text, { scriptKind: flavour.scriptKind });
 
 		const violations: Violation[] = [];
 		const at = (node: Node) => {
@@ -98,10 +144,10 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 		const layerImports: string[] = [];
 		for (const declaration of source.getImportDeclarations()) {
 			const specifier = declaration.getModuleSpecifierValue();
-			const match = LAYER_IMPORT.exec(specifier);
+			const match = flavour.layerImport.exec(specifier);
 			if (!match) continue;
 			const subpath = match[1];
-			if (REMOVED_SUBPATHS.has(subpath)) {
+			if (flavour === ESLINT_FLAVOUR && REMOVED_SUBPATHS.has(subpath)) {
 				const { line, column } = at(declaration);
 				violations.push(
 					this.createViolation(
@@ -123,8 +169,8 @@ export class LintConfigLayeringRule extends BaseRule<CodeHealthContext> {
 					configPath,
 					1,
 					1,
-					`${packageName} does not extend a shared ESLint layer.`,
-					'Import baseConfig, backendConfig, frontendConfig or nodesConfig from @n8n/eslint-config and pass it to defineConfig.',
+					flavour.missingLayerMessage(packageName),
+					flavour.missingLayerSuggestion,
 				),
 			);
 		} else if (layerImports.length > 1) {

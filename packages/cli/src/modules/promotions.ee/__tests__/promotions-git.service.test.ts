@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -266,6 +267,36 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
+		it("does not delete another request's in-progress staging directory", async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			const firstClone = createDeferredPromise();
+			const sentinelPath = path.join(paths.nextRepositoryFolder, 'clone-in-progress');
+			let cloneCalls = 0;
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				cloneCalls += 1;
+				await mkdir(String(dir), { recursive: true });
+				if (cloneCalls === 1) {
+					await writeFile(sentinelPath, 'first-clone');
+					await firstClone.promise;
+				}
+			});
+
+			const first = call();
+			await vi.waitFor(() => expect(mockGit.clone).toHaveBeenCalledTimes(1));
+
+			const second = call();
+			await vi.waitFor(() => {
+				const checkRefCalls = mockGit.raw.mock.calls.filter(
+					(args) => Array.isArray(args[0]) && args[0][0] === 'check-ref-format',
+				);
+				expect(checkRefCalls).toHaveLength(2);
+			});
+			await expect(readFile(sentinelPath, 'utf8')).resolves.toBe('first-clone');
+
+			firstClone.resolve();
+			await Promise.all([first, second]);
+		});
+
 		it('bootstraps a checkout on the target branch when the remote is empty', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
@@ -429,6 +460,43 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.push).toHaveBeenCalledWith('origin', 'main', ['-f']);
 		});
 
+		it('restores HEAD and the index when the push fails', async () => {
+			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.push.mockRejectedValueOnce(new Error('push rejected'));
+
+			await expect(call({ rollbackOnFailure: true })).rejects.toThrow(BadRequestError);
+
+			expect(mockGit.revparse.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.add.mock.invocationCallOrder[0],
+			);
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(['reset', '--mixed', 'before']);
+			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeGreaterThan(
+				mockGit.push.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the push error when rollback fails', async () => {
+			const pushError = new ServiceUnavailableError('Push timed out');
+			mockGit.push.mockRejectedValueOnce(pushError);
+			mockGit.raw.mockRejectedValueOnce(new Error('reset failed'));
+
+			await expect(call({ rollbackOnFailure: true })).rejects.toBe(pushError);
+
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to restore the Git revision after a failed promotion',
+				{ configId, branchName: 'main' },
+			]);
+		});
+
+		it('keeps the new commit when the push succeeds', async () => {
+			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+
+			await expect(call({ rollbackOnFailure: true })).resolves.toEqual({ commitSha: 'after' });
+
+			expect(mockGit.push).toHaveBeenCalledExactlyOnceWith('origin', 'main');
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
+
 		it('redacts a push failure and keeps raw git output out of the log', async () => {
 			mockGit.push.mockRejectedValue(new Error('remote: rejected [non-fast-forward] secret-token'));
 
@@ -439,6 +507,33 @@ describe('PromotionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('listBranchTree', () => {
+		it('runs operations on one checkout one at a time', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.raw.mockResolvedValue('');
+			const operation = {
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			};
+
+			const first = gitService.listBranchTree(operation);
+			const second = gitService.listBranchTree(operation);
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+			fetching.resolve();
+			await Promise.all([first, second]);
+
+			const [firstFetch, secondFetch] = mockGit.fetch.mock.invocationCallOrder;
+			const [firstListing] = mockGit.raw.mock.invocationCallOrder;
+			expect(firstListing).toBeGreaterThan(firstFetch);
+			expect(firstListing).toBeLessThan(secondFetch);
 		});
 	});
 
