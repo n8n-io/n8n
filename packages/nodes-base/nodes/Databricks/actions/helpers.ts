@@ -4,11 +4,15 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 } from 'n8n-workflow';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
+
+export type DatabricksContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
 
 /**
  * Single egress point for the Databricks API, so every request carries the
@@ -23,8 +27,8 @@ import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
  * requires a single predictable token.
  */
 export async function databricksApiRequest(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
 	return await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
@@ -38,20 +42,19 @@ export async function databricksApiRequest(
 }
 
 export function getActiveCredentialType(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
+	context: DatabricksContext,
 	itemIndex = 0,
-): 'databricksApi' | 'databricksOAuth2Api' {
-	const authentication = context.getNodeParameter(
-		'authentication',
-		itemIndex,
-		'accessToken',
-	) as string;
+): DatabricksCredentialType {
+	const authentication =
+		'getInputData' in context
+			? context.getNodeParameter('authentication', itemIndex, 'accessToken')
+			: context.getNodeParameter('authentication', 'accessToken');
 	return authentication === 'oAuth2' ? 'databricksOAuth2Api' : 'databricksApi';
 }
 
 export async function getHost(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
 ): Promise<string> {
 	const credentials = await context.getCredentials<DatabricksCredentials>(credentialType);
 	return credentials.host.replace(/\/$/, '');

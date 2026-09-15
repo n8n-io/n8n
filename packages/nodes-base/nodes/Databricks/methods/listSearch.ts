@@ -12,13 +12,14 @@ import {
 	getHost,
 	makePermissionErrorLegible,
 	sanitizeApiMessage,
+	type DatabricksCredentialType,
 } from '../actions/helpers';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 ): Promise<T> {
 	try {
@@ -207,7 +208,7 @@ export async function getSchemas(
 
 async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	apiPath: string,
 	catalogName: string,
@@ -433,7 +434,7 @@ type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
 async function fetchJobsPage(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	pageToken?: string,
 ): Promise<JobsListPage> {

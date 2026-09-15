@@ -1,8 +1,8 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode, IPollFunctions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { databricksApiRequest } from '../actions/helpers';
+import { databricksApiRequest, getActiveCredentialType } from '../actions/helpers';
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 describe('databricksApiRequest', () => {
@@ -110,5 +110,26 @@ describe('databricksApiRequest', () => {
 
 	it('should send the unversioned partner User-Agent', () => {
 		expect(DATABRICKS_PARTNER_USER_AGENT).toBe('n8n_DatabricksNode');
+	});
+});
+
+describe('getActiveCredentialType', () => {
+	it('should read the authentication parameter of the given item on an execute context', () => {
+		const context = mock<IExecuteFunctions>({ getInputData: vi.fn() });
+		context.getNodeParameter.mockReturnValue('oAuth2');
+
+		expect(getActiveCredentialType(context, 2)).toBe('databricksOAuth2Api');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 2, 'accessToken');
+	});
+
+	it.each([
+		['a polling context', () => mock<IPollFunctions>()],
+		['a load-options context', () => mock<ILoadOptionsFunctions>()],
+	])('should read the authentication parameter without an item index on %s', (_label, create) => {
+		const context = create();
+		context.getNodeParameter.mockReturnValue('accessToken');
+
+		expect(getActiveCredentialType(context)).toBe('databricksApi');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 'accessToken');
 	});
 });
