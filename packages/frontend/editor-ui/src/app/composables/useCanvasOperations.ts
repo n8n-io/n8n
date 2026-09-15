@@ -660,6 +660,9 @@ export function useCanvasOperations() {
 
 		if (shouldRestoreEmptyGroupAnchor) {
 			const anchorNodeType = requireNodeTypeDescription(NO_OP_NODE_TYPE);
+			const anchorHistoryIndex = trackHistory
+				? historyStore.currentBulkAction?.commands.length
+				: undefined;
 			const anchor = addNode(
 				{
 					type: NO_OP_NODE_TYPE,
@@ -686,6 +689,12 @@ export function useCanvasOperations() {
 
 			// If the replacement is rejected by node-group connection policy, leave
 			// the original deletion path to remove the node and its group.
+			if (anchorHistoryIndex !== undefined) {
+				const anchorCommand = historyStore.currentBulkAction?.commands[anchorHistoryIndex];
+				if (anchorCommand instanceof AddNodeCommand && anchorCommand.node.id === anchor.id) {
+					historyStore.currentBulkAction?.commands.splice(anchorHistoryIndex, 1);
+				}
+			}
 			workflowDocumentStore.value.removeNodeById(anchor.id);
 		}
 
