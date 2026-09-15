@@ -25,22 +25,10 @@ function isServicePrincipal(this: IExecuteFunctions): boolean {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 }
 
-export const MEETING_HINT = "Check that the 'Meeting' parameter is correctly set";
-
 export function meetingHint(this: IExecuteFunctions): string {
 	return isServicePrincipal.call(this)
 		? "Check that the 'Meeting' and 'Organizer' parameters are correctly set"
 		: "Check that the 'Meeting' parameter is correctly set";
-}
-
-export function throwIfOnlineMeetingUnsupported(this: IExecuteFunctions): void {
-	if (isServicePrincipal.call(this)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'This online meeting operation is not available with the Service Principal credential yet',
-			{ description: 'Use an OAuth2 credential for this operation.' },
-		);
-	}
 }
 
 // Graph addresses app-only meetings by the organizer's object ID, not the principal name.

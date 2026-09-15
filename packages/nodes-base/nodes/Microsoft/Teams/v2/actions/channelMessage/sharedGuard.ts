@@ -22,3 +22,16 @@ export function throwIfChannelMessageSendUnsupported(this: IExecuteFunctions, i:
 		);
 	}
 }
+
+export function throwIfChannelMessageDeleteUnsupported(this: IExecuteFunctions): void {
+	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Deleting and restoring channel messages is not available with the Service Principal credential',
+			{
+				description:
+					'Microsoft Graph offers message delete and undo delete only for a signed-in user. Use an OAuth2 credential for this operation.',
+			},
+		);
+	}
+}
