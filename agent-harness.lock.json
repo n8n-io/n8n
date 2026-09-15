@@ -1,7 +1,7 @@
 {
 	"repository": "n8n-io/cat-bot",
-	"releaseTag": "harness-v0.2.2",
-	"version": "0.2.2",
-	"assetName": "n8n-opencode-harness-0.2.2.tgz",
-	"sha256": "127f0ec0e1026474ab2e275208e4c1335ca5824ad9e43ef6d487c98bfca3fd78"
+	"releaseTag": "harness-v0.3.0",
+	"version": "0.3.0",
+	"assetName": "n8n-opencode-harness-0.3.0.tgz",
+	"sha256": "e1ff2d17291b7f9fb16c7238d23af3d6dc59fc0fe60639ef9e7d1035f21f0fe9"
 }
