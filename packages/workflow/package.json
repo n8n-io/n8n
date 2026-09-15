@@ -75,7 +75,6 @@
     "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
-    "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "ast-types": "0.16.1",
     "axios": "catalog:",

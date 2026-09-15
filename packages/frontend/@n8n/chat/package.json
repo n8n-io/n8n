@@ -57,7 +57,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@storybook/vue3": "catalog:storybook",
-    "@storybook/vue3-vite": "catalog:storybook",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@types/markdown-it": "catalog:",

@@ -2,8 +2,11 @@ import type {
 	AiPreference,
 	AiPreferenceRepository,
 	Project,
+	ProjectRelation,
+	ProjectRelationRepository,
 	ProjectRepository,
 	User,
+	UserRepository,
 } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -27,7 +30,14 @@ const projects = [
 describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
-	const service = new AiPreferenceService(aiPreferenceRepository, projectRepository);
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const userRepository = mock<UserRepository>();
+	const service = new AiPreferenceService(
+		aiPreferenceRepository,
+		projectRepository,
+		projectRelationRepository,
+		userRepository,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -98,7 +108,7 @@ describe('AiPreferenceService', () => {
 				projectIds: ['personal-1', 'team-1'],
 			});
 			expect(result.projects).toEqual([
-				{ id: 'team-1', name: 'Sales', isPersonal: false, items: ['Sales rule'] },
+				{ id: 'team-1', name: 'Sales', type: 'team', items: ['Sales rule'] },
 			]);
 		});
 
@@ -113,8 +123,8 @@ describe('AiPreferenceService', () => {
 			const result = await service.getApplicableAcrossProjects(user);
 
 			expect(result.projects).toEqual([
-				{ id: 'personal-1', name: 'Me <me@n8n.io>', isPersonal: true, items: ['Mine'] },
-				{ id: 'team-1', name: 'Sales', isPersonal: false, items: ['Sales rule'] },
+				{ id: 'personal-1', name: 'Me <me@n8n.io>', type: 'personal', items: ['Mine'] },
+				{ id: 'team-1', name: 'Sales', type: 'team', items: ['Sales rule'] },
 			]);
 		});
 
@@ -185,6 +195,81 @@ describe('AiPreferenceService', () => {
 				projectIds: [],
 			});
 			expect(result).toEqual({ instance: [], user: [], projects: [] });
+		});
+	});
+
+	describe('the scopes a write reports back', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+		const teamProject = mock<Project>({ id: 'p-1', name: 'Marketing', type: 'team' });
+
+		/** Gives the member one role in the project that grants the named scopes only. */
+		function allowProjectOperations(...allowed: string[]) {
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				{
+					projectId: 'p-1',
+					role: { slug: 'project:custom', scopes: allowed.map((slug) => ({ slug })) },
+				} as unknown as ProjectRelation,
+			]);
+			projectRepository.findOneBy.mockResolvedValue(teamProject);
+		}
+
+		it('reports only what a create-only project role holds, not the whole set', async () => {
+			// A custom project role can grant create without update or delete. Reporting
+			// the full set would have the client offer buttons the service then refuses.
+			allowProjectOperations('projectAiPreference:create');
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			const created = await service.create(member, {
+				content: 'Marketing rule.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+
+			expect(created.scopes).toEqual(['aiPreference:read']);
+		});
+
+		it("reads the caller's project relations once per request", async () => {
+			allowProjectOperations(
+				'projectAiPreference:create',
+				'projectAiPreference:update',
+				'projectAiPreference:delete',
+			);
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			await service.create(member, { content: 'Rule.', scope: 'project', projectId: 'p-1' });
+
+			// Three operations were checked: create, then update and delete for the scopes.
+			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports update and delete when the project role grants them', async () => {
+			allowProjectOperations(
+				'projectAiPreference:create',
+				'projectAiPreference:update',
+				'projectAiPreference:delete',
+			);
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			const created = await service.create(member, {
+				content: 'Marketing rule.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+
+			expect(created.scopes).toEqual([
+				'aiPreference:read',
+				'aiPreference:update',
+				'aiPreference:delete',
+			]);
 		});
 	});
 });
@@ -412,7 +497,7 @@ describe('renderAiPreferences', () => {
 				instance: [],
 				user: [],
 				projects: [
-					{ id: 'p-0', name: 'Me <me@n8n.io>', isPersonal: true, items: ['Prefix with MKT.'] },
+					{ id: 'p-0', name: 'Me <me@n8n.io>', type: 'personal', items: ['Prefix with MKT.'] },
 				],
 			});
 
@@ -426,7 +511,7 @@ describe('renderAiPreferences', () => {
 			const text = renderAiPreferences({
 				instance: [],
 				user: [],
-				projects: [{ id: 'p-1', name: 'Marketing', isPersonal: false, items: ['x'] }],
+				projects: [{ id: 'p-1', name: 'Marketing', type: 'team', items: ['x'] }],
 			});
 
 			expect(text).toContain(`${projectHeading('Marketing')}\n- x`);
@@ -522,8 +607,8 @@ describe('flattenAiPreferences', () => {
 				instance: ['Use British English.'],
 				user: ['Keep replies short.'],
 				projects: [
-					{ id: 'p-0', name: 'Me <me@n8n.io>', isPersonal: true, items: ['Prefix with MKT.'] },
-					{ id: 'p-1', name: 'Marketing', isPersonal: false, items: ['Prefer HubSpot nodes.'] },
+					{ id: 'p-0', name: 'Me <me@n8n.io>', type: 'personal', items: ['Prefix with MKT.'] },
+					{ id: 'p-1', name: 'Marketing', type: 'team', items: ['Prefer HubSpot nodes.'] },
 				],
 			});
 
@@ -539,7 +624,7 @@ describe('flattenAiPreferences', () => {
 			const items = flattenAiPreferences({
 				instance: [],
 				user: [],
-				projects: [{ id: 'p-0', name: 'Me <me@n8n.io>', isPersonal: true, items: ['x'] }],
+				projects: [{ id: 'p-0', name: 'Me <me@n8n.io>', type: 'personal', items: ['x'] }],
 			});
 
 			expect(items).toEqual([{ scope: 'personalProject', text: 'x' }]);
@@ -598,6 +683,19 @@ describe('renderAiPreferencesBlock', () => {
 				'</ai-preferences>',
 			].join('\n'),
 		);
+	});
+
+	it('names a personal project by its kind, not by its owner', () => {
+		const text = renderAiPreferencesBlock({
+			instance: [],
+			user: [],
+			projects: [
+				{ id: 'p-1', name: 'Jane Doe <jane@acme.com>', type: 'personal', items: ['Only here.'] },
+			],
+		});
+
+		expect(text).toContain('Preferences for your personal project:\n- Only here.');
+		expect(text).not.toContain('jane@acme.com');
 	});
 
 	it('keeps a multi-line preference inside one bullet', () => {

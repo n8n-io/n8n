@@ -32,6 +32,9 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			// every frontend package inherits it instead of rediscovering the failure.
 			passWithNoTests: true,
 			setupFiles: ['./src/__tests__/setup.ts'],
+			// Inline so vitest maps the `vitest` import inside it to the running instance.
+			// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
+			server: { deps: { inline: ['vitest-mock-extended'] } },
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 			outputFile: { junit: './junit.xml' },
 			coverage: {

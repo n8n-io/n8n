@@ -19,9 +19,9 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
-	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -588,9 +588,13 @@ describe('McpService', () => {
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('fails the AI preferences gate closed when the flag is absent', async () => {
+		it.each([
+			['absent', {}],
+			['on the control arm', { [CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT }],
+			['a boolean', { [CONTEXT_PREFERENCES_FLAG]: true }],
+		])('fails the AI preferences gate closed when the flag is %s', async (_, flags) => {
 			const postHogClient = mockInstance(PostHogClient);
-			postHogClient.getFeatureFlags.mockResolvedValue({});
+			postHogClient.getFeatureFlags.mockResolvedValue(flags);
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({

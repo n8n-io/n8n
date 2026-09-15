@@ -12,8 +12,8 @@ import { scopeInformation } from '@/scope-information';
  * so reading it is governed by a normal scope rather than by an MCP-only string. CONTEXT-132.
  */
 describe('aiPreference scope', () => {
-	it('offers read only, because nothing writes preferences yet', () => {
-		expect(RESOURCES.aiPreference).toEqual(['read']);
+	it('offers the read operation the MCP tool gates on', () => {
+		expect(RESOURCES.aiPreference).toContain('read');
 	});
 
 	it('is granted to the roles that build', () => {
