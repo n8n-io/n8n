@@ -269,6 +269,7 @@ describe('GlobalConfig', () => {
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
+				includeSystemTaskMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
