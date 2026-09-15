@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, Role, Scope } from '@n8n/db';
 import type { DbLock, DbLockService } from '@n8n/db';
 import {
@@ -13,7 +12,6 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
-	PERSONAL_SPACE_REMOVABLE_SCOPES,
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -45,9 +43,7 @@ describe('AuthRolesService', () => {
 			await fn(mockEntityManager),
 	);
 
-	const globalConfig = mock<GlobalConfig>({ canvasOnly: false });
-
-	const authRolesService = new AuthRolesService(logger, dbLockService, globalConfig);
+	const authRolesService = new AuthRolesService(logger, dbLockService);
 
 	// Helper functions for creating test data
 	function createScope(
@@ -910,78 +906,6 @@ describe('AuthRolesService', () => {
 						expect(scopeSlugs).not.toContain(scope);
 					}
 				});
-			});
-		});
-
-		describe('canvas-only mode', () => {
-			const REMOVABLE_SCOPE = PERSONAL_SPACE_REMOVABLE_SCOPES[0];
-
-			/** The personal space role as stored, with the removable scope left out. */
-			function existingPersonalOwnerWithoutRemovableScope(allScopes: Scope[]): Role {
-				const roleDef = ALL_ROLES.project.find((r) => r.slug === PROJECT_OWNER_ROLE_SLUG)!;
-				return createRole(PROJECT_OWNER_ROLE_SLUG, {
-					displayName: roleDef.displayName,
-					description: roleDef.description ?? null,
-					roleType: 'project',
-					scopes: allScopes.filter(
-						(s) => roleDef.scopes.includes(s.slug) && s.slug !== REMOVABLE_SCOPE,
-					),
-				});
-			}
-
-			function savedPersonalOwnerScopes(): string[] | undefined {
-				const call = roleRepository.save.mock.calls.find((c) => {
-					const roles = c[0] as Role[];
-					return Array.isArray(roles) && roles.some((r) => r?.slug === PROJECT_OWNER_ROLE_SLUG);
-				});
-				const role = (call?.[0] as Role[] | undefined)?.find(
-					(r) => r?.slug === PROJECT_OWNER_ROLE_SLUG,
-				);
-				return role?.scopes.map((s) => s.slug);
-			}
-
-			afterEach(() => {
-				globalConfig.canvasOnly = false;
-			});
-
-			test('keeps the scope removed when canvas-only mode is on', async () => {
-				globalConfig.canvasOnly = true;
-				const allScopes = createAllScopes();
-				setupDefaultMocks(allScopes);
-				roleRepository.find.mockResolvedValue([
-					existingPersonalOwnerWithoutRemovableScope(allScopes),
-				]);
-
-				await authRolesService.init();
-
-				// Nothing to sync, so the role is either left alone or saved without the scope.
-				expect(savedPersonalOwnerScopes() ?? []).not.toContain(REMOVABLE_SCOPE);
-			});
-
-			test('adds the scope back when canvas-only mode is off', async () => {
-				const allScopes = createAllScopes();
-				setupDefaultMocks(allScopes);
-				roleRepository.find.mockResolvedValue([
-					existingPersonalOwnerWithoutRemovableScope(allScopes),
-				]);
-
-				await authRolesService.init();
-
-				expect(savedPersonalOwnerScopes()).toContain(REMOVABLE_SCOPE);
-			});
-
-			test('gives a new personal space role the scope in canvas-only mode', async () => {
-				globalConfig.canvasOnly = true;
-				const allScopes = createAllScopes();
-				setupDefaultMocks(allScopes);
-
-				await authRolesService.init();
-
-				const createCall = roleRepository.create.mock.calls.find(
-					(call) => (call[0] as Role).slug === PROJECT_OWNER_ROLE_SLUG,
-				);
-				const scopeSlugs = (createCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
-				expect(scopeSlugs).toContain(REMOVABLE_SCOPE);
 			});
 		});
 	});

@@ -40,6 +40,7 @@ import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provide
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
+import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
@@ -270,6 +271,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
 			this.logger.debug('Auth roles service init complete');
+
+			// The sync above gives the personal space role its defaults back, so any
+			// scopes an admin removed in canvas-only mode are re-applied here.
+			await Container.get(CanvasOnlyPersonalSpaceRoleService).run();
+			this.logger.debug('Canvas-only personal space role init complete');
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');

@@ -1217,13 +1217,6 @@ export type RelayEventMap = {
 		roleSlug: string;
 	};
 
-	'personal-space-role-updated': {
-		userId: string;
-		scopes: string[];
-		/** The removable scopes the role no longer grants. */
-		removedScopes: string[];
-	};
-
 	// #endregion
 
 	// #region Instance AI

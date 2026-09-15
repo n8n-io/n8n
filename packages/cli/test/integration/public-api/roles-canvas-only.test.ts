@@ -1,9 +1,10 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { AuthRolesService, RoleRepository, type User } from '@n8n/db';
+import { AuthRolesService, RoleRepository, SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PERSONAL_SPACE_REMOVABLE_SCOPES, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
+import { CanvasOnlyPersonalSpaceRoleService } from '@/services/canvas-only-personal-space-role.service';
 import { RoleService } from '@/services/role.service';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -76,8 +77,11 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 		globalConfig.canvasOnly = false;
 		// Give the role its default scopes back, so the next test starts clean.
 		await Container.get(RoleService).addScopesToRole(PROJECT_OWNER_ROLE_SLUG, [
-			...PERSONAL_SPACE_REMOVABLE_SCOPES,
+			'credential:create',
 		]);
+		await Container.get(SettingsRepository).delete({
+			key: 'canvasOnly.personalSpaceRoleRemovedScopes',
+		});
 	});
 
 	it('stops credential creation in the personal project but keeps workflows working', async () => {
@@ -107,8 +111,11 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 			.send(workflowPayload());
 		expect(workflow.status).toBe(200);
 
-		// A restart re-syncs the system roles. It must keep the scope removed.
+		// A restart re-syncs the system roles, then re-applies the stored choice.
 		await Container.get(AuthRolesService).init();
+		expect(await storedScopes()).toContain('credential:create');
+
+		await Container.get(CanvasOnlyPersonalSpaceRoleService).run();
 		expect(await storedScopes()).not.toContain('credential:create');
 	});
 
@@ -142,8 +149,8 @@ describe('PUT /roles/project:personalOwner in canvas-only mode', () => {
 
 		const response = await put(PROJECT_OWNER_ROLE_SLUG, body);
 
+		// The custom role path rejects the body, as it does for any system role.
 		expect(response.status).toBe(400);
-		expect(response.body.message).toContain('Cannot update system roles');
 		expect(await storedScopes()).toContain('credential:create');
 	});
 

@@ -5,7 +5,6 @@ import type {
 } from '@n8n/api-types';
 import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -35,10 +34,8 @@ import {
 	getAuthPrincipalScopes,
 	getRoleScopes,
 	isBuiltInRole,
-	PERSONAL_SPACE_REMOVABLE_SCOPES,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
-	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
@@ -51,9 +48,6 @@ import { isUniqueConstraintError } from '@/response-helper';
 import { RoleCacheService } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
 
-/** Fields of a role update. Every field is optional, so a PATCH can omit them. */
-type RoleUpdate = { displayName?: string; description?: string | null; scopes?: string[] };
-
 @Service()
 export class RoleService {
 	constructor(
@@ -64,7 +58,6 @@ export class RoleService {
 		private readonly logger: Logger,
 		private readonly roleDeletionCheckProxy: RoleDeletionCheckProxy,
 		private readonly eventService: EventService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
@@ -213,14 +206,9 @@ export class RoleService {
 		await this.roleRepository.reassignUsersAndRemove(role, reassignRoleSlug);
 	}
 
-	/**
-	 * Looks up the scopes and checks them against the scopes the target role accepts.
-	 * `allowedFor` names the target in the error message, e.g. "project roles".
-	 */
 	private async resolveScopes(
 		scopeSlugs: string[] | undefined,
-		allowedScopes: ReadonlySet<string>,
-		allowedFor: string,
+		roleType: 'project' | 'global',
 	): Promise<DBScope[] | undefined> {
 		if (!scopeSlugs) {
 			return undefined;
@@ -236,102 +224,18 @@ export class RoleService {
 			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
 		}
 
-		const invalidScopes = scopes.map((s) => s.slug).filter((slug) => !allowedScopes.has(slug));
+		const resolvedScopes = scopes.map((s) => s.slug);
 
-		if (invalidScopes.length > 0) {
+		if (resolvedScopes.some((slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug))) {
+			const invalidScopes = resolvedScopes.filter(
+				(slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug),
+			);
 			throw new BadRequestError(
-				`The following scopes are not allowed for ${allowedFor}: ${invalidScopes.join(', ')}`,
+				`The following scopes are not allowed for ${roleType} roles: ${invalidScopes.join(', ')}`,
 			);
 		}
 
 		return scopes;
-	}
-
-	/**
-	 * Updates a role. A system role is fixed, with one exception: in canvas-only
-	 * mode an admin can change the scopes of the personal space role.
-	 */
-	async updateRole({
-		slug,
-		newRole,
-		userId,
-	}: {
-		slug: string;
-		// Optional fields keep this compatible with both the internal PATCH and public PUT endpoints.
-		newRole: RoleUpdate;
-		userId: string;
-	}) {
-		const role = await this.roleRepository.findBySlug(slug);
-		if (!role) {
-			throw new NotFoundError('Role not found');
-		}
-
-		if (!role.systemRole) {
-			return await this.updateCustomRole({ slug, newRole, userId });
-		}
-
-		if (role.slug !== PROJECT_OWNER_ROLE_SLUG || !this.globalConfig.canvasOnly) {
-			throw new BadRequestError('Cannot update system roles');
-		}
-
-		return await this.updatePersonalSpaceRole(role, newRole, userId);
-	}
-
-	/**
-	 * Updates the personal space role. Only the scopes in
-	 * `PERSONAL_SPACE_REMOVABLE_SCOPES` can be removed or added back. The name, the
-	 * description and every other scope of the role stay fixed.
-	 */
-	private async updatePersonalSpaceRole(role: Role, newRole: RoleUpdate, userId: string) {
-		// Omitted fields count as unchanged, so the internal PATCH endpoint stays usable.
-		if (newRole.displayName !== undefined && newRole.displayName !== role.displayName) {
-			throw new BadRequestError('Cannot change the name of the personal space role');
-		}
-		if (newRole.description !== undefined && newRole.description !== role.description) {
-			throw new BadRequestError('Cannot change the description of the personal space role');
-		}
-
-		const currentSlugs: string[] = role.scopes.map((s) => s.slug);
-		const defaultSlugs = new Set([...currentSlugs, ...PERSONAL_SPACE_REMOVABLE_SCOPES]);
-
-		const scopes = await this.resolveScopes(
-			newRole.scopes,
-			defaultSlugs,
-			'the personal space role',
-		);
-
-		// The body left the scopes out, so the role keeps the scopes it has.
-		if (scopes === undefined) {
-			return this.dbRoleToRoleDTO(role);
-		}
-
-		const requestedSlugs = new Set<string>(scopes.map((s) => s.slug));
-		const missingSlugs = [...defaultSlugs].filter(
-			(slug) => !requestedSlugs.has(slug) && !PERSONAL_SPACE_REMOVABLE_SCOPES.includes(slug),
-		);
-		if (missingSlugs.length > 0) {
-			throw new BadRequestError(
-				`The following scopes cannot be removed from the personal space role: ${missingSlugs.join(', ')}`,
-			);
-		}
-
-		const updatedRole = await this.roleRepository.updateSystemRoleScopes(role.slug, scopes);
-		const result = await this.afterRoleUpdate(updatedRole);
-
-		this.eventService.emit('personal-space-role-updated', {
-			userId,
-			scopes: result.scopes,
-			removedScopes: PERSONAL_SPACE_REMOVABLE_SCOPES.filter((s) => !requestedSlugs.has(s)),
-		});
-
-		return result;
-	}
-
-	/** Invalidates the role cache, so the new scopes take effect. */
-	private async afterRoleUpdate(updatedRole: Role) {
-		await this.roleCacheService.invalidateCache();
-
-		return this.dbRoleToRoleDTO(updatedRole);
 	}
 
 	async updateCustomRole({
@@ -341,7 +245,7 @@ export class RoleService {
 	}: {
 		slug: string;
 		// Optional fields keep this compatible with both the internal PATCH and public PUT endpoints.
-		newRole: RoleUpdate;
+		newRole: { displayName?: string; description?: string | null; scopes?: string[] };
 		userId: string;
 	}) {
 		const { displayName, description, scopes: scopeSlugs } = newRole;
@@ -352,14 +256,13 @@ export class RoleService {
 			const updatedRole = await this.roleRepository.updateRole(slug, {
 				displayName,
 				description,
-				scopes: await this.resolveScopes(
-					scopeSlugs,
-					CUSTOM_ROLE_SCOPE_WHITELIST[roleType],
-					`${roleType} roles`,
-				),
+				scopes: await this.resolveScopes(scopeSlugs, roleType),
 			});
 
-			const result = await this.afterRoleUpdate(updatedRole);
+			// Invalidate cache after role update
+			await this.roleCacheService.invalidateCache();
+
+			const result = this.dbRoleToRoleDTO(updatedRole);
 
 			this.eventService.emit('custom-role-updated', {
 				userId,
@@ -391,11 +294,7 @@ export class RoleService {
 		if (newRole.description) {
 			role.description = newRole.description;
 		}
-		const scopes = await this.resolveScopes(
-			newRole.scopes,
-			CUSTOM_ROLE_SCOPE_WHITELIST[newRole.roleType],
-			`${newRole.roleType} roles`,
-		);
+		const scopes = await this.resolveScopes(newRole.scopes, newRole.roleType);
 		if (scopes === undefined) throw new BadRequestError('Scopes are required');
 		role.scopes = scopes;
 		role.systemRole = false;
