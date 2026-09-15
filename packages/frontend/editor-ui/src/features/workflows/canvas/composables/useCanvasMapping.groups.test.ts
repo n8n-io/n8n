@@ -15,6 +15,7 @@ import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
@@ -547,6 +548,22 @@ describe('mapGroupsToVueFlowNodes', () => {
 		// collapsed chip keeps interaction priority over free stickies.
 		expect(setup(false)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EXPANDED);
 		expect(setup(true)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_COLLAPSED);
+	});
+
+	it('keeps the collapsed empty-group chip above its edges', () => {
+		const anchor = makeNode('anchor', 100, 200);
+		anchor.type = NO_OP_NODE_TYPE;
+		anchor.parameters = { emptyGroupAnchor: true };
+
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['anchor'] }],
+			getNodeById: nodeStore(anchor),
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED);
 	});
 });
 
