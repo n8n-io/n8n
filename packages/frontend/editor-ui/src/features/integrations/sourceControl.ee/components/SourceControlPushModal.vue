@@ -135,7 +135,7 @@ const projectAdminCalloutDismissed = useStorage(
 
 const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
-	!project.role || Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
+	Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
 
 onBeforeMount(async () => {
 	// Load projects for file→project mapping display and for member search

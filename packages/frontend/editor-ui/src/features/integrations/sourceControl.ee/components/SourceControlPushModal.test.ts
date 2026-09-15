@@ -103,11 +103,15 @@ const projects = [
 		id: '1',
 		name: 'Nathan member',
 		type: 'personal',
+		role: 'project:personalOwner',
+		scopes: ['sourceControl:push'],
 	},
 	{
 		id: '2',
 		name: 'Other project',
 		type: 'team',
+		role: 'project:admin',
+		scopes: ['sourceControl:push'],
 	},
 ] as const;
 
