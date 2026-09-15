@@ -10,7 +10,7 @@ describe('SetupPanel', () => {
 			{ id: 'slack', title: 'Slack', completed: false },
 			{ id: 'gmail', title: 'Gmail', completed: true },
 		];
-		const { getByRole, queryByRole, rerender } = render(SetupPanel, {
+		const { getByRole, queryByText, rerender } = render(SetupPanel, {
 			props: { items, activeItemId: 'slack' },
 			slots: { icon: '<span data-test-id="service-icon" />' },
 		});
@@ -19,7 +19,10 @@ describe('SetupPanel', () => {
 		await rerender({ items: items.map((item) => ({ ...item, completed: true })) });
 		expect(detail.querySelector('[data-test-id="service-icon"]')).toBeNull();
 		expect(detail.querySelector('[data-icon="status-completed"]')).toBeVisible();
-		expect(queryByRole('status')).toBeNull();
+		await rerender({ activeItemId: undefined, status: 'complete' });
+		expect(getByRole('button', { name: 'Setup complete' })).toBeVisible();
+		expect(getByRole('button', { name: 'Execute' })).toBeVisible();
+		expect(queryByText(/\d+\s*(?:of|\/)\s*\d+/i)).toBeNull();
 	});
 
 	it('retains outgoing content while making the closing detail inaccessible', async () => {
@@ -148,14 +151,30 @@ describe('SetupPanel', () => {
 	});
 
 	it('returns to the remaining checklist when the active requirement disappears', async () => {
-		const { rerender, queryByText, getByRole } = render(SetupPanel, {
+		const { rerender, queryByText, getByRole, emitted } = render(SetupPanel, {
 			props: { items: [{ id: 'slack', title: 'Slack', completed: false }], activeItemId: 'slack' },
 			slots: { detail: 'Connection form' },
 		});
 		await rerender({ items: [{ id: 'details', title: 'Details', completed: false }] });
 		expect(queryByText('Connection form')).toBeNull();
 		expect(getByRole('button', { name: 'Details' })).toBeVisible();
+		await waitFor(() => expect(getByRole('button', { name: 'Details' })).toHaveFocus());
+		expect(emitted('update:activeItemId')).toContainEqual([undefined]);
+		expect(emitted('detailClosed')).toBeDefined();
 		await rerender({ items: [] });
 		expect(queryByText('Details')).toBeNull();
+	});
+
+	it('does not open a selected detail when mounted during execution', () => {
+		const { queryByRole, getByRole, emitted } = render(SetupPanel, {
+			props: {
+				items: [{ id: 'slack', title: 'Slack', completed: true }],
+				activeItemId: 'slack',
+				status: 'executing',
+			},
+		});
+		expect(queryByRole('dialog')).toBeNull();
+		expect(getByRole('status')).toHaveTextContent('Executing');
+		expect(emitted('update:activeItemId')).toContainEqual([undefined]);
 	});
 });

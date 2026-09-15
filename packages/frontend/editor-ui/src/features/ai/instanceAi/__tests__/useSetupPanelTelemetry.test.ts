@@ -22,7 +22,7 @@ describe('useSetupPanelTelemetry', () => {
 	afterEach(() => {
 		scopes.splice(0).forEach((scope) => scope.stop());
 	});
-	function setup() {
+	function setup(thread = { id: 'thread' }) {
 		const workflowId = ref('wf');
 		const rows = ref<SetupPanelRow[]>([{ item, isDone: true }]);
 		const groups = ref<SetupPanelGroup[]>([]);
@@ -31,10 +31,42 @@ describe('useSetupPanelTelemetry', () => {
 		const scope = effectScope();
 		scopes.push(scope);
 		const telemetry = scope.run(() =>
-			useSetupPanelTelemetry({ workflowId, threadId: 'thread', rows, groups, ready, shownItemIds }),
+			useSetupPanelTelemetry({ workflowId, thread, rows, groups, ready, shownItemIds }),
 		)!;
 		return { workflowId, rows, groups, ready, shownItemIds, telemetry, scope };
 	}
+
+	it('shares impressions across overlapping views without a false navigation dismissal', async () => {
+		const thread = { id: 'thread' };
+		const first = setup(thread);
+		first.groups.value = [{ id: item.id, credential: { item, isDone: true }, parameters: [] }];
+		first.ready.value = true;
+		await nextTick();
+		const second = setup(thread);
+		second.groups.value = first.groups.value;
+		second.ready.value = true;
+		await nextTick();
+		first.scope.stop();
+		await nextTick();
+		expect(track.mock.calls.filter(([event]) => event === shown)).toHaveLength(1);
+		expect(track.mock.calls.filter(([event]) => event === observed)).toHaveLength(1);
+		expect(track.mock.calls.filter(([event]) => event === dismissed)).toHaveLength(0);
+		second.scope.stop();
+		expect(track.mock.calls.filter(([event]) => event === dismissed)).toHaveLength(1);
+	});
+
+	it('updates connected counts when another tab changes shown item IDs', async () => {
+		const state = setup();
+		state.ready.value = true;
+		await nextTick();
+		state.shownItemIds.value = [item.id];
+		await nextTick();
+		expect(track).toHaveBeenLastCalledWith(
+			observed,
+			expect.objectContaining({ already_connected_count: 0 }),
+		);
+		expect(track.mock.calls.filter(([event]) => event === observed)).toHaveLength(2);
+	});
 
 	it('counts already-connected services without an impression and deduplicates equivalent state', async () => {
 		const state = setup();

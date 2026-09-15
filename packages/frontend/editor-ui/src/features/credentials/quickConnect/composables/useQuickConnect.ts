@@ -6,7 +6,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { computed, onBeforeUnmount, ref, h } from 'vue';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 
-import type { ICredentialsResponse } from '../../credentials.types';
+import type { CredentialFetchScope, ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@n8n/composables/useToast';
@@ -145,6 +145,7 @@ export function useQuickConnect() {
 		serviceName: string;
 		projectId?: string;
 		workflowId?: string;
+		credentialFetchScope?: CredentialFetchScope;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
@@ -161,6 +162,7 @@ export function useQuickConnect() {
 					? await createAndAuthorize(credentialTypeName, nodeType, {
 							projectId: connectParams.projectId,
 							workflowId: connectParams.workflowId,
+							credentialFetchScope: connectParams.credentialFetchScope,
 						})
 					: await createAndAuthorize(credentialTypeName, nodeType);
 			return credential;

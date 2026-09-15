@@ -1,4 +1,12 @@
-import { getCurrentScope, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	getCurrentScope,
+	onScopeDispose,
+	reactive,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { isTerminalExecutionStatus, type TerminalExecutionStatus } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -8,7 +16,10 @@ import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRunWorkflowApi } from '@/app/composables/useRunWorkflowApi';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useExistingWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -38,28 +49,34 @@ export function useSetupPanelExecution(options: {
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
-	const running = ref(false);
+	const runningWorkflows = reactive(new Set<string>());
+	const isRunning = computed(() => runningWorkflows.has(toValue(options.workflowId) ?? ''));
 	let disposed = false;
-	let cancelWait: (() => void) | undefined;
+	const cancelWaits = new Map<string, () => void>();
 	if (getCurrentScope())
 		onScopeDispose(() => {
 			disposed = true;
-			cancelWait?.();
+			for (const cancelWait of cancelWaits.values()) cancelWait();
 		});
 
 	async function executeWorkflow(): Promise<SetupPanelExecutionResult | undefined> {
 		const workflowId = toValue(options.workflowId);
-		if (!workflowId || running.value || disposed) return;
+		if (!workflowId || runningWorkflows.has(workflowId) || disposed) return;
 		if (!pushStore.isConnected)
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId));
 		if (executionState.isWorkflowRunning) return;
-		running.value = true;
+		runningWorkflows.add(workflowId);
 		let cleanup = () => {};
 		try {
 			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
 			await nodeTypesStore.loadNodeTypesIfNotLoaded();
-			if (disposed || toValue(options.workflowId) !== workflowId) return;
+			if (
+				disposed ||
+				toValue(options.workflowId) !== workflowId ||
+				executionState.isWorkflowRunning
+			)
+				return;
 			const triggers = workflow.nodes.filter(
 				(node) => !node.disabled && nodeTypesStore.isTriggerNode(node.type),
 			);
@@ -100,6 +117,7 @@ export function useSetupPanelExecution(options: {
 			};
 			const observeId = (id: string) => {
 				executionId = id;
+				if (executionState.activeExecutionId === null) executionState.setActiveExecutionId(id);
 				options.thread.rememberManualExecution(workflowId, id, agentExecutionId);
 				const status = finished.get(id);
 				if (status) finish(id, status);
@@ -159,10 +177,10 @@ export function useSetupPanelExecution(options: {
 				removeListener();
 				stopReconnectWatch();
 			};
-			cancelWait = () => {
+			cancelWaits.set(workflowId, () => {
 				cleanup();
 				completed.resolve(undefined);
-			};
+			});
 			telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
 				source: 'instance_ai_setup_panel',
 				workflow_id: workflowId,
@@ -172,7 +190,13 @@ export function useSetupPanelExecution(options: {
 				{ workflowId, triggerToStartFrom: { name: trigger.name } },
 				executionState.documentId,
 			);
-			if (disposed) return;
+			if (disposed) {
+				if (executionState.activeExecutionId === null) {
+					executionState.setActiveExecutionId(undefined);
+					executionState.setExecutionWaitingForWebhook(false);
+				}
+				return;
+			}
 			waitingForWebhook = response.waitingForWebhook === true;
 			executionState.setExecutionWaitingForWebhook(waitingForWebhook);
 			if (response.executionId) observeId(response.executionId);
@@ -182,10 +206,16 @@ export function useSetupPanelExecution(options: {
 			void readStatus();
 			const result = await completed.promise;
 			cleanup();
-			if (!result && executionState.activeExecutionId === null)
+			// A mounted canvas handles terminal data itself. Without it, release this run here.
+			if (
+				(!result && executionState.activeExecutionId === null) ||
+				(result &&
+					!useExistingWorkflowDocumentStore(executionState.documentId)?.hydrated &&
+					executionState.activeExecutionId === result.executionId)
+			)
 				executionState.setActiveExecutionId(undefined);
-			if (disposed) return;
 			executionState.setExecutionWaitingForWebhook(false);
+			if (disposed) return;
 			if (!result) return;
 			const notified = await options.thread.sendMessage(
 				i18n.baseText('instanceAi.setupPanel.executedMessage', {
@@ -197,10 +227,10 @@ export function useSetupPanelExecution(options: {
 			return { ...result, notified };
 		} finally {
 			cleanup();
-			cancelWait = undefined;
-			running.value = false;
+			cancelWaits.delete(workflowId);
+			runningWorkflows.delete(workflowId);
 		}
 	}
 
-	return { executeWorkflow };
+	return { executeWorkflow, isRunning };
 }

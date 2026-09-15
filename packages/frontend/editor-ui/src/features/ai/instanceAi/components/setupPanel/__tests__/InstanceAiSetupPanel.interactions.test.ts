@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { computed, defineComponent, h, reactive, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { getActivePinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
@@ -31,6 +31,8 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { getWorkflowExecutionStateStoreId } from '@/app/stores/workflowExecutionState.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -480,6 +482,39 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(saved.nodes[0].parameters.channel).toBe('announcements');
 		expect(saved.nodes[0].parameters.resource).toBeUndefined();
+	});
+
+	it('preserves a hidden sibling when evaluating a setup field', async () => {
+		const type = mockedStore(useNodeTypesStore).allNodeTypes[0];
+		type.properties.unshift(
+			{ name: 'mode', displayName: 'Mode', type: 'string', default: 'basic' },
+			{
+				name: 'useChannel',
+				displayName: 'Use channel',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { mode: ['advanced'] } },
+			},
+		);
+		const channel = type.properties.find((property) => property.name === 'channel')!;
+		channel.displayOptions = { show: { useChannel: [true] } };
+		channel.placeholder = 'Choose a channel';
+		const rendered = await openParameters(false, {
+			global: { stubs: { ParameterInputList: false } },
+		});
+		expect(await rendered.findByPlaceholderText('Choose a channel')).toBeVisible();
+	});
+
+	it('disposes the temporary execution store when a parameter detail closes', async () => {
+		const rendered = await openParameters(false, {
+			global: { stubs: { ParameterInputList: false } },
+		});
+		const documentId = createWorkflowDocumentId('wf-1', 'wf-1:parameters:Notify');
+		useNDVStore(documentId);
+		const storeId = getWorkflowExecutionStateStoreId(documentId);
+		expect(getActivePinia()!.state.value[storeId]).toBeDefined();
+		rendered.unmount();
+		expect(getActivePinia()!.state.value[storeId]).toBeUndefined();
 	});
 
 	it.each([true, false])('clears saved drafts with a hydrated canvas: %s', async (hydrated) => {

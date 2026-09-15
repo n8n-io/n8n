@@ -106,15 +106,18 @@ const form = useCredentialForm({
 	projectId: () => props.projectId,
 	setupHint: () => props.item.setupHint,
 });
-const isOAuth = computed(() => oauth.isOAuthCredentialType(props.item.credentialType));
+form.setCredentialPropertyDefaults();
+const isOAuth = form.isOAuthType;
 const isTemplated = computed(
 	() => props.item.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 );
 const canQuickConnect = computed(
 	() =>
-		oauth.canOAuthCredentialQuickConnect(props.item.credentialType) ||
+		(isOAuth.value && oauth.canOAuthCredentialQuickConnect(props.item.credentialType)) ||
 		Boolean(
-			props.node && quickConnect.getQuickConnectOption(props.item.credentialType, props.node.type),
+			!oauth.isOAuthCredentialType(props.item.credentialType) &&
+				props.node &&
+				quickConnect.getQuickConnectOption(props.item.credentialType, props.node.type),
 		),
 );
 const serviceName = computed(
@@ -367,6 +370,7 @@ function onDataChange(update: IUpdateInformation) {
 }
 
 async function saveKey() {
+	const workflowId = props.workflowId;
 	const details = {
 		id: '',
 		name: form.credentialName.value,
@@ -399,7 +403,9 @@ async function saveKey() {
 		}
 	}
 	credentialsStore.upsertCredential(credential);
-	await credentialsStore.fetchUsableCredentials({ workflowId: props.workflowId });
+	if (!active || props.workflowId !== workflowId) return;
+	// Creation succeeded. A picker refresh must not force another credential creation.
+	await credentialsStore.fetchUsableCredentials({ workflowId }).catch(() => {});
 	emitBinding(credential.id, details.data);
 }
 
@@ -544,6 +550,8 @@ onScopeDispose(() => {
 				hide-issues
 				skip-auto-select
 				@credential-selected="onCredentialSelected"
+				@connection-started="emit('connectStarted', 'oauth')"
+				@connection-completed="emitBinding($event)"
 			/>
 			<CredentialsDropdown
 				v-else

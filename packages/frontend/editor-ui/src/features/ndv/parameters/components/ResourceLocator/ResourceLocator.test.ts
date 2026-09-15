@@ -155,6 +155,31 @@ describe('ResourceLocator', () => {
 		});
 	});
 
+	it('reopens a non-searchable list after Escape closes it', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [{ name: 'Choice', value: 'choice' }],
+		});
+		const view = renderComponent({
+			props: {
+				parameter: {
+					...TEST_PARAMETER_MULTI_MODE,
+					modes: TEST_PARAMETER_MULTI_MODE.modes?.map((mode) => ({
+						...mode,
+						typeOptions: { ...mode.typeOptions, searchable: false },
+					})),
+				},
+			},
+		});
+		const input = view.getByTestId('rlc-input');
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(input).not.toHaveFocus());
+		expect(view.queryByText('Choice')).toBeNull();
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
+	});
+
 	it('renders add resource button', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],

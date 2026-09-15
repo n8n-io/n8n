@@ -221,6 +221,8 @@ describe('useSetupPanelExecution', () => {
 		workflows.runWorkflow.mockResolvedValueOnce({ waitingForWebhook: true });
 		const pending = executeWorkflow();
 		await flushPromises();
+		const state = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+		expect(state.activeExecutionId).toBeNull();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		for (const handler of handlers)
 			handler({
@@ -234,9 +236,45 @@ describe('useSetupPanelExecution', () => {
 				},
 			});
 		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(state.activeExecutionId).toBe('exec-1');
 		finish();
 		await pending;
+		expect(state.activeExecutionId).toBeUndefined();
+		expect(state.isWorkflowRunning).toBe(false);
 		expect(thread.rememberManualExecution).toHaveBeenCalledWith('wf-1', 'exec-1', undefined);
+	});
+
+	it('does not start if another execution begins while loading the workflow', async () => {
+		const { executeWorkflow, workflows } = harness();
+		const read = Promise.withResolvers<typeof workflow>();
+		vi.mocked(getWorkflow).mockReturnValueOnce(read.promise);
+		const pending = executeWorkflow();
+		const state = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+		state.setActiveExecutionId(null);
+		read.resolve(workflow);
+		await expect(pending).resolves.toBeUndefined();
+		expect(workflows.runWorkflow).not.toHaveBeenCalled();
+		expect(state.activeExecutionId).toBeNull();
+	});
+
+	it('allows another workflow to execute while the first waits for a webhook', async () => {
+		const { executeWorkflow, workflowId, workflows, isRunning } = harness();
+		workflows.runWorkflow.mockResolvedValueOnce({ waitingForWebhook: true });
+		const first = executeWorkflow();
+		await flushPromises();
+		expect(isRunning.value).toBe(true);
+		workflowId.value = 'wf-2';
+		expect(isRunning.value).toBe(false);
+		workflows.runWorkflow.mockResolvedValueOnce({ executionId: 'exec-2' });
+		const second = executeWorkflow();
+		await flushPromises();
+		expect(workflows.runWorkflow).toHaveBeenCalledTimes(2);
+		finish('success', 'exec-2', 'wf-2');
+		await second;
+		expect(isRunning.value).toBe(false);
+		for (const handler of handlers)
+			handler({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
+		await first;
 	});
 
 	it('does not start twice while a run is in progress', async () => {
@@ -283,6 +321,26 @@ describe('useSetupPanelExecution', () => {
 		expect(handlers.size).toBe(0);
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
+
+	it.each([false, true])(
+		'clears webhook waiting state when its scope closes before the response: %s',
+		async (closeBeforeResponse) => {
+			const { executeWorkflow, workflows, scope, thread } = harness();
+			const response = Promise.withResolvers<IExecutionPushResponse>();
+			workflows.runWorkflow.mockReturnValueOnce(response.promise);
+			const pending = executeWorkflow();
+			await flushPromises();
+			if (closeBeforeResponse) scope.stop();
+			response.resolve({ waitingForWebhook: true });
+			await flushPromises();
+			if (!closeBeforeResponse) scope.stop();
+			await expect(pending).resolves.toBeUndefined();
+			const state = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			expect(state.activeExecutionId).toBeUndefined();
+			expect(state.executionWaitingForWebhook).toBe(false);
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		},
+	);
 
 	it('does not announce an execution when starting it fails', async () => {
 		const { executeWorkflow, workflows, thread } = harness();

@@ -89,6 +89,10 @@ function createForm() {
 			{ name: 'hidden', displayName: 'Hidden', type: 'hidden', default: '', required: true },
 		]),
 		parentTypes: ref<string[]>([]),
+		isOAuthType: computed(
+			() => mocks.isOAuth() && credentialData.value.grantType !== 'clientCredentials',
+		),
+		setCredentialPropertyDefaults: vi.fn(),
 		requiredPropertiesFilled: computed(() => Boolean(credentialData.value.apiKey)),
 		showValidationWarning: ref(false),
 		isCredentialTestable: ref(true),
@@ -200,6 +204,7 @@ describe('InstanceAiSetupCredential', () => {
 		mocks.canQuickConnect.mockReturnValue(false);
 		mocks.quickOption.mockReturnValue(undefined);
 		mocks.authorize.mockResolvedValue(savedCredential);
+		mockedStore(useCredentialsStore).fetchUsableCredentials.mockResolvedValue([]);
 	});
 
 	async function openMenu(rendered: ReturnType<typeof renderComponent>, label: string) {
@@ -327,6 +332,33 @@ describe('InstanceAiSetupCredential', () => {
 			{ skipStoreUpdate: true },
 		);
 		expect(rendered.emitted<[unknown, string]>('bindCredential')).toHaveLength(1);
+	});
+
+	it('saves client credentials without starting an interactive OAuth flow', async () => {
+		mocks.isOAuth.mockReturnValue(true);
+		mocks.canQuickConnect.mockReturnValue(true);
+		form.credentialData.value.grantType = 'clientCredentials';
+		const rendered = renderComponent();
+		mockedStore(useCredentialsStore).createNewCredential.mockResolvedValue(savedCredential);
+		await flushPromises();
+		await fireEvent.update(rendered.getByLabelText('API key'), 'client-secret');
+		await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
+		await flushPromises();
+		expect(mocks.authorize).not.toHaveBeenCalled();
+		expect(rendered.emitted('bindCredential')).toEqual([[item, savedCredential.id]]);
+	});
+
+	it('binds a saved key even if refreshing the picker fails', async () => {
+		const rendered = renderComponent();
+		const store = mockedStore(useCredentialsStore);
+		store.createNewCredential.mockResolvedValue(savedCredential);
+		store.fetchUsableCredentials.mockRejectedValueOnce(new Error('Refresh failed'));
+		await flushPromises();
+		await fireEvent.update(rendered.getByLabelText('API key'), 'key');
+		await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
+		await flushPromises();
+		expect(store.createNewCredential).toHaveBeenCalledOnce();
+		expect(rendered.emitted('bindCredential')).toEqual([[item, savedCredential.id]]);
 	});
 
 	it.each([false, true])(
@@ -625,6 +657,7 @@ describe('InstanceAiSetupCredential', () => {
 		pending.resolve(savedCredential);
 		await flushPromises();
 		expect(rendered.emitted<[unknown, string]>('bindCredential')).toBeUndefined();
+		expect(mockedStore(useCredentialsStore).fetchUsableCredentials).not.toHaveBeenCalled();
 	});
 
 	it('binds Gateway credits as a managed selection and allows switching to an own key', async () => {

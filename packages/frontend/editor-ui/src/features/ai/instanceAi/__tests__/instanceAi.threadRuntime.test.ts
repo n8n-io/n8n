@@ -388,6 +388,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 									credentialType: 'slackApi',
 								},
 							],
+							'wf-2': [
+								{ id: 'wf-2:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+							],
+						},
+						latestSetupAnnouncement: {
+							workflowId: 'wf-1',
+							agentId: 'agent-root',
+							timestamp: '2026-09-15T08:00:00.000Z',
 						},
 					},
 				},
@@ -400,6 +408,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
 		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
+		expect(runtime.latestSetupWorkflowId).toBe('wf-1');
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {

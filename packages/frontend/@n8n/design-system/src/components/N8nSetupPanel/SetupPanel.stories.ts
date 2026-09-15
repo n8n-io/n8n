@@ -107,6 +107,7 @@ function example(state: Example): Story {
 				const clientSecret = ref('');
 				const fieldValue = ref('suggested');
 				const savedField = ref(state.confirmed ? 'suggested' : undefined);
+				const menuFeedback = ref('');
 				const completed = computed(
 					() =>
 						(state.method === 'details' || connected.value) && (!state.field || confirmed.value),
@@ -174,6 +175,7 @@ function example(state: Example): Story {
 				});
 				return {
 					state,
+					menuFeedback,
 					confirmField,
 					status: computed(() =>
 						state.interactive
@@ -203,6 +205,7 @@ function example(state: Example): Story {
 								!key.value,
 					),
 					onMenuAction: (id: string) => {
+						menuFeedback.value = actions.value.find((action) => action.id === id)?.label ?? '';
 						if (id === 'replace' || id === 'switch') {
 							connected.value = false;
 							mode.value = 'key';
@@ -226,11 +229,11 @@ function example(state: Example): Story {
 					<N8nSetupPanel :items="items" :status="status" v-model:active-item-id="active">
 						<template #icon><N8nIcon icon="plug" size="small" /></template>
 						<template #action>
-							<N8nSetupConnection :connected="false" action-label="Connect" action-variant="subtle"
-								:actions="actions" @action="connected = true; active = state.field ? 'service' : undefined" />
+								<N8nButton size="small" variant="subtle" @click="connected = true; active = state.field ? 'service' : undefined">Connect</N8nButton>
 						</template>
 						<template #detail>
-							<div style="display: flex; flex-direction: column; gap: var(--spacing--xs)">
+								<div style="display: flex; flex-direction: column; gap: var(--spacing--xs)">
+									<N8nText v-if="menuFeedback" role="status" size="small">Selected: {{ menuFeedback }}</N8nText>
 								<N8nSetupConnection
 									v-if="state.method !== 'details'"
 									:connected="connected" :value="value" :value-label="valueLabel"

@@ -185,7 +185,7 @@ const displayNode = computed<INodeUi>(() => ({
 				nodeType.value.properties,
 				displayParameters.value,
 				true,
-				false,
+				true,
 				props.node,
 				nodeType.value,
 			) ?? displayParameters.value)

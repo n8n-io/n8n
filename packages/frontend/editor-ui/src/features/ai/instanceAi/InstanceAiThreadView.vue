@@ -329,6 +329,7 @@ const setupPanelWorkflowId = computed(() => {
 	}
 	return (
 		latest ??
+		thread.latestSetupWorkflowId ??
 		Object.keys(thread.setupItemsByWorkflowId).findLast(
 			(id) => thread.setupItemsByWorkflowId[id].length > 0,
 		)

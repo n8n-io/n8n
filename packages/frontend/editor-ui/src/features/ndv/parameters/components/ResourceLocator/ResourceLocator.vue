@@ -1101,7 +1101,7 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
-			v-model:show="resourceDropdownVisible"
+			:show="resourceDropdownVisible"
 			:model-value="modelValue"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
@@ -1116,6 +1116,7 @@ function removeOverride() {
 			:slow-load-notice="slowLoadNoticeMessage"
 			:show-slow-load-notice="showSlowLoadNotice"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideResourceDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
 			@add-resource-click="onAddResourceClicked"

@@ -92,7 +92,20 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 });
 
 vi.mock('../../../composables/useSetupPanelExecution', () => ({
-	useSetupPanelExecution: () => ({ executeWorkflow: actionsMock.executeWorkflow }),
+	useSetupPanelExecution: () => {
+		const isRunning = ref(false);
+		return {
+			isRunning,
+			executeWorkflow: async () => {
+				isRunning.value = true;
+				try {
+					return await actionsMock.executeWorkflow();
+				} finally {
+					isRunning.value = false;
+				}
+			},
+		};
+	},
 }));
 
 vi.mock('../../../composables/useSetupPanelActions', async () => {
@@ -489,6 +502,17 @@ describe('InstanceAiSetupPanel', () => {
 		await flushPromises();
 		expect(view.getByRole('button', { name: /Details/ })).toBeVisible();
 		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
+	});
+
+	it('keeps the panel visible when a new build starts before the execution notification returns', async () => {
+		const view = await completeSetup();
+		actionsMock.executeWorkflow.mockImplementationOnce(async () => {
+			stateMock.isAgentBuilding = true;
+			return { workflowId: 'wf1', executionId: 'execution-1', status: 'success', notified: true };
+		});
+		await fireEvent.click(view.getByRole('button', { name: 'Execute' }));
+		await flushPromises();
+		expect(view.getByTestId('instance-ai-setup-panel')).toBeVisible();
 	});
 
 	it('renders nothing when there are no rows', () => {

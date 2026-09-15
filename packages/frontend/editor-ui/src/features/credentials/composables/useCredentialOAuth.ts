@@ -12,7 +12,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { useCredentialsStore } from '../credentials.store';
+import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -326,10 +326,10 @@ export function useCredentialOAuth() {
 	 */
 	async function publishConnectedCredential(
 		credential: ICredentialsResponse,
-		workflowId?: string,
+		scope?: CredentialFetchScope,
 	): Promise<void> {
 		credentialsStore.upsertCredential(credential);
-		if (workflowId) await credentialsStore.fetchUsableCredentials({ workflowId });
+		if (scope) await credentialsStore.fetchUsableCredentials(scope);
 		else await credentialsStore.refreshUsableCredentials();
 	}
 
@@ -365,6 +365,7 @@ export function useCredentialOAuth() {
 		context: {
 			projectId?: string;
 			workflowId?: string;
+			credentialFetchScope?: CredentialFetchScope;
 			data?: ICredentialDataDecryptedObject;
 			name?: string;
 		} = {},
@@ -450,7 +451,11 @@ export function useCredentialOAuth() {
 		telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
-			await publishConnectedCredential(credential, context.workflowId);
+			await publishConnectedCredential(
+				credential,
+				context.credentialFetchScope ??
+					(context.workflowId ? { workflowId: context.workflowId } : undefined),
+			);
 
 			return credential;
 		}

@@ -129,12 +129,7 @@ export function useWorkflowSetupItems(
 		([id, paused, hydrated]) => {
 			if (!id) return;
 			void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => {});
-			void credentialsStore
-				.fetchUsableCredentials({ workflowId: id })
-				.then(() => {
-					if (toValue(workflowId) === id) credentialsLoadedForWorkflow.value = id;
-				})
-				.catch(() => {});
+			refreshUsableSlice();
 			if (!paused && !hydrated) void refreshWorkflow();
 		},
 		{ immediate: true },
@@ -145,10 +140,16 @@ export function useWorkflowSetupItems(
 	// page) would otherwise leave done-ness stale while this stays mounted.
 	// Refetch this workflow's scope, not the store's last one: the slice is
 	// last-writer-wins and another view may have re-anchored it elsewhere.
-	const refreshUsableSlice = () => {
+	function refreshUsableSlice() {
 		const id = toValue(workflowId);
-		if (id) void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
-	};
+		if (id)
+			void credentialsStore
+				.fetchUsableCredentials({ workflowId: id })
+				.then(() => {
+					if (toValue(workflowId) === id) credentialsLoadedForWorkflow.value = id;
+				})
+				.catch(() => {});
+	}
 	listenForCredentialChanges({
 		store: credentialsStore,
 		onCredentialCreated: refreshUsableSlice,
@@ -314,9 +315,12 @@ export function useWorkflowSetupItems(
 
 	function isCredentialConfigured(assigned: INodeCredentialsDetails | string | undefined): boolean {
 		if (!isBoundCredential(assigned)) return false;
+		const id = toValue(workflowId);
 		const credential =
 			typeof assigned !== 'string' && assigned?.id
-				? credentialsStore.getCredentialById(assigned.id)
+				? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+						? credentialsStore.getUsableCredentialById(assigned.id)
+						: undefined) ?? credentialsStore.getCredentialById(assigned.id))
 				: undefined;
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}

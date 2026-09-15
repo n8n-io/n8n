@@ -904,6 +904,11 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-2', 'gmailOAuth2'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
+			expect(state.agentsById['root'].latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-1',
+				agentId: 'root',
+			});
 
 			const byWorkflowId = state.agentsById['root'].setupItemsByWorkflowId!;
 			expect(byWorkflowId['wf-1']).toHaveLength(1);
@@ -932,6 +937,9 @@ describe('agent-run-reducer', () => {
 			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0]).toMatchObject({
 				credentialType: 'slackApi',
 			});
+			expect(restored?.agentsById['root'].latestSetupAnnouncement).toEqual(
+				state.agentsById['root'].latestSetupAnnouncement,
+			);
 		});
 
 		it('is preserved across a follow-up run-start when it is the only content', () => {

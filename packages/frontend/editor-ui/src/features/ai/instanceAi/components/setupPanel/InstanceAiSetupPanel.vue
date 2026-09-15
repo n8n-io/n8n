@@ -242,7 +242,7 @@ const groups = computed(() =>
 );
 const panelTelemetry = useSetupPanelTelemetry({
 	workflowId: () => props.workflowId,
-	threadId: thread.id,
+	thread,
 	rows,
 	groups,
 	shownItemIds,
@@ -340,6 +340,17 @@ const panelItems = computed<SetupPanelItem[]>(() =>
 	}),
 );
 
+watch(
+	() =>
+		selectedItemId.value &&
+		panelItems.value.find((item) => item.id === selectedItemId.value && !item.disabled),
+	(item) => {
+		if (selectedItemId.value && !item) {
+			selectedItemId.value = undefined;
+			clearDetailState();
+		}
+	},
+);
 const parameterEditors = computed(() =>
 	(selectedGroup.value?.parameters ?? []).flatMap((row) => {
 		// Keep saved parameters as the baseline, so a failed write leaves the input editable.
@@ -363,7 +374,7 @@ const isApplying = ref(false);
 const credentialBusy = ref(false);
 const credentialHasChanges = ref(false);
 const dirtyParameters = shallowReactive(new Set<string>());
-const requestingExecution = ref(false);
+const requestingExecution = execution.isRunning;
 const isChatBusy = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
 );
@@ -483,13 +494,14 @@ watch(
 async function onExecute() {
 	if (terminalStatus.value !== 'complete' || isChatBusy.value || requestingExecution.value) return;
 	const workflowId = props.workflowId;
-	requestingExecution.value = true;
 	try {
 		const result = await execution.executeWorkflow();
 		if (
+			active &&
 			result?.notified &&
 			props.workflowId === workflowId &&
 			allRowsDone.value &&
+			!isAgentBuilding.value &&
 			!hasChanges.value &&
 			!actions.isApplying.value &&
 			actions.pendingApplyCount.value === 0
@@ -499,8 +511,6 @@ async function onExecute() {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.setupPanel.executeError'));
-	} finally {
-		requestingExecution.value = false;
 	}
 }
 

@@ -3162,7 +3162,10 @@ describe('NodeCredentials', () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
-			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+			authorizeMock.mockResolvedValueOnce(true);
+			const { emitted } = renderComponent({
+				props: { node: notionNode, overrideCredType: 'openAiApi' },
+			});
 
 			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
 
@@ -3170,6 +3173,8 @@ describe('NodeCredentials', () => {
 				expect.objectContaining({ id: 'private-cred-id' }),
 			);
 			expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
+			expect(emitted('connectionStarted')).toEqual([['private-cred-id']]);
+			await waitFor(() => expect(emitted('connectionCompleted')).toEqual([['private-cred-id']]));
 		});
 
 		it('connects via OAuth even when the user has edit rights (single flow for all)', async () => {

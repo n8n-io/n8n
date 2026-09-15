@@ -495,6 +495,22 @@ export function createThreadRuntime(
 		...findLatestSetupItemsFromMessages(messages.value),
 		...latestSetupItems.value,
 	}));
+	const latestSetupWorkflowId = computed(() => {
+		let latest: InstanceAiAgentNode['latestSetupAnnouncement'];
+		for (const message of messages.value) {
+			const announcement = message.agentTree?.latestSetupAnnouncement;
+			if (announcement && (!latest || announcement.timestamp >= latest.timestamp))
+				latest = announcement;
+		}
+		if (latest) return latest.workflowId;
+		// Older snapshots lack announcement metadata. Prefer the newest message's rows.
+		for (const message of messages.value.toReversed()) {
+			const snapshots = message.agentTree?.setupItemsByWorkflowId ?? {};
+			const id = Object.keys(snapshots).findLast((key) => snapshots[key].length > 0);
+			if (id) return id;
+		}
+		return undefined;
+	});
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
 	// FE counterpart of the backend 'Builder created workflow' event, which carries
@@ -1447,6 +1463,7 @@ export function createThreadRuntime(
 		rateableResponseId,
 		currentTasks,
 		setupItemsByWorkflowId,
+		latestSetupWorkflowId,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,

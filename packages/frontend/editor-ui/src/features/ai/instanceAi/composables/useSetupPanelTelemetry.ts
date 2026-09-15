@@ -1,4 +1,4 @@
-import { onScopeDispose, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { onScopeDispose, ref, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { SetupPanelGroup } from '../setupPanelGroups';
@@ -12,32 +12,50 @@ type DismissReason = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED
 >['reason'];
 
+function createTelemetryState() {
+	return {
+		owners: shallowReactive(new Set<symbol>()),
+		shownRows: new Set<string>(),
+		snapshots: new Map<string, string>(),
+		connectionAttempts: new Map<
+			string,
+			{ method: SetupPanelConnectionMethod; workflowId: string }
+		>(),
+		visibleWorkflowId: ref<string>(),
+	};
+}
+
+// A thread can briefly have two mounted views during a layout change.
+const states = new WeakMap<object, ReturnType<typeof createTelemetryState>>();
+
 export function useSetupPanelTelemetry(options: {
 	workflowId: MaybeRefOrGetter<string>;
-	threadId: string;
+	thread: { id: string };
 	rows: MaybeRefOrGetter<SetupPanelRow[]>;
 	groups: MaybeRefOrGetter<SetupPanelGroup[]>;
 	shownItemIds: MaybeRefOrGetter<string[]>;
 	ready: MaybeRefOrGetter<boolean>;
 }) {
 	const telemetry = useTelemetry();
-	const shownRows = new Set<string>();
-	const snapshots = new Map<string, string>();
-	const connectionAttempts = new Map<
-		string,
-		{ method: SetupPanelConnectionMethod; workflowId: string }
-	>();
-	let visibleWorkflowId: string | undefined;
-	const context = () => ({ workflow_id: toValue(options.workflowId), thread_id: options.threadId });
+	const state = states.get(options.thread) ?? createTelemetryState();
+	states.set(options.thread, state);
+	const owner = Symbol();
+	state.owners.add(owner);
+	const isOwner = () => [...state.owners].at(-1) === owner;
+	const { shownRows, snapshots, connectionAttempts } = state;
+	const context = () => ({
+		workflow_id: toValue(options.workflowId),
+		thread_id: options.thread.id,
+	});
 
 	function trackDismissed(reason: DismissReason) {
-		if (!visibleWorkflowId) return;
+		if (!state.visibleWorkflowId.value) return;
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED, {
-			workflow_id: visibleWorkflowId,
-			thread_id: options.threadId,
+			workflow_id: state.visibleWorkflowId.value,
+			thread_id: options.thread.id,
 			reason,
 		});
-		visibleWorkflowId = undefined;
+		state.visibleWorkflowId.value = undefined;
 	}
 
 	watch(
@@ -47,15 +65,20 @@ export function useSetupPanelTelemetry(options: {
 				toValue(options.rows),
 				toValue(options.groups),
 				toValue(options.ready),
+				[...toValue(options.shownItemIds)],
+				isOwner(),
 			] as const,
-		([workflowId, rows, groups, ready]) => {
-			if (visibleWorkflowId && visibleWorkflowId !== workflowId) trackDismissed('navigation');
+		([workflowId, rows, groups, ready, shownItemIds, ownsTracking]) => {
+			if (!ownsTracking) return;
+			if (state.visibleWorkflowId.value && state.visibleWorkflowId.value !== workflowId)
+				trackDismissed('navigation');
 			if (!ready) return;
 			const key = JSON.stringify(
 				rows
 					.map((row) => ({
 						id: row.item.id,
 						done: row.isDone,
+						shown: shownItemIds.includes(row.item.id),
 						parameters:
 							row.item.kind === 'parameters' ? [...row.item.parameterNames].sort() : undefined,
 					}))
@@ -75,11 +98,11 @@ export function useSetupPanelTelemetry(options: {
 						0,
 					),
 					already_connected_count: credentials.filter(
-						(row) => row.isDone && !toValue(options.shownItemIds).includes(row.item.id),
+						(row) => row.isDone && !shownItemIds.includes(row.item.id),
 					).length,
 				});
 			}
-			if (groups.length) visibleWorkflowId = workflowId;
+			if (groups.length) state.visibleWorkflowId.value = workflowId;
 			else trackDismissed('items_removed');
 			for (const group of groups) {
 				const rowKey = `${workflowId}:${group.id}`;
@@ -100,6 +123,7 @@ export function useSetupPanelTelemetry(options: {
 	);
 
 	function trackConnectionStarted(item: SetupCredentialItem, method: SetupPanelConnectionMethod) {
+		if (!isOwner()) return;
 		connectionAttempts.set(item.id, { method, workflowId: toValue(options.workflowId) });
 		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION, {
 			...context(),
@@ -119,7 +143,7 @@ export function useSetupPanelTelemetry(options: {
 		connectionAttempts.delete(item.id);
 		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION, {
 			workflow_id: attempt.workflowId,
-			thread_id: options.threadId,
+			thread_id: options.thread.id,
 			source: 'instance_ai_setup_panel',
 			credential_type: item.credentialType,
 			credential_id: credentialId,
@@ -128,6 +152,12 @@ export function useSetupPanelTelemetry(options: {
 		});
 	}
 
-	onScopeDispose(() => trackDismissed('navigation'));
+	onScopeDispose(() => {
+		state.owners.delete(owner);
+		if (state.owners.size === 0) {
+			trackDismissed('navigation');
+			states.delete(options.thread);
+		}
+	});
 	return { trackConnectionStarted, trackConnectionCompleted, trackDismissed };
 }

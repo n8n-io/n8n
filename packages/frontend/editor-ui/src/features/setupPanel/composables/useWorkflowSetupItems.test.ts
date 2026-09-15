@@ -10,6 +10,7 @@ import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -354,6 +355,17 @@ describe('useWorkflowSetupItems', () => {
 		});
 	});
 
+	it('recovers readiness after the first credential read fails', async () => {
+		credentialsStore.fetchUsableCredentials.mockRejectedValueOnce(new Error('Read failed'));
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		await flushPromises();
+		expect(state.credentialsAvailable.value).toBe(false);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		await credentialsStore.deleteCredential({ id: 'cred-1' });
+		await flushPromises();
+		expect(state.credentialsAvailable.value).toBe(true);
+	});
+
 	it('uses the save response immediately without waiting for another workflow fetch', async () => {
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(
 			createTestWorkflow({ id: WORKFLOW_ID, nodes: [createTestNode({ name: 'Slack' })] }),
@@ -500,6 +512,23 @@ describe('useWorkflowSetupItems', () => {
 			.mockReturnValue({ id: 'private', isResolvable: true, connectedByMe: false });
 		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
 		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([{ id: 'ordinary' }]);
+		expect(useWorkflowSetupItems(() => WORKFLOW_ID).isItemDone(credentialItem())).toBe(false);
+	});
+
+	it('uses scoped connection metadata after the flat credential map is replaced', () => {
+		hydrateWorkflow([
+			createTestNode({
+				name: 'Slack',
+				credentials: { slackApi: { id: 'private', name: 'Private' } },
+			}),
+		]);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentialsStore.getUsableCredentialById.mockReturnValue({
+			id: 'private',
+			isResolvable: true,
+			connectedByMe: false,
+		} as ICredentialsResponse);
+		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 		expect(useWorkflowSetupItems(() => WORKFLOW_ID).isItemDone(credentialItem())).toBe(false);
 	});
 

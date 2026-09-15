@@ -14,7 +14,9 @@ const emit = defineEmits<{
 }>();
 const { t } = useI18n();
 const activeItem = computed(() =>
-	props.items.find((item) => item.id === props.activeItemId && !item.disabled),
+	props.status === 'executing'
+		? undefined
+		: props.items.find((item) => item.id === props.activeItemId && !item.disabled),
 );
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
@@ -41,7 +43,14 @@ watch(
 		if (!activeItem.value || status === 'executing') expanded.value = false;
 		if (status === 'executing' && props.activeItemId) emit('update:activeItemId', undefined);
 	},
+	{ immediate: true },
 );
+watch([activeItem, () => props.activeItemId], ([item, id]) => {
+	if (id && !item) {
+		emit('update:activeItemId', undefined);
+		emit('detailClosed');
+	}
+});
 watch(
 	() => activeItem.value?.id,
 	async (id, previousId) => {
@@ -54,11 +63,16 @@ watch(
 					?.focus();
 				return;
 			}
-			Array.from(
-				panel.value?.querySelectorAll<HTMLButtonElement>('button[data-setup-item-id]') ?? [],
-			)
-				.find((button) => button.dataset.setupItemId === previousId)
-				?.focus();
+			const buttons = Array.from(
+				panel.value?.querySelectorAll<HTMLButtonElement>(
+					'button[data-setup-item-id]:not(:disabled)',
+				) ?? [],
+			);
+			(
+				buttons.find((button) => button.dataset.setupItemId === previousId) ??
+				buttons[0] ??
+				panel.value?.querySelector<HTMLButtonElement>('button:not(:disabled)')
+			)?.focus();
 		}
 	},
 );

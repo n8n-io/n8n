@@ -8,9 +8,9 @@ import type { IUpdateInformation } from '@/Interface';
 import CopyInput from '@/app/components/CopyInput.vue';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { computed, useId } from 'vue';
+import { computed, reactive, useId } from 'vue';
 
-import { N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
+import { N8nInput, N8nInputLabel, N8nNotice, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 type Props = {
 	credentialProperties: INodeProperties[];
@@ -24,6 +24,14 @@ type Props = {
 const props = defineProps<Props>();
 const i18n = useI18n();
 const inputId = useId();
+const touched = reactive(new Set<string>());
+function hasRequiredError(parameter: INodeProperties) {
+	return (
+		parameter.required &&
+		(touched.has(parameter.name) || props.showValidationWarnings) &&
+		!props.credentialData[parameter.name]
+	);
+}
 
 const { check: envFeatureFlag } = useEnvFeatureFlag();
 
@@ -68,10 +76,13 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:value="String(credentialDataValues[parameter.name] ?? parameter.default ?? '')"
 			/>
 			<N8nInputLabel
-				v-else-if="compact && parameter.type === 'string'"
+				v-else-if="compact && parameter.type === 'string' && !parameter.typeOptions?.editor"
 				:input-name="`${inputId}-${parameter.name}`"
 				:label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
-				:tooltip-text="i18n.credText(credentialType ?? '').inputLabelDescription(parameter)"
+				:tooltip-text="
+					i18n.credText(credentialType ?? '').inputLabelDescription(parameter) ||
+					i18n.credText(credentialType ?? '').hint(parameter)
+				"
 				:required="parameter.required"
 				:bold="false"
 				show-tooltip
@@ -84,14 +95,36 @@ function valueChanged(parameterData: IUpdateInformation) {
 							? String(credentialDataValues[parameter.name])
 							: ''
 					"
-					:type="parameter.typeOptions?.password ? 'password' : 'text'"
+					:type="
+						parameter.typeOptions?.rows
+							? 'textarea'
+							: parameter.typeOptions?.password
+								? 'password'
+								: 'text'
+					"
+					:rows="parameter.typeOptions?.rows"
+					:masked="Boolean(parameter.typeOptions?.rows && parameter.typeOptions?.password)"
+					:aria-invalid="Boolean(hasRequiredError(parameter))"
+					:aria-describedby="
+						hasRequiredError(parameter) ? `${inputId}-${parameter.name}-error` : undefined
+					"
 					:placeholder="i18n.credText(credentialType ?? '').placeholder(parameter)"
 					:aria-label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
 					:required="parameter.required"
 					:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
 					size="small"
+					@blur="touched.add(parameter.name)"
 					@update:model-value="valueChanged({ name: parameter.name, value: $event })"
 				/>
+				<N8nText
+					v-if="hasRequiredError(parameter)"
+					:id="`${inputId}-${parameter.name}-error`"
+					color="danger"
+					size="small"
+					role="alert"
+				>
+					{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				</N8nText>
 			</N8nInputLabel>
 			<ParameterInputExpanded
 				v-else

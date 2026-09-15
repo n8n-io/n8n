@@ -10,6 +10,10 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 
 /** Give existing credential and parameter controls a disposable local document. */
 export function useSetupPanelDocument(options: {
@@ -33,6 +37,7 @@ export function useSetupPanelDocument(options: {
 
 	function dispose(id: WorkflowDocumentId) {
 		disposeNDVStore(useNDVStore(id));
+		disposeWorkflowExecutionStateStore(useWorkflowExecutionStateStore(id));
 		disposeWorkflowDocumentStore(useWorkflowDocumentStore(id));
 	}
 	watch(documentId, (_id, previous) => dispose(previous));

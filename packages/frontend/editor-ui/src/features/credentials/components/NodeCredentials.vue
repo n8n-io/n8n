@@ -138,6 +138,8 @@ const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: NodeParameterValueType }];
 	blur: [source: string];
+	connectionStarted: [credentialId: string];
+	connectionCompleted: [credentialId: string];
 }>();
 
 const telemetry = useTelemetry();
@@ -294,9 +296,11 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 async function onConnectFromRow(credentialType: string): Promise<void> {
 	const credential = getSelectedPrivateCredential(credentialType);
 	if (!credential) return;
+	emit('connectionStarted', credential.id);
 	const success = await authorize(credential);
 	if (success) {
 		credentialsStore.setConnectedByMe(credential.id, true, await fetchMyAccount(credential.id));
+		emit('connectionCompleted', credential.id);
 	}
 }
 
@@ -1134,6 +1138,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			serviceName,
 			projectId: props.projectId,
 			workflowId: telemetryWorkflowId.value || undefined,
+			credentialFetchScope: getCredentialFetchScope(),
 		});
 
 		if (credential) {

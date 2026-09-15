@@ -10,6 +10,38 @@ const renderComponent = createComponentRenderer(CredentialInputs);
 describe('compact CredentialInputs', () => {
 	beforeEach(() => setActivePinia(createTestingPinia()));
 
+	it('preserves multiline private keys and validates required fields only after blur', async () => {
+		const rendered = renderComponent({
+			props: {
+				compact: true,
+				credentialData: { privateKey: '' },
+				documentationUrl: '',
+				credentialProperties: [
+					{
+						name: 'privateKey',
+						displayName: 'Private key',
+						type: 'string',
+						required: true,
+						default: '',
+						typeOptions: { rows: 4, password: true },
+					},
+				],
+			},
+		});
+		const input = rendered.getByLabelText('Private key');
+		expect(input.tagName).toBe('TEXTAREA');
+		expect(input).toHaveAttribute('rows', '4');
+		expect(rendered.queryByRole('alert')).toBeNull();
+		await fireEvent.blur(input);
+		expect(rendered.getByRole('alert')).toHaveTextContent('This field is required');
+		const key = '-----BEGIN PRIVATE KEY-----\nexample\n-----END PRIVATE KEY-----';
+		await fireEvent.update(input, key);
+		expect(rendered.emitted('update')).toContainEqual([{ name: 'privateKey', value: key }]);
+		await rendered.rerender({ credentialData: { privateKey: key } });
+		expect(rendered.queryByRole('alert')).toBeNull();
+		expect(input).toHaveValue(key);
+	});
+
 	it('keeps compact OAuth labels visible and focuses their inputs on click', async () => {
 		const rendered = renderComponent({
 			props: {
