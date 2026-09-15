@@ -257,7 +257,9 @@ describe('WaitTracker', () => {
 					id: 'parent_execution_id',
 					finished: false,
 					status: 'waiting',
-					data: createRunExecutionData(),
+					data: createRunExecutionData({
+						executionData: { nodeExecutionStack: parentStack() },
+					}),
 				});
 				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] });
 				execution.data.parentExecution = {
@@ -771,6 +773,29 @@ describe('WaitTracker', () => {
 					});
 					expect(logger.error).toHaveBeenCalled();
 				});
+			});
+
+			it('does not claim a parent parked on a wait this child does not own', async () => {
+				const { parentExecution, postExecutePromise, subworkflowResults } =
+					setupParentExecutionTest(true);
+				parentExecution.data.executionData!.nodeExecutionStack[0].metadata = {
+					waitingChildExecutionIds: ['another_child_execution_id'],
+				};
+				executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+				await waitTracker.startExecution(execution.id);
+				postExecutePromise.resolve(subworkflowResults);
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(logger.info).toHaveBeenCalledWith(
+					expect.stringContaining('not patched'),
+					expect.objectContaining({
+						parentExecutionId: parentExecution.id,
+						childExecutionId: execution.id,
+					}),
+				);
 			});
 
 			it('logs at info and does not retry when the parent cannot be claimed', async () => {

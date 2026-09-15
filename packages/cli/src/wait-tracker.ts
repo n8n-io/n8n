@@ -204,7 +204,23 @@ export class WaitTracker {
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
-			await this.patchParent(parentExecution.executionId, subworkflowResults, childExecution);
+			const patched = await this.patchParent(
+				parentExecution.executionId,
+				subworkflowResults,
+				childExecution,
+			);
+
+			// An unpatched parent has nothing of this child's to resume on: it is parked on a
+			// wait this child does not own, or the child finished without a result. Claiming it
+			// would run the node disabled and pass the parent's own input off as the result.
+			if (!patched) {
+				this.logger.info('Parent not patched with the sub-execution result, not claiming it', {
+					parentExecutionId: parentExecution.executionId,
+					childExecutionId: childExecution?.executionId,
+				});
+				return;
+			}
+
 			await this.claimParent(parentExecution.executionId, childExecution);
 		} catch (error) {
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
