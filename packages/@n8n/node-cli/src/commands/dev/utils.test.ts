@@ -1,5 +1,5 @@
 import { type ChildProcess, execSync, spawn } from 'node:child_process';
-import { existsSync, type FSWatcher, watch } from 'node:fs';
+import { type FSWatcher, statSync, watch } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -39,6 +39,13 @@ function createFakeChild() {
 
 function createFakeWatcher() {
 	return { unref: vi.fn(), close: vi.fn() };
+}
+
+function mockDirs(isDir: (target: string) => boolean): void {
+	vi.mocked(statSync).mockImplementation((target) => {
+		if (!isDir(String(target))) throw new Error('ENOENT');
+		return { isDirectory: () => true } as unknown as ReturnType<typeof statSync>;
+	});
 }
 
 describe('dev utils', () => {
@@ -301,7 +308,7 @@ describe('dev utils', () => {
 		});
 
 		it('should watch only the asset directories, never node_modules or the cwd', () => {
-			vi.mocked(existsSync).mockReturnValue(true);
+			mockDirs(() => true);
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn());
@@ -316,20 +323,67 @@ describe('dev utils', () => {
 			expect(watched.some((dir) => String(dir).includes('node_modules'))).toBe(false);
 		});
 
-		it('should skip asset directories that do not exist', () => {
-			vi.mocked(existsSync).mockImplementation((target) => String(target).endsWith('nodes'));
+		it('should not watch asset directories that do not exist', () => {
+			mockDirs((target) => target.endsWith('nodes'));
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn());
 
-			expect(watch).toHaveBeenCalledTimes(1);
-			expect(vi.mocked(watch).mock.calls[0][0]).toBe(path.join(process.cwd(), 'nodes'));
+			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
+			expect(watched).toContain(path.join(process.cwd(), 'nodes'));
+			expect(watched).not.toContain(path.join(process.cwd(), 'icons'));
+		});
+
+		it('should watch an asset directory created after startup', () => {
+			let exists = (target: string) => target.endsWith('nodes');
+			mockDirs((target) => exists(target));
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			const onChange = vi.fn();
+			watchStaticFiles(onChange);
+
+			// Only the root watcher can see a new asset root appear.
+			const rootCall = vi
+				.mocked(watch)
+				.mock.calls.find((call) => String(call[0]) === process.cwd());
+			expect(rootCall).toBeDefined();
+
+			const rootListener = rootCall?.[1] as unknown as (
+				event: string,
+				filename: string | null,
+			) => void;
+
+			exists = (target) => target.endsWith('nodes') || target.endsWith('icons');
+			rootListener('rename', 'icons');
+
+			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
+			expect(watched).toContain(path.join(process.cwd(), 'icons'));
+			expect(onChange).toHaveBeenCalledTimes(1);
+		});
+
+		it('should ignore a non-directory appearing with an asset directory name', () => {
+			mockDirs((target) => target.endsWith('nodes'));
+			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
+
+			watchStaticFiles(vi.fn());
+
+			const rootListener = vi
+				.mocked(watch)
+				.mock.calls.find((call) => String(call[0]) === process.cwd())?.[1] as unknown as (
+				event: string,
+				filename: string | null,
+			) => void;
+
+			// `icons` exists as a file, so statSync never reports a directory.
+			expect(() => rootListener('rename', 'icons')).not.toThrow();
+			const watched = vi.mocked(watch).mock.calls.map((call) => String(call[0]));
+			expect(watched).not.toContain(path.join(process.cwd(), 'icons'));
 		});
 
 		it('should close every watcher on cleanup', () => {
 			const watchers = [createFakeWatcher(), createFakeWatcher(), createFakeWatcher()];
 			let index = 0;
-			vi.mocked(existsSync).mockReturnValue(true);
+			mockDirs(() => true);
 			vi.mocked(watch).mockImplementation(() => watchers[index++] as unknown as FSWatcher);
 
 			watchStaticFiles(vi.fn())();
@@ -341,7 +395,7 @@ describe('dev utils', () => {
 
 		it('should only react to static asset changes', () => {
 			const onChange = vi.fn();
-			vi.mocked(existsSync).mockImplementation((target) => String(target).endsWith('nodes'));
+			mockDirs((target) => target.endsWith('nodes'));
 			vi.mocked(watch).mockImplementation(() => createFakeWatcher() as unknown as FSWatcher);
 
 			watchStaticFiles(onChange);
