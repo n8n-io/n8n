@@ -34,6 +34,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Teams from './custom/teams.svg';
 import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
@@ -314,6 +315,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -535,6 +537,7 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	teams: Teams,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,

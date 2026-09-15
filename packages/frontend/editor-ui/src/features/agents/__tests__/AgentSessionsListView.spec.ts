@@ -424,7 +424,8 @@ describe('AgentSessionsListView', () => {
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],
 		[{ taskId: 'task-1', source: 'slack' }, 'Schedule', 'clock'],
-		[{ source: 'teams' }, 'Teams', 'plug'],
+		[{ source: 'teams' }, 'Teams', 'teams'],
+		[{ source: 'future-channel' }, 'Future-channel', 'plug'],
 		[{ source: ' Slack ' }, 'Slack', 'slack'],
 	] as const)(
 		'renders origin chip for %j as %s with the %s icon',
