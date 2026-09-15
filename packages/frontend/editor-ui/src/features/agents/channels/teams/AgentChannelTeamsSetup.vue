@@ -69,8 +69,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 
-const AZURE_BOT_SERVICES_URL =
-	'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 const DISCOVERY_POLL_MS = 2000;
@@ -78,6 +76,7 @@ const DISCOVERY_POLL_MS = 2000;
 const setupState = ref<TeamsAgentSetupState | null>(null);
 const discovery = ref<TeamsDiscoveryState>({ status: 'idle' });
 const manualEntry = ref(false);
+const showEndpoint = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const availability = ref({
@@ -292,11 +291,6 @@ const steps = computed(() => [
 		description: i18n.baseText('agents.channels.teams.setup.createBot.description'),
 	},
 	{
-		id: 'connect-bot',
-		title: i18n.baseText('agents.channels.teams.setup.connectBot.title'),
-		description: i18n.baseText('agents.channels.teams.setup.connectBot.description'),
-	},
-	{
 		id: 'availability',
 		title: i18n.baseText('agents.channels.teams.setup.availability.title'),
 		description: i18n.baseText('agents.channels.teams.setup.availability.description'),
@@ -305,6 +299,14 @@ const steps = computed(() => [
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),
 		description: i18n.baseText('agents.channels.teams.setup.install.description'),
+	},
+	// Last, because the message that confirms the path is the first real one the
+	// user sends — which needs the app installed. Testing earlier would mean
+	// hunting for Test in Web Chat in the Azure portal instead.
+	{
+		id: 'connect-bot',
+		title: i18n.baseText('agents.channels.teams.setup.connectBot.title'),
+		description: i18n.baseText('agents.channels.teams.setup.connectBot.description'),
 	},
 ]);
 
@@ -373,7 +375,25 @@ defineExpose({
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.needsCredential') }}
 						</N8nText>
 
-						<div :class="$style.urlField">
+						<N8nText :class="$style.hint" size="small">
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
+						</N8nText>
+
+						<!--
+							The endpoint is only needed by someone wiring up a bot they already
+							have. The deployment sets it, so showing it by default puts a long
+							opaque URL in front of everyone who does not need it.
+						-->
+						<N8nButton
+							v-if="!showEndpoint"
+							variant="ghost"
+							size="small"
+							data-testid="teams-show-endpoint"
+							@click="showEndpoint = true"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
+						</N8nButton>
+						<div v-else :class="$style.urlField" data-testid="teams-endpoint-field">
 							<label for="teams-messaging-endpoint-url">
 								<N8nText size="small" bold>
 									{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
@@ -387,19 +407,21 @@ defineExpose({
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 								:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
 							/>
+							<N8nText :class="$style.hint" size="small">
+								{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBotHint') }}
+							</N8nText>
 						</div>
-						<N8nText :class="$style.hint" size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
-						</N8nText>
 					</div>
 
 					<!-- 3. Confirm the bot reaches n8n -->
 					<div v-else-if="step.id === 'connect-bot'" :class="$style.stepStack">
 						<N8nButton
-							:href="AZURE_BOT_SERVICES_URL"
+							v-if="setupState?.teamsChatDeepLink"
+							:href="setupState.teamsChatDeepLink"
 							target="_blank"
 							variant="subtle"
 							size="medium"
+							icon="teams"
 							data-testid="teams-open-bot-link"
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.connectBot.openBotButton') }}
