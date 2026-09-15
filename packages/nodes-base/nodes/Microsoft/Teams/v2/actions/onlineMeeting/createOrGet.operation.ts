@@ -7,14 +7,7 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import {
-	meetingRequest,
-	optionalText,
-	requiredText,
-	throwIfOnlineMeetingUnsupported,
-	toGraphUtc,
-} from './shared';
-import { SP_HIDE } from '../../transport';
+import { meetingRequest, meetingsPath, optionalText, requiredText, toGraphUtc } from './shared';
 
 const properties: INodeProperties[] = [
 	{
@@ -25,7 +18,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		placeholder: 'e.g. order-4711-kickoff',
 		description:
-			'Your own ID for the meeting. Running the node again with the same ID returns the existing meeting instead of creating another one.',
+			'Your own ID for the meeting. Running the node again with the same ID for the same organizer returns the existing meeting instead of creating another one.',
 	},
 	{
 		displayName: 'Options',
@@ -66,17 +59,12 @@ const displayOptions = {
 		resource: ['onlineMeeting'],
 		operation: ['createOrGet'],
 	},
-	hide: {
-		...SP_HIDE,
-	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/onlinemeeting-createorget?view=graph-rest-1.0&tabs=http
-	throwIfOnlineMeetingUnsupported.call(this);
-
 	const externalId = requiredText.call(this, 'externalId', i, 'External ID');
 	const options = this.getNodeParameter('options', i);
 	if (options.endDateTime && !options.startDateTime) {
@@ -98,5 +86,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.endDateTime = toGraphUtc.call(this, options.endDateTime, 'End Time');
 	}
 
-	return await meetingRequest.call(this, 'POST', '/v1.0/me/onlineMeetings/createOrGet', body);
+	return await meetingRequest.call(
+		this,
+		'POST',
+		await meetingsPath.call(this, i, ['/createOrGet']),
+		body,
+	);
 }
