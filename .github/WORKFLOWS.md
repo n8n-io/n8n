@@ -903,8 +903,11 @@ can match, so a fork branch with a matching name is still evaluated. Add a
 route only when every commit it carries was already reviewed elsewhere, as
 with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
 
-The workflow reads OWNERS, its scripts and the exemption routes from the base
-branch only, so a PR cannot lift its own review requirement.
+The workflow reads OWNERS, its scripts and the exemption routes from `master`
+only, never from the base branch or the PR: any writable branch can be a base,
+so only `master` is trusted input. A PR cannot lift its own review
+requirement. A retarget re-evaluates the PR, so a verdict computed against the
+old base does not carry over.
 
 ### Transition from CODEOWNERS
 

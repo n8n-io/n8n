@@ -13,8 +13,10 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # in required-reviews.mjs; an exempt PR gets a success status.
 #
 # Triggers
-#   - pull_request (opened/synchronize/reopened/ready_for_review):
-#     re-evaluates whenever the changeset can change. Skipped for fork PRs
+#   - pull_request (opened/synchronize/reopened/ready_for_review, and edited
+#     when the base branch changes): re-evaluates whenever the changeset can
+#     change. A retargeted PR keeps its head SHA, so a verdict computed against
+#     the old base must not survive the retarget. Skipped for fork PRs
 #     (no secrets): their status stays "expected" — fail closed — until the
 #     first review event reports it.
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
@@ -28,9 +30,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #   - workflow_dispatch: manual re-check (e.g. after a team membership change,
 #     or a fork PR push after an approval).
 #
-# The checkout below always pins the base branch, never the PR merge ref: the
-# scripts and the OWNERS file are trusted input, so a PR cannot lift its own
-# review requirement or reach the status-writing token.
+# The checkout below always pins master, never the base branch or the PR
+# merge ref: the scripts, the OWNERS file and the exemption routes are trusted
+# input, so a PR cannot lift its own review requirement or reach the
+# status-writing token. Any branch can be a base, and anyone with push access
+# can edit a branch, so only master is trusted.
 #
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
@@ -43,7 +47,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   pull_request_review:
     types: [submitted, dismissed]
   merge_group:
@@ -93,11 +97,13 @@ jobs:
   required-reviews:
     name: Check required reviews
     # Fork PRs are skipped on pull_request (no secrets for the app token);
-    # pull_request_review covers them.
+    # pull_request_review covers them. Of the edited events only a base
+    # change matters; title and body edits do not change the verdict.
     if: >-
       github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository) &&
+       (github.event.pull_request.head.repo.full_name == github.repository &&
+        (github.event.action != 'edited' || github.event.changes.base))) &&
       (github.event_name != 'pull_request_review' ||
        github.event.review.state != 'commented')
     runs-on: ubuntu-latest
@@ -143,21 +149,20 @@ jobs:
             -f description='Evaluating required reviews' \
             -f "target_url=${RUN_URL}"
 
-      # Always check out the base branch, never the PR merge ref: the OWNERS
-      # file, the scripts and the exemption routes must be trusted input. The
-      # 'master' fallback covers workflow_dispatch, so a dispatch from another
-      # branch cannot run that branch's policy. The script reads only
+      # Always check out master, never the base branch or the PR merge ref:
+      # the OWNERS file, the scripts and the exemption routes must be trusted
+      # input, and any writable branch can be a base. The script reads only
       # `.github/` and the root files, which cone mode always includes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.base.ref || 'master' }}
+          ref: master
           persist-credentials: false
           sparse-checkout: .github
 
-      # Bootstrap: the checkout is the trusted base branch. Until the action
-      # exists there, there is nothing to run. Report success so the PR that
-      # introduces it can merge; the check is enforced again from the next PR.
-      - name: Check for the enforcement action on the base branch
+      # Bootstrap: the checkout is master. Until the action exists there,
+      # there is nothing to run. Report success so the PR that introduces it
+      # can merge; the check is enforced again from the next PR.
+      - name: Check for the enforcement action on master
         id: bootstrap
         shell: bash
         run: |
@@ -165,7 +170,7 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "No enforcement action on the base branch; nothing to enforce."
+            echo "No enforcement action on master; nothing to enforce."
           fi
 
       - name: Report the bootstrap state
@@ -177,7 +182,7 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
             -f state=success \
             -f context='Required Reviews' \
-            -f description='Owners enforcement is not on the base branch yet'
+            -f description='Owners enforcement is not on master yet'
 
       - name: Evaluate required reviews
         if: steps.bootstrap.outputs.ready == 'true'
