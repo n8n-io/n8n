@@ -282,6 +282,7 @@ describe('GlobalConfig', () => {
 				workflowInfoMetricInterval: 60,
 				includeDbPoolMetrics: false,
 				includeWorkflowPublicationMetrics: false,
+				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
