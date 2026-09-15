@@ -50,13 +50,14 @@ export class SlackOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			// Hidden, not removed: Send and Wait nodes set up before the Slack Signing Secret
+			// credential existed keep verifying callbacks with the value that is already stored.
+			// `password` keeps the API redacting the stored value; redaction ignores `type`.
 			displayName: 'Signature Secret',
 			name: 'signatureSecret',
-			type: 'string',
+			type: 'hidden',
 			typeOptions: { password: true },
 			default: '',
-			description:
-				'The signing secret is used to verify the authenticity of requests sent by Slack.',
 		},
 		{
 			displayName: 'Grant Type',

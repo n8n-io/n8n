@@ -150,13 +150,15 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 	// Interaction-route requests carry no signed resume URL, so they must be a validly Slack-signed
 	// interaction: fail closed with 401 if the secret is missing or the signature doesn't verify,
 	// never falling back to the query-param path. verifySignature also enforces replay protection
-	// and constant-time comparison. Pick the credential matching the node's auth mode.
+	// and constant-time comparison. The secret lives in the Slack Signing Secret credential; nodes
+	// set up before that credential existed still carry it on the credential of their auth mode.
 	const authentication = this.getNodeParameter('authentication', 'accessToken') as string;
-	const credentialType = authentication === 'oAuth2' ? 'slackOAuth2Api' : 'slackApi';
-	const credential = await this.getCredentials(credentialType);
-	const signingSecret =
-		typeof credential.signatureSecret === 'string' ? credential.signatureSecret : '';
-	if (!signingSecret || !(await verifySignature.call(this, credentialType))) {
+	const legacyCredentialType = authentication === 'oAuth2' ? 'slackOAuth2Api' : 'slackApi';
+	const isSignatureValid = await verifySignature.call(this, 'slackSigningSecretApi', {
+		requireSecret: true,
+		legacyCredentialType,
+	});
+	if (!isSignatureValid) {
 		this.getResponseObject().status(401).send('');
 		return { noWebhookResponse: true };
 	}
