@@ -238,6 +238,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 				status = 'error';
 				throw error;
 			} finally {
+				if (claim.abortSignal.aborted) status = 'error';
 				turnQueue.finish(claim, status);
 				await claim.release();
 			}

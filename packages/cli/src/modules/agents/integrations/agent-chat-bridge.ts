@@ -67,6 +67,7 @@ const RESET_SESSION_COMMAND = '/new';
 
 /** Cache key prefix for the per-conversation session-generation pointer, shared across mains. */
 const SESSION_GENERATION_KEY_PREFIX = 'agents:chat-session-generation';
+const TURN_ADMISSION_KEY_PREFIX = 'agents:chat-turn-admission';
 const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
 /** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
 const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
@@ -176,6 +177,9 @@ export class AgentChatBridge {
 	private readonly callbackStore?: CallbackStore;
 
 	private readonly turnQueueService = Container.get(AgentTurnQueueService);
+
+	/** Keep same-main waiters in order before they contend for the shared admission lease. */
+	private readonly inboundAdmissions = new Map<string, Promise<unknown>>();
 
 	/** Resolved integration for this platform (may be undefined for unknown types). */
 	private readonly integrationImpl: AgentChatIntegration | undefined;
@@ -354,10 +358,10 @@ export class AgentChatBridge {
 				const anchoredThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
-				if (shouldSubscribe) {
-					await anchoredThread.subscribe();
-				}
-				await this.executeAndStream(anchoredThread, message, { isNewMention: true });
+				await this.executeAndStream(anchoredThread, message, {
+					isNewMention: true,
+					subscribe: shouldSubscribe,
+				});
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -367,7 +371,10 @@ export class AgentChatBridge {
 			try {
 				if (!this.canUserAccess(message.author)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
-				await this.executeAndStream(anchoredThread, message, { isNewMention: false });
+				await this.executeAndStream(anchoredThread, message, {
+					isNewMention: false,
+					subscribe: false,
+				});
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -651,19 +658,38 @@ export class AgentChatBridge {
 	private async executeAndStream(
 		thread: Thread,
 		message: Message,
-		options: { isNewMention: boolean },
+		options: { isNewMention: boolean; subscribe: boolean },
 	): Promise<void> {
-		const { isNewMention } = options;
+		const admitted = await this.serializeInboundAdmission(
+			this.baseThreadId(thread),
+			async (signal) => await this.admitInboundMessage(thread, message, options, signal),
+		);
+		if (!admitted) return;
+		await this.runTurn(thread, message, admitted.turn, admitted.claim);
+	}
+
+	private async admitInboundMessage(
+		thread: Thread,
+		message: Message,
+		options: { isNewMention: boolean; subscribe: boolean },
+		admissionSignal: AbortSignal,
+	): Promise<{ turn: ChannelTurn; claim: AgentTurnClaim } | null> {
+		const { isNewMention, subscribe } = options;
+		admissionSignal.throwIfAborted();
+		if (subscribe) await thread.subscribe();
+		admissionSignal.throwIfAborted();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
 			this.getPlatformAgentContext(),
 		).trim();
+		admissionSignal.throwIfAborted();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
-		if (!text && inboundAttachments.length === 0) return;
-		if (await this.handleResetCommand(thread, text, inboundAttachments)) return;
+		if (!text && inboundAttachments.length === 0) return null;
+		if (await this.handleResetCommand(thread, text, inboundAttachments)) return null;
 
 		const threadId = await this.resolveActiveThreadId(thread);
+		admissionSignal.throwIfAborted();
 		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
 		// If this thread was established by an outbound task send, continue that
 		// task's session instead of starting a fresh one. Attachments are stored
@@ -674,32 +700,36 @@ export class AgentChatBridge {
 		// so it has to be looked up the same way, not by whatever generation is
 		// currently active.
 		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
+		admissionSignal.throwIfAborted();
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
 		// The run parks against the session it executes in, which for a bound reply
 		// is the task's thread rather than the platform one — so this has to come
 		// after the binding is resolved, and before anything is stored for a turn
 		// that is not going to run.
-		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return;
+		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return null;
+		admissionSignal.throwIfAborted();
 
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
 			memoryThreadId.id,
 			memoryResourceId,
 		);
-		const turn: ChannelTurn = {
-			isNewMention,
-			text: [text, ...attachmentNotes].filter(Boolean).join('\n'),
-			attachments,
-			conversationThreadId: threadId.id,
-			memoryThreadId: memoryThreadId.id,
-			memoryResourceId,
-			subject: await this.messageContextBridge.resolveSubject(message),
-		};
 		let persisted = false;
-		let submitted: AgentTurnSubmitResult;
 		try {
-			submitted = await this.turnQueueService.submit(
+			admissionSignal.throwIfAborted();
+			const subject = await this.messageContextBridge.resolveSubject(message);
+			admissionSignal.throwIfAborted();
+			const turn: ChannelTurn = {
+				isNewMention,
+				text: [text, ...attachmentNotes].filter(Boolean).join('\n'),
+				attachments,
+				conversationThreadId: threadId.id,
+				memoryThreadId: memoryThreadId.id,
+				memoryResourceId,
+				subject,
+			};
+			const submitted: AgentTurnSubmitResult = await this.turnQueueService.submit(
 				{
 					threadId: memoryThreadId.id,
 					agentId: this.agentId,
@@ -723,14 +753,37 @@ export class AgentChatBridge {
 					persisted = true;
 				},
 			);
+			if (submitted.status === 'queued') return null;
+			return { turn, claim: submitted.claim };
 		} catch (error) {
 			if (!persisted && attachments.length > 0) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}
 			throw error;
 		}
-		if (submitted.status === 'queued') return;
-		await this.runTurn(thread, message, turn, submitted.claim);
+	}
+
+	private async serializeInboundAdmission<T>(
+		threadId: string,
+		work: (signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
+		const previous = this.inboundAdmissions.get(threadId) ?? Promise.resolve();
+		const run = previous
+			.catch(() => undefined)
+			.then(
+				async () =>
+					await Container.get(LockService).withLease(
+						LockNamespace.KNOWN_LOCKS,
+						`${TURN_ADMISSION_KEY_PREFIX}:${threadId}`,
+						work,
+					),
+			);
+		this.inboundAdmissions.set(threadId, run);
+		try {
+			return await run;
+		} finally {
+			if (this.inboundAdmissions.get(threadId) === run) this.inboundAdmissions.delete(threadId);
+		}
 	}
 
 	/** Run a queued channel message headless, replying into its rebuilt thread. */

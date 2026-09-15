@@ -1782,6 +1782,51 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('admits messages in arrival order when attachment processing is slower', async () => {
+			const turnQueueService = mock<AgentTurnQueueService>();
+			let execution = 0;
+			turnQueueService.submit.mockImplementation(async () => ({
+				status: 'queued',
+				executionId: `exec-${++execution}`,
+			}));
+			Container.set(AgentTurnQueueService, turnQueueService);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(makeAgentExecutor([finishChunk]), attachmentService);
+			const thread = makeThread();
+			let resolveAttachment!: (value: Buffer) => void;
+			const attachmentData = new Promise<Buffer>((resolve) => {
+				resolveAttachment = resolve;
+			});
+			const fetchData = vi.fn(async () => await attachmentData);
+
+			const first = handlers.mention!(thread, {
+				text: 'first',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData,
+					},
+				],
+			});
+			await vi.waitFor(() => expect(fetchData).toHaveBeenCalledOnce());
+			const second = handlers.mention!(thread, {
+				text: 'second',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(turnQueueService.submit).not.toHaveBeenCalled();
+			resolveAttachment(pngBytes);
+			await Promise.all([first, second]);
+
+			expect(turnQueueService.submit.mock.calls.map(([turn]) => turn.userMessage)).toEqual([
+				'first',
+				'second',
+			]);
+		});
+
 		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
