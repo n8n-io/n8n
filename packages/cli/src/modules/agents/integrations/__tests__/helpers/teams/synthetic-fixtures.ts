@@ -8,11 +8,12 @@
  */
 
 export const TEAMS_APP_ID = '11111111-2222-3333-4444-555555555555';
+export const TEAMS_CLIENT_SECRET = 'test-client-secret';
 export const TEAMS_TENANT_ID = '99999999-8888-7777-6666-555555555555';
 export const TEAMS_SERVICE_URL = 'https://smba.trafficmanager.net/amer';
 export const TEAMS_DM_CONVERSATION_ID = 'a:1dm_conversation_alice';
 export const TEAMS_USER_ID = '29:alice-teams-id';
-export const TEAMS_USER_AAD_ID = 'aad-alice';
+const TEAMS_USER_AAD_ID = 'aad-alice';
 
 export interface TeamsActivityFixture extends Record<string, unknown> {
 	type: string;

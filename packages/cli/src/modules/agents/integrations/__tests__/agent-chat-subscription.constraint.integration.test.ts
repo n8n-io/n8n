@@ -1,3 +1,4 @@
+import { AgentIntegrationSchema } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
@@ -10,23 +11,18 @@ import { AgentRepository } from '../../repositories/agent.repository';
  * channel connects, runs, and then fails on the first subscribed message —
  * which unit tests never see, because they all run on in-memory state.
  *
- * So this asserts the constraint from the channel side: every type the registry
- * can produce must be insertable.
+ * The types come from the schema rather than a list here: the mistake this
+ * guards against is forgetting to add a channel, so a hand-written list would
+ * be forgotten in the same edit.
  */
-const REGISTERED_INTEGRATION_TYPES = ['telegram', 'slack', 'linear', 'discord', 'teams'] as const;
+const INTEGRATION_TYPES = AgentIntegrationSchema.options.map((option) => option.shape.type.value);
+
+let agentId: string;
 
 beforeAll(async () => {
 	await testModules.loadModules(['agents']);
 	await testDb.init();
-});
 
-let agentId: string;
-
-beforeEach(async () => {
-	// The agents module owns these tables, so they are not in testDb's entity
-	// list — clear them through their own repositories.
-	await Container.get(AgentChatSubscriptionRepository).delete({});
-	await Container.get(AgentRepository).delete({});
 	const project = await createTeamProject();
 	const agent = await Container.get(AgentRepository).save(
 		Container.get(AgentRepository).create({
@@ -43,16 +39,17 @@ afterAll(async () => {
 });
 
 describe('agent chat subscription integration types', () => {
-	it.each(REGISTERED_INTEGRATION_TYPES)('accepts a %s subscription', async (integrationType) => {
+	it('accepts a subscription for every integration type the schema allows', async () => {
 		const repository = Container.get(AgentChatSubscriptionRepository);
-		const scope = {
-			agentId,
-			integrationType,
-			credentialId: `cred-${integrationType}`,
-		};
+		expect(INTEGRATION_TYPES).toContain('teams');
 
-		await repository.subscribe(scope, `thread-${integrationType}`);
+		for (const integrationType of INTEGRATION_TYPES) {
+			const scope = { agentId, integrationType, credentialId: `cred-${integrationType}` };
+			const threadId = `thread-${integrationType}`;
 
-		await expect(repository.isSubscribed(scope, `thread-${integrationType}`)).resolves.toBe(true);
+			await repository.subscribe(scope, threadId);
+
+			await expect(repository.isSubscribed(scope, threadId)).resolves.toBe(true);
+		}
 	});
 });

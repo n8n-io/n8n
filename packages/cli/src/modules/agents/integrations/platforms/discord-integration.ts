@@ -4,7 +4,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Logger as ChatLogger, Message, Thread } from 'chat';
+import type { Message, Thread } from 'chat';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 
@@ -27,7 +27,8 @@ import {
 	type WebhookRequestResolution,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
-import type { SuspendComponent } from '../component-mapper';
+import { createAdapterLogger } from '../adapter-logger';
+import { expandSelectsToButtons, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadDiscordAdapter } from '../esm-loader';
 import type { ReplyExpectation } from '../integration-tools';
@@ -236,7 +237,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 			applicationId,
 			mentionRoleIds: [],
 			apiUrl: DISCORD_API_URL,
-			logger: this.createAdapterLogger(),
+			logger: createAdapterLogger(this.logger, '[DiscordAdapter]'),
 		});
 
 		this.pendingConnections.set(this.sessionKey(ctx), {
@@ -404,22 +405,9 @@ export class DiscordIntegration extends AgentChatIntegration {
 		return originalText ? `${originalText}\n\n${outcome}` : outcome;
 	}
 
+	/** Discord embeds have no select menu. */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
-		const normalized: SuspendComponent[] = [];
-		for (const c of components) {
-			switch (c.type) {
-				case 'select':
-				case 'radio_select':
-					// Discord embeds have no select menu, so offer each option as a button.
-					for (const opt of c.options ?? []) {
-						normalized.push({ type: 'button', label: opt.label, value: opt.value });
-					}
-					break;
-				default:
-					normalized.push(c);
-			}
-		}
-		return normalized;
+		return expandSelectsToButtons(components);
 	}
 
 	private sessionKey(ctx: AgentChatIntegrationContext): string {
@@ -483,22 +471,6 @@ export class DiscordIntegration extends AgentChatIntegration {
 	 * Pinned adapter 4.28.1 attaches message text, IDs, signatures, and public
 	 * keys as metadata arguments — never forward those.
 	 */
-	private createAdapterLogger(): ChatLogger {
-		const forward =
-			(level: 'debug' | 'info' | 'warn' | 'error') =>
-			(message: string, ..._args: unknown[]) => {
-				this.logger[level](`[DiscordAdapter] ${message}`);
-			};
-		const logger: ChatLogger = {
-			child: () => logger,
-			debug: forward('debug'),
-			info: forward('info'),
-			warn: forward('warn'),
-			error: forward('error'),
-		};
-		return logger;
-	}
-
 	// ---------------------------------------------------------------------------
 	// Credential extraction
 	// ---------------------------------------------------------------------------

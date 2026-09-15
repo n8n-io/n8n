@@ -1,4 +1,9 @@
-import { createTeamsReplayContext } from '../../../__tests__/helpers/teams/replay-test-context';
+import { isRecord } from '@n8n/utils/is-record';
+
+import {
+	createTeamsReplayContext,
+	FIRST_POSTED_MESSAGE_ID,
+} from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
 	dmFollowUp,
@@ -17,40 +22,18 @@ vi.mock('../../../esm-loader', () => ({
 	loadTeamsAdapter: async () => await import('@chat-adapter/teams'),
 }));
 
-/** Pull the Adaptive Card attachment off a recorded outbound activity. */
-function adaptiveCardFrom(body: Record<string, unknown> | undefined) {
-	const attachments = body?.attachments;
-	if (!Array.isArray(attachments)) return undefined;
-	const card = attachments.find(
-		(a: unknown) =>
-			typeof a === 'object' &&
-			a !== null &&
-			(a as { contentType?: string }).contentType === 'application/vnd.microsoft.card.adaptive',
-	);
-	return (card as { content?: Record<string, unknown> } | undefined)?.content;
-}
-
-/** Every `Action.Submit` on an Adaptive Card, flattened across actionsets. */
-function cardActions(card: Record<string, unknown> | undefined): Array<Record<string, unknown>> {
-	const collect = (nodes: unknown): Array<Record<string, unknown>> => {
-		if (!Array.isArray(nodes)) return [];
-		return nodes.flatMap((node) => {
-			if (typeof node !== 'object' || node === null) return [];
-			const record = node as Record<string, unknown>;
-			const own = record.type === 'Action.Submit' ? [record] : [];
-			return [
-				...own,
-				...collect(record.actions),
-				...collect(record.items),
-				...collect(record.body),
-			];
-		});
+/** Every `Action.Submit` on an outbound activity, at any depth. */
+function cardActions(body: unknown): Array<Record<string, unknown>> {
+	const found: Array<Record<string, unknown>> = [];
+	const visit = (node: unknown) => {
+		if (Array.isArray(node)) return node.forEach(visit);
+		if (!isRecord(node)) return;
+		if (node.type === 'Action.Submit') found.push(node);
+		Object.values(node).forEach(visit);
 	};
-	return [...collect(card?.actions), ...collect(card?.body)];
+	visit(body);
+	return found;
 }
-
-/** First id the replay context's Bot Connector stub hands back for a post. */
-const POSTED_CARD_MESSAGE_ID = 'message-1000';
 
 describe('Microsoft Teams integration scenarios', () => {
 	it('rejects an activity that carries no Bot Framework token', async () => {
@@ -150,7 +133,7 @@ describe('Microsoft Teams integration scenarios', () => {
 		try {
 			await ctx.sendWebhook(dmMessage);
 
-			const actions = cardActions(adaptiveCardFrom(ctx.lastPost()?.body));
+			const actions = cardActions(ctx.lastPost()?.body);
 			expect(actions.map((action) => action.title)).toEqual(
 				expect.arrayContaining(['Staging', 'Production']),
 			);
@@ -181,7 +164,7 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.sendWebhook(dmMessage);
 
 			const cardPost = ctx.lastPost();
-			const actions = cardActions(adaptiveCardFrom(cardPost?.body));
+			const actions = cardActions(cardPost?.body);
 			const approve = actions[0];
 			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
 
@@ -190,7 +173,7 @@ describe('Microsoft Teams integration scenarios', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 			await ctx.sendWebhook(
-				cardAction(approve.data as Record<string, unknown>, POSTED_CARD_MESSAGE_ID),
+				cardAction(approve.data as Record<string, unknown>, FIRST_POSTED_MESSAGE_ID),
 			);
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
