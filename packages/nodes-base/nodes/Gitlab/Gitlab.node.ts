@@ -10,6 +10,12 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
+/** Maps the issue `state` option to the `state_event` transition the GitLab API expects. */
+const ISSUE_STATE_EVENTS: Record<string, string> = {
+	closed: 'close',
+	open: 'reopen',
+};
+
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab',
@@ -1450,6 +1456,13 @@ export class Gitlab implements INodeType {
 						}
 						if (body.assignee_ids !== undefined) {
 							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
+						}
+						// The API expects the transition to apply as `state_event`, not the target
+						// `state`, so translate it here rather than renaming the field and breaking
+						// saved workflows. https://docs.gitlab.com/api/issues/#edit-an-issue
+						if (body.state !== undefined && ISSUE_STATE_EVENTS[body.state as string]) {
+							body.state_event = ISSUE_STATE_EVENTS[body.state as string];
+							delete body.state;
 						}
 
 						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
