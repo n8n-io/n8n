@@ -27,7 +27,6 @@ configure({ testIdAttribute: 'data-testid' });
 // N8nStepper renders every step's slot, so one render covers the whole stepper.
 const ENDPOINT = 'https://n8n.example.com/rest/projects/p/agents/v2/a/webhooks/teams';
 const DEPLOY_URL = 'https://portal.azure.com/#create/Microsoft.Template/uri/encoded';
-const TEAMS_CHAT_LINK = 'https://teams.microsoft.com/l/entity/manifest-id/conversations?tenantId=t';
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 
 const renderComponent = createComponentRenderer(AgentChannelTeamsSetup);
@@ -58,7 +57,6 @@ describe('AgentChannelTeamsSetup', () => {
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
 			suggestedBotName: 'support-bot-abc12345',
-			teamsChatDeepLink: TEAMS_CHAT_LINK,
 		});
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
 		vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok', clientId: CLIENT_ID });
@@ -115,7 +113,6 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: null,
 				deployToAzureUrl: null,
 				suggestedBotName: 'support-bot-abc12345',
-				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
@@ -233,7 +230,6 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
-				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 
 			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
@@ -252,7 +248,6 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
-				teamsChatDeepLink: TEAMS_CHAT_LINK,
 			});
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
 
@@ -272,11 +267,15 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-connect')).toBeDisabled();
 		});
 
-		it('unlocks connecting once the credential checks out', async () => {
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+		it('unlocks saving once the credential checks out, without announcing it', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
 
-			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
-			expect(getByTestId('teams-connect')).not.toBeDisabled();
+			await waitFor(() => expect(getByTestId('teams-connect')).not.toBeDisabled());
+			// An enabled button says it already; a success line would only repeat it.
+			expect(queryByTestId('teams-credential-problem')).toBeNull();
+			expect(queryByTestId('teams-connect-blocked')).toBeNull();
 		});
 
 		it('offers a retry when the check failed', async () => {
@@ -292,13 +291,6 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-credential-recheck'));
 
 			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
-		});
-
-		it('offers the chat as the next step, rather than as a check to pass', async () => {
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
-
-			await waitFor(() => expect(getByTestId('teams-open-chat')).toBeVisible());
-			expect(getByTestId('teams-open-chat')).toHaveAttribute('href', TEAMS_CHAT_LINK);
 		});
 
 		it('keeps connecting for last, because the modal closes on it', async () => {

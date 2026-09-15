@@ -374,51 +374,57 @@ defineExpose({
 								</span>
 							</template>
 
-							<div :class="$style.row" data-testid="teams-scope-direct">
-								<div :class="$style.rowText">
-									<N8nText size="small">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.directChat') }}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
-									</N8nText>
+							<div :class="$style.panelBody">
+								<div :class="$style.row" data-testid="teams-scope-direct">
+									<div :class="$style.rowText">
+										<N8nText size="small">
+											{{ i18n.baseText('agents.channels.teams.setup.availability.directChat') }}
+										</N8nText>
+										<N8nText size="small" :class="$style.hint">
+											{{ i18n.baseText('agents.channels.teams.setup.availability.directChatHint') }}
+										</N8nText>
+									</div>
+									<!-- Fixed, so a tick rather than a control that cannot move. -->
+									<N8nIcon icon="check" size="small" :class="$style.fixed" />
 								</div>
-								<!-- Fixed, so a tick rather than a control that cannot move. -->
-								<N8nIcon icon="check" size="small" :class="$style.fixed" />
-							</div>
 
-							<div :class="$style.row">
-								<div :class="$style.rowText">
-									<N8nText size="small">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannels') }}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint') }}
-									</N8nText>
+								<div :class="$style.row">
+									<div :class="$style.rowText">
+										<N8nText size="small">
+											{{ i18n.baseText('agents.channels.teams.setup.availability.teamChannels') }}
+										</N8nText>
+										<N8nText size="small" :class="$style.hint">
+											{{
+												i18n.baseText('agents.channels.teams.setup.availability.teamChannelsHint')
+											}}
+										</N8nText>
+									</div>
+									<N8nSwitch2
+										v-model="availability.teamChannels"
+										:aria-label="
+											i18n.baseText('agents.channels.teams.setup.availability.teamChannels')
+										"
+										data-testid="teams-scope-channels"
+									/>
 								</div>
-								<N8nSwitch2
-									v-model="availability.teamChannels"
-									:aria-label="
-										i18n.baseText('agents.channels.teams.setup.availability.teamChannels')
-									"
-									data-testid="teams-scope-channels"
-								/>
-							</div>
 
-							<div :class="$style.row">
-								<div :class="$style.rowText">
-									<N8nText size="small">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.groupChats') }}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint">
-										{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
-									</N8nText>
+								<div :class="$style.row">
+									<div :class="$style.rowText">
+										<N8nText size="small">
+											{{ i18n.baseText('agents.channels.teams.setup.availability.groupChats') }}
+										</N8nText>
+										<N8nText size="small" :class="$style.hint">
+											{{ i18n.baseText('agents.channels.teams.setup.availability.groupChatsHint') }}
+										</N8nText>
+									</div>
+									<N8nSwitch2
+										v-model="availability.groupChats"
+										:aria-label="
+											i18n.baseText('agents.channels.teams.setup.availability.groupChats')
+										"
+										data-testid="teams-scope-groups"
+									/>
 								</div>
-								<N8nSwitch2
-									v-model="availability.groupChats"
-									:aria-label="i18n.baseText('agents.channels.teams.setup.availability.groupChats')"
-									data-testid="teams-scope-groups"
-								/>
 							</div>
 						</N8nCollapsiblePanel>
 
@@ -434,66 +440,68 @@ defineExpose({
 								</span>
 							</template>
 
-							<N8nText size="small" :class="$style.hint">
-								{{ i18n.baseText('agents.channels.teams.setup.availability.readingNote') }}
-							</N8nText>
+							<div :class="$style.panelBody">
+								<N8nText size="small" :class="$style.hint">
+									{{ i18n.baseText('agents.channels.teams.setup.availability.readingNote') }}
+								</N8nText>
 
-							<div :class="$style.row">
-								<div :class="$style.rowText">
-									<N8nText size="small" :class="{ [$style.hint]: !availability.teamChannels }">
-										{{
+								<div :class="$style.row">
+									<div :class="$style.rowText">
+										<N8nText size="small" :class="{ [$style.hint]: !availability.teamChannels }">
+											{{
+												i18n.baseText(
+													'agents.channels.teams.setup.availability.readAllChannelMessages',
+												)
+											}}
+										</N8nText>
+										<N8nText size="small" :class="$style.hint">
+											{{
+												i18n.baseText(
+													'agents.channels.teams.setup.availability.readAllChannelMessagesHint',
+												)
+											}}
+										</N8nText>
+									</div>
+									<N8nSwitch2
+										v-model="availability.readAllChannelMessages"
+										:disabled="!availability.teamChannels"
+										:aria-label="
 											i18n.baseText(
 												'agents.channels.teams.setup.availability.readAllChannelMessages',
 											)
-										}}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint">
-										{{
-											i18n.baseText(
-												'agents.channels.teams.setup.availability.readAllChannelMessagesHint',
-											)
-										}}
-									</N8nText>
+										"
+										data-testid="teams-read-channels"
+									/>
 								</div>
-								<N8nSwitch2
-									v-model="availability.readAllChannelMessages"
-									:disabled="!availability.teamChannels"
-									:aria-label="
-										i18n.baseText('agents.channels.teams.setup.availability.readAllChannelMessages')
-									"
-									data-testid="teams-read-channels"
-								/>
-							</div>
 
-							<div :class="$style.row">
-								<div :class="$style.rowText">
-									<N8nText size="small" :class="{ [$style.hint]: !availability.groupChats }">
-										{{
+								<div :class="$style.row">
+									<div :class="$style.rowText">
+										<N8nText size="small" :class="{ [$style.hint]: !availability.groupChats }">
+											{{
+												i18n.baseText(
+													'agents.channels.teams.setup.availability.readAllGroupMessages',
+												)
+											}}
+										</N8nText>
+										<N8nText size="small" :class="$style.hint">
+											{{
+												i18n.baseText(
+													'agents.channels.teams.setup.availability.readAllGroupMessagesHint',
+												)
+											}}
+										</N8nText>
+									</div>
+									<N8nSwitch2
+										v-model="availability.readAllGroupMessages"
+										:disabled="!availability.groupChats"
+										:aria-label="
 											i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
-										}}
-									</N8nText>
-									<N8nText size="small" :class="$style.hint">
-										{{
-											i18n.baseText(
-												'agents.channels.teams.setup.availability.readAllGroupMessagesHint',
-											)
-										}}
-									</N8nText>
+										"
+										data-testid="teams-read-groups"
+									/>
 								</div>
-								<N8nSwitch2
-									v-model="availability.readAllGroupMessages"
-									:disabled="!availability.groupChats"
-									:aria-label="
-										i18n.baseText('agents.channels.teams.setup.availability.readAllGroupMessages')
-									"
-									data-testid="teams-read-groups"
-								/>
 							</div>
 						</N8nCollapsiblePanel>
-
-						<N8nText :class="$style.hint" size="small" data-testid="teams-availability-untested">
-							{{ i18n.baseText('agents.channels.teams.setup.availability.untested') }}
-						</N8nText>
 					</div>
 
 					<!-- 4. Install -->
@@ -526,19 +534,6 @@ defineExpose({
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
 						</N8nText>
 
-						<!-- Where to go next, not a check: the first message speaks for itself. -->
-						<N8nButton
-							v-if="setupState?.teamsChatDeepLink"
-							:href="setupState.teamsChatDeepLink"
-							target="_blank"
-							variant="outline"
-							size="medium"
-							icon="teams"
-							data-testid="teams-open-chat"
-						>
-							{{ i18n.baseText('agents.channels.teams.setup.install.openChat') }}
-						</N8nButton>
-
 						<!--
 							Connecting is the last thing that happens, because the modal closes
 							on it. Offered here so the package is already downloaded by then,
@@ -552,13 +547,6 @@ defineExpose({
 								data-testid="teams-credential-checking"
 							>
 								{{ i18n.baseText('agents.channels.teams.setup.install.checking') }}
-							</N8nText>
-							<N8nText
-								v-else-if="credentialVerified"
-								size="small"
-								data-testid="teams-credential-verified"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.install.verified') }}
 							</N8nText>
 							<template v-else-if="credentialProblem">
 								<N8nText size="small" :class="$style.error" data-testid="teams-credential-problem">
@@ -575,7 +563,13 @@ defineExpose({
 									{{ i18n.baseText('agents.channels.teams.setup.install.recheck') }}
 								</N8nButton>
 							</template>
-							<N8nText v-else :class="$style.hint" size="small" data-testid="teams-connect-blocked">
+							<!-- Only when nothing is picked; a verified credential says nothing. -->
+							<N8nText
+								v-else-if="!credentialId"
+								:class="$style.hint"
+								size="small"
+								data-testid="teams-connect-blocked"
+							>
 								{{ i18n.baseText('agents.channels.teams.setup.install.needsCredential') }}
 							</N8nText>
 
@@ -675,6 +669,15 @@ defineExpose({
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	text-align: left;
+	/* Air between the chevron and the heading. */
+	padding-left: var(--spacing--3xs);
+}
+
+/* One left edge for every row and note, matching the header's own padding. */
+.panelBody {
+	display: flex;
+	flex-direction: column;
+	padding: 0 var(--spacing--xs) var(--spacing--2xs);
 }
 
 .row {
