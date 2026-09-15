@@ -2,30 +2,60 @@
 import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import {
 	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
 	N8nIconButton,
 	N8nText,
 	N8nScrollArea,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref } from 'vue';
+import {
+	ComboboxContent,
+	ComboboxGroup,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxLabel,
+	ComboboxRoot,
+} from 'reka-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
+import { useInstanceAiThreadHistory } from '../composables/useInstanceAiThreadHistory';
+import { useToast } from '@n8n/composables/useToast';
 
-const emit = defineEmits<{ collapse: [] }>();
+const props = withDefaults(
+	defineProps<{
+		maxHeight?: string;
+	}>(),
+	{
+		maxHeight: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	close: [];
+	select: [threadId: string];
+}>();
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
+const toast = useToast();
+const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
+const threadListRef = ref<InstanceType<typeof N8nScrollArea>>();
+const comboboxRef = ref<{
+	highlightFirstItem?: () => void;
+}>();
+const hasOverflowBelow = ref(false);
+let resizeObserver: ResizeObserver | null = null;
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
 );
@@ -54,13 +84,13 @@ const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 
 const groupedThreads = computed(() => {
 	const now = new Date();
-	const groups = new Map<string, typeof store.threads>();
+	const groups = new Map<string, typeof history.value.threads>();
 
-	// Group by last activity, not creation date — a thread created weeks ago
+	// Group by last activity, not creation date: a thread created weeks ago
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of store.threads) {
+	for (const thread of history.value.threads) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -75,6 +105,44 @@ const groupedThreads = computed(() => {
 		return threads.length > 0 ? [{ label: dateGroupI18nMap[groupName] ?? groupName, threads }] : [];
 	});
 });
+
+function updateOverflowCue() {
+	const position = threadListRef.value?.getScrollPosition();
+	const element = threadListRef.value?.$el;
+	if (!position || !(element instanceof HTMLElement)) {
+		hasOverflowBelow.value = false;
+		return;
+	}
+
+	hasOverflowBelow.value = position.top + element.clientHeight < position.height - 1;
+}
+
+watch(
+	() => history.value.threads.length,
+	async (length, previousLength) => {
+		await nextTick();
+		updateOverflowCue();
+		// A search response replaces the rows (the count passes through 0). Highlight the
+		// first match so Enter opens it. Pages that append rows keep the highlight where it is.
+		if (previousLength === 0 && length > 0 && history.value.search) {
+			comboboxRef.value?.highlightFirstItem?.();
+		}
+	},
+	{ flush: 'post' },
+);
+
+onMounted(() => {
+	void nextTick(() => {
+		updateOverflowCue();
+		const element = threadListRef.value?.$el;
+		if (element instanceof HTMLElement) {
+			resizeObserver = new ResizeObserver(updateOverflowCue);
+			resizeObserver.observe(element);
+		}
+	});
+});
+
+onBeforeUnmount(() => resizeObserver?.disconnect());
 
 async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
@@ -94,6 +162,19 @@ async function handleDeleteThread(threadId: string) {
 	}
 }
 
+function handleThreadSelect(threadId: string) {
+	emit('select', threadId);
+}
+
+function openAllThreads() {
+	emit('close');
+	void router.push({ name: INSTANCE_AI_THREADS_VIEW });
+}
+
+function setRenameInput(element: unknown) {
+	renameInput.value = element instanceof HTMLInputElement ? element : null;
+}
+
 function startRename(threadId: string, currentTitle: string) {
 	editingThreadId.value = threadId;
 	editingTitle.value = currentTitle;
@@ -104,13 +185,15 @@ function startRename(threadId: string, currentTitle: string) {
 }
 
 async function confirmRename(threadId: string) {
+	// Enter and the blur it causes both call this; leaving edit mode first keeps one request.
+	if (editingThreadId.value !== threadId) return;
+	editingThreadId.value = null;
 	const title = editingTitle.value.trim();
+	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
 	try {
-		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
-			await store.renameThread(threadId, title);
-		}
-	} finally {
-		editingThreadId.value = null;
+		await store.renameThread(threadId, title);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
 	}
 }
 
@@ -122,7 +205,7 @@ function handleThreadAction(action: string, threadId: string) {
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
-		const thread = store.threads.find((t) => t.id === threadId);
+		const thread = history.value.threads.find((t) => t.id === threadId);
 		if (thread) {
 			startRename(threadId, thread.title);
 		}
@@ -131,119 +214,165 @@ function handleThreadAction(action: string, threadId: string) {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<!-- Sidebar header -->
-		<div :class="$style.header">
-			<N8nText :class="$style.title" tag="div" size="medium" bold>
-				{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-			</N8nText>
-			<div :class="$style.headerActions">
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.sidebar.collapse')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						icon="chevrons-left"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.sidebar.collapse')"
-						data-test-id="instance-ai-sidebar-collapse"
-						@click="emit('collapse')"
-					/>
-				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.thread.new')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
-						<N8nIconButton
-							:href="href"
-							icon="plus"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:aria-label="i18n.baseText('instanceAi.thread.new')"
-							data-test-id="instance-ai-new-thread-button"
-							@click="navigate"
-						/>
-					</RouterLink>
-				</N8nTooltip>
-			</div>
-		</div>
-
-		<!-- Thread list -->
-		<N8nScrollArea :class="$style.threadList">
-			<template v-if="groupedThreads.length > 0">
-				<div v-for="group in groupedThreads" :key="group.label" :class="$style.group">
-					<N8nText :class="$style.groupLabel" tag="div" size="small" color="text-light">
-						{{ group.label }}
-					</N8nText>
-					<div
-						v-for="thread in group.threads"
-						:key="thread.id"
-						:class="[$style.threadItem, { [$style.active]: thread.id === activeThreadId }]"
-						data-test-id="instance-ai-thread-item"
-					>
-						<!-- Inline rename mode -->
-						<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
-							<input
-								ref="renameInput"
-								v-model="editingTitle"
-								:class="$style.renameInput"
-								type="text"
-								@keydown.enter="confirmRename(thread.id)"
-								@keydown.escape="cancelRename"
-								@blur="confirmRename(thread.id)"
-							/>
-						</div>
-						<!-- Normal display mode -->
-						<template v-else>
-							<RouterLink
-								:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
-								:class="$style.threadLink"
-								:title="thread.title"
-								:active-class="$style.threadLinkActive"
-								@dblclick.prevent="startRename(thread.id, thread.title)"
-							>
-								<span :class="$style.threadTitle">{{ thread.title }}</span>
-							</RouterLink>
-							<N8nActionDropdown
-								:items="threadActions"
-								:class="$style.actionDropdown"
-								placement="bottom-start"
-								@select="handleThreadAction($event, thread.id)"
-								@click.stop
-							>
-								<template #activator>
-									<N8nIconButton
-										variant="ghost"
-										icon="ellipsis-vertical"
-										:class="$style.actionTrigger"
-									/>
-								</template>
-							</N8nActionDropdown>
-						</template>
-					</div>
-				</div>
-			</template>
-			<div v-else :class="$style.empty">
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('instanceAi.sidebar.noThreads') }}
+	<ComboboxRoot
+		ref="comboboxRef"
+		as-child
+		:open="true"
+		:ignore-filter="true"
+		:reset-search-term-on-blur="false"
+		:reset-search-term-on-select="false"
+	>
+		<div :class="$style.container" data-test-id="instance-ai-thread-list">
+			<div :class="$style.header">
+				<N8nText :class="$style.title" tag="div" size="medium" bold>
+					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 				</N8nText>
+				<N8nButton
+					variant="ghost"
+					size="xsmall"
+					:class="$style.viewAll"
+					data-test-id="instance-ai-view-all-threads"
+					@click="openAllThreads"
+				>
+					{{ i18n.baseText('instanceAi.threads.viewAll') }}
+				</N8nButton>
 			</div>
-		</N8nScrollArea>
-	</div>
+			<form :class="$style.search" role="search" @submit.prevent>
+				<div :class="$style.searchControl">
+					<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
+					<ComboboxInput
+						v-model="search"
+						:class="$style.searchInput"
+						:auto-focus="true"
+						autocomplete="off"
+						spellcheck="false"
+						:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
+						data-test-id="instance-ai-thread-search"
+					/>
+					<button
+						v-if="search"
+						type="button"
+						:class="$style.clearSearch"
+						:aria-label="i18n.baseText('generic.list.clearSelection')"
+						@mousedown.prevent
+						@click="search = ''"
+					>
+						<N8nIcon icon="x" size="small" />
+					</button>
+				</div>
+			</form>
+
+			<ComboboxContent force-mount as-child>
+				<div ref="listRef" :class="$style.comboboxContent">
+					<N8nScrollArea
+						ref="threadListRef"
+						:class="[$style.threadList, { [$style.hasOverflowBelow]: hasOverflowBelow }]"
+						:max-height="props.maxHeight"
+						type="auto"
+						@scroll-capture="updateOverflowCue"
+					>
+						<ComboboxGroup v-for="group in groupedThreads" :key="group.label" :class="$style.group">
+							<ComboboxLabel :class="$style.groupLabel">
+								<N8nText tag="span" size="small" color="text-light">
+									{{ group.label }}
+								</N8nText>
+							</ComboboxLabel>
+							<div
+								v-for="thread in group.threads"
+								:key="thread.id"
+								:class="$style.threadItem"
+								data-test-id="instance-ai-thread-item"
+							>
+								<!-- Inline rename mode -->
+								<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
+									<input
+										:ref="setRenameInput"
+										v-model="editingTitle"
+										:class="$style.renameInput"
+										type="text"
+										maxlength="255"
+										:aria-label="i18n.baseText('instanceAi.threads.rename')"
+										@keydown.enter="confirmRename(thread.id)"
+										@keydown.escape="cancelRename"
+										@blur="confirmRename(thread.id)"
+									/>
+								</div>
+								<!-- Normal display mode -->
+								<template v-else>
+									<ComboboxItem as-child :value="thread.id" :text-value="thread.title">
+										<RouterLink
+											:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
+											:class="$style.threadLink"
+											:title="thread.title"
+											active-class=""
+											exact-active-class=""
+											@click="handleThreadSelect(thread.id)"
+											@dblclick.prevent="startRename(thread.id, thread.title)"
+										>
+											<span :class="$style.threadTitle">{{ thread.title }}</span>
+										</RouterLink>
+									</ComboboxItem>
+									<N8nActionDropdown
+										:items="threadActions"
+										:class="$style.actionDropdown"
+										placement="bottom-start"
+										@select="handleThreadAction($event, thread.id)"
+										@click.stop
+									>
+										<template #activator>
+											<N8nIconButton
+												variant="ghost"
+												icon="ellipsis-vertical"
+												:class="$style.actionTrigger"
+												:aria-label="i18n.baseText('instanceAi.threads.actions')"
+											/>
+										</template>
+									</N8nActionDropdown>
+								</template>
+							</div>
+						</ComboboxGroup>
+						<div v-if="history.loading" :class="$style.status" role="status">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('instanceAi.threads.loading') }}
+							</N8nText>
+						</div>
+						<div v-else-if="history.error" :class="$style.status" role="alert">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('instanceAi.threads.loadError') }}
+							</N8nText>
+							<N8nButton variant="ghost" size="xsmall" @click="loadMore">
+								{{ i18n.baseText('generic.retry') }}
+							</N8nButton>
+						</div>
+						<div v-else-if="history.hasMore" ref="sentinelRef" :class="$style.sentinel" />
+						<div v-else-if="history.threads.length === 0" :class="$style.empty" role="status">
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText(
+										history.search
+											? 'instanceAi.threads.noSearchResults'
+											: 'instanceAi.sidebar.noThreads',
+									)
+								}}
+							</N8nText>
+						</div>
+					</N8nScrollArea>
+				</div>
+			</ComboboxContent>
+		</div>
+	</ComboboxRoot>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
+
 .container {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
+	width: 100%;
 }
 
 .header {
@@ -251,7 +380,7 @@ function handleThreadAction(action: string, threadId: string) {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs) var(--spacing--sm);
-	min-height: 40px;
+	min-height: var(--height--xl);
 }
 
 .title {
@@ -260,22 +389,122 @@ function handleThreadAction(action: string, threadId: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
-.headerActions {
+.viewAll {
+	--button--color: var(--text-color--subtle);
+
+	font-weight: var(--font-weight--regular);
+}
+
+.search {
+	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+}
+
+.searchControl {
+	@include input-mixin.size-variables('small');
+	@include input-mixin.theme-variables;
+	@include focus.focus-within-ring;
+
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	width: 100%;
+	min-height: var(--input--height);
+	border-radius: var(--input--radius);
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+
+	&:hover:not(:focus-within) {
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
+	}
+
+	&:focus-within {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
+	}
+}
+
+.searchIcon {
+	position: absolute;
+	left: var(--input--padding);
+	color: var(--color--text--shade-1);
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.searchInput {
+	width: 100%;
+	min-width: 0;
+	min-height: var(--input--height);
+	padding: 0 calc(var(--input--padding) + var(--spacing--sm) + var(--spacing--3xs));
+	font-family: inherit;
+	font-size: var(--input--font-size);
+	color: var(--input--color--text);
+	background: transparent;
+	border: none;
+	outline: none;
+
+	&::placeholder {
+		color: var(--input--placeholder--color);
+	}
+}
+
+.clearSearch {
+	position: absolute;
+	right: var(--input--padding);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	color: var(--color--text--tint-1);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius--sm);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color--text--shade-1);
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
+}
+
+.comboboxContent {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
 }
 
 .threadList {
 	flex: 1;
 	min-height: 0;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
+
+	&.hasOverflowBelow::after {
+		content: '';
+		position: absolute;
+		inset: auto 0 0;
+		height: var(--spacing--lg);
+		background: linear-gradient(to bottom, transparent, var(--background--surface));
+		pointer-events: none;
+	}
 }
 
 .group {
+	&:last-child {
+		padding-bottom: var(--spacing--2xs);
+	}
+
 	&:not(:first-child) {
 		margin-top: var(--spacing--xs);
 	}
@@ -285,31 +514,25 @@ function handleThreadAction(action: string, threadId: string) {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
 }
 
 .threadItem {
 	display: flex;
 	align-items: center;
-	height: 32px;
+	height: var(--height--md);
 	border-radius: var(--radius);
-	transition: background-color 0.1s ease;
 
 	&:focus-within,
-	&:has([aria-expanded='true']) {
-		background-color: var(--color--background--light-1);
+	&:has([aria-expanded='true']),
+	&:has([data-highlighted]) {
+		background-color: var(--background--hover);
 	}
 
 	// Gate hover to hover-capable devices so touch doesn't need a first tap to clear sticky hover
 	@media (hover: hover) {
 		&:hover {
-			background-color: var(--color--background--light-1);
+			background-color: var(--background--hover);
 		}
-	}
-
-	&.active {
-		background-color: var(--color--background--light-1);
 	}
 }
 
@@ -321,7 +544,7 @@ function handleThreadAction(action: string, threadId: string) {
 	min-width: 0;
 	height: 100%;
 	padding: 0 var(--spacing--xs);
-	color: var(--color--text) !important;
+	color: var(--text-color) !important;
 	text-decoration: none !important;
 	outline: none;
 	cursor: pointer;
@@ -329,23 +552,14 @@ function handleThreadAction(action: string, threadId: string) {
 	&:hover,
 	&:focus,
 	&:visited {
-		color: var(--color--text) !important;
+		color: var(--text-color) !important;
 		text-decoration: none !important;
 	}
 
 	&:active {
-		color: var(--color--text--shade-1) !important;
+		color: var(--text-color) !important;
 		text-decoration: none !important;
 	}
-}
-
-.threadLinkActive {
-	// Active background handled by .threadItem.active
-}
-
-.threadIcon {
-	flex-shrink: 0;
-	color: var(--color--text--tint-1);
 }
 
 .threadTitle {
@@ -354,7 +568,7 @@ function handleThreadAction(action: string, threadId: string) {
 	white-space: nowrap;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 }
 
 .actionDropdown {
@@ -365,8 +579,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 	.threadItem:has([aria-expanded='true']) &,
 	.threadItem:has(:focus) &,
-	.threadItem:hover &,
-	.active & {
+	.threadItem:hover & {
 		width: auto;
 		opacity: 1;
 	}
@@ -388,16 +601,28 @@ function handleThreadAction(action: string, threadId: string) {
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
-	background: var(--color--background--light-2);
+	color: var(--text-color);
+	background: var(--background--surface);
 	border: var(--border);
-	border-color: var(--color--primary);
+	border-color: var(--border-color--strong);
 	border-radius: var(--radius);
 	outline: none;
 
 	&:focus {
-		border-color: var(--color--primary);
+		border-color: var(--border-color--strong);
 	}
+}
+
+.status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+}
+
+.sentinel {
+	height: 1px;
 }
 
 .empty {
