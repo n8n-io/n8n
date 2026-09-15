@@ -67,52 +67,48 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		},
 	);
 
-	describe('onlineMeeting — un-gated under SP one operation at a time', () => {
-		const spOperations = ['create', 'get'];
-		const allOperations = ['create', 'createOrGet', 'deleteMeeting', 'get', 'update'];
-		const fields = actionProps.filter((p) =>
-			p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+	describe('chatMessage — delete actions', () => {
+		const selector = actionProps.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('chatMessage'),
 		);
-		const selectors = fields.filter((p) => p.name === 'operation');
-		const optionValues = (selector?: INodeProperties) =>
-			(selector?.options ?? []).map((option) => ('value' in option ? option.value : undefined));
+		const operationValues = (selector?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
 		const fieldsFor = (operation: string) =>
-			fields.filter(
+			actionProps.filter(
 				(p) =>
 					p.type !== 'notice' &&
-					p.name !== 'operation' &&
+					p.displayOptions?.show?.resource?.includes('chatMessage') &&
 					p.displayOptions?.show?.operation?.includes(operation),
 			);
 
-		it('keeps the full operation selector for OAuth2 and hides it under SP', () => {
-			const oauth = selectors.find((p) => isSpHidden(p));
-			expect(optionValues(oauth)).toEqual(allOperations);
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s is offered and shows only the chat and message pickers',
+			(operation) => {
+				expect(operationValues).toContain(operation);
+				expect(fieldsFor(operation).map((p) => p.name)).toEqual(['chatId', 'messageId']);
+			},
+		);
+	});
+
+	describe('onlineMeeting — available under SP with an organizer picker', () => {
+		const fields = actionProps.filter((p) =>
+			p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+		);
+
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
 		});
 
-		it('offers only the un-gated operations under SP', () => {
-			const sp = selectors.find((p) => isSpShown(p));
-			expect(optionValues(sp)).toEqual(spOperations);
-			expect(sp?.displayOptions?.hide).toBeUndefined();
-		});
-
-		it.each(spOperations)('%s fields are shown under SP', (operation) => {
-			const operationFields = fieldsFor(operation);
-			expect(operationFields.length).toBeGreaterThan(0);
-			for (const field of operationFields) {
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.length).toBeGreaterThan(0);
+			for (const field of gated) {
 				expect(isSpHidden(field)).toBe(false);
 			}
 		});
-
-		it.each(allOperations.filter((operation) => !spOperations.includes(operation)))(
-			'%s fields stay hidden under SP',
-			(operation) => {
-				const operationFields = fieldsFor(operation);
-				expect(operationFields.length).toBeGreaterThan(0);
-				for (const field of operationFields) {
-					expect(isSpHidden(field)).toBe(true);
-				}
-			},
-		);
 
 		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
 			const organizer = fields.find((p) => p.name === 'organizerId');
@@ -134,9 +130,26 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			);
 			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
 		});
+
+		it('the Service Principal authentication option no longer lists online meetings as unavailable', () => {
+			const authentication = actionProps.find((p) => p.name === 'authentication');
+			const spOption = (authentication?.options ?? []).find(
+				(option) => 'value' in option && option.value === SERVICE_PRINCIPAL_AUTH,
+			);
+			expect(spOption).toBeDefined();
+			expect(
+				'description' in (spOption ?? {}) ? (spOption as { description?: string }).description : '',
+			).not.toContain('online meetings are unavailable');
+		});
 	});
 
-	describe('channelMessage — only the sending operations are hidden under SP', () => {
+	describe('channelMessage — the sending and delete operations are hidden under SP', () => {
+		const selector = actionProps.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes('channelMessage'),
+		);
+		const operationValues = (selector?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
 		const fieldsFor = (operation: string) =>
 			actionProps.filter(
 				(p) =>
@@ -145,13 +158,16 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.operation?.includes(operation),
 			);
 
-		it.each(['create', 'reply'])('%s fields are hidden under SP', (operation) => {
-			const fields = fieldsFor(operation);
-			expect(fields.length).toBeGreaterThan(0);
-			for (const field of fields) {
-				expect(isSpHidden(field)).toBe(true);
-			}
-		});
+		it.each(['create', 'reply', 'softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s fields are hidden under SP',
+			(operation) => {
+				const fields = fieldsFor(operation);
+				expect(fields.length).toBeGreaterThan(0);
+				for (const field of fields) {
+					expect(isSpHidden(field)).toBe(true);
+				}
+			},
+		);
 
 		it.each(['get', 'getAll', 'getAllReplies'])('%s fields are shown under SP', (operation) => {
 			const fields = fieldsFor(operation);
@@ -160,6 +176,19 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 				expect(isSpHidden(field)).toBe(false);
 			}
 		});
+
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
+			'%s is offered and shows only the team, channel, message and options fields',
+			(operation) => {
+				expect(operationValues).toContain(operation);
+				expect(fieldsFor(operation).map((p) => p.name)).toEqual([
+					'teamId',
+					'channelId',
+					'messageId',
+					'options',
+				]);
+			},
+		);
 
 		it('has an SP notice for every channelMessage operation', () => {
 			const notices = actionProps.filter(
@@ -170,7 +199,15 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			);
 			const operations = notices.flatMap((n) => n.displayOptions?.show?.operation ?? []);
 			expect(operations).toEqual(
-				expect.arrayContaining(['create', 'reply', 'get', 'getAll', 'getAllReplies']),
+				expect.arrayContaining([
+					'create',
+					'reply',
+					'get',
+					'getAll',
+					'getAllReplies',
+					'softDeleteMessage',
+					'undoSoftDeleteMessage',
+				]),
 			);
 		});
 	});

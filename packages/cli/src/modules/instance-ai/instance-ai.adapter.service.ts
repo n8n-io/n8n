@@ -3,6 +3,8 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
@@ -520,6 +522,7 @@ export class InstanceAiAdapterService {
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 							credentialService,
+							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
 					}
 				: {}),
@@ -584,6 +587,8 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
+		/** Saved AI preferences on the opening turn. */
+		aiPreferencesEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		try {
@@ -607,6 +612,7 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -1361,7 +1367,11 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!head) throw new WorkflowNotFoundError(workflowId);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+				return {
+					versionId: head.versionId,
+					activeVersionId: head.activeVersionId,
+					updatedAt: head.updatedAt.getTime(),
+				};
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
@@ -1835,6 +1845,7 @@ export class InstanceAiAdapterService {
 						startedAt: String(e.startedAt ?? ''),
 						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
 						mode: e.mode,
+						workflowVersionId: e.workflowVersionId ?? null,
 					}),
 				);
 			},
@@ -2087,9 +2098,18 @@ export class InstanceAiAdapterService {
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-					return workflowPinnedNodeNames.length > 0
-						? { ...result, workflowPinnedNodeNames }
-						: result;
+					// The trigger did not fire when the assistant supplied its output.
+					const injectedTriggerNodeName =
+						triggerNode &&
+						(pinDataPlan.mockDataSources.includes('trigger_input') ||
+							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
+							? triggerNode.name
+							: undefined;
+					return {
+						...result,
+						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
+						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
@@ -4163,6 +4183,7 @@ export async function extractExecutionOutcome(
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),

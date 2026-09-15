@@ -98,7 +98,7 @@ const handleClick = (event: MouseEvent) => {
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
-		aria-live="polite"
+		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
 		<Transition name="n8n-button-fade">
