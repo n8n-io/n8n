@@ -318,6 +318,13 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, previewVisible]) => {
+		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+	},
+	{ immediate: true },
+);
 // --- Setup panel (checklist docked above the composer) ---
 // Anchors to the active canvas tab's workflow; on a hydrated thread with no
 // tab state yet, the latest workflow artifact wins (insertion order).

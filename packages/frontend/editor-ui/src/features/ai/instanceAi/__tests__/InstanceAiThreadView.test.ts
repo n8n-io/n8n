@@ -550,6 +550,7 @@ describe('InstanceAiThreadView', () => {
 			producedArtifacts: new Map(),
 			resourceNameIndex: new Map(),
 			linkableResourceNameIndex: new Map(),
+			setActiveArtifactId: vi.fn(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],

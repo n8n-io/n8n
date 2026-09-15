@@ -1492,6 +1492,11 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
 		);
 	});
 
@@ -1534,6 +1539,50 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('passes thread artifacts into executeRun', () => {
+		const service = createStartRunService();
+		const threadArtifacts = {
+			artifacts: [{ type: 'workflow' as const, id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+			activeId: 'wf-1',
+		};
+
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'Change this',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
+		);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Change this',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 	});
 });
@@ -5138,6 +5187,8 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		const source = InstanceAiService.toString();
 
 		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
+		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(arg)`.
+		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*\)/);
 		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
 
