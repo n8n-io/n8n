@@ -111,6 +111,8 @@ describe('DiscordIntegration', () => {
 			integration.resolveWebhookRequest({
 				headers: { 'x-discord-gateway-token': 'token' },
 				body: { application_id: APPLICATION_ID },
+				agentId: 'agent-1',
+				projectId: 'project-1',
 			}),
 		).toEqual({
 			type: 'reject',
@@ -120,9 +122,18 @@ describe('DiscordIntegration', () => {
 			integration.resolveWebhookRequest({
 				headers: {},
 				body: { application_id: APPLICATION_ID },
+				agentId: 'agent-1',
+				projectId: 'project-1',
 			}),
 		).toEqual({ type: 'select', connectionSelector: APPLICATION_ID });
-		expect(integration.resolveWebhookRequest({ headers: {}, body: { type: 1 } })).toEqual({
+		expect(
+			integration.resolveWebhookRequest({
+				headers: {},
+				body: { type: 1 },
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}),
+		).toEqual({
 			type: 'no_match',
 		});
 	});

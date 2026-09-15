@@ -101,11 +101,13 @@ export class AgentIntegrationsController {
 		req: Request<{ projectId: string; agentId: string; platform: string }>,
 		res: Response,
 	) {
-		const { agentId, platform } = req.params;
+		const { agentId, platform, projectId } = req.params;
 		const integration = this.chatIntegrationRegistry.get(platform);
 		const resolution = integration?.resolveWebhookRequest?.({
 			headers: req.headers,
 			body: req.body,
+			agentId,
+			projectId,
 		});
 		if (resolution?.type === 'reject') {
 			res.status(resolution.response.status).json(resolution.response.body);
@@ -129,6 +131,8 @@ export class AgentIntegrationsController {
 			const earlyResponse = await integration?.handleUnauthenticatedWebhook?.({
 				headers: req.headers,
 				body: req.body,
+				agentId,
+				projectId,
 			});
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);
