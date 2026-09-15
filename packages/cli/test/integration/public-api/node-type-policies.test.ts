@@ -4,6 +4,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -468,6 +469,28 @@ describe('node type policies public API policy documents', () => {
 
 		const deleteMissing = await agent.delete(`/node-type-policies/policies/${policyId}`);
 		expect(deleteMissing.statusCode).toBe(404);
+	});
+
+	test('a document of another kind is not reachable by id', async () => {
+		const other = await Container.get(TypeAvailabilityPolicyRepository).createPolicy(
+			{ kind: 'other-kind', rules: [], updatedBy: owner.id },
+			{},
+		);
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const fetched = await agent.get(`/node-type-policies/policies/${other.id}`);
+		expect(fetched.statusCode).toBe(404);
+
+		const updated = await agent
+			.put(`/node-type-policies/policies/${other.id}`)
+			.send({ rules: [DENY_RULE], version: 1 });
+		expect(updated.statusCode).toBe(404);
+
+		const deleted = await agent.delete(`/node-type-policies/policies/${other.id}`);
+		expect(deleted.statusCode).toBe(404);
+
+		const list = await agent.get('/node-type-policies/policies');
+		expect(list.body.data).toEqual([]);
 	});
 
 	test('PUT on an attached document bumps the instance scope version', async () => {

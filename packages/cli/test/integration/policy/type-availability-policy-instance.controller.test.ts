@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -221,6 +222,28 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`);
 		expect(missing.statusCode).toBe(404);
+	});
+
+	test('a document of another kind is not reachable by id', async () => {
+		const other = await Container.get(TypeAvailabilityPolicyRepository).createPolicy(
+			{ kind: 'other-kind', rules: [], updatedBy: owner.id },
+			{},
+		);
+		const agent = testServer.authAgentFor(owner);
+
+		const fetched = await agent.get(`/node-type-policies/policies/${other.id}`);
+		expect(fetched.statusCode).toBe(404);
+
+		const updated = await agent
+			.patch(`/node-type-policies/policies/${other.id}`)
+			.send({ rules: [], version: 1 });
+		expect(updated.statusCode).toBe(404);
+
+		const deleted = await agent.delete(`/node-type-policies/policies/${other.id}`);
+		expect(deleted.statusCode).toBe(404);
+
+		const list = await agent.get('/node-type-policies/policies');
+		expect(list.body.data).toEqual([]);
 	});
 
 	test('PATCH /policies/:policyId with a stale version returns 409 and writes nothing', async () => {

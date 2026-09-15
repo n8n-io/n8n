@@ -364,7 +364,7 @@ export class TypeAvailabilityPolicyService {
 	 * Replaces a policy document's rules, guarded by optimistic concurrency: `expectedVersion`
 	 * must match the document's current version, checked and written inside one transaction
 	 * that (on Postgres) holds the document's row lock (see
-	 * `TypeAvailabilityPolicyRepository.findById`).
+	 * `TypeAvailabilityPolicyRepository.findByIdAndKind`).
 	 *
 	 * Also bumps every scope this document is attached to, in the same transaction — a scope's
 	 * `version` is its clients' freshness signal for the *effective* policy, and this document's
@@ -372,6 +372,7 @@ export class TypeAvailabilityPolicyService {
 	 * bump is skipped when the rules did not change, matching `updateRules`' own no-op.
 	 */
 	async updatePolicyDocument(
+		kind: string,
 		policyId: string,
 		rules: readonly PolicyRule[],
 		expectedVersion: number,
@@ -399,7 +400,7 @@ export class TypeAvailabilityPolicyService {
 				throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
 			}
 
-			const existing = await this.policyRepository.findById(policyId, ctx, true);
+			const existing = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!existing) {
 				throw new NotFoundError(`Policy document not found: ${policyId}`);
 			}
@@ -465,9 +466,9 @@ export class TypeAvailabilityPolicyService {
 	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
 	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(policyId: string, updatedBy: string): Promise<void> {
+	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
 		const existing = await this.transactionRunner.run({}, async (ctx) => {
-			const policy = await this.policyRepository.findById(policyId, ctx, true);
+			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!policy) {
 				throw new NotFoundError(`Policy document not found: ${policyId}`);
 			}
@@ -495,8 +496,8 @@ export class TypeAvailabilityPolicyService {
 		});
 	}
 
-	async getPolicyDocument(policyId: string): Promise<TypeAvailabilityPolicy | null> {
-		return await this.policyRepository.findById(policyId, {});
+	async getPolicyDocument(kind: string, policyId: string): Promise<TypeAvailabilityPolicy | null> {
+		return await this.policyRepository.findByIdAndKind(policyId, kind, {});
 	}
 
 	async listPolicyDocuments(kind: string): Promise<TypeAvailabilityPolicy[]> {
@@ -664,9 +665,11 @@ export class TypeAvailabilityPolicyService {
 			// Lock the document before checking who else uses it: an attach elsewhere key-shares
 			// the document row, so it waits for this transaction (or this one waits for it) and
 			// the check below cannot be overtaken between reading the attachments and the edit.
-			// Scope first, then document — the order every write path keeps.
+			// Scope first, then document — the order every write path keeps. Kind-scoped like
+			// every other document read here, so a null means the attachment points at another
+			// kind's document — a state only the attachment API can produce.
 			const existingDocument = existingDocumentId
-				? await this.policyRepository.findById(existingDocumentId, ctx, true)
+				? await this.policyRepository.findByIdAndKind(existingDocumentId, kind, ctx, true)
 				: null;
 
 			if (scope && existingDocumentId) {
