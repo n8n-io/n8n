@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
-import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -10,7 +9,6 @@ import {
 	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
-	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -29,36 +27,6 @@ import {
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
-
-/**
- * How long to keep waiting for the parent to park. Long enough for a parent that is still
- * running an agent loop, short enough that a resumer which lost the claim to a sibling does
- * not stay alive long enough to meet a later, unrelated park of the same parent and patch
- * that one instead.
- */
-const PARENT_RESUME_TIMEOUT_MS = 15 * Time.minutes.toMilliseconds;
-
-const RESUME_POLL_INTERVAL_MS = 1000;
-
-/**
- * Ceiling for the poll delay. Kept short on purpose: the parent sits at `waiting` only
- * briefly before whichever resumer sees it first claims it, so a resumer that polls slowly
- * misses that window, fails to lose the claim, and keeps running with stale results.
- */
-const MAX_RESUME_POLL_INTERVAL_MS = 2 * Time.seconds.toMilliseconds;
-
-const RESUME_POLL_JITTER = 0.2;
-
-/**
- * Delay before poll number `attempt` (1-based). Doubles up to the ceiling, then jitters so
- * waits that start together do not poll in lockstep.
- */
-function resumePollDelay(attempt: number): number {
-	const backoff = RESUME_POLL_INTERVAL_MS * 2 ** (attempt - 1);
-	if (backoff < MAX_RESUME_POLL_INTERVAL_MS) return backoff;
-	const spread = MAX_RESUME_POLL_INTERVAL_MS * RESUME_POLL_JITTER;
-	return Math.round(MAX_RESUME_POLL_INTERVAL_MS - spread + Math.random() * 2 * spread);
-}
 
 /**
  * Whether a resume failure is worth retrying. `UserError` and `UnexpectedError` are not;
@@ -104,9 +72,11 @@ export class WaitTracker {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
+			void this.resumeParentsOfFinishedSubExecutions();
 		}, 60000);
 
 		void this.getWaitingExecutions();
+		void this.resumeParentsOfFinishedSubExecutions();
 
 		this.logger.debug('Started tracking waiting executions');
 	}
@@ -215,17 +185,12 @@ export class WaitTracker {
 	/**
 	 * Resume a parent execution once its child execution has completed.
 	 *
-	 * A child can finish before the parent's row reaches `waiting`, because the parent
-	 * only parks once the node that started the child returns. Patching a parent that is
-	 * still `running` is a no-op and leaves it stranded at `WAIT_INDEFINITELY`, which the
-	 * waiting-executions sweep never picks up. So wait for the parent to park, then patch
-	 * its stack and claim it. Bails when the parent is gone or terminal, when a sibling
-	 * already claimed it, or at the deadline. Never rejects: callers fire and forget.
-	 *
-	 * Runs to completion regardless of leadership. Only the process holding the child's
-	 * `postExecutePromise` can finish the resume, and the `expectedStatus: 'waiting'`
-	 * claim already stops two processes resuming the same parent, so aborting on stepdown
-	 * would strand the parent instead of protecting it.
+	 * The resume crosses several async boundaries (DB write to patch the parent,
+	 * then resuming the parent). Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS`
+	 * so a transient failure recovers and the parent resumes.
+	 * If every attempt fails, the error is caught and logged below; the parent stays in `waiting`, but the
+	 * failure is now visible and attributable instead of lost.
+	 * This never rejects, so callers can invoke it as fire and forget.
 	 */
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
@@ -237,72 +202,135 @@ export class WaitTracker {
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
-			const deadline = Date.now() + PARENT_RESUME_TIMEOUT_MS;
-			let pollAttempt = 0;
-			for (;;) {
-				// A failed read counts as "not parked yet" and retries; only a successful
-				// read may decide to bail.
-				let parentStatus: ExecutionStatus | undefined;
-				try {
-					parentStatus = await this.executionRepository.findStatusById(parentExecution.executionId);
-					// Parent gone or already finished: nothing left to resume.
-					if (!parentStatus || isTerminalExecutionStatus(parentStatus)) return;
-				} catch (error) {
-					this.logger.debug('Failed to poll parent execution status, retrying', {
-						parentExecutionId: parentExecution.executionId,
-						error: ensureError(error).message,
-					});
-				}
-
-				if (parentStatus === 'waiting') {
-					await this.withRetry(
-						async () =>
-							await updateParentExecutionWithChildResults(
-								parentExecution.executionId,
-								subworkflowResults,
-								childExecution,
-							),
-						MAX_PARENT_RESUME_ATTEMPTS,
-						isRetryableResumeError,
-					);
-
-					try {
-						await this.withRetry(
-							async () => await this.startExecution(parentExecution.executionId),
-							MAX_PARENT_RESUME_ATTEMPTS,
-							(error) =>
-								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
-						);
-					} catch (error) {
-						// A sibling already claimed the parent ("run once for each item"), so stop here.
-						if (error instanceof ExecutionAlreadyResumingError) {
-							this.logger.info('Parent execution already claimed by another process, skipping', {
-								parentExecutionId: parentExecution.executionId,
-								childExecutionId: childExecution?.executionId,
-							});
-							return;
-						}
-						throw error;
-					}
-					return;
-				}
-
-				if (Date.now() >= deadline) {
-					// A parent that parks after this strands with the child's results dropped.
-					this.logger.warn('Timed out waiting to resume parent after sub-workflow completed', {
-						parentExecutionId: parentExecution.executionId,
-						childExecutionId: childExecution?.executionId,
-					});
-					return;
-				}
-				await sleep(Math.min(resumePollDelay(++pollAttempt), deadline - Date.now()));
-			}
+			await this.patchAndResumeParent(
+				parentExecution.executionId,
+				subworkflowResults,
+				childExecution,
+			);
 		} catch (error) {
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
 				parentExecutionId: parentExecution.executionId,
 				error: ensureError(error).message,
 			});
 		}
+	}
+
+	/**
+	 * Patch the parent's stack with the child's results and claim the parent. When the claim
+	 * fails the parent is either already claimed by a sibling, or not parked yet; in the
+	 * latter case `resumeParentsOfFinishedSubExecutions` picks it up on the next tick.
+	 */
+	private async patchAndResumeParent(
+		parentExecutionId: string,
+		subworkflowResults: IRun,
+		childExecution?: RelatedExecution,
+	): Promise<void> {
+		await this.withRetry(
+			async () =>
+				await updateParentExecutionWithChildResults(
+					parentExecutionId,
+					subworkflowResults,
+					childExecution,
+				),
+			MAX_PARENT_RESUME_ATTEMPTS,
+			isRetryableResumeError,
+		);
+
+		try {
+			await this.withRetry(
+				async () => await this.startExecution(parentExecutionId),
+				MAX_PARENT_RESUME_ATTEMPTS,
+				(error) =>
+					!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
+			);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				this.logger.info(
+					'Parent execution not claimable: already claimed by another process, or not parked yet',
+					{ parentExecutionId, childExecutionId: childExecution?.executionId },
+				);
+				return;
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Resume parents parked on a sub-execution whose child has since finished. A child that
+	 * finishes before its parent's row reaches `waiting` cannot patch or claim it, and the
+	 * parent then parks at `WAIT_FOR_SUB_EXECUTION`, which `getWaitingExecutions` never
+	 * selects. This sweep runs on the leader's tick and closes that gap.
+	 */
+	async resumeParentsOfFinishedSubExecutions() {
+		let parentIds: string[];
+		try {
+			parentIds = await this.executionRepository.findParkedOnSubExecution();
+		} catch (error) {
+			this.logger.error('Failed to query executions parked on a sub-execution', {
+				error: ensureError(error).message,
+			});
+			return;
+		}
+
+		for (const parentId of parentIds) {
+			try {
+				await this.resumeParentIfChildFinished(parentId);
+			} catch (error) {
+				this.logger.error('Failed to resume parent execution parked on a sub-execution', {
+					parentExecutionId: parentId,
+					error: ensureError(error).message,
+				});
+			}
+		}
+	}
+
+	private async resumeParentIfChildFinished(parentId: string) {
+		const parent = await this.executionPersistence.findSingleExecution(parentId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		const childIds =
+			parent?.data.executionData?.nodeExecutionStack[0]?.metadata?.waitingChildExecutionIds;
+		if (!childIds?.length) return;
+
+		const statuses = await this.executionRepository.findStatusesByIds(childIds);
+		const missing = childIds.filter((id) => !statuses.some((row) => row.id === id));
+		if (missing.length > 0) {
+			this.logger.warn('Parent execution waits on sub-executions that no longer exist', {
+				parentExecutionId: parentId,
+				childExecutionIds: missing,
+			});
+		}
+
+		const finished = statuses.find((row) => isTerminalExecutionStatus(row.status));
+		if (!finished) return;
+
+		const child = await this.executionPersistence.findSingleExecution(finished.id, {
+			includeData: true,
+			unflattenData: true,
+		});
+		if (!child) {
+			this.logger.warn('Finished sub-execution no longer exists', {
+				parentExecutionId: parentId,
+				childExecutionId: finished.id,
+			});
+			return;
+		}
+
+		const childRun: IRun = {
+			data: child.data,
+			mode: child.mode,
+			startedAt: child.startedAt,
+			stoppedAt: child.stoppedAt,
+			status: child.status,
+			finished: child.finished,
+			storedAt: child.storedAt,
+		};
+
+		await this.patchAndResumeParent(parentId, childRun, {
+			executionId: child.id,
+			workflowId: child.workflowId,
+		});
 	}
 
 	/**

@@ -12,6 +12,7 @@ import type {
 import {
 	Brackets,
 	DataSource,
+	Equal,
 	In,
 	IsNull,
 	LessThan,
@@ -35,6 +36,7 @@ import {
 	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
 
 import {
@@ -651,6 +653,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	/** Ids of executions parked because a sub-execution they wait for is itself waiting. */
+	async findParkedOnSubExecution(): Promise<string[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: WAIT_FOR_SUB_EXECUTION,
+			status: 'waiting',
+		};
+
+		if (this.globalConfig.database.type === 'sqlite') {
+			// Same TypeORM <> SQLite date-parameter issue as in `getWaitingExecutions`.
+			where.waitTill = Equal(DateUtils.mixedDateToUtcDatetimeString(WAIT_FOR_SUB_EXECUTION));
+		}
+
+		const rows = await this.find({ select: ['id'], where, order: { id: 'ASC' } });
+
+		return rows.map(({ id }) => id);
+	}
+
 	async countInWorkflows(
 		workflowIds: string[],
 		options: {
@@ -1140,13 +1159,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
-	}
-
-	/** Status of one execution, or `undefined` if the row is gone. Reads only the status column. */
-	async findStatusById(id: string): Promise<ExecutionStatus | undefined> {
-		const row = await this.findOne({ select: ['id', 'status'], where: { id } });
-
-		return row?.status;
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
