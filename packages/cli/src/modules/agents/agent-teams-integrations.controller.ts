@@ -1,21 +1,15 @@
-import type {
-	TeamsAgentSetupState,
-	TeamsCredentialCheck,
-	TeamsDiscoveryState,
-} from '@n8n/api-types';
+import type { TeamsAgentSetupState, TeamsCredentialCheck } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
-import { TeamsDiscoveryService } from './integrations/platforms/teams/teams-discovery.service';
 import { TeamsSetupService } from './integrations/platforms/teams/teams-setup.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentTeamsIntegrationsController {
 	constructor(
 		private readonly setupService: TeamsSetupService,
-		private readonly discoveryService: TeamsDiscoveryService,
 		private readonly credentialCheckService: TeamsCredentialCheckService,
 	) {}
 
@@ -46,43 +40,6 @@ export class AgentTeamsIntegrationsController {
 			{ projectId: req.params.projectId, agentId },
 			typeof credentialId === 'string' ? credentialId : undefined,
 		);
-	}
-
-	/**
-	 * Starts listening for the first activity from the user's bot. Opening the
-	 * window is what makes the unauthenticated webhook route willing to record
-	 * one, so it stays behind the agent's own permissions.
-	 */
-	@Post('/:agentId/integrations/teams/discovery')
-	@ProjectScope('agent:update')
-	async startDiscovery(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<TeamsDiscoveryState> {
-		await this.discoveryService.open({ projectId: req.params.projectId, agentId });
-		return { status: 'waiting' };
-	}
-
-	@Get('/:agentId/integrations/teams/discovery')
-	@ProjectScope('agent:read')
-	async getDiscovery(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<TeamsDiscoveryState> {
-		return await this.discoveryService.getState({ projectId: req.params.projectId, agentId });
-	}
-
-	@Delete('/:agentId/integrations/teams/discovery')
-	@ProjectScope('agent:update')
-	async stopDiscovery(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-	): Promise<TeamsDiscoveryState> {
-		await this.discoveryService.close({ projectId: req.params.projectId, agentId });
-		return { status: 'idle' };
 	}
 
 	@Get('/:agentId/integrations/teams/package')

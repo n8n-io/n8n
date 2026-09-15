@@ -101,13 +101,11 @@ export class AgentIntegrationsController {
 		req: Request<{ projectId: string; agentId: string; platform: string }>,
 		res: Response,
 	) {
-		const { agentId, platform, projectId } = req.params;
+		const { agentId, platform } = req.params;
 		const integration = this.chatIntegrationRegistry.get(platform);
 		const resolution = integration?.resolveWebhookRequest?.({
 			headers: req.headers,
 			body: req.body,
-			agentId,
-			projectId,
 		});
 		if (resolution?.type === 'reject') {
 			res.status(resolution.response.status).json(resolution.response.body);
@@ -128,12 +126,7 @@ export class AgentIntegrationsController {
 			// `url_verification` challenge) before credentials are configured,
 			// so the user doesn't have to come back and re-verify URLs after
 			// connecting the credential.
-			const earlyResponse = await integration?.handleUnauthenticatedWebhook?.({
-				headers: req.headers,
-				body: req.body,
-				agentId,
-				projectId,
-			});
+			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);
 				return;
