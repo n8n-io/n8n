@@ -99,15 +99,19 @@ describe('AgentTurnQueueService', () => {
 			status: 'queued',
 			executionId: 'exec-2',
 		});
-		expect(await service.submit(resumeTurn(false))).toEqual({
+		expect(await service.submit(messageTurn('third'))).toEqual({
 			status: 'queued',
 			executionId: 'exec-3',
+		});
+		expect(await service.submit(resumeTurn(false))).toEqual({
+			status: 'queued',
+			executionId: 'exec-4',
 		});
 
 		finish(first);
 		await first.release();
 
-		await settled(() => expect(ran).toEqual(['resume:run-1', 'second']));
+		await settled(() => expect(ran).toEqual(['resume:run-1', 'second', 'third']));
 		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({ previewChat: false }),
 			expect.objectContaining({ threadId }),
