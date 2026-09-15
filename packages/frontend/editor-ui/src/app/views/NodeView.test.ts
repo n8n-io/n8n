@@ -462,11 +462,10 @@ describe('NodeView', () => {
 
 			pasteText(JSON.stringify(clipboardData));
 
-			await waitFor(() =>
-				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
-			);
+			// Give the async paste handler a tick to settle before asserting nothing happened.
+			await new Promise((resolve) => setTimeout(resolve, 0));
 
-			await expect(deferred?.()).resolves.toBeUndefined();
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
 		});
 

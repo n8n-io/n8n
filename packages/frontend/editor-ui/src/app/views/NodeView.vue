@@ -663,7 +663,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 			workflowData =
 				parsedData.length > 0 && INodesSchema.safeParse(parsedData).success
 					? { nodes: parsedData, connections: {} }
-					: {};
+					: null;
 		} else {
 			workflowData = parsedData;
 		}
