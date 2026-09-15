@@ -123,11 +123,12 @@ export class AgentTurnQueueService {
 	private async withAgentName(
 		turn: AgentTurnSubmission,
 	): Promise<StartExecutionParams & TurnRowValues> {
-		const [agent] = await this.agentRepository.findSummariesByIds([turn.agentId]);
-		if (!agent || agent.projectId !== turn.projectId) {
-			throw new UserError(`Agent "${turn.agentId}" not found`);
-		}
-		return { ...turn, agentName: agent.name };
+		const agentName = await this.agentRepository.findNameByIdAndProjectId(
+			turn.agentId,
+			turn.projectId,
+		);
+		if (agentName === null) throw new UserError(`Agent "${turn.agentId}" not found`);
+		return { ...turn, agentName };
 	}
 
 	private async requestWake(threadId: string): Promise<void> {
