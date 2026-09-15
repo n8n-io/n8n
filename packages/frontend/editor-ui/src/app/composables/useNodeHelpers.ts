@@ -223,11 +223,16 @@ export function useNodeHelpers() {
 				}
 			}
 
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-			if (nodeIssues === null) {
-				nodeIssues = nodeInputIssues;
-			} else {
-				NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+			// Honoured like the other kinds: the tool-config panel passes a partial
+			// accessor (getNode only) and opts out of input issues, so the shared
+			// check must not run against it.
+			if (!ignoreIssues.includes('input')) {
+				const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+				}
 			}
 		}
 

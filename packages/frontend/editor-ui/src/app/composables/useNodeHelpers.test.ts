@@ -712,6 +712,60 @@ describe('useNodeHelpers()', () => {
 		});
 	});
 
+	describe('input issues in getNodeIssues', () => {
+		const nodeTypeWithRequiredInput: INodeTypeDescription = {
+			displayName: 'Agent',
+			name: 'agent',
+			group: ['transform'],
+			version: 1,
+			description: 'Agent node',
+			defaults: { name: 'Agent' },
+			inputs: [
+				NodeConnectionTypes.Main,
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		};
+
+		it('reports a required input with nothing connected', () => {
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const workflow = {
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			} as unknown as Workflow;
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, workflow, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+			]);
+
+			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
+		});
+
+		it('skips the input check when input issues are ignored', () => {
+			// The tool-config panel passes an accessor built from getNode alone and
+			// opts out of input issues. The shared check reads the connection map,
+			// so it must not run against such a partial accessor.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const partialAccessor = { getNode: () => node } as unknown as Workflow;
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, partialAccessor, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+				'input',
+			]);
+
+			expect(result?.input).toBeUndefined();
+		});
+	});
+
 	describe('credential issues with AI Gateway', () => {
 		const nodeTypeWithCreds: INodeTypeDescription = {
 			displayName: 'Google AI',

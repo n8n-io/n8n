@@ -42,9 +42,10 @@ export function getUnconnectedRequiredInputs(
 	options: { throwOnExpressionError?: boolean } = {},
 ): INodeInputConfiguration[] {
 	const unconnected: INodeInputConfiguration[] = [];
-	// Optional: the editor builds this accessor by hand in places, and a missing
-	// map means nothing arrives, which is what an empty graph would say anyway.
-	const arrivals = workflow.connectionsByDestinationNode?.[node.name];
+	// Required by the type on purpose. A missing map is not an empty graph: it
+	// would read every required input as unconnected. Better a loud TypeError
+	// here than a silent over-report from an accessor cast past the type.
+	const arrivals = workflow.connectionsByDestinationNode[node.name];
 
 	// A node can declare several inputs of one type — an agent's Chat Model and
 	// Fallback Model are both `ai_languageModel` — and each is satisfied on its
