@@ -13,11 +13,8 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
-import {
-	nodeNameForCall,
-	untransferableItemError,
-	VM_TRANSFER_RULES,
-} from './transfer-diagnostics';
+import type { TransferProbe } from './transfer-diagnostics';
+import { untransferableItemError } from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -36,6 +33,17 @@ function getIvm(): IsolatedVm {
 }
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+
+const vmTransferProbe: TransferProbe = (value) => {
+	let copy: ivm.ExternalCopy<unknown>;
+	try {
+		copy = new (getIvm().ExternalCopy)(value);
+	} catch {
+		return false;
+	}
+	copy.release();
+	return true;
+};
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -369,9 +377,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return new (getIvm().ExternalCopy)(result);
 			} catch {
-				return serializeError(
-					untransferableItemError(result, VM_TRANSFER_RULES, nodeNameForCall(rawMsg, data)),
-				);
+				return serializeError(untransferableItemError(result, vmTransferProbe, rawMsg, data));
 			}
 		});
 	}

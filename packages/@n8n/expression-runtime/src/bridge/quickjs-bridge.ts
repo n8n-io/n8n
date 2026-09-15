@@ -21,11 +21,8 @@ import {
 	reconstructError,
 	serializeError,
 } from './host-functions';
-import {
-	nodeNameForCall,
-	QUICKJS_TRANSFER_RULES,
-	untransferableItemError,
-} from './transfer-diagnostics';
+import type { TransferProbe } from './transfer-diagnostics';
+import { untransferableItemError } from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -313,11 +310,14 @@ function hostValueToJson(value: unknown): string | typeof ENCODING_FAILED {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return safeStringify(wrapSpecialValuesForGuest(value));
+		const json: string | undefined = safeStringify(wrapSpecialValuesForGuest(value));
+		return json === undefined ? ENCODING_FAILED : json;
 	} catch {
 		return ENCODING_FAILED;
 	}
 }
+
+const quickjsTransferProbe: TransferProbe = (value) => hostValueToJson(value) !== ENCODING_FAILED;
 
 // ============================================================================
 // Intl host delegation
@@ -1120,13 +1120,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				const result = dispatchHostCall(rawMsg, data);
 				return this.hostValueToQuickJSHandle(result, (rejected) =>
-					serializeError(
-						untransferableItemError(
-							rejected,
-							QUICKJS_TRANSFER_RULES,
-							nodeNameForCall(rawMsg, data),
-						),
-					),
+					serializeError(untransferableItemError(rejected, quickjsTransferProbe, rawMsg, data)),
 				);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));

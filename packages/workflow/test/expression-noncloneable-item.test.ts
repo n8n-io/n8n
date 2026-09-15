@@ -66,6 +66,35 @@ const CASES: Case[] = [
 	{ name: 'a Buffer', extra: () => ({ buf: Buffer.from('hello') }), rejectedAt: {} },
 	{ name: 'a Map', extra: () => ({ m: new Map([['a', 1]]) }), rejectedAt: {} },
 	{ name: 'a 4MB string', extra: () => ({ blob: 'x'.repeat(4 * 1024 * 1024) }), rejectedAt: {} },
+	{
+		name: 'a Map holding a function',
+		extra: () => ({ mfn: new Map<string, unknown>([['a', () => 1]]) }),
+		rejectedAt: { vm: 'json.mfn' },
+	},
+	{
+		name: 'a Set holding a function',
+		extra: () => ({ sfn: new Set<unknown>([() => 1]) }),
+		rejectedAt: { vm: 'json.sfn' },
+	},
+	{ name: 'a symbol value', extra: () => ({ symv: Symbol('s') }), rejectedAt: { vm: 'json.symv' } },
+	{
+		name: 'a promise',
+		extra: () => ({ pr: Promise.resolve(1) }),
+		rejectedAt: { vm: 'json.pr' },
+	},
+	{ name: 'a WeakMap', extra: () => ({ wm: new WeakMap() }), rejectedAt: { vm: 'json.wm' } },
+	{ name: 'a bigint', extra: () => ({ big: 1n }), rejectedAt: {} },
+	{
+		name: 'a throwing toJSON',
+		extra: () => ({
+			tj: {
+				toJSON() {
+					throw new Error('toJSON exploded');
+				},
+			},
+		}),
+		rejectedAt: { vm: 'json.tj.toJSON', quickjs: 'json.tj.toJSON' },
+	},
 ];
 
 const EAGER_ACCESSORS: Array<[string, string]> = [
