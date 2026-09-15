@@ -9,6 +9,22 @@ export const CONTEXT_PREFERENCES_ENABLED_VARIANT = 'variant';
 /** Caps the prompt text, not the column. */
 export const AI_PREFERENCE_CONTENT_MAX_LENGTH = 2000;
 
+/**
+ * Preferences one scope can hold. A safety net rather than a budget: the rendered
+ * block, not the row count, is what a prompt pays for, and the applied-preferences
+ * event reports that length so the numbers can be reviewed against real data.
+ */
+export const AI_PREFERENCE_MAX_PER_SCOPE = 50;
+
+/**
+ * Which surface wrote the row. `ui` is the settings area, `aia` the n8n Assistant,
+ * `mcp` an MCP client. Never taken from a request body: a client must not be able
+ * to claim that the assistant wrote a row the user wrote.
+ */
+export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp']);
+
+export type AiPreferenceSource = z.infer<typeof aiPreferenceSourceSchema>;
+
 /** Derived from `userId` and `projectId`. A CHECK constraint forbids both. */
 export const aiPreferenceScopeSchema = z.enum(['user', 'project', 'instance']);
 
@@ -44,6 +60,11 @@ export const aiPreferenceContentSchema = z
 	.max(
 		AI_PREFERENCE_CONTENT_MAX_LENGTH,
 		`content cannot be longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters`,
+	)
+	// Carried into every tool input schema built from this, so a model reads the
+	// limit before it writes instead of discovering it through a rejection.
+	.describe(
+		`One instruction, written as the user would say it. At most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters, and at most ${AI_PREFERENCE_MAX_PER_SCOPE} preferences are kept for one scope.`,
 	);
 
 export type AiPreferenceProjectDto = {
@@ -70,6 +91,8 @@ export type AiPreferenceDto = {
 	/** Applies only in that project. */
 	projectId: string | null;
 	project: AiPreferenceProjectDto | null;
+	/** Which surface wrote the row. Rows written before the column existed read `ui`. */
+	source: AiPreferenceSource;
 	scopes: Scope[];
 	createdAt: string;
 	updatedAt: string;
