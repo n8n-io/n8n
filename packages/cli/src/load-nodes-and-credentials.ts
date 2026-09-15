@@ -691,56 +691,52 @@ export class LoadNodesAndCredentials {
 		throw new UnrecognizedCredentialTypeError(credentialType);
 	}
 
+	private reloadQueue: Promise<unknown> = Promise.resolve();
+
 	/**
 	 * Re-read the files already on disk for a loader and push the updated
 	 * descriptions to open editors. Touches no native module, so it works
 	 * inside the published image where the file watcher cannot run.
+	 *
+	 * Serialized here rather than at the call sites, because the endpoint and
+	 * the file watcher both reload and can fire on the same save. Concurrent
+	 * reloads would interleave reset()/loadAll(), leaving nodes unresolvable.
 	 */
 	private async reloadLoader(loader: DirectoryLoader) {
-		this.logger.info(`Hot reload triggered for ${loader.packageName}`);
-		try {
-			loader.reset();
-			await loader.loadAll();
-			await this.postProcessLoaders();
-			const { Push } = await import('@/push/index.js');
-			Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-		} catch (error) {
-			this.logger.error(`Hot reload failed for ${loader.packageName}`, {
-				error: ensureError(error),
-			});
-		}
+		const run = this.reloadQueue.then(async () => {
+			this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+			try {
+				loader.reset();
+				await loader.loadAll();
+				await this.postProcessLoaders();
+				const { Push } = await import('@/push/index.js');
+				Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+			} catch (error) {
+				this.logger.error(`Hot reload failed for ${loader.packageName}`, {
+					error: ensureError(error),
+				});
+				throw new UserError(`Hot reload failed for ${loader.packageName}`, { cause: error });
+			}
+		});
+		this.reloadQueue = run.catch(() => {});
+		await run;
 	}
-
-	private clearRequireCache(prefix: string) {
-		for (const module of Object.keys(require.cache)) {
-			if (module.startsWith(prefix)) delete require.cache[module];
-		}
-	}
-
-	private reloadQueue: Promise<unknown> = Promise.resolve();
 
 	/**
 	 * Reload nodes from the custom directories on demand, for the dev reload
-	 * endpoint. Returns the package names that were reloaded.
-	 *
-	 * Serialized: the endpoint is unauthenticated, and concurrent reloads would
-	 * interleave reset()/loadAll(), leaving custom nodes unresolvable.
+	 * endpoint. Returns the package names that were reloaded. Throws if any
+	 * loader fails, so the endpoint does not report a broken node as reloaded.
 	 */
 	async reloadCustomNodes() {
-		const run = this.reloadQueue.then(async () => {
-			const loaders = Object.values(this.loaders).filter(
-				(loader) => loader instanceof CustomDirectoryLoader,
-			);
+		const loaders = Object.values(this.loaders).filter(
+			(loader) => loader instanceof CustomDirectoryLoader,
+		);
 
-			for (const loader of loaders) {
-				this.clearRequireCache(loader.directory);
-				await this.reloadLoader(loader);
-			}
+		for (const loader of loaders) {
+			await this.reloadLoader(loader);
+		}
 
-			return loaders.map((loader) => loader.packageName);
-		});
-		this.reloadQueue = run.catch(() => {});
-		return await run;
+		return loaders.map((loader) => loader.packageName);
 	}
 
 	async setupHotReload() {
@@ -769,7 +765,9 @@ export class LoadNodesAndCredentials {
 				continue;
 			}
 
-			const reloader = debounce(async () => await this.reloadLoader(loader), 100);
+			// Already logged inside reloadLoader; swallow so a broken node does not
+			// reject into the watcher callback as an unhandled rejection.
+			const reloader = debounce(async () => await this.reloadLoader(loader).catch(() => {}), 100);
 
 			// For lazy loaded packages, we need to watch the dist directory
 			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
