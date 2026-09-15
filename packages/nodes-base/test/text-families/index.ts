@@ -89,10 +89,10 @@ const withCasing = (words: readonly string[]) =>
 		)
 		.map(([word, transform]) => transform(word));
 
-const repeatToLength = (unit: string, length: number) =>
-	Array.from(unit.repeat(Math.ceil(length / unit.length)))
-		.slice(0, length)
-		.join('');
+const repeatToLength = (unit: string, length: number) => {
+	const codePoints = Array.from(unit);
+	return Array.from({ length }, (_, index) => codePoints[index % codePoints.length]).join('');
+};
 
 const UNSAFE_KEYS =
 	'__proto__ constructor prototype toString valueOf hasOwnProperty __defineGetter__ length'.split(
@@ -102,7 +102,7 @@ const RESERVED_WORDS =
 	'undefined null NaN true false Infinity nil None NULL CON PRN AUX NUL COM1 LPT1'.split(' ');
 const PUNCTUATION = [...'.-/[]()$"\'\\=:,;#@', ' ', '\n', '\t', '{{', '}}'];
 
-/** Non-ASCII characters that render like the given ASCII letter or digit, per Unicode UTS #39. */
+/** Non-ASCII characters the `confusables` package maps to the given ASCII letter or digit. */
 export const lookAlikesOf = (character: string): readonly string[] =>
 	(alphabetMap.get(character) ?? []).filter((lookAlike) => !isAscii(lookAlike));
 
@@ -125,12 +125,12 @@ export const lookAlikePair: fc.Arbitrary<readonly [word: string, lookAlike: stri
 	.filter((word) => Array.from(word).some((character) => lookAlikesOf(character).length > 0))
 	.chain((word) => fc.tuple(fc.constant(word), lookAlikeOf(word)));
 
-const latinAccented: Family = {
+const latinAccented = {
 	name: 'latin-accented',
 	description: 'ASCII words with accented Latin letters or ligatures, which ASCII folding drops.',
 	examples: ['Prénom', 'Straße', 'Größe', 'naïve', 'café', 'Ærø', 'Łódź', 'Ñandú'],
 	word: mixedWord(LATIN_ACCENTED),
-};
+} as const satisfies Family;
 
 export const families = [
 	latinAccented,
@@ -347,7 +347,7 @@ export const families = [
 	{
 		name: 'confusables',
 		description:
-			'ASCII words with letters swapped for UTS #39 look-alikes: Cyrillic а, fullwidth ａ, mathematical 𝐚.',
+			'ASCII words with letters swapped for look-alikes from the confusables package: Cyrillic а, fullwidth ａ, mathematical 𝐚.',
 		examples: ['Nаme', 'Ρrice', 'ｎａｍｅ', '𝐍𝐚𝐦𝐞', 'Ⅼength'],
 		word: lookAlikePair.map(([, lookAlike]) => lookAlike),
 	},
