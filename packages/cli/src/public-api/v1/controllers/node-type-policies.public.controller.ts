@@ -1,8 +1,18 @@
 import {
+	CreatePolicyDocumentDto,
+	ListNodeTypePolicyDocumentsQueryDto,
+	NodeTypePolicyAttachmentsPublicDto,
+	NodeTypePolicyDocumentListPublicDto,
+	NodeTypePolicyDocumentPublicDto,
+	NodeTypePolicyDocumentWriteResultPublicDto,
 	NodeTypePolicyEffectivePublicDto,
 	NodeTypePolicyEffectiveWriteResultPublicDto,
 	PutInstancePolicyDto,
 	PutProjectPolicyDto,
+	ReplaceAttachmentsDto,
+	UpdatePolicyDocumentDto,
+	nodeTypePolicyIdParamSchema,
+	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -16,21 +26,42 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	GlobalScope,
 	Licensed,
 	Param,
+	Post,
 	ProjectScope,
 	PublicApiController,
 	Put,
+	Query,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
+import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
+import {
+	encodeNextCursor,
+	resolveOffsetPagination,
+} from '@/public-api/v1/shared/services/pagination.service';
 
 const tags = ['NodeTypePolicy'];
+
+function toPublicDocument(policy: TypeAvailabilityPolicy): NodeTypePolicyDocumentPublicDto {
+	return {
+		id: policy.id,
+		kind: policy.kind,
+		rules: [...policy.rules],
+		version: policy.version,
+		updatedBy: policy.updatedBy,
+		createdAt: policy.createdAt.toISOString(),
+		updatedAt: policy.updatedAt.toISOString(),
+	};
+}
 
 /**
  * Public API surface for node type availability policies. Every route delegates to the same
@@ -166,6 +197,166 @@ export class NodeTypePoliciesPublicController {
 			defaultAction: result.defaultAction,
 			version: result.version,
 			warnings: [...result.warnings],
+		};
+	}
+
+	@Get('/policies')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary('List node type policy documents')
+	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
+	@ApiTags(tags)
+	@ApiResponse(200, NodeTypePolicyDocumentListPublicDto)
+	@ApiErrorResponse(503)
+	async listPolicyDocuments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListNodeTypePolicyDocumentsQueryDto,
+	): Promise<NodeTypePolicyDocumentListPublicDto> {
+		const { offset, limit } = resolveOffsetPagination(query);
+
+		const { items, count } = await (await this.service()).listPolicyDocumentsPage(
+			NODE_TYPES_KIND,
+			offset,
+			limit,
+		);
+
+		return {
+			data: items.map(toPublicDocument),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
+	}
+
+	@Post('/policies')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary('Create a node type policy document')
+	@ApiDescription(
+		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(201, NodeTypePolicyDocumentWriteResultPublicDto)
+	@ApiErrorResponse(503)
+	async createPolicyDocument(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: CreatePolicyDocumentDto,
+	): Promise<NodeTypePolicyDocumentWriteResultPublicDto> {
+		const { policy, warnings } = await (await this.service()).createPolicyDocument(
+			NODE_TYPES_KIND,
+			dto.rules,
+			req.user.id,
+		);
+
+		return { policy: toPublicDocument(policy), warnings: [...warnings] };
+	}
+
+	@Get('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary('Retrieve a node type policy document')
+	@ApiTags(tags)
+	@ApiResponse(200, NodeTypePolicyDocumentPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPolicyDocument(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+	): Promise<NodeTypePolicyDocumentPublicDto> {
+		const policy = await (await this.service()).getPolicyDocument(policyId);
+		if (!policy) {
+			throw new NotFoundError(`Policy document not found: ${policyId}`);
+		}
+
+		return toPublicDocument(policy);
+	}
+
+	@Put('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary('Replace the rules of a node type policy document')
+	@ApiDescription(
+		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, NodeTypePolicyDocumentWriteResultPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
+	async updatePolicyDocument(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+		@Body dto: UpdatePolicyDocumentDto,
+	): Promise<NodeTypePolicyDocumentWriteResultPublicDto> {
+		const { policy, warnings } = await (await this.service()).updatePolicyDocument(
+			policyId,
+			dto.rules,
+			dto.version,
+			req.user.id,
+		);
+
+		return { policy: toPublicDocument(policy), warnings: [...warnings] };
+	}
+
+	@Delete('/policies/:policyId')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary('Delete a node type policy document')
+	@ApiDescription(
+		'Deletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(503)
+	async deletePolicyDocument(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
+	): Promise<void> {
+		await (await this.service()).deletePolicyDocument(policyId, req.user.id);
+	}
+
+	@Put('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary("Replace a scope's attached policy documents")
+	@ApiDescription(
+		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, NodeTypePolicyAttachmentsPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async replaceAttachments(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
+		@Body dto: ReplaceAttachmentsDto,
+	): Promise<NodeTypePolicyAttachmentsPublicDto> {
+		const result = await (await this.service()).replaceAttachments(
+			scopeId,
+			dto.attachments,
+			req.user.id,
+		);
+
+		return {
+			attachments: result.attachments.map((attachment) => ({
+				policyId: attachment.policyId,
+				rules: [...attachment.rules],
+				priority: attachment.priority,
+				isFloor: attachment.isFloor,
+			})),
+			version: result.version,
 		};
 	}
 }

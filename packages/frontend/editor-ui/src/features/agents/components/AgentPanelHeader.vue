@@ -50,6 +50,11 @@ withDefaults(
 	gap: var(--spacing--4xs);
 	flex: 1;
 	min-width: 0;
+	max-width: 80%;
+
+	> span {
+		text-wrap: balance;
+	}
 }
 
 .actions {

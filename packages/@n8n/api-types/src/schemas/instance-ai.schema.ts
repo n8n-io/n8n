@@ -1,3 +1,4 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -824,6 +825,13 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
@@ -1521,12 +1529,24 @@ export const instanceAiPromptConfigurationSchema = z.object({
 });
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
+/**
+ * A Computer Use entry point in the chat input's + menu. The client decides
+ * which entries it renders — its rollout and the device are only visible there
+ * — so it reports them and the backend never advertises an entry it is not told
+ * about.
+ */
+export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
+export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	/** Entries the client renders for this user. Omit to advertise none. The
+	 *  backend still applies the admin switches, so this can only narrow. */
+	computerUseChannels: z.array(computerUseChannelSchema).optional(),
 	/** Explicit override for evals. Omit to use the backend experiment assignment. */
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */

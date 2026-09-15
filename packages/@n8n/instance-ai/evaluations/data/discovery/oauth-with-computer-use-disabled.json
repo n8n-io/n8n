@@ -2,7 +2,10 @@
 	"id": "oauth-with-computer-use-disabled",
 	"userMessage": "I need to set up a Slack OAuth credential. Walk me through the Slack admin so I can find my Client ID and Client Secret to enter into n8n.",
 	"instanceState": {
-		"localGateway": { "status": "disabledGlobally" }
+		"computerUse": {
+			"localComputer": { "status": "unavailable" },
+			"browser": { "status": "unavailable" }
+		}
 	},
 	"expectedToolInvocations": {
 		"noneOf": ["browser_connect", "browser_navigate", "browser_snapshot", "browser_screenshot"]
