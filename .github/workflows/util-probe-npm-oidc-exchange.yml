@@ -13,14 +13,53 @@ permissions: {}
 
 jobs:
   probe:
-    name: Probe npm OIDC exchange
+    name: Probe npm OIDC exchange (${{ matrix.name }})
     runs-on: ubuntu-latest
     environment: npm
     permissions:
       id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: raw pnpm
+            safe_chain: false
+          - name: SafeChain pnpm
+            safe_chain: true
     env:
       PACKAGE_NAME: ${{ inputs.package-name }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        if: matrix.safe_chain == false
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '26.5.1'
+
+      - name: Resolve pnpm version
+        id: pnpm-version
+        if: matrix.safe_chain == false
+        run: node .github/scripts/resolve-pnpm-version.mjs
+
+      - name: Set up raw pnpm
+        if: matrix.safe_chain == false
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          install: false
+          version: ${{ steps.pnpm-version.outputs.version }}
+
+      - name: Install dependencies without SafeChain
+        if: matrix.safe_chain == false
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up pnpm with SafeChain
+        if: matrix.safe_chain == true
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
       - name: Exchange GitHub OIDC token with npm
         shell: bash
         run: |
@@ -59,3 +98,6 @@ jobs:
           fi
 
           echo 'npm OIDC token exchange succeeded.'
+
+      - name: Dry-run publish with pnpm
+        run: pnpm --filter "$PACKAGE_NAME" publish --access public --no-git-checks --dry-run
