@@ -1,0 +1,59 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b04c58447561ba::t_a76f73a34c210c 326-357
+  s_b04c58447561ba::t_d5c8827ddd5798 1289
+  s_b04c58447561ba::t_a5771d3f0bbdf5 1528-1546,1572,1575
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_b04c58447561ba::t_f2ec4ca0aecc89 50-53
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b04c58447561ba::t_38327254ebd21f 15,488,533-534,536-537,580,582,586,597-599,608,614-615
+  s_c1ca66aa36b5be::t_507738dfc00418 616-617
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b04c58447561ba::t_81098ad3ba555a 29-33
+  s_b04c58447561ba::t_8d61b0479017a1 26-28,38
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_b04c58447561ba::t_5d014a42188d0b 6,52
+  s_b04c58447561ba::t_f7629ce3b2e65f 1-4,42-51,53-66
+  s_b04c58447561ba::t_f9121fe5e7c870 67-68
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b04c58447561ba::t_706b727cfe792b 189-191,193-196,198-208
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_b04c58447561ba::t_285121051adb7b 4,1019-1053
+  s_b04c58447561ba::t_aab545b8b03e01 119-120,2573-2574
+  s_b04c58447561ba::t_aee447373f2d9a 121-124,2575-2589
+  s_b04c58447561ba::t_b8516aba3055a7 1054,1838-1840,1842-1845,1849-1875
+  s_b04c58447561ba::t_5914df6effb127 1841,1846-1848
+  s_b04c58447561ba::t_516e6dda7d1085 1055
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_59a167f6e939e2 235-254
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b04c58447561ba::t_bce1239de335cd 267
+  s_b04c58447561ba::t_090fb83cd74988 99,106,189,191,197,204,218-220,229,231,254
+  s_b04c58447561ba::t_e2b5eeda31258e 330,332
+  s_b04c58447561ba::t_49731b2ef7308c 296
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b04c58447561ba::t_9ffe932286e0ae 143,477,482,485,502,528,540-549,912,920,922,938,956
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3f8b772ca7b2782a4bd700444341f7edae5629d0",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c1ca66aa36b5be": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f4e9d461-bb1c-4f6b-aa9d-c805d0334914",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
