@@ -6,6 +6,7 @@ packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
   s_b04c58447561ba::t_0beb6e7151d9f1 82
   s_b04c58447561ba::t_21f6ebc408c8a1 13,45,88-99,117-131,156-160,167-206,213-214,216-219,276-278,293,297,332,335,344,347
   s_b04c58447561ba::t_56adfbd0e205e4 10,17-30,80-81,100-104,111-116
+  s_b04c58447561ba::t_fd8ae2e8d7ad08 105-110
 packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
   s_b04c58447561ba::t_38db6545525af1 22-33,35-36,87-91,97-102,104,160,176-178,180-185,187,189-193,195-200,202-214,218-219,222-223,231,243,246-247,249,256-258,261,298,300,302,305,309,311-320
   s_b04c58447561ba::t_6e8b68a6c204e1 7
@@ -198,6 +199,7 @@ packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
   s_b04c58447561ba::t_0400ed8f597718 3,114-172
   s_b04c58447561ba::t_180c9b59775326 95-113,173-175,179,188,208-243
   s_b04c58447561ba::t_0af48d6a72f331 244
+  s_b04c58447561ba::t_f08550c67b9ccc 182
 packages/cli/src/modules/agents/agent-session-langsmith-export.service.ts
   s_b04c58447561ba::t_26d31639a7f332 160-162
 packages/cli/src/modules/agents/__tests__/test-utils/turn-queue.ts
