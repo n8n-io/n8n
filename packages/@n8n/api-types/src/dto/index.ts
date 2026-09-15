@@ -138,6 +138,12 @@ export {
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
+export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
+export {
+	AiPreferenceListQueryDto,
+	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_PAGE_SIZE,
+} from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
@@ -288,6 +294,11 @@ export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-docu
 export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
+	ListNodeTypePolicyDocumentsQueryDto,
+	NodeTypePolicyAttachmentsPublicDto,
+	NodeTypePolicyDocumentListPublicDto,
+	NodeTypePolicyDocumentPublicDto,
+	NodeTypePolicyDocumentWriteResultPublicDto,
 	NodeTypePolicyEffectivePublicDto,
 	NodeTypePolicyEffectiveWriteResultPublicDto,
 } from './node-type-policies/node-type-policy-public.dto';

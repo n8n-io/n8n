@@ -124,9 +124,23 @@ export type { SendWorkerStatusMessage } from './push/worker';
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export {
+	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	aiPreferenceContentSchema,
+	aiPreferenceScopeSchema,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
+	aiPreferenceScopeOf,
+	aiPreferenceTargetOf,
+} from './schemas/ai-preference.schema';
+export type {
+	AiPreferenceCountDto,
+	AiPreferenceDto,
+	AiPreferenceListDto,
+	AiPreferenceTarget,
+	AiPreferenceProjectDto,
+	AiPreferenceUserDto,
+	AiPreferenceScope,
 } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
@@ -136,6 +150,8 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	executionIdParamSchema,
+	nodeTypePolicyIdParamSchema,
+	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -792,3 +808,8 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	instanceAiApprovalDetailsSchema,
+	type InstanceAiApprovalDetails,
+} from './schemas/instance-ai-approval.schema';
