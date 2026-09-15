@@ -1,18 +1,14 @@
 import type {
-	PromotionBindingIssue,
+	PromotionBindingConsumer,
 	PromotionBindingPreflightResult,
 	PromotionBindingProject,
-	PromotionCredentialBindingReview,
-	PromotionSourceFile,
-	PromotionTargetProjectStatus,
-	PromotionVariableBindingReview,
+	PromotionVariableScope,
 } from '@n8n/api-types';
 import { CredentialsRepository, ProjectRepository, VariablesRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import { IdBasedCredentialMatcher } from '@/modules/n8n-packages/entities/credential/id-based-credential-matcher';
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
@@ -24,63 +20,24 @@ import {
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
-import type { PackageCredentialRequirement } from '@/modules/n8n-packages/spec/requirements.schema';
 
-interface CredentialUse {
-	workflow: InventoryWorkflow;
-	type: string;
-	name: string;
-}
-
-interface CredentialUseGroup {
-	sourceId: string | null;
-	uses: CredentialUse[];
-}
-
-interface VariableRequirement {
-	name: string;
-	projectId: string;
-	workflows: InventoryWorkflow[];
-}
-
-/** Target facts for the projects named in the package. */
-interface TargetContext {
-	projectOf: (id: string) => PromotionBindingProject;
-	targetProjectStatusOf: (id: string) => PromotionTargetProjectStatus;
-}
-
-type CredentialConsumer = PromotionCredentialBindingReview['consumers'][number];
-type CredentialTargetMatch = PromotionCredentialBindingReview['targetMatch'];
-
-/** Everything known about one required credential before its record is built. */
-interface CredentialFacts {
+interface CredentialReference {
 	sourceId: string | null;
 	name: string;
 	expectedTypes: string[];
-	/** The one type the workflows agree on, or `undefined` when they disagree. */
-	type: string | undefined;
-	typeKnown: boolean;
 	file: InventoryCredential | undefined;
-	sourceFile: PromotionSourceFile;
-	targetMatch: CredentialTargetMatch;
-	consumers: Array<Omit<CredentialConsumer, 'accessStatus'>>;
+	workflows: InventoryWorkflow[];
 }
 
-/** A credential the matcher can check: it has an id, a known type, and exists on the target. */
-interface CheckableCredential extends CredentialFacts {
-	sourceId: string;
-	type: string;
-	typeKnown: true;
-	targetMatch: 'matched';
+interface VariableReference {
+	name: string;
+	file: InventoryVariable | undefined;
+	workflows: InventoryWorkflow[];
 }
 
-/**
- * Finds credential and variable bindings that need review before import.
- * Includes variables that resolve through a global fallback. Reads the package
- * files and the database. Never writes to either. Credentials match by source
- * id. Variables match by name inside the consuming project. Each result records
- * the source file location and target status for later creation decisions.
- */
+type ProjectLookup = (id: string) => PromotionBindingProject;
+
+/** Inspects package bindings without changing files, target state, or caller permissions. */
 @Service()
 export class PromotionBindingPreflightService {
 	constructor(
@@ -88,397 +45,269 @@ export class PromotionBindingPreflightService {
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly variableExtractor: VariableRequirementsExtractor,
 		private readonly credentialTypes: CredentialTypes,
-		private readonly credentialMatcher: IdBasedCredentialMatcher,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
-	/** `sourceDir` is the package directory inside a checkout the caller controls. Target state is read fresh on every call. */
+	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
 	async checkDirectory({
 		sourceDir,
-		user,
-	}: {
-		sourceDir: string;
-		user: User;
-	}): Promise<PromotionBindingPreflightResult> {
+	}: { sourceDir: string; user: User }): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
-
-		const context = await this.readTargetProjects(inventory);
-		const [credentials, variables] = await Promise.all([
-			this.checkCredentials(inventory, context, user),
-			this.checkVariables(inventory, context),
-		]);
-
-		return { bindingsNeedingReview: [...credentials, ...variables] };
-	}
-
-	private async readTargetProjects(inventory: PackageDirectoryInventory): Promise<TargetContext> {
-		const projectsById = new Map(inventory.projects.map((p) => [p.id, { id: p.id, name: p.name }]));
-		const typeById = new Map(
-			(await this.projectRepository.findTypesByIds([...projectsById.keys()])).map((row) => [
-				row.id,
-				row.type,
-			]),
-		);
-
-		return {
-			projectOf: (id) => {
-				const project = projectsById.get(id);
-				// The reader only accepts files inside a directory with a project.json.
-				if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
-				return project;
-			},
-			targetProjectStatusOf: (id) => typeById.get(id) ?? 'missing',
+		const credentials = collectCredentialReferences(inventory);
+		const variables = collectVariableReferences(inventory, this.variableExtractor);
+		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const projectOf: ProjectLookup = (id) => {
+			const project = projects.get(id);
+			// The reader requires a project file for every project directory.
+			if (!project) throw new UnexpectedError(`Package inventory has no project "${id}"`);
+			return project;
 		};
-	}
 
-	private async checkCredentials(
-		inventory: PackageDirectoryInventory,
-		context: TargetContext,
-		user: User,
-	): Promise<PromotionCredentialBindingReview[]> {
-		const groups = collectCredentialUses(inventory);
-		const filesById = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
-
-		const sourceIds = groups.flatMap((group) => group.sourceId ?? []);
-		const targetTypes = new Map(
-			(await this.credentialsRepository.findTypesByIds(sourceIds)).map((row) => [row.id, row.type]),
+		const [targetProjects, targetCredentials, targetVariables] = await Promise.all([
+			this.projectRepository.findTypesByIds([...projects.keys()]),
+			this.credentialsRepository.findPromotionBindingAccess(
+				credentials.flatMap(({ sourceId }) => sourceId ?? []),
+				unique(credentials.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
+			),
+			this.variablesRepository.findKeysInProjectsOrGlobal(
+				unique(variables.map(({ name }) => name)),
+				unique(variables.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
+			),
+		]);
+		const result: PromotionBindingPreflightResult = {
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [],
+		};
+		const personalProjectIds = new Set(
+			targetProjects.filter(({ type }) => type === 'personal').map(({ id }) => id),
 		);
+		for (const project of [...inventory.projects].sort((a, b) => compare(a.id, b.id))) {
+			if (!personalProjectIds.has(project.id)) continue;
+			result.conflicts.push({
+				kind: 'project',
+				code: 'project-not-team',
+				project: projectOf(project.id),
+				filePath: `${project.path}/project.json`,
+				workflows: workflowRefs(
+					inventory.workflows.filter(({ projectId }) => projectId === project.id),
+				),
+			});
+		}
 
-		const facts = groups.map(({ sourceId, uses }): CredentialFacts => {
-			const file = sourceId === null ? undefined : filesById.get(sourceId);
-			const expectedTypes = unique(uses.map((use) => use.type)).sort(compare);
-			const type = expectedTypes.length === 1 ? expectedTypes[0] : undefined;
-
-			if (file && type !== undefined && file.credential.type !== type) {
-				throw new UserError(
-					`Package credential file at ${file.path} has type "${file.credential.type}", but workflows use credential "${sourceId}" as "${type}".`,
-				);
-			}
-
-			return {
+		const credentialsById = new Map(
+			targetCredentials.map((credential) => [credential.id, credential]),
+		);
+		for (const reference of credentials) {
+			const { sourceId, name, expectedTypes, file, workflows } = reference;
+			const consumers = consumersOf(workflows, projectOf);
+			const conflict = {
+				kind: 'credential' as const,
 				sourceId,
-				name: file?.credential.name ?? uses[0].name,
+				name,
 				expectedTypes,
-				type,
-				typeKnown: type !== undefined && this.credentialTypes.recognizes(type),
-				file,
-				sourceFile: sourceFileOf(file, context),
-				targetMatch:
-					sourceId === null ? 'unchecked' : targetMatchOf(type, targetTypes.get(sourceId)),
-				consumers: consumersOf(uses, context),
+				consumers,
+				...(file ? { filePath: file.path } : {}),
+				referenceFiles: referenceFiles(workflows),
 			};
-		});
+			const credentialType = expectedTypes[0];
+			if (sourceId === null) {
+				result.conflicts.push({ ...conflict, code: 'missing-id' });
+				continue;
+			}
+			if (expectedTypes.length > 1) {
+				result.conflicts.push({ ...conflict, code: 'conflicting-types' });
+				continue;
+			}
+			if (!this.credentialTypes.recognizes(credentialType)) {
+				result.conflicts.push({ ...conflict, code: 'unknown-type' });
+				continue;
+			}
+			const target = credentialsById.get(sourceId);
+			const binding = { kind: 'credential' as const, sourceId, name, credentialType, consumers };
+			if (target) {
+				if (target.type !== credentialType) {
+					result.conflicts.push({ ...conflict, code: 'type-mismatch', targetType: target.type });
+				} else if (target.usageScope !== 'project') {
+					result.conflicts.push({
+						...conflict,
+						code: 'incompatible-usage-scope',
+						usageScope: target.usageScope,
+					});
+				} else if (!target.isGlobal) {
+					const accessibleProjects = new Set(target.projectIds);
+					const needsAccess = consumers.filter(
+						({ project }) =>
+							!accessibleProjects.has(project.id) && !personalProjectIds.has(project.id),
+					);
+					if (needsAccess.length > 0) {
+						result.accessRequirements.push({
+							...binding,
+							code: 'access-required',
+							consumers: needsAccess,
+						});
+					}
+				}
+			} else if (!file || file.projectId === null) {
+				result.conflicts.push({ ...conflict, code: 'unknown-owner' });
+			} else if (!personalProjectIds.has(file.projectId)) {
+				result.missingBindings.push({
+					...binding,
+					ownerProject: projectOf(file.projectId),
+					...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+				});
+			}
+		}
 
-		const unavailable = await this.findUnavailable(facts, user);
-
-		return facts
-			.map((fact) => buildCredentialRecord(fact, unavailable))
-			.filter((record) => record.issues.length > 0)
-			.sort(
-				(a, b) =>
-					compare(a.sourceId ?? '', b.sourceId ?? '') ||
-					compare(a.expectedTypes[0], b.expectedTypes[0]),
-			);
-	}
-
-	/**
-	 * Asks the matcher, per consuming team project, which existing credentials that
-	 * project cannot use. The matcher decides what "usable" means for import, so
-	 * pre-flight agrees with it. Returns one key per credential and project.
-	 */
-	private async findUnavailable(facts: CredentialFacts[], user: User): Promise<Set<string>> {
-		const byProject = new Map<string, PackageCredentialRequirement[]>();
-		for (const fact of facts) {
-			if (!isCheckable(fact)) continue;
-			const requirement: PackageCredentialRequirement = {
-				id: fact.sourceId,
-				name: fact.name,
-				type: fact.type,
-				usedByWorkflows: fact.consumers.flatMap((consumer) => consumer.workflows.map((w) => w.id)),
-			};
-			for (const consumer of fact.consumers) {
-				if (consumer.targetProjectStatus === 'team') {
-					pushTo(byProject, consumer.project.id, requirement);
+		const existingVariables = new Set(
+			targetVariables.map(({ key, projectId }) => variableKey(key, projectId)),
+		);
+		for (const { name, file, workflows } of variables) {
+			const consumers = consumersOf(workflows, projectOf);
+			if (!file) {
+				result.conflicts.push({
+					kind: 'variable',
+					code: 'missing-definition',
+					name,
+					consumers,
+					referenceFiles: referenceFiles(workflows),
+				});
+				continue;
+			}
+			const scope: PromotionVariableScope =
+				file.projectId === null
+					? { kind: 'global' }
+					: { kind: 'project', project: projectOf(file.projectId) };
+			if (
+				!existingVariables.has(variableKey(name, file.projectId)) &&
+				(file.projectId === null || !personalProjectIds.has(file.projectId))
+			) {
+				result.missingBindings.push({
+					kind: 'variable',
+					name,
+					variableType: file.variable.type,
+					scope,
+					consumers,
+					...(file.variable.value !== undefined ? { sourceValue: file.variable.value } : {}),
+				});
+			}
+			if (file.projectId === null) {
+				const shadowed = consumers.filter(({ project }) =>
+					existingVariables.has(variableKey(name, project.id)),
+				);
+				if (shadowed.length > 0) {
+					result.warnings.push({
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name,
+						scope: { kind: 'global' },
+						consumers: shadowed,
+					});
 				}
 			}
 		}
-
-		const unavailable = new Set<string>();
-		for (const [projectId, candidates] of byProject) {
-			const resolution = await this.credentialMatcher.match(candidates, { projectId, user });
-			for (const failure of resolution.failures) {
-				unavailable.add(accessKey(failure.sourceId, projectId));
-			}
-		}
-
-		return unavailable;
-	}
-
-	private async checkVariables(
-		inventory: PackageDirectoryInventory,
-		context: TargetContext,
-	): Promise<PromotionVariableBindingReview[]> {
-		const requirements = this.collectVariableRequirements(inventory);
-		if (requirements.length === 0) return [];
-
-		// A project variable resolves the requirement. A global one is reported, so the user can
-		// still create a project variable, but marked as the runtime fallback it is.
-		const existing = await this.variablesRepository.findKeysInProjectsOrGlobal(
-			unique(requirements.map((requirement) => requirement.name)),
-			unique(requirements.map((requirement) => requirement.projectId)),
-		);
-		const existingKeys = new Set(existing.map(({ key, projectId }) => variableKey(key, projectId)));
-		const filesByName = indexVariableFiles(inventory.variables);
-
-		return requirements
-			.filter(({ name, projectId }) => !existingKeys.has(variableKey(name, projectId)))
-			.map(({ name, projectId, workflows }) => {
-				const targetMatch: PromotionVariableBindingReview['targetMatch'] = existingKeys.has(
-					variableKey(name, null),
-				)
-					? 'global-fallback'
-					: 'missing';
-				const consumer = {
-					project: context.projectOf(projectId),
-					targetProjectStatus: context.targetProjectStatusOf(projectId),
-					workflows: workflowRefs(workflows),
-				};
-				const sourceFile = sourceFileOf(variableFile(filesByName, name, projectId), context);
-				const issues: PromotionBindingIssue[] = [
-					targetMatch === 'global-fallback' ? 'global-only' : 'missing-variable',
-					...projectIssues([consumer.targetProjectStatus], 'consuming-project'),
-					...(sourceFile.location === 'project' ? [] : (['unknown-owner'] as const)),
-				];
-				return {
-					kind: 'variable' as const,
-					name,
-					sourceFile,
-					consumer,
-					targetMatch,
-					issues,
-				};
-			})
-			.sort(
-				(a, b) => compare(a.consumer.project.id, b.consumer.project.id) || compare(a.name, b.name),
-			);
-	}
-
-	private collectVariableRequirements(inventory: PackageDirectoryInventory): VariableRequirement[] {
-		const byKey = new Map<string, VariableRequirement>();
-
-		for (const workflow of inventory.workflows) {
-			const names = this.variableExtractor.extract({
-				id: workflow.id,
-				nodes: workflow.content.nodes,
-				settings: workflow.content.settings,
-			});
-
-			for (const { variableName } of names) {
-				const key = variableKey(variableName, workflow.projectId);
-				const requirement = byKey.get(key) ?? {
-					name: variableName,
-					projectId: workflow.projectId,
-					workflows: [],
-				};
-				requirement.workflows.push(workflow);
-				byKey.set(key, requirement);
-			}
-		}
-
-		return [...byKey.values()];
+		return result;
 	}
 }
 
-/** Groups raw references by id, or by type when the reference has no id, so nothing is lost before review. */
-function collectCredentialUses(inventory: PackageDirectoryInventory): CredentialUseGroup[] {
-	const groups = new Map<string, CredentialUseGroup>();
-
+/** Inspect references before target lookups. File paths define ownership. */
+function collectCredentialReferences(inventory: PackageDirectoryInventory): CredentialReference[] {
+	const groups = new Map<string, CredentialReference>();
+	const files = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
 	for (const workflow of inventory.workflows) {
 		visitWorkflowCredentials(workflow.content.nodes, (type, details) => {
 			const sourceId = details.id || null;
 			const key = sourceId ?? `\0${type}`;
-			const group = groups.get(key) ?? { sourceId, uses: [] };
-			group.uses.push({ workflow, type, name: details.name });
+			const file = sourceId === null ? undefined : files.get(sourceId);
+			const group = groups.get(key) ?? {
+				sourceId,
+				name: file?.credential.name ?? details.name,
+				expectedTypes: [],
+				file,
+				workflows: [],
+			};
+			group.expectedTypes.push(type);
+			group.workflows.push(workflow);
 			groups.set(key, group);
 			return false;
 		});
 	}
-
-	return [...groups.values()];
-}
-
-/** Without one agreed type there is nothing to compare the target credential against. */
-function targetMatchOf(
-	expectedType: string | undefined,
-	targetType: string | undefined,
-): CredentialTargetMatch {
-	if (expectedType === undefined) return 'unchecked';
-	if (targetType === undefined) return 'missing';
-	return targetType === expectedType ? 'matched' : 'type-mismatch';
-}
-
-function buildCredentialRecord(
-	fact: CredentialFacts,
-	unavailable: Set<string>,
-): PromotionCredentialBindingReview {
-	const consumers = fact.consumers.map((consumer) => ({
-		...consumer,
-		accessStatus: accessStatusOf(fact, consumer, unavailable),
-	}));
-
-	return {
-		kind: 'credential',
-		sourceId: fact.sourceId,
-		name: fact.name,
-		expectedTypes: fact.expectedTypes,
-		...(fact.file?.credential.data ? { expressionData: fact.file.credential.data } : {}),
-		sourceFile: fact.sourceFile,
-		targetMatch: fact.targetMatch,
-		consumers,
-		issues: credentialIssues(fact, consumers),
-	};
-}
-
-function isCheckable(fact: CredentialFacts): fact is CheckableCredential {
-	return (
-		fact.sourceId !== null &&
-		fact.type !== undefined &&
-		fact.typeKnown &&
-		fact.targetMatch === 'matched'
-	);
-}
-
-/** Usability is only a question for a checkable credential in a team project that exists. */
-function accessStatusOf(
-	fact: CredentialFacts,
-	consumer: Omit<CredentialConsumer, 'accessStatus'>,
-	unavailable: Set<string>,
-): CredentialConsumer['accessStatus'] {
-	if (!isCheckable(fact) || consumer.targetProjectStatus !== 'team') return 'unchecked';
-	return unavailable.has(accessKey(fact.sourceId, consumer.project.id)) ? 'unavailable' : 'usable';
-}
-
-function accessKey(sourceId: string, projectId: string): string {
-	return `${sourceId}\0${projectId}`;
-}
-
-/**
- * Only a missing credential needs an owner, so ownership issues apply only when
- * the target has no credential with this id.
- */
-function credentialIssues(
-	fact: CredentialFacts,
-	consumers: CredentialConsumer[],
-): PromotionBindingIssue[] {
-	if (fact.sourceId === null) return ['missing-id'];
-	if (fact.expectedTypes.length > 1) return ['conflicting-types'];
-
-	const issues: PromotionBindingIssue[] = [];
-	if (!fact.typeKnown) issues.push('unknown-type');
-	if (fact.targetMatch === 'missing') issues.push('missing-credential');
-	if (fact.targetMatch === 'type-mismatch') issues.push('type-mismatch');
-	if (consumers.some((consumer) => consumer.accessStatus === 'unavailable')) {
-		issues.push('unavailable');
-	}
-	issues.push(
-		...projectIssues(
-			consumers.map((consumer) => consumer.targetProjectStatus),
-			'consuming-project',
-		),
-	);
-
-	if (fact.targetMatch === 'missing') {
-		const sourceFile = fact.sourceFile;
-		if (sourceFile.location !== 'project') {
-			issues.push('unknown-owner');
-		} else {
-			issues.push(...projectIssues([sourceFile.targetProjectStatus], 'owner-project'));
-			if (consumers.some((consumer) => consumer.project.id !== sourceFile.project.id)) {
-				issues.push('sharing-required');
-			}
+	for (const group of groups.values()) {
+		group.expectedTypes = unique(group.expectedTypes).sort(compare);
+		const { file, expectedTypes, sourceId } = group;
+		if (file && expectedTypes.length === 1 && file.credential.type !== expectedTypes[0]) {
+			throw new UserError(
+				`Package credential file at ${file.path} has type "${file.credential.type}", but workflows use credential "${sourceId}" as "${expectedTypes[0]}".`,
+			);
 		}
 	}
-
-	return issues;
+	return [...groups.values()].sort(
+		(a, b) =>
+			compare(a.sourceId ?? '', b.sourceId ?? '') ||
+			compare(a.expectedTypes[0], b.expectedTypes[0]),
+	);
 }
 
-function projectIssues(
-	projectStatuses: PromotionTargetProjectStatus[],
-	role: 'owner-project' | 'consuming-project',
-): PromotionBindingIssue[] {
-	const issues: PromotionBindingIssue[] = [];
-	if (projectStatuses.includes('missing')) issues.push(`${role}-missing`);
-	if (projectStatuses.includes('personal')) issues.push(`${role}-not-team`);
-	return issues;
-}
-
-function sourceFileOf(
-	file: InventoryCredential | InventoryVariable | undefined,
-	context: TargetContext,
-): PromotionSourceFile {
-	if (!file) return { location: 'missing' };
-	if (file.projectId === null) return { location: 'outside-project', filePath: file.path };
-	return {
-		location: 'project',
-		project: context.projectOf(file.projectId),
-		targetProjectStatus: context.targetProjectStatusOf(file.projectId),
-		filePath: file.path,
-	};
-}
-
-/** Variable files by name, sorted by path, so the fallback choice below does not depend on reader order. */
-function indexVariableFiles(files: InventoryVariable[]): Map<string, InventoryVariable[]> {
-	const byName = new Map<string, InventoryVariable[]>();
-	for (const file of [...files].sort((a, b) => compare(a.path, b.path))) {
-		pushTo(byName, file.variable.name, file);
+/** Resolve source project scope first, then source global scope. Other projects do not supply a fallback. */
+function collectVariableReferences(
+	inventory: PackageDirectoryInventory,
+	extractor: VariableRequirementsExtractor,
+): VariableReference[] {
+	const files = new Map(
+		inventory.variables.map((file) => [variableKey(file.variable.name, file.projectId), file]),
+	);
+	const groups = new Map<string, VariableReference>();
+	for (const workflow of inventory.workflows) {
+		const requirements = extractor.extract({
+			id: workflow.id,
+			nodes: workflow.content.nodes,
+			settings: workflow.content.settings,
+		});
+		for (const { variableName: name } of requirements) {
+			const file =
+				files.get(variableKey(name, workflow.projectId)) ?? files.get(variableKey(name, null));
+			const key = JSON.stringify([file ? 'defined' : 'missing', file?.projectId, name]);
+			const group = groups.get(key) ?? { name, file, workflows: [] };
+			group.workflows.push(workflow);
+			groups.set(key, group);
+		}
 	}
-	return byName;
-}
-
-/** The bundle inside the consuming project wins. Otherwise the first bundle by path is the evidence. */
-function variableFile(
-	filesByName: Map<string, InventoryVariable[]>,
-	name: string,
-	projectId: string,
-): InventoryVariable | undefined {
-	const bundles = filesByName.get(name) ?? [];
-	return bundles.find((file) => file.projectId === projectId) ?? bundles[0];
+	return [...groups.values()].sort(
+		(a, b) => compare(a.file?.projectId ?? '', b.file?.projectId ?? '') || compare(a.name, b.name),
+	);
 }
 
 function consumersOf(
-	uses: CredentialUse[],
-	context: TargetContext,
-): Array<Omit<CredentialConsumer, 'accessStatus'>> {
+	workflows: InventoryWorkflow[],
+	projectOf: ProjectLookup,
+): PromotionBindingConsumer[] {
 	const byProject = new Map<string, InventoryWorkflow[]>();
-	for (const use of uses) pushTo(byProject, use.workflow.projectId, use.workflow);
-
+	for (const workflow of workflows) {
+		const group = byProject.get(workflow.projectId) ?? [];
+		group.push(workflow);
+		byProject.set(workflow.projectId, group);
+	}
 	return [...byProject.entries()]
 		.sort(([a], [b]) => compare(a, b))
-		.map(([projectId, workflows]) => ({
-			project: context.projectOf(projectId),
-			targetProjectStatus: context.targetProjectStatusOf(projectId),
-			workflows: workflowRefs(workflows),
-		}));
+		.map(([projectId, uses]) => ({ project: projectOf(projectId), workflows: workflowRefs(uses) }));
 }
 
 function workflowRefs(workflows: InventoryWorkflow[]): Array<{ id: string; name: string }> {
-	const byId = new Map(workflows.map((workflow) => [workflow.id, workflow]));
-	return [...byId.values()]
+	return [...new Map(workflows.map((workflow) => [workflow.id, workflow])).values()]
 		.sort((a, b) => compare(a.id, b.id))
 		.map(({ id, name }) => ({ id, name }));
 }
 
-function variableKey(name: string, projectId: string | null): string {
-	return `${projectId ?? ''}\0${name}`;
+function referenceFiles(workflows: InventoryWorkflow[]): string[] {
+	return unique(workflows.map(({ path }) => path)).sort(compare);
 }
 
-function pushTo<T>(map: Map<string, T[]>, key: string, value: T): void {
-	const bucket = map.get(key);
-	if (bucket) bucket.push(value);
-	else map.set(key, [value]);
+function variableKey(name: string, projectId: string | null): string {
+	return JSON.stringify([projectId, name]);
 }
 
 function unique<T>(values: T[]): T[] {

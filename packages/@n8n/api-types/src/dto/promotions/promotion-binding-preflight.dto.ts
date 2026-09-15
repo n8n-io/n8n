@@ -1,43 +1,25 @@
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
+import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
 
-export const promotionBindingProjectSchema = z.object({
-	id: sourceId,
-	name: z.string(),
+export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+const workflowSchema = z.object({ id: sourceId, name: z.string() });
+
+export const promotionBindingConsumerSchema = z.object({
+	project: promotionBindingProjectSchema,
+	workflows: z.array(workflowSchema).min(1),
 });
+const consumersSchema = z.array(promotionBindingConsumerSchema).min(1);
 
-const workflowSchema = z.object({
-	id: sourceId,
-	name: z.string(),
-});
-
-/** What the target has for a source project id. */
-export const promotionTargetProjectStatusSchema = z.enum(['team', 'personal', 'missing']);
-
-/**
- * What the package files say about who owns the item. A file inside an exported
- * project directory names its owner. A file outside every project directory
- * does not: the owner can be global or a project that was not exported.
- */
-export const promotionSourceFileSchema = z.discriminatedUnion('location', [
-	z.object({
-		location: z.literal('project'),
-		project: promotionBindingProjectSchema,
-		targetProjectStatus: promotionTargetProjectStatusSchema,
-		filePath: z.string(),
-	}),
-	z.object({ location: z.literal('outside-project'), filePath: z.string() }),
-	z.object({ location: z.literal('missing') }),
+export const promotionVariableScopeSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('global') }),
+	z.object({ kind: z.literal('project'), project: promotionBindingProjectSchema }),
 ]);
 
-/**
- * Exported credential data. This schema checks the shape only. The package
- * reader validates that every leaf is an n8n expression before it gets here,
- * so no secret can arrive through this field.
- */
+/** The package reader validates that each leaf is an expression. */
 export type PromotionCredentialExpressionValue =
 	| string
 	| PromotionCredentialExpressionValue[]
@@ -51,95 +33,100 @@ const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExp
 			z.record(promotionCredentialExpressionValueSchema),
 		]),
 	);
-
 export const promotionCredentialExpressionDataSchema = z.record(
 	promotionCredentialExpressionValueSchema,
 );
 
-export const promotionBindingIssueSchema = z.enum([
-	/** A workflow node references the credential without an id. */
-	'missing-id',
-	/** Workflows use one credential id with different credential types. */
-	'conflicting-types',
-	/** The target does not know the credential type. */
-	'unknown-type',
-	/** The target has no credential with this id. */
-	'missing-credential',
-	/** The target has no variable with this name in the project or globally. */
-	'missing-variable',
-	/** Only a global variable with this name exists. The workflow runs with it unless a project variable is created. */
-	'global-only',
-	/** The target credential with this id has another type. */
-	'type-mismatch',
-	/** The target credential exists but a consuming project cannot use it. */
-	'unavailable',
-	/** The files do not say which project owns the item. */
-	'unknown-owner',
-	/** The project that owns the item does not exist on the target yet. */
-	'owner-project-missing',
-	/** The project id that owns the item belongs to a personal project on the target. */
-	'owner-project-not-team',
-	/** A project that uses the item does not exist on the target yet. */
-	'consuming-project-missing',
-	/** A project id that uses the item belongs to a personal project on the target. */
-	'consuming-project-not-team',
-	/** The item is owned by one project and used in others. Creation alone does not grant access there. */
-	'sharing-required',
-]);
-
-const consumingProjectSchema = z.object({
-	project: promotionBindingProjectSchema,
-	targetProjectStatus: promotionTargetProjectStatusSchema,
-	workflows: z.array(workflowSchema).min(1),
+const credentialSchema = z.object({
+	kind: z.literal('credential'),
+	sourceId,
+	name: z.string(),
+	credentialType: z.string().min(1),
+	consumers: consumersSchema,
 });
 
-/** One record per source credential id, or per expected type for references without an id. */
-export const promotionCredentialBindingReviewSchema = z.object({
+export const promotionMissingCredentialBindingSchema = credentialSchema.extend({
+	ownerProject: promotionBindingProjectSchema,
+	expressionData: promotionCredentialExpressionDataSchema.optional(),
+});
+
+export const promotionMissingVariableBindingSchema = z.object({
+	kind: z.literal('variable'),
+	name: z.string().min(1),
+	variableType: variableTypeSchema,
+	scope: promotionVariableScopeSchema,
+	/** Bundled creation value. An empty string is a supplied value. */
+	sourceValue: variableValueSchema.optional(),
+	consumers: consumersSchema,
+});
+
+export const promotionBindingAccessRequirementSchema = credentialSchema.extend({
+	code: z.literal('access-required'),
+});
+
+const credentialConflictSchema = z.object({
 	kind: z.literal('credential'),
 	sourceId: sourceId.nullable(),
 	name: z.string(),
-	/** More than one entry means the workflows disagree about the type. */
 	expectedTypes: z.array(z.string()).min(1),
-	expressionData: promotionCredentialExpressionDataSchema.optional(),
-	sourceFile: promotionSourceFileSchema,
-	/** `unchecked` when the reference has no usable id or type. */
-	targetMatch: z.enum(['missing', 'matched', 'type-mismatch', 'unchecked']),
-	consumers: z
-		.array(
-			consumingProjectSchema.extend({
-				/** `unchecked` when the credential or the project is not there to check against. */
-				accessStatus: z.enum(['usable', 'unavailable', 'unchecked']),
-			}),
-		)
-		.min(1),
-	issues: z.array(promotionBindingIssueSchema).min(1),
+	filePath: z.string().optional(),
+	referenceFiles: z.array(z.string()).min(1),
+	consumers: consumersSchema,
 });
 
-/** One record per variable name and consuming project. Values are never included. */
-export const promotionVariableBindingReviewSchema = z.object({
-	kind: z.literal('variable'),
-	name: z.string().min(1),
-	sourceFile: promotionSourceFileSchema,
-	consumer: consumingProjectSchema,
-	/** A project variable resolves the requirement, so a listed variable is at most matched globally. */
-	targetMatch: z.enum(['missing', 'global-fallback']),
-	issues: z.array(promotionBindingIssueSchema).min(1),
-});
-
-export const promotionBindingReviewSchema = z.discriminatedUnion('kind', [
-	promotionCredentialBindingReviewSchema,
-	promotionVariableBindingReviewSchema,
+/** Conflicts need a package or target correction before creation can proceed. */
+export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
+	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
+	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
+	credentialConflictSchema.extend({ code: z.literal('unknown-type') }),
+	credentialConflictSchema.extend({ code: z.literal('unknown-owner') }),
+	credentialConflictSchema.extend({
+		code: z.literal('type-mismatch'),
+		targetType: z.string(),
+	}),
+	credentialConflictSchema.extend({
+		code: z.literal('incompatible-usage-scope'),
+		usageScope: z.string(),
+	}),
+	z.object({
+		kind: z.literal('variable'),
+		code: z.literal('missing-definition'),
+		name: z.string().min(1),
+		referenceFiles: z.array(z.string()).min(1),
+		consumers: consumersSchema,
+	}),
+	z.object({
+		kind: z.literal('project'),
+		code: z.literal('project-not-team'),
+		project: promotionBindingProjectSchema,
+		filePath: z.string(),
+		workflows: z.array(workflowSchema),
+	}),
 ]);
 
+export const promotionBindingWarningSchema = z.object({
+	kind: z.literal('variable'),
+	code: z.literal('variable-shadowed'),
+	name: z.string().min(1),
+	scope: z.object({ kind: z.literal('global') }),
+	consumers: consumersSchema,
+});
+
 /**
- * Result of the read-only binding check before Apply imports a package.
- * Lists credential and variable bindings that need review. Includes variables
- * that resolve through a global fallback. Each record contains facts from the
- * package and target. The check never chooses where to create an item.
- * All ids and names are source values from the package files.
+ * Read-only check of package references. Source IDs define creation scope.
+ * This result does not certify a complete mirror or authorize later writes.
+ * Callers must enforce inspection permissions, including variable list permissions.
  */
 export const promotionBindingPreflightResultSchema = z.object({
-	bindingsNeedingReview: z.array(promotionBindingReviewSchema),
+	missingBindings: z.array(
+		z.discriminatedUnion('kind', [
+			promotionMissingCredentialBindingSchema,
+			promotionMissingVariableBindingSchema,
+		]),
+	),
+	accessRequirements: z.array(promotionBindingAccessRequirementSchema),
+	conflicts: z.array(promotionBindingConflictSchema),
+	warnings: z.array(promotionBindingWarningSchema),
 });
 
 export class PromotionBindingPreflightResultDto extends Z.class(
@@ -147,15 +134,10 @@ export class PromotionBindingPreflightResultDto extends Z.class(
 ) {}
 
 export type PromotionBindingProject = z.infer<typeof promotionBindingProjectSchema>;
-export type PromotionTargetProjectStatus = z.infer<typeof promotionTargetProjectStatusSchema>;
-export type PromotionSourceFile = z.infer<typeof promotionSourceFileSchema>;
+export type PromotionBindingConsumer = z.infer<typeof promotionBindingConsumerSchema>;
+export type PromotionVariableScope = z.infer<typeof promotionVariableScopeSchema>;
 export type PromotionCredentialExpressionData = z.infer<
 	typeof promotionCredentialExpressionDataSchema
 >;
-export type PromotionBindingIssue = z.infer<typeof promotionBindingIssueSchema>;
-export type PromotionCredentialBindingReview = z.infer<
-	typeof promotionCredentialBindingReviewSchema
->;
-export type PromotionVariableBindingReview = z.infer<typeof promotionVariableBindingReviewSchema>;
-export type PromotionBindingReview = z.infer<typeof promotionBindingReviewSchema>;
+export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSchema>;
 export type PromotionBindingPreflightResult = z.infer<typeof promotionBindingPreflightResultSchema>;

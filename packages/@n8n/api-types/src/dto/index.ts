@@ -565,28 +565,7 @@ export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
-export {
-	PromotionBindingPreflightResultDto,
-	promotionBindingIssueSchema,
-	promotionBindingPreflightResultSchema,
-	promotionBindingProjectSchema,
-	promotionBindingReviewSchema,
-	promotionCredentialBindingReviewSchema,
-	promotionCredentialExpressionDataSchema,
-	promotionSourceFileSchema,
-	promotionTargetProjectStatusSchema,
-	promotionVariableBindingReviewSchema,
-	type PromotionBindingIssue,
-	type PromotionBindingPreflightResult,
-	type PromotionBindingProject,
-	type PromotionBindingReview,
-	type PromotionCredentialBindingReview,
-	type PromotionCredentialExpressionData,
-	type PromotionCredentialExpressionValue,
-	type PromotionSourceFile,
-	type PromotionTargetProjectStatus,
-	type PromotionVariableBindingReview,
-} from './promotions/promotion-binding-preflight.dto';
+export * from './promotions/promotion-binding-preflight.dto';
 export {
 	CreatePromotionConnectionDto,
 	ListPromotionConnectionsQueryDto,

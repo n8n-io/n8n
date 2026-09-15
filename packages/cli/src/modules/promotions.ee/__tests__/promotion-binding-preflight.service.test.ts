@@ -1,9 +1,9 @@
+import { promotionBindingPreflightResultSchema } from '@n8n/api-types';
 import type { CredentialsRepository, ProjectRepository, User, VariablesRepository } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { IdBasedCredentialMatcher } from '@/modules/n8n-packages/entities/credential/id-based-credential-matcher';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import type {
 	InventoryCredential,
@@ -20,7 +20,6 @@ const user = mock<User>({ id: 'user-1' });
 
 const inventoryReader = mock<PackageDirectoryInventoryReader>();
 const credentialTypes = mock<CredentialTypes>();
-const credentialMatcher = mock<IdBasedCredentialMatcher>();
 const credentialsRepository = mock<CredentialsRepository>();
 const variablesRepository = mock<VariablesRepository>();
 const projectRepository = mock<ProjectRepository>();
@@ -30,7 +29,6 @@ const service = new PromotionBindingPreflightService(
 	inventoryReader,
 	new VariableRequirementsExtractor(),
 	credentialTypes,
-	credentialMatcher,
 	credentialsRepository,
 	variablesRepository,
 	projectRepository,
@@ -122,22 +120,41 @@ function useInventory(inventory: Partial<PackageDirectoryInventory>) {
 
 const workflowRef = (id: string) => ({ id, name: `Workflow ${id}` });
 
-const check = async () =>
-	(await service.checkDirectory({ sourceDir: '/checkout', user })).bindingsNeedingReview;
+const emptyResult = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
+const check = async () => {
+	const result = await service.checkDirectory({ sourceDir: '/checkout', user });
+	expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
+	return result;
+};
+const consumer = (project: typeof PROJECT_A, ...ids: string[]) => ({
+	project,
+	workflows: ids.map(workflowRef),
+});
+const targetCredential = (
+	id: string,
+	projectIds: string[] = [],
+	overrides: Partial<
+		Awaited<ReturnType<CredentialsRepository['findPromotionBindingAccess']>>[number]
+	> = {},
+) => ({
+	id,
+	type: 'githubApi',
+	usageScope: 'project' as const,
+	isGlobal: false,
+	projectIds,
+	...overrides,
+});
 
 describe('PromotionBindingPreflightService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
-		credentialMatcher.match.mockResolvedValue({ successes: new Map(), failures: [] });
-		credentialsRepository.findTypesByIds.mockResolvedValue([]);
+		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
-		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
-			ids.map((id) => ({ id, type: 'team' as const })),
-		);
+		projectRepository.findTypesByIds.mockResolvedValue([]);
 	});
 
-	it('returns a missing credential and variable with owner evidence, consumers and expression data', async () => {
+	it('returns a missing credential and variable with owner context, consumers and expression data', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
@@ -156,86 +173,60 @@ describe('PromotionBindingPreflightService', () => {
 				inventoryVariable('UNUSED', PROJECT_A.id),
 			],
 		});
-
-		expect(await check()).toEqual([
-			{
-				kind: 'credential',
-				sourceId: 'cred-1',
-				name: 'Credential cred-1',
-				expectedTypes: ['githubApi'],
-				expressionData: { token: '={{ $secrets.gh }}' },
-				sourceFile: {
-					location: 'project',
-					project: PROJECT_A,
-					targetProjectStatus: 'team',
-					filePath: 'projects/proj-a/credentials/cred-1/credential.json',
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				{
+					kind: 'credential',
+					sourceId: 'cred-1',
+					name: 'Credential cred-1',
+					credentialType: 'githubApi',
+					expressionData: { token: '={{ $secrets.gh }}' },
+					ownerProject: PROJECT_A,
+					consumers: [consumer(PROJECT_A, 'wf-1', 'wf-2')],
 				},
-				targetMatch: 'missing',
-				consumers: [
-					{
-						project: PROJECT_A,
-						targetProjectStatus: 'team',
-						workflows: [workflowRef('wf-1'), workflowRef('wf-2')],
-						accessStatus: 'unchecked',
-					},
-				],
-				issues: ['missing-credential'],
-			},
-			{
-				kind: 'variable',
-				name: 'REGION',
-				sourceFile: {
-					location: 'project',
-					project: PROJECT_A,
-					targetProjectStatus: 'team',
-					filePath: 'projects/proj-a/variables/REGION/variable.json',
+				{
+					kind: 'variable',
+					name: 'REGION',
+					variableType: 'string',
+					scope: { kind: 'project', project: PROJECT_A },
+					consumers: [consumer(PROJECT_A, 'wf-1')],
 				},
-				consumer: {
-					project: PROJECT_A,
-					targetProjectStatus: 'team',
-					workflows: [workflowRef('wf-1')],
-				},
-				targetMatch: 'missing',
-				issues: ['missing-variable'],
-			},
-		]);
-		expect(credentialsRepository.findTypesByIds).toHaveBeenCalledWith(['cred-1']);
-		expect(variablesRepository.findKeysInProjectsOrGlobal).toHaveBeenCalledWith(
+			],
+		});
+		expect(credentialsRepository.findPromotionBindingAccess).toHaveBeenCalledExactlyOnceWith(
+			['cred-1'],
+			[PROJECT_A.id],
+		);
+		expect(variablesRepository.findKeysInProjectsOrGlobal).toHaveBeenCalledExactlyOnceWith(
 			['REGION'],
 			[PROJECT_A.id],
 		);
-		expect(credentialMatcher.match).not.toHaveBeenCalled();
 	});
 
-	it('returns nothing when every credential is usable and every variable exists in its project', async () => {
+	it('returns nothing when every credential is usable and every variable exists in its source project', async () => {
 		useInventory({
+			projects: [{ path: 'projects/proj-a', ...PROJECT_A }],
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
 					credentialNode('GitHub', 'githubApi', 'cred-1'),
 					variableNode('Set', '={{ $vars.REGION }}'),
 				]),
 			],
+			variables: [inventoryVariable('REGION', PROJECT_A.id)],
 		});
-		credentialsRepository.findTypesByIds.mockResolvedValue([{ id: 'cred-1', type: 'githubApi' }]);
+		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([
+			targetCredential('cred-1', [PROJECT_A.id]),
+		]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([
 			{ key: 'REGION', projectId: PROJECT_A.id },
 		]);
-
-		expect(await check()).toEqual([]);
-		expect(credentialMatcher.match).toHaveBeenCalledWith(
-			[
-				{
-					id: 'cred-1',
-					name: 'githubApi credential',
-					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
-				},
-			],
-			{ projectId: PROJECT_A.id, user },
-		);
+		projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_A.id, type: 'team' }]);
+		expect(await check()).toEqual(emptyResult);
+		expect(projectRepository.findTypesByIds).toHaveBeenCalledExactlyOnceWith([PROJECT_A.id]);
 	});
 
-	it('keeps an existing credential unresolved when its type differs or a project cannot use it', async () => {
+	it('separates type conflicts from access setup and preserves each project grant', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
@@ -247,61 +238,61 @@ describe('PromotionBindingPreflightService', () => {
 				]),
 			],
 		});
-		credentialsRepository.findTypesByIds.mockResolvedValue([
-			{ id: 'cred-wrong-type', type: 'gitlabApi' },
-			{ id: 'cred-private', type: 'slackApi' },
+		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([
+			targetCredential('cred-wrong-type', [], { type: 'gitlabApi' }),
+			targetCredential('cred-private', [PROJECT_A.id], { type: 'slackApi' }),
 		]);
-		credentialMatcher.match.mockImplementation(async (_, { projectId }) => ({
-			successes: new Map(),
-			failures:
-				projectId === PROJECT_B.id
-					? [{ kind: 'not_found', sourceId: 'cred-private', usedByWorkflows: ['wf-2'] }]
-					: [],
-		}));
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-private',
-				targetMatch: 'matched',
-				sourceFile: { location: 'missing' },
-				consumers: [
-					expect.objectContaining({ project: PROJECT_A, accessStatus: 'usable' }),
-					expect.objectContaining({ project: PROJECT_B, accessStatus: 'unavailable' }),
-				],
-				issues: ['unavailable'],
-			}),
-			expect.objectContaining({
-				sourceId: 'cred-wrong-type',
-				expectedTypes: ['githubApi'],
-				targetMatch: 'type-mismatch',
-				consumers: [expect.objectContaining({ accessStatus: 'unchecked' })],
-				issues: ['type-mismatch'],
-			}),
+		projectRepository.findTypesByIds.mockResolvedValue([
+			{ id: PROJECT_A.id, type: 'team' },
+			{ id: PROJECT_B.id, type: 'team' },
 		]);
-		expect(credentialMatcher.match).toHaveBeenCalledTimes(2);
+		expect(await check()).toEqual({
+			...emptyResult,
+			accessRequirements: [
+				{
+					kind: 'credential',
+					code: 'access-required',
+					sourceId: 'cred-private',
+					name: 'slackApi credential',
+					credentialType: 'slackApi',
+					consumers: [consumer(PROJECT_B, 'wf-2')],
+				},
+			],
+			conflicts: [
+				expect.objectContaining({
+					code: 'type-mismatch',
+					sourceId: 'cred-wrong-type',
+					targetType: 'gitlabApi',
+					consumers: [consumer(PROJECT_A, 'wf-1')],
+				}),
+			],
+		});
 	});
 
-	it('reports an unknown credential type and does not check usability for it', async () => {
+	it('reports an unknown credential type', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [credentialNode('Odd', 'unknownApi', 'cred-1')]),
 			],
 		});
 		credentialTypes.recognizes.mockReturnValue(false);
-		credentialsRepository.findTypesByIds.mockResolvedValue([{ id: 'cred-1', type: 'unknownApi' }]);
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-1',
-				targetMatch: 'matched',
-				consumers: [expect.objectContaining({ accessStatus: 'unchecked' })],
-				issues: ['unknown-type'],
-			}),
+		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([
+			targetCredential('cred-1', [], { type: 'unknownApi' }),
 		]);
-		expect(credentialMatcher.match).not.toHaveBeenCalled();
+		expect(await check()).toEqual({
+			...emptyResult,
+			conflicts: [
+				expect.objectContaining({
+					code: 'unknown-type',
+					sourceId: 'cred-1',
+					expectedTypes: ['unknownApi'],
+					consumers: [consumer(PROJECT_A, 'wf-1')],
+				}),
+			],
+		});
 	});
 
-	it('keeps a reference without an id and an id used with two types, without checking the target', async () => {
+	it('keeps a reference without an id and an id used with two types', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-1', PROJECT_A.id, [
@@ -313,27 +304,24 @@ describe('PromotionBindingPreflightService', () => {
 				]),
 			],
 		});
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: null,
-				name: 'githubApi credential',
-				expectedTypes: ['githubApi'],
-				targetMatch: 'unchecked',
-				consumers: [expect.objectContaining({ workflows: [workflowRef('wf-1')] })],
-				issues: ['missing-id'],
-			}),
-			expect.objectContaining({
-				sourceId: 'cred-1',
-				expectedTypes: ['githubApi', 'gitlabApi'],
-				targetMatch: 'unchecked',
-				consumers: [
-					expect.objectContaining({ workflows: [workflowRef('wf-1'), workflowRef('wf-2')] }),
-				],
-				issues: ['conflicting-types'],
-			}),
-		]);
-		expect(credentialsRepository.findTypesByIds).toHaveBeenCalledWith(['cred-1']);
+		expect(await check()).toEqual({
+			...emptyResult,
+			conflicts: [
+				expect.objectContaining({
+					code: 'missing-id',
+					sourceId: null,
+					name: 'githubApi credential',
+					expectedTypes: ['githubApi'],
+					consumers: [consumer(PROJECT_A, 'wf-1')],
+				}),
+				expect.objectContaining({
+					code: 'conflicting-types',
+					sourceId: 'cred-1',
+					expectedTypes: ['githubApi', 'gitlabApi'],
+					consumers: [consumer(PROJECT_A, 'wf-1', 'wf-2')],
+				}),
+			],
+		});
 	});
 
 	it('fails when a bundled credential file has another type than the workflows expect', async () => {
@@ -343,7 +331,6 @@ describe('PromotionBindingPreflightService', () => {
 			],
 			credentials: [inventoryCredential('cred-1', PROJECT_A.id, 'gitlabApi')],
 		});
-
 		await expect(check()).rejects.toThrow(
 			'has type "gitlabApi", but workflows use credential "cred-1" as "githubApi"',
 		);
@@ -359,49 +346,53 @@ describe('PromotionBindingPreflightService', () => {
 			],
 			credentials: [inventoryCredential('cred-top', null)],
 		});
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-no-file',
-				name: 'githubApi credential',
-				sourceFile: { location: 'missing' },
-				issues: ['missing-credential', 'unknown-owner'],
-			}),
-			expect.objectContaining({
-				sourceId: 'cred-top',
-				name: 'Credential cred-top',
-				sourceFile: {
-					location: 'outside-project',
-					filePath: 'credentials/cred-top/credential.json',
+		expect(await check()).toEqual({
+			...emptyResult,
+			conflicts: [
+				{
+					kind: 'credential',
+					code: 'unknown-owner',
+					sourceId: 'cred-no-file',
+					name: 'githubApi credential',
+					expectedTypes: ['githubApi'],
+					referenceFiles: ['projects/proj-a/workflows/wf-1/workflow.json'],
+					consumers: [consumer(PROJECT_A, 'wf-1')],
 				},
-				issues: ['missing-credential', 'unknown-owner'],
-			}),
-		]);
+				{
+					kind: 'credential',
+					code: 'unknown-owner',
+					sourceId: 'cred-top',
+					name: 'Credential cred-top',
+					expectedTypes: ['githubApi'],
+					filePath: 'credentials/cred-top/credential.json',
+					referenceFiles: ['projects/proj-a/workflows/wf-1/workflow.json'],
+					consumers: [consumer(PROJECT_A, 'wf-1')],
+				},
+			],
+		});
 	});
 
-	it('keeps one record for a missing credential used in two projects and asks for sharing', async () => {
+	it('keeps one missing credential with its source owner and all consuming projects', async () => {
 		useInventory({
 			workflows: [
-				inventoryWorkflow('wf-a', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
 				inventoryWorkflow('wf-b', PROJECT_B.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
+				inventoryWorkflow('wf-a', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
 			],
-			credentials: [inventoryCredential('cred-1', PROJECT_A.id)],
+			credentials: [inventoryCredential('cred-1', PROJECT_C.id)],
 		});
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-1',
-				sourceFile: expect.objectContaining({ location: 'project', project: PROJECT_A }),
-				consumers: [
-					expect.objectContaining({ project: PROJECT_A, workflows: [workflowRef('wf-a')] }),
-					expect.objectContaining({ project: PROJECT_B, workflows: [workflowRef('wf-b')] }),
-				],
-				issues: ['missing-credential', 'sharing-required'],
-			}),
-		]);
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({
+					sourceId: 'cred-1',
+					ownerProject: PROJECT_C,
+					consumers: [consumer(PROJECT_A, 'wf-a'), consumer(PROJECT_B, 'wf-b')],
+				}),
+			],
+		});
 	});
 
-	it('surfaces missing and non-team target projects on the bindings that depend on them', async () => {
+	it('reports personal project collisions and treats missing projects as normal setup', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
@@ -413,51 +404,41 @@ describe('PromotionBindingPreflightService', () => {
 				]),
 			],
 			credentials: [inventoryCredential('cred-new', PROJECT_B.id)],
+			variables: [inventoryVariable('REGION', PROJECT_A.id)],
 		});
 		projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_B.id, type: 'personal' }]);
-		credentialsRepository.findTypesByIds.mockResolvedValue([
-			{ id: 'cred-existing', type: 'githubApi' },
+		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([
+			targetCredential('cred-existing'),
 		]);
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-existing',
-				targetMatch: 'matched',
-				consumers: [
-					expect.objectContaining({
-						project: PROJECT_C,
-						targetProjectStatus: 'missing',
-						accessStatus: 'unchecked',
-					}),
-				],
-				issues: ['consuming-project-missing'],
-			}),
-			expect.objectContaining({
-				sourceId: 'cred-new',
-				targetMatch: 'missing',
-				sourceFile: expect.objectContaining({
+		expect(await check()).toEqual({
+			missingBindings: [
+				expect.objectContaining({
+					kind: 'variable',
+					name: 'REGION',
+					scope: { kind: 'project', project: PROJECT_A },
+				}),
+			],
+			accessRequirements: [
+				expect.objectContaining({
+					code: 'access-required',
+					sourceId: 'cred-existing',
+					consumers: [consumer(PROJECT_C, 'wf-c')],
+				}),
+			],
+			conflicts: [
+				{
+					kind: 'project',
+					code: 'project-not-team',
 					project: PROJECT_B,
-					targetProjectStatus: 'personal',
-				}),
-				consumers: [
-					expect.objectContaining({ project: PROJECT_B, targetProjectStatus: 'personal' }),
-				],
-				issues: ['missing-credential', 'consuming-project-not-team', 'owner-project-not-team'],
-			}),
-			expect.objectContaining({
-				kind: 'variable',
-				name: 'REGION',
-				consumer: expect.objectContaining({
-					project: PROJECT_A,
-					targetProjectStatus: 'missing',
-				}),
-				issues: ['missing-variable', 'consuming-project-missing', 'unknown-owner'],
-			}),
-		]);
-		expect(credentialMatcher.match).not.toHaveBeenCalled();
+					filePath: 'projects/proj-b/project.json',
+					workflows: [workflowRef('wf-b')],
+				},
+			],
+			warnings: [],
+		});
 	});
 
-	it('keeps one variable record per project and records where the package bundles the name', async () => {
+	it('resolves a variable only from its source project or source global definition', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-a', PROJECT_A.id, [
@@ -467,37 +448,39 @@ describe('PromotionBindingPreflightService', () => {
 			],
 			variables: [
 				inventoryVariable('GLOBAL_ONLY', null),
-				inventoryVariable('REGION', PROJECT_A.id),
+				inventoryVariable('REGION', PROJECT_B.id),
 			],
 		});
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([
-			{ key: 'REGION', projectId: PROJECT_B.id },
+			{ key: 'REGION', projectId: PROJECT_A.id },
 		]);
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				name: 'GLOBAL_ONLY',
-				sourceFile: {
-					location: 'outside-project',
-					filePath: 'variables/GLOBAL_ONLY/variable.json',
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({
+					name: 'GLOBAL_ONLY',
+					scope: { kind: 'global' },
+					consumers: [consumer(PROJECT_A, 'wf-a')],
+				}),
+				expect.objectContaining({
+					name: 'REGION',
+					scope: { kind: 'project', project: PROJECT_B },
+					consumers: [consumer(PROJECT_B, 'wf-b')],
+				}),
+			],
+			conflicts: [
+				{
+					kind: 'variable',
+					code: 'missing-definition',
+					name: 'REGION',
+					consumers: [consumer(PROJECT_A, 'wf-a')],
+					referenceFiles: ['projects/proj-a/workflows/wf-a/workflow.json'],
 				},
-				consumer: expect.objectContaining({ project: PROJECT_A }),
-				issues: ['missing-variable', 'unknown-owner'],
-			}),
-			expect.objectContaining({
-				name: 'REGION',
-				sourceFile: expect.objectContaining({ location: 'project', project: PROJECT_A }),
-				consumer: expect.objectContaining({ project: PROJECT_A }),
-				issues: ['missing-variable'],
-			}),
-		]);
-		expect(variablesRepository.findKeysInProjectsOrGlobal).toHaveBeenCalledWith(
-			['REGION', 'GLOBAL_ONLY'],
-			[PROJECT_A.id, PROJECT_B.id],
-		);
+			],
+		});
 	});
 
-	it('keeps a variable that only a global variable matches, marked as the fallback it is', async () => {
+	it('returns a missing project variable even when the target has a global fallback', async () => {
 		useInventory({
 			workflows: [
 				inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
@@ -507,15 +490,16 @@ describe('PromotionBindingPreflightService', () => {
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([
 			{ key: 'REGION', projectId: null },
 		]);
-
-		expect(await check()).toEqual([
-			expect.objectContaining({
-				kind: 'variable',
-				name: 'REGION',
-				targetMatch: 'global-fallback',
-				issues: ['global-only'],
-			}),
-		]);
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({
+					kind: 'variable',
+					name: 'REGION',
+					scope: { kind: 'project', project: PROJECT_A },
+				}),
+			],
+		});
 	});
 
 	it('finds credentials inside an inline sub-workflow and variables in workflow settings', async () => {
@@ -539,11 +523,221 @@ describe('PromotionBindingPreflightService', () => {
 				),
 			],
 			credentials: [inventoryCredential('cred-inner', PROJECT_A.id)],
+			variables: [inventoryVariable('ERROR_WF', null)],
 		});
-
-		expect(await check()).toEqual([
+		expect((await check()).missingBindings).toEqual([
 			expect.objectContaining({ kind: 'credential', sourceId: 'cred-inner' }),
 			expect.objectContaining({ kind: 'variable', name: 'ERROR_WF' }),
 		]);
+	});
+
+	it.each([
+		{
+			isGlobal: false,
+			usageScope: 'project' as const,
+			type: 'githubApi',
+			access: true,
+			code: undefined,
+		},
+		{
+			isGlobal: true,
+			usageScope: 'project' as const,
+			type: 'githubApi',
+			access: false,
+			code: undefined,
+		},
+		{
+			isGlobal: true,
+			usageScope: 'instance' as const,
+			type: 'githubApi',
+			access: false,
+			code: 'incompatible-usage-scope',
+		},
+		{
+			isGlobal: false,
+			usageScope: 'instance' as const,
+			type: 'githubApi',
+			access: false,
+			code: 'incompatible-usage-scope',
+		},
+		{
+			isGlobal: true,
+			usageScope: 'project' as const,
+			type: 'slackApi',
+			access: false,
+			code: 'type-mismatch',
+		},
+	])(
+		'checks existing credentials for new projects: $isGlobal / $usageScope / $type',
+		async ({ isGlobal, usageScope, type, access, code }) => {
+			useInventory({
+				workflows: [
+					inventoryWorkflow('wf-a', PROJECT_A.id, [
+						credentialNode('GitHub', 'githubApi', 'cred-1'),
+					]),
+					inventoryWorkflow('wf-b', PROJECT_B.id, [
+						credentialNode('GitHub', 'githubApi', 'cred-1'),
+					]),
+				],
+			});
+			credentialsRepository.findPromotionBindingAccess.mockResolvedValue([
+				targetCredential('cred-1', [], { isGlobal, usageScope, type }),
+			]);
+			expect(await check()).toEqual({
+				...emptyResult,
+				accessRequirements: access
+					? [
+							{
+								kind: 'credential',
+								code: 'access-required',
+								sourceId: 'cred-1',
+								name: 'githubApi credential',
+								credentialType: 'githubApi',
+								consumers: [consumer(PROJECT_A, 'wf-a'), consumer(PROJECT_B, 'wf-b')],
+							},
+						]
+					: [],
+				conflicts: code
+					? [
+							expect.objectContaining({
+								code,
+								sourceId: 'cred-1',
+								consumers: [consumer(PROJECT_A, 'wf-a'), consumer(PROJECT_B, 'wf-b')],
+							}),
+						]
+					: [],
+			});
+		},
+	);
+
+	it.each([true, false])(
+		'reports global shadowing separately when the target global exists: %s',
+		async (globalExists) => {
+			useInventory({
+				workflows: [
+					inventoryWorkflow('wf-b', PROJECT_B.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+					inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+				],
+				variables: [inventoryVariable('REGION', null)],
+			});
+			variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([
+				{ key: 'REGION', projectId: PROJECT_A.id },
+				...(globalExists ? [{ key: 'REGION', projectId: null }] : []),
+			]);
+			expect(await check()).toEqual({
+				...emptyResult,
+				missingBindings: globalExists
+					? []
+					: [
+							{
+								kind: 'variable',
+								name: 'REGION',
+								variableType: 'string',
+								scope: { kind: 'global' },
+								consumers: [consumer(PROJECT_A, 'wf-a'), consumer(PROJECT_B, 'wf-b')],
+							},
+						],
+				warnings: [
+					{
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name: 'REGION',
+						scope: { kind: 'global' },
+						consumers: [consumer(PROJECT_A, 'wf-a')],
+					},
+				],
+			});
+		},
+	);
+
+	it.each([undefined, '', 'eu-west-1'])(
+		'preserves the bundled value and exact scopes: %s',
+		async (value) => {
+			const a = inventoryVariable('REGION', PROJECT_A.id);
+			if (value !== undefined) a.variable.value = value;
+			useInventory({
+				workflows: [
+					inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+					inventoryWorkflow('wf-b', PROJECT_B.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+				],
+				variables: [
+					a,
+					inventoryVariable('REGION', PROJECT_B.id),
+					inventoryVariable('REGION', null),
+				],
+			});
+			expect(await check()).toEqual({
+				...emptyResult,
+				missingBindings: [
+					{
+						kind: 'variable',
+						name: 'REGION',
+						variableType: 'string',
+						scope: { kind: 'project', project: PROJECT_A },
+						consumers: [consumer(PROJECT_A, 'wf-a')],
+						...(value !== undefined ? { sourceValue: value } : {}),
+					},
+					{
+						kind: 'variable',
+						name: 'REGION',
+						variableType: 'string',
+						scope: { kind: 'project', project: PROJECT_B },
+						consumers: [consumer(PROJECT_B, 'wf-b')],
+					},
+				],
+			});
+		},
+	);
+
+	it('keeps a project named missing separate from an absent variable definition', async () => {
+		const project = { id: 'missing', name: 'Missing' };
+		useInventory({
+			projects: [
+				{ path: 'projects/missing', ...project },
+				{ path: 'projects/proj-a', ...PROJECT_A },
+			],
+			workflows: [
+				inventoryWorkflow('wf-1', project.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+				inventoryWorkflow('wf-2', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+			],
+			variables: [inventoryVariable('REGION', project.id)],
+		});
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingBindings: [
+				expect.objectContaining({
+					name: 'REGION',
+					scope: { kind: 'project', project },
+					consumers: [consumer(project, 'wf-1')],
+				}),
+			],
+			conflicts: [
+				expect.objectContaining({
+					code: 'missing-definition',
+					name: 'REGION',
+					consumers: [consumer(PROJECT_A, 'wf-2')],
+				}),
+			],
+		});
+	});
+
+	it('reports an absent variable definition without guessing its scope', async () => {
+		useInventory({
+			workflows: [
+				inventoryWorkflow('wf-a', PROJECT_A.id, [variableNode('Set', '={{ $vars.REGION }}')]),
+			],
+		});
+		expect(await check()).toEqual({
+			...emptyResult,
+			conflicts: [
+				{
+					kind: 'variable',
+					code: 'missing-definition',
+					name: 'REGION',
+					consumers: [consumer(PROJECT_A, 'wf-a')],
+					referenceFiles: ['projects/proj-a/workflows/wf-a/workflow.json'],
+				},
+			],
+		});
 	});
 });

@@ -16,7 +16,7 @@ import path from 'node:path';
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentials } from '@test-integration/db/credentials';
-import { createOwner } from '@test-integration/db/users';
+import { createOwner, createMember } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
@@ -160,6 +160,11 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				type: 'githubApi',
 				data: { accessToken: '={{ $secrets.vault.gh }}' },
 			},
+			'projects/alpha/variables/region/variable.json': {
+				name: 'REGION',
+				type: 'string',
+				value: 'source',
+			},
 			'projects/personal/project.json': projectFile(personalProject),
 			'projects/personal/workflows/w2/workflow.json': workflowFile('w2', [regionNode()]),
 			'projects/gone/project.json': { id: 'proj-gone', name: 'Gone' },
@@ -174,78 +179,76 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const alpha = { id: projectA.id, name: 'Alpha' };
 		const consumerAlpha = {
 			project: alpha,
-			targetProjectStatus: 'team',
 			workflows: [{ id: 'w1', name: 'Workflow w1' }],
 		};
-		const credentials = result.bindingsNeedingReview.filter((b) => b.kind === 'credential');
-		const variables = result.bindingsNeedingReview.filter((b) => b.kind === 'variable');
-		expect(credentials).toEqual([
-			expect.objectContaining({
-				sourceId: 'cred-in-b',
-				targetMatch: 'matched',
-				consumers: [{ ...consumerAlpha, accessStatus: 'unavailable' }],
-				issues: ['unavailable'],
-			}),
+		expect(result.missingBindings).toEqual([
 			{
 				kind: 'credential',
 				sourceId: 'cred-new',
 				name: 'New GitHub',
-				expectedTypes: ['githubApi'],
+				credentialType: 'githubApi',
 				expressionData: { accessToken: '={{ $secrets.vault.gh }}' },
-				sourceFile: {
-					location: 'project',
-					project: alpha,
-					targetProjectStatus: 'team',
-					filePath: 'projects/alpha/credentials/new/credential.json',
-				},
-				targetMatch: 'missing',
-				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
-				issues: ['missing-credential'],
+				ownerProject: alpha,
+				consumers: [consumerAlpha],
 			},
+			{
+				kind: 'variable',
+				name: 'REGION',
+				variableType: 'string',
+				scope: { kind: 'project', project: alpha },
+				sourceValue: 'source',
+				consumers: [consumerAlpha],
+			},
+		]);
+		expect(result.accessRequirements).toEqual([
+			{
+				kind: 'credential',
+				code: 'access-required',
+				sourceId: 'cred-in-b',
+				name: 'Other project',
+				credentialType: 'githubApi',
+				consumers: [consumerAlpha],
+			},
+		]);
+		expect(result.conflicts).toEqual([
 			expect.objectContaining({
+				kind: 'project',
+				code: 'project-not-team',
+				project: projectFile(personalProject),
+			}),
+			expect.objectContaining({
+				kind: 'credential',
+				code: 'type-mismatch',
 				sourceId: 'cred-slack',
-				targetMatch: 'type-mismatch',
-				consumers: [{ ...consumerAlpha, accessStatus: 'unchecked' }],
-				issues: ['type-mismatch'],
+				targetType: 'slackApi',
+				consumers: [consumerAlpha],
+			}),
+			expect.objectContaining({
+				kind: 'variable',
+				code: 'missing-definition',
+				name: 'REGION',
+				consumers: expect.arrayContaining([
+					{ project: projectFile(personalProject), workflows: [{ id: 'w2', name: 'Workflow w2' }] },
+					{
+						project: { id: 'proj-gone', name: 'Gone' },
+						workflows: [{ id: 'w3', name: 'Workflow w3' }],
+					},
+				]),
 			}),
 		]);
-		// Sorted by project id, which is random here, so compare as a set.
-		expect(variables).toHaveLength(3);
-		expect(variables).toEqual(
-			expect.arrayContaining([
-				{
-					kind: 'variable',
-					name: 'REGION',
-					sourceFile: { location: 'missing' },
-					consumer: consumerAlpha,
-					targetMatch: 'missing',
-					issues: ['missing-variable', 'unknown-owner'],
-				},
-				expect.objectContaining({
-					name: 'REGION',
-					consumer: expect.objectContaining({
-						project: projectFile(personalProject),
-						targetProjectStatus: 'personal',
-					}),
-					issues: ['missing-variable', 'consuming-project-not-team', 'unknown-owner'],
-				}),
-				expect.objectContaining({
-					name: 'REGION',
-					consumer: expect.objectContaining({
-						project: { id: 'proj-gone', name: 'Gone' },
-						targetProjectStatus: 'missing',
-					}),
-					issues: ['missing-variable', 'consuming-project-missing', 'unknown-owner'],
-				}),
-			]),
-		);
+		expect(result.warnings).toEqual([]);
 		expect(promotionBindingPreflightResultSchema.parse(result)).toEqual(result);
 		expect(await snapshot()).toEqual(before);
 	});
 
-	it('reads fresh target state on every call and marks a global-only variable match', async () => {
+	it('reads fresh target state and preserves the source variable scope', async () => {
 		const projectA = await createTeamProject('Alpha', owner);
 		await writePackage({
+			'projects/alpha/variables/region/variable.json': {
+				name: 'REGION',
+				type: 'string',
+				value: 'source',
+			},
 			'projects/alpha/project.json': projectFile(projectA),
 			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
 				regionNode(),
@@ -259,7 +262,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 
 		const first = await service.checkDirectory({ sourceDir, user: owner });
-		expect(first.bindingsNeedingReview.map((binding) => binding.kind)).toEqual([
+		expect(first.missingBindings.map((binding) => binding.kind)).toEqual([
 			'credential',
 			'variable',
 		]);
@@ -271,20 +274,199 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		await createVariable('REGION', 'global');
 
 		const second = await service.checkDirectory({ sourceDir, user: owner });
-		expect(second.bindingsNeedingReview).toEqual([
+		expect(second.missingBindings).toEqual([
 			expect.objectContaining({
 				kind: 'variable',
 				name: 'REGION',
-				targetMatch: 'global-fallback',
-				issues: ['global-only', 'unknown-owner'],
+				scope: { kind: 'project', project: projectFile(projectA) },
+				sourceValue: 'source',
 			}),
 		]);
 
 		await createProjectVariable('REGION', 'eu', projectA);
 
 		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual({
-			bindingsNeedingReview: [],
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: [],
 		});
+	});
+
+	it('checks grants for each project independently of the caller and reads only requested facts', async () => {
+		const member = await createMember();
+		const alpha = await createTeamProject('Alpha', member);
+		const beta = await createTeamProject('Beta', member);
+		const unrelated = await createTeamProject('Unrelated', owner);
+		const credential = await createCredentials(
+			{ id: 'cred-shared', name: 'Shared', type: 'githubApi', data: 'target-secret' },
+			unrelated,
+		);
+		await Container.get(SharedCredentialsRepository).save({
+			credentialsId: credential.id,
+			projectId: alpha.id,
+			role: 'credential:user',
+		});
+		await createCredentials(
+			{ id: 'cred-unrelated', name: 'Private', type: 'slackApi', data: 'private-secret' },
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id),
+		);
+		await writePackage({
+			'projects/alpha/project.json': projectFile(alpha),
+			'projects/beta/project.json': projectFile(beta),
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [
+				credentialNode('Shared', 'githubApi', credential.id),
+			]),
+			'projects/beta/workflows/w2/workflow.json': workflowFile('w2', [
+				credentialNode('Shared', 'githubApi', credential.id),
+			]),
+		});
+		const before = await snapshot();
+		const expected = {
+			missingBindings: [],
+			conflicts: [],
+			warnings: [],
+			accessRequirements: [
+				{
+					kind: 'credential',
+					code: 'access-required',
+					sourceId: credential.id,
+					name: 'Shared',
+					credentialType: 'githubApi',
+					consumers: [
+						{ project: projectFile(beta), workflows: [{ id: 'w2', name: 'Workflow w2' }] },
+					],
+				},
+			],
+		};
+		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual(expected);
+		expect(await service.checkDirectory({ sourceDir, user: member })).toEqual(expected);
+		expect(
+			await Container.get(CredentialsRepository).findPromotionBindingAccess(
+				[credential.id],
+				[alpha.id, beta.id],
+			),
+		).toEqual([
+			{
+				id: credential.id,
+				type: 'githubApi',
+				usageScope: 'project',
+				isGlobal: false,
+				projectIds: [alpha.id],
+			},
+		]);
+		expect(await snapshot()).toEqual(before);
+	});
+
+	it('checks global availability and workflow eligibility for new projects', async () => {
+		const global = await createCredentials(
+			{ id: 'cred-global', name: 'Global', type: 'githubApi', data: '', isGlobal: true },
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id),
+		);
+		await createCredentials(
+			{
+				id: 'cred-instance',
+				name: 'Instance',
+				type: 'githubApi',
+				data: '',
+				isGlobal: true,
+				usageScope: 'instance',
+			},
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id),
+		);
+		await createCredentials(
+			{ id: 'cred-local', name: 'Local', type: 'githubApi', data: '' },
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id),
+		);
+		await writePackage({
+			'projects/new/project.json': { id: 'proj-new', name: 'New' },
+			'projects/new/workflows/w1/workflow.json': workflowFile('w1', [
+				credentialNode('Global', 'githubApi', global.id),
+				credentialNode('Instance', 'githubApi', 'cred-instance'),
+				credentialNode('Local', 'githubApi', 'cred-local'),
+			]),
+		});
+		const before = await snapshot();
+		const result = await service.checkDirectory({ sourceDir, user: owner });
+		expect(result).toEqual({
+			missingBindings: [],
+			warnings: [],
+			accessRequirements: [
+				expect.objectContaining({
+					sourceId: 'cred-local',
+					code: 'access-required',
+					consumers: [
+						{
+							project: { id: 'proj-new', name: 'New' },
+							workflows: [{ id: 'w1', name: 'Workflow w1' }],
+						},
+					],
+				}),
+			],
+			conflicts: [
+				expect.objectContaining({
+					sourceId: 'cred-instance',
+					code: 'incompatible-usage-scope',
+					usageScope: 'instance',
+				}),
+			],
+		});
+		expect(
+			await Container.get(CredentialsRepository).findPromotionBindingAccess([global.id], []),
+		).toEqual([
+			{ id: global.id, type: 'githubApi', isGlobal: true, usageScope: 'project', projectIds: [] },
+		]);
+		expect(await snapshot()).toEqual(before);
+	});
+
+	it('returns one global binding and a shadowing warning without target values', async () => {
+		const alpha = await createTeamProject('Alpha', owner);
+		const beta = await createTeamProject('Beta', owner);
+		await createProjectVariable('REGION', 'target-project-value', alpha);
+		await writePackage({
+			'projects/alpha/project.json': projectFile(alpha),
+			'projects/beta/project.json': projectFile(beta),
+			'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', [regionNode()]),
+			'projects/beta/workflows/w2/workflow.json': workflowFile('w2', [regionNode()]),
+			'variables/region/variable.json': { name: 'REGION', type: 'string', value: '' },
+		});
+		const first = await service.checkDirectory({ sourceDir, user: owner });
+		expect(first.missingBindings).toEqual([
+			{
+				kind: 'variable',
+				name: 'REGION',
+				variableType: 'string',
+				scope: { kind: 'global' },
+				sourceValue: '',
+				consumers: expect.arrayContaining([
+					{ project: projectFile(alpha), workflows: [{ id: 'w1', name: 'Workflow w1' }] },
+					{ project: projectFile(beta), workflows: [{ id: 'w2', name: 'Workflow w2' }] },
+				]),
+			},
+		]);
+		expect(first.warnings).toEqual([
+			{
+				kind: 'variable',
+				code: 'variable-shadowed',
+				name: 'REGION',
+				scope: { kind: 'global' },
+				consumers: [
+					{ project: projectFile(alpha), workflows: [{ id: 'w1', name: 'Workflow w1' }] },
+				],
+			},
+		]);
+		await createVariable('REGION', 'target-global-value');
+		const before = await snapshot();
+		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual({
+			missingBindings: [],
+			accessRequirements: [],
+			conflicts: [],
+			warnings: first.warnings,
+		});
+		expect(
+			await Container.get(VariablesRepository).findKeysInProjectsOrGlobal(['REGION'], []),
+		).toEqual([{ key: 'REGION', projectId: null }]);
+		expect(await snapshot()).toEqual(before);
 	});
 
 	it('fails on a malformed workflow file and changes nothing', async () => {
