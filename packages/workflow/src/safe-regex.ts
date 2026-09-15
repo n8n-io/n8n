@@ -193,6 +193,14 @@ function createDefaultEngine(): RegexEngine {
 	return vm ? nodeVmEngine(vm) : nativeEngine();
 }
 
+/**
+ * The built-in engine: `RegExp` behind a `node:vm` timeout, or plain `RegExp` where vm is
+ * unavailable. Exported so a caller can select it the same way as any other engine.
+ */
+export function createDefaultRegexEngine(): RegexEngine {
+	return createDefaultEngine();
+}
+
 export function setInternalRegexEngine(regexEngine: RegexEngine): void {
 	internalEngine = regexEngine;
 }
