@@ -235,13 +235,22 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation,
 		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
-		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
-		supportsHitl?: boolean,
-		/** Disable background jobs for task-triggered runtimes. */
-		allowBackgroundTasks = true,
+		{
+			supportsHitl,
+			previewChat,
+			allowBackgroundTasks = true,
+		}: {
+			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
+			supportsHitl?: boolean;
+			/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
+			previewChat?: boolean;
+			/** Disable background jobs for task-triggered runtimes. */
+			allowBackgroundTasks?: boolean;
+		} = {},
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
 		userToolAccessSnapshot?: UserToolAccessSnapshot;
 	}> {
 		let config = agentEntity.schema;
@@ -296,6 +305,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
+			previewChat,
 		});
 		return {
 			...runtime,
@@ -447,9 +457,11 @@ export class AgentRuntimeReconstructionService {
 	 * when the parent had a user), so raw credential access stays gated there
 	 * regardless.
 	 */
-	async reconstructFromResolvedSource(
-		params: ReconstructAgentRuntimeParams,
-	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+	async reconstructFromResolvedSource(params: ReconstructAgentRuntimeParams): Promise<{
+		agent: RuntimeAgent;
+		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
+	}> {
 		let config = params.config;
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
@@ -498,7 +510,13 @@ export class AgentRuntimeReconstructionService {
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
-	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
+		/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
+		previewChat?: boolean;
+	}): Promise<{
+		agent: RuntimeAgent;
+		toolRegistry: ToolRegistry;
+		mcpServerAttributions: Map<string, string>;
+	}> {
 		const {
 			config,
 			memoryOwnerAgentId,
@@ -520,6 +538,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			parentWorkspace,
 			allowBackgroundTasks = true,
+			previewChat,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
@@ -542,6 +561,7 @@ export class AgentRuntimeReconstructionService {
 				agentId: memoryOwnerAgentId,
 				integrationType,
 				userId: user?.id,
+				previewChat,
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -557,6 +577,8 @@ export class AgentRuntimeReconstructionService {
 			unavailable,
 		);
 		const resolvedTools: BuiltTool[] = [];
+		// See AgentRuntime.mcpServerAttributions
+		const mcpServerAttributions = new Map<string, string>();
 
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
@@ -572,8 +594,13 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
-				resolveRegistryConnection: async (nodeTypeName) =>
-					await this.mcpRegistryService.getConnection(nodeTypeName),
+				resolveRegistryConnection: async (nodeTypeName) => {
+					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
+					if (connection?.attribution) {
+						mcpServerAttributions.set(server.name, connection.attribution);
+					}
+					return connection;
+				},
 				onConnectionFailed: (event) => {
 					this.logger.warn('Skipped MCP server that failed to connect', {
 						agentId: memoryOwnerAgentId,
@@ -608,6 +635,7 @@ export class AgentRuntimeReconstructionService {
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
+			previewChat,
 		});
 
 		if (unavailable.length > 0) {
@@ -638,7 +666,11 @@ export class AgentRuntimeReconstructionService {
 			backgroundTasksEnabled,
 		});
 
-		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
+		return {
+			agent: reconstructed,
+			toolRegistry: buildToolRegistry(resolvedTools),
+			mcpServerAttributions,
+		};
 	}
 
 	async createSubAgentDelegationConfig(
@@ -723,6 +755,7 @@ export class AgentRuntimeReconstructionService {
 			agentId?: string;
 			integrationType?: string;
 			userId?: string;
+			previewChat?: boolean;
 			supportsHitl: boolean;
 			backgroundTasksEnabled: boolean;
 		},

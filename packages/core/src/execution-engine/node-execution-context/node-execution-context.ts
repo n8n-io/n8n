@@ -433,7 +433,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				runExecutionData,
 				runIndex,
 				workflow,
-			} as ICredentialsExpressionResolveValues;
+			};
 		}
 
 		const nodeCredentials = node.credentials

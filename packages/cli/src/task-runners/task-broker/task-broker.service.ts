@@ -763,9 +763,7 @@ export class TaskBroker {
 			const acceptPromise = new Promise<RequesterMessage.ToBroker.TaskSettings['settings']>(
 				(resolve, reject) => {
 					this.requesterAcceptRejects.set(taskId, {
-						accept: resolve as (
-							settings: RequesterMessage.ToBroker.TaskSettings['settings'],
-						) => void,
+						accept: resolve,
 						reject,
 					});
 

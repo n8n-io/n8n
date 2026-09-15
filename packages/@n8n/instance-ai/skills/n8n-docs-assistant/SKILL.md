@@ -4,7 +4,7 @@ description: >-
   Answers n8n product, setup, credential, node, hosting, API, and usage
   questions from current n8n docs. Use when the user asks how to configure,
   set up, troubleshoot, or understand n8n behavior, especially credential setup
-  questions opened from the credential modal.
+  questions — including which OAuth scopes or permissions a provider app needs.
 recommended_tools:
   - n8n-docs
   - credentials

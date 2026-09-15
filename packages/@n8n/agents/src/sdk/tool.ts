@@ -143,7 +143,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				if (hasConditionalApproval) {
 					emitToolExecutionStart(currentTool, input, interruptCtx);
 				}
-				return await originalHandler(input, interruptCtx as ToolContext);
+				return await originalHandler(input, interruptCtx);
 			}
 
 			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -151,7 +151,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
 			if (tool.suspendSchema === undefined) {
-				return await originalHandler(input, interruptCtx as ToolContext);
+				return await originalHandler(input, interruptCtx);
 			}
 			const initialInnerContext: InterruptibleToolContext = {
 				...interruptCtx,

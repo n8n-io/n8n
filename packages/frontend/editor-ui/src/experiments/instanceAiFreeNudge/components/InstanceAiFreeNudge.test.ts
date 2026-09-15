@@ -23,7 +23,7 @@ describe('InstanceAiFreeNudge', () => {
 
 	it.each([
 		['variant-1', 'Free to use. No execution cost'],
-		['variant-2', 'The new AI Assistant is free to use'],
+		['variant-2', 'The new n8n Assistant is free to use'],
 	] as const)('renders the %s copy', (variant, copy) => {
 		store.treatmentVariant = variant;
 		store.shouldShowNudge = true;

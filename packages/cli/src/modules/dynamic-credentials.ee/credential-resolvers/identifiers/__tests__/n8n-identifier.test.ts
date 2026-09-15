@@ -1,4 +1,5 @@
 import type { Mocked } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
@@ -16,6 +17,7 @@ import {
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
+	let mockLogger: Mocked<Logger>;
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
 	let mockUserRepository: Mocked<UserRepository>;
@@ -23,13 +25,19 @@ describe('N8NIdentifier', () => {
 	const mockUser = mock<User>({ id: 'user-123' });
 
 	beforeEach(() => {
+		mockLogger = mock<Logger>();
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
 		mockOAuthVerifier.authorizeSealedGrant.mockResolvedValue(true);
 		mockUserRepository = mock<UserRepository>();
 		mockUserRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier, mockUserRepository);
+		identifier = new N8NIdentifier(
+			mockLogger,
+			mockAuthService,
+			mockOAuthVerifier,
+			mockUserRepository,
+		);
 	});
 
 	afterEach(() => {
@@ -535,6 +543,92 @@ describe('N8NIdentifier', () => {
 				expect(mockOAuthVerifier.authorizeSealedGrant).not.toHaveBeenCalled();
 				expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-123' });
 			});
+		});
+	});
+
+	describe('identify', () => {
+		it('validates the cookie for a manual-execution carrier', async () => {
+			mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+
+			const userId = await identifier.identify({
+				identity: 'cookie-jwt',
+				version: 1,
+				metadata: { source: 'manual-execution' },
+			});
+
+			expect(mockAuthService.authenticateUserByCookie).toHaveBeenCalledWith('cookie-jwt');
+			expect(userId).toBe('user-123');
+		});
+
+		it('returns the sealed subject for an n8n-oauth carrier without verifying the token', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r', subject: 'user-123' },
+			});
+
+			expect(userId).toBe('user-123');
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+		});
+
+		it('verifies the token for an n8n-oauth carrier without a subject', async () => {
+			mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser } as never);
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'n8n-oauth', resource: 'r' },
+			});
+
+			expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+				'token',
+				'r',
+				undefined,
+			);
+			expect(userId).toBe('user-123');
+		});
+
+		it('validates the request-bound JWT for a chat-hub carrier', async () => {
+			mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: {
+					source: 'chat-hub-injected',
+					method: 'POST',
+					endpoint: '/e',
+					browserId: 'b',
+				},
+			});
+
+			expect(userId).toBe('user-123');
+		});
+
+		it('returns undefined for metadata that is not an n8n identity', async () => {
+			const userId = await identifier.identify({
+				identity: 'token',
+				version: 1,
+				metadata: { source: 'http-header', headerName: 'authorization' },
+			});
+
+			expect(userId).toBeUndefined();
+		});
+
+		it('returns undefined instead of throwing when validation fails', async () => {
+			mockAuthService.authenticateUserByCookie.mockRejectedValue(new AuthError('nope'));
+
+			const userId = await identifier.identify({
+				identity: 'bad-cookie',
+				version: 1,
+				metadata: { source: 'manual-execution' },
+			});
+
+			expect(userId).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ source: 'manual-execution' }),
+			);
 		});
 	});
 });

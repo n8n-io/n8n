@@ -51,7 +51,7 @@ test.use({
 });
 
 test.describe(
-	'Multi-main Observability @capability:observability @mode:multi-main',
+	'Multi-main Observability @mode:multi-main',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

@@ -130,6 +130,11 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
 	'relay-agent-update': {
 		data: PushPayload<'agentUpdated'>;
 		userIds: string[];
@@ -217,6 +222,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

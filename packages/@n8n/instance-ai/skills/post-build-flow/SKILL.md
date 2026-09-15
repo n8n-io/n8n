@@ -85,14 +85,15 @@ obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
-verification.
+verification. For a multi-trigger outcome, verify every trigger that does not
+yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If the result has
+the n8n Assistant panel is the user-visible surface. If the result has
 `announced: true`, use the persistent panel instructions above and end the turn.
 If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
@@ -139,7 +140,7 @@ it has you fetch, never from memory:
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
+  it, and never a URL or domain: the user asks the n8n Assistant for that from
   the credential form. `type` is `password` unless clearly non-secret (at
   least one placeholder must stay `password`). Add `optional: true` only when
   the provider documents the value as optional (e.g. an org/region
@@ -147,7 +148,7 @@ it has you fetch, never from memory:
   omitted from the request.
 - `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
+  reference. Not shown in the form: the n8n Assistant help thread uses it to
   send the user to the exact page. Found via the `credential-recipe-research`
   procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
@@ -239,6 +240,14 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+**Webhook input must carry the fields the workflow reads.** A flat `inputData`
+becomes the request `body` only; `query`, `headers` and `params` stay empty. When
+any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*`, pass
+the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` (or a
+`fixtureOverrides` entry on the trigger node). Otherwise the field resolves empty,
+the run still succeeds, and that field is unverified — say so instead of
+reporting it as working.
+
 Do not proactively offer, recommend, or mention publishing until a successful
 execution has run every required node on the claimed path without mocked
 credentials, simulated node output, fixture overrides, or temporary pin data
@@ -304,16 +313,42 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
-- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
-  the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
-  it.
-- Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+- Each pass reports `nodesNotReached` only for its selected trigger's main-flow
+  branch. Coverage is the **union** across successful passes. Run every trigger
+  before you report a workflow coverage gap. Different triggers can select
+  different outputs of a shared Switch or If node.
+- A failed rerun removes that trigger's earlier coverage. Verify that trigger
+  again before you claim that the workflow is verified.
+- Report each trigger and whether its branch ran. Use the combined `claim` to
+  describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
+
+### Fixing a workflow that is already published
+
+The publishing rules above assume a new workflow. A repair of a workflow that
+is already published is different. That workflow runs in production right now,
+and it runs the version published before your fix. Your save creates a draft,
+and the draft is not live. The published version keeps running, broken, until
+somebody publishes the fix.
+
+For a repair on a published workflow:
+
+- Telling the user the fix is not live yet is not an offer to publish. Say it.
+- Do NOT report the workflow as fixed, live, running, or working in production
+  while the published version is the older one. Say the fix is in the draft.
+- `verify-built-workflow` returns `claim.liveState`. `live-stale` means the
+  published version is older than the draft you just verified. The result also
+  carries `liveStateNote`. Relay it.
+- Without a claim, call `workflows(action="get", workflowId)` and compare
+  `versionId` (the draft) with `activeVersionId` (the published version). They
+  differ while the fix is not live. A null `activeVersionId` means the workflow
+  is not published at all.
+- Ask whether to publish the fix. Publish only after the user agrees.
+- Name the version in a retest invitation: the draft, or the published version.
+  "Send another email to test it" is wrong when the fix is still a draft — the
+  test would run the broken version and look like the fix failed.
 
 ## After build-workflow succeeds
 
@@ -330,8 +365,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      `workflow-builder` skill and patch the same workflow with `build-workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
-   - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+   - If `verificationReadiness.status === "already_verified"`, do not repeat
+     automatic verification. Read the saved claim before describing the workflow
+     as verified. For tracked multi-trigger builds, follow the verification
+     obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
@@ -376,6 +413,20 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
      whenever it is present.
+   - Read `resolvedParameterWarnings`. A simulated node's preview is fixture
+     data: it never proves an expression resolved. Each warning names a
+     parameter that resolved to empty or threw on the real input — the usual
+     causes are a trigger input that lacks the field (body-only webhook input
+     for a `$json.query.*` expression) or a wrong expression. Fix the input
+     shape or the expression, re-run, and never report that field as working
+     while a warning stands. Each warning carries the execution ID that was
+     checked. Use that ID with `executions(action="get-resolved-node-parameters")`
+     to inspect the same input.
+   - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
+     The list shows at most 20 checks. `skippedParameterCheckCount` includes
+     omitted checks, which also leave dynamic fields unverified.
+     State that limitation even if the run succeeded and no parameter warnings
+     were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.
@@ -411,7 +462,9 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
    proved it works end-to-end with full coverage.
 9. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically or proactively offer publishing before
-   the publish-readiness requirement above is met.
+   the publish-readiness requirement above is met. A repair of a workflow that
+   is already published is the exception — follow
+   [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
 10. After a direct new primary workflow is successfully published, follow
     [Error workflow follow-up](#error-workflow-follow-up).
     Do not replace this explicit opt-in with a generic "add
@@ -540,12 +593,27 @@ result.
 
 ## Claiming success
 
+For tracked multi-trigger builds, `claim` combines the saved successful passes.
+A `verified` claim requires every trigger to pass and real coverage for every planned node.
+Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
+outside the claim describes only the current trigger's branch.
+
 `verify-built-workflow` returns a `claim`, and its `level` decides what you may
 say:
 
 - `verified` — you may call the workflow verified, tested, or working.
 - `partial`, `unproven`, or `failed` — you may NOT. Name what is unconfirmed
   instead.
+
+`claim.liveState` decides separately whether you may call the workflow live. A
+run always executes the draft, so `verified` says nothing about production:
+
+- `live-stale` — the published version is older than the draft you verified.
+  Do NOT call the workflow live, running, or working in production. Say the fix
+  is in the draft, and see
+  [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
+- `live-current` — the published version is the one you verified.
+- `unpublished` — the workflow does not run in production at all.
 
 **`success: true` does not mean verified.** It means the run ended without an
 error, and a run with every write simulated also ends without an error. Read
@@ -568,7 +636,10 @@ applies to rows or records written to an external system: never make quantitativ
 claims ("22 rows written", "columns matched") that you did not read back from
 the effect node's actual output (`executions(action="get-node-output")`) or from
 the target system itself — a successful run status does not prove the _right
-data_ was written, only that nodes ran. If you could not run the
+data_ was written, only that nodes ran. Output of a simulated or pinned node is
+fixture data: never quote it as what the workflow produced, and never cite it as
+proof that an expression resolved — use `resolvedParameterWarnings` or
+`executions(action="get-resolved-node-parameters")` for that. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.

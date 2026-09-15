@@ -52,6 +52,7 @@ if (args[0] === '--version') { console.log('1.2.3'); process.exit(0); }
 fs.writeFileSync(file('server-env.json'), JSON.stringify({
   worker: !!process.env.AGENT_WORKER_TOKEN, queue: !!process.env.N8N_DEQUEUE_URL, slack: !!process.env.SLACK_BOT_TOKEN,
   cache: process.env.TURBO_CACHE_DIR, config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
+  runtime: process.env.N8N_AGENT_RUNTIME, profile: process.env.N8N_AGENT_PROFILE ?? null,
 }));
 let sessions = fs.existsSync(file('sessions.json')) ? JSON.parse(fs.readFileSync(file('sessions.json'), 'utf8')) : {};
 const server = require('node:http').createServer(async (req, res) => {
@@ -124,6 +125,7 @@ test(
 		assert.equal(env.cache, join(f.dir, '.turbo-cache'));
 		assert.equal(env.config.provider.openrouter.options.apiKey, '{env:OPENROUTER_API_KEY}');
 		assert.deepEqual(env.config.enabled_providers, ['openrouter']);
+		assert.deepEqual([env.runtime, env.profile], ['sandbox', null]);
 		assert.equal(statSync(join(f.dir, '.n8n-opencode')).mode & 0o777, 0o700);
 		for (const file of ['serve.sh', 'server.json', 'fix-flaky.session.json']) {
 			assert.equal(statSync(join(f.dir, '.n8n-opencode', file)).mode & 0o777, 0o600);

@@ -12,6 +12,7 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -135,7 +136,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
 			);
 		}
 	}
@@ -226,6 +227,8 @@ export class InstanceAiController {
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
+			payload.mode,
+			payload.promptVersion,
 		);
 		return { runId };
 	}
@@ -377,7 +380,7 @@ export class InstanceAiController {
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
 		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = (
+		const writeRunSyncFrame = async (
 			groupId: string,
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
@@ -385,6 +388,12 @@ export class InstanceAiController {
 			if (runEvents.length === 0) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// The fold records that a confirmation was requested, not that it was
+			// answered. Settle cards whose pending row is gone (same check as the
+			// history read); otherwise a client that reconnects mid-run re-arms a
+			// card the server already consumed, and every click on it fails.
+			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -439,7 +448,7 @@ export class InstanceAiController {
 			for (const [groupId, group] of liveGroups) {
 				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
 				if (closed) return;
-				writeRunSyncFrame(groupId, group, runEvents);
+				await writeRunSyncFrame(groupId, group, runEvents);
 				for (const event of runEvents) {
 					if (event.type === 'text-block' || event.type === 'reasoning-block') {
 						foldedBlockKeys.add(blockKey(event));
@@ -803,6 +812,25 @@ export class InstanceAiController {
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
+	@Get('/threads/history')
+	@GlobalScope('instanceAi:message')
+	async listThreadHistory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadHistoryQuery,
+	) {
+		this.requireInstanceAiEnabled();
+		return await this.memoryService.listThreadHistory(req.user.id, query);
+	}
+
+	@Get('/threads/:threadId')
+	@GlobalScope('instanceAi:message')
+	async getThread(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { thread: await this.memoryService.getThreadInfo(threadId) };
+	}
+
 	@Post('/threads')
 	@GlobalScope('instanceAi:message')
 	async ensureThread(
@@ -853,7 +881,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}

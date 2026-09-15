@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
+	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
@@ -21,13 +23,15 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
-import type { AgentFixWithAssistantEvent, AgentFixWithAssistantFailure } from '../types';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -41,7 +45,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [event?: AgentFixWithAssistantEvent];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
@@ -50,6 +54,7 @@ const canSendToAssistant = computed(() =>
 );
 
 function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === 'backgroundJobSignal') return;
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
@@ -143,6 +148,36 @@ const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === 'message' &&
+					group.message.role === 'user' &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
+
 function isThinkingActive(message: ChatMessage): boolean {
 	return (
 		message.status === CHAT_MESSAGE_STATUS.STREAMING ||
@@ -151,15 +186,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'backgroundJobSignal') return '';
 	if (group.kind === 'toolRun') {
 		return group.finalMessage?.content ?? '';
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -222,6 +254,7 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
 		return (
 			group.finalMessage !== undefined &&
@@ -379,7 +412,10 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
@@ -500,6 +536,15 @@ watch(
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
 						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -527,6 +572,40 @@ watch(
 							</div>
 						</template>
 					</template>
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -652,10 +731,36 @@ watch(
 	margin-bottom: var(--spacing--2xs);
 }
 
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {
@@ -665,6 +770,10 @@ watch(
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {

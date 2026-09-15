@@ -3,6 +3,10 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 export const RESOURCES = {
 	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
+	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
+	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
+	aiPreference: [...DEFAULT_OPERATIONS] as const,
+	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
@@ -120,6 +124,7 @@ export const API_KEY_RESOURCES = {
 	insights: ['read'] as const,
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
+	nodeTypePolicy: ['manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

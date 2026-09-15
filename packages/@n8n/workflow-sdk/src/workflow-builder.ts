@@ -28,6 +28,7 @@ import {
 import { shouldGeneratePinData } from './workflow-builder/pin-data-utils';
 import { registerDefaultPlugins } from './workflow-builder/plugins/defaults';
 import { pluginRegistry, type PluginRegistry } from './workflow-builder/plugins/registry';
+import { safeNodeTypesProvider } from './workflow-builder/plugins/safe-node-types-provider';
 import { jsonSerializer } from './workflow-builder/plugins/serializers';
 import type {
 	PluginContext,
@@ -517,7 +518,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		this._currentNode = sourceKey;
 		this._currentOutput = outputIndex;
-		this.to(target as NodeInstance<string, string, unknown>);
+		this.to(target);
 		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
 		this._currentNode = sourceKey;
 		this._currentOutput = 0;
@@ -768,7 +769,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			validationOptions: {
 				allowDisconnectedNodes: options.allowDisconnectedNodes,
 				allowNoTrigger: options.allowNoTrigger,
-				nodeTypesProvider: options.nodeTypesProvider,
+				// Guarded: a validator must not turn an unresolvable node type or
+				// version into a failed validation pass.
+				nodeTypesProvider: options.nodeTypesProvider
+					? safeNodeTypesProvider(options.nodeTypesProvider)
+					: undefined,
 			},
 		};
 

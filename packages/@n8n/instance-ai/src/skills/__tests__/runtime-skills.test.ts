@@ -3,7 +3,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
-import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import {
+	INSTANCE_AI_SKILLS_DIR,
+	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
+} from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
@@ -57,6 +61,24 @@ describe('Instance AI runtime skills', () => {
 			'utf-8',
 		);
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
+	});
+
+	// Code nodes were 19% of all nodes in production builds versus 10% in public
+	// templates, and half of a sample were plain field shaping. The old rule ended
+	// with an escape hatch ("if it makes it simpler, go ahead and use code node").
+	it('prefers native nodes over Code nodes with no escape hatch', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).not.toMatch(/if it makes it simpler, go ahead and use code node/i);
+		expect(skill).toContain('Native node first');
+		expect(skill).toContain('Edit Fields (Set)');
+		expect(skill).toContain('Native node mappings');
+		// The Python bullet that follows the rule stays as it was.
+		expect(skill).toContain(
+			'Write Code nodes in JavaScript unless the user explicitly asks for Python.',
+		);
 	});
 
 	// The builder agent has been observed recalling a pre-ADO-5627 `.group()` signature
@@ -194,15 +216,34 @@ describe('Instance AI runtime skills', () => {
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: false, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: false,
+				instanceContextEnabled: true,
+			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
-			disabledInstanceAiSkillIds({ configEvalsEnabled: true, instanceContextEnabled: true }),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				instanceContextEnabled: true,
+			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
+	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const progressive = source.registry.skills.find(
+			(skill) => skill.name === 'progressive-building',
+		);
+		expect(progressive?.id).toBe('progressive-building');
+		for (const mode of ['default', 'progressive'] as const) {
+			const selected = await loadInstanceAiRuntimeSkillSourceForBuildMode(mode);
+			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
+			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
+		}
 	});
 
 	it('excludes bundled Agents module skills unless the module is enabled', async () => {
@@ -269,7 +310,7 @@ describe('Instance AI runtime skills', () => {
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
+			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
@@ -347,7 +388,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
@@ -431,7 +472,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
-		expect(loaded?.instructions).toMatch(/inline setup card in\s+the AI Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in\s+the n8n Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);

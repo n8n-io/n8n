@@ -114,7 +114,7 @@ export function useToast() {
 			params.title = sanitizeHtml(title);
 		}
 
-		const notification = notify(params as unknown as Record<string, unknown>);
+		const notification = notify(params);
 
 		// The app declined to show it (suppression). Return before the sticky queue
 		// and before error telemetry, so a dropped toast leaves no trace — exactly

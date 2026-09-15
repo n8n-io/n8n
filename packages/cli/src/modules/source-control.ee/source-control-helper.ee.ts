@@ -206,10 +206,7 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof (error as { code: unknown }).code === 'string'
+		typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
 	);
 }
 

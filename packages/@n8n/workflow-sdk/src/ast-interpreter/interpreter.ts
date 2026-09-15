@@ -983,7 +983,7 @@ class SDKInterpreter {
 		// is counted as an addition, which overstates it in the safe direction.
 		const grown = this.sizeOf(obj) + this.sizeOf(value);
 		this.assertValueSizeWithinLimits(grown, node.loc ?? undefined);
-		this.valueWeights.set(obj as object, grown);
+		this.valueWeights.set(obj, grown);
 
 		return value;
 	}

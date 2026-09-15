@@ -30,7 +30,7 @@ export class InstanceAiPage extends BasePage {
 		await this.getChatInput()
 			.waitFor({ state: 'visible', timeout: 10_000 })
 			.catch(async () => {
-				const aiMenuItem = this.page.getByRole('menuitem', { name: 'AI Assistant' });
+				const aiMenuItem = this.page.getByRole('menuitem', { name: 'n8n Assistant' });
 				await aiMenuItem.click({ timeout: 10_000 });
 				await this.enableInstanceAiIfPrompted();
 			});
@@ -54,7 +54,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getOnboardingWizard(): Locator {
-		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
+		return this.page.getByRole('dialog', { name: 'Set up n8n Assistant' });
 	}
 
 	getWizardPrimaryButton(): Locator {
@@ -75,7 +75,7 @@ export class InstanceAiPage extends BasePage {
 
 	getOnboardingDoneHeading(): Locator {
 		return this.getOnboardingWizard().getByRole('heading', {
-			name: 'AI Assistant is on for everyone on this instance',
+			name: 'n8n Assistant is on for everyone on this instance',
 		});
 	}
 
@@ -88,14 +88,14 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async enableInstanceAiIfPrompted(): Promise<void> {
-		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
+		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try new n8n Assistant' });
 		try {
 			await dialog.waitFor({ state: 'visible', timeout: 3_000 });
 		} catch {
 			return;
 		}
 
-		await dialog.getByRole('button', { name: /Enable AI Assistant on this instance/ }).click();
+		await dialog.getByRole('button', { name: /Enable n8n Assistant on this instance/ }).click();
 		await dialog.getByRole('button', { name: /^(Continue|Enable)$/ }).click();
 		await dialog.waitFor({ state: 'hidden' });
 	}

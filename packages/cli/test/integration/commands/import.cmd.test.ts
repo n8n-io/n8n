@@ -380,13 +380,18 @@ test('should preserve versionMetadata from JSON file when importing', async () =
 describe('--activeState flag', () => {
 	const globalConfig = Container.get(GlobalConfig);
 	const originalMode = globalConfig.executions.mode;
+	const originalUseWorkflowPublicationService =
+		globalConfig.workflows.useWorkflowPublicationService;
 
+	// Asserts on the legacy activation path (`ActiveWorkflowManager` calls).
 	beforeAll(() => {
 		globalConfig.executions.mode = 'queue';
+		globalConfig.workflows.useWorkflowPublicationService = false;
 	});
 
 	afterAll(() => {
 		globalConfig.executions.mode = originalMode;
+		globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 	});
 
 	// TODO: fix this workaround being needed for these tests to run.

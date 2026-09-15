@@ -1,4 +1,5 @@
 import { test as base, expect as baseExpect } from '../../../../../fixtures/base';
+import { PROXY_WITHOUT_COMMUNITY_PACKAGES } from '../../../../../fixtures/capabilities';
 import type { CredentialResponse } from '../../../../../services/credential-api-helper';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-key';
@@ -10,12 +11,7 @@ type ExecutionLogFixtures = {
 };
 
 export const executionLogsTestConfig = {
-	capability: {
-		services: ['proxy'],
-		env: {
-			N8N_COMMUNITY_PACKAGES_ENABLED: 'false', // suppress extraneous HTTP requests
-		},
-	},
+	capability: PROXY_WITHOUT_COMMUNITY_PACKAGES,
 } as const;
 
 export const test = base.extend<ExecutionLogFixtures>({

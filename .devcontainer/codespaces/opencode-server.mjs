@@ -101,6 +101,8 @@ async function startServer({ stateDir, mainDirectory, workspaces }) {
 					provider: { openrouter: { options: { apiKey: '{env:OPENROUTER_API_KEY}' } } },
 				}),
 			)}`,
+			// Interactive sessions use the harness sandbox runtime without a profile.
+			'export N8N_AGENT_RUNTIME=sandbox; unset N8N_AGENT_PROFILE',
 			`cd ${quote(mainDirectory)} || exit 1`,
 			`exec opencode serve --hostname 127.0.0.1 --port ${server.port} >> ${quote(join(stateDir, 'server.log'))} 2>&1`,
 			'',

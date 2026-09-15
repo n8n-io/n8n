@@ -2,7 +2,6 @@ import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/a
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
-	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -29,7 +28,6 @@ import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
-import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
@@ -271,7 +269,7 @@ export class SourceControlImportService {
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getLocalVersionIdsFromDb(
@@ -1211,7 +1209,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
+				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1298,7 +1296,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
+				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1331,6 +1329,9 @@ export class SourceControlImportService {
 		const result: { imported: string[] } = { imported: [] };
 		const overriddenKeys = Object.keys(valueOverrides ?? {});
 
+		const existingVariables = await this.variablesRepository.find({ select: ['id'] });
+		const existingVariableIds = new Set(existingVariables.map(({ id }) => id));
+
 		for (const variable of variables) {
 			if (!variable.key) {
 				continue;
@@ -1340,15 +1341,24 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
-				// by default no value is stored remotely, so an empty string is returned
-				// it must be changed to undefined so as to not overwrite existing values!
+				const isNewVariable = !existingVariableIds.has(variable.id);
+				const defaultNewValue = isNewVariable ? '' : undefined;
+
+				// By default no value is stored remotely, so an empty string is returned.
+				// For an existing variable, keep it untouched (`undefined`) so re-importing
+				// doesn't overwrite the local value. For a brand-new variable, create it with
+				// an empty value rather than leaving the column unset (which would insert `NULL`).
 				const variableToUpsert = {
 					...variable,
-					value: variable.value === '' ? undefined : variable.value,
+					value: variable.value === '' ? defaultNewValue : variable.value,
 					project: variable.projectId ? { id: variable.projectId } : null,
 				};
 
 				await this.variablesRepository.upsert(variableToUpsert, ['id']);
+
+				if (isNewVariable) {
+					existingVariableIds.add(variable.id);
+				}
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
