@@ -7,8 +7,8 @@ import type { TimelineItem } from '../session-timeline.types';
 
 vi.mock('@/app/stores/nodeTypes.store', function () {
 	return {
-		useNodeTypesStore: function () {
-			return { getNodeType: function () {} };
+		useNodeTypesStore() {
+			return { getNodeType() {} };
 		},
 	};
 });

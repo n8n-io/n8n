@@ -34,8 +34,8 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 
 vi.mock('@/app/stores/nodeTypes.store', function () {
 	return {
-		useNodeTypesStore: function () {
-			return { getNodeType: function () {} };
+		useNodeTypesStore() {
+			return { getNodeType() {} };
 		},
 	};
 });
