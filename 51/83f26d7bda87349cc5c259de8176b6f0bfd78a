@@ -1,0 +1,20 @@
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_667c164ac76678::t_c08d45009be869 2
+  s_667c164ac76678::t_2cf0bcaba7e09a 122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5183f26d7bda87349cc5c259de8176b6f0bfd78a",
+  "prompts": {},
+  "sessions": {
+    "s_667c164ac76678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89ab19d-2c3d-40c2-95b1-da7a385e51d0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

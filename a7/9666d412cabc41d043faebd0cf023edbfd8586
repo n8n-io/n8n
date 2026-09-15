@@ -1,0 +1,21 @@
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/prefers-reduced-motion.test.ts
+  s_51b74b4c66402b::t_854cab25f5ed9f 66-69,71-72,75-77,116-118,122-123,125-128,132-133,135-138,142-143,145-148,150
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/prefers-reduced-motion.ts
+  s_51b74b4c66402b::t_854cab25f5ed9f 166-178,185-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a79666d412cabc41d043faebd0cf023edbfd8586",
+  "prompts": {},
+  "sessions": {
+    "s_51b74b4c66402b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a066fc-4164-7ba9-be8c-26b9417381f5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

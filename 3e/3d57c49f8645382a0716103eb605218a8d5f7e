@@ -1,0 +1,19 @@
+packages/cli/src/environments.ee/source-control/source-control.service.ee.ts
+  s_0db7d900a53861::t_6074fefec1b132 269-318,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e3d57c49f8645382a0716103eb605218a8d5f7e",
+  "prompts": {},
+  "sessions": {
+    "s_0db7d900a53861": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd2b372f-b713-443b-8568-4213e644191a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

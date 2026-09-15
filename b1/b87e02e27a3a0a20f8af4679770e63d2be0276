@@ -1,0 +1,44 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_dcd2c416b1f751::t_f3b4fc06ee8aa0 356-357
+  s_dcd2c416b1f751::t_973894684adc88 825-833
+  s_736c65da7a1766::t_2ffb900125cb56 352-354
+  s_dcd2c416b1f751::t_36636b43432af7 799-800,802,811
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_96913f88b1740d::t_1c336255217ae3 221-313
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_96913f88b1740d::t_f283ac8bf198f7 150
+  s_96913f88b1740d::t_a04de5f5823fe7 31,36-39
+  s_96913f88b1740d::t_18fb77a3b1a3d0 64,72,79,86,93-100,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b1b87e02e27a3a0a20f8af4679770e63d2be0276",
+  "prompts": {},
+  "sessions": {
+    "s_736c65da7a1766": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8892e90a-c1e4-401e-beb9-10568e71e36e",
+        "model": "claude-4.6-opus-max-thinking"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_96913f88b1740d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4cce0ba1-98f3-492d-9622-ab501bacb3ca",
+        "model": "claude-4.6-opus-max-thinking"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_dcd2c416b1f751": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5cd4c738-2f89-446d-ac39-33fc40664eb5",
+        "model": "claude-4.6-opus-max-thinking"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

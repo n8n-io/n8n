@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_dab2d060d91655::t_595a19adac5bdb 21-23
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_616df348e9e76b 19-21
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_dab2d060d91655::t_c80c7ca02e7860 20-22,114-117,124
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_dab2d060d91655::t_a34f9869b82712 130-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8b91c2f0fafb927a2dcf1e3371513bb2a1263b2e",
+  "prompts": {},
+  "sessions": {
+    "s_dab2d060d91655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc11c882-03fa-485b-8041-84541505b71e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

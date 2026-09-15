@@ -1,0 +1,66 @@
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_85fc65de7be4a1 15
+  s_5ddf40544fde37::t_14c81f99812a6b 24
+  s_5ddf40544fde37::t_204e952fdc2e93 25,29
+  s_5ddf40544fde37::t_8332572585e0e1 43
+  s_5ddf40544fde37::t_945674a1c4aea5 50
+  s_5ddf40544fde37::t_a19faab5245ebc 127,88-89,123-126,121
+  s_5ddf40544fde37::t_262cb0d1094afa 128,144,150-151,153
+  s_5ddf40544fde37::t_0513fac1c93e94 129-130,152,154,266,279,283-287,90-91,103,111,118-120,143
+  s_5ddf40544fde37::t_fee2a783465204 133,135,138
+  s_5ddf40544fde37::t_cb0d67a331b144 160-161
+  s_5ddf40544fde37::t_51edd279d1ee3d 166
+  s_5ddf40544fde37::t_7b9c60bce38b7b 173-174,191,195,198
+  s_5ddf40544fde37::t_a182edef17ea13 189
+  s_5ddf40544fde37::t_c967473bcaf24d 190,193,196,192
+  s_5ddf40544fde37::t_2a7bdb44fcfe00 203
+  s_5ddf40544fde37::t_6db205f8c50c8e 245-247,117
+  s_5ddf40544fde37::t_4fa82f0bf29a6b 249,260,262-265,92
+  s_5ddf40544fde37::t_5c22d6c3207fdd 255-259,102
+  s_5ddf40544fde37::t_48901da4d7977a 280-282
+  s_5ddf40544fde37::t_e7f254be620e13 122
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_472bf05a51816b 1,3-6,8-9,11,13,21-33,56,71-75,80-88,115-123,149-151,221,225-227,340,345,414-416,425,431,443-444,446-447,155,158,173,176,186-187,196,403,430,433,439,389,391
+  s_5ddf40544fde37::t_0d4acd4aa28bdd 2,12,34-52,54-55,65-70,89-93,98,106,114,124-148,198-199,201-202,204-208,210-211,213-214,216-219,228,231-232,238,244,248,250-251,256,259,262-263,266-267,269-271,278,284,293-296,303-315,344,347-348,354,361,369-372,377-381,383-385,387,401,404-405,411,413,418-421,212,320-321,324,330,333-334,339,364-365,422,393,395,417
+  s_5ddf40544fde37::t_25f2f4d7c1ea0f 222,224,200,220
+  s_5ddf40544fde37::t_5e315f512bf405 338,424,426,440-441,10,64,162,164,170,174,179,181,184,190,192,197,289,292,336,341,368,373-375,20,394,397,399
+  s_5ddf40544fde37::t_b6b340e1cb69ae 386,107
+  ai_agent 406,409-410,159,188,408
+  s_5ddf40544fde37::t_09649505fc3ae4 434,161,178,189,392
+  s_5ddf40544fde37::t_fbc3cf0188b6e1 445,110,169,183,195,398
+packages/cli/src/modules/n8n-packages/spec/constants.ts
+  ai_agent 2-3
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_d618b21841b3ff 632-633,443-445,453,490
+  s_5ddf40544fde37::t_52db992313da15 704
+  s_5ddf40544fde37::t_bae24e582c3369 740,742-743,746,446,452,458,473,480,482-483,487,491
+  s_5ddf40544fde37::t_0c9227a7e55eb5 450,465,474-476
+  s_5ddf40544fde37::t_3dfa347f28e407 451,467,472,479,486
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_56a2231b093297 509,512-517
+  s_5ddf40544fde37::t_03054f14a9423a 532-533
+  s_5ddf40544fde37::t_6e2ff3dcfb5252 550,847
+  s_5ddf40544fde37::t_563b82e9fbe260 588
+  s_5ddf40544fde37::t_10662ece8f8a1f 592
+  s_5ddf40544fde37::t_53cbdd157faed9 625-626,632-639
+  s_5ddf40544fde37::t_51e46152984fc8 627
+  s_5ddf40544fde37::t_0265debc3bd427 628,640-642,630,39
+  s_5ddf40544fde37::t_e5a0e2003abf3d 629
+  s_5ddf40544fde37::t_5fb1f352a67b94 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e59f4033c71d1fcc6866b6b8d1af28463cdbbe6e",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}

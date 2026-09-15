@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  ai_agent 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4d088fab363625f0e157731222e853f1d1cfa81",
+  "prompts": {}
+}

@@ -1,0 +1,41 @@
+packages/cli/src/modules/git-connections.ee/__tests__/working-copy-updater.test.ts
+  s_5ddf40544fde37::t_5e315f512bf405 9,25-27,52-53,77-81,86,101,103-105,108-113,115,119-121,162,164-171,179,182,184,189-190,193,198-200,238-249,252-263,265,282-284,291-308,311-314,316-325,327,352,355-370,373-381,383-386,388,391-396,399-402,405-416,419-423,425,429-430,432,475,477,493,505,512,521-527
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_945674a1c4aea5 34
+  s_5ddf40544fde37::t_5fbd8642eb5acd 132-135
+  s_5ddf40544fde37::t_7b9c60bce38b7b 137-139,146,148-153,155,161,165,168
+  s_5ddf40544fde37::t_204e952fdc2e93 12,15-16
+  s_5ddf40544fde37::t_1de484ecff122d 78-80,82-84,87-94
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_ee427b0c54c65c 5,8-10,12-17,21,91-94,102-103,105-114,116-119,121-133,137-138,140-143,145-156,158-173,176-185,188-234,236-240,242-249,251,255-266,268-277,279,282-289,291-296,298-346,349-352,354-359,361-371
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_66123885d90836 592
+  s_5ddf40544fde37::t_c8997bfea8340f 607
+  s_5ddf40544fde37::t_6e2ff3dcfb5252 76,295,575,872
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_e1062311ba6add 330-332,343
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  ai_agent 552-556
+  s_5ddf40544fde37::t_13daa3423947b3 29-32
+  s_5ddf40544fde37::t_d697bb8c2d2f27 547,557-561,565-574
+  s_5ddf40544fde37::t_6e2ff3dcfb5252 118
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_fef5152e9bf5a0 3,20-21,36-39,43-44,47-49,52,55,57-63,65,68,71,75-84,86-91,94-102,104-109,112-123,125-127,130-132,136-138,142-144,146-151,154-155,162-164,169,171,173-174,176-177,184-191,198-205,207-210,212-213,216-219,222-225,227-230,233-234,237-240,243-246,248-253,255-259,263-265,269-271,273,275-278,281-296,298-303,305-309,313,361,365-367,369-375,377-382,385-390,393-398,400,402-403,407,410-413,415,417-419
+  s_5ddf40544fde37::t_9c9a1759ea04c3 26-27,29-34,41,50-51,53-54,56,64,66-67,69-70,72,85,103,124,133-135,139-141,145,156-161,165-168,170,172,178-183,192-197,206,214-215,220-221,226,235-236,241-242,247,260-262,266-268,272,274,297,311,317-327,329-331,333-334,337-338,340-341,343-344,346-349,352-356,358,360,368,383,405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17ed05dc081e7d604d912c2046e5628174a46c87",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/nodes-base/utils/microsoft/test/transport.test.ts
+  s_6a7d5f1a01d9ec::t_8373052a8c7318 788-807
+packages/nodes-base/utils/microsoft/transport.ts
+  s_6a7d5f1a01d9ec::t_c4e648af51e948 387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a2f52babaeacdf69b17a9ac25565ae101dd9dad3",
+  "prompts": {},
+  "sessions": {
+    "s_6a7d5f1a01d9ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a07b1d9-b11c-42d1-9e09-61ac14d5005c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

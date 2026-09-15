@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Telegram/tests/node/telegramHitlWebhook.test.ts
+  s_d5e1010fcb3d34::t_badfbcbf52b82b 109-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8696468cbcdd00334416d6306b693b08139d023c",
+  "prompts": {},
+  "sessions": {
+    "s_d5e1010fcb3d34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b254c801-ef6a-437f-9190-b59b22f9ef2a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

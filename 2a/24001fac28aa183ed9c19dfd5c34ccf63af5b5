@@ -1,0 +1,54 @@
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_b3cf8c080d509d::t_d3d03b3953395c 248,251-257
+  s_b3cf8c080d509d::t_0317edac7e84e7 249-250
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_74f2125902d4c7::t_6415b983f38cb9 193-195
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_b3cf8c080d509d::t_23740f79635e9f 2091
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_b3cf8c080d509d::t_d3d03b3953395c 226-235
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 240
+  s_0e720ce3e9500c::t_3db9f5c1fcbf78 283-286,442-444,510
+  s_0e720ce3e9500c::t_42237a16f6a6db 312-316,337,424-426,433,455
+  s_0e720ce3e9500c::t_477e8d4ab839ad 344,351,353-355,362,370-371
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_0e720ce3e9500c::t_b5ccbbe672ff8a 325,329,338
+  s_0e720ce3e9500c::t_21116b4a5038aa 385-387,390-410,38,284,287-289
+  s_0e720ce3e9500c::t_d4f641334fb414 388-389
+  s_0e720ce3e9500c::t_3c86658dfe6ab3 428,436
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b3cf8c080d509d::t_27f5c89dbade17 368-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a24001fac28aa183ed9c19dfd5c34ccf63af5b5",
+  "prompts": {},
+  "sessions": {
+    "s_0e720ce3e9500c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5556c9a4-9204-4b76-a29c-3ae5bdfcf229",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_74f2125902d4c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4c7a63f-2cf4-454c-90c3-93829880854f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_b3cf8c080d509d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86c5127-2cf8-408c-aa7b-1c3d6a71f43d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

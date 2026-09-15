@@ -1,0 +1,30 @@
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_ce50212601c4e2::t_58ca45050a0f94 53,57-58
+  s_ce50212601c4e2::t_0f6495a5024267 54-56
+  s_ce50212601c4e2::t_f5f000625d14a0 52
+packages/@n8n/client-oauth2/src/credentials-flow.ts
+  s_ce50212601c4e2::t_3d213db58e4bc2 34-36
+packages/@n8n/client-oauth2/test/credentials-flow.test.ts
+  s_ce50212601c4e2::t_6b30b898519d7d 74-90
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/token-provider.test.ts
+  s_ce50212601c4e2::t_1f95d0b2da082a 87
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/token-provider.ts
+  s_ce50212601c4e2::t_75b73eb3ca1e2a 52
+  s_ce50212601c4e2::t_b9f553b6c8a3a1 15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fa0bd4afd0747a5734d4f8ddd721dcdfe0a4dfa8",
+  "prompts": {},
+  "sessions": {
+    "s_ce50212601c4e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86c869b0-1b19-48e1-8ca4-8fdc897bc0ba",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

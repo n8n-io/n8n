@@ -1,0 +1,44 @@
+packages/frontend/@n8n/rest-api-client/src/api/index.ts
+  s_99c4a4dd2438e3::t_5cf596722e0a26 9
+packages/cli/src/modules/instance-reporting/instance-reporting.module.ts
+  s_99c4a4dd2438e3::t_1cac27f6f03724 52-53,56-60,69-72,74
+  s_99c4a4dd2438e3::t_128c8e9c7afec1 22-25
+packages/frontend/@n8n/rest-api-client/src/api/instance-reporting.ts
+  s_99c4a4dd2438e3::t_1795f4a48eebe5 1-10
+packages/@n8n/api-types/src/index.ts
+  s_99c4a4dd2438e3::t_d4bfc55ce5f84c 14
+packages/cli/src/modules/instance-reporting/README.md
+  s_99c4a4dd2438e3::t_970e6f479341bc 111,117-118,120-137
+packages/@n8n/api-types/src/instance-reporting.ts
+  s_99c4a4dd2438e3::t_4dac1064235f4c 1-13
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.controller.test.ts
+  s_99c4a4dd2438e3::t_094b25afdde63a 1-41
+packages/cli/src/modules/instance-reporting/instance-reporting.controller.ts
+  s_99c4a4dd2438e3::t_09e0c86381c01c 1-16
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.module.test.ts
+  s_99c4a4dd2438e3::t_0c49223c9ffe00 104-111,113-119
+  s_99c4a4dd2438e3::t_3fa088d596e882 53,58,61-64,66,68
+  s_99c4a4dd2438e3::t_bafee76f87c039 112
+  s_99c4a4dd2438e3::t_a61ba50fb5aadd 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9bc5e76604c8ee853280b30fb0e22ba64230f258",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_99c4a4dd2438e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ea6d6a0-ad3a-4796-9d76-3bf8450b1708",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

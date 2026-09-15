@@ -1,0 +1,25 @@
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_c9e3c3ddf5dce2::t_a1a2750203e586 290
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_c9e3c3ddf5dce2::t_c2f360d2a41d59 1133
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_c9e3c3ddf5dce2::t_a1a2750203e586 3995,4023
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_c9e3c3ddf5dce2::t_a1a2750203e586 533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ea1b9d1ba17c317d30b3e96183e55c4852fa346",
+  "prompts": {},
+  "sessions": {
+    "s_c9e3c3ddf5dce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "241991fc-83af-4eb5-8a54-50f4dcf41955",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

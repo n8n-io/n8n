@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_2f9edc7375597a::t_75060149c1cb7d 736-738
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-run-pin-data.test.ts
+  s_2f9edc7375597a::t_6f7c6cc3a25628 192-207
+packages/@n8n/instance-ai/src/utils/__tests__/node-keyed-items.test.ts
+  s_2f9edc7375597a::t_de767583347bfd 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ddaeb7a2fad8c6d37a817ecbf7b5798e226dcffe",
+  "prompts": {},
+  "sessions": {
+    "s_2f9edc7375597a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7d6ebc5-efad-405d-aa1d-4d826005a533",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
