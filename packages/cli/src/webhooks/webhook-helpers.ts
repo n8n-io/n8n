@@ -85,15 +85,18 @@ import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import type { WebhookResponse } from '@/webhooks/webhook-response';
-import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
+import {
+	createStaticResponse,
+	createStreamResponse,
+	type WebhookResponse,
+} from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EngineV2Webhooks } from './engine-v2-webhooks';
-import { applySandboxCSP } from './webhook-response-headers';
 import {
+	applySandboxCSP,
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
