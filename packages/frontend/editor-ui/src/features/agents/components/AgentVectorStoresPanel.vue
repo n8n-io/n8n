@@ -3,7 +3,6 @@ import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import {
 	N8nEmptyState,
 	N8nActionDropdown,
-	N8nIcon,
 	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
