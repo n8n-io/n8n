@@ -1,18 +1,21 @@
 import type { N8NConfig } from 'n8n-containers/stack';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
+/** The `engine-v2:e2e` project greps for this prefix, so every tag below is selected. */
+export const ENGINE_TAG_PREFIX = '@engine:';
+
 /**
  * Title tags that sort a spec into an engine 2.0 parity bucket. They only
  * matter under a stack that runs engine 2.0 (`engine-v2:e2e`); everywhere
  * else the spec runs as usual.
  */
 export const ENGINE_TAGS = {
-	/** Must pass on both engines. The `engine-v2:e2e` project runs these. */
-	supported: '@engine:v2',
+	/** Must pass on both engines. Runs there. */
+	supported: `${ENGINE_TAG_PREFIX}v2`,
 	/** Engine 2.0 will never support this behaviour. Skipped there. */
-	unsupported: '@engine:v1-only',
+	unsupported: `${ENGINE_TAG_PREFIX}v1-only`,
 	/** Engine 2.0 will support this, but does not yet. Expected to fail there. */
-	pending: '@engine:v2-pending',
+	pending: `${ENGINE_TAG_PREFIX}v2-pending`,
 } as const;
 
 export type EngineParityDisposition =

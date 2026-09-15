@@ -156,8 +156,11 @@ jobs:
               packages/cli/src/executions/execution-id.ts
               packages/cli/src/webhooks/engine-v2-*
               packages/cli/src/workflows/triggers/engine-v2-*
-              packages/testing/containers/services/engine.ts
-              packages/testing/playwright/fixtures/engine-parity.ts
+              packages/testing/containers/**
+              packages/testing/playwright/playwright.config.ts
+              packages/testing/playwright/playwright-projects.ts
+              packages/testing/playwright/fixtures/**
+              packages/testing/playwright/services/**
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**

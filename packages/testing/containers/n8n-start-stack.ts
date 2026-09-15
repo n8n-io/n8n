@@ -441,7 +441,8 @@ function displayConfig(config: N8NConfig) {
 	const services = config.services ?? [];
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres = config.postgres || isQueueMode || services.includes('keycloak');
+	const usePostgres =
+		config.postgres || isQueueMode || config.engine !== undefined || services.includes('keycloak');
 
 	let modeStr: string;
 	if (isQueueMode) {
@@ -456,6 +457,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Mode: ${modeStr}`);
 
 	const enabledFeatures: string[] = [];
+	if (config.engine) enabledFeatures.push(`Engine 2.0 (${config.engine})`);
 	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
 	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
 	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');

@@ -1,6 +1,19 @@
 import { describe, expect, test } from 'vitest';
 
-import { ENGINE_TAGS, engineParityDisposition, workflowSettingsFor } from './engine-parity';
+import {
+	ENGINE_TAG_PREFIX,
+	ENGINE_TAGS,
+	engineParityDisposition,
+	workflowSettingsFor,
+} from './engine-parity';
+
+describe('ENGINE_TAGS', () => {
+	test('every tag starts with the prefix the engine project greps for', () => {
+		for (const tag of Object.values(ENGINE_TAGS)) {
+			expect(tag.startsWith(ENGINE_TAG_PREFIX)).toBe(true);
+		}
+	});
+});
 
 describe('workflowSettingsFor', () => {
 	test('returns no defaults for a stack without engine 2.0', () => {

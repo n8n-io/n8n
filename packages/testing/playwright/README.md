@@ -205,8 +205,9 @@ that runs engine 2.0 in the main process (`containerConfig.engine:
 helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
 without changes. Workflows imported through the UI do not get the setting.
 
-The project only picks up `@engine:v2` specs for now. Tag a spec once it passes
-on both engines:
+The project only picks up specs with an `@engine:*` tag for now. Tag a spec
+`@engine:v2` once it passes on both engines; use the other two tags to track
+specs that engine 2.0 does not run yet:
 
 ```bash
 pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/nodes/if-node.spec.ts
