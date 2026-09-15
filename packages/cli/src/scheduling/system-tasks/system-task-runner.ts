@@ -67,6 +67,14 @@ export class SystemTaskRunner {
 
 	private timersStarted = false;
 
+	/**
+	 * Bumped on every start and stop of the timers. A stop awaits the in-flight
+	 * runs, so a takeover can start the timers again before that await returns;
+	 * the generation tells the returning stop that it no longer speaks for the
+	 * timers.
+	 */
+	private timerGeneration = 0;
+
 	private isShuttingDown = false;
 
 	private inMemoryRunsController = new AbortController();
@@ -117,6 +125,7 @@ export class SystemTaskRunner {
 	startTimers(): void {
 		if (!this.isShuttingDown && !this.timersStarted) {
 			this.timersStarted = true;
+			this.timerGeneration++;
 			this.inMemoryRunsController = new AbortController();
 			emitSystemTaskMetric(this.eventService, 'system-task-timers-started', {});
 			const from = new Date();
@@ -135,6 +144,7 @@ export class SystemTaskRunner {
 
 	@OnLeaderStepdown()
 	async stopTimers(): Promise<void> {
+		const generation = ++this.timerGeneration;
 		this.timersStarted = false;
 		this.inMemoryRunsController.abort();
 		for (const routed of this.inMemoryTasks()) {
@@ -144,7 +154,9 @@ export class SystemTaskRunner {
 		}
 		this.logger.debug('Stopped the in-memory system task timers');
 		await Promise.all(this.inFlightRuns());
-		emitSystemTaskMetric(this.eventService, 'system-task-timers-stopped', {});
+		if (generation === this.timerGeneration) {
+			emitSystemTaskMetric(this.eventService, 'system-task-timers-stopped', {});
+		}
 	}
 
 	private inMemoryTasks(): Array<RoutedTask & { timer: SystemTaskTimer }> {

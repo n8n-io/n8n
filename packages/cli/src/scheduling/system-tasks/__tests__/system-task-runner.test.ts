@@ -976,6 +976,27 @@ describe('SystemTaskRunner', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-timers-stopped', {});
 		});
 
+		it('emits no stop for a stepdown that a takeover outran', async () => {
+			const { runner, metadata, eventService } = setup();
+			let release!: () => void;
+			dummy.onRun = async () =>
+				await new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			metadata.register(DummySystemTask);
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(1);
+
+			const stopping = runner.stopTimers();
+			runner.startTimers();
+			release();
+			await stopping;
+
+			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(2);
+			expect(emitted(eventService, 'system-task-timers-stopped')).toHaveLength(0);
+		});
+
 		it('runs the occurrence although a metrics listener throws', async () => {
 			const { runner, metadata, eventService, errorReporter } = setup();
 			eventService.emit.mockImplementation(() => {
