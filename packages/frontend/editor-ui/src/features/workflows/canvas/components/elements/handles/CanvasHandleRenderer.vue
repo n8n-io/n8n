@@ -165,21 +165,10 @@ provide(CanvasNodeHandleKey, {
 </template>
 
 <style lang="scss" module>
-:global(.vue-flow__handle).handle {
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--handle--indicator--width: calc(16px * var(--canvas-zoom-compensation-factor, 1));
-	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--handle--indicator--height: calc(16px * var(--canvas-zoom-compensation-factor, 1));
+@use './_canvasHandleStyles.scss' as styles;
 
-	width: var(--handle--indicator--width);
-	height: var(--handle--indicator--height);
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-	border: 0;
-	z-index: 1;
-	background: transparent;
-	border-radius: 0;
+:global(.vue-flow__handle).handle {
+	@include styles.outer-handle;
 
 	&.inputs.main {
 		cursor: default;
