@@ -358,11 +358,11 @@ jobs:
       artifact-prefix: e2e
     secrets: inherit
 
-  # Engine 2.0 parity: runs the `@engine:v2` specs against a main that routes
-  # every workflow to the new engine. Runs when engine code changes or when the
-  # PR carries the `force-engine-e2e` label. One shard is enough while the
-  # tagged set is small. Internal-only: docker-artifact mode needs the image
-  # cache, which forks do not have.
+  # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes
+  # every workflow to the new engine. Runs, and blocks, when engine code changes
+  # or when the PR carries the `force-engine-e2e` label; skipped otherwise. One
+  # shard is enough while the tagged set is small. Internal-only: docker-artifact
+  # mode needs the image cache, which forks do not have.
   e2e-engine:
     name: E2E on engine 2.0
     needs: [install-and-build, prepare-docker]
@@ -479,6 +479,7 @@ jobs:
         lint,
         check-packaging,
         e2e,
+        e2e-engine,
         dev-server-smoke,
         frontend-declarations,
         db-tests,
@@ -535,14 +536,13 @@ jobs:
   # address, so there is nothing here to delete.
   cleanup-docker-image:
     name: Cleanup Docker image
-    needs: [prepare-docker, e2e-performance, e2e-engine, required-checks]
+    needs: [prepare-docker, e2e-performance, required-checks]
     if: |
       always() &&
       vars.RUNNER_PROVIDER != 'github' &&
       needs.prepare-docker.result == 'success' &&
       needs.required-checks.result == 'success' &&
-      (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped') &&
-      (needs.e2e-engine.result == 'success' || needs.e2e-engine.result == 'skipped')
+      (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       # Not `gh api --method DELETE`: written on Blacksmith runners, where
