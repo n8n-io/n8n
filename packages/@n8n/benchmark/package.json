@@ -37,13 +37,11 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
-    "dotenv": "catalog:",
     "nanoid": "catalog:",
     "zx": "^8.8.5"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/convict": "^6.1.1",
     "@types/k6": "^0.52.0",
     "typescript": "catalog:typescript"
   },

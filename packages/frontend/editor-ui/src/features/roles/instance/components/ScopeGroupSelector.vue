@@ -82,7 +82,12 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 				{{ i18n.baseText(group.labelKey) }}
 			</div>
 			<div :class="$style.optionList">
-				<N8nLoading v-if="loading" :rows="group.options.length" :shrink-last="false" />
+				<N8nLoading
+					v-if="loading"
+					:class="$style.loading"
+					:rows="group.options.length"
+					:shrink-last="false"
+				/>
 				<template v-else>
 					<N8nTooltip
 						v-for="option in group.options"
@@ -165,13 +170,23 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	flex: 1;
+	/* Keep each tooltip trigger as wide as its option, so the tooltip opens
+	   beside the hovered option and not at the right edge of the card. */
+	align-items: flex-start;
 }
 
 .checkbox {
 	margin-bottom: 0;
 }
 
+/* Also opts out: the skeleton rows size themselves in percent of the card. */
+.loading {
+	align-self: stretch;
+}
+
 .warning {
 	margin-top: var(--spacing--2xs);
+	/* Opt out of the option alignment above: the callout spans the whole card. */
+	align-self: stretch;
 }
 </style>

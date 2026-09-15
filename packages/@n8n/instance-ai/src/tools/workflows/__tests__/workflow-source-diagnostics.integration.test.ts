@@ -82,7 +82,7 @@ export default wf;`);
 			expect.arrayContaining([
 				expect.stringContaining('src/chunk.ts(1,14): error TS2322:'),
 				expect.stringContaining('src/chunk.ts(2,32): error TS1109:'),
-				expect.stringContaining("src/main.ts(4,4): error TS2339: Property 'onError'"),
+				expect.stringContaining('src/main.ts(4,4): error TS2554: Expected 1 arguments, but got 0.'),
 				expect.stringContaining("src/main.ts(5,4): error TS2339: Property 'onDone'"),
 			]),
 		);

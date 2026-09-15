@@ -262,7 +262,7 @@ export class ImapSimple {
 	): void {
 		if (this.closed && event !== 'close') return;
 		const handler = this.handlers[event];
-		if (handler !== undefined) run(handler as NonNullable<(typeof this.handlers)[K]>);
+		if (handler !== undefined) run(handler);
 	}
 
 	private reportError(error: unknown): void {

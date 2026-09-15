@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
@@ -31,6 +32,7 @@ const node: INode = {
 const createMockExecuteFunction = (
 	nodeParameters: IDataObject,
 	continueOnFail: boolean = false,
+	evaluateExpression: (expression: string) => unknown = () => undefined,
 ) => {
 	const fakeExecuteFunction = {
 		getNodeParameter(
@@ -47,6 +49,7 @@ const createMockExecuteFunction = (
 		},
 		helpers: { constructExecutionMetaData },
 		continueOnFail: () => continueOnFail,
+		evaluateExpression: (expression: string) => evaluateExpression(expression),
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };
@@ -119,6 +122,39 @@ describe('test Set2, rawMode/json Mode', () => {
 			expect(parseJsonSpy).toHaveBeenCalledWith(jsonDataString, node, 0);
 			expect(resolveRawDataSpy).toHaveBeenCalledWith(jsonDataString, 0);
 			expect(result).toEqual({ json: jsonData, pairedItem: { item: 0 } });
+		});
+	});
+
+	// The expression engine is a mock here, so these tests pin how raw mode turns
+	// each kind of resolved value into JSON text, not what the engine gives back.
+	// The engine's own contract for a date expression is tested in
+	// packages/@n8n/expression-runtime.
+	describe('a resolved date value in the JSON template', () => {
+		const isoString = '2026-09-04T10:20:30.000+02:00';
+		const jsonOutputTemplate = '{\n  "time": {{ $now }}\n}\n';
+
+		const executeWithResolvedValue = async (resolved: unknown) =>
+			await execute.call(
+				createMockExecuteFunction({ jsonOutput: `=${jsonOutputTemplate}` }, false, () => resolved),
+				item,
+				0,
+				options,
+				{ jsonOutput: jsonOutputTemplate },
+				node,
+			);
+
+		it('should put a DateTime into the output as a quoted ISO string', async () => {
+			const result = await executeWithResolvedValue(DateTime.fromISO(isoString, { setZone: true }));
+
+			expect(result).toEqual({ json: { time: isoString }, pairedItem: { item: 0 } });
+		});
+
+		it('should report invalid JSON when the value is a bare ISO string', async () => {
+			// The symptom a user sees: an unquoted timestamp in the template makes the
+			// JSON text invalid.
+			await expect(executeWithResolvedValue(isoString)).rejects.toThrow(
+				"The 'JSON Output' in item 0 contains invalid JSON",
+			);
 		});
 	});
 

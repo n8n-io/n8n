@@ -24,7 +24,10 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
-export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string; schema?: ZodTypeAny };
+export type Arg =
+	| { type: 'body'; required?: boolean }
+	| { type: 'query' }
+	| { type: 'param'; key: string; schema?: ZodTypeAny };
 
 export interface CorsOptions {
 	allowedOrigins: string[];

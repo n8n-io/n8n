@@ -250,7 +250,7 @@ export class n8nPage {
 
 	/**
 	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
-	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * because the root route lands users on the n8n Assistant when the `instance-ai`
 	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
 	 */
 	async goHome() {

@@ -12,13 +12,13 @@ const requirements: TestRequirements = {
 test.use(instanceAiTestConfig);
 
 test.describe(
-	'Open workflows in assistant by default @capability:proxy',
+	'Open workflows in assistant by default',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
-			'treatment user opens a workflow card into the AI Assistant',
+			'treatment user opens a workflow card into the n8n Assistant',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n, api, setupRequirements }) => {
 				await setupRequirements(requirements);

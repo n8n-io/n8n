@@ -49,6 +49,7 @@ export class AgentsSkillsController {
 		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -62,10 +63,19 @@ export class AgentsSkillsController {
 		@Body payload: UpdateAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		return await this.agentSkillsService.updateSkill(agentId, projectId, skillId, payload, {
-			user: req.user,
-			modifiedBy: 'user',
-		});
+		const { baseSkillHash, ...updates } = payload;
+		return await this.agentSkillsService.updateSkill(
+			agentId,
+			projectId,
+			skillId,
+			updates,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+			baseSkillHash,
+		);
 	}
 
 	@Delete('/:agentId/skills/:skillId')
@@ -80,6 +90,7 @@ export class AgentsSkillsController {
 		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { ok: true };
 	}

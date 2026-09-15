@@ -445,8 +445,8 @@ function renderDiagBlock(report: RunReport): void {
 	const main = getN8nMainService(report);
 	const pg = getPostgresService(report);
 	const worker = getN8nWorkerService(report);
-	const eventLoopLag = main && main.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
-	const queueWaiting = worker && worker.kind === 'n8n-worker' ? worker.queueWaiting : undefined;
+	const eventLoopLag = main?.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
+	const queueWaiting = worker?.kind === 'n8n-worker' ? worker.queueWaiting : undefined;
 
 	console.log(
 		`[DIAG] ${report.scenario.spec}\n` +
@@ -565,7 +565,7 @@ function renderResultBlock(report: RunReport): void {
 	const t = report.throughput;
 	const main = getN8nMainService(report);
 	const pg = getPostgresService(report);
-	const eventLoopLag = main && main.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
+	const eventLoopLag = main?.kind === 'n8n-main' ? main.eventLoopLagSec : undefined;
 	const evLagMs = eventLoopLag !== undefined ? `${(eventLoopLag * 1000).toFixed(0)}ms` : 'N/A';
 
 	if (t.reqPerSec !== undefined) {

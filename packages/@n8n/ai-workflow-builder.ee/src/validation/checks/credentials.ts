@@ -1,3 +1,4 @@
+import { ALWAYS_SENSITIVE_HEADERS } from '@n8n/utils/redaction/sensitive-headers';
 import { isExpression } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
@@ -21,14 +22,7 @@ const CREDENTIAL_FIELD_PATTERNS = [
 ];
 
 // Header names that typically contain credentials (lowercase for comparison)
-const SENSITIVE_HEADERS = new Set([
-	'authorization',
-	'x-api-key',
-	'x-auth-token',
-	'x-access-token',
-	'api-key',
-	'apikey',
-]);
+const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
 
 /**
  * Checks if a field name looks like it's meant to store credentials

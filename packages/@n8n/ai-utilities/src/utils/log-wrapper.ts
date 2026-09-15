@@ -140,7 +140,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [values],
 						})) as MemoryVariables;
 
@@ -163,7 +163,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [input, output],
 						})) as MemoryVariables;
 
@@ -191,7 +191,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [],
 						})) as BaseMessage[];
 
@@ -211,7 +211,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [message],
 						});
 
@@ -237,7 +237,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
@@ -284,7 +284,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [validatedDocuments],
 						})) as number[][];
 
@@ -308,7 +308,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [validatedQuery],
 						})) as number[];
 
@@ -332,7 +332,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							// compressDocuments mutates the original object
 							// messing up the input data logging
 							arguments: [deepCopy(documents), query],
@@ -360,7 +360,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [items],
 						})) as number[];
 
@@ -379,7 +379,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [item, itemIndex],
 						})) as number[];
 
@@ -405,7 +405,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [text],
 						})) as string[];
 
@@ -437,7 +437,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [query],
 						})) as string;
 
@@ -468,7 +468,7 @@ export function logWrapper<
 							executeFunctions,
 							connectionType,
 							currentNodeRunIndex: index,
-							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							method: (target[prop] as (...args: any[]) => Promise<unknown>).bind(target),
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 

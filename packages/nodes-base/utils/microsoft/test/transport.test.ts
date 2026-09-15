@@ -314,6 +314,7 @@ describe('Microsoft Graph transport kernel', () => {
 						// proves the SPECIFIC 401/402/403 messages fire in production (the status
 						// is read from NodeApiError.httpCode, not the absent statusCode/error.error)
 						expect(error.message).toBe(expectedMessage);
+						expect((error as NodeApiError).httpCode).toBe(String(statusCode));
 						// The raw body must not leak through the surfaced message…
 						expect(error.message).not.toContain('request-id');
 						expect(error.message).not.toContain('token=');
@@ -469,6 +470,13 @@ describe('Microsoft Graph transport kernel', () => {
 			).not.toThrow();
 			expect(() =>
 				validateMicrosoftGraphId('rl1HYb0cUEiHPc7zgB_KWWUAA7Of', mockNode),
+			).not.toThrow();
+			// base64 chat-membership id: the trailing `=` padding must not be rejected
+			expect(() =>
+				validateMicrosoftGraphId(
+					'MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+					mockNode,
+				),
 			).not.toThrow();
 		});
 

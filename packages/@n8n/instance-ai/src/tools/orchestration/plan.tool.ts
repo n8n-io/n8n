@@ -104,7 +104,7 @@ function validatePlanningContext(
 ): string | undefined {
 	const { planningContext } = input;
 	if (!planningContext) {
-		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+		trackPlanningRoute(context, input.tasks, {
 			route: 'contract_violation',
 			source: 'missing',
 		});
@@ -119,7 +119,7 @@ function validatePlanningContext(
 
 	if (isReplanContext(context)) {
 		if (planningContext.source !== 'replan') {
-			trackPlanningRoute(context, input.tasks as PlannedTask[], {
+			trackPlanningRoute(context, input.tasks, {
 				route: 'contract_violation',
 				source: planningContext.source,
 			});
@@ -133,7 +133,7 @@ function validatePlanningContext(
 	}
 
 	if (planningContext.source !== 'planning-skill') {
-		trackPlanningRoute(context, input.tasks as PlannedTask[], {
+		trackPlanningRoute(context, input.tasks, {
 			route: 'contract_violation',
 			source: planningContext.source,
 		});
@@ -222,19 +222,15 @@ export function createPlanTool(context: OrchestrationContext) {
 			// First call — persist plan, show to user, suspend for approval
 			if (isFirstCall) {
 				try {
-					trackPlanningRoute(context, input.tasks as PlannedTask[], {
+					trackPlanningRoute(context, input.tasks, {
 						route: input.planningContext.source === 'planning-skill' ? 'skill' : 'replan',
 						source: input.planningContext.source,
 					});
-					await context.plannedTaskService.createPlan(
-						context.threadId,
-						input.tasks as PlannedTask[],
-						{
-							planRunId: context.runId,
-							messageGroupId: context.messageGroupId,
-							postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
-						},
-					);
+					await context.plannedTaskService.createPlan(context.threadId, input.tasks, {
+						planRunId: context.runId,
+						messageGroupId: context.messageGroupId,
+						postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
+					});
 				} catch (error) {
 					// Surface only validator rejections back to the LLM as a tool result
 					// so it can re-call with a corrected graph. Storage failures, abort
@@ -282,7 +278,7 @@ export function createPlanTool(context: OrchestrationContext) {
 				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
 				context.requestRunHandoff?.('planned-tasks-scheduled');
-				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+				trackPlanningRoute(context, input.tasks, {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,
 					approvalOutcome: 'approved',
@@ -313,7 +309,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			// being treated as a revision, and tell the LLM to stop.
 			if (resumeData.denied) {
 				await context.plannedTaskService.denyPlan(context.threadId);
-				trackPlanningRoute(context, input.tasks as PlannedTask[], {
+				trackPlanningRoute(context, input.tasks, {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,
 					approvalOutcome: 'denied',

@@ -1,9 +1,9 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/search/query.operation';
 import { confluenceApiRequest } from '../../../transport';
-import { mockExecuteCtx } from '../../shared';
+import { mockExecuteCtx, testNode } from '../../shared';
 
 vi.mock('../../../transport', async (importOriginal) => ({
 	...(await importOriginal<object>()),
@@ -209,6 +209,41 @@ describe('search:query', () => {
 		expectSearchRequest(
 			expect.objectContaining({ cqlcontext: '{"contentStatuses":["draft","archived"]}' }),
 		);
+	});
+
+	// Both messages are verbatim from a live site
+	const JAVA_PREFIX = 'com.atlassian.confluence.api.service.exceptions.api.BadRequestException: ';
+	const UNSUPPORTED_TYPE =
+		'Unsupported value for type, got : pageeee, expected one of : [space, user, page, blogpost, comment, attachment, database, whiteboard, slide, embed, folder]';
+
+	it('replaces a rejection that carries no reason at all', async () => {
+		apiRequest.mockRejectedValue(
+			new NodeApiError(
+				testNode,
+				{ message: 'x' },
+				{ message: `${JAVA_PREFIX}Could not parse cql : ` },
+			),
+		);
+
+		const promise = runSearch({ cql: 'type === page' });
+
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('Could not parse the CQL query');
+		await expect(promise).rejects.toMatchObject({
+			description: expect.stringContaining('advanced-searching-using-cql'),
+		});
+	});
+
+	// These say something the user can act on, so they reach the NDV untouched
+	it.each([
+		['names the valid content types', `${JAVA_PREFIX}${UNSUPPORTED_TYPE}`],
+		['gives a parse reason', `${JAVA_PREFIX}Could not parse cql : expecting alphanumeric`],
+		['is not about the query', 'Current user not permitted to use Confluence'],
+	])('keeps the original error when it %s', async (_label, message) => {
+		const apiError = new NodeApiError(testNode, { message: 'x' }, { message });
+		apiRequest.mockRejectedValue(apiError);
+
+		await expect(runSearch()).rejects.toBe(apiError);
 	});
 
 	it('omits expand and cqlcontext when no options are set', async () => {
