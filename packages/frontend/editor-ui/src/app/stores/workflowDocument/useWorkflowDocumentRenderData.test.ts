@@ -225,6 +225,20 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(true);
 	});
 
+	it('does not render a regular No-Op as a placeholder', () => {
+		const { docId } = setupWorkflow('wf-regular-no-op-placeholder', [
+			{
+				id: 'regular-no-op',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('regular-no-op')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(false);
+	});
+
 	it('returns a sticky-note render type for sticky nodes', () => {
 		const { docId } = setupWorkflow('wf-fusion-sticky', [
 			{ id: 's', name: 'Sticky', type: 'n8n-nodes-base.stickyNote' },
