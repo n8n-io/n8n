@@ -346,12 +346,18 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('appends no attribution when the reply has no text', async () => {
+	it('appends no attribution when the reply is reasoning only, with no text', async () => {
 		const { service, executionService } = makeService();
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime(
-			[genieResult, { type: 'finish', finishReason: 'stop' }],
+			[
+				genieResult,
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the result.' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
 			genieAttribution,
 		);
 
