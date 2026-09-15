@@ -22,10 +22,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: raw pnpm
+          - name: pnpm 12
             safe_chain: false
-          - name: SafeChain pnpm
+            swap_to_pnpm_11: false
+          - name: pnpm 12 with SafeChain
             safe_chain: true
+            swap_to_pnpm_11: false
+          - name: pnpm 12 then pnpm 11
+            safe_chain: false
+            swap_to_pnpm_11: true
+          - name: pnpm 12 then pnpm 11 with SafeChain
+            safe_chain: true
+            swap_to_pnpm_11: true
     env:
       PACKAGE_NAME: ${{ inputs.package-name }}
     steps:
@@ -59,6 +67,23 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
+
+      - name: Swap to pnpm 11
+        if: matrix.swap_to_pnpm_11 == true
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          install: false
+          version: '11.25.0'
+
+      - name: Verify pnpm version for publishing
+        shell: bash
+        env:
+          EXPECTED_PNPM_VERSION: ${{ matrix.swap_to_pnpm_11 && '11.25.0' || '12.3.4' }}
+        run: |
+          if [ "$(pnpm --version)" != "$EXPECTED_PNPM_VERSION" ]; then
+            echo "::error::Expected pnpm $EXPECTED_PNPM_VERSION for publishing."
+            exit 1
+          fi
 
       - name: Exchange GitHub OIDC token with npm
         shell: bash
