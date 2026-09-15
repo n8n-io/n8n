@@ -33,8 +33,7 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -18,7 +18,9 @@ mock.module('@actions/github', {
 	},
 });
 
-const { postOrUpdateComment, writeGithubOutput } = await import('./github-helpers.mjs');
+const { initGithub, postOrUpdateComment, setOctokit, writeGithubOutput } = await import(
+	'./github-helpers.mjs'
+);
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -127,5 +129,40 @@ describe('writeGithubOutput', () => {
 		writeGithubOutput({ ignored: 'value' }, {});
 
 		assert.equal(existsSync(outputPath), false);
+	});
+});
+
+describe('initGithub', () => {
+	beforeEach(() => {
+		process.env.GITHUB_REPOSITORY = 'n8n-io/n8n';
+		delete process.env.GITHUB_TOKEN;
+	});
+
+	afterEach(() => {
+		setOctokit(null);
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	it('uses the injected client and needs no token', () => {
+		const injected = { rest: {} };
+		setOctokit(injected);
+
+		const result = initGithub();
+
+		assert.equal(result.octokit, injected);
+		assert.equal(result.owner, 'n8n-io');
+		assert.equal(result.repo, 'n8n');
+	});
+
+	it('builds a client from GITHUB_TOKEN when nothing is injected', () => {
+		const built = { rest: {} };
+		octokitImpl = () => built;
+		process.env.GITHUB_TOKEN = 'token';
+
+		assert.equal(initGithub().octokit, built);
+	});
+
+	it('requires GITHUB_TOKEN when nothing is injected', () => {
+		assert.throws(() => initGithub(), /GITHUB_TOKEN/);
 	});
 });

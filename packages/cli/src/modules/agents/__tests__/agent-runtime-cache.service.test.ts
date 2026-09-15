@@ -40,6 +40,7 @@ function makeRuntime() {
 			close: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		mcpServerAttributions: new Map<string, string>(),
 	};
 }
 

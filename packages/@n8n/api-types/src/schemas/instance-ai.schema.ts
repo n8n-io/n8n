@@ -1694,6 +1694,24 @@ export interface InstanceAiThreadListResponse {
 	hasMore: boolean;
 }
 
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
+	search: z
+		.string()
+		.trim()
+		.max(500)
+		.refine((value) => !value.includes('\u0000'))
+		.optional(),
+	cursor: z.string().min(1).max(256).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
+
 export interface InstanceAiEnsureThreadResponse {
 	thread: InstanceAiThreadInfo;
 	created: boolean;

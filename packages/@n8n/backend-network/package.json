@@ -72,7 +72,6 @@
     "n8n-workflow": "workspace:*",
     "proxy-from-env": "catalog:",
     "qs": "catalog:",
-    "reflect-metadata": "catalog:",
     "undici": "catalog:undici-v7",
     "zod": "catalog:"
   },
