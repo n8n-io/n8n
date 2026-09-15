@@ -193,6 +193,26 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
 | `@auth:X` | Authentication role (owner, admin, member, none) | Tests requiring specific user role |
 | `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
+| `@engine:v2` | Must pass on engine 2.0 as well | Runs under the `engine-v2:e2e` project (see below) |
+| `@engine:v1-only` | Engine 2.0 will never support this | Skipped under `engine-v2:e2e`; tracking only |
+| `@engine:v2-pending` | Engine 2.0 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
+
+### Engine 2.0 parity
+
+The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
+that runs engine 2.0 in the main process (`containerConfig.engine:
+'in-process'`, Postgres, single main). Under that stack every workflow the API
+helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
+without changes. Workflows imported through the UI do not get the setting.
+
+The project only picks up `@engine:v2` specs for now. Tag a spec once it passes
+on both engines:
+
+```bash
+pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/nodes/if-node.spec.ts
+```
+
+For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
 
 ### Worker Isolation (Fresh Database)
 

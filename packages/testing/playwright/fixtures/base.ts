@@ -12,6 +12,7 @@ import {
 	type CapabilityOption,
 } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
+import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
@@ -51,6 +52,8 @@ type TestFixtures = {
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
 	containerRequirement: undefined;
+	/** Internal auto fixture: sorts a test into its engine 2.0 parity bucket by tag. */
+	engineParity: undefined;
 };
 
 type WorkerFixtures = {
@@ -104,6 +107,17 @@ export const test = base.extend<
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
+
+	// Only acts on a stack that runs engine 2.0; see fixtures/engine-parity.ts for the tags.
+	engineParity: [
+		async ({ n8nStackConfig }, use, testInfo) => {
+			const disposition = engineParityDisposition(testInfo.tags, n8nStackConfig.engine);
+			if (disposition.action === 'skip') testInfo.skip(true, disposition.reason);
+			if (disposition.action === 'expect-fail') testInfo.fail(true, disposition.reason);
+			await use(undefined);
+		},
+		{ auto: true },
+	],
 
 	// Service requirements now come from test.use(), so local projects cannot filter them by title.
 	containerRequirement: [
@@ -229,7 +243,8 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, backendUrl, frontendUrl }, use, testInfo) => {
+	n8n: async ({ context, backendUrl, frontendUrl, n8nStackConfig }, use, testInfo) => {
+		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 
@@ -243,7 +258,7 @@ export const test = base.extend<
 
 		if (useSeparateApiContext) {
 			const apiContext = await request.newContext({ baseURL: backendUrl });
-			const api = new ApiHelpers(apiContext);
+			const api = new ApiHelpers(apiContext, apiOptions);
 
 			const n8nInstance = new n8nPage(page, api);
 			await n8nInstance.api.setupFromTags(testInfo.tags);
@@ -291,16 +306,16 @@ export const test = base.extend<
 			await use(n8nInstance);
 			await apiContext.dispose();
 		} else {
-			const n8nInstance = new n8nPage(page);
+			const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
 			await n8nInstance.api.setupFromTags(testInfo.tags);
 			await n8nInstance.start.withProjectFeatures();
 			await use(n8nInstance);
 		}
 	},
 
-	api: async ({ backendUrl }, use, testInfo) => {
+	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
 		const context = await request.newContext({ baseURL: backendUrl });
-		const api = new ApiHelpers(context);
+		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
 		await api.setupFromTags(testInfo.tags);
 
 		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
@@ -320,7 +335,7 @@ export const test = base.extend<
 		await use(urls);
 	},
 
-	createApiForMain: async ({ n8nContainer }, use, testInfo) => {
+	createApiForMain: async ({ n8nContainer, n8nStackConfig }, use, testInfo) => {
 		const contexts: Array<{ dispose: () => Promise<void> }> = [];
 
 		const createApi = async (mainIndex: number): Promise<ApiHelpers> => {
@@ -335,7 +350,9 @@ export const test = base.extend<
 			const context = await request.newContext({ baseURL: mainUrls[mainIndex] });
 			contexts.push(context);
 
-			const api = new ApiHelpers(context);
+			const api = new ApiHelpers(context, {
+				workflowSettings: workflowSettingsFor(n8nStackConfig),
+			});
 			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));
 
 			const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));

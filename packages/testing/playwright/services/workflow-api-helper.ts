@@ -27,8 +27,9 @@ export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
 	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const data = this.withDefaultSettings(workflow);
 		const response = await this.api.request.post('/rest/workflows', {
-			data: projectId ? { ...workflow, projectId } : workflow,
+			data: projectId ? { ...data, projectId } : data,
 		});
 
 		if (!response.ok()) {
@@ -49,7 +50,7 @@ export class WorkflowApiHelper {
 	): Promise<{ name: string; id: string; versionId: string }> {
 		const workflowName = options?.name ?? `Test Workflow ${nanoid(8)}`;
 
-		const workflow = {
+		const workflow = this.withDefaultSettings({
 			name: workflowName,
 			nodes: [],
 			connections: {},
@@ -57,7 +58,7 @@ export class WorkflowApiHelper {
 			active: false,
 			projectId: project,
 			...(options?.folder && { parentFolderId: options.folder }),
-		};
+		});
 
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
@@ -73,6 +74,14 @@ export class WorkflowApiHelper {
 			id: workflowData.id,
 			versionId: workflowData.versionId,
 		};
+	}
+
+	/** The stack-wide defaults win, so a spec proves parity on whatever engine the stack runs. */
+	private withDefaultSettings<T extends Partial<IWorkflowBase>>(workflow: T): T {
+		const defaults = this.api.options.workflowSettings;
+		if (!defaults) return workflow;
+
+		return { ...workflow, settings: { ...workflow.settings, ...defaults } };
 	}
 
 	async activate(workflowId: string, versionId: string) {

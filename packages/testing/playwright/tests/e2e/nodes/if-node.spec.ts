@@ -38,7 +38,7 @@ test.describe(
 			await expect(n8n.ndv.getFilterConditions(FILTER_PARAM_NAME)).toHaveCount(1);
 		});
 
-		test('should correctly evaluate conditions', async ({ n8n }) => {
+		test('should correctly evaluate conditions @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Test_workflow_filter.json');
 
 			await n8n.canvas.clickExecuteWorkflowButton();
