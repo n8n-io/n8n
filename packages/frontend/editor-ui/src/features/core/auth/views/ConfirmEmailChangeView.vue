@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { N8nButton, N8nHeading, N8nLogo, N8nText } from '@n8n/design-system';
@@ -22,6 +22,11 @@ const router = useRouter();
 const loading = ref(false);
 const ready = ref(false);
 const newEmail = ref('');
+const isActive = ref(true);
+
+onBeforeUnmount(() => {
+	isActive.value = false;
+});
 
 const getToken = () => {
 	const { token } = router.currentRoute.value.query;
@@ -67,9 +72,13 @@ onMounted(async () => {
 		// The mutating step runs on confirm, so an email-scanner GET of this link
 		// only resolves the token here and never applies the change.
 		const resolved = await usersStore.resolveEmailChangeToken({ token });
+		// The user may leave this view while the resolve is pending; skip the
+		// continuation so it never toasts or navigates from a new destination.
+		if (!isActive.value) return;
 		newEmail.value = resolved.email;
 		ready.value = true;
 	} catch (error) {
+		if (!isActive.value) return;
 		toast.showError(error, locale.baseText('auth.confirmEmailChange.tokenValidationError'));
 		void router.replace({ name: VIEWS.SIGNIN });
 	}
