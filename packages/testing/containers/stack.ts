@@ -8,6 +8,7 @@ import {
 	waitForContainerLogMessages,
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
+import { assertEngineSupported } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -118,11 +119,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
-	const usePostgres =
-		usePostgresConfig ||
-		isQueueMode ||
-		engine !== undefined ||
-		enabledServices.includes('keycloak');
+	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
+
+	assertEngineSupported({ engine, isQueueMode, usePostgres });
+
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
 	let allocatedMainPort: number | undefined;

@@ -24,6 +24,27 @@ interface EngineEnvOptions {
 }
 
 /**
+ * Refuses a stack that engine 2.0 cannot run on. `createN8NStack` calls this
+ * before it starts a container, so the run fails in a second instead of after
+ * a Postgres boot. No-op when `engine` is unset.
+ */
+export function assertEngineSupported({
+	engine,
+	isQueueMode,
+	usePostgres,
+}: EngineEnvOptions & { usePostgres: boolean }): void {
+	if (!engine) return;
+
+	if (isQueueMode) {
+		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
+	}
+
+	if (!usePostgres) {
+		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
+	}
+}
+
+/**
  * Adds the env that turns on engine 2.0 to an n8n environment in place.
  *
  * Reads the `DB_POSTGRESDB_*` values the Postgres service already contributed,
@@ -37,13 +58,7 @@ export function applyEngineEnv(
 ): void {
 	if (!engine) return;
 
-	if (isQueueMode) {
-		throw new Error('Engine 2.0 does not support queue mode: use a single main and no workers');
-	}
-
-	if (env.DB_TYPE !== 'postgresdb') {
-		throw new Error('Engine 2.0 needs Postgres: set `postgres: true` on the stack config');
-	}
+	assertEngineSupported({ engine, isQueueMode, usePostgres: env.DB_TYPE === 'postgresdb' });
 
 	// `env` types every value as present, so a missing one would otherwise reach
 	// the URL as the literal `undefined` and fail at engine boot.

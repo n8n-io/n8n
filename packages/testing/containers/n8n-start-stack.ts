@@ -196,7 +196,7 @@ async function main() {
 
 	// Build configuration
 	const config: N8NConfig = {
-		postgres: values.postgres ?? false,
+		postgres: Boolean(values.postgres || values.engine),
 		...(values.engine ? { engine: 'in-process' as const } : {}),
 		services,
 		projectName:
@@ -237,9 +237,13 @@ async function main() {
 		if (values.queue || values.mains || values.workers) {
 			log.warn('Performance plans use SQLite only. Queue mode ignored.');
 		}
+		if (values.engine) {
+			log.warn('Performance plans use SQLite only. Engine 2.0 ignored.');
+		}
 
 		config.resourceQuota = plan;
 		config.postgres = false; // Force SQLite for performance plans
+		delete config.engine; // Engine 2.0 needs Postgres
 		config.mains = 1; // Force single instance for performance plans
 		config.workers = 0;
 
@@ -441,8 +445,7 @@ function displayConfig(config: N8NConfig) {
 	const services = config.services ?? [];
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	const usePostgres =
-		config.postgres || isQueueMode || config.engine !== undefined || services.includes('keycloak');
+	const usePostgres = config.postgres || isQueueMode || services.includes('keycloak');
 
 	let modeStr: string;
 	if (isQueueMode) {
