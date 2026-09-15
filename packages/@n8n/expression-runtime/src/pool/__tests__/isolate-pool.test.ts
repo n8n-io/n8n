@@ -138,17 +138,19 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1);
 		await pool.initialize();
 
-		pool.acquire();
+		try {
+			pool.acquire();
 
-		const deadline = Date.now() + 3000;
-		while (attempts < 3 && Date.now() < deadline) await wait(50);
-		await wait(50);
-		process.off('unhandledRejection', onUnhandled);
+			const deadline = Date.now() + 3000;
+			while (attempts < 3 && Date.now() < deadline) await wait(50);
+			await wait(50);
 
-		expect(attempts).toBeGreaterThanOrEqual(3);
-		expect(leaked).toEqual([]);
-
-		vi.mocked(globalThis.setTimeout).mockRestore();
-		await pool.dispose();
+			expect(attempts).toBeGreaterThanOrEqual(3);
+			expect(leaked).toEqual([]);
+		} finally {
+			process.off('unhandledRejection', onUnhandled);
+			vi.mocked(globalThis.setTimeout).mockRestore();
+			await pool.dispose();
+		}
 	});
 });

@@ -1246,6 +1246,27 @@ describe(`Integration: nested evaluation time budget (${engineName})`, () => {
 });
 
 describe('QuickJsBridge runtimeBundle injection', () => {
+	it('should not cache a runtimeBundle that fails to load', async () => {
+		const withBadBundle = new QuickJsBridge({
+			timeout: 5000,
+			runtimeBundle: 'this is not javascript (((',
+		});
+
+		try {
+			await expect(withBadBundle.initialize()).rejects.toThrow('Failed to load runtime bundle');
+		} finally {
+			await withBadBundle.dispose();
+		}
+
+		const withDiskRead = new QuickJsBridge({ timeout: 5000 });
+
+		try {
+			await expect(withDiskRead.initialize()).resolves.toBeUndefined();
+		} finally {
+			await withDiskRead.dispose();
+		}
+	});
+
 	it('should initialize and evaluate when runtimeBundle is provided as a string', async () => {
 		let dir = __dirname;
 		let bundle: string | undefined;
@@ -1277,20 +1298,5 @@ describe('QuickJsBridge runtimeBundle injection', () => {
 			await evaluator.release(caller);
 			await evaluator.dispose();
 		}
-	});
-
-	it('should not cache a runtimeBundle that fails to load', async () => {
-		const withBadBundle = new QuickJsBridge({
-			timeout: 5000,
-			runtimeBundle: 'this is not javascript (((',
-		});
-
-		await expect(withBadBundle.initialize()).rejects.toThrow('Failed to load runtime bundle');
-
-		const withDiskRead = new QuickJsBridge({ timeout: 5000 });
-
-		await expect(withDiskRead.initialize()).resolves.toBeUndefined();
-
-		await withDiskRead.dispose();
 	});
 });

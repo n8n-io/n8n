@@ -412,4 +412,20 @@ describe('IdleScalingPool', () => {
 
 		await pool.dispose();
 	});
+
+	it('should reset the idle timer when setTimeout returns a number', async () => {
+		vi.spyOn(globalThis, 'setTimeout').mockImplementation(
+			(() => 1) as unknown as typeof globalThis.setTimeout,
+		);
+
+		const pool = new IdleScalingPool(createFactory(), 1, IDLE_TIMEOUT_MS);
+
+		try {
+			await expect(pool.initialize()).resolves.toBeUndefined();
+			expect(() => pool.acquire()).not.toThrow();
+		} finally {
+			vi.mocked(globalThis.setTimeout).mockRestore();
+			await pool.dispose();
+		}
+	});
 });
