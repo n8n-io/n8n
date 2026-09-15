@@ -11,7 +11,12 @@ import {
 	type ListExecutionsResponse,
 } from './execution-list-v1.service';
 
-/** Entry point for execution list requests. */
+/**
+ * Entry point for execution list requests. Combine v1+v2 executions.
+ *
+ * Engine v1 executions live in the CP, engine v2 executions live in the DP.
+ * This service reads from both stores and combines the results.
+ */
 @Service()
 export class ExecutionListService {
 	constructor(
