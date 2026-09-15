@@ -1,4 +1,9 @@
-import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -181,6 +186,47 @@ describe('VariablesService', () => {
 					value: 'value1',
 				}),
 			).rejects.toThrow('Variables limit reached');
+		});
+	});
+
+	describe('personal project owner', () => {
+		it('member should be able to create, read, update and delete a variable in their personal project', async () => {
+			// ARRANGE
+			const user = await createMember();
+			const personalProject = await getPersonalProject(user);
+
+			// ACT & ASSERT: create
+			const variable = await variablesService.create(user, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value1',
+				projectId: personalProject.id,
+			});
+			expect(variable).toMatchObject({ key: 'VAR1', projectId: personalProject.id });
+
+			// ACT & ASSERT: list and read
+			const listed = await variablesService.getAllForUser(user, { projectId: personalProject.id });
+			expect(listed).toHaveLength(1);
+			expect(listed[0]).toMatchObject({ id: variable.id });
+
+			const read = await variablesService.getForUser(user, variable.id);
+			expect(read).toMatchObject({ id: variable.id, key: 'VAR1' });
+
+			// ACT & ASSERT: update
+			const updated = await variablesService.update(user, variable.id, {
+				key: 'VAR1',
+				type: 'string',
+				value: 'value2',
+				projectId: personalProject.id,
+			});
+			expect(updated).toMatchObject({ id: variable.id, value: 'value2' });
+
+			// ACT & ASSERT: delete
+			await variablesService.deleteForUser(user, variable.id);
+			const remaining = await variablesService.getAllForUser(user, {
+				projectId: personalProject.id,
+			});
+			expect(remaining).toHaveLength(0);
 		});
 	});
 

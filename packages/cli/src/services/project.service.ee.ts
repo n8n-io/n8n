@@ -905,6 +905,7 @@ export class ProjectService {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
 			// if we're not checking specific projects, restrict to team projects
 			if (!projectIds) {
+				// TODO: this is currently breaking listing of variables for member users in their personal space
 				where.type = 'team';
 			}
 			where.projectRelations = {

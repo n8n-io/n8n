@@ -130,6 +130,11 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectVariable:list',
+	'projectVariable:read',
+	'projectVariable:create',
+	'projectVariable:update',
+	'projectVariable:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
