@@ -64,7 +64,6 @@ export declare namespace TestRunRequest {
 }
 
 export declare namespace TagRequest {
-	type Delete = AuthenticatedRequest<{ id: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
 }
 

@@ -10,7 +10,6 @@ import { TagService } from '@/services/tag.service';
 
 type TagHandlers = {
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
-	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
 };
 
 const tagHandlers: TagHandlers = {
@@ -34,22 +33,6 @@ const tagHandlers: TagHandlers = {
 			} catch {
 				throw new ConflictError('Tag already exists');
 			}
-		},
-	],
-	deleteTag: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:delete' }),
-		async (req, res) => {
-			const { id } = req.params;
-
-			let tag;
-			try {
-				tag = await Container.get(TagService).getById(id);
-			} catch (error) {
-				throw new NotFoundError('Not Found');
-			}
-
-			await Container.get(TagService).delete(id);
-			return res.json(tag);
 		},
 	],
 };

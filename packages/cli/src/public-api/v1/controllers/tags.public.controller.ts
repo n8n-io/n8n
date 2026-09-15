@@ -14,6 +14,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -108,6 +109,31 @@ export class TagsPublicController {
 		} catch {
 			throw new NotFoundError('Not Found');
 		}
+
+		return toTagPublicDto(tag);
+	}
+
+	@Delete('/:tagId')
+	@ApiKeyScope('tag:delete')
+	@ApiSummary('Delete a tag')
+	@ApiDescription('Deletes a tag.')
+	@ApiTags(tags)
+	@ApiResponse(200, TagPublicDto)
+	@ApiErrorResponse(404)
+	async deleteTag(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('tagId', tagIdParamSchema) tagId: string,
+	): Promise<TagPublicDto> {
+		let tag: TagEntity;
+
+		try {
+			tag = await this.tagService.getById(tagId);
+		} catch {
+			throw new NotFoundError('Not Found');
+		}
+
+		await this.tagService.delete(tagId);
 
 		return toTagPublicDto(tag);
 	}
