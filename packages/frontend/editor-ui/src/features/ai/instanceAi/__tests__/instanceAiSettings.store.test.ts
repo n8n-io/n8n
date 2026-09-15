@@ -1,4 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
 
@@ -28,6 +29,20 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
+}));
+
+const rollouts = { computerUse: true, browserUse: true };
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: () => ({
+		isFeatureEnabled: computed(() => rollouts.computerUse),
+	}),
+}));
+
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: () => ({
+		isFeatureEnabled: computed(() => rollouts.browserUse),
+	}),
 }));
 
 const mockFetchSettings = vi.fn();
@@ -112,6 +127,8 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		rollouts.computerUse = true;
+		rollouts.browserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -655,6 +672,47 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.setupCommandExpiresAt).toBeNull();
 			expect(store.setupCommandTtlSeconds).toBeNull();
 			expect(store.setupCommandFetchedAt).toBeNull();
+		});
+	});
+
+	describe('computerUseChannels', () => {
+		it('reports both entries when each rollout and admin switch allows it', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer', 'browser']);
+		});
+
+		it('reports nothing when neither rollout covers the user', () => {
+			rollouts.computerUse = false;
+			rollouts.browserUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual([]);
+		});
+
+		it('drops the local computer when the admin disabled the gateway', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: true, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['browser']);
+		});
+
+		it('drops the browser when the admin disabled browser-use', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('drops the browser when its rollout does not cover the user', () => {
+			rollouts.browserUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('reports nothing while the module settings have not loaded', () => {
+			settingsStore.moduleSettings = {};
+
+			expect(store.computerUseChannels).toEqual([]);
 		});
 	});
 });
