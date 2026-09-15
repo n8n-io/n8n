@@ -121,7 +121,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 	};
 });
 
-const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString, isRedacted } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	isForCredential: props.isForCredential,
@@ -220,6 +220,7 @@ defineExpose({
 					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
 					:highlight="!!(resolvedExpressionString && targetItem) && isInputParentOfActiveNode"
 					:hint="resolvedExpressionString"
+					:redacted="isRedacted"
 					:single-line="true"
 				/>
 				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
