@@ -192,8 +192,11 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
+			const isLegacy = this.getNode().typeVersion < 2;
 			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
+				isLegacy
+					? 'additionalFields.receipientsCC.receipientCc'
+					: 'additionalFields.recipientsCC.recipientCc',
 			) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
@@ -207,8 +210,11 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
+			const isLegacy = this.getNode().typeVersion < 2;
 			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
+				isLegacy
+					? 'additionalFields.receipientsBCC.receipientBcc'
+					: 'additionalFields.recipientsBCC.recipientBcc',
 			) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
@@ -222,7 +228,8 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			const isLegacy = this.getNode().typeVersion < 2;
+			const to = this.getNodeParameter(isLegacy ? 'receipients' : 'recipients') as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);
