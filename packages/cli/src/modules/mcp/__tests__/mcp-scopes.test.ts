@@ -153,7 +153,11 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags());
+		// SPIKE (CONTEXT-142): aiPreferencesEnabled gates save_user_preference.
+		const server = await buildService().getServer(
+			user,
+			mcpFeatureFlags({ aiPreferencesEnabled: true }),
+		);
 		const registered = getRegisteredToolNames(server);
 
 		const unmapped = [...registered].filter((name) => !ALL_MAPPED_TOOLS.has(name));
@@ -161,7 +165,11 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('every tool in the scope map is registered when all tools are enabled (drift guard)', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags());
+		// SPIKE (CONTEXT-142): aiPreferencesEnabled gates save_user_preference.
+		const server = await buildService().getServer(
+			user,
+			mcpFeatureFlags({ aiPreferencesEnabled: true }),
+		);
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own

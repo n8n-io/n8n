@@ -91,6 +91,7 @@ import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
+import { createSaveUserPreferenceTool } from './tools/save-user-preference.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -258,7 +259,11 @@ export class McpService {
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			// SPIKE (CONTEXT-142): env force-enable, because this flag has no env
+			// override and the spike must not depend on a PostHog variant locally.
+			aiPreferencesEnabled:
+				process.env.N8N_SPIKE_AI_PREFERENCES === 'true' ||
+				flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -611,6 +616,13 @@ export class McpService {
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
 			registerIfAllowed(listTagsTool);
+		}
+
+		// SPIKE (CONTEXT-142): preference write tool with elicitation probing.
+		if (featureFlags.aiPreferencesEnabled) {
+			registerIfAllowed(
+				createSaveUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
+			);
 		}
 
 		// Data table tools

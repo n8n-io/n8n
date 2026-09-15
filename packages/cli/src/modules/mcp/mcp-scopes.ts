@@ -90,6 +90,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	'aiPreference:write': ['save_user_preference'],
 };
 
 /**
