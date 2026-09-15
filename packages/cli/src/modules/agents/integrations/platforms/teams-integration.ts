@@ -22,6 +22,15 @@ const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 
 /**
+ * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
+ * which interpolates it into a token URL path, so the shape is checked before
+ * it gets there. `MicrosoftEntraServicePrincipalApi` is the source of truth for
+ * these; it applies the same two on its own request path.
+ */
+const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+const TENANT_ID_DOMAIN = /^[A-Za-z0-9.-]+$/;
+
+/**
  * Teams sits with Discord rather than Telegram on registration: the messaging
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
@@ -163,6 +172,18 @@ export class TeamsIntegration extends AgentChatIntegration {
 			);
 		}
 
+		const appTenantId = this.requireField(
+			credential,
+			'tenantId',
+			'a Directory (tenant) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
+		);
+		if (!TENANT_ID_GUID.test(appTenantId) && !TENANT_ID_DOMAIN.test(appTenantId)) {
+			throw new UserError(
+				'The Microsoft Teams credential has an invalid Directory (tenant) ID. ' +
+					'Use the GUID from the app registration overview, or a verified domain such as contoso.onmicrosoft.com.',
+			);
+		}
+
 		return {
 			appId: this.requireField(
 				credential,
@@ -174,11 +195,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 				'clientSecret',
 				'a Client Secret. Create one under Certificates & secrets on the app registration.',
 			),
-			appTenantId: this.requireField(
-				credential,
-				'tenantId',
-				'a Directory (tenant) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
-			),
+			appTenantId,
 		};
 	}
 
