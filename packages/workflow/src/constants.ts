@@ -130,6 +130,7 @@ export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager'
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const MCP_REGISTRY_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpRegistryClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
