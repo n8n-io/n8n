@@ -1,5 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -65,6 +65,12 @@ const tablesToTruncate = [
 	'workflow_statistics',
 	'workflows_tags',
 ];
+
+/**
+ * Engine 2.0 tables. They live in the same database, but the module owns them,
+ * so they are only there when it runs. Children first, for the `DELETE` path.
+ */
+const engineTablesToTruncate = ['workflow_step_execution', 'workflow_execution'];
 
 type UserSetupPayload = {
 	email: string;
@@ -655,7 +661,10 @@ export class E2EController {
 	private async truncateAll() {
 		const { connection } = this.settingsRepo.manager;
 		const dbType = connection.options.type;
-		for (const table of tablesToTruncate) {
+		const tables = Container.get(ModuleRegistry).isActive('engine-v2')
+			? [...tablesToTruncate, ...engineTablesToTruncate]
+			: tablesToTruncate;
+		for (const table of tables) {
 			try {
 				if (dbType === 'postgres') {
 					await connection.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE;`);
