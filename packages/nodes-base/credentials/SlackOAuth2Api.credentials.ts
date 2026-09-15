@@ -39,13 +39,15 @@ export const userScopes = [
 	'search:read',
 
 	// Scopes for MCP, not used in the node directly
-	'search:read.files',
-	'emoji:read',
-	'search:read.users',
-	'im:write',
-	'mpim:write',
 	'canvases:read',
 	'canvases:write',
+	'emoji:read',
+	'im:write',
+	'lists:read',
+	'lists:write',
+	'mpim:write',
+	'search:read.files',
+	'search:read.users',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {
