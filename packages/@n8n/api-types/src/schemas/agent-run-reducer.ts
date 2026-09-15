@@ -499,6 +499,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// semantics: last event wins per workflowId.
 			const root = ensureAgent(state, state.rootAgentId);
 			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.latestSetupAnnouncement = {
+					workflowId: event.payload.workflowId,
+					agentId: ensureAgent(state, event.agentId)?.agentId ?? event.agentId,
+					timestamp: eventTimestamp(event),
+				};
 				root.setupItemsByWorkflowId = {
 					...root.setupItemsByWorkflowId,
 					[event.payload.workflowId]: event.payload.items,

@@ -3,6 +3,16 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
+	USER_REQUESTED_WORKFLOW_TEST: {
+		name: 'User requested workflow test',
+		description:
+			'The user started a manual workflow test from the AI Assistant setup panel. This event does not report execution success.',
+		properties: z.object({
+			source: z.literal('instance_ai_setup_panel'),
+			workflow_id: z.string(),
+			thread_id: z.string().optional(),
+		}),
+	},
 	MULTIPLE_NODES_SELECTED: {
 		name: 'User selected multiple nodes',
 		description:

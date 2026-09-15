@@ -26,6 +26,7 @@ import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
 	workflowId: string;
@@ -139,6 +140,7 @@ function handleWorkflowLoaded(workflowId: string) {
 // the canvas editable through workspace file edits and failed builds.
 const thread = useThread();
 const isAgentWorking = useIsAgentWorking();
+const settingsStore = useInstanceAiSettingsStore();
 
 // The workflow + execution the editor handed off, applied once when this
 // preview first opens. Consumed (cleared) here, so it never re-applies on a
@@ -173,6 +175,7 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
 	executionButtonType: 'secondary',
+	credentialSetupWarnings: settingsStore.isInstanceAiSetupPanelEnabled,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 

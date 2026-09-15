@@ -308,6 +308,7 @@ defineExpose({ showDropdown });
 			:model-value="modelValue"
 			:disable-inactive-items="false"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadMore"
 		>

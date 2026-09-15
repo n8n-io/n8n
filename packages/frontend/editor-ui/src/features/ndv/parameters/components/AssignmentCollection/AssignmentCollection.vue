@@ -171,10 +171,15 @@ function optionSelected(action: string) {
 
 <template>
 	<div
-		:class="{ [$style.assignmentCollection]: true, [$style.empty]: empty }"
+		:class="{
+			[$style.assignmentCollection]: true,
+			[$style.empty]: empty,
+			[$style.restricted]: hasRestrictedAssignments,
+		}"
 		:data-test-id="`assignment-collection-${parameter.name}`"
 	>
 		<N8nInputLabel
+			v-if="!hasRestrictedAssignments"
 			:label="parameter.displayName"
 			:show-expression-selector="false"
 			size="small"
@@ -294,6 +299,10 @@ function optionSelected(action: string) {
 
 .assignment {
 	padding-left: var(--spacing--lg);
+}
+
+.restricted .assignments {
+	gap: var(--spacing--xs);
 }
 
 .dropAreaWrapper {

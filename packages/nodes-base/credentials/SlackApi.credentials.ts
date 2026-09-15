@@ -20,6 +20,8 @@ export class SlackApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
+			description:
+				'In your Slack app, open OAuth & Permissions. Copy the Bot User OAuth Token (xoxb-) or User OAuth Token (xoxp-), depending on the operations you need.',
 		},
 		{
 			displayName: 'Signature Secret',

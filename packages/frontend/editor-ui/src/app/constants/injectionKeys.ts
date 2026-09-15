@@ -92,6 +92,8 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
 	executionButtonType?: 'primary' | 'secondary';
+	/** Show missing credentials as setup warnings in hosts with a setup panel. */
+	credentialSetupWarnings?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
