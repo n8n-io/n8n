@@ -95,55 +95,58 @@ describe('ExecutionsController', () => {
 			count: 0,
 			estimated: false,
 			results: [],
+			nextCursor: null,
 			concurrentExecutionsCount: -1,
 		};
 
-		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
+		const CURSOR_BEFORE = '999';
+
+		const QUERIES_WITH_STATUS_OR_CURSOR: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
-				status: undefined,
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
+				status: ['waiting'],
+				range: { limit: 20, beforeId: undefined },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: ['waiting'],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, beforeId: CURSOR_BEFORE },
 			},
-			{
-				kind: 'range',
-				workflowId: undefined,
-				status: [],
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-		];
-
-		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: undefined,
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, beforeId: CURSOR_BEFORE },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: [],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { limit: 20, beforeId: CURSOR_BEFORE },
+			},
+		];
+
+		const QUERIES_WITHOUT_STATUS_OR_CURSOR: ExecutionSummaries.RangeQuery[] = [
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: undefined,
+				range: { limit: 20, beforeId: undefined },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { limit: 20, beforeId: undefined },
 			},
 		];
 
 		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
 
-		describe('if either status or range provided', () => {
-			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
+		describe('if a status filter or a cursor is provided', () => {
+			test.each(QUERIES_WITH_STATUS_OR_CURSOR)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
 					executionService.buildSharingOptions.mockResolvedValue({
@@ -163,9 +166,9 @@ describe('ExecutionsController', () => {
 			);
 		});
 
-		describe('if neither status nor range provided', () => {
-			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
-				'should fetch executions per query',
+		describe('if neither a status filter nor a cursor is provided', () => {
+			test.each(QUERIES_WITHOUT_STATUS_OR_CURSOR)(
+				'should fetch current and completed executions per query',
 				async (rangeQuery) => {
 					executionService.buildSharingOptions.mockResolvedValue({
 						workflowRoles: [],
@@ -196,7 +199,7 @@ describe('ExecutionsController', () => {
 					kind: 'range',
 					workflowId: undefined,
 					status: ['success'],
-					range: { lastId: '999', firstId: '111', limit: 5 },
+					range: { limit: 5, beforeId: CURSOR_BEFORE },
 				};
 
 				const req = mock<ExecutionRequest.GetMany>({ rangeQuery });

@@ -813,3 +813,9 @@ export {
 	instanceAiApprovalDetailsSchema,
 	type InstanceAiApprovalDetails,
 } from './schemas/instance-ai-approval.schema';
+export type {
+	ExecutionListPagination,
+	ExecutionListPaginationQuery,
+	SerializedCursor,
+} from './dto/executions/execution-list-pagination';
+export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
