@@ -1329,6 +1329,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					runId: 'expired-run',
 					toolCallId: 'tc-1',
 					resumeData: { value: 'yes' },
+					expectedMemory: { threadId: 'thread-1' },
 				}),
 			),
 		).rejects.toThrow(UserError);
@@ -1348,6 +1349,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 				abortSignal: abortController.signal,
 			}),
@@ -1415,6 +1417,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 			}),
 		);
@@ -1453,6 +1456,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					resumeData: { value: 'yes' },
+					expectedMemory: { threadId: 'thread-1' },
 					user,
 					usePublishedVersion: false,
 					integrationType: N8N_CHAT_INTEGRATION_TYPE,
@@ -1477,6 +1481,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					resumeData: { value: 'yes' },
+					expectedMemory: { threadId: 'thread-1' },
 					integrationType: 'slack',
 				}),
 			),
@@ -1504,6 +1509,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			runId: 'run-1',
 			toolCallId: 'tc-1',
 			resumeData: { value: 'yes' },
+			expectedMemory: { threadId: 'thread-1' },
 			abortSignal: abortController.signal,
 			onExecutionRecorded: vi.fn(),
 		});
@@ -1620,6 +1626,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					runId: 'child-run-1',
 					toolCallId: 'child-tool-call-1',
 					resumeData: { approved: true },
+					expectedMemory: { threadId: 'thread-1' },
 				}),
 			),
 		).rejects.toThrow('Delegated actions must be resumed through their parent agent');
@@ -1747,6 +1754,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 			}),
 		);
@@ -1781,6 +1789,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'telegram',
 			}),
 		);
@@ -1823,6 +1832,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 			}),
 		);
@@ -1856,6 +1866,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 			}),
 		);
@@ -1890,6 +1901,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				resumeData: { value: 'yes' },
+				expectedMemory: { threadId: 'thread-1' },
 				integrationType: 'slack',
 			}),
 		);

@@ -110,6 +110,7 @@ interface AgentExecutor {
 		toolCallId: string;
 		resumeData: unknown;
 		integrationType?: string;
+		expectedMemory: { threadId: string };
 	}): AsyncGenerator<StreamChunk>;
 
 	/**
