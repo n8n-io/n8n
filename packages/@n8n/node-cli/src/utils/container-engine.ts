@@ -63,12 +63,12 @@ export async function detectContainerEngine(): Promise<ContainerEngine> {
 }
 
 /** Fails with an actionable message when the engine is installed but not running. */
-export async function assertEngineRunning(engine: ContainerEngine): Promise<void> {
+export async function assertEngineReady(engine: ContainerEngine): Promise<void> {
 	try {
 		await exec(engine, ['info']);
 	} catch {
 		throw new Error(
-			`The ${engine} daemon is not reachable.\n` +
+			`${engine} is installed but not responding.\n` +
 				"  Start it (e.g. open Docker Desktop, 'podman machine start', 'colima start') and re-run.\n" +
 				'  Or run n8n yourself and use --external-n8n.',
 		);

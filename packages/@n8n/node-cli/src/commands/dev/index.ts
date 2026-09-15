@@ -15,7 +15,7 @@ import {
 	watchStaticFiles,
 } from './utils';
 import {
-	assertEngineRunning,
+	assertEngineReady,
 	detectContainerEngine,
 	removeContainer,
 } from '../../utils/container-engine';
@@ -85,7 +85,7 @@ export default class Dev extends Command {
 			let engine;
 			try {
 				engine = await detectContainerEngine();
-				await assertEngineRunning(engine);
+				await assertEngineReady(engine);
 			} catch (error) {
 				return onCancel(error instanceof Error ? error.message : String(error));
 			}
