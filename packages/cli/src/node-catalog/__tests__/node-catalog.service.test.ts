@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -283,6 +284,12 @@ describe('NodeCatalogService', () => {
 				mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 			);
 			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({
+					instanceSettingsLoader: { communityPackagesManagedByEnv: false },
+				}),
+			);
+			Container.set(
 				CommunityNodeTypesService,
 				mock<CommunityNodeTypesService>({
 					getCommunityNodeTypes: vi
@@ -408,6 +415,28 @@ describe('NodeCatalogService', () => {
 			Container.set(
 				CommunityPackagesConfig,
 				mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: false }),
+			);
+			const getCommunityNodeTypes = vi.fn();
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			await service.searchNodes(['firecrawl'], { includeUninstalled: true });
+
+			expect(getCommunityNodeTypes).not.toHaveBeenCalled();
+		});
+
+		test('does not build the tier when packages are managed from the environment', async () => {
+			// install() rejects every call on such an instance, so offering
+			// uninstalled nodes would only steer the agent into workflows that
+			// cannot run.
+			Container.set(
+				GlobalConfig,
+				mock<GlobalConfig>({
+					instanceSettingsLoader: { communityPackagesManagedByEnv: true },
+				}),
 			);
 			const getCommunityNodeTypes = vi.fn();
 			Container.set(
@@ -655,6 +684,22 @@ describe('NodeCatalogService', () => {
 				expect(getCommunityNodeTypes).not.toHaveBeenCalled();
 			});
 
+			test('skips the tier build when every requested type is installed', async () => {
+				// This runs on every workflow save; the common all-builtin save must
+				// not block on a registry fetch.
+				const getCommunityNodeTypes = vi.fn().mockResolvedValue([]);
+				Container.set(
+					CommunityNodeTypesService,
+					mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+				);
+				await service.initialize();
+
+				expect(
+					await service.findUninstalledNodeTypes(['n8n-nodes-base.set', 'n8n-nodes-base.webhook']),
+				).toEqual([]);
+				expect(getCommunityNodeTypes).not.toHaveBeenCalled();
+			});
+
 			test('reports nothing when the verified catalog comes back empty', async () => {
 				Container.set(
 					CommunityNodeTypesService,
@@ -668,6 +713,32 @@ describe('NodeCatalogService', () => {
 					[],
 				);
 			});
+		});
+
+		test('does not keep serving an error result after the registry recovers', async () => {
+			// First build sees an empty catalog (what an outage looks like from
+			// here); the aggregated error must not be cached, or identical requests
+			// would keep failing until the tier TTL long after search offers the
+			// node again.
+			const getCommunityNodeTypes = vi
+				.fn()
+				.mockResolvedValueOnce([])
+				.mockResolvedValue([verifiedEntry('n8n-nodes-firecrawl.firecrawl')]);
+			Container.set(
+				CommunityNodeTypesService,
+				mock<CommunityNodeTypesService>({ getCommunityNodeTypes }),
+			);
+			await service.initialize();
+
+			const first = await service.getNodeTypes(['n8n-nodes-firecrawl.firecrawl'], {
+				includeUninstalled: true,
+			});
+			expect(first).toContain('# Errors');
+
+			const second = await service.getNodeTypes(['n8n-nodes-firecrawl.firecrawl'], {
+				includeUninstalled: true,
+			});
+			expect(second).not.toContain('# Errors');
 		});
 	});
 

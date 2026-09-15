@@ -4,6 +4,7 @@ import type {
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import * as fs from 'fs/promises';
@@ -454,6 +455,13 @@ export class NodeCatalogService {
 			// its dependency chain constructed just to return an empty catalog.
 			if (!config.enabled || !config.verifiedEnabled) return null;
 
+			// When packages are managed declaratively from the environment, nobody
+			// on this instance can act on a discovery result: install() rejects
+			// every call. Offering uninstalled nodes here would only steer the
+			// agent into workflows that cannot run.
+			const { instanceSettingsLoader } = Container.get(GlobalConfig);
+			if (instanceSettingsLoader.communityPackagesManagedByEnv) return null;
+
 			const { CommunityNodeTypesService } = await import(
 				'@/modules/community-packages/community-node-types.service.js'
 			);
@@ -532,7 +540,12 @@ export class NodeCatalogService {
 		}
 
 		const result = parts.join('\n\n');
-		this.getCache.set(cacheKey, result);
+		// Error results are not cached: a transient registry outage would
+		// otherwise keep answering this exact request with the stale error until
+		// the tier TTL, long after search starts offering the node again. The
+		// per-node cache inside getNodeTypeDefinition already skips errors for
+		// the same reason.
+		if (errors.length === 0) this.getCache.set(cacheKey, result);
 		return result;
 	}
 
@@ -578,14 +591,20 @@ export class NodeCatalogService {
 	): Promise<Array<{ nodeType: string; packageName: string }>> {
 		if (nodeTypeNames.length === 0) return [];
 
+		// Installed nodes always win, in case a reload signal lagged behind an
+		// install and left a type in both tiers. Filtered before the tier build:
+		// this runs on every workflow save, and a workflow of installed nodes
+		// only — the common case — must not block on a registry fetch.
+		const unknown = [...new Set(nodeTypeNames)].filter(
+			(nodeType) => !this.descriptionsById.has(nodeType),
+		);
+		if (unknown.length === 0) return [];
+
 		await this.getUninstalledParser();
 		if (this.uninstalledDescriptionsById.size === 0) return [];
 
 		const found: Array<{ nodeType: string; packageName: string }> = [];
-		for (const nodeType of new Set(nodeTypeNames)) {
-			// An installed node always wins, in case a reload signal lagged behind
-			// an install and left the type in both tiers.
-			if (this.descriptionsById.has(nodeType)) continue;
+		for (const nodeType of unknown) {
 			if (!this.uninstalledDescriptionsById.has(nodeType)) continue;
 			const packageName = this.uninstalledPackagesById.get(nodeType);
 			if (!packageName) continue;

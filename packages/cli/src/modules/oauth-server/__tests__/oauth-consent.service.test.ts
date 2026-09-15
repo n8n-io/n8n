@@ -859,6 +859,55 @@ describe('OAuthConsentService', () => {
 			expect(result).toBeNull();
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
+
+		it('reuses a consent that predates a newly supported scope, without granting it', async () => {
+			// An upgrade can widen the supported set (communityPackage:install). A
+			// stored consent must neither be invalidated by that — the picker
+			// preselects only the previously granted scopes, so re-approving would
+			// never converge and every authorization would re-prompt — nor have the
+			// new scope silently added to the grant.
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: ['workflow:read', 'workflow:write', 'communityPackage:install'],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findOne.mockResolvedValue({
+				scope: ['workflow:read', 'workflow:write'],
+			} as unknown as UserConsent);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('reused-code');
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result?.redirectUrl).toContain('code=reused-code');
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				sessionPayload.clientId,
+				'user-1',
+				sessionPayload.redirectUri,
+				sessionPayload.codeChallenge,
+				sessionPayload.state,
+				sessionPayload.resource,
+				['workflow:read', 'workflow:write'],
+			);
+		});
+
+		it('returns null when nothing the user consented to is grantable anymore', async () => {
+			// A grant of zero scopes on a scoped resource would be useless; the
+			// normal consent flow takes over instead.
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: ['workflow:read'],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findOne.mockResolvedValue({
+				scope: ['execution:read'],
+			} as unknown as UserConsent);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result).toBeNull();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('per-user grantable scopes', () => {

@@ -382,7 +382,25 @@ export class OAuthConsentService {
 			await this.supportedScopesFor(resource, user),
 			sessionPayload.requestedScopes,
 		);
-		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+
+		const requestedScopes = sessionPayload.requestedScopes ?? [];
+		if (requestedScopes.length > 0) {
+			// The client named the scopes it needs. A consent that does not cover
+			// them re-prompts, so the user can decide on the missing ones.
+			if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+		}
+
+		// Reissue what the user already granted, narrowed to what is grantable
+		// now. Never the full grantable set: a scope introduced after the consent
+		// (an upgrade widening the supported set) must neither be granted without
+		// consent nor invalidate the consent — requiring full coverage here would
+		// re-prompt on every authorization, and approving the preselected scopes
+		// would never converge, because the picker preselects only the previously
+		// granted ones.
+		const consented = grantable.filter((scope) => consent.scope.includes(scope));
+		// Zero-scope resources (per-workflow MCP triggers) always grant `[]`, so
+		// an empty intersection only blocks reuse when there were scopes to keep.
+		if (grantable.length > 0 && consented.length === 0) return null;
 
 		if (!(await resource.authorize(user))) {
 			this.logger.debug('Consent reuse skipped: user no longer authorized for resource', {
@@ -393,6 +411,6 @@ export class OAuthConsentService {
 			return null;
 		}
 
-		return await this.issueGrant(user, sessionPayload, grantable);
+		return await this.issueGrant(user, sessionPayload, consented);
 	}
 }

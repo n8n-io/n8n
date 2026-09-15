@@ -198,22 +198,13 @@ export const createInstallCommunityNodeTool = (
 				};
 			}
 
-			// The version has to come from the same lookup install() uses to resolve
-			// the verification checksum: it calls findVetted(name) and has no
-			// per-version fallback, so a version off any other entry would be
-			// checked against a checksum that does not describe it.
-			const vetted = await communityNodeTypesService.findVetted(packageName);
-			if (!vetted) {
-				return fail(
-					`Package '${packageName}' is not a verified community package, so it cannot be installed.`,
-					'Only packages vetted by n8n are installable. Use search_nodes to find a verified alternative, or use an HTTP Request node.',
-				);
-			}
-
 			let installedPackage: Awaited<ReturnType<CommunityPackagesLifecycleService['install']>>;
 			try {
+				// No version: install() pins the latest vetted version and its
+				// checksum from a single catalog lookup, so the pair can never
+				// straddle a catalog refresh.
 				installedPackage = await communityPackagesLifecycleService.install(
-					{ name: packageName, version: vetted.npmVersion, verify: true },
+					{ name: packageName, verify: true },
 					user,
 					'mcp',
 				);

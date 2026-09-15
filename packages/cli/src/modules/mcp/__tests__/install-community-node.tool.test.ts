@@ -21,13 +21,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 const NODE_TYPE = '@mendable/n8n-nodes-firecrawl.firecrawl';
 const PACKAGE = '@mendable/n8n-nodes-firecrawl';
 
-const vettedEntry = () =>
-	({
-		packageName: PACKAGE,
-		npmVersion: '1.4.2',
-		checksum: 'sha512-abc',
-	}) as unknown as Awaited<ReturnType<CommunityNodeTypesService['findVetted']>>;
-
 /** Exact catalog entry for NODE_TYPE: official and not installed unless overridden. */
 const catalogEntry = (overrides: Record<string, unknown> = {}) =>
 	({
@@ -67,7 +60,6 @@ describe('install_community_node MCP tool', () => {
 			throw new Error('Unrecognized node type');
 		});
 		telemetry = mock<Telemetry>();
-		communityNodeTypesService.findVetted.mockResolvedValue(vettedEntry());
 		// Default: official and not installed yet, so an install actually happens.
 		communityNodeTypesService.findVettedNodeType.mockResolvedValue(catalogEntry());
 		lifecycleService.install.mockResolvedValue(installedPackage());
@@ -107,7 +99,7 @@ describe('install_community_node MCP tool', () => {
 			const structured = await call();
 
 			expect(lifecycleService.install).toHaveBeenCalledWith(
-				{ name: PACKAGE, version: '1.4.2', verify: true },
+				{ name: PACKAGE, verify: true },
 				user,
 				'mcp',
 			);
@@ -124,26 +116,17 @@ describe('install_community_node MCP tool', () => {
 			expect(structured.nodeTypes).toEqual([NODE_TYPE, `${PACKAGE}.firecrawlTool`]);
 		});
 
-		test('pins the registry version and always verifies the checksum', async () => {
+		test('delegates version pinning to install(), which always verifies the checksum', async () => {
+			// No version is passed on purpose: install() resolves the latest vetted
+			// version and its checksum from one catalog lookup, so the pair can
+			// never straddle a catalog refresh.
 			await call();
 
 			const [args] = lifecycleService.install.mock.calls[0];
-			expect(args.version).toBe('1.4.2');
+			expect(args.version).toBeUndefined();
 			expect(args.verify).toBe(true);
-		});
 
-		test('takes the version from findVetted, which is what the checksum describes', async () => {
-			// install() resolves the verification checksum through its own findVetted
-			// call and has no per-version fallback, so a version sourced from any
-			// other catalog entry would be verified against the wrong checksum.
-			communityNodeTypesService.findVettedNodeType.mockResolvedValue(
-				catalogEntry({ npmVersion: '9.9.9' }),
-			);
-
-			await call();
-
-			const [args] = lifecycleService.install.mock.calls[0];
-			expect(args.version).toBe('1.4.2');
+			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
 		});
 
 		test('omits credential types when the installed nodes need none', async () => {
@@ -228,13 +211,18 @@ describe('install_community_node MCP tool', () => {
 			expect(structured.hint).toContain('admin');
 		});
 
-		test('refuses a package n8n has not vetted', async () => {
-			communityNodeTypesService.findVetted.mockResolvedValue(undefined);
+		test('reports a failure when install() refuses the package', async () => {
+			// The vetted-package check lives inside install(), next to the checksum
+			// it resolves; the tool reports the rejection without retry advice that
+			// could leak the npm error text.
+			class BadRequestError extends Error {}
+			lifecycleService.install.mockRejectedValue(
+				new BadRequestError('Package n8n-nodes-sketchy is not vetted for installation'),
+			);
 
-			const structured = await callExpectingError('n8n-nodes-sketchy.sketchy');
+			const structured = await callExpectingError();
 
-			expect(lifecycleService.install).not.toHaveBeenCalled();
-			expect(structured.error).toContain('not a verified community package');
+			expect(structured.error).toContain('failed (BadRequestError)');
 		});
 
 		test('refuses a node type absent from the catalog even when its package is vetted', async () => {
@@ -299,10 +287,6 @@ describe('install_community_node MCP tool', () => {
 			communityNodeTypesService.findVettedNodeType.mockResolvedValue(
 				catalogEntry({ name: DOTTED_NODE, packageName: DOTTED_PACKAGE }),
 			);
-			communityNodeTypesService.findVetted.mockResolvedValue({
-				packageName: DOTTED_PACKAGE,
-				npmVersion: '2.0.0',
-			} as unknown as Awaited<ReturnType<CommunityNodeTypesService['findVetted']>>);
 			lifecycleService.install.mockResolvedValue(
 				mock<InstalledPackages>({
 					packageName: DOTTED_PACKAGE,
@@ -315,9 +299,8 @@ describe('install_community_node MCP tool', () => {
 
 			await call(DOTTED_NODE);
 
-			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith(DOTTED_PACKAGE);
 			expect(lifecycleService.install).toHaveBeenCalledWith(
-				{ name: DOTTED_PACKAGE, version: '2.0.0', verify: true },
+				{ name: DOTTED_PACKAGE, verify: true },
 				user,
 				'mcp',
 			);

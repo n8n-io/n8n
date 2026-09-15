@@ -15,6 +15,7 @@ describe('buildUninstalledNodeWarnings', () => {
 		const warnings = await buildUninstalledNodeWarnings(
 			nodes,
 			finder([{ nodeType: FIRECRAWL, packageName: '@mendable/n8n-nodes-firecrawl' }]),
+			true,
 		);
 
 		expect(warnings).toHaveLength(1);
@@ -24,6 +25,20 @@ describe('buildUninstalledNodeWarnings', () => {
 		});
 		expect(warnings[0].message).toContain('@mendable/n8n-nodes-firecrawl');
 		expect(warnings[0].message).toContain('install_community_node');
+	});
+
+	test('does not name the install tool when this session cannot call it', async () => {
+		// Naming it would steer the agent to a tool missing from its tool list,
+		// or have it promise an install this user cannot perform.
+		const warnings = await buildUninstalledNodeWarnings(
+			nodes,
+			finder([{ nodeType: FIRECRAWL, packageName: '@mendable/n8n-nodes-firecrawl' }]),
+		);
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].message).toContain('@mendable/n8n-nodes-firecrawl');
+		expect(warnings[0].message).not.toContain('install_community_node');
+		expect(warnings[0].message).toContain('administrator');
 	});
 
 	test('warns once per node, not once per type', async () => {

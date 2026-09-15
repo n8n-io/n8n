@@ -1187,6 +1187,8 @@ export const createUpdateWorkflowTool = (
 		 * only on surfaces that offer community-node discovery.
 		 */
 		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+		/** Whether this session can call the install tool; steers the warning text. */
+		installToolAvailable?: boolean;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1376,6 +1378,7 @@ export const createUpdateWorkflowTool = (
 					...(await buildUninstalledNodeWarnings(
 						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
 						options.findUninstalledNodeTypes,
+						options.installToolAvailable,
 					)),
 				);
 

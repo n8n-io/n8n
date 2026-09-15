@@ -77,6 +77,8 @@ export type CreateWorkflowFromCodeToolOptions = {
 	 * discovery, which keeps this tool independent of the node catalog.
 	 */
 	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+	/** Whether this session can call the install tool; steers the warning text. */
+	installToolAvailable?: boolean;
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -559,6 +561,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const uninstalledWarnings = await buildUninstalledNodeWarnings(
 				savedWorkflow.nodes,
 				options.findUninstalledNodeTypes,
+				options.installToolAvailable,
 			);
 
 			const warnings = [

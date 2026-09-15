@@ -23,8 +23,20 @@ describe('isCommunityNodeInstallAvailable', () => {
 	const config = (overrides: Partial<CommunityPackagesConfig> = {}) =>
 		({ enabled: true, verifiedEnabled: true, ...overrides }) as CommunityPackagesConfig;
 
-	const loaderConfig = (communityPackagesManagedByEnv = false) => ({
-		communityPackagesManagedByEnv,
+	const globalConfig = (
+		overrides: Partial<{
+			mcpBuilderEnabled: boolean;
+			communityPackagesManagedByEnv: boolean;
+		}> = {},
+	) => ({
+		endpoints: { mcpBuilderEnabled: overrides.mcpBuilderEnabled ?? true },
+		instanceSettingsLoader: {
+			communityPackagesManagedByEnv: overrides.communityPackagesManagedByEnv ?? false,
+		},
+	});
+
+	const mcpConfig = (communityNodeDiscoveryEnabled = true) => ({
+		communityNodeDiscoveryEnabled,
 	});
 
 	beforeEach(() => {
@@ -33,31 +45,31 @@ describe('isCommunityNodeInstallAvailable', () => {
 	});
 
 	test('available when the module is active, verified packages are on, and the user can install', () => {
-		expect(isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(), user)).toBe(
-			true,
-		);
+		expect(
+			isCommunityNodeInstallAvailable(registry(true), config(), globalConfig(), mcpConfig(), user),
+		).toBe(true);
 	});
 
 	test('checks the community-packages module specifically', () => {
 		const moduleRegistry = registry(true);
 
-		isCommunityNodeInstallAvailable(moduleRegistry, config(), loaderConfig(), user);
+		isCommunityNodeInstallAvailable(moduleRegistry, config(), globalConfig(), mcpConfig(), user);
 
 		expect(moduleRegistry.isActive).toHaveBeenCalledWith('community-packages');
 	});
 
 	test('unavailable when the module is inactive', () => {
-		expect(isCommunityNodeInstallAvailable(registry(false), config(), loaderConfig(), user)).toBe(
-			false,
-		);
+		expect(
+			isCommunityNodeInstallAvailable(registry(false), config(), globalConfig(), mcpConfig(), user),
+		).toBe(false);
 	});
 
 	test('unavailable without the communityPackage:install global scope', () => {
 		hasGlobalScope.mockReturnValue(false);
 
-		expect(isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(), user)).toBe(
-			false,
-		);
+		expect(
+			isCommunityNodeInstallAvailable(registry(true), config(), globalConfig(), mcpConfig(), user),
+		).toBe(false);
 		expect(hasGlobalScope).toHaveBeenCalledWith(user, 'communityPackage:install');
 	});
 
@@ -68,7 +80,8 @@ describe('isCommunityNodeInstallAvailable', () => {
 			isCommunityNodeInstallAvailable(
 				registry(true),
 				config({ verifiedEnabled: false }),
-				loaderConfig(),
+				globalConfig(),
+				mcpConfig(),
 				user,
 			),
 		).toBe(false);
@@ -78,7 +91,13 @@ describe('isCommunityNodeInstallAvailable', () => {
 		// install() rejects every call on such an instance, so registering the
 		// tool would advertise a capability that could only refuse.
 		expect(
-			isCommunityNodeInstallAvailable(registry(true), config(), loaderConfig(true), user),
+			isCommunityNodeInstallAvailable(
+				registry(true),
+				config(),
+				globalConfig({ communityPackagesManagedByEnv: true }),
+				mcpConfig(),
+				user,
+			),
 		).toBe(false);
 	});
 
@@ -87,7 +106,36 @@ describe('isCommunityNodeInstallAvailable', () => {
 			isCommunityNodeInstallAvailable(
 				registry(true),
 				config({ enabled: false }),
-				loaderConfig(),
+				globalConfig(),
+				mcpConfig(),
+				user,
+			),
+		).toBe(false);
+	});
+
+	test('unavailable when the MCP builder is disabled', () => {
+		// The tool only registers among the builder tools; the matching consent
+		// scope must not be offered while the tool cannot register.
+		expect(
+			isCommunityNodeInstallAvailable(
+				registry(true),
+				config(),
+				globalConfig({ mcpBuilderEnabled: false }),
+				mcpConfig(),
+				user,
+			),
+		).toBe(false);
+	});
+
+	test('unavailable when community node discovery is disabled', () => {
+		// A consent granted while the flag is off would become install capability
+		// the day an operator flips it on, with no new consent screen.
+		expect(
+			isCommunityNodeInstallAvailable(
+				registry(true),
+				config(),
+				globalConfig(),
+				mcpConfig(false),
 				user,
 			),
 		).toBe(false);

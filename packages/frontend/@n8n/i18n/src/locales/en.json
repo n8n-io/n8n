@@ -3515,6 +3515,7 @@
 	"settings.mcp.oAuthClients.scope.project.read": "Search projects and folders",
 	"settings.mcp.oAuthClients.scope.project.write": "Create and update folders",
 	"settings.mcp.oAuthClients.scope.tag.read": "List tags",
+	"settings.mcp.oAuthClients.scope.communityPackage.install": "Install verified community nodes",
 	"settings.mcp.oAuthClients.scope.more": "+{count}",
 	"settings.mcp.oAuthClients.access.full": "Full access",
 	"settings.mcp.oAuthClients.access.none": "No access",

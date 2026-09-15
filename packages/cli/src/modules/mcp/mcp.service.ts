@@ -57,7 +57,11 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { McpConfig } from './mcp.config';
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import {
+	INSTALL_COMMUNITY_NODE_TOOL,
+	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+} from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import type {
@@ -678,6 +682,35 @@ export class McpService {
 	}
 
 	/**
+	 * Whether `install_community_node` will really register for this session:
+	 * instance availability plus a grant that carries the install scope. Also
+	 * steers the uninstalled-node warnings, so the agent is only pointed at the
+	 * tool when this session can call it.
+	 */
+	private async isInstallToolAvailable(
+		user: User,
+		allowedToolNames: Set<string> | undefined,
+	): Promise<boolean> {
+		// This tool alone requires a scope-bearing credential. `undefined` means
+		// the caller authenticated with an API key or a legacy token, which grants
+		// every other tool by default; honouring that default here would let a key
+		// minted before this feature existed gain the ability to install code on
+		// the instance, with no consent screen and no action by its holder.
+		if (!allowedToolNames?.has(INSTALL_COMMUNITY_NODE_TOOL.toolName)) return false;
+
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		return isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig,
+			this.mcpConfig,
+			user,
+		);
+	}
+
+	/**
 	 * Register the community-package install tool, when it is available at all.
 	 * See {@link isCommunityNodeInstallAvailable} for why the gate sits here
 	 * rather than in the handler.
@@ -685,30 +718,9 @@ export class McpService {
 	private async registerInstallCommunityNodeTool(
 		user: User,
 		registerIfAllowed: RegisterToolFn,
-		allowedToolNames: Set<string> | undefined,
+		installToolAvailable: boolean,
 	): Promise<void> {
-		if (!this.mcpConfig.communityNodeDiscoveryEnabled) return;
-
-		// This tool alone requires a scope-bearing credential. `undefined` means
-		// the caller authenticated with an API key or a legacy token, which grants
-		// every other tool by default; honouring that default here would let a key
-		// minted before this feature existed gain the ability to install code on
-		// the instance, with no consent screen and no action by its holder.
-		if (!allowedToolNames) return;
-
-		const { CommunityPackagesConfig } = await import(
-			'@/modules/community-packages/community-packages.config.js'
-		);
-		if (
-			!isCommunityNodeInstallAvailable(
-				this.moduleRegistry,
-				Container.get(CommunityPackagesConfig),
-				this.globalConfig.instanceSettingsLoader,
-				user,
-			)
-		) {
-			return;
-		}
+		if (!installToolAvailable) return;
 
 		const [{ CommunityNodeTypesService }, { CommunityPackagesLifecycleService }] =
 			await Promise.all([
@@ -746,10 +758,12 @@ export class McpService {
 		// Only surfaces that can follow up with an install step opt into the
 		// verified-but-uninstalled tier.
 		const communityNodeDiscovery = this.mcpConfig.communityNodeDiscoveryEnabled;
+		const installToolAvailable = await this.isInstallToolAvailable(user, allowedToolNames);
 		const uninstalledNodeOptions = communityNodeDiscovery
 			? {
 					findUninstalledNodeTypes: async (nodeTypes: string[]) =>
 						await this.nodeCatalogService.findUninstalledNodeTypes(nodeTypes),
+					installToolAvailable,
 				}
 			: {};
 
@@ -923,7 +937,7 @@ export class McpService {
 		);
 		registerIfAllowed(restoreVersionTool);
 
-		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, allowedToolNames);
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

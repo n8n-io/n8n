@@ -145,7 +145,8 @@ export class McpProtectedResource implements ProtectedResource {
 		const installAvailable = isCommunityNodeInstallAvailable(
 			this.moduleRegistry,
 			Container.get(CommunityPackagesConfig),
-			this.globalConfig.instanceSettingsLoader,
+			this.globalConfig,
+			this.mcpConfig,
 			user,
 		);
 		if (installAvailable) return scopes;
