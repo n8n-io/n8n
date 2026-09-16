@@ -17,7 +17,6 @@ import {
 	getActiveCredentialType,
 	readIdParameter,
 } from '../actions/helpers';
-import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
