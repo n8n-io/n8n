@@ -14,7 +14,7 @@ import { withTimeout } from './with-timeout';
  */
 @Service()
 export class ExternalSecretsSecretsCache {
-	private readonly inFlight = new Map<string, Promise<void>>();
+	private readonly inFlight = new Map<SecretsProvider, Promise<void>>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -58,13 +58,14 @@ export class ExternalSecretsSecretsCache {
 	/**
 	 * Pulls a provider's secrets, bounded by the refresh timeout. Throws on failure. A caller that
 	 * arrives while a pull is running joins it, so a timed-out pull and its retry never stack.
+	 * Keyed by instance: a replacement under the same name must not join its predecessor's pull.
 	 */
 	async updateProvider(name: string, provider: SecretsProvider): Promise<void> {
-		let pull = this.inFlight.get(name);
+		let pull = this.inFlight.get(provider);
 		if (!pull) {
-			pull = provider.update().finally(() => this.inFlight.delete(name));
+			pull = provider.update().finally(() => this.inFlight.delete(provider));
 			pull.catch(() => {}); // Rejections reach the awaiting callers; none is left unhandled.
-			this.inFlight.set(name, pull);
+			this.inFlight.set(provider, pull);
 		}
 
 		const timeoutMs = this.config.refreshTimeout * Time.seconds.toMilliseconds;
